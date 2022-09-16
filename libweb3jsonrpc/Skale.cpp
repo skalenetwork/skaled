@@ -62,13 +62,17 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
-const std::atomic< time_t > Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 3600;
-const std::atomic< time_t > Skale::SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT = 60;
+std::atomic< time_t > Skale::SNAPSHOT_DOWNLOAD_TIMEOUT;
+std::atomic< time_t > Skale::SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT;
 
 std::string exceptionToErrorMessage();
 
 Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
-    : m_client( _client ), m_shared_space( _sharedSpace ) {}
+    : m_client( _client ), m_shared_space( _sharedSpace ) {
+    SNAPSHOT_DOWNLOAD_TIMEOUT = _client.chainParams().sChain.snapshotDownloadTimeout;
+    SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT =
+        _client.chainParams().sChain.snapshotDownloadInactiveTimeout;
+}
 
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
