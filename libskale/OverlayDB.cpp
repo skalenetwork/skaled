@@ -412,7 +412,7 @@ void OverlayDB::kill( h160 const& _h ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
             } else {
-                cnote << "Try to delete non existing key " << _h;
+                ctrace << "Try to delete non existing key " << _h;
             }
         }
     }
