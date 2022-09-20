@@ -135,7 +135,7 @@ std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
     }
 }
 
-size_t g_nMaxChunckSize = 1024 * 1024;
+size_t g_nMaxChunckSize = 100 * 1024 * 1024;
 
 //
 // call example:
