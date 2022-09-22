@@ -576,7 +576,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             s += joSnapshotInfo["error"].get< std::string >();
             if ( joSnapshotInfo.count( "timeValid" ) > 0 ) {
                 s += "; Invalid time to download snapshot. Valid time is ";
-                s += joSnapshotInfo["timeValid"].get< time_t >();
+                s += std::to_string( joSnapshotInfo["timeValid"].get< time_t >() );
             }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
