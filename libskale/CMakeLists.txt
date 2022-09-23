@@ -13,6 +13,7 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     AmsterdamFixPatch.cpp
+    OverlayFS.cpp
 )
 
 set(headers
