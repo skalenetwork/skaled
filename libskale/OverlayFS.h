@@ -32,6 +32,18 @@
 
 namespace skale {
 
+class BaseOp {
+public:
+    virtual void execute() = 0; 
+};
+
+class CreateFileOp : public BaseOp {
+    const std::string filePath;
+    const size_t fileSize;
+    
+    CreateFileOp(const std::string& filePath, const size_t fileSize);
+};
+
 class OverlayFS {
 public:
     explicit OverlayFS();
@@ -46,15 +58,18 @@ public:
     OverlayFS& operator=( OverlayFS&& ) = default;
 
     void commit();
-    void clearCache();
+    void reset();
     bool empty() const;
 
     void createFile( const std::string& filePath, const size_t fileSize );
     void createDirectory( const std::string& path );
     void writeChunk( const std::string& filePath, const size_t position, const size_t dataLength, const _byte_* data );
-    void deleteFile( const std::string& string );
-    void deleteDirectory( const std::string& string );
-    void writeHashFile( const std::string& string );
+    void deleteFile( const std::string& filePath );
+    void deleteDirectory( const std::string& path );
+    void writeHashFile( const std::string& filePath );
+
+private:
+    std::vector< std::shared_ptr< BaseOp > > m_cache; // vector of filestorage operations for current state
 };
 
 }  // namespace skale

@@ -326,9 +326,14 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+            std::mutex mutex;
             // dev::eth::g_state = m_s.delegateWrite();
-            tie( success, output ) =
-                m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                dev::eth::g_overlayFS = m_s.fs();
+                tie( success, output ) =
+                    m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+            }
             // m_s = dev::eth::g_state.delegateWrite();
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
