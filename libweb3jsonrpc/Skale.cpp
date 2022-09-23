@@ -62,17 +62,10 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
-std::atomic< time_t > Skale::SNAPSHOT_DOWNLOAD_TIMEOUT;
-std::atomic< time_t > Skale::SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT;
-
 std::string exceptionToErrorMessage();
 
 Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
-    : m_client( _client ), m_shared_space( _sharedSpace ) {
-    SNAPSHOT_DOWNLOAD_TIMEOUT = _client.chainParams().sChain.snapshotDownloadTimeout;
-    SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT =
-        _client.chainParams().sChain.snapshotDownloadInactiveTimeout;
-}
+    : m_client( _client ), m_shared_space( _sharedSpace ) {}
 
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
@@ -164,7 +157,8 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         joResponse["error"] =
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
-        joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] =
+            currentSnapshotTime + m_client.chainParams().sChain.snapshotDownloadTimeout;
         return joResponse;
     }
 
@@ -178,7 +172,8 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // exit if shared space unavailable
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
-        joResponse["timeValid"] = time( NULL ) + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] =
+            time( NULL ) + m_client.chainParams().sChain.snapshotDownloadTimeout;
         return joResponse;
     }
 
@@ -201,9 +196,11 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
          !snapshotDownloadFragmentMonitorThread->joinable() ) {
         snapshotDownloadFragmentMonitorThread.reset( new std::thread( [this]() {
             while ( ( time( NULL ) - lastSnapshotDownloadFragmentTime <
-                            SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT ||
-                        time( NULL ) - currentSnapshotTime < SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT ) &&
-                    time( NULL ) - currentSnapshotTime < SNAPSHOT_DOWNLOAD_TIMEOUT ) {
+                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
+                        time( NULL ) - currentSnapshotTime <
+                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
+                    time( NULL ) - currentSnapshotTime <
+                        m_client.chainParams().sChain.snapshotDownloadTimeout ) {
                 sleep( 30 );
             }
 

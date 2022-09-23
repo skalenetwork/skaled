@@ -102,8 +102,6 @@ private:
     int currentSnapshotBlockNumber = -1;
     fs::path currentSnapshotPath;
     std::atomic< time_t > currentSnapshotTime = 0;
-    static std::atomic< time_t > SNAPSHOT_DOWNLOAD_TIMEOUT;
-    static std::atomic< time_t > SNAPSHOT_DOWNLOAD_INACTIVE_TIMEOUT;
     std::atomic< time_t > lastSnapshotDownloadFragmentTime = 0;
     std::unique_ptr< std::thread > snapshotDownloadFragmentMonitorThread;
     mutable std::mutex m_snapshot_mutex;
