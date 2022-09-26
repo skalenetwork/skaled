@@ -72,9 +72,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     //
-    std::cout << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() )
-              << "\n";
-    std::cout.flush();
+    clog( VerbosityInfo, "skale-host" )
+        << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() ) << "\n";
     //
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >(
@@ -586,6 +585,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
+            cerror << DETAILED_ERROR;
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
                 ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
                 _exit( int( ExitHandler::ec_state_root_mismatch ) );
@@ -751,17 +751,19 @@ void SkaleHost::startWorking() {
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
-            std::cout << "Thread " << g_strThreadName << " started\n";
+            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " started\n";
             m_consensus->bootStrapAll();
-            std::cout << "Thread " << g_strThreadName << " will exit\n";
+            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " will exit\n";
         } catch ( std::exception& ex ) {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            std::cout << "Consensus thread in skale host will exit with exception: " << s << "\n";
+            clog( VerbosityError, "skale-host" )
+                << "Consensus thread in skale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
-            std::cout << "Consensus thread in skale host will exit with unknown exception\n";
-            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            clog( VerbosityError, "skale-host" )
+                << "Consensus thread in skale host will exit with unknown exception\n"
+                << skutils::signal::generate_stack_trace() << "\n";
         }
 
         bootstrap_promise.set_value();
@@ -795,7 +797,7 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    std::cerr << "1 before exitGracefully()" << std::endl;
+    cnote << "1 before exitGracefully()";
 
     if ( ExitHandler::shouldExit() ) {
         // requested exit
@@ -809,14 +811,14 @@ void SkaleHost::stopWorking() {
 
     m_consensus->exitGracefully();
 
-    std::cerr << "2 after exitGracefully()" << std::endl;
+    cnote << "2 after exitGracefully()";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    std::cerr << "3 after wait loop" << std::endl;
+    cnote << "3 after wait loop";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -826,7 +828,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    std::cerr << "4 before dtor" << std::endl;
+    cnote << "4 before dtor";
 }
 
 void SkaleHost::broadcastFunc() {
@@ -890,10 +892,12 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            cerror << DETAILED_ERROR;
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
+            cerror << DETAILED_ERROR;
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         }
