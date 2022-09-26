@@ -209,10 +209,9 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
             nonceReq = _state.getNonce( _transaction.sender() );
             if ( ( _transaction.nonce() != nonceReq && !_allowFuture ) ||
                  ( _transaction.nonce() < nonceReq && _allowFuture ) ) {
-                std::cout << "WARNING: Transaction " << _transaction.sha3() << " nonce "
-                          << _transaction.nonce() << " is not equal to required nonce " << nonceReq
-                          << "\n";
-                std::cout.flush();
+                cdebug << "WARNING: Transaction " << _transaction.sha3() << " nonce "
+                       << _transaction.nonce() << " is not equal to required nonce " << nonceReq
+                       << "\n";
                 BOOST_THROW_EXCEPTION(
                     InvalidNonce() << RequirementError( static_cast< bigint >( nonceReq ),
                         static_cast< bigint >( _transaction.nonce() ) ) );
@@ -227,10 +226,9 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
         bigint totalCost = _transaction.value() + gasCost;
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
-            std::cout << "WARNING: Transaction " << _transaction.sha3() << " total cost "
-                      << totalCost << " is less than sender " << _transaction.sender()
-                      << " ballance " << sender_ballance << "\n";
-            std::cout.flush();
+            cdebug << "WARNING: Transaction " << _transaction.sha3() << " total cost " << totalCost
+                   << " is less than sender " << _transaction.sender() << " ballance "
+                   << sender_ballance << "\n";
             BOOST_THROW_EXCEPTION( NotEnoughCash()
                                    << RequirementError(
                                           totalCost, static_cast< bigint >(
@@ -519,6 +517,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // does.
             cwarn << "Unexpected exception in VM. There may be a bug in this implementation. "
                   << diagnostic_information( _e );
+            cwarn << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -526,6 +525,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
             cwarn << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
+            cwarn << DETAILED_ERROR;
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
