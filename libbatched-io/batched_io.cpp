@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <iostream>
 
+#include <libdevcore/Log.h>
+
 namespace {
 std::string test_crash_at;
 }
@@ -11,9 +13,10 @@ std::string test_crash_at;
 namespace batched_io {
 void test_crash_before_commit( const std::string& id ) {
     if ( !test_crash_at.empty() ) {
-        std::cerr << "test_crash_before_commit: " << id << std::endl;
+        cnote << "test_crash_before_commit: " << id << std::endl;
         if ( id == test_crash_at ) {
-            std::cerr << "test_crash_before_commit: crashing at " << test_crash_at << std::endl;
+            cerror << "test_crash_before_commit: crashing at " << test_crash_at << std::endl;
+            cerror << DETAILED_ERROR;
             _exit( 33 );
         }
     }  // if 1

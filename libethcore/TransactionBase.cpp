@@ -118,8 +118,10 @@ TransactionBase::TransactionBase(
 
             if ( !_allowInvalid )
                 throw;
-            else
+            else {
                 cwarn << _e.what();
+                cwarn << DETAILED_ERROR;
+            }
         }
     } catch ( ... ) {
         m_type = Type::Invalid;
@@ -129,6 +131,8 @@ TransactionBase::TransactionBase(
 
         if ( !_allowInvalid )
             throw;
+        else
+            cwarn << DETAILED_ERROR;
     }
 }  // ctor
 
