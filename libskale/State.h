@@ -381,6 +381,10 @@ public:
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
 
+    void resetOverlayFS() {
+        m_fs_ptr = std::make_shared< OverlayFS >();
+    };
+
 private:
     void updateToLatestVersion();
 

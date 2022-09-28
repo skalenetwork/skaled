@@ -33,31 +33,32 @@
 namespace skale {
 
 class BaseOp {
+public:
     virtual bool execute() = 0;
+    dev::Logger m_logger{ createLogger( dev::VerbosityDebug, "fs" ) };
 };
 
 class CreateFileOp : public BaseOp {
 public:    
-    CreateFileOp(const std::string& filePath, const size_t fileSize);
+    CreateFileOp(const std::string& _filePath, const size_t _fileSize) : 
+        filePath( _filePath ), fileSize( _fileSize ) {}
     bool execute() override;
 private:
     const std::string filePath;
     const size_t fileSize;
-    Logger m_fsLogger{ createLogger( VerbosityDebug, "fs" ) };
 };
 
 class CreateDirectoryOp : public BaseOp {
 public:    
-    CreateDirectoryOp(const std::string& path);
+    CreateDirectoryOp(const std::string& _path) : path( _path ) {}
     bool execute() override;
 private:
     const std::string path;
-    Logger m_fsLogger{ createLogger( VerbosityDebug, "fs" ) };
 };
 
 class OverlayFS {
 public:
-    explicit OverlayFS();
+    OverlayFS() = default;
 
     virtual ~OverlayFS() = default;
 
@@ -70,7 +71,7 @@ public:
 
     void commit();
     void reset();
-    bool empty() const;
+    bool empty() const { return m_cache.empty(); }
 
     void createFile( const std::string& filePath, const size_t fileSize );
     void createDirectory( const std::string& path );
