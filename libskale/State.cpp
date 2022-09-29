@@ -706,6 +706,7 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     resetStorageChanges();
+    m_fs_ptr->reset();
 }
 
 void State::updateToLatestVersion() {
@@ -839,6 +840,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
+        m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :

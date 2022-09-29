@@ -56,6 +56,22 @@ private:
     const std::string path;
 };
 
+class DeleteFileOp : public BaseOp {
+public:    
+    DeleteFileOp(const std::string& _path) : path( _path ) {}
+    bool execute() override;
+private:
+    const std::string path;
+};
+
+class DeleteDirectoryOp : public BaseOp {
+public:    
+    DeleteDirectoryOp(const std::string& _path) : path( _path ) {}
+    bool execute() override;
+private:
+    const std::string path;
+};
+
 class OverlayFS {
 public:
     OverlayFS() = default;
