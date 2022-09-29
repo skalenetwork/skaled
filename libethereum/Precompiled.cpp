@@ -284,28 +284,14 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
-            bool isCreated = fs::create_directories( fsDirectoryPath );
-            // g_overlayFS->createDirectory( fsDirectoryPath );
-            if ( !isCreated ) {
-                throw std::runtime_error(
-                    "createFile() failed because cannot create subdirectory" );
-            }
+            g_overlayFS->createDirectory( fsDirectoryPath.string() );
         }
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
                 "createFile() failed because _hash extension is not allowed" );
         }
-        if ( !fs::exists( fsFilePath ) ) {
-            throw std::runtime_error( "createFile() failed because directory not exists" );
-        }
-        fstream file;
-        file.open( ( fsFilePath / filePath.filename() ).string(), ios::out );
-        if ( fileSize > 0 ) {
-            file.seekp( static_cast< long >( fileSize ) - 1 );
-            file.write( "0", 1 );
-        }
-        // g_overlayFS->createFile(( fsFilePath / filePath.filename() ).string(), fileSize);
+        g_overlayFS->createFile(( fsFilePath / filePath.filename() ).string(), fileSize);
 
         u256 code = 1;
         bytes response = toBigEndian( code );
