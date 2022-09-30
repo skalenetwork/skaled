@@ -159,6 +159,8 @@ public:
     uint64_t dbStorageLimit = 0;
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
+    time_t snapshotDownloadTimeout = 3600;
+    time_t snapshotDownloadInactiveTimeout = 60;
     bool freeContractDeployment = false;
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
