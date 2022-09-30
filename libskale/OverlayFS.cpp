@@ -69,11 +69,11 @@ bool CreateDirectoryOp::execute() {
 }
 
 void OverlayFS::createDirectory( const std::string& path ) {
-    m_cache.push_back( std::make_shared <CreateDirectoryOp> (path) );
+    m_cache.push_back( std::make_shared< CreateDirectoryOp >( path ) );
 }
 
 void OverlayFS::createFile( const std::string& filePath, const size_t fileSize ) {
-    m_cache.push_back( std::make_shared <CreateFileOp> (filePath, fileSize) );
+    m_cache.push_back( std::make_shared< CreateFileOp >( filePath, fileSize ) );
 }
 
 void OverlayFS::commit() {

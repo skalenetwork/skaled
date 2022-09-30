@@ -329,7 +329,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             std::mutex mutex;
             // dev::eth::g_state = m_s.delegateWrite();
             {
-                std::lock_guard<std::mutex> lock(mutex);
+                std::lock_guard< std::mutex > lock( mutex );
                 dev::eth::g_overlayFS = m_s.fs();
                 tie( success, output ) =
                     m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );

@@ -39,35 +39,62 @@ public:
 };
 
 class CreateFileOp : public BaseOp {
-public:    
-    CreateFileOp(const std::string& _filePath, const size_t _fileSize) : 
-        filePath( _filePath ), fileSize( _fileSize ) {}
+public:
+    CreateFileOp( const std::string& _filePath, const size_t _fileSize )
+        : filePath( _filePath ), fileSize( _fileSize ) {}
     bool execute() override;
+
 private:
     const std::string filePath;
     const size_t fileSize;
 };
 
 class CreateDirectoryOp : public BaseOp {
-public:    
-    CreateDirectoryOp(const std::string& _path) : path( _path ) {}
+public:
+    CreateDirectoryOp( const std::string& _path ) : path( _path ) {}
     bool execute() override;
+
 private:
     const std::string path;
 };
 
 class DeleteFileOp : public BaseOp {
-public:    
-    DeleteFileOp(const std::string& _path) : path( _path ) {}
+public:
+    DeleteFileOp( const std::string& _path ) : path( _path ) {}
     bool execute() override;
+
 private:
     const std::string path;
 };
 
 class DeleteDirectoryOp : public BaseOp {
-public:    
-    DeleteDirectoryOp(const std::string& _path) : path( _path ) {}
+public:
+    DeleteDirectoryOp( const std::string& _path ) : path( _path ) {}
     bool execute() override;
+
+private:
+    const std::string path;
+};
+
+class WriteChunkOp : public BaseOp {
+public:
+    WriteChunkOp( const std::string& _path, const size_t _position, const size_t _dataLength,
+        const _byte_* _data )
+        : path( _path ), position( _position ), dataLength( _dataLength ), data( _data ) {}
+    bool execute() override;
+ 
+private:
+    const std::string path;
+    const size_t position;
+    const size_t dataLength;
+    const _byte_* data;
+};
+
+class WriteHashFileOp : public BaseOp {
+public:
+    writeHashFileOp( const std::string& _path ) : path( _path ) {}
+    bool execute() override;
+
 private:
     const std::string path;
 };
@@ -86,18 +113,20 @@ public:
     OverlayFS& operator=( OverlayFS&& ) = default;
 
     void commit();
-    void reset();
+    void reset() { m_cache.clear(); };
     bool empty() const { return m_cache.empty(); }
 
     void createFile( const std::string& filePath, const size_t fileSize );
     void createDirectory( const std::string& path );
-    void writeChunk( const std::string& filePath, const size_t position, const size_t dataLength, const _byte_* data );
+    void writeChunk( const std::string& filePath, const size_t position, const size_t dataLength,
+        const _byte_* data );
     void deleteFile( const std::string& filePath );
     void deleteDirectory( const std::string& path );
     void writeHashFile( const std::string& filePath );
 
 private:
-    std::vector< std::shared_ptr< BaseOp > > m_cache; // vector of filestorage operations for current state
+    std::vector< std::shared_ptr< BaseOp > > m_cache;  // vector of filestorage operations for
+                                                       // current state
 };
 
 }  // namespace skale

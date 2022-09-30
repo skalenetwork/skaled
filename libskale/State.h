@@ -381,9 +381,7 @@ public:
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
 
-    void resetOverlayFS() {
-        m_fs_ptr = std::make_shared< OverlayFS >();
-    };
+    void resetOverlayFS() { m_fs_ptr = std::make_shared< OverlayFS >(); };
 
 private:
     void updateToLatestVersion();
@@ -465,9 +463,7 @@ public:
         return pDB;
     }
 
-    std::shared_ptr< OverlayFS > fs() {
-        return m_fs_ptr;
-    }
+    std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

@@ -41,7 +41,7 @@ class SkaleHost;
 namespace skale {
 class State;
 class OverlayFS;
-}
+}  // namespace skale
 
 namespace dev {
 namespace eth {

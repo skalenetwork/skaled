@@ -291,7 +291,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
             throw std::runtime_error(
                 "createFile() failed because _hash extension is not allowed" );
         }
-        g_overlayFS->createFile(( fsFilePath / filePath.filename() ).string(), fileSize);
+        g_overlayFS->createFile( ( fsFilePath / filePath.filename() ).string(), fileSize );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
