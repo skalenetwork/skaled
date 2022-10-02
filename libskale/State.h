@@ -413,7 +413,7 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
-    void rollbackStorageChange( const Change& _change, eth::Account& _acc );
+    void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 
     void updateStorageUsage();
 

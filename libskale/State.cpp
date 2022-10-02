@@ -681,7 +681,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            rollbackStorageChange(change, account);
+            rollbackStorageChange( change, account );
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
