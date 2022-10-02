@@ -878,7 +878,7 @@ bool State::executeTransaction(
     }
 }
 
-void rollbackStorageChange(const Change& _change, eth::Account& _acc) {
+void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
     dev::u256 _currentValue = storage( _change.address, _change.key );
     int count = 0;
     if ( ( _change.key > 0 && _currentValue > 0 ) || ( _change.key == 0 && _currentValue == 0 ) ) {
