@@ -681,7 +681,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            account.setStorage( change.key, change.value );
+            rollbackStorageChange(change, account);
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -705,7 +705,6 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
-    resetStorageChanges();
 }
 
 void State::updateToLatestVersion() {
@@ -877,6 +876,19 @@ bool State::executeTransaction(
         rollback( savept );
         throw;
     }
+}
+
+void rollbackStorageChange(const Change& _change, eth::Account& _acc) {
+    dev::u256 _currentValue = storage( _change.address, _change.key );
+    int count = 0;
+    if ( ( _change.key > 0 && _currentValue > 0 ) || ( _change.key == 0 && _currentValue == 0 ) ) {
+        count = 0;
+    } else {
+        count = ( _change.key == 0 ? -1 : 1 );
+    }
+    storageUsage[_change.address] += count * 32;
+    currentStorageUsed_ += count * 32;
+    _acc.setStorage( _change.key, _change.value );
 }
 
 void State::updateStorageUsage() {
