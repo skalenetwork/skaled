@@ -894,7 +894,8 @@ void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
 
 void State::updateStorageUsage() {
     for ( const auto& [_address, _value] : storageUsage ) {
-        account( _address )->updateStorageUsage( _value );
+        if ( auto a = account( _address ) )
+            a->updateStorageUsage( _value );
     }
     resetStorageChanges();
 }
