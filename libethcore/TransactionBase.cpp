@@ -137,8 +137,6 @@ TransactionBase::TransactionBase(
 }  // ctor
 
 Address const& TransactionBase::safeSender() const noexcept {
-    assert( !isInvalid() );
-
     try {
         return sender();
     } catch ( ... ) {
