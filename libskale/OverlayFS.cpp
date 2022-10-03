@@ -42,9 +42,9 @@ bool CreateFileOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in createFileOp: " << strError << "\n";
+        LOG( m_logger ) << "Exception in CreateFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in createFileOp\n";
+        LOG( m_logger ) << "Unknown exception in CreateFileOp\n";
     }
     return false;
 }
@@ -54,7 +54,7 @@ bool CreateDirectoryOp::execute() {
         bool isCreated = fs::create_directories( this->path );
 
         if ( !isCreated ) {
-            throw std::runtime_error( "createDirectoryOp failed because cannot create directory" );
+            throw std::runtime_error( "CreateDirectoryOp failed because cannot create directory" );
         }
         return true;
     } catch ( std::exception& ex ) {
@@ -64,6 +64,79 @@ bool CreateDirectoryOp::execute() {
         LOG( m_logger ) << "Exception in createDirectoryOp: " << strError << "\n";
     } catch ( ... ) {
         LOG( m_logger ) << "Unknown exception in createDirectoryOp\n";
+    }
+    return false;
+}
+
+bool DeleteFileOp::execute() {
+    try {
+        bool isDeleted = boost::filesystem::remove( this->path );
+        if ( !isDeleted ) {
+            throw std::runtime_error( "DeleteFileOp failed because cannot delete file" );
+        }
+        return true;
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( m_logger ) << "Exception in DeleteFileOp: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( m_logger ) << "Unknown exception in DeleteFileOp\n";
+    }
+    return false;
+}
+
+bool DeleteDirectoryOp::execute() {
+    try {
+        bool isDeleted = boost::filesystem::remove_all( this->path );
+        if ( !isDeleted ) {
+            throw std::runtime_error( "DeleteDirectoryOp failed because cannot delete directory" );
+        }
+        return true;
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( m_logger ) << "Exception in DeleteDirectoryOp: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( m_logger ) << "Unknown exception in DeleteDirectoryOp\n";
+    }
+    return false;
+}
+
+bool WriteChunkOp::execute() {
+    try {
+        std::fstream file;
+        file.open( this->path, std::ios::binary | std::ios::out | std::ios::in );
+        file.seekp( static_cast< long >( this->position ) );
+        file.write( ( char* ) this->data, this->dataLength );
+        return true;
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( m_logger ) << "Exception in WriteChunkOp: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( m_logger ) << "Unknown exception in WriteChunkOp\n";
+    }
+    return false;
+}
+
+bool WriteHashFileOp::execute() {
+    try {
+        std::fstream fileHash;
+        fileHash.open( this->path, std::ios::binary | std::ios::out );
+        fileHash.clear();
+        fileHash << this->commonFileHash;
+        fileHash.close();
+        return true;
+    } catch ( std::exception& ex ) {
+        std::string strError = ex.what();
+        if ( strError.empty() )
+            strError = "exception without description";
+        LOG( m_logger ) << "Exception in WriteHashFileOp: " << strError << "\n";
+    } catch ( ... ) {
+        LOG( m_logger ) << "Unknown exception in WriteHashFileOp\n";
     }
     return false;
 }

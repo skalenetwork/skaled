@@ -92,11 +92,12 @@ private:
 
 class WriteHashFileOp : public BaseOp {
 public:
-    writeHashFileOp( const std::string& _path ) : path( _path ) {}
+    WriteHashFileOp( const std::string& _path ) : path( _path ) {}
     bool execute() override;
 
 private:
     const std::string path;
+    const dev::h256 commonFileHash;
 };
 
 class OverlayFS {
