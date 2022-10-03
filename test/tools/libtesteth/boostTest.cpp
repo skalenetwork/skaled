@@ -137,6 +137,7 @@ void setCLocale() {
 int main( int argc, const char* argv[] ) {
     MicroProfileSetEnableAllGroups( true );
     UnsafeRegion::init(".");
+    std::srand( time( nullptr ) );
 
     std::string const dynamicTestSuiteName = "customTestSuite";
     setCLocale();
