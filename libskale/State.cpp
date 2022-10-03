@@ -682,6 +682,7 @@ void State::rollback( size_t _savepoint ) {
         switch ( change.kind ) {
         case Change::Storage:
             rollbackStorageChange( change, account );
+//            account.setStorage( change.key, change.value );
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -881,10 +882,10 @@ bool State::executeTransaction(
 void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
     dev::u256 _currentValue = storage( _change.address, _change.key );
     int count = 0;
-    if ( ( _change.key > 0 && _currentValue > 0 ) || ( _change.key == 0 && _currentValue == 0 ) ) {
+    if ( ( _change.value > 0 && _currentValue > 0 ) || ( _change.value == 0 && _currentValue == 0 ) ) {
         count = 0;
     } else {
-        count = ( _change.key == 0 ? -1 : 1 );
+        count = ( _change.value == 0 ? -1 : 1 );
     }
     storageUsage[_change.address] += count * 32;
     currentStorageUsed_ += count * 32;
