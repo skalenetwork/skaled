@@ -62,8 +62,6 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
-const time_t Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 3600;
-
 std::string exceptionToErrorMessage();
 
 Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
@@ -157,12 +155,12 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         throw std::runtime_error( "Snapshot for block 0 is absent" );
 
     // exit if too early
-    if ( currentSnapshotBlockNumber >= 0 &&
-         time( NULL ) - currentSnapshotTime <= SNAPSHOT_DOWNLOAD_TIMEOUT ) {
+    if ( currentSnapshotBlockNumber >= 0 ) {
         joResponse["error"] =
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
-        joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] =
+            currentSnapshotTime + m_client.chainParams().sChain.snapshotDownloadTimeout;
         return joResponse;
     }
 
@@ -176,8 +174,14 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // exit if shared space unavailable
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
-        joResponse["timeValid"] = time( NULL ) + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] =
+            time( NULL ) + m_client.chainParams().sChain.snapshotDownloadTimeout;
         return joResponse;
+    }
+
+    if ( snapshotDownloadFragmentMonitorThread != nullptr &&
+         snapshotDownloadFragmentMonitorThread->joinable() ) {
+        snapshotDownloadFragmentMonitorThread->join();
     }
 
     try {
@@ -189,22 +193,36 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     }
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
-    // TODO mutex here!!
-    skutils::dispatch::once(
-        "dummy-queue-for-snapshot",
-        [this]() {
+
+    if ( snapshotDownloadFragmentMonitorThread == nullptr ||
+         !snapshotDownloadFragmentMonitorThread->joinable() ) {
+        snapshotDownloadFragmentMonitorThread.reset( new std::thread( [this]() {
+            while ( ( time( NULL ) - lastSnapshotDownloadFragmentTime <
+                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
+                        time( NULL ) - currentSnapshotTime <
+                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
+                    time( NULL ) - currentSnapshotTime <
+                        m_client.chainParams().sChain.snapshotDownloadTimeout ) {
+                sleep( 30 );
+            }
+
+            clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
+                << "Unlocking shared space as timeout was reached.\n";
+
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
                 try {
                     fs::remove( currentSnapshotPath );
+                    clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
+                        << "Deleted snapshot file.\n";
                 } catch ( ... ) {
                 }
                 currentSnapshotBlockNumber = -1;
                 if ( m_shared_space )
                     m_shared_space->unlock();
             }
-        },
-        skutils::dispatch::duration_from_seconds( SNAPSHOT_DOWNLOAD_TIMEOUT ) );
+        } ) );
+    }
 
     //
     //
@@ -256,6 +274,8 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     const nlohmann::json& joRequest ) {
     std::lock_guard< std::mutex > lock( m_snapshot_mutex );
 
+    lastSnapshotDownloadFragmentTime = time( NULL );
+
     if ( currentSnapshotBlockNumber < 0 ) {
         return std::vector< uint8_t >();
     }
@@ -277,6 +297,9 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
 }
 nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest ) {
     std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+
+    lastSnapshotDownloadFragmentTime = time( NULL );
+    nlohmann::json joResponse = nlohmann::json::object();
 
     if ( currentSnapshotBlockNumber < 0 )
         return "there's no current snapshot, or snapshot expired; please call skale_getSnapshot() "
@@ -302,7 +325,6 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
             << cc::success( "Sent all chunks for " ) << cc::p( currentSnapshotPath.string() )
             << "\n";
 
-    nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
     return joResponse;
