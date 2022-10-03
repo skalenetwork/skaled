@@ -92,7 +92,8 @@ private:
 
 class WriteHashFileOp : public BaseOp {
 public:
-    WriteHashFileOp( const std::string& _path ) : path( _path ) {}
+    WriteHashFileOp( const std::string& _path, const dev::h256 _commonFileHash ) : path( _path ),
+    commonFileHash( _commonFileHash ) {}
     bool execute() override;
 
 private:
@@ -123,7 +124,7 @@ public:
         const _byte_* data );
     void deleteFile( const std::string& filePath );
     void deleteDirectory( const std::string& path );
-    void writeHashFile( const std::string& filePath );
+    void writeHashFile( const std::string& filePath, const dev::h256& commonFileHash );
 
 private:
     std::vector< std::shared_ptr< BaseOp > > m_cache;  // vector of filestorage operations for

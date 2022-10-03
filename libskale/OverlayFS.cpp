@@ -149,6 +149,22 @@ void OverlayFS::createFile( const std::string& filePath, const size_t fileSize )
     m_cache.push_back( std::make_shared< CreateFileOp >( filePath, fileSize ) );
 }
 
+void OverlayFS::deleteFile( const std::string& filePath ) {
+    m_cache.push_back( std::make_shared< DeleteFileOp >( filePath ) );
+}
+
+void OverlayFS::deleteDirectory( const std::string& path ) {
+    m_cache.push_back( std::make_shared< DeleteDirectoryOp >( path ) );
+}
+
+void OverlayFS::writeChunk( const std::string& filePath, const size_t position, const size_t dataLength, const _byte_* data ) {
+    m_cache.push_back( std::make_shared< WriteChunkOp >( filePath, position, dataLength, data ) );
+}
+
+void OverlayFS::writeHashFile( const std::string& filePath, const dev::h256& commonFileHash ) {
+    m_cache.push_back( std::make_shared< WriteHashFileOp >( filePath, commonFileHash ) );
+}
+
 void OverlayFS::commit() {
     for ( size_t i = 0; i < m_cache.size(); ++i ) {
         m_cache[i]->execute();
