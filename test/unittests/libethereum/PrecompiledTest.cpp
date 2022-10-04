@@ -26,6 +26,7 @@
 #include <libethereum/ChainParams.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+#include <libskale/OverlayFS.h>
 
 #include <secp256k1_sha256.h>
 
@@ -1587,6 +1588,8 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "a b", 3 );
         file.seekp( static_cast< long >( fileSize ) - 1 );
         file.write( "0", 1 );
+
+        dev::eth::g_overlayFS = std::make_shared< skale::OverlayFS >();
     }
 
     ~FilestorageFixture() override {

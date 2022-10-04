@@ -706,7 +706,7 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     resetStorageChanges();
-    m_fs_ptr->reset();
+    clearFileStorageCache();
 }
 
 void State::updateToLatestVersion() {
@@ -795,6 +795,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     Executive e( *this, _envInfo, _sealEngine, 0, 0, _p != Permanence::Committed );
     ExecutionResult res;
     e.setResultRecipient( res );
+    resetOverlayFS();
 
     auto onOp = _onOp;
 #if ETH_VMTRACE

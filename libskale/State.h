@@ -381,7 +381,6 @@ public:
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
 
-    void resetOverlayFS() { m_fs_ptr = std::make_shared< OverlayFS >(); };
 
 private:
     void updateToLatestVersion();
@@ -417,6 +416,14 @@ private:
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
     void updateStorageUsage();
+
+    void resetOverlayFS() { m_fs_ptr = std::make_shared< OverlayFS >(); };
+
+    void clearFileStorageCache() {
+        if ( m_fs_ptr ) {
+            m_fs_ptr->reset();
+        }
+    };
 
 public:
     bool checkVersion() const;
