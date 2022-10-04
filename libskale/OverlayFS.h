@@ -82,7 +82,7 @@ public:
         const _byte_* _data )
         : path( _path ), position( _position ), dataLength( _dataLength ), data( _data ) {}
     bool execute() override;
- 
+
 private:
     const std::string path;
     const size_t position;
@@ -92,8 +92,8 @@ private:
 
 class WriteHashFileOp : public BaseOp {
 public:
-    WriteHashFileOp( const std::string& _path, const dev::h256 _commonFileHash ) : path( _path ),
-    commonFileHash( _commonFileHash ) {}
+    WriteHashFileOp( const std::string& _path, const dev::h256 _commonFileHash )
+        : path( _path ), commonFileHash( _commonFileHash ) {}
     bool execute() override;
 
 private:

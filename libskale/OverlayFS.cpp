@@ -157,7 +157,8 @@ void OverlayFS::deleteDirectory( const std::string& path ) {
     m_cache.push_back( std::make_shared< DeleteDirectoryOp >( path ) );
 }
 
-void OverlayFS::writeChunk( const std::string& filePath, const size_t position, const size_t dataLength, const _byte_* data ) {
+void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
+    const size_t dataLength, const _byte_* data ) {
     m_cache.push_back( std::make_shared< WriteChunkOp >( filePath, position, dataLength, data ) );
 }
 
