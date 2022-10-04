@@ -578,6 +578,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 << cc::error( "REST failed to connect to server(2)" ) << "\n";
             return false;
         }
+        cli.client_connection_timeout( 30 * 60 * 1000 );  // milliseconds
 
         nlohmann::json joIn = nlohmann::json::object();
         joIn["jsonrpc"] = "2.0";
