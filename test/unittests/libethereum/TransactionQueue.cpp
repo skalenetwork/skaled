@@ -89,9 +89,9 @@ BOOST_AUTO_TEST_CASE( tqPriority ) {
     Transaction tx0_1( 1, gasCostMed, gas, dest, bytes(), 0, sender1 );
     Transaction tx1( 0, gasCostCheap, gas, dest, bytes(), 1, sender1 );
     Transaction tx2( 0, gasCostHigh, gas, dest, bytes(), 0, sender2 );
-    Transaction tx3( 0, gasCostCheap + 1, gas, dest, bytes(), 1, sender2 );
-    Transaction tx4( 0, gasCostHigh, gas, dest, bytes(), 2, sender1 );
-    Transaction tx5( 0, gasCostMed, gas, dest, bytes(), 2, sender2 );
+    Transaction tx3( 0, gasCostCheap - 1, gas, dest, bytes(), 1, sender2 );
+    Transaction tx4( 0, gasCostMed, gas, dest, bytes(), 2, sender1 );
+    Transaction tx5( 0, gasCostHigh, gas, dest, bytes(), 2, sender2 );
 
     txq.import( tx0 );
     BOOST_CHECK( Transactions{tx0} == txq.topTransactions( 256 ) );
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE( tqPriority ) {
     txq.import( tx6 );
     BOOST_CHECK( ( Transactions{tx2, tx3, tx4, tx6} ) == txq.topTransactions( 256 ) );
 
-    Transaction tx7( 0, gasCostMed, gas, dest, bytes(), 2, sender2 );
+    Transaction tx7( 0, gasCostHigh, gas, dest, bytes(), 2, sender2 );
     txq.import( tx7 );
     // deterministic signature: hash of tx5 and tx7 will be same
     BOOST_CHECK( ( Transactions{tx2, tx3, tx4, tx6} ) == txq.topTransactions( 256 ) );

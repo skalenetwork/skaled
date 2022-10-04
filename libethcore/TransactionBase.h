@@ -109,7 +109,7 @@ public:
     /// Checks equality of transactions.
     bool operator==( TransactionBase const& _c ) const {
         return m_type == _c.m_type && ( safeSender() == _c.safeSender() ) &&
-               safeNonce() == _c.safeNonce() &&
+               ( safeNonce() == _c.safeNonce() ) &&
                ( m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress ) &&
                m_value == _c.m_value && m_data == _c.m_data;
     }
