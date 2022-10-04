@@ -35,6 +35,8 @@
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
 
+#include "ContractStorageLimitPatch.h"
+
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
 
@@ -681,8 +683,11 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            rollbackStorageChange( change, account );
-            //            account.setStorage( change.key, change.value );
+            if ( ContractStorageLimitPatch::isEnabled() ) {
+                rollbackStorageChange( change, account );
+            } else {
+                account.setStorage( change.key, change.value );
+            }
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );

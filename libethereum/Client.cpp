@@ -32,6 +32,7 @@
 #include <boost/filesystem.hpp>
 
 #include <libskale/AmsterdamFixPatch.h>
+#include <libskale/ContractStorageLimitPatch.h>
 
 #include <algorithm>
 #include <chrono>
@@ -138,6 +139,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     init( _forceAction, _networkID );
 
     TotalStorageUsedPatch::g_client = this;
+    ContractStorageLimitPatch::g_client = this;
 }
 
 Client::~Client() {
