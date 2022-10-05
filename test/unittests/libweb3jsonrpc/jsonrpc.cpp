@@ -199,6 +199,12 @@ static std::string const c_genesisConfigString =
             "nonce" : "0x00",
             "storage" : {
             }
+        },
+        "0xD2001300000000000000000000000000000000D4": { 
+            "balance": "0", 
+            "nonce": "0", 
+            "storage": {}, 
+            "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"
         }
     }
 }
@@ -337,7 +343,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
         // random port
-        std::srand(std::time(nullptr));
         serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025;
         std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
@@ -360,6 +365,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     string sendingRawShouldFail( string const& _t ) {
         try {
             rpcClient->eth_sendRawTransaction( _t );
+            BOOST_FAIL( "Exception expected." );
+        } catch ( jsonrpc::JsonRpcException const& _e ) {
+            return _e.GetMessage();
+        }
+        return string();
+    }
+
+    string estimateGasShouldFail( Json::Value const& _t ) {
+        try {
+            rpcClient->eth_estimateGas( _t );
             BOOST_FAIL( "Exception expected." );
         } catch ( jsonrpc::JsonRpcException const& _e ) {
             return _e.GetMessage();
@@ -1167,6 +1182,55 @@ BOOST_AUTO_TEST_CASE( create_opcode ) {
     string response2 = fixture.rpcClient->eth_call( checkAddress, "latest" );
     BOOST_CHECK( response2 != "0x0000000000000000000000000000000000000000000000000000000000000000" );
     BOOST_CHECK( response2 != response1 );
+}
+
+BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
+    JsonRpcFixture fixture( c_genesisConfigString );
+
+    //    This contract is predeployed on SKALE test network
+    //    on address 0xD2001300000000000000000000000000000000D4
+
+    //    pragma solidity 0.6.0;
+    //    contract Test {
+    //            ...
+    //            function testRequire(uint gasConsumed) public {
+    //                uint initialGas = gasleft();
+    //                while (initialGas - gasleft() < gasConsumed) {}
+    //                require(1 == 0);
+    //                initialGas = gasleft();
+    //                while (initialGas - gasleft() < gasConsumed) {}
+    //            }
+    //
+    //            function testRevert(uint gasConsumed) public {
+    //                uint initialGas = gasleft();
+    //                while (initialGas - gasleft() < gasConsumed) {}
+    //                revert();
+    //                initialGas = gasleft();
+    //                while (initialGas - gasleft() < gasConsumed) {}
+    //            }
+    //
+    //            function testRequireOff(uint gasConsumed) public {
+    //                uint initialGas = gasleft();
+    //                while (initialGas - gasleft() < gasConsumed) {}
+    //                require(true);
+    //                initialGas = gasleft();
+    //                while (initialGas - gasleft() < gasConsumed) {}
+    //            }
+    //    }
+
+    // data to call method testRevert(50000)
+
+    Json::Value testRevert;
+    testRevert["to"] = "0xD2001300000000000000000000000000000000D4";
+    testRevert["data"] = "0x20987767000000000000000000000000000000000000000000000000000000000000c350";
+    string response = fixture.estimateGasShouldFail( testRevert );
+    BOOST_CHECK( response.find("EVM revert instruction without description message") != string::npos );
+
+    Json::Value testPositive;
+    testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
+    testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
+    response = fixture.rpcClient->eth_estimateGas( testPositive );
+    BOOST_CHECK( response == "0x1dc58" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {

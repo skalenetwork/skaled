@@ -773,12 +773,14 @@ void txn_pending_tracker_system_impl::broadcast_txn_insert( const txn_entry& txe
                                cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " to node " ) + cc::u( strURL ) +
                                cc::error( " broadcast failed: " ) + cc::warn( ex.what() ) );
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
                                cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " broadcast to node " ) + cc::u( strURL ) +
                                cc::error( " failed: " ) + cc::warn( "unknown exception" ) );
+                    cerror << DETAILED_ERROR;
                 }
             } );
         }
@@ -787,11 +789,13 @@ void txn_pending_tracker_system_impl::broadcast_txn_insert( const txn_entry& txe
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
     }
 }
 void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe ) {
@@ -853,6 +857,7 @@ void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe 
                                cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " broadcast to node " ) + cc::u( strURL ) +
                                cc::error( " failed: " ) + cc::warn( ex.what() ) );
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
@@ -860,6 +865,7 @@ void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe 
                                cc::error( " to node " ) + cc::u( strURL ) +
                                cc::error( " broadcast failed: " ) +
                                cc::warn( "unknown exception" ) );
+                    cerror << DETAILED_ERROR;
                 }
             } );
         }
@@ -868,11 +874,13 @@ void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe 
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
     }
 }
 
@@ -908,10 +916,12 @@ void txn_pending_tracker_system_impl::tracking_step() {
             erase( txe.hash_, true );
         }
     } catch ( std::exception const& ex ) {
-        std::cout << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
-                  << "\n";
+        cerror << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
+               << "\n";
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
-        std::cout << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
+        cerror << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
+        cerror << DETAILED_ERROR;
     }
 }
 
@@ -973,10 +983,12 @@ bool txn_pending_tracker_system_impl::check_txn_is_mined( const dev::u256& hash 
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
     } catch ( std::exception const& ex ) {
-        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: "
-                  << ex.what() << "\n";
+        cerror << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: " << ex.what()
+               << "\n";
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
-        std::cout << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
+        cerror << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
+        cerror << DETAILED_ERROR;
     }
     return false;
 }
@@ -2352,6 +2364,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                        cc::info( dev::toJS( uBlockTo ) ) +
                                        cc::error( " block range, error:" ) + " " +
                                        cc::warn( ex.what() ) );
+                            cerror << DETAILED_ERROR;
                         } catch ( ... ) {
                             clog( VerbosityError, "IMA" )
                                 << ( strLogPrefix + " " + cc::fatal( "FAILED:" ) + " " +
@@ -2364,6 +2377,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                        cc::info( dev::toJS( uBlockTo ) ) +
                                        cc::error( " block range, error:" ) + " " +
                                        cc::warn( "unknown exception" ) );
+                            cerror << DETAILED_ERROR;
                         }
                         idxBlockSubRangeFrom = idxBlockSubRangeTo;
                         if ( idxBlockSubRangeFrom == uBlockTo )
@@ -2537,10 +2551,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 bool bIsVerified = false;
                 if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 )
                     bIsVerified = true;
-                if ( !bIsVerified )
+                if ( !bIsVerified ) {
+                    cerror << DETAILED_ERROR;
                     throw std::runtime_error( "IMA message " +
                                               std::to_string( nStartMessageIdx + idxMessage ) +
                                               " verification failed - not found in logs" );
+                }
                 //
                 //
                 // Find transaction, simlar to call tp eth_getTransactionByHash
@@ -2602,12 +2618,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 Json::FastWriter().write( jvTransaction ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Transaction verification failed: " ) +
                                    cc::warn( ex.what() ) );
                         continue;
                     } catch ( ... ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Transaction verification failed: " ) +
@@ -2722,12 +2740,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 Json::FastWriter().write( jvTransactionReceipt ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Receipt verification failed: " ) +
                                    cc::warn( ex.what() ) );
                         continue;
                     } catch ( ... ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Receipt verification failed: " ) +
@@ -3050,18 +3070,21 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             return ret;
         }  // else from if ( !bOnlyVerify )
     } catch ( Exception const& ex ) {
+        cerror << DETAILED_ERROR;
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
+        cerror << DETAILED_ERROR;
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
+        cerror << DETAILED_ERROR;
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
@@ -3242,18 +3265,21 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }  // skale_imaBSU256()
@@ -3313,6 +3339,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3327,6 +3354,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3385,6 +3413,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3392,6 +3421,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
@@ -3399,6 +3429,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3435,18 +3466,21 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3483,18 +3517,21 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3517,18 +3554,21 @@ Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3563,18 +3603,21 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3603,18 +3646,21 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3652,6 +3698,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_browseEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3659,6 +3706,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_browseEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
@@ -3666,6 +3714,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_browseEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3704,6 +3753,7 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_cachedEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3711,6 +3761,7 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_cachedEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
@@ -3718,6 +3769,7 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_cachedEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }

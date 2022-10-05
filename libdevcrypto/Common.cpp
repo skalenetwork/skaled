@@ -32,6 +32,7 @@
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
 #include <libdevcore/Guards.h>  // <boost/thread> conflicts with <thread>
+#include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <libscrypt.h>
@@ -160,7 +161,7 @@ bytes dev::encryptAES128CTR( bytesConstRef _k, h128 const& _iv, bytesConstRef _p
         e.ProcessData( ret.data(), _plain.data(), _plain.size() );
         return ret;
     } catch ( CryptoPP::Exception& _e ) {
-        cerr << _e.what() << endl;
+        cerror << "Error in encryptAES128CTR()" << _e.what();
         return bytes();
     }
 }
@@ -176,7 +177,7 @@ bytesSec dev::decryptAES128CTR( bytesConstRef _k, h128 const& _iv, bytesConstRef
         d.ProcessData( ret.writable().data(), _cipher.data(), _cipher.size() );
         return ret;
     } catch ( CryptoPP::Exception& _e ) {
-        cerr << _e.what() << endl;
+        cerror << "Error in decryptAES128CTR()" << _e.what();
         return bytesSec();
     }
 }

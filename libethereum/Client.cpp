@@ -642,6 +642,7 @@ size_t Client::importTransactionsAsBlock(
                     cerror << cc::fatal( "CRITICAL" ) << " "
                            << cc::warn( dev::nested_exception_what( ex ) )
                            << cc::error( " in computeSnapshotHash(). Exiting..." );
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
@@ -649,6 +650,7 @@ size_t Client::importTransactionsAsBlock(
                            << cc::error(
                                   " unknown exception in computeSnapshotHash(). "
                                   "Exiting..." );
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
@@ -674,7 +676,7 @@ size_t Client::syncTransactions(
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
-        cout << "m_working.isSealed. sleeping" << endl;
+        cnote << "m_working.isSealed. sleeping" << endl;
         usleep( 1000 );
     }
 
