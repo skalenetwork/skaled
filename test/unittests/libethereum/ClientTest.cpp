@@ -932,7 +932,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateIMABLSPUblicKey ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-static std::string const c_skaleConfigString = R"(
+static std::string const c_skaleConfigString = R"E(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -982,7 +982,7 @@ static std::string const c_skaleConfigString = R"(
         "0000000000000000000000000000000000000008": { "wei": "1", "precompiled": { "name": "alt_bn128_pairing_product" } }
     }
 }
-)";
+)E";
 
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
