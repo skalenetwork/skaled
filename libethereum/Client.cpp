@@ -42,8 +42,8 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
-#include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/ContractStorageLimitPatch.h>
+#include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>

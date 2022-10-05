@@ -24,4 +24,4 @@ private:
     static dev::eth::Client* g_client;
 };
 
-#endif // CONTRACTSTORAGELIMITPATCH_H
+#endif  // CONTRACTSTORAGELIMITPATCH_H
