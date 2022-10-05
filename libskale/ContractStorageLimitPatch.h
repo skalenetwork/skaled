@@ -10,11 +10,10 @@ class Client;
 }  // namespace dev
 
 /*
- * Context: totalStorageUsed field in DB was actually broken
- *     and just equal to block_number*32
- * Solution: we introduced new field pieceUsageBytes for this
- * Purpose: keep totalStorageUsed field in DB compatible
- * Version introduced: 3.7.5-stable.0
+ * Context: contractStorageUsed counter didn't work well in one case
+ * Solution: we fixed the bug and added new config field introudceChangesTimestamp
+ * Purpose: avoid incorrect txn behaviour
+ * Version introduced:
  */
 class ContractStorageLimitPatch : public SchainPatch {
 public:
