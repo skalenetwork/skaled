@@ -56,7 +56,7 @@ void HttpBroadcaster::initClients( dev::eth::SChain sChain, dev::eth::NodeInfo n
 std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
     std::string url =
         "http://" + node.ip + ":" + ( node.port + 3 ).str();  // HACK +0 +1 +2 are used by consensus
-    std::cout << url << std::endl;                            // todo
+    clog( dev::VerbosityInfo, "broadcaster" ) << url;         // todo
     return url;
 }
 
@@ -82,7 +82,7 @@ ZmqBroadcaster::ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost
 
 std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const {
     std::string url = "tcp://" + node.ip + ":" + ( node.port + 5 ).str();  // HACK +5
-    std::cout << url << std::endl;                                         // todo
+    clog( dev::VerbosityInfo, "broadcaster" ) << url;                      // todo
     return url;
 }
 
@@ -217,10 +217,12 @@ void ZmqBroadcaster::startService() {
 
             } catch ( const std::exception& ex ) {
                 cerror << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
+                cerror << DETAILED_ERROR;
                 cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 sleep( 2 );
             } catch ( ... ) {
                 cerror << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
+                cerror << DETAILED_ERROR;
                 cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 sleep( 2 );
             }

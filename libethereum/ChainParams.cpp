@@ -198,6 +198,15 @@ ChainParams ChainParams::loadConfig(
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
                                     0;
 
+        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
+                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
+                                        3600;
+
+        s.snapshotDownloadInactiveTimeout =
+            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
+                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
+                3600;
+
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
                                      0;

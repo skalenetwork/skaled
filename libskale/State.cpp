@@ -206,8 +206,8 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
-        cerr << "Current state version is " << m_currentVersion << " but stored version is "
-             << *m_storedVersion << endl;
+        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+               << *m_storedVersion << endl;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -288,8 +288,8 @@ eth::Account* State::account( Address const& _address ) {
         boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
 
         if ( !checkVersion() ) {
-            cerr << "Current state version is " << m_currentVersion << " but stored version is "
-                 << *m_storedVersion << endl;
+            cerror << "Current state version is " << m_currentVersion << " but stored version is "
+                   << *m_storedVersion << endl;
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
 
@@ -498,8 +498,8 @@ void State::kill( Address _addr ) {
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
-        cerr << "Current state version is " << m_currentVersion << " but stored version is "
-             << *m_storedVersion << endl;
+        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+               << *m_storedVersion << endl;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
