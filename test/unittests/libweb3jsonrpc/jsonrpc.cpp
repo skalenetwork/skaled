@@ -95,7 +95,7 @@ static std::string const c_genesisConfigString =
             "nodeName": "Node1",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": 1231,
+            "basePort": )"+std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
             "ecdsaKeyName": "NEK:fa112"
@@ -107,7 +107,7 @@ static std::string const c_genesisConfigString =
             "emptyBlockIntervalMs": -1,
             "nodeGroups": {},
             "nodes": [
-                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
+                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )"+std::to_string( rand_port ) + R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ]
         }
     },
