@@ -23,6 +23,7 @@
  */
 
 #include "OverlayFS.h"
+#include "RevertableFSPatch.h"
 #include <fstream>
 
 
@@ -142,28 +143,52 @@ bool WriteHashFileOp::execute() {
 }
 
 void OverlayFS::createDirectory( const std::string& path ) {
-    m_cache.push_back( std::make_shared< CreateDirectoryOp >( path ) );
+    auto operation = std::make_shared< CreateDirectoryOp >( path );
+    if ( RevertableFSPatch::isEnabled() )
+        m_cache.push_back( operation );
+    else
+        operation->execute();
 }
 
 void OverlayFS::createFile( const std::string& filePath, const size_t fileSize ) {
-    m_cache.push_back( std::make_shared< CreateFileOp >( filePath, fileSize ) );
+    auto operation = std::make_shared< CreateFileOp >( filePath, fileSize );
+    if ( RevertableFSPatch::isEnabled() )
+        m_cache.push_back( operation );
+    else
+        operation->execute();
 }
 
 void OverlayFS::deleteFile( const std::string& filePath ) {
-    m_cache.push_back( std::make_shared< DeleteFileOp >( filePath ) );
+    auto operation = std::make_shared< DeleteFileOp >( filePath );
+    if ( RevertableFSPatch::isEnabled() )
+        m_cache.push_back( operation );
+    else
+        operation->execute();
 }
 
 void OverlayFS::deleteDirectory( const std::string& path ) {
-    m_cache.push_back( std::make_shared< DeleteDirectoryOp >( path ) );
+    auto operation = std::make_shared< DeleteDirectoryOp >( path );
+    if ( RevertableFSPatch::isEnabled() )
+        m_cache.push_back( operation );
+    else
+        operation->execute();
 }
 
 void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
     const size_t dataLength, const _byte_* data ) {
-    m_cache.push_back( std::make_shared< WriteChunkOp >( filePath, position, dataLength, data ) );
+    auto operation = std::make_shared< WriteChunkOp >( filePath, position, dataLength, data );
+    if ( RevertableFSPatch::isEnabled() )
+        m_cache.push_back( operation );
+    else
+        operation->execute();
 }
 
 void OverlayFS::writeHashFile( const std::string& filePath, const dev::h256& commonFileHash ) {
-    m_cache.push_back( std::make_shared< WriteHashFileOp >( filePath, commonFileHash ) );
+    auto operation = std::make_shared< WriteHashFileOp >( filePath, commonFileHash );
+    if ( RevertableFSPatch::isEnabled() )
+        m_cache.push_back( operation );
+    else
+        operation->execute();
 }
 
 void OverlayFS::commit() {

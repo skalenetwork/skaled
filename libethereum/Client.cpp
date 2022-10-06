@@ -42,6 +42,7 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
+#include <libskale/RevertableFSPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
@@ -138,6 +139,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     init( _forceAction, _networkID );
 
     TotalStorageUsedPatch::g_client = this;
+    RevertableFSPatch::g_client = this;
 }
 
 Client::~Client() {
