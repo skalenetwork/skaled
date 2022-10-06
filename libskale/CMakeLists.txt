@@ -13,6 +13,7 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     AmsterdamFixPatch.cpp
+    RevertableFSPatch.cpp
     OverlayFS.cpp
 )
 
@@ -29,6 +30,7 @@ set(headers
     UnsafeRegion.h
     TotalStorageUsedPatch.h
     AmsterdamFixPatch.h
+    RevertableFSPatch.h
     OverlayFS.h
 )
 
