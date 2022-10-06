@@ -163,6 +163,7 @@ public:
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
+    time_t revertableFSPatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";
