@@ -144,7 +144,7 @@ bool WriteHashFileOp::execute() {
 
 void OverlayFS::createDirectory( const std::string& path ) {
     auto operation = std::make_shared< CreateDirectoryOp >( path );
-    if ( RevertableFSPatch::isEnabled() )
+    if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -152,7 +152,7 @@ void OverlayFS::createDirectory( const std::string& path ) {
 
 void OverlayFS::createFile( const std::string& filePath, const size_t fileSize ) {
     auto operation = std::make_shared< CreateFileOp >( filePath, fileSize );
-    if ( RevertableFSPatch::isEnabled() )
+    if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -160,7 +160,7 @@ void OverlayFS::createFile( const std::string& filePath, const size_t fileSize )
 
 void OverlayFS::deleteFile( const std::string& filePath ) {
     auto operation = std::make_shared< DeleteFileOp >( filePath );
-    if ( RevertableFSPatch::isEnabled() )
+    if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -168,7 +168,7 @@ void OverlayFS::deleteFile( const std::string& filePath ) {
 
 void OverlayFS::deleteDirectory( const std::string& path ) {
     auto operation = std::make_shared< DeleteDirectoryOp >( path );
-    if ( RevertableFSPatch::isEnabled() )
+    if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -177,7 +177,7 @@ void OverlayFS::deleteDirectory( const std::string& path ) {
 void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
     const size_t dataLength, const _byte_* data ) {
     auto operation = std::make_shared< WriteChunkOp >( filePath, position, dataLength, data );
-    if ( RevertableFSPatch::isEnabled() )
+    if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -185,7 +185,7 @@ void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
 
 void OverlayFS::writeHashFile( const std::string& filePath, const dev::h256& commonFileHash ) {
     auto operation = std::make_shared< WriteHashFileOp >( filePath, commonFileHash );
-    if ( RevertableFSPatch::isEnabled() )
+    if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -195,6 +195,12 @@ void OverlayFS::commit() {
     for ( size_t i = 0; i < m_cache.size(); ++i ) {
         m_cache[i]->execute();
     }
+}
+
+bool OverlayFS::isCacheEnabled() {
+    if ( m_manuallyEnabledCache )
+        return true;
+    return RevertableFSPatch::isEnabled();
 }
 
 }  // namespace skale

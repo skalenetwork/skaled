@@ -27,6 +27,7 @@
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 #include <libskale/OverlayFS.h>
+#include <libskale/RevertableFSPatch.h>
 
 #include <secp256k1_sha256.h>
 
@@ -1589,7 +1590,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.seekp( static_cast< long >( fileSize ) - 1 );
         file.write( "0", 1 );
 
-        dev::eth::g_overlayFS = std::make_shared< skale::OverlayFS >();
+        dev::eth::g_overlayFS = std::make_shared< skale::OverlayFS >( true );
     }
 
     ~FilestorageFixture() override {

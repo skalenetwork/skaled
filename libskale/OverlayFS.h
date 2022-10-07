@@ -103,7 +103,7 @@ private:
 
 class OverlayFS {
 public:
-    OverlayFS() = default;
+    OverlayFS( bool _enableCache = false ) : m_manuallyEnabledCache( _enableCache ){};
 
     virtual ~OverlayFS() = default;
 
@@ -129,6 +129,9 @@ public:
 private:
     std::vector< std::shared_ptr< BaseOp > > m_cache;  // vector of filestorage operations for
                                                        // current state
+    bool m_manuallyEnabledCache;
+
+    bool isCacheEnabled();
 };
 
 }  // namespace skale
