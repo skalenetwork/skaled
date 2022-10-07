@@ -355,6 +355,8 @@ static std::string const c_configString = R"(
 }
 )";
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
 {
@@ -394,7 +396,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": 1231,
+      "basePort": )E"+std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "ecdsaKeyName": "NEK:fa112"
@@ -405,7 +407,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "contractStorageLimit": 32000,
         "emptyBlockIntervalMs": -1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -848,7 +850,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": 1231,
+      "basePort": )E"+std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "ecdsaKeyName": "NEK:fa112"
@@ -892,7 +894,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
             }
         },
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
@@ -930,7 +932,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateIMABLSPUblicKey ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-static std::string const c_skaleConfigString = R"(
+static std::string const c_skaleConfigString = R"E(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -956,7 +958,7 @@ static std::string const c_skaleConfigString = R"(
             "nodeName": "TestNode",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": 1231,
+            "basePort": )E"+std::to_string( rand_port ) + R"E(,
             "ecdsaKeyName": "NEK:fa112"
         },
         "sChain": {
@@ -965,7 +967,7 @@ static std::string const c_skaleConfigString = R"(
             "snapshotIntervalSec": 10,
             "emptyBlockIntervalMs": -1,
             "nodes": [
-              { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+              { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
             ]
         }
     },
@@ -980,7 +982,7 @@ static std::string const c_skaleConfigString = R"(
         "0000000000000000000000000000000000000008": { "wei": "1", "precompiled": { "name": "alt_bn128_pairing_product" } }
     }
 }
-)";
+)E";
 
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )

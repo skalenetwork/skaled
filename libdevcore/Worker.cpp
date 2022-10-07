@@ -65,8 +65,10 @@ void Worker::startWorking() {
                     doneWorking();
                 } catch ( std::exception const& _e ) {
                     cwarn << "Exception thrown in Worker thread: " << _e.what();
+                    cwarn << DETAILED_ERROR;
                 } catch ( ... ) {
                     cerror << "CRITICAL unknown exception thrown in Worker thread";
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 }
 
