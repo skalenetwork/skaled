@@ -886,7 +886,7 @@ then
 				eval tar -xzf curl-from-git.tar.gz
 			fi
 			#
-			# l_sergiy: moved into $PREDOWNLOADED_ROOT
+            # l_sergiy: moved into $PREDOWNLOADED_ROOT
 			#
 			# echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 			# eval tar -xzf $PREDOWNLOADED_ROOT/curl-from-git.tar.gz
@@ -2341,19 +2341,23 @@ then
         cd "$SOURCES_ROOT"
         if [ ! -d "rocksdb" ];
         then
-            if [ ! -f "rocksdb-from-git.tar.gz" ];
-            then
-                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-                eval git clone https://github.com/facebook/rocksdb.git --recursive
-                cd rocksdb
-                eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
-                cd ..
-                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
-                eval tar -czf rocksdb-from-git.tar.gz ./rocksdb
-            else
-                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-                eval tar -xzf rocksdb-from-git.tar.gz
-            fi
+            #if [ ! -f "rocksdb-from-git.tar.gz" ];
+            #then
+            #    echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+            #    eval git clone https://github.com/facebook/rocksdb.git --recursive
+            #    cd rocksdb
+            #    eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
+            #    cd ..
+            #    echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+            #    eval tar -czf rocksdb-from-git.tar.gz ./rocksdb
+            #else
+            #    echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+            #    eval tar -xzf rocksdb-from-git.tar.gz
+            #fi
+            echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+            eval tar -xzf $PREDOWNLOADED_ROOT/rocksdb-from-git.tar.gz
+            #
+            #
             echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
             cd rocksdb
             eval mkdir -p build2
