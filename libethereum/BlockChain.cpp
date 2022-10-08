@@ -237,8 +237,8 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
         m_db_splitter = std::make_unique< batched_io::db_splitter >( m_db );
         m_blocksDB = m_db_splitter->new_interface();
         m_extrasDB = m_db_splitter->new_interface();
-        // m_blocksDB.reset( new db::DBImpl( chainPath / fs::path( "blocks" ) ) );
-        // m_extrasDB.reset( new db::DBImpl( extrasPath / fs::path( "extras" ) ) );
+        // m_blocksDB.reset( new dev::db::LevelDB( chainPath / fs::path( "blocks" ) ) );
+        // m_extrasDB.reset( new dev::db::LevelDB( extrasPath / fs::path( "extras" ) ) );
     } catch ( db::DatabaseError const& ex ) {
         // Check the exact reason of errror, in case of IOError we can display user-friendly message
         if ( *boost::get_error_info< db::errinfo_dbStatusCode >( ex ) !=

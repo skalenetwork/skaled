@@ -22,7 +22,7 @@
  * OverlayDB tests.
  */
 
-#include <libdevcore/DBImpl.h>
+#include <libdevcore/LevelDB.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/TransientDirectory.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
@@ -37,7 +37,7 @@ BOOST_FIXTURE_TEST_SUITE( OverlayDBTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
-    std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
+    std::unique_ptr< dev::db::LevelDB > db( new dev::db::LevelDB( td.path() ) );
     BOOST_REQUIRE( db );
 
     OverlayDB odb( std::move( db ) );
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::ru
 
 BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
-    std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
+    std::unique_ptr< dev::db::LevelDB > db( new dev::db::LevelDB( td.path() ) );
     BOOST_REQUIRE( db );
 
     OverlayDB odb( std::move( db ) );
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_no
 
 BOOST_AUTO_TEST_CASE( rollback ) {
     TransientDirectory td;
-    std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
+    std::unique_ptr< dev::db::LevelDB > db( new dev::db::LevelDB( td.path() ) );
     BOOST_REQUIRE( db );
 
     OverlayDB odb( std::move( db ) );
