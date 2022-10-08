@@ -23,9 +23,7 @@
 #include "MemoryDB.h"
 #include "libethcore/Exceptions.h"
 
-#if ALETH_ROCKSDB
 #include "RocksDB.h"
-#endif
 
 namespace dev {
 namespace db {
@@ -49,10 +47,7 @@ struct DBKindTableEntry {
 /// We don't use a map to avoid complex dynamic initialization. This list will never be long,
 /// so linear search only to parse command line arguments is not a problem.
 DBKindTableEntry dbKindsTable[] = {
-    { DatabaseKind::LevelDB, "leveldb" },
-#if ALETH_ROCKSDB
-    { DatabaseKind::RocksDB, "rocksdb" },
-#endif
+    { DatabaseKind::LevelDB, "leveldb" }, { DatabaseKind::RocksDB, "rocksdb" },
     //{ DatabaseKind::MemoryDB, "memorydb" },
 };
 
@@ -142,18 +137,19 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind ) {
 std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path const& _path ) {
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
+        std::cout << "DB FACTORY NOTOCE: will create/open database of type LevelDB at path "
+                  << _path << "...\n";
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path ) );
-        break;
-#if ALETH_ROCKSDB
     case DatabaseKind::RocksDB:
-        return std::unique_ptr< DatabaseFace >(new RocksDB(_path));
-        break;
-#endif
-//    case DatabaseKind::MemoryDB:
-//        // Silently ignore path since the concept of a db path doesn't make sense
-//        // when using an in-memory database
-//        return std::unique_ptr< DatabaseFace >(new MemoryDB());
-//        break;
+        std::cout << "DB FACTORY NOTOCE: will create/open create database of type RocksDB at path "
+                  << _path << "...\n";
+        return std::unique_ptr< DatabaseFace >( new RocksDB( _path ) );
+        //    case DatabaseKind::MemoryDB:
+        //        std::cout << "DB FACTORY NOTOCE: will create/open create database of type MemoryDB
+        //        at path " << _path << "...\n";
+        //        // Silently ignore path since the concept of a db path doesn't make sense
+        //        // when using an in-memory database
+        //        return std::unique_ptr< DatabaseFace >(new MemoryDB());
     default:
         assert( false );
         return {};

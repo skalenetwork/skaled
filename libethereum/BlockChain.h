@@ -72,7 +72,7 @@ namespace dev {
 namespace db {
 class OverlayDB;
 class ManuallyRotatingLevelDB;
-}
+}  // namespace db
 
 namespace eth {
 static const h256s NullH256s;

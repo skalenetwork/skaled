@@ -43,8 +43,8 @@
 
 #include <json_spirit/JsonSpiritHeaders.h>
 
+#include <libdevcore/DBFactory.h>
 #include <libdevcore/FileSystem.h>
-#include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libdevcore/SharedSpace.h>
 #include <libdevcore/StatusAndControl.h>
@@ -787,12 +787,14 @@ int main( int argc, char** argv ) try {
     addGeneralOption( "help,h", "Show this help message and exit\n" );
 
     po::options_description vmOptions = vmProgramOptions( c_lineWidth );
+    po::options_description dbOptions = db::databaseProgramOptions( c_lineWidth );
 
     po::options_description allowedOptions( "Allowed options" );
     allowedOptions.add( clientDefaultMode )
         .add( clientTransacting )
         .add( clientNetworking )
         .add( vmOptions )
+        .add( dbOptions )
         .add( loggingProgramOptions )
         .add( generalOptions );
 
@@ -831,7 +833,7 @@ int main( int argc, char** argv ) try {
              << "USAGE:\n"
              << "   skaled [options]\n\n";
         cout << clientDefaultMode << clientTransacting << clientNetworking;
-        cout << vmOptions << loggingProgramOptions << generalOptions;
+        cout << vmOptions << dbOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
 

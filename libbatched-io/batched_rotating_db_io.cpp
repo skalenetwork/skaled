@@ -1,6 +1,6 @@
 #include "batched_rotating_db_io.h"
 
-#include <libdevcore/LevelDB.h>
+#include <libdevcore/DBFactory.h>
 
 namespace batched_io {
 
@@ -16,7 +16,10 @@ rotating_db_io::rotating_db_io( const boost::filesystem::path& _path, size_t _nP
     // open all
     for ( size_t i = 0; i < _nPieces; ++i ) {
         boost::filesystem::path path = base_path / ( std::to_string( i ) + ".db" );
-        DatabaseFace* db = new LevelDB( path );
+
+        // DatabaseFace* db = new LevelDB( path );
+        DatabaseFace* db = dev::db::DBFactory::create( path ).release();
+
         pieces.emplace_back( db );
     }  // for
 
@@ -62,7 +65,10 @@ void rotating_db_io::rotate() {
     test_crash_before_commit( "after_remove_oldest" );
 
     // 2 recreate it as new current
-    DatabaseFace* new_db = new LevelDB( oldest_path );
+
+    // DatabaseFace* new_db = new LevelDB( oldest_path );
+    DatabaseFace* new_db = dev::db::DBFactory::create( oldest_path ).release();
+
     pieces.emplace_front( new_db );
 
     test_crash_before_commit( "after_open_leveldb" );

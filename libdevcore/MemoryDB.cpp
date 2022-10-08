@@ -176,7 +176,7 @@ h256Hash MemoryDB::keys() const {
 //// to pass in a function `f`, which will be called with the key and value
 //// of each record in the database. If `f` returns false, the `forEach`
 //// method must return immediately.
-//void MemoryDB::forEach(std::function<bool(Slice, Slice)> _f) const
+// void MemoryDB::forEach(std::function<bool(Slice, Slice)> _f) const
 //{
 //#if DEV_GUARDED_DB
 //    ReadGuard l( x_this );

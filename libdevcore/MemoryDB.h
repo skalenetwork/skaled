@@ -29,13 +29,13 @@
 #include "Guards.h"
 #include "Log.h"
 #include "RLP.h"
-#include <unordered_map>
 #include "db.h"
+#include <unordered_map>
 
 namespace dev {
 namespace db {
 
-class MemoryDB // : public DatabaseFace
+class MemoryDB  // : public DatabaseFace
 {
     friend class EnforceRefs;
 
@@ -63,15 +63,15 @@ public:
     void removeAux( h256 const& _h );
     void insertAux( h256 const& _h, bytesConstRef _v );
 
-//    // A database must implement the `forEach` method that allows the caller
-//    // to pass in a function `f`, which will be called with the key and value
-//    // of each record in the database. If `f` returns false, the `forEach`
-//    // method must return immediately.
-//    void forEach(std::function<bool(Slice, Slice)> _f) const override;
+    //    // A database must implement the `forEach` method that allows the caller
+    //    // to pass in a function `f`, which will be called with the key and value
+    //    // of each record in the database. If `f` returns false, the `forEach`
+    //    // method must return immediately.
+    //    void forEach(std::function<bool(Slice, Slice)> _f) const override;
 
-//    h256 hashBase() const override {
-//        return h256();
-//    }
+    //    h256 hashBase() const override {
+    //        return h256();
+    //    }
 
     h256Hash keys() const;
 
