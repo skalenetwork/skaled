@@ -28,11 +28,7 @@
 namespace dev {
 namespace db {
 
-enum class DatabaseKind {
-    LevelDB,
-    RocksDB,
-    // MemoryDB
-};
+enum class DatabaseKind { LevelDB, RocksDB, MemoryDB };
 
 /// Provide a set of program options related to databases
 ///

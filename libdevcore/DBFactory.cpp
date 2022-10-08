@@ -47,8 +47,9 @@ struct DBKindTableEntry {
 /// We don't use a map to avoid complex dynamic initialization. This list will never be long,
 /// so linear search only to parse command line arguments is not a problem.
 DBKindTableEntry dbKindsTable[] = {
-    { DatabaseKind::LevelDB, "leveldb" }, { DatabaseKind::RocksDB, "rocksdb" },
-    //{ DatabaseKind::MemoryDB, "memorydb" },
+    { DatabaseKind::LevelDB, "leveldb" },
+    { DatabaseKind::RocksDB, "rocksdb" },
+    { DatabaseKind::MemoryDB, "memorydb" },
 };
 
 void setDatabaseKindByName( std::string const& _name ) {
@@ -144,12 +145,12 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
         std::cout << "DB FACTORY NOTOCE: will create/open create database of type RocksDB at path "
                   << _path << "...\n";
         return std::unique_ptr< DatabaseFace >( new RocksDB( _path ) );
-        //    case DatabaseKind::MemoryDB:
-        //        std::cout << "DB FACTORY NOTOCE: will create/open create database of type MemoryDB
-        //        at path " << _path << "...\n";
-        //        // Silently ignore path since the concept of a db path doesn't make sense
-        //        // when using an in-memory database
-        //        return std::unique_ptr< DatabaseFace >(new MemoryDB());
+    case DatabaseKind::MemoryDB:
+        std::cout << "DB FACTORY NOTOCE: will create/open create database of type MemoryDB at path "
+                  << _path << " ...\n ";
+        // Silently ignore path since the concept of a db path doesn't make sense
+        // when using an in-memory database
+        return std::unique_ptr< DatabaseFace >( new MemoryDB() );
     default:
         assert( false );
         return {};
