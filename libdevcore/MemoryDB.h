@@ -35,17 +35,16 @@
 namespace dev {
 namespace db {
 
-class MemoryDB  // : public DatabaseFace
-{
+class MemoryDB_S {
     friend class EnforceRefs;
 
 public:
-    MemoryDB() {}
-    MemoryDB( MemoryDB const& _c ) { operator=( _c ); }
+    MemoryDB_S() {}
+    MemoryDB_S( MemoryDB_S const& _c ) { operator=( _c ); }
 
-    MemoryDB& operator=( MemoryDB const& _c );
+    MemoryDB_S& operator=( MemoryDB_S const& _c );
 
-    virtual ~MemoryDB() = default;
+    virtual ~MemoryDB_S() = default;
 
     void clear() {
         m_main.clear();
@@ -87,17 +86,17 @@ protected:
 
 class EnforceRefs {
 public:
-    EnforceRefs( MemoryDB const& _o, bool _r ) : m_o( _o ), m_r( _o.m_enforceRefs ) {
+    EnforceRefs( MemoryDB_S const& _o, bool _r ) : m_o( _o ), m_r( _o.m_enforceRefs ) {
         _o.m_enforceRefs = _r;
     }
     ~EnforceRefs() { m_o.m_enforceRefs = m_r; }
 
 private:
-    MemoryDB const& m_o;
+    MemoryDB_S const& m_o;
     bool m_r;
 };
 
-inline std::ostream& operator<<( std::ostream& _out, MemoryDB const& _m ) {
+inline std::ostream& operator<<( std::ostream& _out, MemoryDB_S const& _m ) {
     for ( auto const& i : _m.get() ) {
         _out << i.first << ": ";
         _out << RLP( i.second );

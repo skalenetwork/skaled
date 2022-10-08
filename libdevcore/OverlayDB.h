@@ -35,7 +35,7 @@ namespace dev {
 
 namespace db {
 
-class OverlayDB : public MemoryDB {
+class OverlayDB : public MemoryDB_S {
 public:
     explicit OverlayDB( std::unique_ptr< db::DatabaseFace > _db = nullptr )
         : m_db( _db.release(), []( db::DatabaseFace* db ) {
@@ -62,7 +62,7 @@ public:
     bytes lookupAux( h256 const& _h ) const;
 
 private:
-    using MemoryDB::clear;
+    using MemoryDB_S::clear;
 
     std::shared_ptr< db::DatabaseFace > m_db;
 };

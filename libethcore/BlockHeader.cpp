@@ -232,8 +232,8 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
 
         LOG( m_logger ) << "Expected trie root: " << toString( expectedRoot );
         if ( m_transactionsRoot != expectedRoot ) {
-            MemoryDB tm;
-            GenericTrieDB< MemoryDB > transactionsTrie( &tm );
+            MemoryDB_S tm;
+            GenericTrieDB< MemoryDB_S > transactionsTrie( &tm );
             transactionsTrie.init();
 
             vector< bytesConstRef > txs;

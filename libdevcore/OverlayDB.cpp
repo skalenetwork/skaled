@@ -91,7 +91,7 @@ void OverlayDB::commit() {
 }
 
 bytes OverlayDB::lookupAux( h256 const& _h ) const {
-    bytes ret = MemoryDB::lookupAux( _h );
+    bytes ret = MemoryDB_S::lookupAux( _h );
     if ( !ret.empty() || !m_db )
         return ret;
 
@@ -112,7 +112,7 @@ void OverlayDB::rollback() {
 }
 
 std::string OverlayDB::lookup( h256 const& _h ) const {
-    std::string ret = MemoryDB::lookup( _h );
+    std::string ret = MemoryDB_S::lookup( _h );
     if ( !ret.empty() || !m_db )
         return ret;
 
@@ -120,14 +120,14 @@ std::string OverlayDB::lookup( h256 const& _h ) const {
 }
 
 bool OverlayDB::exists( h256 const& _h ) const {
-    if ( MemoryDB::exists( _h ) )
+    if ( MemoryDB_S::exists( _h ) )
         return true;
     return m_db && m_db->exists( toSlice( _h ) );
 }
 
 void OverlayDB::kill( h256 const& _h ) {
 #if ETH_PARANOIA || 1
-    if ( !MemoryDB::kill( _h ) ) {
+    if ( !MemoryDB_S::kill( _h ) ) {
         if ( m_db ) {
             if ( !m_db->exists( toSlice( _h ) ) ) {
                 // No point node ref decreasing for EmptyTrie since we never bother incrementing it

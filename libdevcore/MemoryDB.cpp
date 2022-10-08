@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
-/** @file MemoryDB.cpp
+/** @file MemoryDB_S.cpp
  * @author Gav Wood <i@gavwood.com>
  * @date 2014
  */
@@ -30,7 +30,7 @@ using namespace dev;
 namespace dev {
 namespace db {
 
-std::unordered_map< h256, std::string > MemoryDB::get() const {
+std::unordered_map< h256, std::string > MemoryDB_S::get() const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -41,7 +41,7 @@ std::unordered_map< h256, std::string > MemoryDB::get() const {
     return ret;
 }
 
-MemoryDB& MemoryDB::operator=( MemoryDB const& _c ) {
+MemoryDB_S& MemoryDB_S::operator=( MemoryDB_S const& _c ) {
     if ( this == &_c )
         return *this;
 #if DEV_GUARDED_DB
@@ -53,7 +53,7 @@ MemoryDB& MemoryDB::operator=( MemoryDB const& _c ) {
     return *this;
 }
 
-std::string MemoryDB::lookup( h256 const& _h ) const {
+std::string MemoryDB_S::lookup( h256 const& _h ) const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -69,7 +69,7 @@ std::string MemoryDB::lookup( h256 const& _h ) const {
     return std::string();
 }
 
-bool MemoryDB::exists( h256 const& _h ) const {
+bool MemoryDB_S::exists( h256 const& _h ) const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -79,7 +79,7 @@ bool MemoryDB::exists( h256 const& _h ) const {
     return false;
 }
 
-void MemoryDB::insert( h256 const& _h, bytesConstRef _v ) {
+void MemoryDB_S::insert( h256 const& _h, bytesConstRef _v ) {
 #if DEV_GUARDED_DB
     WriteGuard l( x_this );
 #endif
@@ -94,7 +94,7 @@ void MemoryDB::insert( h256 const& _h, bytesConstRef _v ) {
 #endif
 }
 
-bool MemoryDB::kill( h256 const& _h ) {
+bool MemoryDB_S::kill( h256 const& _h ) {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -106,7 +106,7 @@ bool MemoryDB::kill( h256 const& _h ) {
 #if ETH_PARANOIA
         else {
             // If we get to this point, then there was probably a node in the level DB which we need
-            // to remove and which we have previously used as part of the memory-based MemoryDB.
+            // to remove and which we have previously used as part of the memory-based MemoryDB_S.
             // Nothing to be worried about *as long as the node exists in the DB*.
             cdebug << "NOKILL-WAS" << _h;
         }
@@ -118,7 +118,7 @@ bool MemoryDB::kill( h256 const& _h ) {
     return false;
 }
 
-bytes MemoryDB::lookupAux( h256 const& _h ) const {
+bytes MemoryDB_S::lookupAux( h256 const& _h ) const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -128,21 +128,21 @@ bytes MemoryDB::lookupAux( h256 const& _h ) const {
     return bytes();
 }
 
-void MemoryDB::removeAux( h256 const& _h ) {
+void MemoryDB_S::removeAux( h256 const& _h ) {
 #if DEV_GUARDED_DB
     WriteGuard l( x_this );
 #endif
     m_aux[_h].second = false;
 }
 
-void MemoryDB::insertAux( h256 const& _h, bytesConstRef _v ) {
+void MemoryDB_S::insertAux( h256 const& _h, bytesConstRef _v ) {
 #if DEV_GUARDED_DB
     WriteGuard l( x_this );
 #endif
     m_aux[_h] = make_pair( _v.toBytes(), true );
 }
 
-void MemoryDB::purge() {
+void MemoryDB_S::purge() {
 #if DEV_GUARDED_DB
     WriteGuard l( x_this );
 #endif
@@ -161,7 +161,7 @@ void MemoryDB::purge() {
             it = m_aux.erase( it );
 }
 
-h256Hash MemoryDB::keys() const {
+h256Hash MemoryDB_S::keys() const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -176,7 +176,7 @@ h256Hash MemoryDB::keys() const {
 //// to pass in a function `f`, which will be called with the key and value
 //// of each record in the database. If `f` returns false, the `forEach`
 //// method must return immediately.
-// void MemoryDB::forEach(std::function<bool(Slice, Slice)> _f) const
+// void MemoryDB_S::forEach(std::function<bool(Slice, Slice)> _f) const
 //{
 //#if DEV_GUARDED_DB
 //    ReadGuard l( x_this );

@@ -49,9 +49,9 @@ BOOST_FIXTURE_TEST_SUITE( Trie, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( fat_trie ) {
     h256 r;
-    MemoryDB fm;
+    MemoryDB_S fm;
     {
-        FatGenericTrieDB< MemoryDB > ft( &fm );
+        FatGenericTrieDB< MemoryDB_S > ft( &fm );
         ft.init();
         ft.insert( h256( "69", h256::FromHex, h256::AlignRight ).ref(),
             h256( "414243", h256::FromHex, h256::AlignRight ).ref() );
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE( fat_trie ) {
         r = ft.root();
     }
     {
-        FatGenericTrieDB< MemoryDB > ft( &fm );
+        FatGenericTrieDB< MemoryDB_S > ft( &fm );
         ft.setRoot( r );
         for ( auto i : ft )
             cnote << i.first << i.second;
@@ -90,15 +90,15 @@ BOOST_AUTO_TEST_CASE( hex_encoded_securetrie_test, *boost::unit_test::preconditi
         }
         for ( unsigned j = 0; j < min( 1000000000u, fac( ( unsigned ) ss.size() ) ); ++j ) {
             next_permutation( ss.begin(), ss.end() );
-            MemoryDB m;
+            MemoryDB_S m;
             EnforceRefs r( m, true );
-            GenericTrieDB< MemoryDB > t( &m );
-            MemoryDB hm;
+            GenericTrieDB< MemoryDB_S > t( &m );
+            MemoryDB_S hm;
             EnforceRefs hr( hm, true );
-            HashedGenericTrieDB< MemoryDB > ht( &hm );
-            MemoryDB fm;
+            HashedGenericTrieDB< MemoryDB_S > ht( &hm );
+            MemoryDB_S fm;
             EnforceRefs fr( fm, true );
-            FatGenericTrieDB< MemoryDB > ft( &fm );
+            FatGenericTrieDB< MemoryDB_S > ft( &fm );
             t.init();
             ht.init();
             ft.init();
@@ -151,15 +151,15 @@ BOOST_AUTO_TEST_CASE( trie_test_anyorder, *boost::unit_test::precondition( dev::
         }
         for ( unsigned j = 0; j < min( 1000u, fac( ( unsigned ) ss.size() ) ); ++j ) {
             next_permutation( ss.begin(), ss.end() );
-            MemoryDB m;
+            MemoryDB_S m;
             EnforceRefs r( m, true );
-            GenericTrieDB< MemoryDB > t( &m );
-            MemoryDB hm;
+            GenericTrieDB< MemoryDB_S > t( &m );
+            MemoryDB_S hm;
             EnforceRefs hr( hm, true );
-            HashedGenericTrieDB< MemoryDB > ht( &hm );
-            MemoryDB fm;
+            HashedGenericTrieDB< MemoryDB_S > ht( &hm );
+            MemoryDB_S fm;
             EnforceRefs fr( fm, true );
-            FatGenericTrieDB< MemoryDB > ft( &fm );
+            FatGenericTrieDB< MemoryDB_S > ft( &fm );
             t.init();
             ht.init();
             ft.init();
@@ -227,15 +227,15 @@ BOOST_AUTO_TEST_CASE( trie_tests_ordered, *boost::unit_test::precondition( dev::
                 ss.back().second = asString( fromHex( ss.back().second.substr( 2 ) ) );
         }
 
-        MemoryDB m;
+        MemoryDB_S m;
         EnforceRefs r( m, true );
-        GenericTrieDB< MemoryDB > t( &m );
-        MemoryDB hm;
+        GenericTrieDB< MemoryDB_S > t( &m );
+        MemoryDB_S hm;
         EnforceRefs hr( hm, true );
-        HashedGenericTrieDB< MemoryDB > ht( &hm );
-        MemoryDB fm;
+        HashedGenericTrieDB< MemoryDB_S > ht( &hm );
+        MemoryDB_S fm;
         EnforceRefs fr( fm, true );
-        FatGenericTrieDB< MemoryDB > ft( &fm );
+        FatGenericTrieDB< MemoryDB_S > ft( &fm );
         t.init();
         ht.init();
         ft.init();
@@ -289,8 +289,8 @@ BOOST_AUTO_TEST_CASE( moreTrieTests, *boost::unit_test::precondition( dev::test:
     cnote << "Testing Trie more...";
     // More tests...
     {
-        MemoryDB m;
-        GenericTrieDB< MemoryDB > t( &m );
+        MemoryDB_S m;
+        GenericTrieDB< MemoryDB_S > t( &m );
         t.init();  // initialise as empty tree.
         cnote << t;
         cnote << m;
@@ -323,8 +323,8 @@ BOOST_AUTO_TEST_CASE( moreTrieTests, *boost::unit_test::precondition( dev::test:
         cnote << stringMapHash256( StringMap() );
     }
     {
-        MemoryDB m;
-        GenericTrieDB< MemoryDB > t( &m );
+        MemoryDB_S m;
+        GenericTrieDB< MemoryDB_S > t( &m );
         t.init();  // initialise as empty tree.
         t.insert( string( "a" ), string( "A" ) );
         t.insert( string( "b" ), string( "B" ) );
@@ -361,9 +361,9 @@ BOOST_AUTO_TEST_CASE( moreTrieTests, *boost::unit_test::precondition( dev::test:
         cnote << toHex( t.rlp() );
     }
     {
-        MemoryDB m;
+        MemoryDB_S m;
         EnforceRefs r( m, true );
-        GenericTrieDB< MemoryDB > d( &m );
+        GenericTrieDB< MemoryDB_S > d( &m );
         d.init();  // initialise as empty tree.
         MemTrie t;
         StringMap s;
@@ -443,9 +443,9 @@ std::string randomWord() {
 BOOST_AUTO_TEST_CASE( trieLowerBound, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "Stress-testing Trie.lower_bound...";
     if ( 0 ) {
-        MemoryDB dm;
+        MemoryDB_S dm;
         EnforceRefs e( dm, true );
-        GenericTrieDB< MemoryDB > d( &dm );
+        GenericTrieDB< MemoryDB_S > d( &dm );
         d.init();  // initialise as empty tree.
         for ( int a = 0; a < 20; ++a ) {
             StringMap m;
@@ -486,8 +486,8 @@ BOOST_AUTO_TEST_CASE( hashedLowerBound ) {
     }
 
     // insert keys into trie
-    MemoryDB memdb;
-    FatGenericTrieDB< MemoryDB > trie( &memdb );
+    MemoryDB_S memdb;
+    FatGenericTrieDB< MemoryDB_S > trie( &memdb );
     trie.init();
 
     for ( auto const& hashAndKey : hashToKey )
@@ -516,10 +516,10 @@ BOOST_AUTO_TEST_CASE( hashedLowerBound ) {
 BOOST_AUTO_TEST_CASE( trieStess, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "Stress-testing Trie...";
     {
-        MemoryDB m;
-        MemoryDB dm;
+        MemoryDB_S m;
+        MemoryDB_S dm;
         EnforceRefs e( dm, true );
-        GenericTrieDB< MemoryDB > d( &dm );
+        GenericTrieDB< MemoryDB_S > d( &dm );
         d.init();  // initialise as empty tree.
         MemTrie t;
         BOOST_REQUIRE( d.check( true ) );
@@ -546,9 +546,9 @@ BOOST_AUTO_TEST_CASE( trieStess, *boost::unit_test::precondition( dev::test::run
                     for ( auto i : d )
                         cwarn << i.first.toString() << i.second.toString();
 
-                    MemoryDB dm2;
+                    MemoryDB_S dm2;
                     EnforceRefs e2( dm2, true );
-                    GenericTrieDB< MemoryDB > d2( &dm2 );
+                    GenericTrieDB< MemoryDB_S > d2( &dm2 );
                     d2.init();  // initialise as empty tree.
                     for ( auto i : d )
                         d2.insert( i.first, i.second );
@@ -584,7 +584,7 @@ BOOST_AUTO_TEST_CASE( trieStess, *boost::unit_test::precondition( dev::test::run
 template < typename Trie >
 void perfTestTrie( char const* _name ) {
     for ( size_t p = 1000; p != 1000000; p *= 10 ) {
-        MemoryDB dm;
+        MemoryDB_S dm;
         Trie d( &dm );
         d.init();
         cnote << "TriePerf " << _name << p;
@@ -618,10 +618,10 @@ void perfTestTrie( char const* _name ) {
 
 BOOST_AUTO_TEST_CASE( triePerf, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     if ( test::Options::get().all ) {
-        perfTestTrie< SpecificTrieDB< GenericTrieDB< MemoryDB >, h256 > >( "GenericTrieDB" );
-        perfTestTrie< SpecificTrieDB< HashedGenericTrieDB< MemoryDB >, h256 > >(
+        perfTestTrie< SpecificTrieDB< GenericTrieDB< MemoryDB_S >, h256 > >( "GenericTrieDB" );
+        perfTestTrie< SpecificTrieDB< HashedGenericTrieDB< MemoryDB_S >, h256 > >(
             "HashedGenericTrieDB" );
-        perfTestTrie< SpecificTrieDB< FatGenericTrieDB< MemoryDB >, h256 > >( "FatGenericTrieDB" );
+        perfTestTrie< SpecificTrieDB< FatGenericTrieDB< MemoryDB_S >, h256 > >( "FatGenericTrieDB" );
     } else
         clog << "Skipping hive test Crypto/Trie/triePerf. Use --all to run it.\n";
 }
