@@ -113,12 +113,14 @@ po::options_description databaseProgramOptions( unsigned _lineLength ) {
             ->notifier( setDatabaseKindByName ),
         description.data() );
 
-    add( "db-path",
+    add( "db-path,d",  // "db-path"
         po::value< std::string >()
             ->value_name( "<path>" )
             ->default_value( getDataDir().string() )
             ->notifier( setDatabasePath ),
-        "Database path (for non-memory database options)\n" );
+        ( "Load database from path (default: " + getDataDir().string() + ")\n" )
+            .c_str()  // "Database path (for non-memory database options)\n"
+    );
 
     return opts;
 }

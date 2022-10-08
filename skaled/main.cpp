@@ -740,8 +740,6 @@ int main( int argc, char** argv ) try {
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
-    // addClientOption( "download-target", po::value< string >()->value_name( "<port>" ),
-    //    "Path of file to save downloaded snapshot to" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
 
@@ -751,8 +749,8 @@ int main( int argc, char** argv ) try {
 
     po::options_description generalOptions( "GENERAL OPTIONS", c_lineWidth );
     auto addGeneralOption = generalOptions.add_options();
-    addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
-        ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
+    //    addGeneralOption( "db-path,d", po::value< string >()->value_name( "<path>" ),
+    //        ( "Load database from path (default: " + getDataDir().string() + ")" ).c_str() );
     addGeneralOption( "block-rotation-period", po::value< size_t >()->value_name( "<seconds>" ),
         "Block rotation period in seconds, zero to disable timer based block rotation." );
     addGeneralOption( "shared-space-path", po::value< string >()->value_name( "<path>" ),
