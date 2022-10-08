@@ -2345,9 +2345,6 @@ then
             #then
             #    echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
             #    eval git clone https://github.com/facebook/rocksdb.git --recursive
-            #    cd rocksdb
-            #    eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
-            #    cd ..
             #    echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
             #    eval tar -czf rocksdb-from-git.tar.gz ./rocksdb
             #else
@@ -2355,7 +2352,10 @@ then
             #    eval tar -xzf rocksdb-from-git.tar.gz
             #fi
             echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-            eval tar -xzf $PREDOWNLOADED_ROOT/rocksdb-from-git.tar.gz
+            eval rm -f $PREDOWNLOADED_ROOT/rocksdb-from-git-full.zip || true
+            eval zip -FF $PREDOWNLOADED_ROOT/rocksdb-from-git.zip --out $PREDOWNLOADED_ROOT/rocksdb-from-git-full.zip
+            eval unzip $PREDOWNLOADED_ROOT/rocksdb-from-git-full.zip
+            eval rm -f $PREDOWNLOADED_ROOT/rocksdb-from-git-full.zip || true
             #
             #
             echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
