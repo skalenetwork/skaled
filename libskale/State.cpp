@@ -31,6 +31,7 @@
 #include <boost/utility/in_place_factory.hpp>
 
 #include <libdevcore/DBImpl.h>
+#include <libdevcore/DBFactory.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
@@ -100,7 +101,10 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        std::shared_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
+
+        //std::shared_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
+        std::shared_ptr< db::DatabaseFace > db( db::DBFactory::create( state_path ) );
+
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( db );
         assert( bdb->is_open() );

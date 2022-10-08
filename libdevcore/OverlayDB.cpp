@@ -25,6 +25,8 @@
 #include <thread>
 
 namespace dev {
+namespace db {
+
 namespace {
 inline db::Slice toSlice( h256 const& _h ) {
     return db::Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
@@ -143,4 +145,5 @@ void OverlayDB::kill( h256 const& _h ) {
 #endif
 }
 
+}  // namespace db
 }  // namespace dev

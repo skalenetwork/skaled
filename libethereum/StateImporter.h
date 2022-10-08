@@ -30,7 +30,9 @@
 
 namespace dev {
 
+namespace db {
 class OverlayDB;
+};
 
 namespace eth {
 
@@ -54,7 +56,7 @@ public:
     virtual std::string lookupCode( h256 const& _hash ) const = 0;
 };
 
-std::unique_ptr< StateImporterFace > createStateImporter( OverlayDB& _stateDb );
+std::unique_ptr< StateImporterFace > createStateImporter( dev::db::OverlayDB& _stateDb );
 
 }  // namespace eth
 }  // namespace dev

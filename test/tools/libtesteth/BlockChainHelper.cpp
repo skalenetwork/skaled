@@ -36,6 +36,7 @@
 using namespace std;
 using namespace json_spirit;
 using namespace dev;
+using namespace dev::db;
 using namespace dev::eth;
 using skale::BaseState;
 using skale::State;

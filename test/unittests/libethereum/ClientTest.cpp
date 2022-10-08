@@ -20,7 +20,6 @@
  */
 
 #include <libdevcore/CommonJS.h>
-#include <libdevcore/DBImpl.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/ChainParams.h>

@@ -31,6 +31,7 @@
 
 using namespace std;
 using namespace dev;
+using namespace dev::db;
 using namespace dev::test;
 
 namespace fs = boost::filesystem;

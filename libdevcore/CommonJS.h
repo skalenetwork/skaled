@@ -28,6 +28,7 @@
 #include "CommonData.h"
 #include "CommonIO.h"
 #include "FixedHash.h"
+
 #include <string>
 
 namespace dev {
@@ -51,6 +52,9 @@ std::string toJS( boost::multiprecision::number< boost::multiprecision::cpp_int_
 }
 
 inline std::string toJS( bytes const& _n, std::size_t _padding = 0 ) {
+    if ( _n.empty() )
+        return {};
+
     bytes n = _n;
     n.resize( std::max< unsigned >( n.size(), _padding ) );
     return toHexPrefixed( n );

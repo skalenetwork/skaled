@@ -28,6 +28,7 @@ using namespace std;
 using namespace dev;
 
 namespace dev {
+namespace db {
 
 std::unordered_map< h256, std::string > MemoryDB::get() const {
 #if DEV_GUARDED_DB
@@ -170,5 +171,25 @@ h256Hash MemoryDB::keys() const {
             ret.insert( i.first );
     return ret;
 }
+
+//// A database must implement the `forEach` method that allows the caller
+//// to pass in a function `f`, which will be called with the key and value
+//// of each record in the database. If `f` returns false, the `forEach`
+//// method must return immediately.
+//void MemoryDB::forEach(std::function<bool(Slice, Slice)> _f) const
+//{
+//#if DEV_GUARDED_DB
+//    ReadGuard l( x_this );
+//#endif
+//    for (auto const& e : m_main)
+//    {
+//        if (!_f(Slice(e.first), Slice(e.second.first)))
+//        {
+//            return;
+//        }
+//    }
+//}
+
+}  // namespace db
 
 }  // namespace dev

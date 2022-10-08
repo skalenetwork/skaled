@@ -30,7 +30,7 @@ namespace {
 
 class StateImporter : public StateImporterFace {
 public:
-    explicit StateImporter( OverlayDB& _stateDb ) : m_trie( &_stateDb ) { m_trie.init(); }
+    explicit StateImporter( dev::db::OverlayDB& _stateDb ) : m_trie( &_stateDb ) { m_trie.init(); }
 
     void importAccount( h256 const& _addressHash, u256 const& _nonce, u256 const& _balance,
         std::map< h256, bytes > const& _storage, h256 const& _codeHash ) override {
@@ -42,7 +42,7 @@ public:
         if ( _storage.empty() )
             s.append( storageRoot );
         else {
-            SpecificTrieDB< GenericTrieDB< OverlayDB >, h256 > storageDB(
+            SpecificTrieDB< GenericTrieDB< dev::db::OverlayDB >, h256 > storageDB(
                 m_trie.db(), storageRoot );
             for ( auto const& hashAndValue : _storage )
                 storageDB.insert( hashAndValue.first, hashAndValue.second );
@@ -86,12 +86,12 @@ private:
         return accountRlp[2].toHash< h256 >( RLP::VeryStrict );
     }
 
-    SpecificTrieDB< GenericTrieDB< OverlayDB >, h256 > m_trie;
+    SpecificTrieDB< GenericTrieDB< dev::db::OverlayDB >, h256 > m_trie;
 };
 
 }  // namespace
 
-std::unique_ptr< StateImporterFace > createStateImporter( OverlayDB& _stateDb ) {
+std::unique_ptr< StateImporterFace > createStateImporter( dev::db::OverlayDB& _stateDb ) {
     return std::unique_ptr< StateImporterFace >( new StateImporter( _stateDb ) );
 }
 

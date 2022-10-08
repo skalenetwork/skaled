@@ -32,7 +32,9 @@
 
 namespace dev {
 
+namespace db {
 class OverlayDB;
+};
 
 namespace eth {
 

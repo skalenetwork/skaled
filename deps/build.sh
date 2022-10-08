@@ -298,6 +298,8 @@ setup_variable WITH_GTEST "yes"
 setup_variable WITH_FIZZ "yes"
 setup_variable WITH_PROXYGEN "yes"
 
+setup_variable WITH_ROCKSDB "yes"
+
 if [ -z "${PARALLEL_COUNT}" ];
 then
 	PARALLEL_COUNT=$NUMBER_OF_CPU_CORES
@@ -610,6 +612,7 @@ echo -e "${COLOR_VAR_NAME}WITH_WANGLE${COLOR_DOTS}............${COLOR_VAR_DESC}L
 echo -e "${COLOR_VAR_NAME}WITH_GTEST${COLOR_DOTS}.............${COLOR_VAR_DESC}LibGTEST${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_GTEST${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_FIZZ${COLOR_DOTS}..............${COLOR_VAR_DESC}LibFIZZ${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_FIZZ${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_PROXYGEN${COLOR_DOTS}..........${COLOR_VAR_DESC}LibProxygen${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_PROXYGEN${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_ROCKSDB${COLOR_DOTS}...........${COLOR_VAR_DESC}LibRocksDB${COLOR_DOTS}.............................${COLOR_VAR_VAL}$WITH_ROCKSDB${COLOR_RESET}"
 
 #
 #
@@ -2326,6 +2329,51 @@ then
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
+fi
+
+# https://github.com/facebook/rocksdb/
+if [ "$WITH_ROCKSDB" = "yes" ];
+then
+    echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libRocksDB${COLOR_SEPARATOR} ===================================${COLOR_RESET}"
+    if [ ! -f "$INSTALL_ROOT/lib/librocksdb.a" ];
+    then
+        env_restore
+        cd "$SOURCES_ROOT"
+        if [ ! -d "rocksdb" ];
+        then
+            if [ ! -f "rocksdb-from-git.tar.gz" ];
+            then
+                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                eval git clone https://github.com/facebook/rocksdb.git --recursive
+                cd rocksdb
+                eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
+                cd ..
+                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                eval tar -czf rocksdb-from-git.tar.gz ./rocksdb
+            else
+                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                eval tar -xzf rocksdb-from-git.tar.gz
+            fi
+            echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+            cd rocksdb
+            eval mkdir -p build2
+            cd build2
+            eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DROCKSDB_BUILD_SHARED=OFF -DWITH_ZLIB=ON \
+                -DWITH_JNI=OFF -DWITH_TESTS=OFF -DWITH_ALL_TESTS=OFF -DWITH_BENCHMARK_TOOLS=OFF -DWITH_CORE_TOOLS=ON -DWITH_TOOLS=ON ..
+            cd ..
+        else
+            cd rocksdb
+        fi
+        echo -e "${COLOR_INFO}fixing it${COLOR_DOTS}...${COLOR_RESET}"
+        echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+        cd build2
+        eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+        eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
+        cd "$SOURCES_ROOT"
+    else
+        echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+    fi
 fi
 
 echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"

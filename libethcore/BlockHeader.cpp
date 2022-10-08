@@ -32,6 +32,7 @@
 #include <libethcore/Common.h>
 using namespace std;
 using namespace dev;
+using namespace dev::db;
 using namespace dev::eth;
 
 bool BlockHeader::useTimestampHack = false;

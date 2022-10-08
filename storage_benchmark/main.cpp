@@ -15,6 +15,7 @@ using namespace std;
 
 using namespace skale;
 using namespace dev;
+using namespace dev::db;
 
 namespace fs = boost::filesystem;
 
@@ -49,7 +50,7 @@ void debug() {
     fs::path db_path = "/tmp/ethereum/";
     cout << db_path << endl;
 
-    //    dev::OverlayDB db = State::openDB(db_path, h256(12345), WithExisting::Kill);
+    //    dev::db::OverlayDB db = State::openDB(db_path, h256(12345), WithExisting::Kill);
     //    State state = State(0, db, eth::BaseState::Empty);
     //    state.setBalance(address, 5);
     //    state.commit(State::CommitBehaviour::RemoveEmptyAccounts);

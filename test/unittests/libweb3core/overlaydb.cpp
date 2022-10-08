@@ -30,6 +30,7 @@
 
 using namespace std;
 using namespace dev;
+using namespace dev::db;
 using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( OverlayDBTests, TestOutputHelperFixture )

@@ -32,7 +32,6 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 
-//#include <libdevcore/DBImpl.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
 
 #include <libdevcore/FileSystem.h>

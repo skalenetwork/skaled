@@ -29,7 +29,11 @@
 #include <libdevcore/db.h>
 #include <memory>
 
+#include <libdevcore/MemoryDB.h>
+
 namespace dev {
+
+namespace db {
 
 class OverlayDB : public MemoryDB {
 public:
@@ -62,5 +66,7 @@ private:
 
     std::shared_ptr< db::DatabaseFace > m_db;
 };
+
+}  // namespace db
 
 }  // namespace dev

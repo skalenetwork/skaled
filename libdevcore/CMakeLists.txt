@@ -35,3 +35,6 @@ if( BUILD_LEVELDB )
 else()
     target_link_libraries(devcore PRIVATE leveldb::leveldb skutils)
 endif()
+
+target_link_libraries(devcore PRIVATE rocksdb z)
+
