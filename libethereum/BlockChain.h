@@ -37,7 +37,6 @@
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Guards.h>
 #include <libdevcore/Log.h>
-#include <libdevcore/SplitDB.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Common.h>
 #include <libethcore/SealEngine.h>

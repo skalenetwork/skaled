@@ -1,7 +1,11 @@
 #ifndef ROTATINGLEVELDB_H
 #define ROTATINGLEVELDB_H
 
-#include "LevelDB.h"
+#include "db.h"
+
+#include <leveldb/db.h>
+#include <leveldb/write_batch.h>
+#include <boost/filesystem.hpp>
 
 #include <libbatched-io/batched_rotating_db_io.h>
 

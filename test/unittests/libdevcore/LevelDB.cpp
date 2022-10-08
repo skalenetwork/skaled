@@ -2,7 +2,8 @@
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
-#include <libdevcore/SplitDB.h>
+#include <libdevcore/LevelDB.h>
+//#include <libdevcore/SplitDB.h>
 #include <libdevcore/TransientDirectory.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
@@ -89,25 +90,25 @@ BOOST_AUTO_TEST_CASE( ordinary_test ) {
     test_leveldb( &leveldb );
 }
 
-BOOST_AUTO_TEST_CASE( split_test ) {
-    TransientDirectory td;
-    auto p_leveldb = std::make_shared< db::LevelDB >( td.path() );
-    db::SplitDB splitdb( p_leveldb );
+//BOOST_AUTO_TEST_CASE( split_test ) {
+//    TransientDirectory td;
+//    auto p_leveldb = std::make_shared< db::LevelDB >( td.path() );
+//    db::SplitDB splitdb( p_leveldb );
 
-    db::DatabaseFace* db1 = splitdb.newInterface();
-    db::DatabaseFace* db2 = splitdb.newInterface();
+//    db::DatabaseFace* db1 = splitdb.newInterface();
+//    db::DatabaseFace* db2 = splitdb.newInterface();
 
-    h256 h1 = db1->hashBase();
-    h256 h2 = db1->hashBase();
-    BOOST_REQUIRE_EQUAL( h1, h2 );
+//    h256 h1 = db1->hashBase();
+//    h256 h2 = db1->hashBase();
+//    BOOST_REQUIRE_EQUAL( h1, h2 );
 
-    test_leveldb( db1 );
-    test_leveldb( db2 );
+//    test_leveldb( db1 );
+//    test_leveldb( db2 );
 
-    BOOST_REQUIRE( db1->hashBase() != db2->hashBase() );
-    BOOST_REQUIRE( db1->hashBase() != h1 );
-    BOOST_REQUIRE( db2->hashBase() != h2 );
-}
+//    BOOST_REQUIRE( db1->hashBase() != db2->hashBase() );
+//    BOOST_REQUIRE( db1->hashBase() != h1 );
+//    BOOST_REQUIRE( db2->hashBase() != h2 );
+//}
 
 BOOST_AUTO_TEST_CASE( rotation_test ) {
     TransientDirectory td;

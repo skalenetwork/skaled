@@ -4,6 +4,8 @@
 #include <libethcore/KeyManager.h>
 #include <libp2p/Network.h>
 
+#include <libdevcore/LevelDB.h>
+
 #define private public          // TODO refactor SnapshotManager
     #include <libskale/SnapshotManager.h>
 #undef private
