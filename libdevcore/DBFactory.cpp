@@ -140,15 +140,15 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind ) {
 std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path const& _path ) {
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
-        std::cout << "DB FACTORY NOTOCE: will create/open database of type LevelDB at path "
+        std::cout << "DB FACTORY: will create/open database of type LevelDB at path "
                   << _path << "...\n";
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path ) );
     case DatabaseKind::RocksDB:
-        std::cout << "DB FACTORY NOTOCE: will create/open create database of type RocksDB at path "
+        std::cout << "DB FACTORY: will create/open create database of type RocksDB at path "
                   << _path << "...\n";
         return std::unique_ptr< DatabaseFace >( new RocksDB( _path ) );
     case DatabaseKind::MemoryDB:
-        std::cout << "DB FACTORY NOTOCE: will create/open create database of type MemoryDB at path "
+        std::cout << "DB FACTORY: will create/open create database of type MemoryDB at path "
                   << _path << " ...\n ";
         // Silently ignore path since the concept of a db path doesn't make sense
         // when using an in-memory database
