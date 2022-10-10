@@ -711,6 +711,9 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+    if ( !ContractStorageLimitPatch::isEnabled() ) {
+        resetStorageChanges();
+    }
 }
 
 void State::updateToLatestVersion() {
