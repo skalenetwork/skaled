@@ -165,7 +165,7 @@ public:
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
-    time_t introudceChangesTimestamp = 0;
+    time_t introduceChangesTimestamp = 0;
 
     SChain() {
         name = "TestChain";

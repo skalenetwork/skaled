@@ -229,8 +229,8 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-        s.introudceChangesTimestamp = sChainObj.count( "introudceChangesTimestamp" ) ?
-                                          sChainObj.at( "introudceChangesTimestamp" ).get_int64() :
+        s.introduceChangesTimestamp = sChainObj.count( "introduceChangesTimestamp" ) ?
+                                          sChainObj.at( "introduceChangesTimestamp" ).get_int64() :
                                           0;
 
         if ( sChainObj.count( "nodeGroups" ) ) {
