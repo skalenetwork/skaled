@@ -140,8 +140,8 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind ) {
 std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path const& _path ) {
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
-        std::cout << "DB FACTORY: will create/open database of type LevelDB at path "
-                  << _path << "...\n";
+        std::cout << "DB FACTORY: will create/open database of type LevelDB at path " << _path
+                  << "...\n";
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path ) );
     case DatabaseKind::RocksDB:
         std::cout << "DB FACTORY: will create/open create database of type RocksDB at path "
