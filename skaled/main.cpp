@@ -1500,6 +1500,11 @@ int main( int argc, char** argv ) try {
         downloadSnapshotFlag = true;
     }
 
+    bool requireSnapshotMajority = true;
+    if ( vm.count( "some-flag" ) ) {
+        requireSnapshotMajority = false;
+    }
+
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
@@ -1566,7 +1571,8 @@ int main( int argc, char** argv ) try {
                     << cc::p( std::to_string( blockNumber ) ) << " (from " << blockNumber_url
                     << ")";
 
-                SnapshotHashAgent snapshotHashAgent( chainParams, arrayCommonPublicKey );
+                SnapshotHashAgent snapshotHashAgent(
+                    chainParams, arrayCommonPublicKey, requireSnapshotMajority );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1656,14 +1662,21 @@ int main( int argc, char** argv ) try {
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
                         else {
-                            clog( VerbosityWarning, "main" )
-                                << cc::notice(
-                                       "Downloaded snapshot with incorrect hash! Incoming hash " )
-                                << cc::notice( voted_hash.first.hex() )
-                                << cc::notice( " is not equal to calculated hash " )
-                                << cc::notice( calculated_hash.hex() )
-                                << cc::notice( "Will try again" );
-                            snapshotManager->cleanup();
+                            if ( !requireSnapshotMajority ) {
+                                clog( VerbosityInfo, "main" )
+                                    << cc::notice( "Skip checking snapshot hash." );
+                                successfullDownload = true;
+                            } else {
+                                clog( VerbosityWarning, "main" )
+                                    << cc::notice(
+                                           "Downloaded snapshot with incorrect hash! Incoming "
+                                           "hash " )
+                                    << cc::notice( voted_hash.first.hex() )
+                                    << cc::notice( " is not equal to calculated hash " )
+                                    << cc::notice( calculated_hash.hex() )
+                                    << cc::notice( "Will try again" );
+                                snapshotManager->cleanup();
+                            }
                         }
                     } catch ( const std::exception& ex ) {
                         // just retry
