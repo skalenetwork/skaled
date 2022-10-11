@@ -1,14 +1,8 @@
 #include "ContractStorageLimitPatch.h"
 
-#include <libethereum/Client.h>
-
-dev::eth::Client* ContractStorageLimitPatch::g_client;
+time_t ContractStorageLimitPatch::introduceChangesTimestamp;
+time_t ContractStorageLimitPatch::lastBlockTimestamp;
 
 bool ContractStorageLimitPatch::isEnabled() {
-    if ( !g_client ) {
-        // tests
-        return true;
-    }
-    return g_client->chainParams().sChain.introduceChangesTimestamp <=
-           g_client->blockChain().info().timestamp();
+    return introduceChangesTimestamp <= lastBlockTimestamp;
 }

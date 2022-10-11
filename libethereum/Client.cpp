@@ -139,7 +139,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     init( _forceAction, _networkID );
 
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::g_client = this;
+    ContractStorageLimitPatch::introduceChangesTimestamp =
+        chainParams().sChain.introduceChangesTimestamp;
 }
 
 Client::~Client() {
@@ -688,6 +689,8 @@ size_t Client::syncTransactions(
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
+
+    ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );

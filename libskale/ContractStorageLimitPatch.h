@@ -3,6 +3,8 @@
 
 #include <libethereum/SchainPatch.h>
 
+#include <time.h>
+
 namespace dev {
 namespace eth {
 class Client;
@@ -21,7 +23,8 @@ public:
 
 private:
     friend class dev::eth::Client;
-    static dev::eth::Client* g_client;
+    static time_t introduceChangesTimestamp;
+    static time_t lastBlockTimestamp;
 };
 
 #endif  // CONTRACTSTORAGELIMITPATCH_H
