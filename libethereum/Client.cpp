@@ -139,8 +139,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     init( _forceAction, _networkID );
 
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::introduceChangesTimestamp =
-        chainParams().sChain.introduceChangesTimestamp;
+    ContractStorageLimitPatch::contractStoragePatchTimestamp =
+        chainParams().sChain.contractStoragePatchTimestamp;
 }
 
 Client::~Client() {

@@ -23,7 +23,7 @@ public:
 
 private:
     friend class dev::eth::Client;
-    static time_t introduceChangesTimestamp;
+    static time_t contractStoragePatchTimestamp;
     static time_t lastBlockTimestamp;
 };
 

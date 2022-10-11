@@ -244,7 +244,7 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "introduceChangesTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "contractStoragePatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
