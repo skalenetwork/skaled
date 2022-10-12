@@ -229,9 +229,10 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-        s.contractStoragePatchTimestamp = sChainObj.count( "contractStoragePatchTimestamp" ) ?
-                                          sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
-                                          0;
+        s.contractStoragePatchTimestamp =
+            sChainObj.count( "contractStoragePatchTimestamp" ) ?
+                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+                0;
 
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
