@@ -1501,8 +1501,10 @@ int main( int argc, char** argv ) try {
     }
 
     bool requireSnapshotMajority = true;
+    std::string ipToDownloadSnapshotFrom;
     if ( vm.count( "some-flag" ) ) {
         requireSnapshotMajority = false;
+        ipToDownloadSnapshotFrom = vm["some-flag"].as< string >();
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
@@ -1552,6 +1554,10 @@ int main( int argc, char** argv ) try {
 
         for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
             try {
+                if ( !requireSnapshotMajority &&
+                     std::string( chainParams.sChain.nodes[idx].ip ) != ipToDownloadSnapshotFrom )
+                    continue;
+
                 if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
                     continue;
 
