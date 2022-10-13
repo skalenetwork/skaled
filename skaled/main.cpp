@@ -1502,9 +1502,9 @@ int main( int argc, char** argv ) try {
 
     bool requireSnapshotMajority = true;
     std::string ipToDownloadSnapshotFrom;
-    if ( vm.count( "some-flag" ) ) {
+    if ( vm.count( "no-snapshot-majority" ) ) {
         requireSnapshotMajority = false;
-        ipToDownloadSnapshotFrom = vm["some-flag"].as< string >();
+        ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
