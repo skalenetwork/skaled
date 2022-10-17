@@ -168,7 +168,7 @@ void OverlayFS::deleteFile( const std::string& filePath ) {
 
 void OverlayFS::deleteDirectory( const std::string& path ) {
     auto operation = std::make_shared< DeleteDirectoryOp >( path );
-    if ( isCacheEnabled() )
+    if ( m_isCacheEnabled )
         m_cache.push_back( operation );
     else
         operation->execute();
@@ -196,11 +196,4 @@ void OverlayFS::commit() {
         m_cache[i]->execute();
     }
 }
-
-bool OverlayFS::isCacheEnabled() {
-    if ( m_manuallyEnabledCache )
-        return true;
-    return RevertableFSPatch::isEnabled();
-}
-
 }  // namespace skale

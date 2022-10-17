@@ -417,7 +417,9 @@ private:
 
     void updateStorageUsage();
 
-    void resetOverlayFS() { m_fs_ptr = std::make_shared< OverlayFS >(); };
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    };
 
     void clearFileStorageCache() {
         if ( m_fs_ptr ) {

@@ -42,6 +42,7 @@
 #include <skutils/eth_utils.h>
 
 #include <libethereum/BlockDetails.h>
+#include <libskale/RevertableFSPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -795,7 +796,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     Executive e( *this, _envInfo, _sealEngine, 0, 0, _p != Permanence::Committed );
     ExecutionResult res;
     e.setResultRecipient( res );
-    resetOverlayFS();
+
+    bool isCacheEnabled = RevertableFSPatch::isEnabled();
+    resetOverlayFS( isCacheEnabled );
 
     auto onOp = _onOp;
 #if ETH_VMTRACE

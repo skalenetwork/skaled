@@ -103,7 +103,7 @@ private:
 
 class OverlayFS {
 public:
-    OverlayFS( bool _enableCache = false ) : m_manuallyEnabledCache( _enableCache ){};
+    OverlayFS( bool _enableCache = true ) : m_isCacheEnabled( _enableCache ){};
 
     virtual ~OverlayFS() = default;
 
@@ -117,6 +117,7 @@ public:
     void commit();
     void reset() { m_cache.clear(); };
     bool empty() const { return m_cache.empty(); }
+    bool isCacheEnabled() { return m_isCacheEnabled; }
 
     void createFile( const std::string& filePath, const size_t fileSize );
     void createDirectory( const std::string& path );
@@ -129,9 +130,7 @@ public:
 private:
     std::vector< std::shared_ptr< BaseOp > > m_cache;  // vector of filestorage operations for
                                                        // current state
-    bool m_manuallyEnabledCache;
-
-    bool isCacheEnabled();
+    bool m_isCacheEnabled;
 };
 
 }  // namespace skale
