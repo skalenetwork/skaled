@@ -16,10 +16,15 @@ private:
     const boost::filesystem::path base_path;
     std::deque< std::unique_ptr< dev::db::DatabaseFace > > pieces;
     size_t current_piece_file_no;
+    size_t n_pieces;
+
+    bool archive_mode;
+    std::deque< std::unique_ptr< dev::db::DatabaseFace > > archive_pieces;
 
 public:
     using const_iterator = std::deque< std::unique_ptr< dev::db::DatabaseFace > >::const_iterator;
-    rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces );
+
+    rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces, bool _archiveMode );
     const_iterator begin() const { return pieces.begin(); }
     const_iterator end() const { return pieces.end(); }
     size_t pieces_count() const { return pieces.size(); }
