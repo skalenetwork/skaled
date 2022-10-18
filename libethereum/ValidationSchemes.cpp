@@ -209,6 +209,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "imaCallerAddressSChain", { { js::str_type }, JsonFieldPresence::Optional } },
             { "imaCallerAddressMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
             { "syncNode", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     std::string keyShareName = "";
