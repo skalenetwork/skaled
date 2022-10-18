@@ -83,12 +83,13 @@ void rotating_db_io::rotate() {
     // TODO test_crash here! (and think how to recover here!)
     if ( archive_mode ) {
         boost::filesystem::rename( oldest_path, new_archive_path );
+        test_crash_before_commit( "after_rename_oldest" );
         DatabaseFace* new_archive_db = new LevelDB( new_archive_path );
         pieces.emplace_back( new_archive_db );
-    } else
+    } else {
         boost::filesystem::remove_all( oldest_path );  // delete oldest
-
-    test_crash_before_commit( "after_remove_oldest" );
+        test_crash_before_commit( "after_remove_oldest" );
+    }
 
     // 2 recreate it as new current
     DatabaseFace* new_db = new LevelDB( oldest_path );
