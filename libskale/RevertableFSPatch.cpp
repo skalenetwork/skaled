@@ -5,6 +5,6 @@
 dev::eth::Client* RevertableFSPatch::g_client;
 
 bool RevertableFSPatch::isEnabled() {
-    return g_client->chainParams().sChain.revertableFSPatchTimestamp >=
+    return g_client->chainParams().sChain.revertableFSPatchTimestamp <=
            g_client->blockChain().info().timestamp();
 }

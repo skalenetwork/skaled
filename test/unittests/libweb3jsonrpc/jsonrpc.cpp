@@ -108,7 +108,8 @@ static std::string const c_genesisConfigString =
             "nodeGroups": {},
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )"+std::to_string( rand_port ) + R"(, "schainIndex" : 1, "publicKey": "0xfa"}
-            ]
+            ],
+            "revertableFSPatchTimestamp": 0
         }
     },
     "accounts": {
@@ -142,6 +143,11 @@ static std::string const c_genesisConfigString =
                         status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
                     }
                 }
+
+                function revertCall() public {
+                    call();
+                    revert();
+                }
             }
     */
     R"("0000000000000000000000000000000000000006": {
@@ -168,7 +174,7 @@ static std::string const c_genesisConfigString =
         },
         "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
             "balance" : "0x00",
-            "code" : "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b146044575b600080fd5b348015604f57600080fd5b5060566058565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f19350505050505600a165627a7a72305820a32bd2de440ff0b16fac1eba549e1f46ebfb51e7e4fe6bfe1cc0d322faf7af540029",
+            "code" : "0x6080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14604e578063f38fb65b146062575b600080fd5b348015605957600080fd5b5060606076565b005b348015606d57600080fd5b50607460ec565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f1935050505050565b60f26076565b600080fd00a165627a7a72305820262a5822c4fe6c154b2ef3198c7827d35fc6da59da2cea2c4f2fad9d4a5ccd5e0029",
             "nonce" : "0x00",
             "storage" : {
             }
@@ -401,7 +407,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
-    RestrictedAddressFixture() : JsonRpcFixture( c_genesisConfigString ) {
+    RestrictedAddressFixture( const std::string& _config = c_genesisConfigString ) : JsonRpcFixture( _config ) {
         ownerAddress = Address( "00000000000000000000000000000000000000AA" );
         std::string fileName = "test";
         path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
@@ -2792,6 +2798,67 @@ BOOST_AUTO_TEST_CASE( delegate_call ) {
     transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
     rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
+
+BOOST_AUTO_TEST_CASE( cached_filestorage ) {
+    RestrictedAddressFixture fixture( c_genesisConfigString );
+
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0xf38fb65b";
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
+}
+
+BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
+
+    auto _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 9999999999999; 
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    RestrictedAddressFixture fixture( config );
+
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0xf38fb65b";
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    RLPStream stream;
+    tx.streamRLP( stream );
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( stream.out() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    BOOST_REQUIRE( boost::filesystem::exists( fixture.path ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
