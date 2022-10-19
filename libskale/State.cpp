@@ -74,6 +74,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       contractStorageLimit_( _contractStorageLimit ) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
+    m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -146,6 +147,7 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+    m_fs_ptr = _s.m_fs_ptr;
 
     return *this;
 }

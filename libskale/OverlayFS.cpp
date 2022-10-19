@@ -195,5 +195,6 @@ void OverlayFS::commit() {
     for ( size_t i = 0; i < m_cache.size(); ++i ) {
         m_cache[i]->execute();
     }
+    m_cache.clear();
 }
 }  // namespace skale
