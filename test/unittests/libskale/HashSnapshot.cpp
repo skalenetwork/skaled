@@ -40,7 +40,7 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest {
 public:
-    SnapshotHashAgentTest( ChainParams& _chainParams ) {
+    SnapshotHashAgentTest( ChainParams& _chainParams, bool requireSnapshotMajority = true ) {
         std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
@@ -84,7 +84,7 @@ public:
 
         this->secret_as_is = keys.first;
 
-        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys ) );
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, requireSnapshotMajority ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
@@ -491,6 +491,24 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
     BOOST_REQUIRE( test_agent.verifyAllData() == 2 );
+}
+
+BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
+    libff::init_alt_bn128_params();
+    ChainParams chainParams;
+    chainParams.sChain.t = 3;
+    chainParams.sChain.nodes.resize( 4 );
+    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
+        chainParams.sChain.nodes[i].id = i;
+    }
+    chainParams.nodeInfo.id = 3;
+    SnapshotHashAgentTest test_agent( chainParams, false );
+    dev::h256 hash = dev::h256::random();
+    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    snapshot_hashes[2] = dev::h256::random();
+    test_agent.fillData( snapshot_hashes );
+    BOOST_REQUIRE( test_agent.verifyAllData() == 3);
+    BOOST_REQUIRE_NO_THROW( test_agent.voteForHash() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

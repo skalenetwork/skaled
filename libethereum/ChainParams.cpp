@@ -231,6 +231,11 @@ ChainParams ChainParams::loadConfig(
 
         if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
             s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
+           
+        s.contractStoragePatchTimestamp =
+            sChainObj.count( "contractStoragePatchTimestamp" ) ?
+                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+                0;
 
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
