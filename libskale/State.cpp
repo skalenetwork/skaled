@@ -35,6 +35,8 @@
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
 
+#include "ContractStorageLimitPatch.h"
+
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
 
@@ -681,7 +683,11 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            account.setStorage( change.key, change.value );
+            if ( ContractStorageLimitPatch::isEnabled() ) {
+                rollbackStorageChange( change, account );
+            } else {
+                account.setStorage( change.key, change.value );
+            }
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -705,7 +711,9 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
-    resetStorageChanges();
+    if ( !ContractStorageLimitPatch::isEnabled() ) {
+        resetStorageChanges();
+    }
 }
 
 void State::updateToLatestVersion() {
@@ -879,9 +887,24 @@ bool State::executeTransaction(
     }
 }
 
+void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
+    dev::u256 _currentValue = storage( _change.address, _change.key );
+    int count = 0;
+    if ( ( _change.value > 0 && _currentValue > 0 ) ||
+         ( _change.value == 0 && _currentValue == 0 ) ) {
+        count = 0;
+    } else {
+        count = ( _change.value == 0 ? -1 : 1 );
+    }
+    storageUsage[_change.address] += count * 32;
+    currentStorageUsed_ += count * 32;
+    _acc.setStorage( _change.key, _change.value );
+}
+
 void State::updateStorageUsage() {
     for ( const auto& [_address, _value] : storageUsage ) {
-        account( _address )->updateStorageUsage( _value );
+        if ( auto a = account( _address ) )
+            a->updateStorageUsage( _value );
     }
     resetStorageChanges();
 }

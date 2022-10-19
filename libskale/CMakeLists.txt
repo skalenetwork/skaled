@@ -12,6 +12,7 @@ set(sources
     SnapshotHashAgent.cpp
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
+    ContractStorageLimitPatch.cpp
     AmsterdamFixPatch.cpp
 )
 
@@ -27,6 +28,7 @@ set(headers
     SnapshotHashAgent.h
     UnsafeRegion.h
     TotalStorageUsedPatch.h
+    ContractStorageLimitPatch.h
     AmsterdamFixPatch.h
 )
 
