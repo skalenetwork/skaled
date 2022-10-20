@@ -1,4 +1,5 @@
 #include <libethereum/SchainPatch.h>
+#include <time.h>
 
 namespace dev {
 namespace eth {
@@ -15,5 +16,6 @@ public:
 
 private:
     friend class dev::eth::Client;
-    static dev::eth::Client* g_client;
+    static time_t revertableFSPatchTimestamp;
+    static time_t lastBlockTimestamp;
 };
