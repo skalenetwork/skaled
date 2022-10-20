@@ -43,6 +43,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
 #include <libskale/ContractStorageLimitPatch.h>
+#include <libskale/RevertableFSPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
@@ -141,6 +142,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     TotalStorageUsedPatch::g_client = this;
     ContractStorageLimitPatch::contractStoragePatchTimestamp =
         chainParams().sChain.contractStoragePatchTimestamp;
+    RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
 }
 
 Client::~Client() {
@@ -691,6 +693,7 @@ size_t Client::syncTransactions(
     unsigned goodReceipts;
 
     ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );

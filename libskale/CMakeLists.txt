@@ -14,6 +14,8 @@ set(sources
     TotalStorageUsedPatch.cpp
     ContractStorageLimitPatch.cpp
     AmsterdamFixPatch.cpp
+    RevertableFSPatch.cpp
+    OverlayFS.cpp
 )
 
 set(headers
@@ -30,6 +32,8 @@ set(headers
     TotalStorageUsedPatch.h
     ContractStorageLimitPatch.h
     AmsterdamFixPatch.h
+    RevertableFSPatch.h
+    OverlayFS.h
 )
 
 add_library(skale ${sources} ${headers})

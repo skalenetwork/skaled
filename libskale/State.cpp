@@ -44,6 +44,7 @@
 #include <skutils/eth_utils.h>
 
 #include <libethereum/BlockDetails.h>
+#include <libskale/RevertableFSPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -75,6 +76,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       contractStorageLimit_( _contractStorageLimit ) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
+    m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -147,6 +149,7 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+    m_fs_ptr = _s.m_fs_ptr;
 
     return *this;
 }
@@ -711,6 +714,8 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+    resetStorageChanges();
+    clearFileStorageCache();
     if ( !ContractStorageLimitPatch::isEnabled() ) {
         resetStorageChanges();
     }
@@ -803,6 +808,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     ExecutionResult res;
     e.setResultRecipient( res );
 
+    bool isCacheEnabled = RevertableFSPatch::isEnabled();
+    resetOverlayFS( isCacheEnabled );
+
     auto onOp = _onOp;
 #if ETH_VMTRACE
     if ( !onOp )
@@ -847,6 +855,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
+        m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
