@@ -1515,7 +1515,7 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    if ( false && downloadSnapshotFlag ) {
+    if ( downloadSnapshotFlag ) {
         statusAndControl->setExitState( StatusAndControl::StartAgain, true );
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
