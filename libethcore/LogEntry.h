@@ -25,6 +25,11 @@
 #include <libdevcore/FixedHash.h>
 #include <libethcore/Counter.h>
 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
+
+
 namespace dev {
 
 class RLP;
@@ -95,3 +100,7 @@ inline LogBloom bloom( LogEntries const& _logs ) {
 
 }  // namespace eth
 }  // namespace dev
+
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop

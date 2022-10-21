@@ -93,7 +93,7 @@ bytes dev::fromHex( std::string const& _s, WhenError _throw ) {
         if ( h != -1 && l != -1 )
             ret.push_back( ( _byte_ )( h * 16 + l ) );
         else if ( _throw == WhenError::Throw )
-            BOOST_THROW_EXCEPTION( BadHexCharacter() );
+                BOOST_THROW_EXCEPTION( BadHexCharacter() );
         else
             return bytes();
     }

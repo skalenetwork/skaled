@@ -27,6 +27,8 @@
 #include <libethereum/BlockChain.h>
 #include <libethereum/ClientBase.h>
 
+using BlockNumber = unsigned;
+
 namespace dev {
 namespace test {
 
@@ -69,13 +71,30 @@ public:
     };
     h256 importTransaction( eth::Transaction const& ) override { return {}; }
     eth::ExecutionResult call(
-        Address const&, u256, Address, bytes const&, u256, u256, eth::FudgeFactor ) override {
+        Address const&, u256, Address, bytes const&, u256, u256,
+#ifndef NO_ALETH_STATE
+                                  BlockNumber,
+#endif
+eth::FudgeFactor ) override {
         return {};
     };
     eth::TransactionSkeleton populateTransactionWithDefaults(
         eth::TransactionSkeleton const& ) const override {
         return {};
     };
+
+#ifndef NO_ALETH_STATE
+        u256 alethStateBalanceAt(Address, BlockNumber) const override
+           {return 0;}
+        u256 alethStateCountAt(Address, BlockNumber) const override
+           {return 0;}
+        u256 alethStateAt(Address, u256, BlockNumber) const override
+            {return 0;}
+        h256 alethStateRootAt(Address, BlockNumber) const override
+            {return h256();}
+        bytes alethStateCodeAt(Address, BlockNumber) const override
+            {return bytes();};
+#endif
 
 private:
     eth::BlockChain const& m_bc;

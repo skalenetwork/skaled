@@ -77,6 +77,7 @@ class Block {
     friend class dev::test::ImportTest;
     friend class dev::test::StateLoader;
     friend class Executive;
+    friend class AlethExecutive;
     friend class BlockChain;
 
 public:
@@ -94,7 +95,7 @@ public:
     Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath, dev::h256 const& _genesis,
         skale::BaseState _bs = skale::BaseState::PreExisting, Address const& _author = Address() );
 
-    Block( BlockChain const& _bc, h256 const& _hash, skale::State const& _state,
+    Block( BlockChain const& _bc, h256 const& _hash, State const& _state,
         skale::BaseState _bs = skale::BaseState::PreExisting, Address const& _author = Address() );
 
     enum NullType { Null };
@@ -164,14 +165,14 @@ public:
     // General information from state
 
     /// Get the backing state object.
-    skale::State const& state() const { return m_state; }
+    State const& state() const { return m_state; }
 
     // For altering accounts behind-the-scenes
 
     /// Get a mutable State object which is backing this block.
     /// @warning Only use this is you know what you're doing. If you use it while constructing a
     /// normal sealable block, don't expect things to work right.
-    skale::State& mutableState() { return m_state; }
+    State& mutableState() { return m_state; }
 
     // Information concerning ongoing transactions
 
@@ -213,6 +214,12 @@ public:
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
+
+
+    ExecutionResult executeAlethCall(
+            LastBlockHashesFace const& _lh, Transaction const& _t);
+
+
     /// Sync our transactions, killing those from the queue that we have and assimilating those that
     /// we don't.
     /// @returns a list of receipts one for each transaction placed from the queue into the state
@@ -225,7 +232,7 @@ public:
     /// transaction queue.
     bool sync( BlockChain const& _bc );
 
-    bool sync( BlockChain const& _bc, skale::State const& _state );
+    bool sync( BlockChain const& _bc, State const& _state );
 
     /// Sync with the block chain, but rather than synching to the latest block, instead sync to the
     /// given block.
@@ -313,12 +320,12 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    skale::State m_state;         ///< Our state.
+    State m_state;         ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.
     h256Hash m_transactionSet;  ///< The set of transaction hashes that we've included in the state.
-    skale::State m_precommit;   ///< State at the point immediately prior to rewards.
+    State m_precommit;   ///< State at the point immediately prior to rewards.
 
     BlockHeader m_previousBlock;     ///< The previous block's information.
     BlockHeader m_currentBlock;      ///< The current block's information.

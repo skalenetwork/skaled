@@ -25,7 +25,13 @@
 #ifndef SNAPSHOTHASHAGENT_H
 #define SNAPSHOTHASHAGENT_H
 
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include <libconsensus/libBLS/bls/bls.h>
+#pragma warning( pop)
+#pragma GCC diagnostic pop
+
 #include <libethereum/ChainParams.h>
 #include <boost/algorithm/string.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>

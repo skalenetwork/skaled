@@ -109,23 +109,43 @@ string Eth::eth_blockNumber() {
 }
 
 
-string Eth::eth_getBalance( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getBalance( string const& _address, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifndef  NO_ALETH_STATE
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toJS( client()->alethStateBalanceAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        } else {
+            return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+        }
+#else
         return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
 
+
 string Eth::eth_getStorageAt(
-    string const& _address, string const& _position, string const& /* _blockNumber */ ) {
+    string const& _address, string const& _position, string const&
+#ifndef  NO_ALETH_STATE
+    _blockNumber
+#endif
+    ) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifndef  NO_ALETH_STATE
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toJS(
+                toCompactBigEndian( client()->alethStateAt( jsToAddress( _address ),
+                                        jsToU256( _position ), jsToBlockNumber( _blockNumber ) ),
+                    32 ) );
+        }
+#endif
         return toJS( toCompactBigEndian(
             client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
     } catch ( ... ) {
@@ -133,11 +153,22 @@ string Eth::eth_getStorageAt(
     }
 }
 
-string Eth::eth_getStorageRoot( string const& /*_address*/, string const& /*_blockNumber*/ ) {
+string Eth::eth_getStorageRoot( string const&
+#ifndef  NO_ALETH_STATE
+_address
+#endif
+, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
+#ifndef  NO_ALETH_STATE
+                return toString(
+                    client()->alethStateRootAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#else
         throw std::logic_error( "Storage root is not exist in Skale state" );
-        //        return toString(
-        //            client()->stateRootAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -157,13 +188,21 @@ Json::Value Eth::eth_pendingTransactions() {
 
     return toJson( ours );
 }
-
-string Eth::eth_getTransactionCount( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getTransactionCount( string const& _address, string const&
+#ifndef  NO_ALETH_STATE
+       _blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+
+#ifndef  NO_ALETH_STATE
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toString(client()->alethStateCountAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        }
+#endif
+
         return toJS( client()->countAt( jsToAddress( _address ) ) );
+
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -217,11 +256,18 @@ Json::Value Eth::eth_getUncleCountByBlockNumber( string const& _blockNumber ) {
     }
 }
 
-string Eth::eth_getCode( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getCode( string const& _address, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifndef  NO_ALETH_STATE
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toJS( client()->alethStateCodeAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        }
+#endif
         return toJS( client()->codeAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -312,13 +358,29 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     return toJS( client()->importTransaction( t ) );
 }
 
-string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
+string Eth::eth_call( TransactionSkeleton& t, string const&
+_blockNumber
+) {
     // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
     // Remove this temporary fix.
     string blockNumber = "latest";
     setTransactionDefaults( t );
+
+#ifndef NO_ALETH_STATE
+    blockNumber = _blockNumber;
+    auto bN = jsToBlockNumber(blockNumber);
+    if ( !client()->isKnown( bN ) ) {
+        throw std::logic_error( "Unknown block number:" + blockNumber);
+    }
+#endif
+
+
     ExecutionResult er =
-        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+#ifndef NO_ALETH_STATE
+                        bN,
+#endif
+                        FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {

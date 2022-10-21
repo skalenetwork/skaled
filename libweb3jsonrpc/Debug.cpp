@@ -54,6 +54,7 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
     //    Block block = m_eth.block(blockHash(_blockHashOrNumber));
     //    auto const txCount = block.pending().size();
 
+
     //    State state(State::Null);
     //    if (static_cast<size_t>(_txIndex) < txCount)
     //        createIntermediateState(state, block, _txIndex, m_eth.blockChain());

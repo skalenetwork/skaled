@@ -39,6 +39,10 @@ static const unsigned c_bloomIndexLevels = 2;
 
 static const unsigned c_invalidNumber = ( unsigned ) -1;
 
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 struct BlockDetails {
     BlockDetails() : number( c_invalidNumber ), totalDifficulty( Invalid256 ) {}
     BlockDetails( unsigned _n, u256 _tD, h256 _p, h256s _c, size_t _blockBytes )
@@ -165,3 +169,7 @@ static const BlocksBlooms NullBlocksBlooms;
 
 }  // namespace eth
 }  // namespace dev
+
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop

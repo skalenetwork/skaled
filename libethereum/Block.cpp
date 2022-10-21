@@ -66,7 +66,7 @@ public:
 }  // namespace
 
 Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
-    dev::h256 const& _genesis, BaseState _bs, Address const& _author )
+    dev::h256 const& _genesis, skale::BaseState _bs, Address const& _author )
     : m_state( Invalid256, _dbPath, _genesis, _bs ),
       m_precommit( Invalid256 ),
       m_author( _author ) {
@@ -76,7 +76,7 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, BaseState /*_bs*/,
+Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, skale::BaseState /*_bs*/,
     const Address& _author )
     : m_state( _state ), m_precommit( Invalid256 ), m_author( _author ) {
     noteChain( _bc );
@@ -89,10 +89,14 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _hash ) );
     }
 
+#ifdef NO_ALETH_STATE
+
     if ( _bc.currentHash() != _hash && _bc.genesisHash() != _hash ) {
         throw std::logic_error(
             "Can't populate block with historical state because it is not supported" );
     }
+
+#endif
 
     auto b = _bc.block( _hash );
     BlockHeader bi( b );  // No need to check - it's already in the DB.
@@ -159,7 +163,7 @@ void Block::resetCurrent( int64_t _timestamp ) {
     updateBlockhashContract();
 
     //    if ( !m_state.checkVersion() )
-    m_state = m_state.startNew();
+    m_state = m_state.createNewCopyWithLocks();
 }
 
 SealEngineFace* Block::sealEngine() const {
@@ -360,7 +364,7 @@ pair< TransactionReceipts, bool > Block::sync(
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
-                        execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
+                        execute( _bc.lastBlockHashes(), t, skale::Permanence::Uncommitted );
                         ret.first.push_back( m_receipts.back() );
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
@@ -420,6 +424,10 @@ pair< TransactionReceipts, bool > Block::sync(
             break;
         }
     }
+
+
+
+
     return ret;
 }
 
@@ -440,14 +448,14 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
 
-    m_state = m_state.delegateWrite();  // mainly for debugging
+    m_state = m_state.createStateModifyCopyAndPassLock();  // mainly for debugging
     TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
     if ( vecMissing ) {
         assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
-    } else {
+    } else
         // NB! Not commit! Commit will be after 1st transaction!
         m_state.clearPartialTransactionReceipts();
-    }
+
 
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
@@ -497,7 +505,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             }
 
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
+                execute( _bc.lastBlockHashes(), tr, skale::Permanence::Committed, OnOpFunc() );
             receipts.push_back( m_receipts.back() );
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
@@ -522,7 +530,12 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
-    m_state.stopWrite();
+
+#ifndef NO_ALETH_STATE
+    m_state.mutableAlethState().saveRootForBlock(m_currentBlock.number());
+#endif
+
+    m_state.releaseWriteLock();
     return make_tuple( receipts, receipts.size() - count_bad );
 }
 
@@ -560,7 +573,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     sync( _bc, _block.info.parentHash(), BlockHeader() );
     resetCurrent();
 
-    m_state = m_state.startWrite();
+    m_state = m_state.createStateModifyCopy();
 
 #if ETH_TIMED_ENACTMENTS
     syncReset = t.elapsed();
@@ -756,8 +769,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    m_state.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                          State::CommitBehaviour::KeepEmptyAccounts );
+    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
@@ -772,8 +785,34 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     return tdIncrease;
 }
 
+
+
+ExecutionResult Block::executeAlethCall(
+        LastBlockHashesFace const& _lh, Transaction const& _t)
+{
+
+
+    auto p = skale::Permanence::Reverted;
+
+    auto onOp = OnOpFunc();
+
+    if (isSealed())
+        BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
+
+    // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
+    // transaction as possible.
+    uncommitToSeal();
+
+    EnvInfo const envInfo{info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID};
+    std::pair<ExecutionResult, TransactionReceipt> resultReceipt =
+            m_state.mutableAlethState().execute(envInfo, *m_sealEngine, _t, p, onOp);
+
+    return resultReceipt.first;
+}
+
+
 ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+    LastBlockHashesFace const& _lh, Transaction const& _t, skale::Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -785,7 +824,7 @@ ExecutionResult Block::execute(
     // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
-    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
+    State stateSnapshot = _p != skale::Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
@@ -810,26 +849,26 @@ ExecutionResult Block::execute(
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
         LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
-        if ( _p != Permanence::Reverted )  // if it is not call
-            _p = Permanence::CommittedWithoutState;
+        if ( _p != skale::Permanence::Reverted )  // if it is not call
+            _p = skale::Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
         LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
-        if ( _p != Permanence::Reverted )  // if it is not call
-            _p = Permanence::CommittedWithoutState;
+        if ( _p != skale::Permanence::Reverted )  // if it is not call
+            _p = skale::Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
-    if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
-         _p == Permanence::Uncommitted ) {
+    if ( _p == skale::Permanence::Committed || _p == skale::Permanence::CommittedWithoutState ||
+         _p == skale::Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
         m_transactions.push_back( _t );
         m_receipts.push_back( resultReceipt.second );
         m_transactionSet.insert( _t.sha3() );
     }
-    if ( _p == Permanence::Committed || _p == Permanence::Uncommitted ) {
-        m_state = stateSnapshot.delegateWrite();
+    if ( _p == skale::Permanence::Committed || _p == skale::Permanence::Uncommitted ) {
+        m_state = stateSnapshot.createStateModifyCopyAndPassLock();
     }
 
     return resultReceipt.first;
@@ -853,7 +892,7 @@ void Block::performIrregularModifications() {
         Addresses allDAOs = childDaos();
         for ( Address const& dao : allDAOs )
             m_state.transferBalance( dao, recipient, m_state.balance( dao ) );
-        m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+        m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
     }
 }
 
@@ -864,16 +903,16 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                State state = m_state.startWrite();
+                State state = m_state.createStateModifyCopy();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( blockNumber ).accountVersion );
-                state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                 m_sealEngine->evmSchedule( blockNumber ).accountVersion );
-            m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+            m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
     }
 
@@ -887,7 +926,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit(  dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     }
 }
 
@@ -1005,7 +1044,7 @@ bool Block::sealBlock( bytesConstRef _header ) {
 }
 
 void Block::startReadState() {
-    m_state = m_state.startRead();
+    m_state = m_state.createStateReadOnlyCopy();
 }
 
 h256 Block::stateRootBeforeTx( unsigned _i ) const {

@@ -25,6 +25,14 @@
 
 #pragma once
 
+
+#pragma once
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
+
+
 #include "CommonData.h"
 #include <boost/functional/hash.hpp>
 #include <algorithm>
@@ -551,3 +559,7 @@ struct hash< dev::h256 > : dev::h256::hash {};
 template <>
 struct hash< dev::h512 > : dev::h512::hash {};
 }  // namespace std
+
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop

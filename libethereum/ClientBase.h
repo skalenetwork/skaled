@@ -94,12 +94,16 @@ public:
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
         GasEstimationCallback const& _callback ) override;
 
+
     u256 balanceAt( Address _a ) const override;
     u256 countAt( Address _a ) const override;
     u256 stateAt( Address _a, u256 _l ) const override;
     bytes codeAt( Address _a ) const override;
     h256 codeHashAt( Address _a ) const override;
     std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
+
+
+
 
     LocalisedLogEntries logs( unsigned _watchId ) const override;
     LocalisedLogEntries logs( LogFilter const& _filter ) const override;

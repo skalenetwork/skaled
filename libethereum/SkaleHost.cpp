@@ -424,7 +424,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
                     Executive::verifyTransaction( tx,
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().startRead(), *m_client.sealEngine(), 0, getGasPrice(),
+                        m_client.state().createStateReadOnlyCopy(), *m_client.sealEngine(), 0, getGasPrice(),
                         isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
@@ -535,6 +535,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
+
+
+
     //
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;

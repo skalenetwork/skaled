@@ -21,6 +21,7 @@
  * @date 2014
  */
 
+
 #pragma once
 
 #include "Exceptions.h"
@@ -28,6 +29,9 @@
 #include "SHA3.h"
 #include "TrieCommon.h"
 #include <memory>
+
+
+
 
 namespace dev {
 

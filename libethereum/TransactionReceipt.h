@@ -23,6 +23,10 @@
 
 #pragma once
 
+
+
+
+
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
@@ -31,6 +35,10 @@
 #include <boost/variant/variant.hpp>
 #include <array>
 #include <string>
+
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 
 
 namespace dev {
@@ -139,3 +147,7 @@ public:
 
 }  // namespace eth
 }  // namespace dev
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop
+

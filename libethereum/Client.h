@@ -113,7 +113,11 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) override;
+        u256 _gas, u256 _gasPrice,
+#ifndef NO_ALETH_STATE
+                          BlockNumber _blockNumber,
+#endif
+                          FudgeFactor _ff = FudgeFactor::Strict ) override;
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
@@ -150,7 +154,7 @@ public:
     /// Get the block queue.
     BlockQueue const& blockQueue() const { return m_bq; }
     /// Get the state database.
-    skale::State const& state() const { return m_state; }
+    State const& state() const { return m_state; }
     /// Get some information on the transaction queue.
     TransactionQueue::Status transactionQueueStatus() const { return m_tq.status(); }
     TransactionQueue::Limits transactionQueueLimits() const { return m_tq.limits(); }
@@ -310,6 +314,9 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+    OverlayDB const& alethStateDB() const { return m_alethStateDB; }
+    OverlayDB const& alethBlockToStateRootDB() const { return m_alethBlockToStateRootDB; }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -361,6 +368,11 @@ protected:
 
     /// Submit
     virtual bool submitSealed( bytes const& _s );
+
+
+#ifndef NO_ALETH_STATE
+        Block blockByNumber(BlockNumber _h) const;
+#endif
 
 protected:
     /// Called when Worker is starting.
@@ -433,9 +445,15 @@ protected:
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
 
+
+#ifndef NO_ALETH_STATE
+    OverlayDB m_alethStateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
+    OverlayDB m_alethBlockToStateRootDB;         /// Maps hashes of block IDs to state roots
+#endif
+
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
 
-    skale::State m_state;            ///< Acts as the central point for the state.
+    State m_state;            ///< Acts as the central point for the state.
     mutable SharedMutex x_preSeal;   ///< Lock on m_preSeal.
     Block m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.
@@ -606,6 +624,15 @@ public:
     virtual unsigned installNewPendingTransactionWatch(
         std::function< void( const unsigned&, const Transaction& ) >& ) override;
     virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) override;
+
+
+#ifndef NO_ALETH_STATE
+        u256 alethStateBalanceAt(Address _a, BlockNumber _block) const override;
+        u256 alethStateCountAt(Address _a, BlockNumber _block) const override;
+        u256 alethStateAt(Address _a, u256 _l, BlockNumber _block) const override;
+        h256 alethStateRootAt(Address _a, BlockNumber _block) const override;
+        bytes alethStateCodeAt(Address _a, BlockNumber _block) const override;
+#endif
 };
 
 }  // namespace eth

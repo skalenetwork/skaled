@@ -95,7 +95,7 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
     ExecutionResult executionResult =
-        tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
+        tempState.execute( env, *bc().sealEngine(), t, skale::Permanence::Reverted ).first;
     if ( executionResult.excepted == TransactionException::OutOfGas ||
          executionResult.excepted == TransactionException::OutOfGasBase ||
          executionResult.excepted == TransactionException::OutOfGasIntrinsic ||
@@ -184,6 +184,7 @@ bytes ClientBase::codeAt( Address _a ) const {
 h256 ClientBase::codeHashAt( Address _a ) const {
     return latestBlock().codeHash( _a );
 }
+
 
 map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
     return latestBlock().storage( _a );

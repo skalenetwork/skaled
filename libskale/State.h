@@ -36,8 +36,10 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
+#include <libhistoric/AlethState.h>
 
 #include "OverlayDB.h"
+#include "BaseState.h"
 
 
 namespace std {
@@ -85,14 +87,9 @@ DEV_SIMPLE_EXCEPTION( AttemptToReadFromStateInThePast );
 DEV_SIMPLE_EXCEPTION( AttemptToWriteToNotLockedStateObject );
 }  // namespace error
 
-enum class BaseState { PreExisting, Empty };
 
-enum class Permanence {
-    Reverted,
-    Committed,
-    Uncommitted,  ///< Uncommitted state for change log readings in tests.
-    CommittedWithoutState
-};
+
+
 
 /// An atomic state changelog entry.
 struct Change {
@@ -164,18 +161,24 @@ using ChangeLog = std::vector< Change >;
  */
 class State {
 public:
-    enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
 
     using AddressMap = std::map< dev::h256, dev::Address >;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
+    /// This constructor is currently used only in tests
     explicit State( dev::u256 const& _accountStartNonce )
-        : State( _accountStartNonce, OverlayDB(), BaseState::Empty ) {}
+        : State( _accountStartNonce, OverlayDB(),
+#ifndef NO_ALETH_STATE
+                 dev::OverlayDB(),
+                 dev::OverlayDB(),
+#endif
+                 BaseState::Empty ) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the state.
+    // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
         dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 )
@@ -183,9 +186,25 @@ public:
               openDB( _dbPath, _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
+#ifndef NO_ALETH_STATE
+              dev::eth::AlethState::openDB(
+                  boost::filesystem::path(std::string(_dbPath.string()).append("/historic_state"))
+                  , _genesis,
+                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
+                                                  dev::WithExisting::Kill ),
+              dev::eth::AlethState::openDB(
+                  boost::filesystem::path(std::string(_dbPath.string()).append("/historic_roots")), _genesis,
+                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
+                                                  dev::WithExisting::Kill ),
+#endif    /// which uses it. If you have no preexisting database then set BaseState to something other
               _bs, _initialFunds, _contractStorageLimit ) {}
 
-    State() : State( dev::Invalid256, OverlayDB(), BaseState::Empty ) {}
+    State() : State( dev::Invalid256, skale::OverlayDB(),
+#ifndef NO_ALETH_STATE
+                     dev::OverlayDB(),
+                     dev::OverlayDB(),
+#endif
+                     BaseState::Empty ) {}
 
     /// Copy state object.
     State( State const& _s );
@@ -320,7 +339,8 @@ public:
 
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
-    void commit( CommitBehaviour _commitBehaviour = CommitBehaviour::RemoveEmptyAccounts );
+
+    void commit( dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
@@ -347,17 +367,18 @@ public:
     /// Different copies can be safely used in different threads
     /// but single object is not thread safe.
     /// No one can change state while returned object exists.
-    State startRead() const;
+    State createStateReadOnlyCopy() const;
 
     /// Create State copy to modify data.
-    State startWrite() const;
+    State createStateModifyCopy() const;
 
     /// Create State copy to modify data and pass writing lock to it
-    State delegateWrite();
+    State createStateModifyCopyAndPassLock();
 
-    void stopWrite();
 
-    State startNew();
+    void releaseWriteLock();
+
+    State createNewCopyWithLocks();
 
     /**
      * @brief connected returns true if state is connected to database
@@ -383,7 +404,10 @@ public:
 private:
     void updateToLatestVersion();
 
-    explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
+    explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
+#ifndef NO_ALETH_STATE
+       dev::OverlayDB const& _alethDb, dev::OverlayDB const& _alethBlockToStateRootDb,
+#endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
         dev::s256 _contractStorageLimit = 32 );
 
@@ -450,6 +474,13 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+
+#ifndef NO_ALETH_STATE
+        dev::eth::AlethState m_alethState;
+public:
+        /// Get the backing state object.
+        dev::eth::AlethState &  mutableAlethState()  { return m_alethState; }
+#endif
 
 public:
     std::shared_ptr< batched_io::db_face > db() {

@@ -25,6 +25,11 @@
 
 #pragma once
 
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
+
 #include "FixedHash.h"
 #include "vector_ref.h"
 
@@ -125,3 +130,7 @@ extern h256 const EmptySHA3;
 extern h256 const EmptyListSHA3;
 
 }  // namespace dev
+
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop

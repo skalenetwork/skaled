@@ -39,7 +39,7 @@
 #pragma warning( disable : 3682 )  // call through incomplete class
 #endif
 
-#include "StatusAndControl.h"
+
 
 #include <chrono>
 #include <functional>
@@ -55,6 +55,9 @@
 #pragma warning( push )
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Wpessimizing-move"
+#include "StatusAndControl.h"
 #include <boost/multiprecision/cpp_int.hpp>
 #pragma warning( pop )
 #pragma GCC diagnostic pop

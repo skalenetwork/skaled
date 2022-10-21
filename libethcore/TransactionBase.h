@@ -27,6 +27,11 @@
 
 #include <boost/optional.hpp>
 
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
+
 namespace dev {
 namespace eth {
 
@@ -300,3 +305,7 @@ inline std::ostream& operator<<( std::ostream& _out, TransactionBase const& _t )
 
 }  // namespace eth
 }  // namespace dev
+
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop
