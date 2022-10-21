@@ -69,17 +69,7 @@ protected:
     mutable bool m_enforceRefs = false;
 };
 
-class EnforceRefs {
-public:
-    EnforceRefs( MemoryDB const& _o, bool _r ) : m_o( _o ), m_r( _o.m_enforceRefs ) {
-        _o.m_enforceRefs = _r;
-    }
-    ~EnforceRefs() { m_o.m_enforceRefs = m_r; }
 
-private:
-    MemoryDB const& m_o;
-    bool m_r;
-};
 
 inline std::ostream& operator<<( std::ostream& _out, MemoryDB const& _m ) {
     for ( auto const& i : _m.get() ) {

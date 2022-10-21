@@ -31,6 +31,7 @@
 #include <libethcore/Common.h>
 
 namespace dev {
+    class OverlayDB;
 namespace eth {
 /**
  * Models the state of a single Ethereum account.
@@ -225,6 +226,22 @@ public:
     void updateStorageUsage( const s256& _value ) {
         m_storageUsed += _value;
         changed();
+    }
+
+    /// @returns account's original storage value corresponding to the @_key
+    /// not taking into account overlayed modifications
+    u256 originalStorageValue(u256 const& _key, OverlayDB const& _db) const;
+
+
+    /// @returns account's storage value corresponding to the @_key
+    /// taking into account overlayed modifications
+    u256 storageValue(u256 const& _key, OverlayDB const& _db) const
+    {
+        auto mit = m_storageOverlay.find(_key);
+        if (mit != m_storageOverlay.end())
+            return mit->second;
+
+        return originalStorageValue(_key, _db);
     }
 
 private:
