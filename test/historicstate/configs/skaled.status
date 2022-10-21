@@ -1,0 +1,14 @@
+    {
+       "subsystemRunning":{
+           "SnapshotDownloader": false,
+           "WaitingForTimestamp": false,
+           "Blockchain": true,
+           "Rpc": true
+       },
+       "exitState":{
+           "ClearDataDir": false,
+           "StartAgain": true,
+           "StartFromSnapshot": false,
+           "ExitTimeReached": false
+       }
+    }

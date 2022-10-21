@@ -62,7 +62,12 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
+State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
+#ifdef HISTORIC_STATE
+              dev::OverlayDB const & _historicDb,
+              dev::OverlayDB const & _historicBlockToStateRootDb,
+#endif
+              skale::BaseState _bs,
     u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
@@ -70,16 +75,34 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      contractStorageLimit_( _contractStorageLimit ) {
-    auto state = startRead();
+      contractStorageLimit_( _contractStorageLimit )
+#ifdef HISTORIC_STATE
+      ,m_historicState(_accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs)
+#endif
+    {
+    auto state = createStateReadOnlyCopy();
     totalStorageUsed_ = state.storageUsedTotal();
+#ifdef HISTORIC_STATE
+    m_historicState.setRootFromDB();
+#endif
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
-    } else if ( _bs == BaseState::Empty ) {
+    }
+    else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
         m_db_ptr->clearDB();
-    } else {
+    }
+/*
+#ifdef HISTORIC_STATE
+    else if ( _bs == BaseState::PreExistingNoHistoric ) {
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Converting into historic state" );
+        m_historicState.populateFromSkaleState(*this);
+    }
+#endif
+ */
+    else {
         throw std::logic_error( "Not implemented" );
     }
 }
@@ -122,8 +145,29 @@ skale::OverlayDB State::openDB(
     }
 }
 
-State::State( const State& _s ) {
-    *this = _s;
+State::State( const State& _s )
+#ifdef HISTORIC_STATE
+      : m_historicState(_s.m_historicState)
+#endif
+    {
+    x_db_ptr = _s.x_db_ptr;
+    if ( _s.m_db_read_lock ) {
+        m_db_read_lock.emplace( *x_db_ptr );
+    }
+    if ( _s.m_db_write_lock ) {
+        std::logic_error( "Can't copy locked for writing state object" );
+    }
+    m_db_ptr = _s.m_db_ptr;
+    m_storedVersion = _s.m_storedVersion;
+    m_currentVersion = _s.m_currentVersion;
+    m_cache = _s.m_cache;
+    m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
+    m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
+    m_accountStartNonce = _s.m_accountStartNonce;
+    m_changeLog = _s.m_changeLog;
+    m_initial_funds = _s.m_initial_funds;
+    contractStorageLimit_ = _s.contractStorageLimit_;
+    totalStorageUsed_ = _s.storageUsedTotal();
 }
 
 State& State::operator=( const State& _s ) {
@@ -145,7 +189,9 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
-
+#ifdef HISTORIC_STATE
+    m_historicState = _s.m_historicState;
+#endif
     return *this;
 }
 
@@ -200,7 +246,8 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts );
+    commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -336,59 +383,65 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour ) {
-    if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
+    if (_commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
 
     {
-        if ( !m_db_write_lock ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
+        if (!m_db_write_lock) {
+            BOOST_THROW_EXCEPTION(AttemptToWriteToNotLockedStateObject());
         }
-        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
+        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(*m_db_write_lock);
+        if (!checkVersion()) {
+            BOOST_THROW_EXCEPTION(AttemptToWriteToStateInThePast());
         }
 
-        for ( auto const& addressAccountPair : m_cache ) {
-            const Address& address = addressAccountPair.first;
-            const eth::Account& account = addressAccountPair.second;
+        for (auto const &addressAccountPair: m_cache) {
+            const Address &address = addressAccountPair.first;
+            const eth::Account &account = addressAccountPair.second;
 
-            if ( account.isDirty() ) {
-                if ( !account.isAlive() ) {
-                    m_db_ptr->kill( address );
-                    m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
+            if (account.isDirty()) {
+                if (!account.isAlive()) {
+                    m_db_ptr->kill(address);
+                    m_db_ptr->killAuxiliary(address, Auxiliary::CODE);
                     // TODO: remove account storage
                 } else {
-                    RLPStream rlpStream( 4 );
-                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
+                    RLPStream rlpStream(4);
+                    rlpStream << account.nonce() << account.balance() << u256(account.codeHash())
                               << account.storageUsed();
                     auto rawValue = rlpStream.out();
 
-                    m_db_ptr->insert( address, ref( rawValue ) );
+                    m_db_ptr->insert(address, ref(rawValue));
 
-                    for ( auto const& storageAddressValuePair : account.storageOverlay() ) {
-                        const u256& storageAddress = storageAddressValuePair.first;
-                        const u256& value = storageAddressValuePair.second;
+                    for (auto const &storageAddressValuePair: account.storageOverlay()) {
+                        const u256 &storageAddress = storageAddressValuePair.first;
+                        const u256 &value = storageAddressValuePair.second;
 
-                        m_db_ptr->insert( address, storageAddress, value );
+                        m_db_ptr->insert(address, storageAddress, value);
                     }
 
-                    if ( account.hasNewCode() ) {
+                    if (account.hasNewCode()) {
                         m_db_ptr->insertAuxiliary(
-                            address, ref( account.code() ), Auxiliary::CODE );
+                                address, ref(account.code()), Auxiliary::CODE);
                     }
                 }
             }
         }
-        m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
+        m_db_ptr->updateStorageUsage(totalStorageUsed_);
+        m_db_ptr->commit(std::to_string(++*m_storedVersion));
         m_currentVersion = *m_storedVersion;
     }
+
+
+#ifdef HISTORIC_STATE
+m_historicState.commitExternalChanges(m_cache);
+#endif
 
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
 }
+
 
 bool State::addressInUse( Address const& _id ) const {
     return !!account( _id );
@@ -720,21 +773,21 @@ void State::updateToLatestVersion() {
     }
 }
 
-State State::startRead() const {
+State State::createStateReadOnlyCopy() const {
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::startWrite() const {
+State State::createStateModifyCopy() const {
     State stateCopy = State( *this );
     stateCopy.m_db_write_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::delegateWrite() {
+State State::createStateModifyCopyAndPassLock() {
     if ( m_db_write_lock ) {
         boost::upgrade_lock< boost::shared_mutex > lock;
         lock.swap( *m_db_write_lock );
@@ -744,18 +797,18 @@ State State::delegateWrite() {
         stateCopy.m_db_write_lock->swap( lock );
         return stateCopy;
     } else {
-        return startWrite();
+        return createStateModifyCopy();
     }
 }
 
-void State::stopWrite() {
+void State::releaseWriteLock() {
     m_db_write_lock = boost::none;
 }
 
-State State::startNew() {
+State State::createNewCopyWithLocks() {
     State copy;
     if ( m_db_write_lock )
-        copy = delegateWrite();
+        copy = createStateModifyCopyAndPassLock();
     else
         copy = State( *this );
     if ( m_db_read_lock )
@@ -841,8 +894,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->addReceiptToPartials( receipt );
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-        commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts );
+        commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
         break;
     }
     case Permanence::Uncommitted:

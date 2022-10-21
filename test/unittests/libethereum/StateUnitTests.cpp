@@ -44,12 +44,12 @@ BOOST_AUTO_TEST_CASE( Basic,
 BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
     Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
     State state( 0 );
-    State s = state.startWrite();
+    State s = state.createStateModifyCopy();
     s.createContract( addr );
     uint8_t codeData[] = {'c', 'o', 'd', 'e'};
     u256 version = 123;
     s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
-    s.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
     auto& loadedCode = s.code( addr );
     BOOST_CHECK(
@@ -66,10 +66,10 @@ public:
         }
 
         // create accounts in the state
-        State writer = state.startWrite();
+        State writer = state.createStateModifyCopy();
         for ( auto const& hashAndAddr : hashToAddress )
             writer.addBalance( hashAndAddr.second, 100 );
-        writer.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+        writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     }
 
     TransientDirectory m_tempDirState;
@@ -84,7 +84,7 @@ BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-        state.startRead().addresses( h256{}, addressCount * 2 );
+        state.createStateReadOnlyCopy().addresses( h256{}, addressCount * 2 );
     State::AddressMap addresses = addressesAndNextKey.first;
 
     BOOST_CHECK_EQUAL( addresses.size(), addressCount );
@@ -93,9 +93,9 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses,
 }
 
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
-    int maxResults = 3;
+    uint maxResults = 3;
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-        state.startRead().addresses( h256{}, maxResults );
+        state.createStateReadOnlyCopy().addresses( h256{}, maxResults );
     State::AddressMap& addresses = addressesAndNextKey.first;
     h256& nextKey = addressesAndNextKey.second;
 
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 
     // request next chunk
     std::pair< State::AddressMap, h256 > addressesAndNextKey2 =
-        state.startRead().addresses( nextKey, maxResults );
+        state.createStateReadOnlyCopy().addresses( nextKey, maxResults );
     State::AddressMap& addresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( addresses2.size(), maxResults );
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 }
 
 BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
-    State s = state.startRead();
+    State s = state.createStateReadOnlyCopy();
 
     // delete some accounts
     unsigned deleteCount = 3;
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
 BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    State s = state.startRead();
+   State s = state.createStateReadOnlyCopy();
 
     // create some accounts
     unsigned createCount = 3;

@@ -1517,7 +1517,7 @@ int main( int argc, char** argv ) try {
         std::array< std::string, 4 > arrayCommonPublicKey;
         bool isRotationtrigger = true;
         if ( chainParams.sChain.nodeGroups.size() > 1 ) {
-            if ( time( NULL ) >=
+            if ( (uint64_t ) time( NULL ) >=
                  chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
                      .finishTs ) {
                 isRotationtrigger = false;
