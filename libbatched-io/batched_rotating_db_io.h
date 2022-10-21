@@ -27,7 +27,7 @@ public:
     rotating_db_io( const boost::filesystem::path& _path, size_t _nPieces, bool _archiveMode );
     const_iterator begin() const { return pieces.begin(); }
     const_iterator end() const { return pieces.end(); }
-    size_t pieces_count() const { return pieces.size(); }
+    size_t pieces_count() const { return n_pieces; }
     void rotate();
     virtual void revert() { /* no need - as all write is in rotate() */
     }
