@@ -45,4 +45,6 @@ boost::filesystem::path getIpcPath();
 boost::filesystem::path appendToFilename(
     boost::filesystem::path const& _orig, std::string const& _suffix );
 
+uint64_t getDirSize( const boost::filesystem::path& _p );
+
 }  // namespace dev

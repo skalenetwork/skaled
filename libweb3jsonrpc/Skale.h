@@ -71,6 +71,7 @@ public:
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
     std::string skale_getLatestBlockNumber() override;
+    Json::Value skale_getDBUsage() override;
 
     std::string oracle_submitRequest( std::string& request ) override;
     std::string oracle_checkResult( std::string& receipt ) override;
