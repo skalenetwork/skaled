@@ -77,6 +77,7 @@ class Block {
     friend class dev::test::ImportTest;
     friend class dev::test::StateLoader;
     friend class Executive;
+    friend class AlethExecutive;
     friend class BlockChain;
 
 public:

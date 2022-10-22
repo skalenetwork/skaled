@@ -433,6 +433,11 @@ protected:
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
 
+
+#ifndef NO_ALETH_STATE
+    OverlayDB m_stateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
+#endif
+
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
 
     skale::State m_state;            ///< Acts as the central point for the state.

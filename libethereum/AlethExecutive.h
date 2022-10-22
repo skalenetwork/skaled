@@ -21,7 +21,7 @@ namespace dev
         class State;
         class Block;
         class BlockChain;
-        class ExtVM;
+        class AlethExtVM;
         class SealEngineFace;
         struct Manifest;
 
@@ -49,7 +49,7 @@ namespace dev
         {
         public:
             /// Simple constructor; executive will operate on given state, with the given environment info.
-            AlethExecutive(State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
+            AlethExecutive(dev::eth::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
                       unsigned _level = 0): m_s(_s), m_envInfo(_envInfo), m_depth(_level), m_sealEngine(_sealEngine) {};
 
             /** Easiest constructor.
@@ -69,7 +69,7 @@ namespace dev
              * populating environment info from the given Block and the LastHashes portion from the BlockChain.
              * State is assigned the resultant value, but otherwise unused.
              */
-            AlethExecutive(State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level = 0);
+            AlethExecutive(dev::eth::State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level = 0);
 
             AlethExecutive(AlethExecutive const&) = delete;
             void operator=(AlethExecutive) = delete;
@@ -133,7 +133,7 @@ namespace dev
             void revert();
 
             /// Used only in tests
-            ExtVM const& extVM() const { return *m_ext; }
+            AlethExtVM const& extVM() const { return *m_ext; }
 
         private:
             /// @returns false iff go() must be called (and thus a VM execution in required).
@@ -144,10 +144,10 @@ namespace dev
             bool executeCreate(Address const& _txSender, u256 const& _endowment, u256 const& _gasPrice,
                                u256 const& _gas, bytesConstRef _code, Address const& _originAddress, u256 const& _version);
 
-            State& m_s;							///< The state to which this operation/transaction is applied.
+            dev::eth::State& m_s;							///< The state to which this operation/transaction is applied.
             // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
             EnvInfo m_envInfo;					///< Information on the runtime environment.
-            std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
+            std::shared_ptr<AlethExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
             owning_bytes_ref m_output;			///< Execution output.
             ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 

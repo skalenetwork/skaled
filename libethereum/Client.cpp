@@ -42,6 +42,9 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
+#ifndef NO_ALETH_STATE
+#include <libethereum/State.h>
+#endif
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
@@ -218,8 +221,8 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
-    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
-        BaseState::PreExisting, chainParams().accountInitialFunds,
+    m_state = skale::State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
+        skale::BaseState::PreExisting, chainParams().accountInitialFunds,
         chainParams().sChain.contractStorageLimit );
 
     if ( m_state.empty() ) {
@@ -228,6 +231,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     };
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
+#ifndef NO_ALETH_STATE
+    fs::path alethDBPath(std::string(m_dbPath.string()).append(".alethstate"));
+    m_stateDB = dev::eth::State::openDB(alethDBPath, bc().genesisHash(), _forceAction);
+#endif
+
     m_preSeal = bc().genesisBlock( m_state );
     m_postSeal = m_preSeal;
 
@@ -1192,7 +1200,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
 
     // throws in case of error
-    State state;
+    skale::State state;
     u256 gasBidPrice;
 
     DEV_GUARDED( m_blockImportMutex ) {
@@ -1239,7 +1247,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     try {
         Block temp = latestBlock();
         // TODO there can be race conditions between prev and next line!
-        State readStateForLock = temp.mutableState().startRead();
+        skale::State readStateForLock = temp.mutableState().startRead();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
@@ -1249,7 +1257,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-        ret = temp.execute( bc().lastBlockHashes(), t, Permanence::Reverted );
+        ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
                         << boost::current_exception_diagnostic_information() << std::endl;

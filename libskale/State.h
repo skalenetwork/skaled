@@ -38,6 +38,7 @@
 #include <libethereum/TransactionReceipt.h>
 
 #include "OverlayDB.h"
+#include "BaseState.h"
 
 
 namespace std {
@@ -85,7 +86,7 @@ DEV_SIMPLE_EXCEPTION( AttemptToReadFromStateInThePast );
 DEV_SIMPLE_EXCEPTION( AttemptToWriteToNotLockedStateObject );
 }  // namespace error
 
-enum class BaseState { PreExisting, Empty };
+
 
 enum class Permanence {
     Reverted,
