@@ -19,7 +19,10 @@ namespace dev
 {
 namespace eth
 {
-class StandardTrace
+    
+    
+    
+class AlethStandardTrace
 {
 public:
     struct DebugOptions
@@ -31,9 +34,9 @@ public:
     };
 
     // Output json trace to stream, one line per op
-    explicit StandardTrace(std::ostream& _outStream) noexcept : m_outStream{&_outStream} {}
+    explicit AlethStandardTrace(std::ostream& _outStream) noexcept : m_outStream{&_outStream} {}
     // Append json trace to given (array) value
-    explicit StandardTrace(Json::Value& _outValue) noexcept : m_outValue{&_outValue} {}
+    explicit AlethStandardTrace(Json::Value& _outValue) noexcept : m_outValue{&_outValue} {}
 
     void operator()(uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
         bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM);

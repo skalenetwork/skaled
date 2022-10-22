@@ -36,6 +36,7 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
+#include <libethereum/State.h>
 
 #include "OverlayDB.h"
 #include "BaseState.h"
@@ -453,6 +454,13 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+
+#ifndef NO_ALETH_STATE
+        dev::eth::State m_alethState;
+public:
+        /// Get the backing state object.
+        dev::eth::State &  mutableAlethState()  { return m_alethState; }
+#endif
 
 public:
     std::shared_ptr< batched_io::db_face > db() {

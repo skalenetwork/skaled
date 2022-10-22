@@ -360,7 +360,7 @@ pair< TransactionReceipts, bool > Block::sync(
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
-                        execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
+                        execute( _bc.lastBlockHashes(), t, skale::Permanence::Uncommitted );
                         ret.first.push_back( m_receipts.back() );
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
@@ -497,7 +497,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             }
 
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
+                execute( _bc.lastBlockHashes(), tr, skale::Permanence::Committed, OnOpFunc() );
             receipts.push_back( m_receipts.back() );
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
@@ -774,7 +774,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 }
 
 ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+    LastBlockHashesFace const& _lh, Transaction const& _t, skale::Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -786,7 +786,7 @@ ExecutionResult Block::execute(
     // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
-    State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
+    skale::State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
@@ -813,25 +813,25 @@ ExecutionResult Block::execute(
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
         LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
-        if ( _p != Permanence::Reverted )  // if it is not call
-            _p = Permanence::CommittedWithoutState;
+        if ( _p != skale::Permanence::Reverted )  // if it is not call
+            _p = skale::Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
         LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
-        if ( _p != Permanence::Reverted )  // if it is not call
-            _p = Permanence::CommittedWithoutState;
+        if ( _p != skale::Permanence::Reverted )  // if it is not call
+            _p = skale::Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
-    if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
-         _p == Permanence::Uncommitted ) {
+    if ( _p == skale::Permanence::Committed || _p == skale::Permanence::CommittedWithoutState ||
+         _p == skale::Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
         m_transactions.push_back( _t );
         m_receipts.push_back( resultReceipt.second );
         m_transactionSet.insert( _t.sha3() );
     }
-    if ( _p == Permanence::Committed || _p == Permanence::Uncommitted ) {
+    if ( _p == skale::Permanence::Committed || _p == skale::Permanence::Uncommitted ) {
         m_state = stateSnapshot.delegateWrite();
     }
 
@@ -856,7 +856,7 @@ void Block::performIrregularModifications() {
         Addresses allDAOs = childDaos();
         for ( Address const& dao : allDAOs )
             m_state.transferBalance( dao, recipient, m_state.balance( dao ) );
-        m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+        m_state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
     }
 }
 
@@ -867,16 +867,16 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                State state = m_state.startWrite();
+                skale::State state = m_state.startWrite();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( blockNumber ).accountVersion );
-                state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                 m_sealEngine->evmSchedule( blockNumber ).accountVersion );
-            m_state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+            m_state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
         }
     }
 
@@ -890,7 +890,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit( skale::State::CommitBehaviour::RemoveEmptyAccounts );
     }
 }
 
@@ -949,8 +949,8 @@ void Block::commitToSeal(
     //    m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
     // We do not commit now because will do it in blockchain syncing
-    //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-    //                                         State::CommitBehaviour::KeepEmptyAccounts);
+    //    m_state.commit(removeEmptyAccounts ? skale::State::CommitBehaviour::RemoveEmptyAccounts :
+    //                                         skale::State::CommitBehaviour::KeepEmptyAccounts);
 
     LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
                             << cc::notice( "is not calculated in Skale state" );

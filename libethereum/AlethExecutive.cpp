@@ -7,7 +7,7 @@
 #include "BlockChain.h"
 #include "AlethExtVM.h"
 #include "Interface.h"
-#include "StandardTrace.h"
+#include "AlethStandardTrace.h"
 #include "State.h"
 #include <libdevcore/CommonIO.h>
 #include <libethcore/CommonJS.h>
@@ -42,14 +42,14 @@ namespace {
 }  // namespace
 
 AlethExecutive::AlethExecutive(Block &_s, BlockChain const &_bc, unsigned _level)
-        : m_s(_s.mutableState()),
+        : m_s(_s.mutableState().mutableAlethState()),
           m_envInfo(_s.info(), _bc.lastBlockHashes(), 0, _bc.chainID()),
           m_depth(_level),
           m_sealEngine(*_bc.sealEngine()) {
 }
 
 AlethExecutive::AlethExecutive(Block &_s, LastBlockHashesFace const &_lh, unsigned _level)
-        : m_s(_s.mutableState()),
+        : m_s(_s.mutableState().mutableAlethState()),
           m_envInfo(_s.info(), _lh, 0, _s.sealEngine()->chainParams().chainID),
           m_depth(_level),
           m_sealEngine(*_s.sealEngine()) {

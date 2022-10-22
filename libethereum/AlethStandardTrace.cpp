@@ -2,7 +2,7 @@
 // Copyright 2014-2019 Aleth Authors.
 // Licensed under the GNU General Public License, Version 3.
 
-#include "StandardTrace.h"
+#include "AlethStandardTrace.h"
 #include "ExtVM.h"
 #include <libevm/LegacyVM.h>
 
@@ -19,7 +19,7 @@ bool changesStorage(Instruction _inst)
 
 }  // namespace
 
-void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, bigint newMemSize,
+void AlethStandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, bigint newMemSize,
     bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt)
 {
     (void)_steps;

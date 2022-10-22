@@ -161,7 +161,7 @@ CreateResult AlethExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _co
     return {transactionExceptionToEvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress()};
 }
 
-void AlethExtVM::selfdestruct(Address _a)
+void AlethExtVM::suicide(dev::Address _a)
 {
     // Why transfer is not used here? That caused a consensus issue before (see Quirk #2 in
     // http://martin.swende.se/blog/Ethereum_quirks_and_vulns.html). There is one test case
@@ -169,7 +169,7 @@ void AlethExtVM::selfdestruct(Address _a)
     // 'GeneralStateTests/stSystemOperationsTest/suicideSendEtherPostDeath.json'.
     m_s.addBalance(_a, m_s.balance(myAddress));
     m_s.setBalance(myAddress, 0);
-    ExtVMFace::selfdestruct(_a);
+    ExtVMFace::suicide(_a);
 }
 
 h256 AlethExtVM::blockHash(u256 _number)

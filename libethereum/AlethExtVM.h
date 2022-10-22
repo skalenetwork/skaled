@@ -89,7 +89,7 @@ namespace dev
             }
 
             /// Selfdestruct the associated contract to the given address.
-            void selfdestruct(Address _a) final;
+            void suicide(Address _a) override final;
 
             /// Return the EVM gas-price schedule for this execution context.
             EVMSchedule const& evmSchedule() const final { return m_evmSchedule; }
