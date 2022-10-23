@@ -345,51 +345,51 @@ void State::clearCacheIfTooLarge() const {
 }
 
 void State::commit( CommitBehaviour _commitBehaviour ) {
-    if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
+    if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
 
     {
-        if ( !m_db_write_lock ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
+        if (!m_db_write_lock) {
+            BOOST_THROW_EXCEPTION(AttemptToWriteToNotLockedStateObject());
         }
-        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
+        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(*m_db_write_lock);
+        if (!checkVersion()) {
+            BOOST_THROW_EXCEPTION(AttemptToWriteToStateInThePast());
         }
 
-        for ( auto const& addressAccountPair : m_cache ) {
-            const Address& address = addressAccountPair.first;
-            const eth::Account& account = addressAccountPair.second;
+        for (auto const &addressAccountPair: m_cache) {
+            const Address &address = addressAccountPair.first;
+            const eth::Account &account = addressAccountPair.second;
 
-            if ( account.isDirty() ) {
-                if ( !account.isAlive() ) {
-                    m_db_ptr->kill( address );
-                    m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
+            if (account.isDirty()) {
+                if (!account.isAlive()) {
+                    m_db_ptr->kill(address);
+                    m_db_ptr->killAuxiliary(address, Auxiliary::CODE);
                     // TODO: remove account storage
                 } else {
-                    RLPStream rlpStream( 4 );
-                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
+                    RLPStream rlpStream(4);
+                    rlpStream << account.nonce() << account.balance() << u256(account.codeHash())
                               << account.storageUsed();
                     auto rawValue = rlpStream.out();
 
-                    m_db_ptr->insert( address, ref( rawValue ) );
+                    m_db_ptr->insert(address, ref(rawValue));
 
-                    for ( auto const& storageAddressValuePair : account.storageOverlay() ) {
-                        const u256& storageAddress = storageAddressValuePair.first;
-                        const u256& value = storageAddressValuePair.second;
+                    for (auto const &storageAddressValuePair: account.storageOverlay()) {
+                        const u256 &storageAddress = storageAddressValuePair.first;
+                        const u256 &value = storageAddressValuePair.second;
 
-                        m_db_ptr->insert( address, storageAddress, value );
+                        m_db_ptr->insert(address, storageAddress, value);
                     }
 
-                    if ( account.hasNewCode() ) {
+                    if (account.hasNewCode()) {
                         m_db_ptr->insertAuxiliary(
-                            address, ref( account.code() ), Auxiliary::CODE );
+                                address, ref(account.code()), Auxiliary::CODE);
                     }
                 }
             }
         }
-        m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
+        m_db_ptr->updateStorageUsage(totalStorageUsed_);
+        m_db_ptr->commit(std::to_string(++*m_storedVersion));
         m_currentVersion = *m_storedVersion;
     }
 
@@ -397,6 +397,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
 }
+
 
 bool State::addressInUse( Address const& _id ) const {
     return !!account( _id );
@@ -869,6 +870,12 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
+
+// execute also for the historic state
+#ifndef NO_ALETH_STATE
+    m_alethState.execute(_envInfo,
+            _sealEngine, _t, _p, _onOp );
+#endif
 
     return make_pair( res, receipt );
 }

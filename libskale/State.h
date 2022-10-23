@@ -330,6 +330,7 @@ public:
 
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
+
     void commit( CommitBehaviour _commitBehaviour = CommitBehaviour::RemoveEmptyAccounts );
 
     /// Execute a given transaction.
