@@ -64,7 +64,11 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
+State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
+#ifndef NO_ALETH_STATE
+              dev::OverlayDB const & _alethDb,
+#endif
+              skale::BaseState _bs,
     u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
@@ -72,7 +76,8 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      contractStorageLimit_( _contractStorageLimit ) {
+      contractStorageLimit_( _contractStorageLimit ),
+      m_alethState(_accountStartNonce, _alethDb, _bs) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
@@ -124,7 +129,7 @@ skale::OverlayDB State::openDB(
     }
 }
 
-State::State( const State& _s ) {
+State::State( const State& _s ) : m_alethState(dev::eth::State::NullType::Null) {
     *this = _s;
 }
 
@@ -147,6 +152,7 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+    m_alethState = _s.m_alethState;
 
     return *this;
 }

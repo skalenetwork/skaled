@@ -89,12 +89,7 @@ DEV_SIMPLE_EXCEPTION( AttemptToWriteToNotLockedStateObject );
 
 
 
-enum class Permanence {
-    Reverted,
-    Committed,
-    Uncommitted,  ///< Uncommitted state for change log readings in tests.
-    CommittedWithoutState
-};
+
 
 /// An atomic state changelog entry.
 struct Change {
@@ -172,7 +167,11 @@ public:
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
     explicit State( dev::u256 const& _accountStartNonce )
-        : State( _accountStartNonce, OverlayDB(), BaseState::Empty ) {}
+        : State( _accountStartNonce, OverlayDB(),
+#ifndef NO_ALETH_STATE
+                 dev::OverlayDB(),
+#endif
+                 BaseState::Empty ) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
@@ -185,9 +184,18 @@ public:
               openDB( _dbPath, _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
+#ifndef NO_ALETH_STATE
+                 dev::eth::State::openDB( _dbPath, _genesis,
+                         _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
+                         dev::WithExisting::Kill ),
+#endif
               _bs, _initialFunds, _contractStorageLimit ) {}
 
-    State() : State( dev::Invalid256, OverlayDB(), BaseState::Empty ) {}
+    State() : State( dev::Invalid256, skale::OverlayDB(),
+#ifndef NO_ALETH_STATE
+                     dev::OverlayDB(),
+#endif
+                     BaseState::Empty ) {}
 
     /// Copy state object.
     State( State const& _s );
@@ -385,7 +393,10 @@ public:
 private:
     void updateToLatestVersion();
 
-    explicit State( dev::u256 const& _accountStartNonce, OverlayDB const& _db,
+    explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
+#ifndef NO_ALETH_STATE
+       dev::OverlayDB const& _alethDb,
+#endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
         dev::s256 _contractStorageLimit = 32 );
 

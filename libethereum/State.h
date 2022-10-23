@@ -17,6 +17,7 @@
 #include <libethereum/CodeSizeCache.h>
 #include <libevm/ExtVMFace.h>
 #include <libskale/BaseState.h>
+#include <libskale/Permanence.h>
 #include <array>
 #include <unordered_map>
 
@@ -28,35 +29,13 @@ namespace test { class ImportTest; class StateLoader; }
 namespace eth
 {
 
-// Import-specific errinfos
-using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
-using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
-using errinfo_uncleNumber = boost::error_info<struct tag_uncleNumber, u256>;
-using errinfo_unclesExcluded = boost::error_info<struct tag_unclesExcluded, h256Hash>;
-using errinfo_block = boost::error_info<struct tag_block, bytes>;
-using errinfo_now = boost::error_info<struct tag_now, unsigned>;
 
-using errinfo_transactionIndex = boost::error_info<struct tag_transactionIndex, unsigned>;
-
-using errinfo_vmtrace = boost::error_info<struct tag_vmtrace, std::string>;
-using errinfo_receipts = boost::error_info<struct tag_receipts, std::vector<bytes>>;
-using errinfo_transaction = boost::error_info<struct tag_transaction, bytes>;
-using errinfo_phase = boost::error_info<struct tag_phase, unsigned>;
-using errinfo_required_LogBloom = boost::error_info<struct tag_required_LogBloom, LogBloom>;
-using errinfo_got_LogBloom = boost::error_info<struct tag_get_LogBloom, LogBloom>;
-using LogBloomRequirementError = boost::tuple<errinfo_required_LogBloom, errinfo_got_LogBloom>;
 
 class BlockChain;
 class State;
 class TransactionQueue;
 struct VerifiedBlockRef;
 
-enum class Permanence
-{
-    Reverted,
-    Committed,
-    Uncommitted  ///< Uncommitted state for change log readings in tests.
-};
 
 DEV_SIMPLE_EXCEPTION(InvalidAccountStartNonceInState);
 DEV_SIMPLE_EXCEPTION(IncorrectAccountStartNonceInState);
@@ -148,16 +127,16 @@ public:
     using AddressMap = std::map<h256, Address>;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(),
-                                                          skale::BaseState::Empty) {}
+    explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(), skale::BaseState::Empty) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
-    /// which uses it. If you have no preexisting database then set BaseStatecd /d to something other
+    /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, skale::BaseState _bs = skale::BaseState::PreExisting);
 
     enum NullType { Null };
+
     State(NullType): State(Invalid256, OverlayDB(), skale::BaseState::Empty) {}
 
     /// Copy state object.
@@ -185,7 +164,8 @@ public:
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
-    std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
+    std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t,
+                                                           skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
 
     /// Execute @a _txCount transactions of a given block.
     /// This will change the state accordingly.

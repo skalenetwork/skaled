@@ -194,7 +194,7 @@ h256 AlethExtVM::blockHash(u256 _number)
     tx.forceSender(caller);
 
     ExecutionResult res;
-    std::tie(res, std::ignore) = m_s.execute(envInfo(), m_sealEngine, tx, Permanence::Reverted);
+    std::tie(res, std::ignore) = m_s.execute(envInfo(), m_sealEngine, tx, skale::Permanence::Reverted);
     return h256(res.output);
 }
 

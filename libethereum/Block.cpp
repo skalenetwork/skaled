@@ -66,7 +66,7 @@ public:
 }  // namespace
 
 Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
-    dev::h256 const& _genesis, BaseState _bs, Address const& _author )
+    dev::h256 const& _genesis, skale::BaseState _bs, Address const& _author )
     : m_state( Invalid256, _dbPath, _genesis, _bs ),
       m_precommit( Invalid256 ),
       m_author( _author ) {
@@ -76,7 +76,7 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, BaseState /*_bs*/,
+Block::Block( const BlockChain& _bc, h256 const& _hash, const skale::State& _state, skale::BaseState /*_bs*/,
     const Address& _author )
     : m_state( _state ), m_precommit( Invalid256 ), m_author( _author ) {
     noteChain( _bc );
@@ -229,7 +229,7 @@ bool Block::sync( BlockChain const& _bc ) {
     return sync( _bc, _bc.currentHash() );
 }
 
-bool Block::sync( BlockChain const& _bc, State const& _state ) {
+bool Block::sync( BlockChain const& _bc, skale::State const& _state ) {
     m_state = _state;
     m_precommit = _state;
     return sync( _bc );
@@ -757,8 +757,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    m_state.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                          State::CommitBehaviour::KeepEmptyAccounts );
+    m_state.commit( removeEmptyAccounts ? skale::State::CommitBehaviour::RemoveEmptyAccounts :
+                                          skale::State::CommitBehaviour::KeepEmptyAccounts );
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
@@ -786,7 +786,7 @@ ExecutionResult Block::execute(
     // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
-    skale::State stateSnapshot = _p != Permanence::Reverted ? m_state.delegateWrite() : m_state;
+    skale::State stateSnapshot = _p != skale::Permanence::Reverted ? m_state.delegateWrite() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
