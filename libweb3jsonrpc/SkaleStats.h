@@ -246,8 +246,8 @@ public:
     virtual Json::Value skale_stats() override;
     virtual Json::Value skale_nodesRpcInfo() override;
     virtual Json::Value skale_imaInfo() override;
-    virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
-    virtual Json::Value skale_imaBSU256( const Json::Value& request ) override;
+//    virtual Json::Value skale_imaVerifyAndSign( const Json::Value& request ) override;
+//    virtual Json::Value skale_imaBSU256( const Json::Value& request ) override;
     virtual Json::Value skale_imaBroadcastTxnInsert( const Json::Value& request ) override;
     virtual Json::Value skale_imaBroadcastTxnErase( const Json::Value& request ) override;
     virtual Json::Value skale_imaTxnInsert( const Json::Value& request ) override;

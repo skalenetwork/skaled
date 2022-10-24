@@ -1708,6 +1708,7 @@ skutils::url SkaleStats::pick_own_s_chain_url() {
     return u;
 }
 
+/*
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
     std::string strSgxWalletURL =
@@ -2520,7 +2521,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 if ( isDefaultProgressiveLogsSearchNeeded )
                     jarrFoundLogRecords = do_logs_search_progressive( do_getBlockNumber() );
 
-                /* example of jarrFoundLogRecords value:
+                / * example of jarrFoundLogRecords value:
                     [{
                         "address": "0x4c6ad417e3bf7f3d623bab87f29e119ef0f28059",
 
@@ -2548,7 +2549,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         "transactionIndex": 0,
 
                         "type": "mined"
-                    }]            */
+                    }]            * /
                 bool bIsVerified = false;
                 if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 )
                     bIsVerified = true;
@@ -2641,7 +2642,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     // Find more transaction details, simlar to call tp
                     // eth_getTransactionReceipt
                     //
-                    /* Receipt should look like:
+                    / * Receipt should look like:
                         {
                             "blockHash":
                        "0x995cb104795b28c16f3be075fbf08afd69753a6c1b16df3758e570342fd3dadf",
@@ -2697,7 +2698,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         The last log record in receipt abaove contains "topics" and
                         "data" field we
                        should verify by comparing fields of IMA message
-                    */
+                    * /
                     //
                     nlohmann::json joTransactionReceipt;
                     try {
@@ -3284,7 +3285,7 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }  // skale_imaBSU256()
-
+*/
 
 Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
