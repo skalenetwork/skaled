@@ -38,6 +38,7 @@
 #include <libethereum/TransactionReceipt.h>
 
 #include "OverlayDB.h"
+#include "OverlayFS.h"
 
 
 namespace std {
@@ -380,6 +381,7 @@ public:
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
 
+
 private:
     void updateToLatestVersion();
 
@@ -413,7 +415,19 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+    void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
+
     void updateStorageUsage();
+
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    };
+
+    void clearFileStorageCache() {
+        if ( m_fs_ptr ) {
+            m_fs_ptr->reset();
+        }
+    };
 
 public:
     bool checkVersion() const;
@@ -426,6 +440,7 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
+    std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
     std::shared_ptr< size_t > m_storedVersion;
     size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
@@ -458,6 +473,8 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
+
+    std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

@@ -12,7 +12,10 @@ set(sources
     SnapshotHashAgent.cpp
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
+    ContractStorageLimitPatch.cpp
     AmsterdamFixPatch.cpp
+    RevertableFSPatch.cpp
+    OverlayFS.cpp
 )
 
 set(headers
@@ -27,7 +30,10 @@ set(headers
     SnapshotHashAgent.h
     UnsafeRegion.h
     TotalStorageUsedPatch.h
+    ContractStorageLimitPatch.h
     AmsterdamFixPatch.h
+    RevertableFSPatch.h
+    OverlayFS.h
 )
 
 add_library(skale ${sources} ${headers})
