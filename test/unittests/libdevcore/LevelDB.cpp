@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE( rotation_test ) {
     const int rotateInterval = 10;
     const int nPreserved = ( nPieces - 1 ) * rotateInterval;
 
-    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces );
+    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
     db::ManuallyRotatingLevelDB rdb( batcher );
 
     for ( int i = 0; i < nPreserved * 3; ++i ) {
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     TransientDirectory td;
     const int nPieces = 3;
 
-    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces );
+    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
     db::ManuallyRotatingLevelDB rdb( batcher );
 
     rdb.insert( string( "a" ), string( "va" ) );
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE( rotation_circle_test ){
     TransientDirectory td;
     const int nPieces = 3;
 
-    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces );
+    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
     db::ManuallyRotatingLevelDB rdb( batcher );
 
     rdb.insert( string( "a" ), string( "va1" ) );
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
     for(int pre_rotate = 0; pre_rotate < nPieces; pre_rotate++){
         // scope 1
         {
-            auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces );
+            auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
             db::ManuallyRotatingLevelDB rdb( batcher );
 
             rdb.insert( string( "a" ), to_string(0) );
@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
 
         // scope 2
         {
-            auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces );
+            auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
             db::ManuallyRotatingLevelDB rdb( batcher );
             BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(pre_rotate));
         }
