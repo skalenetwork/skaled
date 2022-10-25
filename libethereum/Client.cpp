@@ -1371,9 +1371,9 @@ std::pair< uint64_t, uint64_t > Client::getBlocksDbUsage() const {
 
 std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
     uint64_t contractStorageUsed = m_state.storageUsedTotal().convert_to< uint64_t >();
-
-    fs::path stateDbPath =
-        m_dbPath / BlockChain::getChainDirName( chainParams() ) / fs::path( "state" );
+    fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
+                           fs::path( toString( dev::eth::c_databaseVersion ) ) /
+                           fs::path( "state" );
     return { dev::getDirSize( stateDbPath ), contractStorageUsed };
 }
 
