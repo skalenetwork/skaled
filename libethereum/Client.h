@@ -310,6 +310,9 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+    OverlayDB const& alethStateDB() const { return m_alethStateDB; }
+    OverlayDB const& alethBlockToStateRootDB() const { return m_alethBlockToStateRootDB; }
+
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -435,7 +438,8 @@ protected:
 
 
 #ifndef NO_ALETH_STATE
-    OverlayDB m_stateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
+    OverlayDB m_alethStateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
+    OverlayDB m_alethBlockToStateRootDB;         /// Maps hashes of block IDs to state roots
 #endif
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.

@@ -233,7 +233,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // just take the root from the genesis block.
 #ifndef NO_ALETH_STATE
     fs::path alethDBPath(std::string(m_dbPath.string()).append(".alethstate"));
-    m_stateDB = dev::eth::State::openDB(alethDBPath, bc().genesisHash(), _forceAction);
+    fs::path alethStateRootDBPath(std::string(m_dbPath.string()).append(".alethroots"));
+    m_alethStateDB = dev::eth::State::openDB(alethDBPath, bc().genesisHash(), _forceAction);
+    m_alethBlockToStateRootDB = dev::eth::State::openDB(alethStateRootDBPath, bc().genesisHash(), _forceAction);
 #endif
 
     m_preSeal = bc().genesisBlock( m_state );

@@ -22,8 +22,9 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-State::State(u256 const &_accountStartNonce, OverlayDB const &_db, skale::BaseState _bs) :
+State::State(u256 const &_accountStartNonce, OverlayDB const &_db, OverlayDB const &_blockToStateRootDB, skale::BaseState _bs) :
         m_db(_db),
+        m_blockToStateRootDB(_blockToStateRootDB),
         m_state(&m_db),
         m_accountStartNonce(_accountStartNonce) {
     if (_bs != skale::BaseState::PreExisting)
@@ -33,6 +34,7 @@ State::State(u256 const &_accountStartNonce, OverlayDB const &_db, skale::BaseSt
 
 State::State(State const &_s) :
         m_db(_s.m_db),
+        m_blockToStateRootDB(_s.m_blockToStateRootDB),
         m_state(&m_db, _s.m_state.root(), Verification::Skip),
         m_cache(_s.m_cache),
         m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
@@ -127,6 +129,7 @@ State &State::operator=(State const &_s) {
         return *this;
 
     m_db = _s.m_db;
+    m_blockToStateRootDB = _s.m_blockToStateRootDB;
     m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;

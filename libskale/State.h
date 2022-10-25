@@ -170,6 +170,7 @@ public:
         : State( _accountStartNonce, OverlayDB(),
 #ifndef NO_ALETH_STATE
                  dev::OverlayDB(),
+                 dev::OverlayDB(),
 #endif
                  BaseState::Empty ) {}
 
@@ -188,11 +189,15 @@ public:
                  dev::eth::State::openDB( _dbPath, _genesis,
                          _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                          dev::WithExisting::Kill ),
+                 dev::eth::State::openDB( _dbPath, _genesis,
+                                          _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
+                                          dev::WithExisting::Kill ),
 #endif
               _bs, _initialFunds, _contractStorageLimit ) {}
 
     State() : State( dev::Invalid256, skale::OverlayDB(),
 #ifndef NO_ALETH_STATE
+                     dev::OverlayDB(),
                      dev::OverlayDB(),
 #endif
                      BaseState::Empty ) {}
@@ -396,7 +401,7 @@ private:
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifndef NO_ALETH_STATE
-       dev::OverlayDB const& _alethDb,
+       dev::OverlayDB const& _alethDb, dev::OverlayDB const& _alethBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
         dev::s256 _contractStorageLimit = 32 );

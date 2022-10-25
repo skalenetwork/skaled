@@ -127,17 +127,19 @@ public:
     using AddressMap = std::map<h256, Address>;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(), skale::BaseState::Empty) {}
+    explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(),
+                                                          OverlayDB(), skale::BaseState::Empty) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, skale::BaseState _bs = skale::BaseState::PreExisting);
+    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, OverlayDB const &_blockToStateRootDB,
+                   skale::BaseState _bs = skale::BaseState::PreExisting);
 
     enum NullType { Null };
 
-    State(NullType): State(Invalid256, OverlayDB(), skale::BaseState::Empty) {}
+    State(NullType): State(Invalid256, OverlayDB(), OverlayDB(), skale::BaseState::Empty) {}
 
     /// Copy state object.
     State(State const& _s);
@@ -316,6 +318,9 @@ private:
 
     /// Our overlay for the state tree.
     OverlayDB m_db;
+    // Overlay DB for the block id state root mapping
+    OverlayDB m_blockToStateRootDB;
+
     /// Our state tree, as an OverlayDB DB.
     SecureTrieDB<Address, OverlayDB> m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)

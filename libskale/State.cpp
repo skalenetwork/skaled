@@ -67,6 +67,7 @@ using dev::eth::TransactionReceipt;
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifndef NO_ALETH_STATE
               dev::OverlayDB const & _alethDb,
+              dev::OverlayDB const & _alethBlockToStateRootDb,
 #endif
               skale::BaseState _bs,
     u256 _initialFunds, s256 _contractStorageLimit )
@@ -77,7 +78,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
       contractStorageLimit_( _contractStorageLimit ),
-      m_alethState(_accountStartNonce, _alethDb, _bs) {
+      m_alethState(_accountStartNonce, _alethDb, _alethBlockToStateRootDb, _bs) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
