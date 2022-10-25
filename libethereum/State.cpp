@@ -581,6 +581,10 @@ State::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, Trans
             removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
             commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts
                                        : State::CommitBehaviour::KeepEmptyAccounts);
+
+            m_blockToStateRootDB.insert(h256(_envInfo.number()), m_state.root().ref());
+            m_blockToStateRootDB.commit();
+
             break;
         case skale::Permanence::Uncommitted:
             break;
