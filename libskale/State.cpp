@@ -35,6 +35,8 @@
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
 
+#include "ContractStorageLimitPatch.h"
+
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
 
@@ -42,6 +44,7 @@
 #include <skutils/eth_utils.h>
 
 #include <libethereum/BlockDetails.h>
+#include <libskale/RevertableFSPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -73,6 +76,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
       contractStorageLimit_( _contractStorageLimit ) {
     auto state = startRead();
     totalStorageUsed_ = state.storageUsedTotal();
+    m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -145,6 +149,7 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+    m_fs_ptr = _s.m_fs_ptr;
 
     return *this;
 }
@@ -681,7 +686,11 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            account.setStorage( change.key, change.value );
+            if ( ContractStorageLimitPatch::isEnabled() ) {
+                rollbackStorageChange( change, account );
+            } else {
+                account.setStorage( change.key, change.value );
+            }
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -706,6 +715,10 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     resetStorageChanges();
+    clearFileStorageCache();
+    if ( !ContractStorageLimitPatch::isEnabled() ) {
+        resetStorageChanges();
+    }
 }
 
 void State::updateToLatestVersion() {
@@ -795,6 +808,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     ExecutionResult res;
     e.setResultRecipient( res );
 
+    bool isCacheEnabled = RevertableFSPatch::isEnabled();
+    resetOverlayFS( isCacheEnabled );
+
     auto onOp = _onOp;
 #if ETH_VMTRACE
     if ( !onOp )
@@ -839,6 +855,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
+        m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
@@ -879,9 +896,24 @@ bool State::executeTransaction(
     }
 }
 
+void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
+    dev::u256 _currentValue = storage( _change.address, _change.key );
+    int count = 0;
+    if ( ( _change.value > 0 && _currentValue > 0 ) ||
+         ( _change.value == 0 && _currentValue == 0 ) ) {
+        count = 0;
+    } else {
+        count = ( _change.value == 0 ? -1 : 1 );
+    }
+    storageUsage[_change.address] += count * 32;
+    currentStorageUsed_ += count * 32;
+    _acc.setStorage( _change.key, _change.value );
+}
+
 void State::updateStorageUsage() {
     for ( const auto& [_address, _value] : storageUsage ) {
-        account( _address )->updateStorageUsage( _value );
+        if ( auto a = account( _address ) )
+            a->updateStorageUsage( _value );
     }
     resetStorageChanges();
 }

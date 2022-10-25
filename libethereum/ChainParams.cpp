@@ -114,6 +114,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         bool syncNode = false;
+        bool archiveMode = false;
         std::string ip, ip6, keyShareName, sgxServerUrl;
         size_t t = 0;
         uint64_t port = 0, port6 = 0;
@@ -135,6 +136,10 @@ ChainParams ChainParams::loadConfig(
         }
         try {
             syncNode = infoObj.at( "syncNode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            archiveMode = infoObj.at( "archiveMode" ).get_bool();
         } catch ( ... ) {
         }
 
@@ -178,7 +183,7 @@ ChainParams ChainParams::loadConfig(
 
         cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys, syncNode };
+            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode };
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -228,6 +233,14 @@ ChainParams ChainParams::loadConfig(
 
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+        if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
+            s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
+
+        s.contractStoragePatchTimestamp =
+            sChainObj.count( "contractStoragePatchTimestamp" ) ?
+                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+                0;
 
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
