@@ -498,6 +498,10 @@ Json::Value Skale::skale_getDBUsage() {
     joDBUsageInfo["skaledDBUsage"] = joSkaledDBUsage;
 
     nlohmann::json joConsensusDBUsage = nlohmann::json::object();
+    auto consensusDbUsage = m_client.skaleHost()->getConsensusDbUsage();
+    for ( const auto& [key, val] : consensusDbUsage ) {
+        joConsensusDBUsage[key] = val;
+    }
 
     joDBUsageInfo["consensusDBUsage"] = joConsensusDBUsage;
 

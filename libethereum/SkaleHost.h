@@ -124,6 +124,7 @@ public:
 
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
+    std::map< std::string, uint64_t > getConsensusDbUsage() const;
     std::array< std::string, 4 > getIMABLSPublicKey() const;
 
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
