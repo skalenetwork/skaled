@@ -1116,6 +1116,22 @@ void Client::prepareForTransaction() {
 }
 
 
+#ifndef NO_ALETH_STATE
+Block Client::blockByNumber(BlockNumber _h) const
+{
+    try {
+        auto hash = ClientBase::hashFromNumber(_h);
+        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, m_state ); }
+        assert( false );
+        return Block( bc() );
+    } catch ( Exception& ex ) {
+        ex << errinfo_block( bc().block( bc().currentHash() ) );
+        onBadBlock( ex );
+        return Block( bc() );
+    }
+}
+#endif
+
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
     try {
@@ -1243,11 +1259,46 @@ h256 Client::importTransaction( Transaction const& _t ) {
 }
 
 // TODO: remove try/catch, allow exceptions
+
+
+
+
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
-    u256 _gas, u256 _gasPrice, FudgeFactor _ff ) {
+    u256 _gas, u256 _gasPrice,
+#ifndef NO_ALETH_STATE
+                              BlockNumber _blockNumber,
+#endif
+                              FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
+
+
         Block temp = latestBlock();
+
+#ifndef NO_ALETH_STATE
+        Block historicBlock = blockByNumber(_blockNumber);
+        if (_blockNumber < bc().number()) {
+            // historic state
+            try
+            {
+                u256 nonce = max<u256>(historicBlock.transactionsFrom(_from), m_tq.maxNonce(_from));
+                u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
+                u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
+                Transaction t(_value, gasPrice, gas, _dest, _data, nonce);
+                t.forceSender(_from);
+                if (_ff == FudgeFactor::Lenient)
+                    temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+                ret = temp.executeAlethCall(bc().lastBlockHashes(), t);
+            }
+            catch (...)
+            {
+                cwarn << boost::current_exception_diagnostic_information();
+            }
+            return ret;
+
+        }
+#endif
+
         // TODO there can be race conditions between prev and next line!
         skale::State readStateForLock = temp.mutableState().startRead();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );

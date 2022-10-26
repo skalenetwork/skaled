@@ -108,7 +108,7 @@ string Eth::eth_blockNumber() {
 }
 
 
-string Eth::eth_getBalance( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getBalance( string const& _address, string const&  _blockNumber  ) {
     try {
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
@@ -118,6 +118,7 @@ string Eth::eth_getBalance( string const& _address, string const& /* _blockNumbe
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
+
 
 string Eth::eth_getStorageAt(
     string const& _address, string const& _position, string const& /* _blockNumber */ ) {
@@ -311,13 +312,29 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     return toJS( client()->importTransaction( t ) );
 }
 
-string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
+string Eth::eth_call( TransactionSkeleton& t, string const&
+_blockNumber
+) {
     // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
     // Remove this temporary fix.
     string blockNumber = "latest";
     setTransactionDefaults( t );
+
+#ifndef NO_ALETH_STATE
+    blockNumber = _blockNumber;
+    auto bN = jsToBlockNumber(blockNumber);
+    if ( !client()->isKnown( bN ) ) {
+        throw std::logic_error( "Unknown block number:" + blockNumber);
+    }
+#endif
+
+
     ExecutionResult er =
-        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+#ifndef NO_ALETH_STATE
+                        bN,
+#endif
+                        FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {

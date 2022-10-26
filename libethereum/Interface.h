@@ -85,12 +85,23 @@ public:
     /// Blocks until all pending transactions have been processed.
     virtual void flushTransactions() = 0;
 
+
     /// Makes the given call. Nothing is recorded into the state.
     virtual ExecutionResult call( Address const& _from, u256 _value, Address _dest,
-        bytes const& _data, u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) = 0;
+        bytes const& _data, u256 _gas, u256 _gasPrice,
+#ifndef NO_ALETH_STATE
+                                  BlockNumber _blockNumber,
+#endif
+                                  FudgeFactor _ff = FudgeFactor::Strict ) = 0;
     ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) {
-        return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice, _ff );
+        u256 _gas, u256 _gasPrice,
+#ifndef NO_ALETH_STATE
+                          BlockNumber _blockNumber,
+#endif
+        FudgeFactor _ff = FudgeFactor::Strict ) {
+        return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice,
+                     _blockNumber,
+                _ff );
     }
 
     /// Injects the RLP-encoded block given by the _rlp into the block queue directly.

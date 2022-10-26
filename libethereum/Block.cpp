@@ -773,6 +773,32 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     return tdIncrease;
 }
 
+
+
+ExecutionResult Block::executeAlethCall(
+        LastBlockHashesFace const& _lh, Transaction const& _t)
+{
+
+
+    auto p = skale::Permanence::Reverted;
+
+    auto onOp = OnOpFunc();
+
+    if (isSealed())
+        BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
+
+    // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
+    // transaction as possible.
+    uncommitToSeal();
+
+    EnvInfo const envInfo{info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID};
+    std::pair<ExecutionResult, TransactionReceipt> resultReceipt =
+            m_state.mutableAlethState().execute(envInfo, *m_sealEngine, _t, p, onOp);
+
+    return resultReceipt.first;
+}
+
+
 ExecutionResult Block::execute(
     LastBlockHashesFace const& _lh, Transaction const& _t, skale::Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );

@@ -214,6 +214,12 @@ public:
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
+
+
+    ExecutionResult executeAlethCall(
+            LastBlockHashesFace const& _lh, Transaction const& _t);
+
+
     /// Sync our transactions, killing those from the queue that we have and assimilating those that
     /// we don't.
     /// @returns a list of receipts one for each transaction placed from the queue into the state

@@ -25,10 +25,21 @@
 #include <string>
 #include <vector>
 
+
+
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
+
 #include <boost/log/attributes/scoped_attribute.hpp>
 #include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop
+
 
 #include <skutils/console_colors.h>
 

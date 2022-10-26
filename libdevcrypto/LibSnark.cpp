@@ -19,11 +19,20 @@
 
 #include <libdevcrypto/LibSnark.h>
 
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
+
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g2.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pairing.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp>
 #include <libff/common/profiling.hpp>
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop
+
 
 #include <libdevcore/Exceptions.h>
 #include <libdevcore/Log.h>

@@ -764,11 +764,13 @@ static bool stat_is_accessible_json_path( const std::string& strPath ) {
     return false;
 }
 
+/*
 static size_t stat_calc_string_bytes_count_in_pages_32( size_t len_str ) {
     size_t rv = 32, blocks = len_str / 32 + ( ( ( len_str % 32 ) != 0 ) ? 1 : 0 );
     rv += blocks * 32;
     return rv;
 }
+ */
 
 static void stat_check_ouput_string_size_overflow( std::string& s ) {
     static const size_t g_maxLen = 1024 * 1024 - 1;

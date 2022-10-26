@@ -25,6 +25,12 @@
 
 #pragma once
 
+
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
+
 #include "Common.h"
 #include <libdevcore/CommonJS.h>
 #include <libdevcrypto/Common.h>
@@ -69,3 +75,7 @@ BlockNumber jsToBlockNumber( std::string const& _js );
 
 }  // namespace eth
 }  // namespace dev
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop
+

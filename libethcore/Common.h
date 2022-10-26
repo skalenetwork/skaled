@@ -34,6 +34,10 @@
 #include <functional>
 #include <string>
 
+#pragma warning( push )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 namespace dev {
 
 class RLP;
@@ -250,3 +254,7 @@ enum class IfDropped {
 
 }  // namespace eth
 }  // namespace dev
+
+
+#pragma warning( pop )
+#pragma GCC diagnostic pop
