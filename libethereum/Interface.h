@@ -7,14 +7,13 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     cpp-ethereum is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/lфicenses/>.
 */
 /** @file Interface.h
  * @author Gav Wood <i@gavwood.com>
@@ -127,6 +126,14 @@ public:
     virtual u256 stateAt( Address _a, u256 _l ) const = 0;
     virtual bytes codeAt( Address _a ) const = 0;
     virtual h256 codeHashAt( Address _a ) const = 0;
+
+
+    virtual u256 alethStateBalanceAt(Address _a, BlockNumber _block) const = 0;
+    virtual u256 alethStateCountAt(Address _a, BlockNumber _block) const = 0;
+    virtual u256 alethStateAt(Address _a, u256 _l, BlockNumber _block) const = 0;
+    virtual h256 alethStateRootAt(Address _a, BlockNumber _block) const = 0;
+    virtual bytes alethStateCodeAt(Address _a, BlockNumber _block) const = 0;
+
     virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const = 0;
 
     // [LOGS API]

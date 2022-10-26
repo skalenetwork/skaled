@@ -46,6 +46,7 @@
 #include <libethereum/State.h>
 #endif
 #include <libskale/ContractStorageLimitPatch.h>
+#include <libskale/State.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
@@ -1450,3 +1451,33 @@ uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
 
 const dev::h256 Client::empty_str_hash =
     dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );
+
+
+#ifndef NO_ALETH_STATE
+u256 Client::alethStateBalanceAt(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().mutableAlethState().balance(_a);
+}
+
+u256 Client::alethStateCountAt(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().mutableAlethState().getNonce(_a);
+}
+
+u256 Client::alethStateAt(Address _a, u256 _l, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().mutableAlethState().storage(_a, _l);
+}
+
+h256 Client::alethStateRootAt(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().mutableAlethState().storageRoot(_a);
+}
+
+bytes Client::alethStateCodeAt(Address _a, BlockNumber _block) const
+{
+    return blockByNumber(_block).mutableState().mutableAlethState().code(_a);
+}
+
+
+#endif

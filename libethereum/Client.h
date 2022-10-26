@@ -624,6 +624,15 @@ public:
     virtual unsigned installNewPendingTransactionWatch(
         std::function< void( const unsigned&, const Transaction& ) >& ) override;
     virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) override;
+
+
+#ifndef NO_ALETH_STATE
+        u256 alethStateBalanceAt(Address _a, BlockNumber _block) const override;
+        u256 alethStateCountAt(Address _a, BlockNumber _block) const override;
+        u256 alethStateAt(Address _a, u256 _l, BlockNumber _block) const override;
+        h256 alethStateRootAt(Address _a, BlockNumber _block) const override;
+        bytes alethStateCodeAt(Address _a, BlockNumber _block) const override;
+#endif
 };
 
 }  // namespace eth

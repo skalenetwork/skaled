@@ -108,12 +108,17 @@ string Eth::eth_blockNumber() {
 }
 
 
-string Eth::eth_getBalance( string const& _address, string const&  _blockNumber  ) {
+string Eth::eth_getBalance( string const& _address, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifndef  NO_ALETH_STATE
+        return toJS(client()->alethStateBalanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#else
         return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -121,23 +126,40 @@ string Eth::eth_getBalance( string const& _address, string const&  _blockNumber 
 
 
 string Eth::eth_getStorageAt(
-    string const& _address, string const& _position, string const& /* _blockNumber */ ) {
+    string const& _address, string const& _position, string const&
+#ifndef  NO_ALETH_STATE
+    _blockNumber
+#endif
+    ) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifndef  NO_ALETH_STATE
+        return toJS(toCompactBigEndian(client()->alethStateAt(jsToAddress(_address),
+                                                         jsToU256(_position), jsToBlockNumber(_blockNumber)), 32));
+#else
         return toJS( toCompactBigEndian(
             client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
 
-string Eth::eth_getStorageRoot( string const& /*_address*/, string const& /*_blockNumber*/ ) {
+string Eth::eth_getStorageRoot( string const&
+#ifndef  NO_ALETH_STATE
+_address
+#endif
+, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
+#ifndef  NO_ALETH_STATE
+                return toString(
+                    client()->alethStateRootAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#else
         throw std::logic_error( "Storage root is not exist in Skale state" );
-        //        return toString(
-        //            client()->stateRootAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -158,12 +180,19 @@ Json::Value Eth::eth_pendingTransactions() {
     return toJson( ours );
 }
 
-string Eth::eth_getTransactionCount( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getTransactionCount( string const& _address, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
+
+#ifndef  NO_ALETH_STATE
+        return toString(client()->alethStateCountAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#endif
         string blockNumber = "latest";
         return toJS( client()->countAt( jsToAddress( _address ) ) );
+
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -217,12 +246,17 @@ Json::Value Eth::eth_getUncleCountByBlockNumber( string const& _blockNumber ) {
     }
 }
 
-string Eth::eth_getCode( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getCode( string const& _address, string const&
+#ifndef  NO_ALETH_STATE
+_blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifndef  NO_ALETH_STATE
+        return toJS(client()->alethStateCodeAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#else
         return toJS( client()->codeAt( jsToAddress( _address ) ) );
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

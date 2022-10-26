@@ -185,6 +185,7 @@ h256 ClientBase::codeHashAt( Address _a ) const {
     return latestBlock().codeHash( _a );
 }
 
+
 map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
     return latestBlock().storage( _a );
 }
