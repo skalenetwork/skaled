@@ -113,6 +113,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         bool syncNode = false;
+        bool archiveMode = false;
         std::string ip, ip6, keyShareName, sgxServerUrl;
         size_t t = 0;
         uint64_t port = 0, port6 = 0;
@@ -134,6 +135,10 @@ ChainParams ChainParams::loadConfig(
         }
         try {
             syncNode = infoObj.at( "syncNode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            archiveMode = infoObj.at( "archiveMode" ).get_bool();
         } catch ( ... ) {
         }
 
@@ -175,9 +180,9 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys, syncNode};
+            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode };
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -235,7 +240,7 @@ ChainParams ChainParams::loadConfig(
                     u256 id = groupNodeConfObj[0].get_uint64();
                     u256 sChainIndex = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
-                    groupNodes.push_back( {id, sChainIndex, publicKey} );
+                    groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
                 nodeGroup.nodes = groupNodes;
 
