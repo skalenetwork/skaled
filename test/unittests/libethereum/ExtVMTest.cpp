@@ -54,7 +54,7 @@ public:
     NetworkSelector networkSelector;
     TestBlockChain testBlockchain;
     TestBlock const& genesisBlock;
-    State const& genesisState;
+    skale::State const& genesisState;
     BlockChain const& blockchain;
     h256 preExperimentalBlockHash;
     h256 experimentalBlockHash;

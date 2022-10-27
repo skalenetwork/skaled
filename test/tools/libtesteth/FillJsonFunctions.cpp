@@ -53,15 +53,15 @@ json_spirit::mObject fillJsonWithTransaction( Transaction const& _txn ) {
 }
 
 json_spirit::mObject fillJsonWithStateChange(
-    State const& _stateOrig, State const& _statePost, ChangeLog const& _changeLog ) {
+    skale::State const& _stateOrig, skale::State const& _statePost, skale::ChangeLog const& _changeLog ) {
     json_spirit::mObject oState;
     if ( !_changeLog.size() )
         return oState;
 
     // Sort the vector by address field
-    ChangeLog changeLog = _changeLog;
+    skale::ChangeLog changeLog = _changeLog;
     std::sort( changeLog.begin(), changeLog.end(),
-        []( const Change& lhs, const Change& rhs ) { return lhs.address < rhs.address; } );
+        []( const skale::Change& lhs, const skale::Change& rhs ) { return lhs.address < rhs.address; } );
 
     std::ostringstream log;
     json_spirit::mObject o;
@@ -79,9 +79,9 @@ json_spirit::mObject fillJsonWithStateChange(
             string after;
             string before;
             json_spirit::mArray record;
-            Change change = changeLog.at( i );
+            skale::Change change = changeLog.at( i );
             switch ( change.kind ) {
-            case Change::Kind::Code:
+            case skale::Change::Kind::Code:
                 // take the original and final code only
                 before = toHexPrefixed( _stateOrig.code( change.address ) );
                 after = toHexPrefixed( _statePost.code( change.address ) );
@@ -91,7 +91,7 @@ json_spirit::mObject fillJsonWithStateChange(
                 o["code"] = record;
                 logInfo["code"] << "'code' : ['" + before + "', '->', '" + after + "']\n";
                 break;
-            case Change::Kind::Nonce:
+            case skale::Change::Kind::Nonce:
                 // take the original and final nonce only
                 before = toCompactHexPrefixed( _stateOrig.getNonce( change.address ), 1 );
                 after = toCompactHexPrefixed( _statePost.getNonce( change.address ), 1 );
@@ -101,7 +101,7 @@ json_spirit::mObject fillJsonWithStateChange(
                 o["nonce"] = record;
                 logInfo["nonce"] << "'nonce' : ['" + before + "', '->', '" + after + "']\n";
                 break;
-            case Change::Kind::Balance:
+            case skale::Change::Kind::Balance:
                 before = toCompactHexPrefixed( tmpBalance, 1 );
                 after = toCompactHexPrefixed( change.value, 1 );
                 record.push_back( before );
@@ -111,11 +111,11 @@ json_spirit::mObject fillJsonWithStateChange(
                 agregatedBalance.push_back( record );
                 logInfo["balance"] << "'balance' : ['" + before + "', '+=', '" + after + "']\n";
                 break;
-            case Change::Kind::Touch:
+            case skale::Change::Kind::Touch:
                 o["hasBeenTouched"] = "true";
                 logInfo["hasBeenTouched"] << "'hasBeenTouched' : ['true']\n";
                 break;
-            case Change::Kind::Storage:
+            case skale::Change::Kind::Storage:
                 // take the original and final storage only
                 before =
                     toCompactHexPrefixed( change.key, 1 ) + " : " +
@@ -129,7 +129,7 @@ json_spirit::mObject fillJsonWithStateChange(
                 o["storage"] = agregatedStorage;
                 logInfo["storage"] << "'storage' : ['" + before + "', '->', '" + after + "']\n";
                 break;
-            case Change::Kind::Create:
+            case skale::Change::Kind::Create:
                 o["newlyCreated"] = "true";
                 logInfo["newlyCreated"] << "'newlyCreated' : ['true']\n";
                 break;
@@ -166,12 +166,12 @@ json_spirit::mObject fillJsonWithStateChange(
     return oState;
 }
 
-json_spirit::mObject fillJsonWithState( State const& _state ) {
+json_spirit::mObject fillJsonWithState( skale::State const& _state ) {
     AccountMaskMap emptyMap;
     return fillJsonWithState( _state, emptyMap );
 }
 
-json_spirit::mObject fillJsonWithState( State const& _state, eth::AccountMaskMap const& _map ) {
+json_spirit::mObject fillJsonWithState( skale::State const& _state, eth::AccountMaskMap const& _map ) {
     bool mapEmpty = ( _map.size() == 0 );
     json_spirit::mObject oState;
     for ( auto const& a : _state.addresses() ) {

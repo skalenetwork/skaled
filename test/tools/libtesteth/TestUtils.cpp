@@ -77,7 +77,7 @@ void ParallelFixture::enumerateThreads( std::function< void() > callback ) const
 }
 
 void BlockChainFixture::enumerateBlockchains(
-    std::function< void( Json::Value const&, dev::eth::BlockChain const&, State state ) > callback )
+    std::function< void( Json::Value const&, dev::eth::BlockChain const&, skale::State state ) > callback )
     const {
     for ( string const& name : m_json.getMemberNames() ) {
         BlockChainLoader bcl( m_json[name] );
@@ -88,10 +88,10 @@ void BlockChainFixture::enumerateBlockchains(
 void ClientBaseFixture::enumerateClients(
     std::function< void( Json::Value const&, dev::eth::ClientBase& ) > callback ) const {
     enumerateBlockchains( [&callback]( Json::Value const& _json, BlockChain const& _bc,
-                              State _state ) -> void {
+                              skale::State _state ) -> void {
         cerr << "void ClientBaseFixture::enumerateClients. FixedClient now accepts block not sate!"
              << endl;
-        _state.commit( State::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
+        _state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
                                                                      // this line
         eth::Block b( Block::Null );
         b.noteChain( _bc );

@@ -23,6 +23,7 @@
 #include <libdevcore/MemoryDB.h>
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
+#include <libdevcore/StateCacheDB.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/filesystem/path.hpp>
@@ -89,15 +90,15 @@ BOOST_AUTO_TEST_CASE( hex_encoded_securetrie_test, *boost::unit_test::preconditi
         }
         for ( unsigned j = 0; j < min( 1000000000u, fac( ( unsigned ) ss.size() ) ); ++j ) {
             next_permutation( ss.begin(), ss.end() );
-            MemoryDB m;
-            EnforceRefs r( m, true );
-            GenericTrieDB< MemoryDB > t( &m );
-            MemoryDB hm;
-            EnforceRefs hr( hm, true );
-            HashedGenericTrieDB< MemoryDB > ht( &hm );
-            MemoryDB fm;
-            EnforceRefs fr( fm, true );
-            FatGenericTrieDB< MemoryDB > ft( &fm );
+            StateCacheDB m;
+            dev::EnforceRefs r( m, true );
+            GenericTrieDB< StateCacheDB > t( &m );
+            StateCacheDB hm;
+            dev::EnforceRefs hr( hm, true );
+            HashedGenericTrieDB< StateCacheDB > ht( &hm );
+            StateCacheDB fm;
+            dev::EnforceRefs fr( fm, true );
+            FatGenericTrieDB< StateCacheDB > ft( &fm );
             t.init();
             ht.init();
             ft.init();
@@ -150,15 +151,15 @@ BOOST_AUTO_TEST_CASE( trie_test_anyorder, *boost::unit_test::precondition( dev::
         }
         for ( unsigned j = 0; j < min( 1000u, fac( ( unsigned ) ss.size() ) ); ++j ) {
             next_permutation( ss.begin(), ss.end() );
-            MemoryDB m;
-            EnforceRefs r( m, true );
-            GenericTrieDB< MemoryDB > t( &m );
-            MemoryDB hm;
-            EnforceRefs hr( hm, true );
-            HashedGenericTrieDB< MemoryDB > ht( &hm );
-            MemoryDB fm;
-            EnforceRefs fr( fm, true );
-            FatGenericTrieDB< MemoryDB > ft( &fm );
+            StateCacheDB m;
+            dev::EnforceRefs r( m, true );
+            GenericTrieDB< StateCacheDB > t( &m );
+            StateCacheDB hm;
+            dev::EnforceRefs hr( hm, true );
+            HashedGenericTrieDB< StateCacheDB > ht( &hm );
+            StateCacheDB fm;
+            dev::EnforceRefs fr( fm, true );
+            FatGenericTrieDB< StateCacheDB > ft( &fm );
             t.init();
             ht.init();
             ft.init();
@@ -226,15 +227,15 @@ BOOST_AUTO_TEST_CASE( trie_tests_ordered, *boost::unit_test::precondition( dev::
                 ss.back().second = asString( fromHex( ss.back().second.substr( 2 ) ) );
         }
 
-        MemoryDB m;
-        EnforceRefs r( m, true );
-        GenericTrieDB< MemoryDB > t( &m );
-        MemoryDB hm;
+        StateCacheDB m;
+        dev::EnforceRefs r( m, true );
+        GenericTrieDB< StateCacheDB > t( &m );
+        StateCacheDB hm;
         EnforceRefs hr( hm, true );
-        HashedGenericTrieDB< MemoryDB > ht( &hm );
-        MemoryDB fm;
-        EnforceRefs fr( fm, true );
-        FatGenericTrieDB< MemoryDB > ft( &fm );
+        HashedGenericTrieDB< StateCacheDB > ht( &hm );
+        StateCacheDB fm;
+        dev::EnforceRefs fr( fm, true );
+        FatGenericTrieDB< StateCacheDB > ft( &fm );
         t.init();
         ht.init();
         ft.init();
@@ -360,9 +361,9 @@ BOOST_AUTO_TEST_CASE( moreTrieTests, *boost::unit_test::precondition( dev::test:
         cnote << toHex( t.rlp() );
     }
     {
-        MemoryDB m;
+        StateCacheDB m;
         EnforceRefs r( m, true );
-        GenericTrieDB< MemoryDB > d( &m );
+        GenericTrieDB< StateCacheDB > d( &m );
         d.init();  // initialise as empty tree.
         MemTrie t;
         StringMap s;
@@ -442,9 +443,9 @@ std::string randomWord() {
 BOOST_AUTO_TEST_CASE( trieLowerBound, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "Stress-testing Trie.lower_bound...";
     if ( 0 ) {
-        MemoryDB dm;
+        StateCacheDB dm;
         EnforceRefs e( dm, true );
-        GenericTrieDB< MemoryDB > d( &dm );
+        GenericTrieDB< StateCacheDB > d( &dm );
         d.init();  // initialise as empty tree.
         for ( int a = 0; a < 20; ++a ) {
             StringMap m;
@@ -515,10 +516,10 @@ BOOST_AUTO_TEST_CASE( hashedLowerBound ) {
 BOOST_AUTO_TEST_CASE( trieStess, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "Stress-testing Trie...";
     {
-        MemoryDB m;
-        MemoryDB dm;
+        StateCacheDB m;
+        StateCacheDB dm;
         EnforceRefs e( dm, true );
-        GenericTrieDB< MemoryDB > d( &dm );
+        GenericTrieDB< StateCacheDB > d( &dm );
         d.init();  // initialise as empty tree.
         MemTrie t;
         BOOST_REQUIRE( d.check( true ) );
@@ -545,9 +546,9 @@ BOOST_AUTO_TEST_CASE( trieStess, *boost::unit_test::precondition( dev::test::run
                     for ( auto i : d )
                         cwarn << i.first.toString() << i.second.toString();
 
-                    MemoryDB dm2;
+                    StateCacheDB dm2;
                     EnforceRefs e2( dm2, true );
-                    GenericTrieDB< MemoryDB > d2( &dm2 );
+                    GenericTrieDB< StateCacheDB > d2( &dm2 );
                     d2.init();  // initialise as empty tree.
                     for ( auto i : d )
                         d2.insert( i.first, i.second );

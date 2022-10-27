@@ -377,7 +377,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         if ( NC )
             return;
         gainRoot();
-        int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
+        [[maybe_unused]] int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
         assert(rv == 0);
         rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
         assert(rv == 0);
