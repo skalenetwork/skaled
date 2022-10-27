@@ -224,7 +224,6 @@ add_subdirectory( skaled_ssl_test )
 if( TOOLS )
     add_subdirectory( skale-key )
     add_subdirectory( skale-vm )
-    add_subdirectory( rlp )
 endif()
 
 if( TESTS )
