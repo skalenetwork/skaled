@@ -151,8 +151,11 @@ inline u256 jsToU256( std::string const& _s ) {
 /// String can be a normal decimal number, or a hex prefixed by 0x or 0X, or an octal if prefixed by
 /// 0 Returns 0 in case of failure
 inline int jsToInt( std::string const& _s ) {
-    int ret = 0;
-    DEV_IGNORE_EXCEPTIONS( ret = std::stoi( _s, nullptr, 0 ) );
+    int ret = -1;
+    try {
+        ret = std::stoi( _s, nullptr, 0 );
+    }  catch ( const std::exception& ) {
+    }
     return ret;
 }
 
