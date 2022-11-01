@@ -7,6 +7,7 @@ on:
       - develop
       - beta
       - stable
+      - syncnode_develop
 defaults:
   run:
     shell: bash
