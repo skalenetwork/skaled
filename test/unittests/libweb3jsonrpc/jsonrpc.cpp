@@ -2069,11 +2069,11 @@ BOOST_AUTO_TEST_CASE( oracle ) {
     std::string request;
     for (int i = 0; i < 1000000; ++i) {
         request = skutils::tools::format("{\"cid\":1,\"uri\":\"http://worldtimeapi.org/api/timezone/Europe/Kiev\",\"jsps\":[\"/unixtime\",\"/day_of_year\",\"/xxx\"],\"trims\":[1,1,1],\"time\":%zu000,\"pow\":%zu}", current, i);
-        auto os = make_shared<OracleRequestSpec>(request);
-        if ( os->verifyPow() ) {
+        u256 h = sha3( request );
+        if( ~u256(0) / h > 10000)
             break;
-        }
     }
+
     uint64_t status = fixture.client->submitOracleRequest(request, receipt);
 
     BOOST_REQUIRE_EQUAL(status, 0);
