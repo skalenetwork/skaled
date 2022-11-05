@@ -3,8 +3,8 @@
 // Licensed under the GNU General Public License, Version 3.
 
 #include "AlethStandardTrace.h"
-#include "ExtVM.h"
-#include <libevm/LegacyVM.h>
+#include "libethereum/ExtVM.h"
+#include "libevm/LegacyVM.h"
 
 namespace dev
 {

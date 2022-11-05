@@ -36,7 +36,7 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
-#include <libethereum/State.h>
+#include <libhistoric/State.h>
 
 #include "OverlayDB.h"
 #include "BaseState.h"

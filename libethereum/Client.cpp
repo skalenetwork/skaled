@@ -43,7 +43,7 @@
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
 #ifndef NO_ALETH_STATE
-#include <libethereum/State.h>
+#include <libhistoric/State.h>
 #endif
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/State.h>

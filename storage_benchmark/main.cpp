@@ -71,13 +71,13 @@ void debug() {
         b = rand();
     }
     state.setCode( address, code, 0 );
-    state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+    state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
     return;
 
     state.addBalance( address, 5 );
     u256 value = state.storage( address, 7 );
     state.setStorage( address, 7, value + 7 );
-    state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+    state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     cout << state.balance( address ) << endl;
     cout << state.storage( address, 7 ) << endl;
 
@@ -120,7 +120,7 @@ void testState() {
                 [&state, &address]() {
                     State writeState = state.startWrite();
                     writeState.addBalance( address, 1 );
-                    writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                    writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
                 1000 )
          << " writes per second" << endl;
@@ -140,7 +140,7 @@ void testState() {
                     State writeState = state.startWrite();
                     writeState.setStorage( address, memory_address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
-                    writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                    writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
                 10 )
          << " writes per second" << endl;
@@ -167,7 +167,7 @@ void testState() {
                 [&state, &address, &code]() {
                     State writeState = state.startWrite();
                     writeState.setCode( address, code, 0 );
-                    writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                    writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
                 10 )
          << " writes per second" << endl;

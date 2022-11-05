@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include <json/json.h>
-#include <libdevcore/Common.h>
-#include <libevm/Instruction.h>
-#include <libevm/VMFace.h>
+#include "json/json.h"
+#include "libdevcore/Common.h"
+#include "libevm/Instruction.h"
+#include "libevm/VMFace.h"
 #include <cstdint>
 
 namespace Json
