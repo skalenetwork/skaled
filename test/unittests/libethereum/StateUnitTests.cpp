@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
     uint8_t codeData[] = {'c', 'o', 'd', 'e'};
     u256 version = 123;
     s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
-    s.commit( skale::State::CommitBehaviour::RemoveEmptyAccounts );
+    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
     auto& loadedCode = s.code( addr );
     BOOST_CHECK(
@@ -69,7 +69,7 @@ public:
         skale::State writer = state.startWrite();
         for ( auto const& hashAndAddr : hashToAddress )
             writer.addBalance( hashAndAddr.second, 100 );
-        writer.commit( skale::State::CommitBehaviour::RemoveEmptyAccounts );
+        writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     }
 
     TransientDirectory m_tempDirState;

@@ -757,8 +757,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    m_state.commit( removeEmptyAccounts ? skale::State::CommitBehaviour::RemoveEmptyAccounts :
-                                          skale::State::CommitBehaviour::KeepEmptyAccounts );
+    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
@@ -882,7 +882,7 @@ void Block::performIrregularModifications() {
         Addresses allDAOs = childDaos();
         for ( Address const& dao : allDAOs )
             m_state.transferBalance( dao, recipient, m_state.balance( dao ) );
-        m_state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
+        m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
     }
 }
 
@@ -896,13 +896,13 @@ void Block::updateBlockhashContract() {
                 skale::State state = m_state.startWrite();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( blockNumber ).accountVersion );
-                state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
+                state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                 m_sealEngine->evmSchedule( blockNumber ).accountVersion );
-            m_state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
+            m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
     }
 
@@ -916,7 +916,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit( skale::State::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit(  dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     }
 }
 

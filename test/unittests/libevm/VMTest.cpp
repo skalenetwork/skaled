@@ -422,7 +422,7 @@ public:
         u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
         state.setStorageLimit(1000000000);
         state.setStorage( to, 0, _originalValue );
-        state.commit( skale::State::CommitBehaviour::RemoveEmptyAccounts );
+        state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
         bytes const code = fromHex( _codeStr );
         ExtVM extVm( state, envInfo, *se, to, from, from, value, gasPrice, inputData, ref( code ),

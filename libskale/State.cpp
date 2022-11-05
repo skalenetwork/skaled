@@ -209,7 +209,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts );
+    commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -345,8 +345,8 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour ) {
-    if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
+    if (_commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
 
     {
@@ -393,6 +393,13 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
         m_db_ptr->commit(std::to_string(++*m_storedVersion));
         m_currentVersion = *m_storedVersion;
     }
+
+
+
+// execute also for the historic state
+#ifndef NO_ALETH_STATE
+m_alethState.commitExternalChanges(m_cache);
+#endif
 
     m_changeLog.clear();
     m_cache.clear();
@@ -857,8 +864,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->addReceiptToPartials( receipt );
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-        commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts );
+        commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
         break;
     }
     case Permanence::Uncommitted:
@@ -871,12 +878,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );
-
-// execute also for the historic state
-#ifndef NO_ALETH_STATE
-    m_alethState.execute(_envInfo,
-            _sealEngine, _t, _p, _onOp );
-#endif
 
     return make_pair( res, receipt );
 }

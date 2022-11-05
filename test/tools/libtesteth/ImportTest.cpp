@@ -302,13 +302,13 @@ std::tuple< skale::State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest:
         ImportTest::checkBalance( _preState, initialState );
 
         // Finalize the state manually (clear logs)
-        initialState.commit( removeEmptyAccounts ? skale::State::CommitBehaviour::RemoveEmptyAccounts :
-                                                   skale::State::CommitBehaviour::KeepEmptyAccounts );
+        initialState.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                                   dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
         if ( !removeEmptyAccounts ) {
             // Touch here bacuse coinbase might be suicided above
             initialState.addBalance( _env.author(), 0 );  // imitate mining reward
-            initialState.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );
+            initialState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
         return std::make_tuple( initialState, out, changeLog );
     } catch ( Exception const& _e ) {
@@ -317,8 +317,8 @@ std::tuple< skale::State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest:
         cnote << "state execution exception: " << _e.what();
     }
 
-    initialState.commit( removeEmptyAccounts ? skale::State::CommitBehaviour::RemoveEmptyAccounts :
-                                               skale::State::CommitBehaviour::KeepEmptyAccounts );
+    initialState.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                               dev::eth::CommitBehaviour::KeepEmptyAccounts );
     return std::make_tuple( initialState, out, initialState.changeLog() );
 }
 

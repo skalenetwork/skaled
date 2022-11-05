@@ -39,7 +39,8 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL ) override {}
+    void parseFullConfigAndCreateNode( const std::string& /*_jsonConfig */,
+                 const string& /*_gethURL*/ ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }

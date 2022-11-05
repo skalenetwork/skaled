@@ -96,7 +96,7 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
 
 void State::populateFrom(AccountMap const &_map) {
     eth::commit(_map, m_state);
-    commit(State::CommitBehaviour::KeepEmptyAccounts);
+    commit(dev::eth::CommitBehaviour::KeepEmptyAccounts);
 }
 
 u256 const &State::requireAccountStartNonce() const {
@@ -188,9 +188,15 @@ void State::clearCacheIfTooLarge() const {
         m_unchangedCacheEntries.pop_back();
 
         auto cacheEntry = m_cache.find(addr);
-        if (cacheEntry != m_cache.end() && !cacheEntry->second.isDirty())
             m_cache.erase(cacheEntry);
     }
+}
+
+void State::commitExternalChanges(AccountMap const &_cache) {
+    m_touched += dev::eth::commit(_cache, m_state);
+    m_changeLog.clear();
+    m_cache.clear();
+    m_unchangedCacheEntries.clear();
 }
 
 void State::commit(CommitBehaviour _commitBehaviour) {
@@ -579,8 +585,8 @@ State::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, Trans
             break;
         case skale::Permanence::Committed:
             removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-            commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts
-                                       : State::CommitBehaviour::KeepEmptyAccounts);
+            commit(removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts
+                                       : dev::eth::CommitBehaviour::KeepEmptyAccounts);
 
             m_blockToStateRootDB.insert(h256(_envInfo.number()), m_state.root().ref());
             m_blockToStateRootDB.commit();

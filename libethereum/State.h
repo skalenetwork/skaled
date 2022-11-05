@@ -110,6 +110,13 @@ using ChangeLog = std::vector<Change>;
  * changelog and undone. For possible atomic changes list @see Change::Kind.
  * The changelog is managed by savepoint(), rollback() and commit() methods.
  */
+
+enum class CommitBehaviour
+{
+    KeepEmptyAccounts,
+    RemoveEmptyAccounts
+};
+
 class State
 {
     friend class ExtVM;
@@ -118,11 +125,7 @@ class State
     friend class BlockChain;
 
 public:
-    enum class CommitBehaviour
-    {
-        KeepEmptyAccounts,
-        RemoveEmptyAccounts
-    };
+
 
     using AddressMap = std::map<h256, Address>;
 
@@ -274,6 +277,9 @@ public:
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
     void commit(CommitBehaviour _commitBehaviour);
+
+
+    void commitExternalChanges(AccountMap const &_cache);
 
     /// Resets any uncommitted changes to the cache.
     void setRoot(h256 const& _root);

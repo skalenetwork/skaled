@@ -91,7 +91,7 @@ void ClientBaseFixture::enumerateClients(
                               skale::State _state ) -> void {
         cerr << "void ClientBaseFixture::enumerateClients. FixedClient now accepts block not sate!"
              << endl;
-        _state.commit( skale::State::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
+        _state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
                                                                      // this line
         eth::Block b( Block::Null );
         b.noteChain( _bc );
