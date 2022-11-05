@@ -10,7 +10,7 @@
 #include "libethereum/Block.h"
 #include "libethereum/BlockChain.h"
 #include "libethereum/Interface.h"
-#include  <libhistoric/State.h>
+#include  <libhistoric/AlethState.h>
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFactory.h"
 
@@ -56,7 +56,7 @@ AlethExecutive::AlethExecutive(Block &_s, LastBlockHashesFace const &_lh, unsign
 }
 
 AlethExecutive::AlethExecutive(
-        dev::eth::State &io_s, Block const &_block, unsigned _txIndex, BlockChain const &_bc, unsigned _level)
+        dev::eth::AlethState &io_s, Block const &_block, unsigned _txIndex, BlockChain const &_bc, unsigned _level)
         : m_s(createIntermediateState(io_s, _block, _txIndex, _bc)),
           m_envInfo(_block.info(), _bc.lastBlockHashes(),
                     _txIndex ? _block.receipt(_txIndex - 1).cumulativeGasUsed() : 0, _bc.chainID()),

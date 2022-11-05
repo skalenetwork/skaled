@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "libhistoric/State.h"
+#include "libhistoric/AlethState.h"
 #include "libhistoric/AlethExecutive.h"
 
 #include "libethcore/Common.h"
@@ -33,7 +33,7 @@ namespace dev
         {
         public:
             /// Full constructor.
-            AlethExtVM(State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Address _myAddress,
+            AlethExtVM(AlethState& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Address _myAddress,
                   Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data,
                   bytesConstRef _code, h256 const& _codeHash, u256 const& _version, unsigned _depth,
                   bool _isCreate, bool _staticCall)
@@ -94,7 +94,7 @@ namespace dev
             /// Return the EVM gas-price schedule for this execution context.
             EVMSchedule const& evmSchedule() const final { return m_evmSchedule; }
 
-            State const& state() const { return m_s; }
+            AlethState const& state() const { return m_s; }
 
             /// Hash of a block if within the last 256 blocks, or h256() otherwise.
             h256 blockHash(u256 _number) final;
@@ -112,7 +112,7 @@ namespace dev
             }
 
 
-            dev::eth::State& m_s;  ///< A reference to the base state.
+            dev::eth::AlethState& m_s;  ///< A reference to the base state.
             SealEngineFace const& m_sealEngine;
             EVMSchedule const& m_evmSchedule;
         };

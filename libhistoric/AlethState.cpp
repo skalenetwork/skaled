@@ -2,7 +2,7 @@
 // Copyright 2013-2019 Aleth Authors.
 // Licensed under the GNU General Public License, Version 3.
 
-#include "State.h"
+#include "AlethState.h"
 
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
@@ -21,7 +21,7 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-State::State(u256 const &_accountStartNonce, OverlayDB const &_db, OverlayDB const &_blockToStateRootDB, skale::BaseState _bs) :
+AlethState::AlethState(u256 const &_accountStartNonce, OverlayDB const &_db, OverlayDB const &_blockToStateRootDB, skale::BaseState _bs) :
         m_db(_db),
         m_blockToStateRootDB(_blockToStateRootDB),
         m_state(&m_db),
@@ -31,7 +31,7 @@ State::State(u256 const &_accountStartNonce, OverlayDB const &_db, OverlayDB con
         m_state.init();
 }
 
-State::State(State const &_s) :
+AlethState::AlethState(AlethState const &_s) :
         m_db(_s.m_db),
         m_blockToStateRootDB(_s.m_blockToStateRootDB),
         m_state(&m_db, _s.m_state.root(), Verification::Skip),
@@ -41,7 +41,7 @@ State::State(State const &_s) :
         m_unrevertablyTouched(_s.m_unrevertablyTouched),
         m_accountStartNonce(_s.m_accountStartNonce) {}
 
-OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
+OverlayDB AlethState::openDB(fs::path const &_basePath, h256 const &_genesisHash, WithExisting _we) {
     DatabasePaths const dbPaths{_basePath, _genesisHash};
     if (db::isDiskDatabase()) {
         if (_we == WithExisting::Kill) {
@@ -92,25 +92,25 @@ OverlayDB State::openDB(fs::path const &_basePath, h256 const &_genesisHash, Wit
     }
 }
 
-void State::populateFrom(AccountMap const &_map) {
+void AlethState::populateFrom(AccountMap const &_map) {
     eth::commit(_map, m_state);
     commit(dev::eth::CommitBehaviour::KeepEmptyAccounts);
 }
 
-u256 const &State::requireAccountStartNonce() const {
+u256 const &AlethState::requireAccountStartNonce() const {
     if (m_accountStartNonce == Invalid256)
         BOOST_THROW_EXCEPTION(InvalidAccountStartNonceInState());
     return m_accountStartNonce;
 }
 
-void State::noteAccountStartNonce(u256 const &_actual) {
+void AlethState::noteAccountStartNonce(u256 const &_actual) {
     if (m_accountStartNonce == Invalid256)
         m_accountStartNonce = _actual;
     else if (m_accountStartNonce != _actual)
         BOOST_THROW_EXCEPTION(IncorrectAccountStartNonceInState());
 }
 
-void State::removeEmptyAccounts() {
+void AlethState::removeEmptyAccounts() {
     for (auto &i: m_cache)
         if (i.second.isDirty() && i.second.isEmpty())
             i.second.kill();
@@ -122,7 +122,7 @@ void State::removeEmptyAccounts() {
     }
 }
 
-State &State::operator=(State const &_s) {
+AlethState &AlethState::operator=(AlethState const &_s) {
     if (&_s == this)
         return *this;
 
@@ -137,11 +137,11 @@ State &State::operator=(State const &_s) {
     return *this;
 }
 
-Account const *State::account(Address const &_a) const {
-    return const_cast<State *>(this)->account(_a);
+Account const *AlethState::account(Address const &_a) const {
+    return const_cast<AlethState *>(this)->account(_a);
 }
 
-Account *State::account(Address const &_addr) {
+Account *AlethState::account(Address const &_addr) {
     auto it = m_cache.find(_addr);
     if (it != m_cache.end())
         return &it->second;
@@ -172,7 +172,7 @@ Account *State::account(Address const &_addr) {
     return &i.first->second;
 }
 
-void State::clearCacheIfTooLarge() const {
+void AlethState::clearCacheIfTooLarge() const {
     // TODO: Find a good magic number
     while (m_unchangedCacheEntries.size() > 1000) {
         // Remove a random element
@@ -189,14 +189,14 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commitExternalChanges(AccountMap const &_cache) {
+void AlethState::commitExternalChanges(AccountMap const &_cache) {
     dev::eth::commit(_cache, m_state);
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
 }
 
-void State::commit(CommitBehaviour _commitBehaviour) {
+void AlethState::commit(CommitBehaviour _commitBehaviour) {
     if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
     dev::eth::commit(m_cache, m_state);
@@ -205,7 +205,7 @@ void State::commit(CommitBehaviour _commitBehaviour) {
     m_unchangedCacheEntries.clear();
 }
 
-unordered_map<Address, u256> State::addresses() const {
+unordered_map<Address, u256> AlethState::addresses() const {
 #if ETH_FATDB
     unordered_map<Address, u256> ret;
     for (auto &i: m_cache)
@@ -220,7 +220,7 @@ unordered_map<Address, u256> State::addresses() const {
 #endif
 }
 
-std::pair<State::AddressMap, h256> State::addresses(
+std::pair<AlethState::AddressMap, h256> AlethState::addresses(
         h256 const &_beginHash, size_t _maxResults) const {
     AddressMap addresses;
     h256 nextKey;
@@ -271,7 +271,7 @@ std::pair<State::AddressMap, h256> State::addresses(
 }
 
 
-void State::setRoot(h256 const &_r) {
+void AlethState::setRoot(h256 const &_r) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
@@ -279,32 +279,32 @@ void State::setRoot(h256 const &_r) {
     m_state.setRoot(_r);
 }
 
-bool State::addressInUse(Address const &_id) const {
+bool AlethState::addressInUse(Address const &_id) const {
     return !!account(_id);
 }
 
-bool State::accountNonemptyAndExisting(Address const &_address) const {
+bool AlethState::accountNonemptyAndExisting(Address const &_address) const {
     if (Account const *a = account(_address))
         return !a->isEmpty();
     else
         return false;
 }
 
-bool State::addressHasCode(Address const &_id) const {
+bool AlethState::addressHasCode(Address const &_id) const {
     if (auto a = account(_id))
         return a->codeHash() != EmptySHA3;
     else
         return false;
 }
 
-u256 State::balance(Address const &_id) const {
+u256 AlethState::balance(Address const &_id) const {
     if (auto a = account(_id))
         return a->balance();
     else
         return 0;
 }
 
-void State::incNonce(Address const &_addr) {
+void AlethState::incNonce(Address const &_addr) {
     if (Account *a = account(_addr)) {
         auto oldNonce = a->nonce();
         a->incNonce();
@@ -314,7 +314,7 @@ void State::incNonce(Address const &_addr) {
         createAccount(_addr, Account(requireAccountStartNonce() + 1, 0));
 }
 
-void State::setNonce(Address const &_addr, u256 const &_newNonce) {
+void AlethState::setNonce(Address const &_addr, u256 const &_newNonce) {
     if (Account *a = account(_addr)) {
         auto oldNonce = a->nonce();
         a->setNonce(_newNonce);
@@ -324,7 +324,7 @@ void State::setNonce(Address const &_addr, u256 const &_newNonce) {
         createAccount(_addr, Account(_newNonce, 0));
 }
 
-void State::addBalance(Address const &_id, u256 const &_amount) {
+void AlethState::addBalance(Address const &_id, u256 const &_amount) {
     if (Account *a = account(_id)) {
         // Log empty account being touched. Empty touched accounts are cleared
         // after the transaction, so this event must be also reverted.
@@ -346,7 +346,7 @@ void State::addBalance(Address const &_id, u256 const &_amount) {
         m_changeLog.emplace_back(Change::Balance, _id, _amount);
 }
 
-void State::subBalance(Address const &_addr, u256 const &_value) {
+void AlethState::subBalance(Address const &_addr, u256 const &_value) {
     if (_value == 0)
         return;
 
@@ -359,7 +359,7 @@ void State::subBalance(Address const &_addr, u256 const &_value) {
     addBalance(_addr, 0 - _value);
 }
 
-void State::setBalance(Address const &_addr, u256 const &_value) {
+void AlethState::setBalance(Address const &_addr, u256 const &_value) {
     Account *a = account(_addr);
     u256 original = a ? a->balance() : 0;
 
@@ -367,50 +367,50 @@ void State::setBalance(Address const &_addr, u256 const &_value) {
     addBalance(_addr, _value - original);
 }
 
-void State::createContract(Address const &_address) {
+void AlethState::createContract(Address const &_address) {
     createAccount(_address, {requireAccountStartNonce(), 0});
 }
 
-void State::createAccount(Address const &_address, Account const &&_account) {
+void AlethState::createAccount(Address const &_address, Account const &&_account) {
     assert(!addressInUse(_address) && "Account already exists");
     m_cache[_address] = std::move(_account);
     m_nonExistingAccountsCache.erase(_address);
     m_changeLog.emplace_back(Change::Create, _address);
 }
 
-void State::kill(Address _addr) {
+void AlethState::kill(Address _addr) {
     if (auto a = account(_addr))
         a->kill();
     // If the account is not in the db, nothing to kill.
 }
 
-u256 State::getNonce(Address const &_addr) const {
+u256 AlethState::getNonce(Address const &_addr) const {
     if (auto a = account(_addr))
         return a->nonce();
     else
         return m_accountStartNonce;
 }
 
-u256 State::storage(Address const &_id, u256 const &_key) const {
+u256 AlethState::storage(Address const &_id, u256 const &_key) const {
     if (Account const *a = account(_id))
         return a->storageValue(_key, m_db);
     else
         return 0;
 }
 
-void State::setStorage(Address const &_contract, u256 const &_key, u256 const &_value) {
+void AlethState::setStorage(Address const &_contract, u256 const &_key, u256 const &_value) {
     m_changeLog.emplace_back(_contract, _key, storage(_contract, _key));
     m_cache[_contract].setStorage(_key, _value);
 }
 
-u256 State::originalStorageValue(Address const &_contract, u256 const &_key) const {
+u256 AlethState::originalStorageValue(Address const &_contract, u256 const &_key) const {
     if (Account const *a = account(_contract))
         return a->originalStorageValue(_key, m_db);
     else
         return 0;
 }
 
-void State::clearStorage(Address const &_contract) {
+void AlethState::clearStorage(Address const &_contract) {
     h256 const &oldHash{m_cache[_contract].baseRoot()};
     if (oldHash == EmptyTrie)
         return;
@@ -418,7 +418,7 @@ void State::clearStorage(Address const &_contract) {
     m_cache[_contract].clearStorage();
 }
 
-map<h256, pair<u256, u256>> State::storage(Address const &_id) const {
+map<h256, pair<u256, u256>> AlethState::storage(Address const &_id) const {
 #if ETH_FATDB
     map<h256, pair<u256, u256>> ret;
 
@@ -453,7 +453,7 @@ map<h256, pair<u256, u256>> State::storage(Address const &_id) const {
 #endif
 }
 
-h256 State::storageRoot(Address const &_id) const {
+h256 AlethState::storageRoot(Address const &_id) const {
     string s = m_state.at(_id);
     if (s.size()) {
         RLP r(s);
@@ -462,7 +462,7 @@ h256 State::storageRoot(Address const &_id) const {
     return EmptyTrie;
 }
 
-bytes const &State::code(Address const &_addr) const {
+bytes const &AlethState::code(Address const &_addr) const {
     Account const *a = account(_addr);
     if (!a || a->codeHash() == EmptySHA3)
         return NullBytes;
@@ -477,7 +477,7 @@ bytes const &State::code(Address const &_addr) const {
     return a->code();
 }
 
-void State::setCode(Address const &_address, bytes &&_code, u256 const &_version) {
+void AlethState::setCode(Address const &_address, bytes &&_code, u256 const &_version) {
     // rollback assumes that overwriting of the code never happens
     // (not allowed in contract creation logic in AlethExecutive)
     assert(!addressHasCode(_address));
@@ -485,14 +485,14 @@ void State::setCode(Address const &_address, bytes &&_code, u256 const &_version
     m_cache[_address].setCode(std::move(_code), _version);
 }
 
-h256 State::codeHash(Address const &_a) const {
+h256 AlethState::codeHash(Address const &_a) const {
     if (Account const *a = account(_a))
         return a->codeHash();
     else
         return EmptySHA3;
 }
 
-size_t State::codeSize(Address const &_a) const {
+size_t AlethState::codeSize(Address const &_a) const {
     if (Account const *a = account(_a)) {
         if (a->hasNewCode())
             return a->code().size();
@@ -509,20 +509,20 @@ size_t State::codeSize(Address const &_a) const {
         return 0;
 }
 
-u256 State::version(Address const &_a) const {
+u256 AlethState::version(Address const &_a) const {
     Account const *a = account(_a);
     return a ? a->version() : 0;
 }
 
-void State::unrevertableTouch(Address const &_address) {
+void AlethState::unrevertableTouch(Address const &_address) {
     m_unrevertablyTouched.insert(_address);
 }
 
-size_t State::savepoint() const {
+size_t AlethState::savepoint() const {
     return m_changeLog.size();
 }
 
-void State::rollback(size_t _savepoint) {
+void AlethState::rollback(size_t _savepoint) {
     while (_savepoint != m_changeLog.size()) {
         auto &change = m_changeLog.back();
         auto &account = m_cache[change.address];
@@ -558,7 +558,7 @@ void State::rollback(size_t _savepoint) {
 }
 
 std::pair<ExecutionResult, TransactionReceipt>
-State::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, Transaction const &_t, skale::Permanence _p,
+AlethState::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, Transaction const &_t, skale::Permanence _p,
                OnOpFunc const &_onOp) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
@@ -603,7 +603,7 @@ State::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, Trans
     return make_pair(res, receipt);
 }
 
-void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
+void AlethState::executeBlockTransactions(Block const &_block, unsigned _txCount,
                                      LastBlockHashesFace const &_lastHashes, SealEngineFace const &_sealEngine) {
     u256 gasUsed = 0;
     for (unsigned i = 0; i < _txCount; ++i) {
@@ -618,7 +618,7 @@ void State::executeBlockTransactions(Block const &_block, unsigned _txCount,
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
-bool State::executeTransaction(AlethExecutive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
+bool AlethState::executeTransaction(AlethExecutive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
     size_t const savept = savepoint();
     try {
         _e.initialize(_t);
@@ -633,7 +633,7 @@ bool State::executeTransaction(AlethExecutive &_e, Transaction const &_t, OnOpFu
     }
 }
 
-std::ostream &dev::eth::operator<<(std::ostream &_out, State const &_s) {
+std::ostream &dev::eth::operator<<(std::ostream &_out, AlethState const &_s) {
     _out << "--- " << _s.rootHash() << std::endl;
     std::set<Address> d;
     std::set<Address> dtr;
@@ -707,7 +707,7 @@ std::ostream &dev::eth::operator<<(std::ostream &_out, State const &_s) {
     return _out;
 }
 
-State &dev::eth::createIntermediateState(State &o_s, Block const &_block, unsigned _txIndex, BlockChain const &_bc) {
+AlethState &dev::eth::createIntermediateState(AlethState &o_s, Block const &_block, unsigned _txIndex, BlockChain const &_bc) {
     // o_s = _block.state().alethState();
     u256 const rootHash = _block.stateRootBeforeTx(_txIndex);
     if (rootHash)

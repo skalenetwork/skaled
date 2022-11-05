@@ -32,7 +32,7 @@ namespace eth
 
 
 class BlockChain;
-class State;
+class AlethState;
 class TransactionQueue;
 struct VerifiedBlockRef;
 
@@ -117,7 +117,7 @@ enum class CommitBehaviour
     RemoveEmptyAccounts
 };
 
-class State
+class AlethState
 {
     friend class ExtVM;
     friend class dev::test::ImportTest;
@@ -135,14 +135,14 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, OverlayDB const &_blockToStateRootDB,
+    explicit AlethState(u256 const& _accountStartNonce, OverlayDB const& _db, OverlayDB const &_blockToStateRootDB,
                    skale::BaseState _bs = skale::BaseState::PreExisting);
 
     /// Copy state object.
-    State(State const& _s);
+    AlethState(AlethState const& _s);
 
     /// Copy state object.
-    State& operator=(State const& _s);
+    AlethState& operator=(AlethState const& _s);
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
     static OverlayDB openDB(boost::filesystem::path const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
@@ -336,13 +336,13 @@ private:
 
     u256 m_accountStartNonce;
 
-    friend std::ostream& operator<<(std::ostream& _out, State const& _s);
+    friend std::ostream& operator<<(std::ostream& _out, AlethState const& _s);
     ChangeLog m_changeLog;
 };
 
-std::ostream& operator<<(std::ostream& _out, State const& _s);
+std::ostream& operator<<(std::ostream& _out, AlethState const& _s);
 
-State& createIntermediateState(State& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc);
+AlethState& createIntermediateState(AlethState& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc);
 
 template <class DB>
 AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state);

@@ -36,7 +36,7 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
-#include <libhistoric/State.h>
+#include <libhistoric/AlethState.h>
 
 #include "OverlayDB.h"
 #include "BaseState.h"
@@ -185,10 +185,10 @@ public:
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
 #ifndef NO_ALETH_STATE
-              dev::eth::State::openDB( _dbPath, _genesis,
+              dev::eth::AlethState::openDB( _dbPath, _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
-              dev::eth::State::openDB(
+              dev::eth::AlethState::openDB(
                   boost::filesystem::path(std::string(_dbPath.string()).append(".alethroots")), _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
@@ -473,10 +473,10 @@ private:
     dev::s256 currentStorageUsed_ = 0;
 
 #ifndef NO_ALETH_STATE
-        dev::eth::State m_alethState;
+        dev::eth::AlethState m_alethState;
 public:
         /// Get the backing state object.
-        dev::eth::State &  mutableAlethState()  { return m_alethState; }
+        dev::eth::AlethState &  mutableAlethState()  { return m_alethState; }
 #endif
 
 public:
