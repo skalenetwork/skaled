@@ -232,12 +232,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     };
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
-#ifndef NO_ALETH_STATE
-    fs::path alethDBPath(std::string(m_dbPath.string()).append(".alethstate"));
-    fs::path alethStateRootDBPath(std::string(m_dbPath.string()).append(".alethroots"));
-    m_alethStateDB = dev::eth::State::openDB(alethDBPath, bc().genesisHash(), _forceAction);
-    m_alethBlockToStateRootDB = dev::eth::State::openDB(alethStateRootDBPath, bc().genesisHash(), _forceAction);
-#endif
+
 
     m_preSeal = bc().genesisBlock( m_state );
     m_postSeal = m_preSeal;

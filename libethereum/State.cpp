@@ -27,7 +27,7 @@ State::State(u256 const &_accountStartNonce, OverlayDB const &_db, OverlayDB con
         m_blockToStateRootDB(_blockToStateRootDB),
         m_state(&m_db),
         m_accountStartNonce(_accountStartNonce) {
-    if (_bs != skale::BaseState::PreExisting)
+    if (_bs != skale::BaseState::PreExisting || m_state.isNull())
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
         m_state.init();
 }
@@ -39,7 +39,6 @@ State::State(State const &_s) :
         m_cache(_s.m_cache),
         m_unchangedCacheEntries(_s.m_unchangedCacheEntries),
         m_nonExistingAccountsCache(_s.m_nonExistingAccountsCache),
-        m_touched(_s.m_touched),
         m_unrevertablyTouched(_s.m_unrevertablyTouched),
         m_accountStartNonce(_s.m_accountStartNonce) {}
 
@@ -134,7 +133,6 @@ State &State::operator=(State const &_s) {
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
-    m_touched = _s.m_touched;
     m_unrevertablyTouched = _s.m_unrevertablyTouched;
     m_accountStartNonce = _s.m_accountStartNonce;
     return *this;
@@ -193,7 +191,7 @@ void State::clearCacheIfTooLarge() const {
 }
 
 void State::commitExternalChanges(AccountMap const &_cache) {
-    m_touched += dev::eth::commit(_cache, m_state);
+    dev::eth::commit(_cache, m_state);
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -202,7 +200,7 @@ void State::commitExternalChanges(AccountMap const &_cache) {
 void State::commit(CommitBehaviour _commitBehaviour) {
     if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
         removeEmptyAccounts();
-    m_touched += dev::eth::commit(m_cache, m_state);
+    dev::eth::commit(m_cache, m_state);
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();

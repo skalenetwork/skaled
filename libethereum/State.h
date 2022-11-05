@@ -130,8 +130,6 @@ public:
     using AddressMap = std::map<h256, Address>;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
-    explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(),
-                                                          OverlayDB(), skale::BaseState::Empty) {}
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
@@ -139,10 +137,6 @@ public:
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, OverlayDB const &_blockToStateRootDB,
                    skale::BaseState _bs = skale::BaseState::PreExisting);
-
-    enum NullType { Null };
-
-    State(NullType): State(Invalid256, OverlayDB(), OverlayDB(), skale::BaseState::Empty) {}
 
     /// Copy state object.
     State(State const& _s);
@@ -336,8 +330,7 @@ private:
     mutable std::vector<Address> m_unchangedCacheEntries;
     /// Tracks addresses that are known to not exist.
     mutable std::set<Address> m_nonExistingAccountsCache;
-    /// Tracks all addresses touched so far.
-    AddressHash m_touched;
+
     /// Tracks addresses that were touched and should stay touched in case of rollback
     AddressHash m_unrevertablyTouched;
 

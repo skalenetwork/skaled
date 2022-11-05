@@ -130,8 +130,25 @@ skale::OverlayDB State::openDB(
     }
 }
 
-State::State( const State& _s ) : m_alethState(dev::eth::State::NullType::Null) {
-    *this = _s;
+State::State( const State& _s )  : m_alethState(_s.m_alethState) {
+    x_db_ptr = _s.x_db_ptr;
+    if ( _s.m_db_read_lock ) {
+        m_db_read_lock.emplace( *x_db_ptr );
+    }
+    if ( _s.m_db_write_lock ) {
+        std::logic_error( "Can't copy locked for writing state object" );
+    }
+    m_db_ptr = _s.m_db_ptr;
+    m_storedVersion = _s.m_storedVersion;
+    m_currentVersion = _s.m_currentVersion;
+    m_cache = _s.m_cache;
+    m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
+    m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
+    m_accountStartNonce = _s.m_accountStartNonce;
+    m_changeLog = _s.m_changeLog;
+    m_initial_funds = _s.m_initial_funds;
+    contractStorageLimit_ = _s.contractStorageLimit_;
+    totalStorageUsed_ = _s.storageUsedTotal();
 }
 
 State& State::operator=( const State& _s ) {
@@ -154,7 +171,6 @@ State& State::operator=( const State& _s ) {
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
     m_alethState = _s.m_alethState;
-
     return *this;
 }
 
