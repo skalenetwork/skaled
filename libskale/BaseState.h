@@ -6,7 +6,7 @@
 #define SKALED_BASESTATE_H
 namespace skale {
     enum class BaseState {
-        PreExisting, Empty
+        PreExisting, Empty, PreExistingNoHistoric
     };
 }
 #endif //SKALED_BASESTATE_H

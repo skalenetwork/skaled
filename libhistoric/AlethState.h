@@ -28,6 +28,7 @@ class ImportTest;
 class StateLoader;
 }  // namespace test
 
+
 namespace eth {
 
 
@@ -35,6 +36,7 @@ class BlockChain;
 class AlethState;
 class TransactionQueue;
 struct VerifiedBlockRef;
+
 
 
 DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );
@@ -294,6 +296,8 @@ public:
 
 
     void saveRootForBlock( uint64_t _blockNumber );
+
+    void populateFromSkaleState(skale::State& _skaleState) {};
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.

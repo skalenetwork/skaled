@@ -222,8 +222,20 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
     // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
     // blockchain database until after the construction.
+
+    auto mode = skale::BaseState::PreExisting;
+
+#ifndef NO_ALETH_STATE
+    // If the historic state databases do not yet exist, they will need to be populated
+    // by the current state
+    if (!fs::exists(fs::path(std::string(m_dbPath.string()).append(".historicstate")))) {
+             mode = skale::BaseState::PreExistingNoHistoric;
+    }
+#endif
+
+
     m_state = skale::State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
-        skale::BaseState::PreExisting, chainParams().accountInitialFunds,
+        mode, chainParams().accountInitialFunds,
         chainParams().sChain.contractStorageLimit );
 
     if ( m_state.empty() ) {

@@ -83,11 +83,20 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
-    } else if ( _bs == BaseState::Empty ) {
+    }
+    else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
         m_db_ptr->clearDB();
-    } else {
+    }
+#ifndef NO_ALETH_STATE
+    else if ( _bs == BaseState::PreExistingNoHistoric ) {
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Converting into historic state" );
+        m_alethState.populateFromSkaleState(*this);
+    }
+#endif
+    else {
         throw std::logic_error( "Not implemented" );
     }
 }

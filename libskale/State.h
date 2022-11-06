@@ -188,12 +188,12 @@ public:
                                                   dev::WithExisting::Kill ),
 #ifndef NO_ALETH_STATE
               dev::eth::AlethState::openDB(
-                  boost::filesystem::path(std::string(_dbPath.string()).append(".alethstate"))
+                  boost::filesystem::path(std::string(_dbPath.string()).append(".historicstate"))
                   , _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
               dev::eth::AlethState::openDB(
-                  boost::filesystem::path(std::string(_dbPath.string()).append(".alethroots")), _genesis,
+                  boost::filesystem::path(std::string(_dbPath.string()).append(".historicroots")), _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
 #endif    /// which uses it. If you have no preexisting database then set BaseState to something other
