@@ -52,7 +52,7 @@ class Create2TestFixture : public TestOutputHelperFixture {
 public:
     explicit Create2TestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
-    virtual ~Create2TestFixture() { state.stopWrite(); }
+    virtual ~Create2TestFixture() { state.releaseWriteLock(); }
 
     void testCreate2worksInConstantinople() {
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
@@ -171,7 +171,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
     //        State state{0};
-    skale::State state = skale::State( 0 ).startWrite();
+    skale::State state = skale::State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -378,7 +378,7 @@ public:
         state.addBalance( to, 1 * ether );
     }
 
-    virtual ~SstoreTestFixture() { state.stopWrite(); }
+    virtual ~SstoreTestFixture() { state.releaseWriteLock(); }
 
     void testEip1283Case1() { testGasConsumed( "0x60006000556000600055", 0, 412, 0 ); }
 
@@ -440,7 +440,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address from{KeyPair::create().address()};
     Address to{KeyPair::create().address()};
-    skale::State state = skale::State( 0 ).startWrite();
+    skale::State state = skale::State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};

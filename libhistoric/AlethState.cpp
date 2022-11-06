@@ -92,10 +92,7 @@ OverlayDB AlethState::openDB(fs::path const &_basePath, h256 const &_genesisHash
     }
 }
 
-void AlethState::populateFrom(AccountMap const &_map) {
-    eth::commit(_map, m_state);
-    commit(dev::eth::CommitBehaviour::KeepEmptyAccounts);
-}
+
 
 u256 const &AlethState::requireAccountStartNonce() const {
     if (m_accountStartNonce == Invalid256)
@@ -103,12 +100,13 @@ u256 const &AlethState::requireAccountStartNonce() const {
     return m_accountStartNonce;
 }
 
-void AlethState::noteAccountStartNonce(u256 const &_actual) {
+/* void AlethState::noteAccountStartNonce(u256 const &_actual) {
     if (m_accountStartNonce == Invalid256)
         m_accountStartNonce = _actual;
     else if (m_accountStartNonce != _actual)
         BOOST_THROW_EXCEPTION(IncorrectAccountStartNonceInState());
 }
+ */
 
 void AlethState::removeEmptyAccounts() {
     for (auto &i: m_cache)
@@ -275,9 +273,20 @@ void AlethState::setRoot(h256 const &_r) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
-//  m_touched.clear();
     m_state.setRoot(_r);
 }
+
+
+void AlethState::setRootByBlockNumber(uint64_t _blockNumber) {
+    auto key = h256(_blockNumber);
+    if (!m_blockToStateRootDB.exists(key)) {
+        BOOST_THROW_EXCEPTION(UnknownBlockNumberInRootDB());
+    }
+    auto value = m_blockToStateRootDB.lookup(key);
+    auto root = h256 (value, h256::ConstructFromStringType::FromBinary);
+    setRoot(root);
+}
+
 
 bool AlethState::addressInUse(Address const &_id) const {
     return !!account(_id);
@@ -575,26 +584,19 @@ AlethState::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, 
     u256 const startGasUsed = _envInfo.gasUsed();
     bool const statusCode = executeTransaction(e, _t, onOp);
 
-    bool removeEmptyAccounts = false;
+
     switch (_p) {
         case skale::Permanence::Reverted:
             m_cache.clear();
             break;
         case skale::Permanence::Committed:
-            removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-            commit(removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts
-                                       : dev::eth::CommitBehaviour::KeepEmptyAccounts);
-
-            m_blockToStateRootDB.insert(h256(_envInfo.number()), m_state.root().ref());
-            m_blockToStateRootDB.commit();
-
-            break;
+            // should never be called since historic state is  read only
+            assert(false);
         case skale::Permanence::Uncommitted:
             break;
         case skale::Permanence::CommittedWithoutState:
-            // deal with this later
+            // should never be called historic state is  read only
             assert(false);
-
     }
 
     TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
@@ -603,18 +605,6 @@ AlethState::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngine, 
     return make_pair(res, receipt);
 }
 
-void AlethState::executeBlockTransactions(Block const &_block, unsigned _txCount,
-                                     LastBlockHashesFace const &_lastHashes, SealEngineFace const &_sealEngine) {
-    u256 gasUsed = 0;
-    for (unsigned i = 0; i < _txCount; ++i) {
-        EnvInfo envInfo(_block.info(), _lastHashes, gasUsed, _sealEngine.chainParams().chainID);
-
-        AlethExecutive e(*this, envInfo, _sealEngine);
-        executeTransaction(e, _block.pending()[i], OnOpFunc());
-
-        gasUsed += e.gasUsed();
-    }
-}
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
@@ -707,7 +697,14 @@ std::ostream &dev::eth::operator<<(std::ostream &_out, AlethState const &_s) {
     return _out;
 }
 
-AlethState &dev::eth::createIntermediateState(AlethState &o_s, Block const &_block, unsigned _txIndex, BlockChain const &_bc) {
+
+void AlethState::saveRootForBlock(uint64_t _blockNumber) {
+    m_blockToStateRootDB.insert(h256(_blockNumber), m_state.root().ref());
+    m_blockToStateRootDB.commit();
+}
+
+
+/*AlethState &dev::eth::createIntermediateState(AlethState &o_s, Block const &_block, unsigned _txIndex, BlockChain const &_bc) {
     // o_s = _block.state().alethState();
     u256 const rootHash = _block.stateRootBeforeTx(_txIndex);
     if (rootHash)
@@ -718,6 +715,7 @@ AlethState &dev::eth::createIntermediateState(AlethState &o_s, Block const &_blo
     }
     return o_s;
 }
+ */
 
 template<class DB>
 AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state) {
@@ -766,6 +764,11 @@ AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
         }
     return ret;
 }
+
+
+
+
+
 
 
 template AddressHash dev::eth::commit<OverlayDB>(AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state);

@@ -4,31 +4,31 @@
 
 #pragma once
 
-#include <libethereum/Account.h>
-#include <libethereum/GasPricer.h>
-#include <libethereum/SecureTrieDB.h>
-#include <libethereum/Transaction.h>
-#include <libethereum/TransactionReceipt.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
+#include <libethereum/Account.h>
 #include <libethereum/CodeSizeCache.h>
+#include <libethereum/GasPricer.h>
+#include <libethereum/SecureTrieDB.h>
+#include <libethereum/Transaction.h>
+#include <libethereum/TransactionReceipt.h>
 #include <libevm/ExtVMFace.h>
 #include <libskale/BaseState.h>
 #include <libskale/Permanence.h>
 #include <array>
 #include <unordered_map>
 
-namespace dev
-{
+namespace dev {
 
-namespace test { class ImportTest; class StateLoader; }
+namespace test {
+class ImportTest;
+class StateLoader;
+}  // namespace test
 
-namespace eth
-{
-
+namespace eth {
 
 
 class BlockChain;
@@ -37,17 +37,15 @@ class TransactionQueue;
 struct VerifiedBlockRef;
 
 
-DEV_SIMPLE_EXCEPTION(InvalidAccountStartNonceInState);
-DEV_SIMPLE_EXCEPTION(IncorrectAccountStartNonceInState);
+DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );
+DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
 
 class SealEngineFace;
 class AlethExecutive;
 
 /// An atomic state changelog entry.
-struct Change
-{
-    enum Kind: int
-    {
+struct Change {
+    enum Kind : int {
         /// Account balance changed. Change::value contains the amount the
         /// balance was increased by.
         Balance,
@@ -79,23 +77,19 @@ struct Change
     u256 key;         ///< Storage key. Last because used only in one case.
 
     /// Helper constructor to make change log update more readable.
-    Change(Kind _kind, Address const& _addr, u256 const& _value = 0):
-            kind(_kind), address(_addr), value(_value)
-    {
-    }
+    Change( Kind _kind, Address const& _addr, u256 const& _value = 0 )
+        : kind( _kind ), address( _addr ), value( _value ) {}
 
     /// Helper constructor especially for storage change log.
-    Change(Address const& _addr, u256 const& _key, u256 const& _value):
-            kind(Storage), address(_addr), value(_value), key(_key)
-    {}
+    Change( Address const& _addr, u256 const& _key, u256 const& _value )
+        : kind( Storage ), address( _addr ), value( _value ), key( _key ) {}
 
     /// Helper constructor for nonce change log.
-    Change(Address const& _addr, u256 const& _value):
-            kind(Nonce), address(_addr), value(_value)
-    {}
+    Change( Address const& _addr, u256 const& _value )
+        : kind( Nonce ), address( _addr ), value( _value ) {}
 };
 
-using ChangeLog = std::vector<Change>;
+using ChangeLog = std::vector< Change >;
 
 /**
  * Model of an Ethereum state, essentially a facade for the trie.
@@ -111,23 +105,16 @@ using ChangeLog = std::vector<Change>;
  * The changelog is managed by savepoint(), rollback() and commit() methods.
  */
 
-enum class CommitBehaviour
-{
-    KeepEmptyAccounts,
-    RemoveEmptyAccounts
-};
+enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
 
-class AlethState
-{
+class AlethState {
     friend class ExtVM;
     friend class dev::test::ImportTest;
     friend class dev::test::StateLoader;
     friend class BlockChain;
 
 public:
-
-
-    using AddressMap = std::map<h256, Address>;
+    using AddressMap = std::map< h256, Address >;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
 
@@ -135,67 +122,67 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit AlethState(u256 const& _accountStartNonce, OverlayDB const& _db, OverlayDB const &_blockToStateRootDB,
-                   skale::BaseState _bs = skale::BaseState::PreExisting);
+    explicit AlethState( u256 const& _accountStartNonce, OverlayDB const& _db,
+        OverlayDB const& _blockToStateRootDB,
+        skale::BaseState _bs = skale::BaseState::PreExisting );
 
     /// Copy state object.
-    AlethState(AlethState const& _s);
+    AlethState( AlethState const& _s );
 
     /// Copy state object.
-    AlethState& operator=(AlethState const& _s);
+    AlethState& operator=( AlethState const& _s );
 
-    /// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
-    static OverlayDB openDB(boost::filesystem::path const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
+    /// Open a DB - useful for passing into the constructor & keeping for other states that are
+    /// necessary.
+    static OverlayDB openDB( boost::filesystem::path const& _path, h256 const& _genesisHash,
+        WithExisting _we = WithExisting::Trust );
     OverlayDB const& db() const { return m_db; }
     OverlayDB& db() { return m_db; }
 
-    /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
-    void populateFrom(AccountMap const& _map);
 
     /// @returns the set containing all addresses currently in use in Ethereum.
-    /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds or minutes at a time.
+    /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
+    /// or minutes at a time.
     /// @throws InterfaceNotSupported if compiled without ETH_FATDB.
-    std::unordered_map<Address, u256> addresses() const;
+    std::unordered_map< Address, u256 > addresses() const;
 
     /// @returns the map with maximum _maxResults elements containing hash->addresses and the next
     /// address hash. This method faster then addresses() const;
-    std::pair<AddressMap, h256> addresses(h256 const& _begin, size_t _maxResults) const;
+    std::pair< AddressMap, h256 > addresses( h256 const& _begin, size_t _maxResults ) const;
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
-    std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace const& _sealEngine, Transaction const& _t,
-                                                           skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
+    std::pair< ExecutionResult, TransactionReceipt > execute( EnvInfo const& _envInfo,
+        SealEngineFace const& _sealEngine, Transaction const& _t,
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
-    /// Execute @a _txCount transactions of a given block.
-    /// This will change the state accordingly.
-    void executeBlockTransactions(Block const& _block, unsigned _txCount, LastBlockHashesFace const& _lastHashes, SealEngineFace const& _sealEngine);
 
     /// Check if the address is in use.
-    bool addressInUse(Address const& _address) const;
+    bool addressInUse( Address const& _address ) const;
 
-    /// Check if the account exists in the state and is non empty (nonce > 0 || balance > 0 || code nonempty).
-    /// These two notions are equivalent after EIP158.
-    bool accountNonemptyAndExisting(Address const& _address) const;
+    /// Check if the account exists in the state and is non empty (nonce > 0 || balance > 0 || code
+    /// nonempty). These two notions are equivalent after EIP158.
+    bool accountNonemptyAndExisting( Address const& _address ) const;
 
     /// Check if the address contains executable code.
-    bool addressHasCode(Address const& _address) const;
+    bool addressHasCode( Address const& _address ) const;
 
     /// Get an account's balance.
     /// @returns 0 if the address has never been used.
-    u256 balance(Address const& _id) const;
+    u256 balance( Address const& _id ) const;
 
     /// Add some amount to balance.
     /// Will initialise the address if it has never been used.
-    void addBalance(Address const& _id, u256 const& _amount);
+    void addBalance( Address const& _id, u256 const& _amount );
 
     /// Subtract the @p _value amount from the balance of @p _addr account.
     /// @throws NotEnoughCash if the balance of the account is less than the
     /// amount to be subtrackted (also in case the account does not exist).
-    void subBalance(Address const& _addr, u256 const& _value);
+    void subBalance( Address const& _addr, u256 const& _value );
 
     /// Set the balance of @p _addr to @p _value.
     /// Will instantiate the address if it has never been used.
-    void setBalance(Address const& _addr, u256 const& _value);
+    void setBalance( Address const& _addr, u256 const& _value );
 
     /**
      * @brief Transfers "the balance @a _value between two accounts.
@@ -203,97 +190,110 @@ public:
      * @param _to Account to which @a _value will be added.
      * @param _value Amount to be transferred.
      */
-    void transferBalance(Address const& _from, Address const& _to, u256 const& _value) { subBalance(_from, _value); addBalance(_to, _value); }
+    void transferBalance( Address const& _from, Address const& _to, u256 const& _value ) {
+        subBalance( _from, _value );
+        addBalance( _to, _value );
+    }
 
     /// Get the root of the storage of an account.
-    h256 storageRoot(Address const& _contract) const;
+    h256 storageRoot( Address const& _contract ) const;
 
     /// Get the value of a storage position of an account.
     /// @returns 0 if no account exists at that address.
-    u256 storage(Address const& _contract, u256 const& _memory) const;
+    u256 storage( Address const& _contract, u256 const& _memory ) const;
 
     /// Set the value of a storage position of an account.
-    void setStorage(Address const& _contract, u256 const& _location, u256 const& _value);
+    void setStorage( Address const& _contract, u256 const& _location, u256 const& _value );
 
     /// Get the original value of a storage position of an account (before modifications saved in
     /// account cache).
     /// @returns 0 if no account exists at that address.
-    u256 originalStorageValue(Address const& _contract, u256 const& _key) const;
+    u256 originalStorageValue( Address const& _contract, u256 const& _key ) const;
 
     /// Clear the storage root hash of an account to the hash of the empty trie.
-    void clearStorage(Address const& _contract);
+    void clearStorage( Address const& _contract );
 
     /// Create a contract at the given address (with unset code and unchanged balance).
-    void createContract(Address const& _address);
+    void createContract( Address const& _address );
 
     /// Sets the code of the account. Must only be called during / after contract creation.
-    void setCode(Address const& _address, bytes&& _code, u256 const& _version);
+    void setCode( Address const& _address, bytes&& _code, u256 const& _version );
 
     /// Delete an account (used for processing selfdestructs).
-    void kill(Address _a);
+    void kill( Address _a );
 
     /// Get the storage of an account.
     /// @note This is expensive. Don't use it unless you need to.
-    /// @returns map of hashed keys to key-value pairs or empty map if no account exists at that address.
-    std::map<h256, std::pair<u256, u256>> storage(Address const& _contract) const;
+    /// @returns map of hashed keys to key-value pairs or empty map if no account exists at that
+    /// address.
+    std::map< h256, std::pair< u256, u256 > > storage( Address const& _contract ) const;
 
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
     /// @warning The reference to the code is only valid until the access to
     ///          other account. Do not keep it.
-    bytes const& code(Address const& _addr) const;
+    bytes const& code( Address const& _addr ) const;
 
     /// Get the code hash of an account.
-    /// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
-    h256 codeHash(Address const& _contract) const;
+    /// @returns EmptySHA3 if no account exists at that address or if there is no code associated
+    /// with the address.
+    h256 codeHash( Address const& _contract ) const;
 
     /// Get the byte-size of the code of an account.
     /// @returns code(_contract).size(), but utilizes CodeSizeHash.
-    size_t codeSize(Address const& _contract) const;
+    size_t codeSize( Address const& _contract ) const;
 
     /// Get contract account's version.
     /// @returns 0 if no account exists at that address.
-    u256 version(Address const& _contract) const;
+    u256 version( Address const& _contract ) const;
 
     /// Increament the account nonce.
-    void incNonce(Address const& _id);
+    void incNonce( Address const& _id );
 
     /// Set the account nonce.
-    void setNonce(Address const& _addr, u256 const& _newNonce);
+    void setNonce( Address const& _addr, u256 const& _newNonce );
 
     /// Get the account nonce -- the number of transactions it has sent.
     /// @returns 0 if the address has never been used.
-    u256 getNonce(Address const& _addr) const;
+    u256 getNonce( Address const& _addr ) const;
 
     /// The hash of the root of our state tree.
     h256 rootHash() const { return m_state.root(); }
 
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
-    void commit(CommitBehaviour _commitBehaviour);
+    void commit( CommitBehaviour _commitBehaviour );
 
 
-    void commitExternalChanges(AccountMap const &_cache);
+    void commitExternalChanges( AccountMap const& _cache );
 
     /// Resets any uncommitted changes to the cache.
-    void setRoot(h256 const& _root);
+    void setRoot( h256 const& _root );
+
+
+    // Sets root by reading the block number from DB
+
+    void setRootByBlockNumber(uint64_t _blockNumber);
 
     /// Get the account start nonce. May be required.
     u256 const& accountStartNonce() const { return m_accountStartNonce; }
     u256 const& requireAccountStartNonce() const;
-    void noteAccountStartNonce(u256 const& _actual);
+    // void noteAccountStartNonce(u256 const& _actual);
 
     /// Mark account as touched and keep it touched even in case of rollback
-    void unrevertableTouch(Address const& _addr);
+    void unrevertableTouch( Address const& _addr );
 
     /// Create a savepoint in the state changelog.
     /// @return The savepoint index that can be used in rollback() function.
     size_t savepoint() const;
 
     /// Revert all recent changes up to the given @p _savepoint savepoint.
-    void rollback(size_t _savepoint);
+    void rollback( size_t _savepoint );
 
     ChangeLog const& changeLog() const { return m_changeLog; }
+
+
+    void saveRootForBlock( uint64_t _blockNumber );
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -301,20 +301,20 @@ private:
 
     /// @returns the account at the given address or a null pointer if it does not exist.
     /// The pointer is valid until the next access to the state or account.
-    Account const* account(Address const& _addr) const;
+    Account const* account( Address const& _addr ) const;
 
     /// @returns the account at the given address or a null pointer if it does not exist.
     /// The pointer is valid until the next access to the state or account.
-    Account* account(Address const& _addr);
+    Account* account( Address const& _addr );
 
     /// Purges non-modified entries in m_cache if it grows too large.
     void clearCacheIfTooLarge() const;
 
-    void createAccount(Address const& _address, Account const&& _account);
+    void createAccount( Address const& _address, Account const&& _account );
 
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
-    bool executeTransaction(AlethExecutive& _e, Transaction const& _t, OnOpFunc const& _onOp);
+    bool executeTransaction( AlethExecutive& _e, Transaction const& _t, OnOpFunc const& _onOp );
 
     /// Our overlay for the state tree.
     OverlayDB m_db;
@@ -322,31 +322,32 @@ private:
     OverlayDB m_blockToStateRootDB;
 
     /// Our state tree, as an OverlayDB DB.
-    SecureTrieDB<Address, OverlayDB> m_state;
+    SecureTrieDB< Address, OverlayDB > m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
     /// been changed.
-    mutable std::unordered_map<Address, Account> m_cache;
+    mutable std::unordered_map< Address, Account > m_cache;
     /// Tracks entries in m_cache that can potentially be purged if it grows too large.
-    mutable std::vector<Address> m_unchangedCacheEntries;
+    mutable std::vector< Address > m_unchangedCacheEntries;
     /// Tracks addresses that are known to not exist.
-    mutable std::set<Address> m_nonExistingAccountsCache;
+    mutable std::set< Address > m_nonExistingAccountsCache;
 
     /// Tracks addresses that were touched and should stay touched in case of rollback
     AddressHash m_unrevertablyTouched;
 
     u256 m_accountStartNonce;
 
-    friend std::ostream& operator<<(std::ostream& _out, AlethState const& _s);
+    friend std::ostream& operator<<( std::ostream& _out, AlethState const& _s );
     ChangeLog m_changeLog;
+
+
 };
 
-std::ostream& operator<<(std::ostream& _out, AlethState const& _s);
+std::ostream& operator<<( std::ostream& _out, AlethState const& _s );
 
-AlethState& createIntermediateState(AlethState& o_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc);
 
-template <class DB>
-AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state);
 
-}
-}
+template < class DB >
+AddressHash commit( AccountMap const& _cache, SecureTrieDB< Address, DB >& _state );
 
+}  // namespace eth
+}  // namespace dev

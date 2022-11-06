@@ -79,7 +79,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_initial_funds( _initialFunds ),
       contractStorageLimit_( _contractStorageLimit ),
       m_alethState(_accountStartNonce, _alethDb, _alethBlockToStateRootDb, _bs) {
-    auto state = startRead();
+    auto state = createStateReadOnlyCopy();
     totalStorageUsed_ = state.storageUsedTotal();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
@@ -759,21 +759,21 @@ void State::updateToLatestVersion() {
     }
 }
 
-State State::startRead() const {
+State State::createStateReadOnlyCopy() const {
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::startWrite() const {
+State State::createStateModifyCopy() const {
     State stateCopy = State( *this );
     stateCopy.m_db_write_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::delegateWrite() {
+State State::createStateModifyCopyAndPassLock() {
     if ( m_db_write_lock ) {
         boost::upgrade_lock< boost::shared_mutex > lock;
         lock.swap( *m_db_write_lock );
@@ -783,18 +783,18 @@ State State::delegateWrite() {
         stateCopy.m_db_write_lock->swap( lock );
         return stateCopy;
     } else {
-        return startWrite();
+        return createStateModifyCopy();
     }
 }
 
-void State::stopWrite() {
+void State::releaseWriteLock() {
     m_db_write_lock = boost::none;
 }
 
-State State::startNew() {
+State State::createNewCopyWithLocks() {
     State copy;
     if ( m_db_write_lock )
-        copy = delegateWrite();
+        copy = createStateModifyCopyAndPassLock();
     else
         copy = State( *this );
     if ( m_db_read_lock )
@@ -882,6 +882,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
+        m_alethState.saveRootForBlock(_envInfo.number());
+
         break;
     }
     case Permanence::Uncommitted:

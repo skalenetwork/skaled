@@ -165,6 +165,7 @@ public:
     using AddressMap = std::map< dev::h256, dev::Address >;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
+    /// This constructor is currently used only in tests
     explicit State( dev::u256 const& _accountStartNonce )
         : State( _accountStartNonce, OverlayDB(),
 #ifndef NO_ALETH_STATE
@@ -177,6 +178,7 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the state.
+    // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
         dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 )
@@ -185,7 +187,9 @@ public:
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
 #ifndef NO_ALETH_STATE
-              dev::eth::AlethState::openDB( _dbPath, _genesis,
+              dev::eth::AlethState::openDB(
+                  boost::filesystem::path(std::string(_dbPath.string()).append(".alethstate"))
+                  , _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
               dev::eth::AlethState::openDB(
@@ -363,17 +367,18 @@ public:
     /// Different copies can be safely used in different threads
     /// but single object is not thread safe.
     /// No one can change state while returned object exists.
-    State startRead() const;
+    State createStateReadOnlyCopy() const;
 
     /// Create State copy to modify data.
-    State startWrite() const;
+    State createStateModifyCopy() const;
 
     /// Create State copy to modify data and pass writing lock to it
-    State delegateWrite();
+    State createStateModifyCopyAndPassLock();
 
-    void stopWrite();
 
-    State startNew();
+    void releaseWriteLock();
+
+    State createNewCopyWithLocks();
 
     /**
      * @brief connected returns true if state is connected to database

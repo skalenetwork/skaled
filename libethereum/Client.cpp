@@ -227,8 +227,8 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         chainParams().sChain.contractStorageLimit );
 
     if ( m_state.empty() ) {
-        m_state.startWrite().populateFrom( bc().chainParams().genesisState );
-        m_state = m_state.startNew();
+        m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
+        m_state = m_state.createNewCopyWithLocks();
     };
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
@@ -704,7 +704,7 @@ size_t Client::syncTransactions(
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, vecMissing );
-        m_state = m_state.startNew();
+        m_state = m_state.createNewCopyWithLocks();
     }
 
     DEV_READ_GUARDED( x_working )
@@ -765,7 +765,7 @@ void Client::restartMining() {
     newPreMine = m_preSeal;
 
     // TODO: use m_postSeal to avoid re-evaluating our own blocks.
-    m_state = m_state.startNew();
+    m_state = m_state.createNewCopyWithLocks();
     preChanged = newPreMine.sync( bc(), m_state );
 
     if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
@@ -1117,6 +1117,11 @@ Block Client::blockByNumber(BlockNumber _h) const
 {
     try {
         auto hash = ClientBase::hashFromNumber(_h);
+
+        // blockByNumber is only used for reads
+
+        auto readState = m_state.createStateReadOnlyCopy();
+        readState.mutableAlethState().setRootByBlockNumber(_h);
         DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, m_state ); }
         assert( false );
         return Block( bc() );
@@ -1218,7 +1223,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     u256 gasBidPrice;
 
     DEV_GUARDED( m_blockImportMutex ) {
-        state = this->state().startRead();
+        state = this->state().createStateReadOnlyCopy();
         gasBidPrice = this->gasBidPrice();
     }
 
@@ -1296,7 +1301,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 #endif
 
         // TODO there can be race conditions between prev and next line!
-        skale::State readStateForLock = temp.mutableState().startRead();
+        skale::State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;

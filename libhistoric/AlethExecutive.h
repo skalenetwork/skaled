@@ -55,21 +55,15 @@ namespace dev
             /** Easiest constructor.
              * Creates executive to operate on the state of end of the given block, populating environment
              * info from given Block and the LastHashes portion from the BlockChain.
-             */
+
             AlethExecutive(Block& _s, BlockChain const& _bc, unsigned _level = 0);
 
-            /** LastHashes-split constructor.
-             * Creates executive to operate on the state of end of the given block, populating environment
-             * info accordingly, with last hashes given explicitly.
-             */
+
             AlethExecutive(Block& _s, LastBlockHashesFace const& _lh, unsigned _level = 0);
 
-            /** Previous-state constructor.
-             * Creates executive to operate on the state of a particular transaction in the given block,
-             * populating environment info from the given Block and the LastHashes portion from the BlockChain.
-             * State is assigned the resultant value, but otherwise unused.
-             */
+
             AlethExecutive(dev::eth::AlethState& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc, unsigned _level = 0);
+             */
 
             AlethExecutive(AlethExecutive const&) = delete;
             void operator=(AlethExecutive) = delete;

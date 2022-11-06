@@ -159,7 +159,7 @@ void Block::resetCurrent( int64_t _timestamp ) {
     updateBlockhashContract();
 
     //    if ( !m_state.checkVersion() )
-    m_state = m_state.startNew();
+    m_state = m_state.createNewCopyWithLocks();
 }
 
 SealEngineFace* Block::sealEngine() const {
@@ -440,14 +440,14 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
 
-    m_state = m_state.delegateWrite();  // mainly for debugging
+    m_state = m_state.createStateModifyCopyAndPassLock();  // mainly for debugging
     TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
     if ( vecMissing ) {
         assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
-    } else {
+    } else
         // NB! Not commit! Commit will be after 1st transaction!
         m_state.clearPartialTransactionReceipts();
-    }
+
 
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
@@ -523,7 +523,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             cerror << DETAILED_ERROR;
         }
     }
-    m_state.stopWrite();
+    m_state.releaseWriteLock();
     return make_tuple( receipts, receipts.size() - count_bad );
 }
 
@@ -561,7 +561,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     sync( _bc, _block.info.parentHash(), BlockHeader() );
     resetCurrent();
 
-    m_state = m_state.startWrite();
+    m_state = m_state.createStateModifyCopy();
 
 #if ETH_TIMED_ENACTMENTS
     syncReset = t.elapsed();
@@ -812,7 +812,7 @@ ExecutionResult Block::execute(
     // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
-    skale::State stateSnapshot = _p != skale::Permanence::Reverted ? m_state.delegateWrite() : m_state;
+    skale::State stateSnapshot = _p != skale::Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
@@ -858,7 +858,7 @@ ExecutionResult Block::execute(
         m_transactionSet.insert( _t.sha3() );
     }
     if ( _p == skale::Permanence::Committed || _p == skale::Permanence::Uncommitted ) {
-        m_state = stateSnapshot.delegateWrite();
+        m_state = stateSnapshot.createStateModifyCopyAndPassLock();
     }
 
     return resultReceipt.first;
@@ -893,7 +893,7 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                skale::State state = m_state.startWrite();
+                skale::State state = m_state.createStateModifyCopy();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( blockNumber ).accountVersion );
                 state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
@@ -1034,7 +1034,7 @@ bool Block::sealBlock( bytesConstRef _header ) {
 }
 
 void Block::startReadState() {
-    m_state = m_state.startRead();
+    m_state = m_state.createStateReadOnlyCopy();
 }
 
 h256 Block::stateRootBeforeTx( unsigned _i ) const {

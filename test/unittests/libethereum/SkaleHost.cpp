@@ -874,7 +874,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().startWrite();
+        auto wr_state = client->state().createStateModifyCopy();
         wr_state.addBalance( account2.address(), 1 * ether );
         wr_state.commit();
     }

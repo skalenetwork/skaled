@@ -257,7 +257,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 }
 
 void ImportTest::checkBalance( skale::State const& _pre, skale::State const& _post, bigint _miningReward ) {
-    skale::State pre = _pre.startRead(), post = _post.startRead();
+    skale::State pre = _pre.createStateReadOnlyCopy(), post = _post.createStateReadOnlyCopy();
     bigint preBalance = 0;
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
@@ -278,7 +278,7 @@ std::tuple< skale::State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest:
     assert( m_envInfo );
 
     bool removeEmptyAccounts = false;
-    skale::State initialState = _preState.startWrite();
+    skale::State initialState = _preState.createStateModifyCopy();
     initialState.addBalance( _env.author(), 0 );  // imitate mining reward
     ExecOutput out( std::make_pair(
         eth::ExecutionResult(), eth::TransactionReceipt( h256(), u256(), eth::LogEntries() ) ) );
@@ -400,7 +400,7 @@ void ImportTest::importState(
         validation::validateAccountMaskObj( accountMaskJson );
     }
     std::string jsondata = json_spirit::write_string( ( json_spirit::mValue ) o, false );
-    _state.startWrite().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
+    _state.createStateModifyCopy().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
 }
 
 void ImportTest::importState( json_spirit::mObject const& _o, skale::State& _state ) {
@@ -515,7 +515,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
 
 int ImportTest::compareStates( skale::State const& _stateExpect, skale::State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    skale::State stateExpect = _stateExpect.startRead(), statePost = _statePost.startRead();
+    skale::State stateExpect = _stateExpect.createStateReadOnlyCopy(), statePost = _statePost.createStateReadOnlyCopy();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \
