@@ -33,8 +33,8 @@
 |
 
 |eth_syncing
-|Supported
-|
+|Partially supported
+|Always returns false
 
 |eth_coinbase
 |Supported
@@ -73,13 +73,12 @@
 |Second parameter is ignored and always set to "latest", supports EIP-1898 interface
 
 |eth_getBlockTransactionCountByHash
-|Supported
-|
-
+|Partially supported
+|Old blocks are "rotated out"
 
 |eth_getBlockTransactionCountByNumber
-|Supported
-|
+|Partially supported
+|Old blocks are "rotated out"
 
 |eth_getUncleCountByBlockHash
 |Supported      
@@ -115,15 +114,15 @@
 
 |eth_getBlockByHash
 |Supported
-|Old blocks are "rotated out"
+|Old blocks are "rotated out". Block contains 3 extra fields: author, boundary, seedHash
 
 |eth_getBlockByNumber
 |Supported
-| Raises "block not found" error if block is "rotated out"
+|Raises "block not found" error if block is "rotated out". Block contains 3 extra fields: `author`, `boundary`, `seedHash`
 
 |eth_getTransactionByHash
 |Supported
-|
+|Doesn't contain fields: `chainId`, `v`, `r`, `s`, `type`
 
 |eth_getTransactionByBlockHashAndIndex 
 |Supported
@@ -135,7 +134,7 @@
 
 |eth_getTransactionReceipt
 |Supported
-|                                                                          
+|Receipt doesn't contain fields: `effectiveGasPrice`, `type`                                                                         
 
 |eth_getUncleByBlockHashAndIndex
 |Supported
@@ -154,7 +153,8 @@
 |
 
 |eth_compileLLL
-|Not supported    |                                                                          
+|Not supported    
+|                                                                          
 
 |eth_compileSerpent
 |Not supported
@@ -173,10 +173,12 @@
 |
 
 |eth_uninstallFilter
-|Supported      |                                                                          
+|Supported      
+|                                                                          
 
 |eth_getFilterChanges
-|Supported      |                                                                          
+|Supported      
+|                                                                          
 
 |eth_getFilterLogs
 |Supported
