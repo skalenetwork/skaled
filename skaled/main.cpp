@@ -342,10 +342,10 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
+static volatile bool g_bStopActionsStarted = false;
 static volatile bool g_bStopActionsComplete = false;
 
 static void stat_handle_stop_actions() {
-    static volatile bool g_bStopActionsStarted = false;
     if ( g_bStopActionsStarted )
         return;
     g_bStopActionsStarted = true;
@@ -2812,7 +2812,8 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    skale::network::browser::refreshing_start( configPath.string() );
+    skale::network::browser::refreshing_start(
+        configPath.string(), []() -> bool { return g_bStopActionsStarted; } );
 
     dev::setThreadName( "main" );
     if ( g_client ) {

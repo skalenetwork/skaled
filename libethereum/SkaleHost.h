@@ -203,6 +203,8 @@ private:
 
     std::optional< uint64_t > emptyBlockIntervalMsForRestore;  // used for temporary setting this
                                                                // to 0
+    bool need_restore_emptyBlockInterval = false;
+
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;
 
