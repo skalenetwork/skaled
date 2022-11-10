@@ -68,6 +68,10 @@ public:
         return 0;
     }
 
+    std::map< std::string, uint64_t > getConsensusDbUsage() const {
+        return {};
+    }
+
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
         if ( _blockId == block_gas_prices.size() )

@@ -1370,6 +1370,21 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
+std::pair< uint64_t, uint64_t > Client::getBlocksDbUsage() const {
+    uint64_t pieceUsageBytes = bc().pieceUsageBytes();
+    fs::path blocksDbPath =
+        m_dbPath / BlockChain::getChainDirName( chainParams() ) / fs::path( "blocks_and_extras" );
+    return { dev::getDirSize( blocksDbPath ), pieceUsageBytes };
+}
+
+std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
+    uint64_t contractStorageUsed = m_state.storageUsedTotal().convert_to< uint64_t >();
+    fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
+                           fs::path( toString( dev::eth::c_databaseVersion ) ) /
+                           fs::path( "state" );
+    return { dev::getDirSize( stateDbPath ), contractStorageUsed };
+}
+
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     assert( m_skaleHost );
     uint64_t status = -1;

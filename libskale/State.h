@@ -375,7 +375,10 @@ public:
 
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
-    dev::s256 storageUsedTotal() const { return m_db_ptr->storageUsed(); }
+    dev::s256 storageUsedTotal() const {
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        return m_db_ptr->storageUsed();
+    }
 
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;

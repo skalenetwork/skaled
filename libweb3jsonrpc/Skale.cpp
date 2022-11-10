@@ -482,6 +482,35 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
+Json::Value Skale::skale_getDBUsage() {
+    nlohmann::json joDBUsageInfo = nlohmann::json::object();
+
+    nlohmann::json joSkaledDBUsage = nlohmann::json::object();
+
+    auto blocksDbUsage = m_client.getBlocksDbUsage();
+    auto stateDbUsage = m_client.getStateDbUsage();
+
+    joSkaledDBUsage["blocks.db_disk_usage"] = blocksDbUsage.first;
+    joSkaledDBUsage["pieceUsageBytes"] = blocksDbUsage.second;
+    joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
+    joSkaledDBUsage["contractStorageUsed"] = stateDbUsage.second;
+
+    joDBUsageInfo["skaledDBUsage"] = joSkaledDBUsage;
+
+    nlohmann::json joConsensusDBUsage = nlohmann::json::object();
+    auto consensusDbUsage = m_client.skaleHost()->getConsensusDbUsage();
+    for ( const auto& [key, val] : consensusDbUsage ) {
+        joConsensusDBUsage[key] = val;
+    }
+
+    joDBUsageInfo["consensusDBUsage"] = joConsensusDBUsage;
+
+    std::string strResponse = joDBUsageInfo.dump();
+    Json::Value response;
+    Json::Reader().parse( strResponse, response );
+    return response;
+}
+
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
         if ( this->m_client.chainParams().nodeInfo.syncNode )

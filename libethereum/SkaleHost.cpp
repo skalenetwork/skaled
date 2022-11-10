@@ -940,6 +940,10 @@ u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
 
+std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
+    return m_consensus->getConsensusDbUsage();
+}
+
 std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
     return m_client.getIMABLSPublicKey();
 }

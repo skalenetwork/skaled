@@ -305,6 +305,10 @@ public:
         return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
     }
 
+    std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
+
+    std::pair< uint64_t, uint64_t > getStateDbUsage() const;
+
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
