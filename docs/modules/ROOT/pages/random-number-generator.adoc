@@ -66,9 +66,9 @@ There are a few ways to do this:
 
 
 ```javascript
-getRandom()%10    // integer between 0 - 10
-getRandom()%100   // integer between 0 - 100
-getRandom()%1000  // integer between 0 - 1000
+getRandom()%10    // integer between 0 - 9
+getRandom()%100   // integer between 0 - 99
+getRandom()%1000  // integer between 0 - 999
 ```
 
 .Can I see example projects that use this?
