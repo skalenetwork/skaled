@@ -1498,7 +1498,7 @@ int main( int argc, char** argv ) try {
             shared_space ? shared_space->getPath() : std::string() ) );
     }
     
-    if ( chainParams.nodeInfo.syncNode ) {
+    if ( chainParams.nodeInfo.syncNode && !chainParams.nodeInfo.syncFromCatchup ) {
         auto bc = BlockChain(chainParams, getDataDir());
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
