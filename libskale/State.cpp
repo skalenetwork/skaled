@@ -248,7 +248,7 @@ std::pair< State::AddressMap, h256 > State::addresses(
         next = next_ptr->first;
         addresses.erase( next_ptr, addresses.end() );
     }
-    return {addresses, next};
+    return { addresses, next };
 }
 
 u256 const& State::requireAccountStartNonce() const {
@@ -479,7 +479,7 @@ void State::setBalance( Address const& _addr, u256 const& _value ) {
 }
 
 void State::createContract( Address const& _address ) {
-    createAccount( _address, {requireAccountStartNonce(), m_initial_funds} );
+    createAccount( _address, { requireAccountStartNonce(), m_initial_funds } );
 }
 
 void State::createAccount( Address const& _address, eth::Account const&& _account ) {
@@ -507,7 +507,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
     for ( auto const& addressValuePair : m_db_ptr->storage( _contract ) ) {
         u256 const& address = addressValuePair.first;
         u256 const& value = addressValuePair.second;
-        storage[sha3( address )] = {address, value};
+        storage[sha3( address )] = { address, value };
     }
     for ( auto const& addressAccountPair : m_cache ) {
         Address const& accountAddress = addressAccountPair.first;

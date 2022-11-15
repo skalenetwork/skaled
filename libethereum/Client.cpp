@@ -40,10 +40,10 @@
 
 #include <libdevcore/microprofile.h>
 
-#include <libdevcore/system_usage.h>
 #include <libdevcore/FileSystem.h>
-#include <libskale/UnsafeRegion.h>
+#include <libdevcore/system_usage.h>
 #include <libskale/TotalStorageUsedPatch.h>
+#include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -145,9 +145,9 @@ Client::~Client() {
 }
 
 void Client::stopWorking() {
-// TODO Try this in develop. For hotfix we will keep as is
-//    if ( !Worker::isWorking() )
-//        return;
+    // TODO Try this in develop. For hotfix we will keep as is
+    //    if ( !Worker::isWorking() )
+    //        return;
 
     Worker::stopWorking();
 
@@ -947,17 +947,15 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                     << " (" << header_struct.hash() << ")";
     std::stringstream ssBlockStats;
     ssBlockStats << cc::success( "Block stats:" ) << "BN:" << number()
-                    << ":BTS:" << bc().info().timestamp()
-                    << ":TXS:" << TransactionBase::howMany()
-                    << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
-                    << ":SENGS:" << SealEngineBase::howMany()
-                    << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
-                    << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
-                    << ":BDS:" << BlockDetails::howMany()
-                    << ":TSS:" << TransactionSkeleton::howMany()
-                    << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                    << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":BTS:" << bc().info().timestamp() << ":TXS:" << TransactionBase::howMany()
+                 << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
+                 << ":SENGS:" << SealEngineBase::howMany()
+                 << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
+                 << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
+                 << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
+                 << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+                 << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                 << ":CMM:" << bc().getTotalCacheMemory();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();

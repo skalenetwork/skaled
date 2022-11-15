@@ -39,7 +39,7 @@ Ethash::Ethash() {
     sealers["cpu"] = GenericFarm< EthashProofOfWork >::SealerDescriptor{
         &EthashCPUMiner::instances, []( GenericMiner< EthashProofOfWork >::ConstructionInfo ci ) {
             return new EthashCPUMiner( ci );
-        }};
+        } };
     m_farm.setSealers( sealers );
     m_farm.onSolutionFound( [=]( EthashProofOfWork::Solution const& sol ) {
         std::unique_lock< Mutex > l( m_submitLock );
@@ -67,7 +67,7 @@ Ethash::~Ethash() {
 }
 
 strings Ethash::sealers() const {
-    return {"cpu"};
+    return { "cpu" };
 }
 
 h256 Ethash::seedHash( BlockHeader const& _bi ) {
@@ -82,9 +82,9 @@ h256 Ethash::seedHash( BlockHeader const& _bi ) {
 }
 
 StringHashMap Ethash::jsInfo( BlockHeader const& _bi ) const {
-    return {{"nonce", toJS( nonce( _bi ) )}, {"seedHash", toJS( seedHash( _bi ) )},
-        {"mixHash", toJS( mixHash( _bi ) )}, {"boundary", toJS( boundary( _bi ) )},
-        {"difficulty", toJS( _bi.difficulty() )}};
+    return { { "nonce", toJS( nonce( _bi ) ) }, { "seedHash", toJS( seedHash( _bi ) ) },
+        { "mixHash", toJS( mixHash( _bi ) ) }, { "boundary", toJS( boundary( _bi ) ) },
+        { "difficulty", toJS( _bi.difficulty() ) } };
 }
 
 void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent,
@@ -107,8 +107,8 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
             ethash::get_global_epoch_context( ethash::get_epoch_number( _bi.number() ) ),
             toEthash( _bi.hash( WithoutSeal ) ), toEthash( nonce( _bi ) ) );
 
-        h256 mix{result.mix_hash.bytes, h256::ConstructFromPointer};
-        h256 final{result.final_hash.bytes, h256::ConstructFromPointer};
+        h256 mix{ result.mix_hash.bytes, h256::ConstructFromPointer };
+        h256 final{ result.final_hash.bytes, h256::ConstructFromPointer };
 
         InvalidBlockNonce ex;
         ex << errinfo_nonce( nonce( _bi ) );
@@ -154,7 +154,7 @@ u256 Ethash::childGasLimit( BlockHeader const& _bi, u256 const& _gasFloorTarget 
 }
 
 void Ethash::manuallySubmitWork( const h256& _mixHash, Nonce _nonce ) {
-    m_farm.submitProof( EthashProofOfWork::Solution{_nonce, _mixHash}, nullptr );
+    m_farm.submitProof( EthashProofOfWork::Solution{ _nonce, _mixHash }, nullptr );
 }
 
 u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _parent ) const {

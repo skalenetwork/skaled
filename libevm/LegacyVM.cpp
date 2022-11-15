@@ -272,7 +272,7 @@ void LegacyVM::interpretCases() {
 
             uint64_t b = ( uint64_t ) m_SP[0];
             uint64_t s = ( uint64_t ) m_SP[1];
-            m_output = owning_bytes_ref{std::move( m_mem ), b, s};
+            m_output = owning_bytes_ref{ std::move( m_mem ), b, s };
             m_bounce = 0;
         }
         BREAK
@@ -289,7 +289,7 @@ void LegacyVM::interpretCases() {
 
             uint64_t b = ( uint64_t ) m_SP[0];
             uint64_t s = ( uint64_t ) m_SP[1];
-            owning_bytes_ref output{move( m_mem ), b, s};
+            owning_bytes_ref output{ move( m_mem ), b, s };
             throwRevertInstruction( move( output ) );
         }
         BREAK;
@@ -391,7 +391,7 @@ void LegacyVM::interpretCases() {
             logGasMem();
             updateIOGas();
 
-            m_ext->log( {m_SP[2]},
+            m_ext->log( { m_SP[2] },
                 bytesConstRef( m_mem.data() + ( uint64_t ) m_SP[0], ( uint64_t ) m_SP[1] ) );
         }
         NEXT
@@ -404,7 +404,7 @@ void LegacyVM::interpretCases() {
             logGasMem();
             updateIOGas();
 
-            m_ext->log( {m_SP[2], m_SP[3]},
+            m_ext->log( { m_SP[2], m_SP[3] },
                 bytesConstRef( m_mem.data() + ( uint64_t ) m_SP[0], ( uint64_t ) m_SP[1] ) );
         }
         NEXT
@@ -417,7 +417,7 @@ void LegacyVM::interpretCases() {
             logGasMem();
             updateIOGas();
 
-            m_ext->log( {m_SP[2], m_SP[3], m_SP[4]},
+            m_ext->log( { m_SP[2], m_SP[3], m_SP[4] },
                 bytesConstRef( m_mem.data() + ( uint64_t ) m_SP[0], ( uint64_t ) m_SP[1] ) );
         }
         NEXT
@@ -430,7 +430,7 @@ void LegacyVM::interpretCases() {
             logGasMem();
             updateIOGas();
 
-            m_ext->log( {m_SP[2], m_SP[3], m_SP[4], m_SP[5]},
+            m_ext->log( { m_SP[2], m_SP[3], m_SP[4], m_SP[5] },
                 bytesConstRef( m_mem.data() + ( uint64_t ) m_SP[0], ( uint64_t ) m_SP[1] ) );
         }
         NEXT
@@ -1219,7 +1219,7 @@ void LegacyVM::interpretCases() {
             m_runGas = toInt63( m_schedule->extcodehashGas );
             updateIOGas();
 
-            m_SPP[0] = u256{m_ext->codeHashAt( asAddress( m_SP[0] ) )};
+            m_SPP[0] = u256{ m_ext->codeHashAt( asAddress( m_SP[0] ) ) };
         }
         NEXT
 

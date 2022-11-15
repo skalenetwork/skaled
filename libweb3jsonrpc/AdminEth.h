@@ -20,7 +20,7 @@ public:
         eth::Client& _eth, eth::GasPricer& _gp, eth::KeyManager& _keyManager, SessionManager& _sm );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"admin", "1.0"}, RPCModule{"miner", "1.0"}};
+        return RPCModules{ RPCModule{ "admin", "1.0" }, RPCModule{ "miner", "1.0" } };
     }
 
     virtual bool admin_eth_setMining( bool _on, std::string const& _session ) override;

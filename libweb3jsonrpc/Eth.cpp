@@ -64,8 +64,7 @@ bool Eth::isEnabledTransactionSending() const {
             throw std::runtime_error(
                 "error config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"syncNode\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode =
-            joSkaleConfig_nodeInfo["syncNode"];
+        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
         isEnabled = joSkaleConfig_nodeInfo_syncNode.get< bool >() ? false : true;
     } catch ( ... ) {
     }

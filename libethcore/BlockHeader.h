@@ -246,7 +246,7 @@ private:
     mutable h256 m_hashWithout;  ///< (Memoised) SHA3 hash of the block header without seal.
     mutable Mutex m_hashLock;    ///< A lock for both m_hash and m_hashWithout.
 
-    mutable Logger m_logger{createLogger( VerbosityDebug, "blockhdr" )};
+    mutable Logger m_logger{ createLogger( VerbosityDebug, "blockhdr" ) };
 
     Counter< BlockHeader > c;
 

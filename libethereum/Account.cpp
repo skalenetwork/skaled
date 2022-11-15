@@ -180,7 +180,7 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
             if ( codePathIt != accountMaskJson.end() ) {
                 auto& codePathObj = codePathIt->second;
                 if ( codePathObj.type() == json_spirit::str_type ) {
-                    fs::path codePath{codePathObj.get_str()};
+                    fs::path codePath{ codePathObj.get_str() };
                     if ( codePath.is_relative() )  // Append config dir if code file path is
                                                    // relative.
                         codePath = _configPath.parent_path() / codePath;

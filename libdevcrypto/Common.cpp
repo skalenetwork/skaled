@@ -51,14 +51,14 @@ namespace {
 secp256k1_context const* getCtx() {
     static std::unique_ptr< secp256k1_context, decltype( &secp256k1_context_destroy ) > s_ctx{
         secp256k1_context_create( SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY ),
-        &secp256k1_context_destroy};
+        &secp256k1_context_destroy };
     return s_ctx.get();
 }
 
 }  // namespace
 
 bool dev::SignatureStruct::isValid() const noexcept {
-    static const h256 s_max{"0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"};
+    static const h256 s_max{ "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141" };
     static const h256 s_zero;
 
     return ( v <= 1 && r > s_zero && s > s_zero && r < s_max && s < s_max );
@@ -78,7 +78,7 @@ Public dev::toPublic( Secret const& _secret ) {
     // Expect single byte header of value 0x04 -- uncompressed public key.
     assert( serializedPubkey[0] == 0x04 );
     // Create the Public skipping the header.
-    return Public{&serializedPubkey[1], Public::ConstructFromPointer};
+    return Public{ &serializedPubkey[1], Public::ConstructFromPointer };
 }
 
 Address dev::toAddress( Public const& _public ) {
@@ -204,7 +204,7 @@ Public dev::recover( Signature const& _sig, h256 const& _message ) {
     // Expect single byte header of value 0x04 -- uncompressed public key.
     assert( serializedPubkey[0] == 0x04 );
     // Create the Public skipping the header.
-    return Public{&serializedPubkey[1], Public::ConstructFromPointer};
+    return Public{ &serializedPubkey[1], Public::ConstructFromPointer };
 }
 
 static const u256 c_secp256k1n(
@@ -302,7 +302,7 @@ bool ecdh::agree( Secret const& _s, Public const& _r, Secret& o_s ) noexcept {
     auto* ctx = getCtx();
     static_assert( sizeof( Secret ) == 32, "Invalid Secret type size" );
     secp256k1_pubkey rawPubkey;
-    std::array< _byte_, 65 > serializedPubKey{{0x04}};
+    std::array< _byte_, 65 > serializedPubKey{ { 0x04 } };
     std::copy( _r.asArray().begin(), _r.asArray().end(), serializedPubKey.begin() + 1 );
     if ( !secp256k1_ec_pubkey_parse(
              ctx, &rawPubkey, serializedPubKey.data(), serializedPubKey.size() ) )
@@ -321,7 +321,7 @@ bytes ecies::kdf( Secret const& _z, bytes const& _s1, unsigned kdByteLen ) {
     // SEC/ISO/Shoup specify counter size SHOULD be equivalent
     // to size of hash output, however, it also notes that
     // the 4 bytes is okay. NIST specifies 4 bytes.
-    std::array< _byte_, 4 > ctr{{0, 0, 0, 1}};
+    std::array< _byte_, 4 > ctr{ { 0, 0, 0, 1 } };
     bytes k;
     secp256k1_sha256_t ctx;
     for ( unsigned i = 0; i <= reps; i++ ) {

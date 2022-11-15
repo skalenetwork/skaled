@@ -59,7 +59,7 @@ public:
         dev::eth::Client& _client, std::shared_ptr< SharedSpace > _sharedSpace = nullptr );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"skale", "0.1"}};
+        return RPCModules{ RPCModule{ "skale", "0.1" } };
     }
 
 
