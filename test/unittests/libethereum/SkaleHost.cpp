@@ -83,6 +83,10 @@ public:
     uint64_t checkOracleResult( const string& _receipt, string& _result) {
         return 0;
     }
+
+    map< string, uint64_t > getConsensusDbUsage() const override {
+        return map< string, uint64_t >();
+    };
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
