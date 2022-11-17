@@ -60,17 +60,17 @@ jobs:
 
       - name: Get newest lcov
         run: |
-          echo "Removing previous lcov version..."
-          sudo apt-get remove lcov || true
-          echo "Installing newest lcov version..."
-          rm -rf newer_lcov || true
-          mkdir newer_lcov
-          cd newer_lcov
-          git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
-          cd lcov
-          sudo make install
-          cd ..
-          cd ..
+          # echo "Removing previous lcov version..."
+          # sudo apt-get remove lcov || true
+          # echo "Installing newest lcov version..."
+          # rm -rf newer_lcov || true
+          # mkdir newer_lcov
+          # cd newer_lcov
+          # git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
+          # cd lcov
+          # sudo make install
+          # cd ..
+          # cd ..
           echo "Checking installed lcov version..."
           which lcov
           lcov --version
