@@ -60,7 +60,7 @@ jobs:
 
       - name: Get newest lcov
         run: |
-          sduo apt-get install libcapture-tiny-perl
+          sudo apt-get install libcapture-tiny-perl
           echo "Removing previous lcov version..."
           sudo apt-get remove lcov || true
           echo "Installing newest lcov version..."
