@@ -1,0 +1,28 @@
+name: Check if a PR has a valid Issue
+
+on:
+  pull_request:
+    types: [ edited, synchronize, opened, reopened ]
+
+jobs:
+  checker:
+    name: PR checker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Issue Validator
+        uses: HarshCasper/validate-issues-over-pull-requests@v0.1.1
+        id: validator
+        with:
+          prbody: ${{ github.event.pull_request.body }}
+          prurl: ${{ github.event.pull_request.url }}
+
+      - name: PR has no valid Issue
+        if: ${{ steps.validator.outputs.valid == 0 }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRNUM: ${{ github.event.pull_request.number }}
+        run: |
+          exit 1
