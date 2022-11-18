@@ -1,28 +1,18 @@
-name: Check if a PR has a valid Issue
-
+name: Pull request validation
 on:
   pull_request:
     types: [ edited, synchronize, opened, reopened ]
 
 jobs:
   checker:
-    name: PR checker
+    name: Check link to the issue
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Issue Validator
-        uses: HarshCasper/validate-issues-over-pull-requests@v0.1.1
-        id: validator
+      - name: Issue regex check 
+        uses: FidelusAleksander/gh-action-regex@v0.2.0
+        id: regex
         with:
-          prbody: ${{ github.event.pull_request.body }}
-          prurl: ${{ github.event.pull_request.url }}
-
-      - name: PR has no valid Issue
-        if: ${{ steps.validator.outputs.valid == 0 }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PRNUM: ${{ github.event.pull_request.number }}
-        run: |
-          exit 1
+          regex_pattern: "((?i)close[sd]?|resolve[sd]?|fixe[sd]|fix)+[ ][\\w\\/.-]*#[\\d]+"
+          regex_match_type: search
+          text: ${{ github.event.pull_request.body }}
