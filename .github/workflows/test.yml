@@ -161,8 +161,8 @@ jobs:
           lcov --capture --directory . --output-file coverage.info
           lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
           lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          lcov --ignore-errors --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
+          lcov --ignore-errors unused --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
+          lcov --ignore-errors unused --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
           lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
           #- lcov --list coverage.info # debug info
 
