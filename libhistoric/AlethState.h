@@ -262,16 +262,10 @@ public:
     /// The hash of the root of our state tree.
     h256 rootHash() const { return m_state.root(); }
 
-    /// Commit all changes waiting in the address cache to the DB.
-    /// @param _commitBehaviour whether or not to remove empty accounts during commit.
-    void commit( CommitBehaviour _commitBehaviour );
-
-
     void commitExternalChanges( AccountMap const& _cache );
 
     /// Resets any uncommitted changes to the cache.
     void setRoot( h256 const& _root );
-
 
     // Sets root by reading the block number from DB
 

@@ -194,14 +194,6 @@ void AlethState::commitExternalChanges(AccountMap const &_cache) {
     m_unchangedCacheEntries.clear();
 }
 
-void AlethState::commit(CommitBehaviour _commitBehaviour) {
-    if (_commitBehaviour == CommitBehaviour::RemoveEmptyAccounts)
-        removeEmptyAccounts();
-    dev::eth::commit(m_cache, m_state);
-    m_changeLog.clear();
-    m_cache.clear();
-    m_unchangedCacheEntries.clear();
-}
 
 unordered_map<Address, u256> AlethState::addresses() const {
 #if ETH_FATDB

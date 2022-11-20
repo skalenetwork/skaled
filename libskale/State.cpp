@@ -235,6 +235,11 @@ void State::populateFrom( eth::AccountMap const& _map ) {
         }
     }
     commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
+    cerr << balance(Address("0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852")) << endl;
+    cerr << mutableAlethState().balance(Address("0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852")) << endl;
+
+
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
