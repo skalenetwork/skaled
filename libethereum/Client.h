@@ -154,7 +154,7 @@ public:
     /// Get the block queue.
     BlockQueue const& blockQueue() const { return m_bq; }
     /// Get the state database.
-    skale::State const& state() const { return m_state; }
+    State const& state() const { return m_state; }
     /// Get some information on the transaction queue.
     TransactionQueue::Status transactionQueueStatus() const { return m_tq.status(); }
     TransactionQueue::Limits transactionQueueLimits() const { return m_tq.limits(); }
@@ -453,7 +453,7 @@ protected:
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
 
-    skale::State m_state;            ///< Acts as the central point for the state.
+    State m_state;            ///< Acts as the central point for the state.
     mutable SharedMutex x_preSeal;   ///< Lock on m_preSeal.
     Block m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.

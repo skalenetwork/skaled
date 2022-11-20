@@ -102,7 +102,7 @@ private:
 class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
-    Executive( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
+    Executive( State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
         const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true )
         : m_s( _s ),
           m_envInfo( _envInfo ),
@@ -130,7 +130,7 @@ public:
      * populating environment info from the given Block and the LastHashes portion from the
      * BlockChain. State is assigned the resultant value, but otherwise unused.
      */
-    Executive( skale::State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc,
+    Executive( State& io_s, Block const& _block, unsigned _txIndex, BlockChain const& _bc,
         const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true );
 
     Executive( Executive const& ) = delete;
@@ -203,7 +203,7 @@ public:
     void revert();
 
     static void verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-        const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
+        const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
         const u256& _gasPrice, const bool _allowFuture = false );
 
 private:
@@ -212,7 +212,7 @@ private:
         u256 const& _gas, bytesConstRef _code, Address const& _originAddress,
         u256 const& _version );
 
-    skale::State& m_s;  ///< The state to which this operation/transaction is applied.
+    State& m_s;  ///< The state to which this operation/transaction is applied.
     // TODO: consider changign to EnvInfo const& to avoid LastHashes copy at every CALL/CREATE
     EnvInfo m_envInfo;               ///< Information on the runtime environment.
     std::shared_ptr< ExtVM > m_ext;  ///< The VM externality object for the VM execution or null if

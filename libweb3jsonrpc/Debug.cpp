@@ -45,7 +45,7 @@ h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
     }
 }
 
-skale::State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) const {
+State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) const {
     if ( _txIndex < 0 )
         throw jsonrpc::JsonRpcException( "Negative index" );
 
@@ -83,7 +83,7 @@ Json::Value Debug::traceTransaction(
 }
 
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
-    skale::State s( _block.state() );
+    State s( _block.state() );
     //    s.setRoot(_block.stateRootBeforeTx(0));
 
     Json::Value traces( Json::arrayValue );
@@ -152,7 +152,7 @@ Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _
         throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
 
     try {
-        skale::State const state = stateAt( _blockHashOrNumber, _txIndex );
+        State const state = stateAt( _blockHashOrNumber, _txIndex );
 
         throw std::logic_error( "Addresses list is not suppoted in Skale state" );
         //        auto const addressMap = state.addresses(h256(_addressHash), _maxResults);
@@ -181,7 +181,7 @@ Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _
         throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
 
     try {
-        skale::State const state = stateAt( _blockHashOrNumber, _txIndex );
+        State const state = stateAt( _blockHashOrNumber, _txIndex );
 
         throw std::logic_error( "Obtaining of full storage is not suppoted in Skale state" );
         //        map<h256, pair<u256, u256>> const storage(state.storage(Address(_address)));

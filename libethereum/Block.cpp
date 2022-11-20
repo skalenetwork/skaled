@@ -76,7 +76,7 @@ Block::Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath,
     //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block( const BlockChain& _bc, h256 const& _hash, const skale::State& _state, skale::BaseState /*_bs*/,
+Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, skale::BaseState /*_bs*/,
     const Address& _author )
     : m_state( _state ), m_precommit( Invalid256 ), m_author( _author ) {
     noteChain( _bc );
@@ -89,10 +89,14 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const skale::State& _sta
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _hash ) );
     }
 
+#ifdef NO_ALETH_STATE
+
     if ( _bc.currentHash() != _hash && _bc.genesisHash() != _hash ) {
         throw std::logic_error(
             "Can't populate block with historical state because it is not supported" );
     }
+
+#endif
 
     auto b = _bc.block( _hash );
     BlockHeader bi( b );  // No need to check - it's already in the DB.
@@ -229,7 +233,7 @@ bool Block::sync( BlockChain const& _bc ) {
     return sync( _bc, _bc.currentHash() );
 }
 
-bool Block::sync( BlockChain const& _bc, skale::State const& _state ) {
+bool Block::sync( BlockChain const& _bc, State const& _state ) {
     m_state = _state;
     m_precommit = _state;
     return sync( _bc );
@@ -420,6 +424,10 @@ pair< TransactionReceipts, bool > Block::sync(
             break;
         }
     }
+
+
+
+
     return ret;
 }
 
@@ -523,6 +531,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             cerror << DETAILED_ERROR;
         }
     }
+
+#ifndef NO_ALETH_STATE
+    m_state.mutableAlethState().saveRootForBlock(m_currentBlock.number());
+#endif
+
     m_state.releaseWriteLock();
     return make_tuple( receipts, receipts.size() - count_bad );
 }
@@ -812,7 +825,7 @@ ExecutionResult Block::execute(
     // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
-    skale::State stateSnapshot = _p != skale::Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
+    State stateSnapshot = _p != skale::Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
@@ -893,7 +906,7 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                skale::State state = m_state.createStateModifyCopy();
+                State state = m_state.createStateModifyCopy();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( blockNumber ).accountVersion );
                 state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
@@ -975,8 +988,8 @@ void Block::commitToSeal(
     //    m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
     // We do not commit now because will do it in blockchain syncing
-    //    m_state.commit(removeEmptyAccounts ? skale::State::CommitBehaviour::RemoveEmptyAccounts :
-    //                                         skale::State::CommitBehaviour::KeepEmptyAccounts);
+    //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
+    //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
     LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
                             << cc::notice( "is not calculated in Skale state" );

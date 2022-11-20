@@ -53,7 +53,7 @@ json_spirit::mObject fillJsonWithTransaction( Transaction const& _txn ) {
 }
 
 json_spirit::mObject fillJsonWithStateChange(
-    skale::State const& _stateOrig, skale::State const& _statePost, skale::ChangeLog const& _changeLog ) {
+    State const& _stateOrig, State const& _statePost, skale::ChangeLog const& _changeLog ) {
     json_spirit::mObject oState;
     if ( !_changeLog.size() )
         return oState;
@@ -166,12 +166,12 @@ json_spirit::mObject fillJsonWithStateChange(
     return oState;
 }
 
-json_spirit::mObject fillJsonWithState( skale::State const& _state ) {
+json_spirit::mObject fillJsonWithState( State const& _state ) {
     AccountMaskMap emptyMap;
     return fillJsonWithState( _state, emptyMap );
 }
 
-json_spirit::mObject fillJsonWithState( skale::State const& _state, eth::AccountMaskMap const& _map ) {
+json_spirit::mObject fillJsonWithState( State const& _state, eth::AccountMaskMap const& _map ) {
     bool mapEmpty = ( _map.size() == 0 );
     json_spirit::mObject oState;
     for ( auto const& a : _state.addresses() ) {

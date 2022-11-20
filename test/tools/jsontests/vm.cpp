@@ -367,9 +367,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 if ( testInput.count( "expect" ) > 0 ) {
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
-                    skale::State postState = skale::State();
+                    State postState = State();
                     postState.setStorageLimit(1000000000);
-                    skale::State expectState = skale::State();
+                    State expectState = State();
                     expectState.setStorageLimit(1000000000);
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
@@ -389,9 +389,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
-                    skale::State postState = skale::State();
+                    State postState = State();
                     postState.setStorageLimit(1000000000);
-                    skale::State expectState = skale::State();
+                    State expectState = State();
                     expectState.setStorageLimit(1000000000);
                     AccountMaskMap expectStateMap;
 
@@ -454,9 +454,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
 
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
-                skale::State postState = skale::State();
+                State postState = State();
                 postState.setStorageLimit(1000000000);
-                skale::State expectState = skale::State();
+                State expectState = State();
                 expectState.setStorageLimit(1000000000);
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );

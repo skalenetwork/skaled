@@ -151,20 +151,20 @@ public:
     /// @returns fresh blocks, dead blocks and true iff there are additional blocks to be processed
     /// waiting. last - tx count
     std::tuple< ImportRoute, bool, unsigned > sync(
-        BlockQueue& _bq, skale::State& _state, unsigned _max );
+        BlockQueue& _bq, State& _state, unsigned _max );
 
     /// Attempt to import the given block directly into the BlockChain and sync with the state DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block
     /// chain.
     std::pair< ImportResult, ImportRoute > attemptImport(
-        bytes const& _block, skale::State& _state, bool _mutBeNew = true ) noexcept;
+        bytes const& _block, State& _state, bool _mutBeNew = true ) noexcept;
 
     /// Import block into disk-backed DB.
     /// @returns the block hashes of any blocks that came into/went out of the canonical block
     /// chain.
-    ImportRoute import( bytes const& _block, skale::State& _state, bool _mustBeNew = true );
+    ImportRoute import( bytes const& _block, State& _state, bool _mustBeNew = true );
     ImportRoute import(
-        VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew = true );
+        VerifiedBlockRef const& _block, State& _state, bool _mustBeNew = true );
     ImportRoute import( Block const& _block );
 
     /// Returns true if the given block is known (though not necessarily a part of the canon chain).
@@ -364,7 +364,7 @@ public:
     void rewind( unsigned _newHead );
 
     /// Rescue the database.
-    void rescue( skale::State const& _state );
+    void rescue( State const& _state );
 
     /** @returns a tuple of:
      * - an vector of hashes of all blocks between @a _from and @a _to, all blocks are ordered first
@@ -431,7 +431,7 @@ public:
 
     /// Get a pre-made genesis State object.
     Block genesisBlock( boost::filesystem::path const& _dbPath, dev::h256 const& _genesis ) const;
-    Block genesisBlock( skale::State const& _state ) const;
+    Block genesisBlock( State const& _state ) const;
 
     /// Verify block and prepare it for enactment
     VerifiedBlockRef verifyBlock( bytesConstRef _block,

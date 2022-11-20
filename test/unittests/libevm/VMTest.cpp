@@ -171,7 +171,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
     //        State state{0};
-    skale::State state = skale::State( 0 ).createStateModifyCopy();
+    State state = State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -332,7 +332,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
     Address extAddress{KeyPair::create().address()};
-    skale::State state{0};
+    State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -440,7 +440,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address from{KeyPair::create().address()};
     Address to{KeyPair::create().address()};
-    skale::State state = skale::State( 0 ).createStateModifyCopy();
+    State state = State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -514,7 +514,7 @@ public:
     BlockHeader blockHeader{initBlockHeader()};
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
-    skale::State state{0};
+    State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -621,7 +621,7 @@ public:
     BlockHeader blockHeader{initBlockHeader()};
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
-    skale::State state{0};
+    State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};

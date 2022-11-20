@@ -115,7 +115,12 @@ _blockNumber
 ) {
     try {
 #ifndef  NO_ALETH_STATE
-        return toJS(client()->alethStateBalanceAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toJS( client()->alethStateBalanceAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        } else {
+            return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+        }
 #else
         return toJS( client()->balanceAt( jsToAddress( _address ) ) );
 #endif
@@ -133,8 +138,15 @@ string Eth::eth_getStorageAt(
     ) {
     try {
 #ifndef  NO_ALETH_STATE
-        return toJS(toCompactBigEndian(client()->alethStateAt(jsToAddress(_address),
-                                                         jsToU256(_position), jsToBlockNumber(_blockNumber)), 32));
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toJS(
+                toCompactBigEndian( client()->alethStateAt( jsToAddress( _address ),
+                                        jsToU256( _position ), jsToBlockNumber( _blockNumber ) ),
+                    32 ) );
+        } else {
+            return toJS( toCompactBigEndian(
+                client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
+        }
 #else
         return toJS( toCompactBigEndian(
             client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
@@ -253,7 +265,14 @@ _blockNumber
 ) {
     try {
 #ifndef  NO_ALETH_STATE
-        return toJS(client()->alethStateCodeAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+
+                if (_blockNumber != "latest" && _blockNumber != "pending") {
+                    return toJS( client()->alethStateCodeAt(
+                        jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+                } else {
+
+                    return toJS( client()->codeAt( jsToAddress( _address ) ) );
+                }
 #else
         return toJS( client()->codeAt( jsToAddress( _address ) ) );
 #endif

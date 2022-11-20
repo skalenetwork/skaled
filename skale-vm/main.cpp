@@ -108,7 +108,7 @@ int main( int argc, char** argv ) {
     setCLocale();
     string inputFile;
     Mode mode = Mode::Statistics;
-    skale::State state( 0 );
+    State state( 0 );
     Address sender = Address( 69 );
     Address origin = Address( 69 );
     u256 value = 0;

@@ -156,7 +156,7 @@ Json::Value AdminEth::admin_eth_vmTrace(
     if ( ( unsigned ) _txIndex < block.pending().size() ) {
         try {
             Transaction t = block.pending()[_txIndex];
-            skale::State s;
+            State s;
             throw std::logic_error( "Historical state is not supported in Skale state" );
             //        Executive e(s, block, _txIndex, m_eth.blockChain());
             //            StandardTrace st;

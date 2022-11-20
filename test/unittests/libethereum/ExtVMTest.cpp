@@ -27,7 +27,8 @@
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
-using skale::State;
+using skale::
+State;
 
 class ExtVMConstantinopleFixTestFixture : public TestOutputHelperFixture {
 public:
@@ -54,7 +55,7 @@ public:
     NetworkSelector networkSelector;
     TestBlockChain testBlockchain;
     TestBlock const& genesisBlock;
-    skale::State const& genesisState;
+    State const& genesisState;
     BlockChain const& blockchain;
     h256 preExperimentalBlockHash;
     h256 experimentalBlockHash;

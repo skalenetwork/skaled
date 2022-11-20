@@ -94,8 +94,8 @@ TestBlock& TestBlock::operator=( TestBlock const& _original ) {
 void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject const& _stateObj ) {
     m_tempDirState = std::unique_ptr< TransientDirectory >( new TransientDirectory() );
 
-    m_state = std::unique_ptr< skale::State >(
-        new skale::State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0, 1000000000 ) );
+    m_state = std::unique_ptr< State >(
+        new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0, 1000000000 ) );
     ImportTest::importState( _stateObj, *m_state );
     m_state->createStateModifyCopy().commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -113,7 +113,7 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     recalcBlockHeaderBytes();
 }
 
-void TestBlock::setState( skale::State const& _state ) {
+void TestBlock::setState( State const& _state ) {
     copyStateFrom( _state );
 }
 
@@ -178,7 +178,7 @@ void TestBlock::premineUpdate( BlockHeader& _blockInfo ) {
 void TestBlock::mine( TestBlockChain const& _bc ) {
     TestBlock const& genesisBlock = _bc.testGenesis();
     //    OverlayDB const& genesisDB = genesisBlock.state().db();
-    skale::State const& genesisState = genesisBlock.state();
+    State const& genesisState = genesisBlock.state();
 
     BlockChain const& blockchain = _bc.getInterface();
 
@@ -405,7 +405,7 @@ void TestBlock::recalcBlockHeaderBytes() {
     m_bytes = ret.out();
 }
 
-void TestBlock::copyStateFrom( skale::State const& _state ) {
+void TestBlock::copyStateFrom( State const& _state ) {
     // WEIRD WAY TO COPY STATE AS COPY CONSTRUCTOR FOR STATE NOT IMPLEMENTED CORRECTLY (they would
     // share the same DB)
     m_tempDirState.reset( new TransientDirectory() );
@@ -414,7 +414,7 @@ void TestBlock::copyStateFrom( skale::State const& _state ) {
     //    } else {
     //        m_state.reset( new State( 0 ) );
     //    }
-    m_state.reset( new skale::State( _state ) );
+    m_state.reset( new State( _state ) );
     //    m_state.reset( new State( 0 ) );
     //    json_spirit::mObject obj = fillJsonWithState( _state );
     //    ImportTest::importState( obj, *m_state.get() );
@@ -433,7 +433,7 @@ void TestBlock::populateFrom( TestBlock const& _original ) {
         if ( _original.m_state ) {
             copyStateFrom( _original.state() );
         } else {
-            m_state.reset( new skale::State( 0 ) );
+            m_state.reset( new State( 0 ) );
         }
     } catch ( BlockStateUndefined const& _ex ) {
         clog( VerbosityDebug, "net" ) << _ex.what() << " copying block with null state";
@@ -492,7 +492,7 @@ bool TestBlockChain::addBlock( TestBlock const& _block ) {
         Block block = ( m_blockChain.get()->genesisBlock( m_genesisBlock.state() ) );
         block.sync( *m_blockChain.get() );
 
-        skale::State st( block.state() );
+        State st( block.state() );
         m_lastBlock.setState( st );
         return true;
     }

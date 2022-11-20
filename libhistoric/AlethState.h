@@ -297,7 +297,7 @@ public:
 
     void saveRootForBlock( uint64_t _blockNumber );
 
-    void populateFromSkaleState(skale::State& _skaleState) {};
+    void populateFromSkaleState(State& _skaleState) {};
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.

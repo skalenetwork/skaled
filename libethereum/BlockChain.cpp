@@ -353,7 +353,7 @@ string BlockChain::dumpDatabase() const {
 }
 
 tuple< ImportRoute, bool, unsigned > BlockChain::sync(
-    BlockQueue& _bq, skale::State& _state, unsigned _max ) {
+    BlockQueue& _bq, State& _state, unsigned _max ) {
     MICROPROFILE_SCOPEI( "BlockChain", "sync many blocks", MP_LIGHTGOLDENROD );
 
     //  _bq.tick(*this);
@@ -416,7 +416,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
 }
 
 pair< ImportResult, ImportRoute > BlockChain::attemptImport(
-    bytes const& _block, skale::State& _state, bool _mustBeNew ) noexcept {
+    bytes const& _block, State& _state, bool _mustBeNew ) noexcept {
     try {
         return make_pair( ImportResult::Success,
             import( verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks ), _state,
@@ -434,7 +434,7 @@ pair< ImportResult, ImportRoute > BlockChain::attemptImport(
     }
 }
 
-ImportRoute BlockChain::import( bytes const& _block, skale::State& _state, bool _mustBeNew ) {
+ImportRoute BlockChain::import( bytes const& _block, State& _state, bool _mustBeNew ) {
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block =
         verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks );
@@ -443,7 +443,7 @@ ImportRoute BlockChain::import( bytes const& _block, skale::State& _state, bool 
     return import( block, _state, _mustBeNew );
 }
 
-ImportRoute BlockChain::import( VerifiedBlockRef const& _block, skale::State& _state, bool _mustBeNew ) {
+ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, bool _mustBeNew ) {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
     MICROPROFILE_SCOPEI( "BlockChain", "import", MP_GREENYELLOW );
 
@@ -1039,7 +1039,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
     }
 }
 
-void BlockChain::rescue( skale::State const& /*_state*/ ) {
+void BlockChain::rescue( State const& /*_state*/ ) {
     clog( VerbosityInfo, "BlockChain" ) << "Rescuing database..." << endl;
     throw std::logic_error( "Rescueing is not implemented" );
 
@@ -1584,7 +1584,7 @@ Block BlockChain::genesisBlock(
     return ret;
 }
 
-Block BlockChain::genesisBlock( const skale::State& _state ) const {
+Block BlockChain::genesisBlock( const State& _state ) const {
     Block ret( *this, m_genesisHash, _state, skale::BaseState::PreExisting );
     ret.m_previousBlock = BlockHeader( m_params.genesisBlock() );
     ret.resetCurrent();

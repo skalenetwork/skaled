@@ -234,7 +234,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 #endif
 
 
-    m_state = skale::State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
+    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
         mode, chainParams().accountInitialFunds,
         chainParams().sChain.contractStorageLimit );
 
@@ -1134,7 +1134,7 @@ Block Client::blockByNumber(BlockNumber _h) const
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableAlethState().setRootByBlockNumber(_h);
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, m_state ); }
+        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1231,7 +1231,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
 
     // throws in case of error
-    skale::State state;
+    State state;
     u256 gasBidPrice;
 
     DEV_GUARDED( m_blockImportMutex ) {
@@ -1313,7 +1313,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 #endif
 
         // TODO there can be race conditions between prev and next line!
-        skale::State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
+        State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
@@ -1468,7 +1468,13 @@ const dev::h256 Client::empty_str_hash =
 #ifndef NO_ALETH_STATE
 u256 Client::alethStateBalanceAt(Address _a, BlockNumber _block) const
 {
-    return blockByNumber(_block).mutableState().mutableAlethState().balance(_a);
+
+    auto block = blockByNumber(_block);
+
+    auto aState = block.mutableState().mutableAlethState();
+
+    return aState.balance(_a);
+
 }
 
 u256 Client::alethStateCountAt(Address _a, BlockNumber _block) const

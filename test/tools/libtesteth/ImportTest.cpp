@@ -91,7 +91,7 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
         // generate expect sections for this transaction
         BOOST_REQUIRE( m_testInputObject.count( "expect" ) > 0 );
 
-        skale::State s = skale::State( 0 );
+        State s = State( 0 );
         AccountMaskMap m;
         StateAndMap smap{s, m};
         vector< size_t > stateIndexesToPrint;
@@ -236,7 +236,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
-                m_statePre = skale::State( 0 );
+                m_statePre = State( 0 );
                 m_statePre.setStorageLimit(1000000000);
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
             }
@@ -256,8 +256,8 @@ bytes ImportTest::executeTest( bool _isFilling ) {
     return bytes();
 }
 
-void ImportTest::checkBalance( skale::State const& _pre, skale::State const& _post, bigint _miningReward ) {
-    skale::State pre = _pre.createStateReadOnlyCopy(), post = _post.createStateReadOnlyCopy();
+void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _miningReward ) {
+    State pre = _pre.createStateReadOnlyCopy(), post = _post.createStateReadOnlyCopy();
     bigint preBalance = 0;
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
@@ -272,13 +272,13 @@ void ImportTest::checkBalance( skale::State const& _pre, skale::State const& _po
             TestOutputHelper::get().testName() );
 }
 
-std::tuple< skale::State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::executeTransaction(
-    eth::Network const _sealEngineNetwork, eth::EnvInfo const& _env, skale::State const& _preState,
+std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::executeTransaction(
+    eth::Network const _sealEngineNetwork, eth::EnvInfo const& _env, State const& _preState,
     eth::Transaction const& _tr ) {
     assert( m_envInfo );
 
     bool removeEmptyAccounts = false;
-    skale::State initialState = _preState.createStateModifyCopy();
+    State initialState = _preState.createStateModifyCopy();
     initialState.addBalance( _env.author(), 0 );  // imitate mining reward
     ExecOutput out( std::make_pair(
         eth::ExecutionResult(), eth::TransactionReceipt( h256(), u256(), eth::LogEntries() ) ) );
@@ -391,7 +391,7 @@ void ImportTest::importEnv( json_spirit::mObject const& _o ) {
 // import state from not fully declared json_spirit::mObject, writing to _stateOptionsMap which
 // fields were defined in json
 void ImportTest::importState(
-    json_spirit::mObject const& _o, skale::State& _state, AccountMaskMap& o_mask ) {
+    json_spirit::mObject const& _o, State& _state, AccountMaskMap& o_mask ) {
     json_spirit::mObject o = _o;
     replaceCodeInState( o );  // Compile LLL and other src code of the test Fillers using external
                               // call to lllc
@@ -403,7 +403,7 @@ void ImportTest::importState(
     _state.createStateModifyCopy().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
 }
 
-void ImportTest::importState( json_spirit::mObject const& _o, skale::State& _state ) {
+void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
     for ( auto const& account : _o ) {
         BOOST_REQUIRE_MESSAGE( account.second.type() == jsonVType::obj_type,
             "State account is required to be json Object!" );
@@ -513,9 +513,9 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
             }
 }
 
-int ImportTest::compareStates( skale::State const& _stateExpect, skale::State const& _statePost,
+int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    skale::State stateExpect = _stateExpect.createStateReadOnlyCopy(), statePost = _statePost.createStateReadOnlyCopy();
+    State stateExpect = _stateExpect.createStateReadOnlyCopy(), statePost = _statePost.createStateReadOnlyCopy();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \
@@ -723,9 +723,9 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                          ( opt.trValueIndex != -1 && opt.trValueIndex != tr.valInd ) )
                         continue;
 
-                    skale::State postState = tr.postState;
+                    State postState = tr.postState;
                     eth::AccountMaskMap stateMap;
-                    skale::State expectState( 0 );
+                    State expectState( 0 );
                     importState( _expects.at( "result" ).get_obj(), expectState, stateMap );
                     if ( _search ) {
                         _search->second.first = expectState;

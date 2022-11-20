@@ -188,7 +188,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 }
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-    const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
+    const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
     const u256& _gasPrice, const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 

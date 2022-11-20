@@ -420,8 +420,6 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
     }
 
 
-
-// execute also for the historic state
 #ifndef NO_ALETH_STATE
 m_alethState.commitExternalChanges(m_cache);
 #endif
@@ -891,8 +889,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
-
-        m_alethState.saveRootForBlock(_envInfo.number());
 
         break;
     }
