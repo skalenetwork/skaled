@@ -320,6 +320,10 @@
 	      "nodeID": 1112,
 	      "bindIP": "0.0.0.0",
 	      "basePort": 1231,
+          "httpRpcPort": 1234,
+          "httpsRpcPort": 1239,
+          "wsRpcPort": 1233,
+          "wssRpcPort": 1238,
 	      "logLevel": "info",
 	      "logLevelProposal": "info",
 	      "rotateAfterBlock": 0,
@@ -337,7 +341,7 @@
 	        "schainID": 1,
 	        "schainOwner": "0xd2c5b39B4e735C17612Bb5a08FD024ccc5dBCb23",
 	        "contractStorageLimit": 1000000,
-	        "emptyBlockIntervalMs": 1000000000,
+	        "emptyBlockIntervalMs": 10000,
 	        "nodes": [
 	          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey":""}
 	        ]
