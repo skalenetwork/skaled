@@ -1,18 +1,19 @@
-name: Pull request validation
+name: Get linked issues
 on:
   pull_request:
     types: [ edited, synchronize, opened, reopened ]
 
 jobs:
-  checker:
-    name: Check link to the issue
+  check-linked-issues:
+    name: Check if pull request has linked issues
     runs-on: ubuntu-latest
-
     steps:
-      - name: Issue regex check 
-        uses: FidelusAleksander/gh-action-regex@v0.2.0
-        id: regex
-        with:
-          regex_pattern: "((?i)close[sd]?|resolve[sd]?|fixe[sd]|fix)+[ ][\\w\\/.-]*#[\\d]+"
-          regex_match_type: search
-          text: ${{ github.event.pull_request.body }}
+      - name: Get issues
+        id: get-issues
+        uses: mondeja/pr-linked-issues-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: PR has not linked issues
+        if: join(steps.get-issues.outputs.issues) == ''
+        run: 
+          exit 1
