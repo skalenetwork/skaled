@@ -225,6 +225,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     auto mode = skale::BaseState::PreExisting;
 
+/*
 #ifndef NO_ALETH_STATE
     // If the historic state databases do not yet exist, they will need to be populated
     // by the current state
@@ -232,11 +233,13 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
              mode = skale::BaseState::PreExistingNoHistoric;
     }
 #endif
+ */
 
 
     m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
         mode, chainParams().accountInitialFunds,
         chainParams().sChain.contractStorageLimit );
+
 
     if ( m_state.empty() ) {
 #ifdef NO_ALETH_STATE

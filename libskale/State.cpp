@@ -81,6 +81,9 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_alethState(_accountStartNonce, _alethDb, _alethBlockToStateRootDb, _bs) {
     auto state = createStateReadOnlyCopy();
     totalStorageUsed_ = state.storageUsedTotal();
+#ifndef NO_ALETH_STATE
+    m_alethState.setRootFromDB();
+#endif
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     }
@@ -89,6 +92,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
         // correctly.
         m_db_ptr->clearDB();
     }
+/*
 #ifndef NO_ALETH_STATE
     else if ( _bs == BaseState::PreExistingNoHistoric ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
@@ -96,6 +100,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
         m_alethState.populateFromSkaleState(*this);
     }
 #endif
+ */
     else {
         throw std::logic_error( "Not implemented" );
     }

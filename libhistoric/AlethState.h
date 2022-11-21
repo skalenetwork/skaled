@@ -293,6 +293,8 @@ public:
 
     void populateFromSkaleState(State& _skaleState) {};
 
+    void setRootFromDB();
+
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
     void removeEmptyAccounts();
@@ -337,6 +339,8 @@ private:
     friend std::ostream& operator<<( std::ostream& _out, AlethState const& _s );
     ChangeLog m_changeLog;
 
+
+    uint64_t readLatestBlock();
 
 };
 

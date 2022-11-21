@@ -2,6 +2,8 @@
 // Copyright 2013-2019 Aleth Authors.
 // Licensed under the GNU General Public License, Version 3.
 
+#include <boost/lexical_cast.hpp>
+
 #include "AlethState.h"
 
 #include <libethereum/Block.h>
@@ -279,6 +281,15 @@ void AlethState::setRootByBlockNumber(uint64_t _blockNumber) {
     setRoot(root);
 }
 
+void AlethState::setRootFromDB() {
+        auto key = h256("latest", FixedHash<32>::FromBinary);
+        if (!m_blockToStateRootDB.exists(key)) {
+            // new database
+            return;
+        }
+        auto  latest = m_blockToStateRootDB.lookup(key);
+        setRootByBlockNumber(boost::lexical_cast<uint64_t>(latest));
+}
 
 bool AlethState::addressInUse(Address const &_id) const {
     return !!account(_id);
@@ -692,6 +703,9 @@ std::ostream &dev::eth::operator<<(std::ostream &_out, AlethState const &_s) {
 
 void AlethState::saveRootForBlock(uint64_t _blockNumber) {
     m_blockToStateRootDB.insert(h256(_blockNumber), m_state.root().ref());
+    auto bn = to_string(_blockNumber);
+    auto key = h256("latest", FixedHash<32>::FromBinary);
+    m_blockToStateRootDB.insert(key, &bn);
     m_blockToStateRootDB.commit();
 }
 
