@@ -60,6 +60,7 @@ jobs:
 
       - name: Get newest lcov
         run: |
+          # sudo apt-get install libcapture-tiny-perl
           echo "Removing previous lcov version..."
           sudo apt-get remove lcov || true
           echo "Installing newest lcov version..."
@@ -68,13 +69,13 @@ jobs:
           cd newer_lcov
           git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
           cd lcov
+          git checkout 92e2121
           sudo make install
           cd ..
           cd ..
           echo "Checking installed lcov version..."
           which lcov
           lcov --version
-
 
       - name: Submodule update
         run: |
@@ -161,8 +162,8 @@ jobs:
           lcov --capture --directory . --output-file coverage.info
           lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
           lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused 
+          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused
           lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
           #- lcov --list coverage.info # debug info
 
