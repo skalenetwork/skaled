@@ -239,21 +239,24 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         chainParams().sChain.contractStorageLimit );
 
     if ( m_state.empty() ) {
+#ifdef NO_ALETH_STATE
         m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
-
-#ifndef NO_ALETH_STATE
+        m_state = m_state.createNewCopyWithLocks();
+#else
+        m_state = m_state.createStateModifyCopy();
+        m_state.populateFrom(bc().chainParams().genesisState);
+        m_state.releaseWriteLock();
         m_state.mutableAlethState().saveRootForBlock(0);
 #endif
-        m_state = m_state.createNewCopyWithLocks();
-        m_state.mutableAlethState().setRootByBlockNumber(0);
 
-        cerr << m_state.balance(Address("0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852")) << endl;
-        cerr << m_state.mutableAlethState().balance(Address("0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852")) << endl;
 
     };
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
 
+
+    cerr << m_state.balance(Address("0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852")) << endl;
+    cerr << m_state.mutableAlethState().balance(Address("0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852")) << endl;
 
     m_preSeal = bc().genesisBlock( m_state );
 
