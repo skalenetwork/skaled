@@ -507,6 +507,7 @@ static std::string stat_transactions2str(
 
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+
     // HACK here was m_blockImportMutex - but now it is acquired in SkaleHost!!!
     // TODO decouple Client and SkaleHost
     int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
@@ -731,6 +732,11 @@ size_t Client::syncTransactions(
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, vecMissing );
         m_state = m_state.createNewCopyWithLocks();
+#ifndef NO_ALETH_STATE
+        // make sure the trie in new state object points to the new state root
+        m_state.mutableAlethState().setRoot(m_working.mutableState().mutableAlethState().rootHash());
+#endif
+
     }
 
     DEV_READ_GUARDED( x_working )
