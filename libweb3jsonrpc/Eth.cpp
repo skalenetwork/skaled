@@ -143,14 +143,10 @@ string Eth::eth_getStorageAt(
                 toCompactBigEndian( client()->alethStateAt( jsToAddress( _address ),
                                         jsToU256( _position ), jsToBlockNumber( _blockNumber ) ),
                     32 ) );
-        } else {
-            return toJS( toCompactBigEndian(
-                client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
         }
-#else
+#endif
         return toJS( toCompactBigEndian(
             client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
-#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

@@ -279,19 +279,22 @@ void AlethState::setRootByBlockNumber(uint64_t _blockNumber) {
     }
     auto value = m_blockToStateRootDB.lookup(key);
     auto root = h256 (value, h256::ConstructFromStringType::FromBinary);
-    cerr << "Setting root :" << root << "by block number: " << _blockNumber << endl;
     setRoot(root);
 }
 
 
 void AlethState::saveRootForBlock(uint64_t _blockNumber) {
-    m_blockToStateRootDB.insert(h256(_blockNumber), m_state.root().ref());
+    auto key = h256(_blockNumber);
+    m_blockToStateRootDB.insert(key, m_state.root().ref());
+    if (!m_blockToStateRootDB.exists(key)) {
+        BOOST_THROW_EXCEPTION(UnknownBlockNumberInRootDB());
+    }
     auto bn = to_string(_blockNumber);
 
     cerr << "Saving Root:" << m_state.root() << "for block :" << _blockNumber << endl;
 
-    auto key = h256("latest", FixedHash<32>::FromBinary);
-    m_blockToStateRootDB.insert(key, &bn);
+    auto bnk = h256("latest", FixedHash<32>::FromBinary);
+    m_blockToStateRootDB.insert(bnk, &bn);
     m_blockToStateRootDB.commit();
 }
 
