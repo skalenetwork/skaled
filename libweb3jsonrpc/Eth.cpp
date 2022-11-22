@@ -191,18 +191,19 @@ Json::Value Eth::eth_pendingTransactions() {
 
     return toJson( ours );
 }
-
 string Eth::eth_getTransactionCount( string const& _address, string const&
 #ifndef  NO_ALETH_STATE
-_blockNumber
+       _blockNumber
 #endif
 ) {
     try {
 
 #ifndef  NO_ALETH_STATE
-        return toString(client()->alethStateCountAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toString(client()->alethStateCountAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+        }
 #endif
-        string blockNumber = "latest";
+
         return toJS( client()->countAt( jsToAddress( _address ) ) );
 
     } catch ( ... ) {
