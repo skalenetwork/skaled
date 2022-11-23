@@ -35,6 +35,8 @@ describe("Lock", function () {
     it("Should set the right owner", async function () {
       const { lock, owner } = await loadFixture(deployOneYearLockFixture);
 
+      lock.owner()
+
       expect(await lock.owner()).to.equal(owner.address);
     });
 
@@ -42,6 +44,8 @@ describe("Lock", function () {
       const { lock, lockedAmount } = await loadFixture(
         deployOneYearLockFixture
       );
+
+
 
       expect(await ethers.provider.getBalance(lock.address)).to.equal(
         lockedAmount

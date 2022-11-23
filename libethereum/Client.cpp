@@ -1150,6 +1150,10 @@ Block Client::blockByNumber(BlockNumber _h) const
     try {
         auto hash = ClientBase::hashFromNumber(_h);
 
+         if (_h == LatestBlock || _h == PendingBlock) {
+             _h = bc().number();
+         }
+
         // blockByNumber is only used for reads
 
         auto readState = m_state.createStateReadOnlyCopy();

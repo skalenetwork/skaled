@@ -262,17 +262,12 @@ _blockNumber
 ) {
     try {
 #ifndef  NO_ALETH_STATE
-
-                if (_blockNumber != "latest" && _blockNumber != "pending") {
-                    return toJS( client()->alethStateCodeAt(
-                        jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
-                } else {
-
-                    return toJS( client()->codeAt( jsToAddress( _address ) ) );
-                }
-#else
-        return toJS( client()->codeAt( jsToAddress( _address ) ) );
+        if (_blockNumber != "latest" && _blockNumber != "pending") {
+            return toJS( client()->alethStateCodeAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        }
 #endif
+        return toJS( client()->codeAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
