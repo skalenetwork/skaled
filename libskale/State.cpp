@@ -98,7 +98,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     }
 }
 
-//#ifdef HISTORIC_STATE
+#ifdef HISTORIC_STATE
 
 const auto IMPORT_BATCH_SIZE = 10000;
 
@@ -138,7 +138,7 @@ void State::populateHistoricStateFromSkaleState() {
     clog( VerbosityInfo, "statedb" ) << "Successfully populated historic state" ;
 
 }
-//#endif
+#endif
 
 skale::OverlayDB State::openDB(
     fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
