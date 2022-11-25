@@ -93,19 +93,52 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
         // correctly.
         m_db_ptr->clearDB();
     }
-/*
-#ifdef HISTORIC_STATE
-    else if ( _bs == BaseState::PreExistingNoHistoric ) {
-        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
-        clog( VerbosityDebug, "statedb" ) << cc::debug( "Converting into historic state" );
-        m_historicState.populateFromSkaleState(*this);
-    }
-#endif
- */
     else {
         throw std::logic_error( "Not implemented" );
     }
 }
+
+//#ifdef HISTORIC_STATE
+
+const auto IMPORT_BATCH_SIZE = 10000;
+
+void State::populateHistoricStateFromSkaleState() {
+    clog( VerbosityInfo, "statedb" ) <<
+        "Historic state does not yet exist. Populating historic state";
+
+    auto allAccountAddresses = this->addresses();
+
+    eth::AccountMap accountMap;
+
+    h256 key{};
+
+    for (auto&& item: allAccountAddresses) {
+
+        auto address = item.first;
+
+        Account account = *this->account(address);
+        accountMap.emplace(address, account);
+
+        if (accountMap.size() == IMPORT_BATCH_SIZE) {
+            m_historicState.commitExternalChanges( accountMap );
+            clog( VerbosityInfo, "statedb" ) << "Processed addresses:" << accountMap.size();
+            accountMap.clear();
+        }
+
+
+    }
+
+    // commit last chuck
+
+    if (accountMap.size() > 0) {
+        m_historicState.commitExternalChanges( accountMap );
+        clog( VerbosityInfo, "statedb" ) << "Processed addresses:" << accountMap.size();
+    }
+
+    clog( VerbosityInfo, "statedb" ) << "Successfully populated historic state" ;
+
+}
+//#endif
 
 skale::OverlayDB State::openDB(
     fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {

@@ -214,45 +214,52 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
         m_skaleHost->startWorking();
 }
 
+void Client::populateNewChainStateFromGenesis() {
+#ifdef HISTORIC_STATE
+    m_state = m_state.createStateModifyCopy();
+    m_state.populateFrom( bc().chainParams().genesisState );
+    m_state.mutableHistoricState().saveRootForBlock( 0 );
+    m_state.mutableHistoricState().db().commit();
+    m_state.releaseWriteLock();
+#else
+    m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
+    m_state = m_state.createNewCopyWithLocks();
+#endif
+}
+
+
+void Client::initStateFromDiskOrGenesis() {
+#ifdef HISTORIC_STATE
+    // Check if If the historic state databases do not yet exist
+    bool historicStateExists = !fs::exists(
+        fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
+#endif
+
+    m_state = State(
+        chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
+        chainParams().accountInitialFunds, chainParams().sChain.contractStorageLimit );
+
+
+    if ( m_state.empty() ) {
+        populateNewChainStateFromGenesis();
+    } else {
+#ifdef HISTORIC_STATE
+        // if SKALE state but historic state does not, we need to populate the historic state from
+        // SKALE state
+        if ( historicStateExists ) {
+            m_state.populateHistoricStateFromSkaleState();
+        }
+#endif
+    }
+}
+
+
 void Client::init( WithExisting _forceAction, u256 _networkId ) {
     DEV_TIMED_FUNCTION_ABOVE( 500 );
     m_networkId = _networkId;
 
-    // Cannot be opened until after blockchain is open, since BlockChain may upgrade the database.
-    // TODO: consider returning the upgrade mechanism here. will delaying the opening of the
-    // blockchain database until after the construction.
+   initStateFromDiskOrGenesis();
 
-    auto mode = skale::BaseState::PreExisting;
-
-/*
-#ifdef HISTORIC_STATE
-    // If the historic state databases do not yet exist, they will need to be populated
-    // by the current state
-    if (!fs::exists(fs::path(std::string(m_dbPath.string()).append(".historicstate")))) {
-             mode = skale::BaseState::PreExistingNoHistoric;
-    }
-#endif
- */
-
-
-    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
-        mode, chainParams().accountInitialFunds,
-        chainParams().sChain.contractStorageLimit );
-
-
-    if ( m_state.empty() ) {
-#ifdef HISTORIC_STATE
-        m_state = m_state.createStateModifyCopy();
-        m_state.populateFrom(bc().chainParams().genesisState);
-        m_state.mutableHistoricState().saveRootForBlock(0);
-        m_state.mutableHistoricState().db().commit();
-        m_state.releaseWriteLock();
-#else
-        m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
-        m_state = m_state.createNewCopyWithLocks();
-#endif
-
-    };
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
 

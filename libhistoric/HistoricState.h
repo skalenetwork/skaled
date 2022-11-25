@@ -109,6 +109,9 @@ using ChangeLog = std::vector< Change >;
 
 enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
 
+constexpr auto HISTORIC_STATE_DIR = "historic_state";
+constexpr auto HISTORIC_ROOTS_DIR = "historic_roots";
+
 class HistoricState {
     friend class ExtVM;
     friend class dev::test::ImportTest;
@@ -291,7 +294,6 @@ public:
 
     void saveRootForBlock( uint64_t _blockNumber );
 
-    void populateFromSkaleState(State& _skaleState) {};
 
     void setRootFromDB();
 

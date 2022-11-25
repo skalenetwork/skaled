@@ -190,8 +190,8 @@ void HistoricState::clearCacheIfTooLarge() const {
     }
 }
 
-void HistoricState::commitExternalChanges(AccountMap const &_cache) {
-    dev::eth::commit(_cache, m_state);
+void HistoricState::commitExternalChanges(AccountMap const &_accountMap) {
+    dev::eth::commit(_accountMap, m_state);
     m_state.db()->commit();
     m_changeLog.clear();
     m_cache.clear();

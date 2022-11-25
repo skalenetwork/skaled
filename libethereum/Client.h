@@ -635,6 +635,8 @@ public:
         h256 historicStateRootAt(Address _a, BlockNumber _block) const override;
         bytes historicStateCodeAt(Address _a, BlockNumber _block) const override;
 #endif
+        void initStateFromDiskOrGenesis();
+        void populateNewChainStateFromGenesis();
 };
 
 }  // namespace eth

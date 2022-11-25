@@ -188,12 +188,14 @@ public:
                                                   dev::WithExisting::Kill ),
 #ifdef HISTORIC_STATE
               dev::eth::HistoricState::openDB(
-                  boost::filesystem::path(std::string(_dbPath.string()).append("/historic_state"))
+                  boost::filesystem::path(
+                      std::string(_dbPath.string()).append("/").append(dev::eth::HISTORIC_STATE_DIR))
                   , _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
               dev::eth::HistoricState::openDB(
-                  boost::filesystem::path(std::string(_dbPath.string()).append("/historic_roots")), _genesis,
+                  boost::filesystem::path(std::string(
+                      _dbPath.string()).append("/").append(dev::eth::HISTORIC_ROOTS_DIR)), _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
 #endif    /// which uses it. If you have no preexisting database then set BaseState to something other
@@ -441,6 +443,10 @@ private:
 
 public:
     bool checkVersion() const;
+
+#ifdef HISTORIC_STATE
+    void populateHistoricStateFromSkaleState();
+#endif
 
 private:
     enum Auxiliary { CODE = 1 };
