@@ -7,7 +7,7 @@
 #include "HistoricState.h"
 
 #include "DatabasePaths.h"
-#include "StateCacheDB.h"
+#include <libdevcore/MemoryDB.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/TrieHash.h>
@@ -793,4 +793,4 @@ AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
 template AddressHash dev::eth::commit<OverlayDB>(AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state);
 
 template AddressHash
-dev::eth::commit<StateCacheDB>(AccountMap const &_cache, SecureTrieDB<Address, StateCacheDB> &_state);
+dev::eth::commit<MemoryDB>(AccountMap const &_cache, SecureTrieDB<Address, MemoryDB> &_state);

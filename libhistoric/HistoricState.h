@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "SecureTrieDB.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
@@ -12,7 +13,6 @@
 #include <libethereum/Account.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/GasPricer.h>
-#include <libethereum/SecureTrieDB.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
 #include <libevm/ExtVMFace.h>

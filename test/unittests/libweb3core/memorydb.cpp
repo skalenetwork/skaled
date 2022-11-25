@@ -23,7 +23,7 @@
  */
 
 #include <libdevcore/LevelDB.h>
-#include "libhistoric/StateCacheDB.h"
+#include "libhistoric/MemoryDB.h"
 #include <libdevcore/MemoryDB.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( purgeMainMem,
 
 BOOST_AUTO_TEST_CASE( purgeMainMem_Refs, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    StateCacheDB myDB;
+    MemoryDB myDB;
     {
         EnforceRefs enforceRefs( myDB, true );
 
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE( purgeMainMem_Refs,
         string const value = "\x43";
 
         myDB.insert( h256( 42 ), &value );
-        StateCacheDB copy;
+        MemoryDB copy;
         copy = myDB;
         BOOST_CHECK( myDB.exists( h256( 42 ) ) );
         BOOST_CHECK_EQUAL( myDB.lookup( h256( 42 ) ), value );
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( purgeMainMem_Refs,
     string const value = "\x43";
 
     myDB.insert( h256( 42 ), &value );
-    StateCacheDB copy;
+    MemoryDB copy;
     copy = myDB;
     BOOST_CHECK( myDB.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( myDB.lookup( h256( 42 ) ), value );

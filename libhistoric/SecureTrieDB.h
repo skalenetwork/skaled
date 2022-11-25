@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <libdevcore/TrieDB.h>
+#include "libdevcore/TrieDB.h"
 
 namespace dev
 {
