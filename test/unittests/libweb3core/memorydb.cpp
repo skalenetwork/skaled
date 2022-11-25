@@ -23,7 +23,7 @@
  */
 
 #include <libdevcore/LevelDB.h>
-#include <libdevcore/StateCacheDB.h>
+#include "libhistoric/StateCacheDB.h"
 #include <libdevcore/MemoryDB.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>

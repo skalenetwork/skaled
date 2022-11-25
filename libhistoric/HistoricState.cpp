@@ -6,16 +6,16 @@
 
 #include "HistoricState.h"
 
+#include "DatabasePaths.h"
+#include "StateCacheDB.h"
+#include <libdevcore/Assertions.h>
+#include <libdevcore/DBFactory.h>
+#include <libdevcore/TrieHash.h>
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
-#include <libethereum/DatabasePaths.h>
 #include <libethereum/ExtVM.h>
 #include <libethereum/TransactionQueue.h>
 #include <libhistoric/AlethExecutive.h>
-#include <libdevcore/Assertions.h>
-#include <libdevcore/DBFactory.h>
-#include <libdevcore/StateCacheDB.h>
-#include <libdevcore/TrieHash.h>
 #include <boost/filesystem.hpp>
 
 

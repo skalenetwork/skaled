@@ -89,7 +89,7 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _hash ) );
     }
 
-#ifdef NO_ALETH_STATE
+#ifndef HISTORIC_STATE
 
     if ( _bc.currentHash() != _hash && _bc.genesisHash() != _hash ) {
         throw std::logic_error(
@@ -787,7 +787,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
 
 #ifdef  HISTORIC_STATE
-ExecutionResult Block::executeAlethCall(
+ExecutionResult Block::executeHistoricCall(
         LastBlockHashesFace const& _lh, Transaction const& _t)
 {
 

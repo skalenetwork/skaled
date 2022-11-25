@@ -217,7 +217,7 @@ public:
 
 
 #ifdef  HISTORIC_STATE
-    ExecutionResult executeAlethCall(
+    ExecutionResult executeHistoricCall(
             LastBlockHashesFace const& _lh, Transaction const& _t);
 #endif
 

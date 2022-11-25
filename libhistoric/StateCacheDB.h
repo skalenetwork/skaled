@@ -3,9 +3,9 @@
 // Licensed under the GNU General Public License, Version 3.
 #pragma once
 
-#include "Common.h"
-#include "Log.h"
-#include "RLP.h"
+#include "libdevcore/Common.h"
+#include "libdevcore/Log.h"
+#include "libdevcore/RLP.h"
 
 namespace dev
 {

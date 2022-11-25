@@ -2,8 +2,8 @@
 // Copyright 2014-2019 Aleth Authors.
 // Licensed under the GNU General Public License, Version 3.
 #include "StateCacheDB.h"
-#include "Common.h"
-#include "CommonData.h"
+#include "libdevcore/Common.h"
+#include "libdevcore/CommonData.h"
 using namespace std;
 using namespace dev;
 

@@ -1327,7 +1327,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.forceSender(_from);
                 if (_ff == FudgeFactor::Lenient)
                     temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
-                ret = temp.executeAlethCall(bc().lastBlockHashes(), t);
+                ret = temp.executeHistoricCall(bc().lastBlockHashes(), t);
             }
             catch (...)
             {
