@@ -134,10 +134,10 @@ void updateEthashSeal(
     dev::eth::BlockHeader& _header, h256 const& _mixHash, dev::eth::Nonce const& _nonce );
 RLPStream createRLPStreamFromTransactionFields( json_spirit::mObject const& _tObj );
 json_spirit::mObject fillJsonWithStateChange( State const& _stateOrig,
-    State const& _statePost, skale::ChangeLog const& _changeLog );
+    skale::State const& _statePost, skale::ChangeLog const& _changeLog );
 json_spirit::mObject fillJsonWithState( State const& _state );
 json_spirit::mObject fillJsonWithState(
-    State const& _state, eth::AccountMaskMap const& _map );
+    skale::State const& _state, eth::AccountMaskMap const& _map );
 json_spirit::mObject fillJsonWithTransaction( eth::Transaction const& _txn );
 std::vector< std::string > testSuggestions(
     std::vector< std::string > const& _testList, std::string const& _sMinusTArg );
