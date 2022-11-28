@@ -95,7 +95,7 @@ public:
     Block( BlockChain const& _bc, boost::filesystem::path const& _dbPath, dev::h256 const& _genesis,
         skale::BaseState _bs = skale::BaseState::PreExisting, Address const& _author = Address() );
 
-    Block( BlockChain const& _bc, h256 const& _hash, State const& _state,
+    Block( BlockChain const& _bc, h256 const& _hash, skale::State const& _state,
         skale::BaseState _bs = skale::BaseState::PreExisting, Address const& _author = Address() );
 
     enum NullType { Null };
@@ -165,14 +165,14 @@ public:
     // General information from state
 
     /// Get the backing state object.
-    State const& state() const { return m_state; }
+    skale::State const& state() const { return m_state; }
 
     // For altering accounts behind-the-scenes
 
     /// Get a mutable State object which is backing this block.
     /// @warning Only use this is you know what you're doing. If you use it while constructing a
     /// normal sealable block, don't expect things to work right.
-    State& mutableState() { return m_state; }
+    skale::State& mutableState() { return m_state; }
 
     // Information concerning ongoing transactions
 
@@ -234,7 +234,7 @@ public:
     /// transaction queue.
     bool sync( BlockChain const& _bc );
 
-    bool sync( BlockChain const& _bc, State const& _state );
+    bool sync( BlockChain const& _bc, skale::State const& _state );
 
     /// Sync with the block chain, but rather than synching to the latest block, instead sync to the
     /// given block.
@@ -327,7 +327,7 @@ private:
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.
     h256Hash m_transactionSet;  ///< The set of transaction hashes that we've included in the state.
-    State m_precommit;   ///< State at the point immediately prior to rewards.
+    skale::State m_precommit;   ///< State at the point immediately prior to rewards.
 
     BlockHeader m_previousBlock;     ///< The previous block's information.
     BlockHeader m_currentBlock;      ///< The current block's information.

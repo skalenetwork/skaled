@@ -37,7 +37,7 @@ class SealEngineFace;
 class ExtVM : public ExtVMFace {
 public:
     /// Full constructor.
-    ExtVM( State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
+    ExtVM( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
         Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
         bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
         unsigned _depth, bool _isCreate, bool _staticCall, bool _readOnly = true )
@@ -99,7 +99,7 @@ public:
         return m_sealEngine.evmSchedule( envInfo().number() );
     }
 
-    State const& state() const { return m_s; }
+    skale::State const& state() const { return m_s; }
 
     /// Hash of a block if within the last 256 blocks, or h256() otherwise.
     h256 blockHash( u256 _number ) override;
@@ -115,7 +115,7 @@ private:
             return latestScheduleForAccountVersion( _version );
     }
 
-    State& m_s;  ///< A reference to the base state.
+    skale::State& m_s;  ///< A reference to the base state.
     SealEngineFace const& m_sealEngine;
     EVMSchedule const& m_evmSchedule;
     bool m_readOnly;
