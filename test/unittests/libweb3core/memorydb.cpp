@@ -23,7 +23,6 @@
  */
 
 #include <libdevcore/LevelDB.h>
-#include "libhistoric/MemoryDB.h"
 #include <libdevcore/MemoryDB.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
