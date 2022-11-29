@@ -62,6 +62,8 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 static std::string const c_genesisConfigString =
     R"(
 {
@@ -271,6 +273,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
             chainParams.extraData = h256::random().asBytes();
+            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
 
