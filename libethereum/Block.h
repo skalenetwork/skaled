@@ -77,6 +77,7 @@ class Block {
     friend class dev::test::ImportTest;
     friend class dev::test::StateLoader;
     friend class Executive;
+    friend class AlethExecutive;
     friend class BlockChain;
 
 public:
@@ -213,6 +214,14 @@ public:
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
+
+
+#ifdef  HISTORIC_STATE
+    ExecutionResult executeHistoricCall(
+            LastBlockHashesFace const& _lh, Transaction const& _t);
+#endif
+
+
     /// Sync our transactions, killing those from the queue that we have and assimilating those that
     /// we don't.
     /// @returns a list of receipts one for each transaction placed from the queue into the state
@@ -313,7 +322,7 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    skale::State m_state;         ///< Our state.
+    State m_state;         ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.

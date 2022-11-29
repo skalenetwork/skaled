@@ -381,9 +381,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         return out_vector;
     }
 
-    if ( this->emptyBlockIntervalMsForRestore.has_value() ) {
+    if ( need_restore_emptyBlockInterval ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
         this->emptyBlockIntervalMsForRestore.reset();
+        need_restore_emptyBlockInterval = false;
     }
 
     MICROPROFILE_SCOPEI( "SkaleHost", "pendingTransactions", MP_LAWNGREEN );
@@ -424,7 +425,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
                     Executive::verifyTransaction( tx,
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().startRead(), *m_client.sealEngine(), 0, getGasPrice(),
+                        m_client.state().createStateReadOnlyCopy(), *m_client.sealEngine(), 0, getGasPrice(),
                         isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
@@ -481,6 +482,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     if ( this->m_exitNeeded )
         unlocker.will_exit();
 
+
+    if ( this->emptyBlockIntervalMsForRestore.has_value() )
+        need_restore_emptyBlockInterval = true;
+
     if ( txns.size() == 0 )
         return out_vector;  // time-out with 0 results
 
@@ -535,6 +540,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
+
+
+
     //
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
@@ -769,8 +777,12 @@ void SkaleHost::startWorking() {
         bootstrap_promise.set_value();
     };  // func
 
+    // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
+    uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+    m_consensus->setEmptyBlockIntervalMs( 50 );
     m_consensusThread = std::thread( csus_func );
     bootstrap_promise.get_future().wait();
+    m_consensus->setEmptyBlockIntervalMs( tmp_interval );
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished

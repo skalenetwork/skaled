@@ -76,7 +76,7 @@ public:
     void verify( TestBlockChain const& _bc ) const;
 
     void setBlockHeader( BlockHeader const& _header );
-    void setState( skale::State const& _state );
+    void setState( State const& _state );
     void clearState();
 
     BlockHeader const& premineHeader() {
