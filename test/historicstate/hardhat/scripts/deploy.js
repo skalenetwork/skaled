@@ -22,6 +22,16 @@ async function main() {
     `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
   );
 
+  currentTime = Date.now();
+  for (i = 0; i  < 10000000; i++) {
+    console.log(await lockContract.withdraw());
+    for (i = 0; i  < 100; i++) {
+      await lockContract.blockNumber();
+    }
+    console.log("Execution time:" + (Date.now() - currentTime))
+    currentTime = Date.now();
+  }
+
   console.log(await lockContract.blockNumber());
 }
 

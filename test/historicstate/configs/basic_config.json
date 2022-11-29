@@ -24,8 +24,8 @@
     "chainID": "0x12345",
     "maximumExtraDataSize": "0x20",
     "tieBreakingGas": false,
-    "minGasLimit": "0xFFFFFFF",
-    "maxGasLimit": "0xFFFFFFF",
+    "minGasLimit": "0xFFFFFFFFF",
+    "maxGasLimit": "0xFFFFFFFFF",
     "gasLimitBoundDivisor": "0x0400",
     "minimumDifficulty": "0x0",
     "difficultyBoundDivisor": "0x0800",
@@ -40,7 +40,7 @@
     "timestamp": "0x00",
     "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
-    "gasLimit": "0xFFFFFFF"
+    "gasLimit": "0xFFFFFFFFF"
   },
   "accounts": {
     "0x66c5a87f4a49DD75e970055A265E8dd5C3F8f852":{
@@ -217,7 +217,7 @@
     "0xfe14077c26a507496b7208384d459e21c49c4212": { "balance": "1000000000000000000000000000000" } ,
     "0xfe3d4f1fc038f4f756ba44995129cd45c9e0e861": { "balance": "1000000000000000000000000000000" } ,
     "0x099452fedc71897880f584b1bc1706efc4e76e36": { "balance": "1000000000000000000000000000000" } ,
-    "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6": { "balance": "1000000000000000000000000000000000000" } ,
+    "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6": { "balance": "1000000000000000000000000000000000000000000000000000000" } ,
     "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
     "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
     "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
