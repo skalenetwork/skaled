@@ -120,6 +120,32 @@ jobs:
           echo "Ensure release mode skaled does not have any debug markers"
           strip skaled/skaled
           cd ..
+      - name: Configure historic state build
+        if: contains(github.ref, 'syncnode')
+        run: |
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Release
+          export CODE_COVERAGE=ON
+          mkdir -p build-historic
+          cd build-historic
+          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE ..
+          cd ..
+      - name: Build historic state version
+        if: contains(github.ref, 'syncnode')
+        run: |
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Release
+          export CODE_COVERAGE=ON
+          cd build-historic
+          make skaled -j$(nproc)
+          echo "Ensure release mode skaled does not have any debug markers"
+          strip skaled/skaled
+          cd ..
       - name: Build and publish container
         if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
@@ -152,5 +178,28 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./build/skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream
+      - name: Build and publish historic-state container
+        if: contains(github.ref, 'syncnode_develop') || contains(github.ref, 'syncnode_beta') || contains(github.ref, 'syncnode_stable')
+        run: |
+          cp build-historic/skaled/skaled scripts/skale_build/executable/
+          export BRANCH=${GITHUB_REF##*/}
+          echo "Branch $BRANCH"
+          export VERSION=$(cat VERSION)
+          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)-historic
+          echo "::set-env name=VERSION::$VERSION"
+          echo "Version $VERSION"
+          export RELEASE=true
+          echo "::set-env name=RELEASE::$RELEASE"
+          bash ./scripts/build_and_publish.sh
+      - name: Upload historic-state skaled binary to Release
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build-historic/skaled/skaled
           asset_name: skaled
           asset_content_type: application/octet-stream
