@@ -9,8 +9,10 @@ pragma solidity ^0.8.9;
 contract Lock {
 
     uint constant ARRAY_SIZE = 1000;
-    uint[ARRAY_SIZE] balance;
-    mapping(uint => uint) public writeMap;
+    uint256[ARRAY_SIZE] balance;
+    uint256 counter = 1;
+
+    mapping(uint256 => uint256) public writeMap;
     uint public unlockTime;
     address payable public owner;
 
@@ -25,28 +27,16 @@ contract Lock {
         unlockTime = _unlockTime;
         owner = payable(msg.sender);
 
-        for (uint i = 0; i < balance.length; i++) {
-            balance[i] = block.number;
-        }
     }
 
-    function withdraw() public {
+    function store() public {
         // Uncomment this line, and the import of "hardhat/console.sol", to print a log in your terminal
         // console.log("Unlock time is %o and block timestamp is %o", unlockTime, block.timestamp);
 
 
-        require(msg.sender == owner, "You aren't the owner");
-
-        emit Withdrawal(address(this).balance, block.timestamp);
-
-        owner.transfer(address(this).balance);
-
-        for (uint i = 0; i < balance.length; i++) {
-            balance[i] = block.number;
-        }
-
-        for (uint i = 0; i < ARRAY_SIZE; i++) {
-            writeMap[block.number * ARRAY_SIZE + i] = i;
+        for (uint256 i = 0; i < ARRAY_SIZE; i++) {
+            counter++;
+            writeMap[counter] = 153453455467547588686 + block.timestamp + counter;
         }
 
     }
