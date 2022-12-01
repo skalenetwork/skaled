@@ -23,6 +23,7 @@
 #include <libdevcore/MemoryDB.h>
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
+#include <libdevcore/MemoryDB.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/filesystem/path.hpp>
@@ -90,13 +91,13 @@ BOOST_AUTO_TEST_CASE( hex_encoded_securetrie_test, *boost::unit_test::preconditi
         for ( unsigned j = 0; j < min( 1000000000u, fac( ( unsigned ) ss.size() ) ); ++j ) {
             next_permutation( ss.begin(), ss.end() );
             MemoryDB m;
-            EnforceRefs r( m, true );
+            dev::EnforceRefs r( m, true );
             GenericTrieDB< MemoryDB > t( &m );
             MemoryDB hm;
-            EnforceRefs hr( hm, true );
+            dev::EnforceRefs hr( hm, true );
             HashedGenericTrieDB< MemoryDB > ht( &hm );
             MemoryDB fm;
-            EnforceRefs fr( fm, true );
+            dev::EnforceRefs fr( fm, true );
             FatGenericTrieDB< MemoryDB > ft( &fm );
             t.init();
             ht.init();
@@ -151,13 +152,13 @@ BOOST_AUTO_TEST_CASE( trie_test_anyorder, *boost::unit_test::precondition( dev::
         for ( unsigned j = 0; j < min( 1000u, fac( ( unsigned ) ss.size() ) ); ++j ) {
             next_permutation( ss.begin(), ss.end() );
             MemoryDB m;
-            EnforceRefs r( m, true );
+            dev::EnforceRefs r( m, true );
             GenericTrieDB< MemoryDB > t( &m );
             MemoryDB hm;
-            EnforceRefs hr( hm, true );
+            dev::EnforceRefs hr( hm, true );
             HashedGenericTrieDB< MemoryDB > ht( &hm );
             MemoryDB fm;
-            EnforceRefs fr( fm, true );
+            dev::EnforceRefs fr( fm, true );
             FatGenericTrieDB< MemoryDB > ft( &fm );
             t.init();
             ht.init();
@@ -227,13 +228,13 @@ BOOST_AUTO_TEST_CASE( trie_tests_ordered, *boost::unit_test::precondition( dev::
         }
 
         MemoryDB m;
-        EnforceRefs r( m, true );
+        dev::EnforceRefs r( m, true );
         GenericTrieDB< MemoryDB > t( &m );
         MemoryDB hm;
         EnforceRefs hr( hm, true );
         HashedGenericTrieDB< MemoryDB > ht( &hm );
         MemoryDB fm;
-        EnforceRefs fr( fm, true );
+        dev::EnforceRefs fr( fm, true );
         FatGenericTrieDB< MemoryDB > ft( &fm );
         t.init();
         ht.init();

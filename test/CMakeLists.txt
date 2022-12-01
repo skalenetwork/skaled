@@ -72,7 +72,7 @@ if( APPLE )
 endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR} ../libconsensus/spdlog/include)
 target_link_libraries(testeth PRIVATE
-    ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
+    ethereum historic ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
     skutils
     Boost::system Boost::program_options
     jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a

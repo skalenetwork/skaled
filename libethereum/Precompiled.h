@@ -42,6 +42,8 @@ namespace skale {
 class State;
 }
 
+using skale::State;
+
 namespace dev {
 namespace eth {
 

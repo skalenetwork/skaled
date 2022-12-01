@@ -56,7 +56,7 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
-skale::State g_state;
+/* State g_state;*/
 
 };  // namespace eth
 };  // namespace dev
@@ -764,11 +764,13 @@ static bool stat_is_accessible_json_path( const std::string& strPath ) {
     return false;
 }
 
+/*
 static size_t stat_calc_string_bytes_count_in_pages_32( size_t len_str ) {
     size_t rv = 32, blocks = len_str / 32 + ( ( ( len_str % 32 ) != 0 ) ? 1 : 0 );
     rv += blocks * 32;
     return rv;
 }
+ */
 
 static void stat_check_ouput_string_size_overflow( std::string& s ) {
     static const size_t g_maxLen = 1024 * 1024 - 1;
@@ -1021,6 +1023,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
 }
 
 ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
+    /*
     try {
         auto rawAddress = _in.cropped( 0, 20 ).toBytes();
         std::string address;
@@ -1043,6 +1046,7 @@ ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
     }
+    */
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return {false, response};  // 1st false - means bad error occur

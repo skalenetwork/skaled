@@ -85,6 +85,7 @@ DEV_SIMPLE_EXCEPTION( FutureTime );
 DEV_SIMPLE_EXCEPTION( TransientError );
 DEV_SIMPLE_EXCEPTION( FailedToWriteChainStart );
 DEV_SIMPLE_EXCEPTION( UnknownBlockNumber );
+DEV_SIMPLE_EXCEPTION( UnknownBlockNumberInRootDB);
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::unordered_map< Address, Account > const& genesisState();

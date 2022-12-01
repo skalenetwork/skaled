@@ -17,6 +17,7 @@ target_link_libraries(
     ${executable_name}
     PRIVATE
         ethereum
+        historic
         skutils
         devcore
         "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
