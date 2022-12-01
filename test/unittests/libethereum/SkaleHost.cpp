@@ -28,6 +28,8 @@ using namespace dev::eth;
 using namespace dev::test;
 using namespace std;
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
@@ -115,6 +117,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
         chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
+        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
         if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;

@@ -50,6 +50,8 @@
 #include <memory>
 #include <mutex>
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 namespace dev {
 namespace eth {};
 };  // namespace dev
@@ -105,6 +107,7 @@ public:
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.extraData = h256::random().asBytes();
+        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
         //////////////////////////////////////////////
 
@@ -206,6 +209,7 @@ public:
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
         chainParams.extraData = h256::random().asBytes();
+        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
         sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
         chainParams.sChain.nodes.push_back( node2 );

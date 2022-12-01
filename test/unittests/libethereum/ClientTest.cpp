@@ -38,6 +38,8 @@ using namespace dev::test;
 using namespace dev::p2p;
 namespace fs = boost::filesystem;
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
     const string BTRFS_DIR_PATH = "btrfs";
@@ -109,6 +111,10 @@ public:
         if ( _config != "" ) {
             chainParams = chainParams.loadConfig( _config );
         }
+        else {
+            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+        }
+
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
 
@@ -354,8 +360,6 @@ static std::string const c_configString = R"(
     }
 }
 )";
-
-static size_t rand_port = 1024 + rand() % 64000;
 
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
