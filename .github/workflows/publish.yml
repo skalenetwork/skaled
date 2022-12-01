@@ -193,17 +193,6 @@ jobs:
           export RELEASE=true
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
-      - name: Create historic-state Release
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ env.VERSION }}
-          release_name: ${{ env.VERSION }}
-          draft: false
-          prerelease: true
       - name: Upload historic-state skaled binary to Release
         if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
         uses: actions/upload-release-asset@latest
