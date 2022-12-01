@@ -2082,8 +2082,8 @@ BOOST_AUTO_TEST_CASE( oracle ) {
     sleep(5);
 
     uint64_t resultStatus = fixture.client->checkOracleResult(receipt, result);
-    BOOST_REQUIRE_EQUAL(resultStatus, 5);
-    BOOST_CHECK(result == "");
+    BOOST_REQUIRE_EQUAL(resultStatus, 0);
+    BOOST_CHECK(result != "");
 }
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {

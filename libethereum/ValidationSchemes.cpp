@@ -195,7 +195,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"log-value-size-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"log-json-string-limit", {{js::int_type}, JsonFieldPresence::Optional}},
             {"log-tx-params-limit", {{js::int_type}, JsonFieldPresence::Optional}},
-            {"no-txn-sending", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"no-ima-signing", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"skale-manager", {{js::obj_type}, JsonFieldPresence::Optional}},
             {"skale-network-browser-refresh", {{js::int_type}, JsonFieldPresence::Optional}},
@@ -205,6 +204,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             {"imaMessageProxyMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaCallerAddressSChain", {{js::str_type}, JsonFieldPresence::Optional}},
             {"imaCallerAddressMainNet", {{js::str_type}, JsonFieldPresence::Optional}},
+            {"syncNode", {{js::bool_type}, JsonFieldPresence::Optional}},
             {"wallets", {{js::obj_type}, JsonFieldPresence::Optional}}} );
 
     std::string keyShareName = "";

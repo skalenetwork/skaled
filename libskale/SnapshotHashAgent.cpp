@@ -33,8 +33,8 @@
 #include <libff/common/profiling.hpp>
 #include <libskale/AmsterdamFixPatch.h>
 
-SnapshotHashAgent::SnapshotHashAgent(
-    const dev::eth::ChainParams& chain_params, const std::string& common_public_key )
+SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
+    const std::array< std::string, 4 >& common_public_key )
     : chain_params_( chain_params ), n_( chain_params.sChain.nodes.size() ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
@@ -45,22 +45,16 @@ SnapshotHashAgent::SnapshotHashAgent(
     }
 
     this->bls_.reset( new libBLS::Bls( ( 2 * this->n_ + 1 ) / 3, this->n_ ) );
-    if ( common_public_key == "" ) {
+    common_public_key_.X.c0 = libff::alt_bn128_Fq( common_public_key[0].c_str() );
+    common_public_key_.X.c1 = libff::alt_bn128_Fq( common_public_key[1].c_str() );
+    common_public_key_.Y.c0 = libff::alt_bn128_Fq( common_public_key[2].c_str() );
+    common_public_key_.Y.c1 = libff::alt_bn128_Fq( common_public_key[3].c_str() );
+    common_public_key_.Z = libff::alt_bn128_Fq2::one();
+    if ( ( common_public_key_.X == libff::alt_bn128_Fq2::zero() &&
+             common_public_key_.Y == libff::alt_bn128_Fq2::one() ) ||
+         !common_public_key_.is_well_formed() ) {
+        // zero or corrupted public key was provided in command line
         this->readPublicKeyFromConfig();
-    } else {
-        std::vector< std::string > coords;
-        boost::split( coords, common_public_key, []( char c ) { return c == ':'; } );
-        common_public_key_.X.c0 = libff::alt_bn128_Fq( coords[0].c_str() );
-        common_public_key_.X.c1 = libff::alt_bn128_Fq( coords[1].c_str() );
-        common_public_key_.Y.c0 = libff::alt_bn128_Fq( coords[2].c_str() );
-        common_public_key_.Y.c1 = libff::alt_bn128_Fq( coords[3].c_str() );
-        common_public_key_.Z = libff::alt_bn128_Fq2::one();
-        if ( ( common_public_key_.X == libff::alt_bn128_Fq2::zero() &&
-                 common_public_key_.Y == libff::alt_bn128_Fq2::one() ) ||
-             !common_public_key_.is_well_formed() ) {
-            // zero or corrupted public key was provided in command line
-            this->readPublicKeyFromConfig();
-        }
     }
 }
 
