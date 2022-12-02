@@ -152,16 +152,16 @@ jobs:
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
           # Create lcov report
-          lcov --capture --directory . --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-          lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+          #lcov --capture --directory . --output-file coverage.info
+          #lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+          #lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
+          #lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
+          #lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
+          #lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
           #- lcov --list coverage.info # debug info
 
           # Uploading report to CodeCov
-            bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
+          #  bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
       - run: |
           sudo umount build/test/btrfs || true
           sudo rm -rf /tmp/tmp*

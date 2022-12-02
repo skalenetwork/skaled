@@ -6,7 +6,7 @@
 // global scope, and execute the script.
 
 
-WALLETS_COUNT = 1000
+WALLETS_COUNT = 100
 
 const hre = require("hardhat");
 const ethers = require('ethers')
@@ -100,6 +100,12 @@ async function main() {
       promises.push(lockContract.connect(wallets[k]).store());
     }
 
+
+
+    for (let k = 0; k  < WALLETS_COUNT; k++) {
+      await promises[k];
+    }
+
     NUMBER_OF_READS = 100;
 
     console.log(`Calling block number ${NUMBER_OF_READS} times  ...`);
@@ -107,10 +113,6 @@ async function main() {
       //await hre.ethers.provider.getBlockNumber();
       //await wallets[0].getBalance();
       await lockContract.blockNumber();
-    }
-
-    for (let k = 0; k  < WALLETS_COUNT; k++) {
-      await promises[k];
     }
 
 
