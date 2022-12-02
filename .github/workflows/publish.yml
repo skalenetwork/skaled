@@ -131,7 +131,7 @@ jobs:
           mkdir -p build-historic
           cd build-historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build historic state version
         if: contains(github.ref, 'syncnode')
