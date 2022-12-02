@@ -131,7 +131,7 @@ jobs:
           mkdir -p build-historic
           cd build-historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build historic state version
         if: contains(github.ref, 'syncnode')
@@ -184,10 +184,7 @@ jobs:
         if: contains(github.ref, 'syncnode_develop') || contains(github.ref, 'syncnode_beta') || contains(github.ref, 'syncnode_stable')
         run: |
           cp build-historic/skaled/skaled scripts/skale_build/executable/
-          export BRANCH=${GITHUB_REF##*/}
-          echo "Branch $BRANCH"
-          export VERSION=$(cat VERSION)
-          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)-historic
+          export VERSION=$VERSION-historic
           echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
@@ -201,5 +198,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./build-historic/skaled/skaled
-          asset_name: skaled
+          asset_name: skaled-historic
           asset_content_type: application/octet-stream
