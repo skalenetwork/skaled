@@ -184,10 +184,7 @@ jobs:
         if: contains(github.ref, 'syncnode_develop') || contains(github.ref, 'syncnode_beta') || contains(github.ref, 'syncnode_stable')
         run: |
           cp build-historic/skaled/skaled scripts/skale_build/executable/
-          export BRANCH=${GITHUB_REF##*/}
-          echo "Branch $BRANCH"
-          export VERSION=$(cat VERSION)
-          export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)-historic
+          export VERSION=$VERSION-historic
           echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
