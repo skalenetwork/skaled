@@ -112,6 +112,7 @@ public:
             chainParams = chainParams.loadConfig( _config );
         }
         else {
+            chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
             chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
         }
 
