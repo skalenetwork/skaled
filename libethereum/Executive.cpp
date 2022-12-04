@@ -228,8 +228,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
         auto sender_ballance = _state.balance( _transaction.sender() );
         if ( sender_ballance < totalCost ) {
             std::cout << "WARNING: Transaction " << _transaction.sha3() << " total cost "
-                      << totalCost << " is less than sender " << _transaction.sender()
-                      << " ballance " << sender_ballance << "\n";
+                      << totalCost << " is more than sender " << _transaction.sender()
+                      << " balance " << sender_ballance << "\n";
             std::cout.flush();
             BOOST_THROW_EXCEPTION( NotEnoughCash()
                                    << RequirementError(
