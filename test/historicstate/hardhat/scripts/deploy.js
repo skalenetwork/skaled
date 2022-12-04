@@ -6,7 +6,7 @@
 // global scope, and execute the script.
 
 
-WALLETS_COUNT = 1000;
+WALLETS_COUNT = 10000;
 
 const hre = require("hardhat");
 const ethers = require('ethers')
@@ -143,7 +143,7 @@ async function main() {
             await promises[k];
         }
 
-        NUMBER_OF_READS = 100;
+        NUMBER_OF_READS = 1;
 
         console.log(`Calling block number ${NUMBER_OF_READS} times  ...`);
         for (let j = 0; j < NUMBER_OF_READS; j++) {
