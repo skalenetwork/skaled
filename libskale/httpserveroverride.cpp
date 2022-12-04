@@ -3192,7 +3192,6 @@ bool SkaleServerOverride::StartListening() {
                         nPort = 80;
                 } else
                     nPort = atoi( u.port().c_str() );
-                clog( dev::VerbosityInfo, "Started listening on port ") << nPort;
                 int nServerIndex = 0;  // TO-FIX: detect server index here"
                 e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
                 skutils::result_of_http_request rslt = implHandleHttpRequest(
