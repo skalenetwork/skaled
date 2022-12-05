@@ -330,25 +330,23 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
     // note that lru_cache class is thread safe so there is no need to lock
 
 
-    // Check cache first
 
+
+    // Step 1 Look into the cache
+    // no need to lock since cache is synchronized internally
     auto key = t.toString();
     uint64_t currentBlockNumber = client()->number();
-    // pair of result and current block id
-    pair< string, uint64_t> value;
-
-    // no need to lock since cache is synchronized internally
     auto result = m_callCache.getIfExists( key );
-
     if ( result.has_value() ) {
-        value = any_cast< pair< string, uint64_t > >( result );
+        // pair of cached result and current block id
+        auto value = any_cast< pair< string, uint64_t > >( result );
         if ( currentBlockNumber ==  value.second ) {
-            // a similar request happened for the same block number. Return from cache
+            // a similar request happened for the same block number. Return cached result
             return value.first;
         }
     }
 
-    // Cache miss. Execute the call now.
+    // Step 2. We got cache miss. Execute the call now.
 
     setTransactionDefaults( t );
     ExecutionResult er =
