@@ -332,22 +332,17 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
 
 
 
-    // Step 1 Look into the cache
+    // Step 1 Look into the cache for the same request at the same block number
     // no need to lock since cache is synchronized internally
-    auto key = t.toString();
     uint64_t currentBlockNumber = client()->number();
+    auto key = t.toString().append(to_string(currentBlockNumber));
     auto result = m_callCache.getIfExists( key );
     if ( result.has_value() ) {
-        // pair of cached result and current block id
-        auto value = any_cast< pair< string, uint64_t > >( result );
-        if ( currentBlockNumber ==  value.second ) {
-            // a similar request happened for the same block number. Return cached result
-            return value.first;
-        }
+        // found an identical request in cache, return
+        return any_cast<string>(result);
     }
 
-    // Step 2. We got cache miss. Execute the call now.
-
+    // Step 2. We got a cache miss. Execute the call now.
     setTransactionDefaults( t );
     ExecutionResult er =
         client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
@@ -371,7 +366,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
     string callResult = toJS( er.output );
 
     // put the result into cache so it can be used by future calls
-    m_callCache.put( key, {callResult, currentBlockNumber} );
+    m_callCache.put( key, callResult);
 
     return callResult;
 }

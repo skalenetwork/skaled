@@ -152,7 +152,7 @@ protected:
 
     // a cache that maps the call request to the pair of response string and block number
     // for which the request has been executed
-    cache::lru_cache<string,  pair<string, uint64_t>> m_callCache;
+    cache::lru_cache<string, string> m_callCache;
 
 };
 
