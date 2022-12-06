@@ -36,7 +36,6 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 
 ## Building from source
 
-
 ### OS requirements
 
 Skaled builds and runs on Ubuntu 16.04 and 18.04
@@ -67,7 +66,6 @@ cd deps
 ```
 
 ### Configure and build skaled
-
 
 ```shell
 # Configure the project and create a build directory.
