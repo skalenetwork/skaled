@@ -464,6 +464,17 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         }
     }
 
+    // drop by block gas limit
+    u256 blockGasLimit = this->m_client.chainParams().gasLimit;
+    u256 gasAcc = 0;
+    auto first_to_drop_it = txns.begin();
+    for ( ; first_to_drop_it != txns.end(); ++first_to_drop_it ) {
+        gasAcc += first_to_drop_it->gas();
+        if ( gasAcc > blockGasLimit )
+            break;
+    }  // for
+    txns.erase( first_to_drop_it, txns.end() );
+
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 
     {
