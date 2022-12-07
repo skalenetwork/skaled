@@ -46,12 +46,15 @@ using namespace eth;
 using namespace dev::rpc;
 
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
+const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
+
 
 Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
     : skutils::json_config_file_accessor( configPath ),
       m_eth( _eth ),
       m_ethAccounts( _ethAccounts ),
-      m_callCache( MAX_CALL_CACHE_ENTRIES ) {}
+      m_callCache( MAX_CALL_CACHE_ENTRIES ),
+      m_receiptsCache(MAX_RECEIPT_CACHE_ENTRIES){}
 
 bool Eth::isEnabledTransactionSending() const {
     bool isEnabled = true;
@@ -476,12 +479,47 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
 }
 
 LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
+
+    // Step 1. Check receipts cache transactions first. It is faster than
+    // calling client()->isKnownTransaction()
+
     h256 h = jsToFixed< 32 >( _transactionHash );
+
+    uint64_t currentBlockNumber = client()->number();
+    string cacheKey = _transactionHash + toString(currentBlockNumber);
+
+    // note that the cache object is thread safe, so we do not need locks
+    auto result = m_receiptsCache.getIfExists(cacheKey);
+    if (result.has_value()) {
+        // we hit cache. This means someone already made this call for the same
+        // block number
+        auto receipt = any_cast<ptr<LocalisedTransactionReceipt>>(result);
+
+        if (receipt == nullptr) {
+            // no receipt yet at this block number
+            throw std::invalid_argument( "Not known transaction" );
+        } else {
+            // we have receipt in the cache. Return it.
+            return *receipt;
+        }
+    }
+
+
+    // Step 2. We got cache miss. Do the work and put the result into the cach
     if ( !client()->isKnownTransaction( h ) ) {
+        // transaction is not yet in the blockchain. Put null as receipt
+        // into the cache
+        m_receiptsCache.put(cacheKey, nullptr);
         throw std::invalid_argument( "Not known transaction" );
     }
+
     auto cli = client();
     auto rcp = cli->localisedTransactionReceipt( h );
+
+    // got a receipt. Put it into the cache before returning
+    // so that we have it if anyone asks again
+    m_receiptsCache.put(cacheKey, make_shared<LocalisedTransactionReceipt>(rcp));
+
     return rcp;
 }
 
