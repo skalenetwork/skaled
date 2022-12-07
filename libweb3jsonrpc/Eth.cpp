@@ -333,16 +333,14 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
     // note that lru_cache class is thread safe so there is no need to lock
 
 
-
-
     // Step 1 Look into the cache for the same request at the same block number
     // no need to lock since cache is synchronized internally
     uint64_t currentBlockNumber = client()->number();
-    auto key = t.toString().append(to_string(currentBlockNumber));
+    auto key = t.toString().append( to_string( currentBlockNumber ) );
     auto result = m_callCache.getIfExists( key );
     if ( result.has_value() ) {
         // found an identical request in cache, return
-        return any_cast<string>(result);
+        return any_cast< string >( result );
     }
 
     // Step 2. We got a cache miss. Execute the call now.
@@ -369,7 +367,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
     string callResult = toJS( er.output );
 
     // put the result into cache so it can be used by future calls
-    m_callCache.put( key, callResult);
+    m_callCache.put( key, callResult );
 
     return callResult;
 }

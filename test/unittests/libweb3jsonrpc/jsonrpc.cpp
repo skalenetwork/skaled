@@ -2225,7 +2225,7 @@ BOOST_AUTO_TEST_CASE( oracle, *boost::unit_test::disabled() ) {
     std::time_t current = std::time(nullptr);
     std::string request;
     for (int i = 0; i < 1000000; ++i) {
-        request = skutils::tools::format("{\"cid\":1,\"uri\":\"http://worldtimeapii.org/api/timezone/Europe/Kiev\",\"jsps\":[\"/unixtime\",\"/day_of_year\",\"/xxx\"],\"trims\":[1,1,1],\"time\":%zu000,\"pow\":%zu}", current, i);
+        request = skutils::tools::format("{\"cid\":1,\"uri\":\"http://worldtimeapi.org/api/timezone/Europe/Kiev\",\"jsps\":[\"/unixtime\",\"/day_of_year\",\"/xxx\"],\"trims\":[1,1,1],\"time\":%zu000,\"pow\":%zu}", current, i);
         auto os = make_shared<OracleRequestSpec>(request);
         if ( os->verifyPow() ) {
             break;
