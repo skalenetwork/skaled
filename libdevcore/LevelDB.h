@@ -55,6 +55,7 @@ private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
+    boost::filesystem::path const m_path;
 };
 
 }  // namespace db
