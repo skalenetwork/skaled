@@ -266,7 +266,7 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
             } else {
-                cnote << "Try to delete non existing key " << _address << "(" << _space << ")";
+                ctrace << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
         }
     }
