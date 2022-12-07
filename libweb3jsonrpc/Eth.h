@@ -44,6 +44,7 @@ namespace eth {
 class AccountHolder;
 struct TransactionSkeleton;
 class Interface;
+class LocalisedTransactionReceipt;
 }  // namespace eth
 
 }  // namespace dev
@@ -153,6 +154,12 @@ protected:
     // a cache that maps the call request to the pair of response string and block number
     // for which the request has been executed
     cache::lru_cache<string, string> m_callCache;
+
+    // a cache that maps a transaction receipt to the block number where
+    // the transaction was not yet ready
+    // for which the request has been executed
+    cache::lru_cache<string, ptr<dev::eth::LocalisedTransactionReceipt>> m_receiptsCache;
+
 
 };
 
