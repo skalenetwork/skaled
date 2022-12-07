@@ -12,6 +12,9 @@ RUN apt-get -q update && \
         python3-pip \
         btrfs-progs
 
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-net && \
+    echo 'Acquire::http::Timeout "20";' >> /etc/apt/apt.conf.d/80-net
+
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
     apt-get update && \
     apt-get install -y gcc-9 g++-9 gdb
