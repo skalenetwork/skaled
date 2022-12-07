@@ -105,6 +105,7 @@ class settings {
 public:
     bool enabled_ = true;
     origin_entry_settings_t origins_;
+    origin_entry_setting global_limit_;
     settings();
     settings( const settings& other );
     settings( settings&& other );
@@ -285,8 +286,10 @@ class algorithm {
     mutable mutex_type mtx_;
     mutable settings settings_;
     tracked_origins_t tracked_origins_;
+    tracked_origin tracked_global_;
     typedef std::map< std::string, size_t > map_ws_conn_counts_t;
     map_ws_conn_counts_t map_ws_conn_counts_;
+    size_t ws_conn_count_global_ = 0;
 
 public:
     algorithm();

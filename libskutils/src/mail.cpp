@@ -76,25 +76,25 @@ std::string smtp_security_type_2_str( smtp_security_type sst ) {
     }  // switch( sst )
 }
 
-command_entry command_list[] = {
-    {command_INIT, 0, 5 * 60, 220, smtp_error_info::SERVER_NOT_RESPONDING},
-    {command_EHLO, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_EHLO},
-    {command_AUTHPLAIN, 5 * 60, 5 * 60, 235, smtp_error_info::COMMAND_AUTH_PLAIN},
-    {command_AUTHLOGIN, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_LOGIN},
-    {command_AUTHCRAMMD5, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_CRAMMD5},
-    {command_AUTHDIGESTMD5, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_DIGESTMD5},
-    {command_DIGESTMD5, 5 * 60, 5 * 60, 335, smtp_error_info::COMMAND_DIGESTMD5},
-    {command_USER, 5 * 60, 5 * 60, 334, smtp_error_info::UNDEF_XYZ_RESPONSE},
-    {command_PASSWORD, 5 * 60, 5 * 60, 235, smtp_error_info::BAD_LOGIN_PASS},
-    {command_MAILFROM, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_MAIL_FROM},
-    {command_RCPTTO, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_RCPT_TO},
-    {command_DATA, 5 * 60, 2 * 60, 354, smtp_error_info::COMMAND_DATA},
-    {command_DATABLOCK, 3 * 60, 0, 0,
-        smtp_error_info::COMMAND_DATABLOCK},  // Here the valid_reply_code is set to zero because
-                                              // there are no replies when sending data blocks
-    {command_DATAEND, 3 * 60, 10 * 60, 250, smtp_error_info::MSG_BODY_ERROR},
-    {command_QUIT, 5 * 60, 5 * 60, 221, smtp_error_info::COMMAND_QUIT},
-    {command_STARTTLS, 5 * 60, 5 * 60, 220, smtp_error_info::COMMAND_EHLO_STARTTLS}};
+command_entry command_list[] = { { command_INIT, 0, 5 * 60, 220,
+                                     smtp_error_info::SERVER_NOT_RESPONDING },
+    { command_EHLO, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_EHLO },
+    { command_AUTHPLAIN, 5 * 60, 5 * 60, 235, smtp_error_info::COMMAND_AUTH_PLAIN },
+    { command_AUTHLOGIN, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_LOGIN },
+    { command_AUTHCRAMMD5, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_CRAMMD5 },
+    { command_AUTHDIGESTMD5, 5 * 60, 5 * 60, 334, smtp_error_info::COMMAND_AUTH_DIGESTMD5 },
+    { command_DIGESTMD5, 5 * 60, 5 * 60, 335, smtp_error_info::COMMAND_DIGESTMD5 },
+    { command_USER, 5 * 60, 5 * 60, 334, smtp_error_info::UNDEF_XYZ_RESPONSE },
+    { command_PASSWORD, 5 * 60, 5 * 60, 235, smtp_error_info::BAD_LOGIN_PASS },
+    { command_MAILFROM, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_MAIL_FROM },
+    { command_RCPTTO, 5 * 60, 5 * 60, 250, smtp_error_info::COMMAND_RCPT_TO },
+    { command_DATA, 5 * 60, 2 * 60, 354, smtp_error_info::COMMAND_DATA },
+    { command_DATABLOCK, 3 * 60, 0, 0,
+        smtp_error_info::COMMAND_DATABLOCK },  // Here the valid_reply_code is set to zero because
+                                               // there are no replies when sending data blocks
+    { command_DATAEND, 3 * 60, 10 * 60, 250, smtp_error_info::MSG_BODY_ERROR },
+    { command_QUIT, 5 * 60, 5 * 60, 221, smtp_error_info::COMMAND_QUIT },
+    { command_STARTTLS, 5 * 60, 5 * 60, 220, smtp_error_info::COMMAND_EHLO_STARTTLS } };
 command_entry* findCommandEntry( SMTP_COMMAND command ) {
     command_entry* pEntry = nullptr;
     for ( size_t i = 0; i < sizeof( command_list ) / sizeof( command_list[0] ); ++i ) {
@@ -933,8 +933,8 @@ int client::smtpXYZdigits() {
 }
 
 void client::formatHeader( char* header ) {
-    char month[][4] = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    char month[][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
+        "Dec" };
     size_t i;
     std::string to;
     std::string cc;
