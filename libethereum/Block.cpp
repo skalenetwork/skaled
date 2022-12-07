@@ -180,7 +180,7 @@ PopulationStatistics Block::populateFromChain(
     BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir ) {
     noteChain( _bc );
 
-    PopulationStatistics ret{0.0, 0.0};
+    PopulationStatistics ret{ 0.0, 0.0 };
 
     if ( !_bc.isKnown( _h ) ) {
         // Might be worth throwing here.
@@ -520,6 +520,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // throw;
             // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
+            cerror << DETAILED_ERROR;
         }
     }
     m_state.stopWrite();
@@ -640,7 +641,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
-                cerr << "Skale does not support state root in receipt" << endl;
+                cwarn << "Skale does not support state root in receipt";
                 break;
             }
         }
@@ -795,17 +796,19 @@ ExecutionResult Block::execute(
             TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
             TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
 
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ ExecutionResult(),
+        null_receipt };
 
     try {
         if ( _t.isInvalid() )
-            throw - 1;  // will catch below
+            throw -1;  // will catch below
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
+        cerror << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );

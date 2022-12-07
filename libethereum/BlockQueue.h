@@ -133,7 +133,7 @@ private:
     }
 
     std::deque< T > m_queue;
-    std::atomic< size_t > m_size = {0};  ///< Tracks total size in bytes
+    std::atomic< size_t > m_size = { 0 };  ///< Tracks total size in bytes
 };
 
 template < class KeyType >
@@ -190,7 +190,7 @@ private:
     }
 
     BlockMultimap m_map;
-    std::atomic< size_t > m_size = {0};  ///< Tracks total size in bytes
+    std::atomic< size_t > m_size = { 0 };  ///< Tracks total size in bytes
 };
 
 /**
@@ -321,16 +321,16 @@ private:
                                                       ///< data> in correct order, ready for
                                                       ///< verification.
 
-    std::vector< std::thread > m_verifiers;    ///< Threads who only verify.
-    std::atomic< bool > m_deleting = {false};  ///< Exit condition for verifiers.
+    std::vector< std::thread > m_verifiers;      ///< Threads who only verify.
+    std::atomic< bool > m_deleting = { false };  ///< Exit condition for verifiers.
 
     std::function< void( Exception& ) > m_onBad;  ///< Called if we have a block that doesn't
                                                   ///< verify.
     u256 m_difficulty;                            ///< Total difficulty of blocks in the queue
     u256 m_drainingDifficulty;                    ///< Total difficulty of blocks in draining
 
-    Logger m_logger{createLogger( VerbosityDebug, "bq" )};
-    Logger m_loggerDetail{createLogger( VerbosityTrace, "bq" )};
+    Logger m_logger{ createLogger( VerbosityDebug, "bq" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityTrace, "bq" ) };
 
     Counter< BlockQueue > c;
 

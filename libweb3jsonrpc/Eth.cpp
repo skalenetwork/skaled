@@ -26,6 +26,7 @@
 #include "Eth.h"
 #include "AccountHolder.h"
 #include <jsonrpccpp/common/exception.h>
+#include <libconsensus/utils/Time.h>
 #include <libdevcore/CommonData.h>
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
@@ -44,10 +45,13 @@ using namespace dev;
 using namespace eth;
 using namespace dev::rpc;
 
+const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
+
 Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
     : skutils::json_config_file_accessor( configPath ),
       m_eth( _eth ),
-      m_ethAccounts( _ethAccounts ) {}
+      m_ethAccounts( _ethAccounts ),
+      m_callCache( MAX_CALL_CACHE_ENTRIES ) {}
 
 bool Eth::isEnabledTransactionSending() const {
     bool isEnabled = true;
@@ -64,8 +68,7 @@ bool Eth::isEnabledTransactionSending() const {
             throw std::runtime_error(
                 "error config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"syncNode\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode =
-            joSkaleConfig_nodeInfo["syncNode"];
+        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
         isEnabled = joSkaleConfig_nodeInfo_syncNode.get< bool >() ? false : true;
     } catch ( ... ) {
     }
@@ -312,10 +315,32 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     return toJS( client()->importTransaction( t ) );
 }
 
+
+recursive_mutex cacheLock;
+
+const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
+
 string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
     // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
     // Remove this temporary fix.
     string blockNumber = "latest";
+
+    // if an identical call has been made for the same block number
+    // and the result is in cache, return the result from cache
+    // note that lru_cache class is thread safe so there is no need to lock
+
+
+    // Step 1 Look into the cache for the same request at the same block number
+    // no need to lock since cache is synchronized internally
+    uint64_t currentBlockNumber = client()->number();
+    auto key = t.toString().append( to_string( currentBlockNumber ) );
+    auto result = m_callCache.getIfExists( key );
+    if ( result.has_value() ) {
+        // found an identical request in cache, return
+        return any_cast< string >( result );
+    }
+
+    // Step 2. We got a cache miss. Execute the call now.
     setTransactionDefaults( t );
     ExecutionResult er =
         client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
@@ -335,7 +360,13 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
         throw std::logic_error( strRevertReason );
     }
 
-    return toJS( er.output );
+
+    string callResult = toJS( er.output );
+
+    // put the result into cache so it can be used by future calls
+    m_callCache.put( key, callResult );
+
+    return callResult;
 }
 
 string Eth::eth_estimateGas( Json::Value const& _json ) {
@@ -343,8 +374,18 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
         int64_t gas = static_cast< int64_t >( t.gas );
-        return toJS(
-            client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice ).first );
+        auto result = client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice );
+
+        std::string strRevertReason;
+        if ( result.second.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = skutils::eth::call_error_message_2_str( result.second.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            throw std::logic_error( strRevertReason );
+        }
+        return toJS( result.first );
+    } catch ( std::logic_error& error ) {
+        throw error;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

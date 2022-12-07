@@ -44,7 +44,7 @@ struct DBKindTableEntry {
 ///
 /// We don't use a map to avoid complex dynamic initialization. This list will never be long,
 /// so linear search only to parse command line arguments is not a problem.
-DBKindTableEntry dbKindsTable[] = {{DatabaseKind::LevelDB, "leveldb"}};
+DBKindTableEntry dbKindsTable[] = { { DatabaseKind::LevelDB, "leveldb" } };
 
 void setDatabaseKindByName( std::string const& _name ) {
     for ( auto& entry : dbKindsTable ) {

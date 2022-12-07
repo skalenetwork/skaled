@@ -145,6 +145,6 @@ EVMSchedule const& SealEngineBase::evmSchedule( u256 const& _blockNumber ) const
 }
 
 u256 SealEngineBase::blockReward( u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{evmSchedule( _blockNumber )};
+    EVMSchedule const& schedule{ evmSchedule( _blockNumber ) };
     return chainParams().blockReward( schedule );
 }

@@ -60,6 +60,7 @@ jobs:
 
       - name: Get newest lcov
         run: |
+          # sudo apt-get install libcapture-tiny-perl
           echo "Removing previous lcov version..."
           sudo apt-get remove lcov || true
           echo "Installing newest lcov version..."
@@ -68,13 +69,13 @@ jobs:
           cd newer_lcov
           git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
           cd lcov
+          git checkout 92e2121
           sudo make install
           cd ..
           cd ..
           echo "Checking installed lcov version..."
           which lcov
           lcov --version
-
 
       - name: Submodule update
         run: |
@@ -99,6 +100,12 @@ jobs:
         run: |
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+
+      - name: Test clang-format
+        run: |
+          clang-format --help
+          clang-format --version
+
       - name: Build dependencies
         run: |
           export CC=gcc-9
@@ -123,16 +130,16 @@ jobs:
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
-      # - name: Format-check source code
-      #   run: |
-      #     export CC=gcc-9
-      #     export CXX=g++-9
-      #     export TARGET=all
-      #     export CMAKE_BUILD_TYPE=Release
-      #     export CODE_COVERAGE=ON
-      #     cd build
-      #     make format-check
-      #     cd ..
+      - name: Format-check source code
+        run: |
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Release
+          export CODE_COVERAGE=ON
+          cd build
+          make format-check
+          cd ..
       - name: Build all
         run: |
           export CC=gcc-9
@@ -152,16 +159,16 @@ jobs:
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
           # Create lcov report
-          lcov --capture --directory . --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-          lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+          #lcov --capture --directory . --output-file coverage.info
+          #lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+          #lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
+          #lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused 
+          #lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused
+          #lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
           #- lcov --list coverage.info # debug info
 
           # Uploading report to CodeCov
-            bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports" 
+          #  bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
       - run: |
           sudo umount build/test/btrfs || true
           sudo rm -rf /tmp/tmp*

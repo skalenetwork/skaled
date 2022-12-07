@@ -108,7 +108,8 @@ public:
 
     /// Checks equality of transactions.
     bool operator==( TransactionBase const& _c ) const {
-        return m_type == _c.m_type &&
+        return m_type == _c.m_type && ( safeSender() == _c.safeSender() ) &&
+               ( safeNonce() == _c.safeNonce() ) &&
                ( m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress ) &&
                m_value == _c.m_value && m_data == _c.m_data;
     }
@@ -200,6 +201,14 @@ public:
     u256 nonce() const {
         assert( !isInvalid() );
         return m_nonce;
+    }
+
+    u256 safeNonce() const {
+        try {
+            return m_nonce;
+        } catch ( ... ) {
+            return u256();
+        }
     }
 
     /// Sets the nonce to the given value. Clears any signature.

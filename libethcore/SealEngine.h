@@ -78,7 +78,7 @@ public:
         return false;
     }
 
-    virtual strings sealers() const { return {"default"}; }
+    virtual strings sealers() const { return { "default" }; }
     virtual std::string sealer() const { return "default"; }
     virtual void setSealer( std::string const& ) {}
 
