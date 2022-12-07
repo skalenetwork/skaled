@@ -73,7 +73,10 @@ nlohmann::json to_json( const vec_s_chains_t& vec );
 
 vec_s_chains_t refreshing_cached();
 
-bool refreshing_start( const std::string& configPath );
+typedef bool ( *fn_stop_indication_t )();
+
+bool refreshing_start(
+    const std::string& configPath, fn_stop_indication_t fnStopIndication = nullptr );
 
 void refreshing_stop();
 

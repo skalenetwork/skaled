@@ -50,8 +50,8 @@ struct VMKindTableEntry {
 /// We don't use a map to avoid complex dynamic initialization. This list will never be long,
 /// so linear search only to parse command line arguments is not a problem.
 VMKindTableEntry vmKindsTable[] = {
-    {VMKind::Interpreter, "interpreter"},
-    {VMKind::Legacy, "legacy"},
+    { VMKind::Interpreter, "interpreter" },
+    { VMKind::Legacy, "legacy" },
 };
 
 void setVMKind( const std::string& _name ) {
@@ -92,7 +92,7 @@ void setVMKind( const std::string& _name ) {
                 "loading " + _name + " failed" ) );
     }
 
-    g_evmcDll.reset( new EVMC{instance} );
+    g_evmcDll.reset( new EVMC{ instance } );
 
     cnote << "Loaded EVMC module: " << g_evmcDll->name() << " " << g_evmcDll->version() << " ("
           << _name << ")";
@@ -115,7 +115,7 @@ void parseEvmcOptions( const std::vector< std::string >& _opts ) {
     for ( auto& s : _opts ) {
         auto separatorPos = s.find( '=' );
         if ( separatorPos == s.npos )
-            throw po::invalid_syntax{po::invalid_syntax::missing_parameter, c_evmcPrefix + s};
+            throw po::invalid_syntax{ po::invalid_syntax::missing_parameter, c_evmcPrefix + s };
         auto name = s.substr( 0, separatorPos );
         auto value = s.substr( separatorPos + 1 );
         s_evmcOptions.emplace_back( std::move( name ), std::move( value ) );
@@ -166,19 +166,19 @@ VMPtr VMFactory::create() {
 }
 
 VMPtr VMFactory::create( VMKind _kind ) {
-    static const auto default_delete = []( VMFace * _vm ) noexcept { delete _vm; };
+    static const auto default_delete = []( VMFace* _vm ) noexcept { delete _vm; };
     static const auto null_delete = []( VMFace* ) noexcept {};
 
     switch ( _kind ) {
     case VMKind::Interpreter:
-        return {new EVMC{evmc_create_interpreter()}, default_delete};
+        return { new EVMC{ evmc_create_interpreter() }, default_delete };
     case VMKind::DLL:
         assert( g_evmcDll != nullptr );
         // Return "fake" owning pointer to global EVMC DLL VM.
-        return {g_evmcDll.get(), null_delete};
+        return { g_evmcDll.get(), null_delete };
     case VMKind::Legacy:
     default:
-        return {new LegacyVM, default_delete};
+        return { new LegacyVM, default_delete };
     }
 }
 }  // namespace eth

@@ -120,11 +120,11 @@ public:
 class client {
 private:
     skutils::url u_;
-#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
     std::unique_ptr< skutils::http_curl::client > ch_;
-#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
     std::unique_ptr< skutils::http::client > ch_;
-#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
     std::unique_ptr< skutils::ws::client > cw_;
     std::unique_ptr< sz_cli > cz_;
 
@@ -135,13 +135,16 @@ private:
     typedef std::list< data_t > data_list_t;
     data_list_t lstData_;
 
+    long nClientConnectionTimeoutMS_ =
+        -1;  // -1 means default (i.e. __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__)
+
 public:
     skutils::http::SSL_client_options optsSSL_;
     bool isVerboseInsideNetworkLayer_ = false;
-    client();
-    client( const skutils::url& u );
-    client( const std::string& url_str );
-    client( const char* url_str );
+    client( long nClientConnectionTimeoutMS = -1 );
+    client( const skutils::url& u, long nClientConnectionTimeoutMS = -1 );
+    client( const std::string& url_str, long nClientConnectionTimeoutMS = -1 );
+    client( const char* url_str, long nClientConnectionTimeoutMS = -1 );
     virtual ~client();
 
     const skutils::url& url() const { return u_; }
@@ -158,6 +161,8 @@ public:
     void close();
     std::string get_connected_url_scheme() const;
     bool is_open() const;
+    long client_connection_timeout() const;
+    void client_connection_timeout( long nClientConnectionTimeoutMS );
 
 private:
     std::string u_path() const;

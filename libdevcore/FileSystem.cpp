@@ -111,3 +111,19 @@ fs::path dev::appendToFilename( fs::path const& _orig, string const& _suffix ) {
     else
         return _orig.parent_path() / fs::path( _orig.filename().string() + _suffix );
 }
+
+uint64_t dev::getDirSize( const fs::path& _p ) {
+    uint64_t totalSize = 0;
+
+    fs::recursive_directory_iterator directory_it( _p ), end;
+    while ( directory_it != end ) {
+        if ( fs::is_regular_file( *directory_it ) ) {
+            totalSize += fs::file_size( *directory_it );
+        } else {
+            totalSize += dev::getDirSize( *directory_it );
+        }
+        ++directory_it;
+    }
+
+    return totalSize;
+}

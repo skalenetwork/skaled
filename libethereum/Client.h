@@ -86,7 +86,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{ 1024, 1024 } );
     /// Destructor.
     virtual ~Client();
 
@@ -305,6 +305,10 @@ public:
         return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
     }
 
+    std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
+
+    std::pair< uint64_t, uint64_t > getStateDbUsage() const;
+
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
@@ -451,8 +455,8 @@ protected:
 
     bool remoteActive() const;     ///< Is there an active and valid remote worker?
     bool m_remoteWorking = false;  ///< Has the remote worker recently been reset?
-    std::atomic< bool > m_needStateReset = {false};  ///< Need reset working state to premin on next
-                                                     ///< sync
+    std::atomic< bool > m_needStateReset = { false };     ///< Need reset working state to premin on
+                                                          ///< next sync
     std::chrono::system_clock::time_point m_lastGetWork;  ///< Is there an active and valid remote
                                                           ///< worker?
 
@@ -483,8 +487,8 @@ protected:
     std::queue< std::function< void() > > m_functionQueue;  ///< Functions waiting to be executed in
                                                             ///< the main thread.
 
-    std::atomic< bool > m_syncTransactionQueue = {false};
-    std::atomic< bool > m_syncBlockQueue = {false};
+    std::atomic< bool > m_syncTransactionQueue = { false };
+    std::atomic< bool > m_syncBlockQueue = { false };
 
     bytes m_extraData;
 
@@ -492,8 +496,8 @@ protected:
                                                    ///< the DB
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
-    Logger m_logger{createLogger( VerbosityInfo, "client" )};
-    Logger m_loggerDetail{createLogger( VerbosityTrace, "client" )};
+    Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
 
 
     /// skale

@@ -166,9 +166,11 @@ void BlockQueue::verifierBody() try {
     }
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what();
+    cerror << DETAILED_ERROR;
     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 } catch ( ... ) {
     cerror << "CRITICAL unknown exception";
+    cerror << DETAILED_ERROR;
     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
@@ -259,7 +261,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
             // If valid, append to blocks.
             LOG( m_loggerDetail ) << "OK - ready for chain insertion.";
             DEV_GUARDED( m_verification )
-            m_unverified.enqueue( UnverifiedBlock{h, bi.parentHash(), _block.toBytes()} );
+            m_unverified.enqueue( UnverifiedBlock{ h, bi.parentHash(), _block.toBytes() } );
             m_moreToVerify.notify_one();
             m_readySet.insert( h );
             m_difficulty += bi.difficulty();
@@ -380,8 +382,8 @@ void BlockQueue::tick() {
 BlockQueueStatus BlockQueue::status() const {
     ReadGuard l( m_lock );
     Guard l2( m_verification );
-    return BlockQueueStatus{m_drainingSet.size(), m_verified.count(), m_verifying.count(),
-        m_unverified.count(), m_future.count(), m_unknown.count(), m_knownBad.size()};
+    return BlockQueueStatus{ m_drainingSet.size(), m_verified.count(), m_verifying.count(),
+        m_unverified.count(), m_future.count(), m_unknown.count(), m_knownBad.size() };
 }
 
 QueueStatus BlockQueue::blockStatus( h256 const& _h ) const {
@@ -467,7 +469,7 @@ void BlockQueue::noteReady_WITH_LOCK( h256 const& _good ) {
         for ( auto& newReady : removed ) {
             DEV_GUARDED( m_verification )
             m_unverified.enqueue(
-                UnverifiedBlock{newReady.first, parent, move( newReady.second )} );
+                UnverifiedBlock{ newReady.first, parent, move( newReady.second ) } );
             m_unknownSet.erase( newReady.first );
             m_readySet.insert( newReady.first );
             goodQueue.push_back( newReady.first );
@@ -487,7 +489,7 @@ void BlockQueue::retryAllUnknown() {
         for ( auto& newReady : removed ) {
             DEV_GUARDED( m_verification )
             m_unverified.enqueue(
-                UnverifiedBlock{newReady.first, parent, move( newReady.second )} );
+                UnverifiedBlock{ newReady.first, parent, move( newReady.second ) } );
             m_unknownSet.erase( newReady.first );
             m_readySet.insert( newReady.first );
             m_moreToVerify.notify_one();

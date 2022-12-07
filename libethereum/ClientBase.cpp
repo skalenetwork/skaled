@@ -148,7 +148,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                     lowerBound = middle;
                 }
                 if ( _callback ) {
-                    _callback( GasEstimationProgress{lowerBound, upperBound} );
+                    _callback( GasEstimationProgress{ lowerBound, upperBound } );
                 }
             }
         }
@@ -241,14 +241,43 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
 void ClientBase::prependLogsFromBlock( LogFilter const& _f, h256 const& _blockHash,
     BlockPolarity _polarity, LocalisedLogEntries& io_logs ) const {
     auto receipts = bc().receipts( _blockHash ).receipts;
+    unsigned logIndex = 0;
     for ( size_t i = 0; i < receipts.size(); i++ ) {
         TransactionReceipt receipt = receipts[i];
         auto th = transaction( _blockHash, i ).sha3();
-        LogEntries le = _f.matches( receipt );
-        for ( unsigned j = 0; j < le.size(); ++j )
-            io_logs.insert( io_logs.begin(),
-                LocalisedLogEntry( le[j], _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
-                    i, 0, _polarity ) );
+        if ( _f.isRangeFilter() ) {
+            for ( const auto& e : receipt.log() ) {
+                io_logs.insert( io_logs.begin(),
+                    LocalisedLogEntry( e, _blockHash, ( BlockNumber ) bc().number( _blockHash ), th,
+                        i, logIndex++, _polarity ) );
+            }
+            continue;
+        }
+
+        if ( _f.matches( receipt.bloom() ) )
+            for ( const auto& e : receipt.log() ) {
+                auto addresses = _f.getAddresses();
+                if ( addresses.empty() || std::find( addresses.begin(), addresses.end(),
+                                              e.address ) != addresses.end() ) {
+                    bool isGood = true;
+                    for ( unsigned j = 0; j < 4; ++j ) {
+                        auto topics = _f.getTopics()[j];
+                        if ( !topics.empty() &&
+                             ( e.topics.size() < j || ( std::find( topics.begin(), topics.end(),
+                                                            e.topics[j] ) == topics.end() ) ) ) {
+                            isGood = false;
+                        }
+                    }
+                    if ( isGood )
+                        io_logs.insert(
+                            io_logs.begin(), LocalisedLogEntry( e, _blockHash,
+                                                 ( BlockNumber ) bc().number( _blockHash ), th, i,
+                                                 logIndex++, _polarity ) );
+                } else
+                    ++logIndex;
+            }
+        else
+            logIndex += receipt.log().size();
     }
 }
 

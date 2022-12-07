@@ -43,8 +43,8 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
-#include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/AmsterdamFixPatch.h>
+#include <libskale/TotalStorageUsedPatch.h>
 
 #include "Block.h"
 #include "Defaults.h"
@@ -66,8 +66,8 @@ using namespace skale::error;
 #define ETH_TIMED_IMPORTS 1
 
 namespace {
-std::string const c_chainStart{"chainStart"};
-db::Slice const c_sliceChainStart{c_chainStart};
+std::string const c_chainStart{ "chainStart" };
+db::Slice const c_sliceChainStart{ c_chainStart };
 }  // namespace
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, BlockChain const& _bc ) {
@@ -76,7 +76,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, BlockChain const& _bc ) 
         if ( string( _key.data(), _key.size() ) != "best" ) {
             const string key( _key.data(), _key.size() );
             try {
-                BlockHeader d( bytesConstRef{_value} );
+                BlockHeader d( bytesConstRef{ _value } );
                 _out << toHex( key ) << ":   " << d.number() << " @ " << d.parentHash()
                      << ( cmp == key ? "  BEST" : "" ) << std::endl;
             } catch ( ... ) {
@@ -176,9 +176,9 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
-    : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-      m_dbPath( _dbPath ) {
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches,
+    WithExisting _we ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
+                             m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
@@ -230,7 +230,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
         auto rotator = std::make_shared< batched_io::rotating_db_io >(
-            chainPath / fs::path( "blocks_and_extras" ), 5 );
+            chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().nodeInfo.archiveMode );
         m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( m_rotating_db );
@@ -303,7 +303,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-//    dump_blocks_and_extras_db( *this, 0 );
+    //    dump_blocks_and_extras_db( *this, 0 );
 
     if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
@@ -400,10 +400,9 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 this_thread::sleep_for( chrono::milliseconds( 100 ) );
                 continue;
             } catch ( Exception& ex ) {
-                cerr << "Exception while importing block. Someone (Jeff? That you?) seems to be "
-                     << "giving us dodgy blocks !";
-                cerr << diagnostic_information( ex );
-                cerr.flush();
+                cerror << "Exception while importing block. Someone (Jeff? That you?) seems to be "
+                       << "giving us dodgy blocks !";
+                cerror << diagnostic_information( ex );
                 if ( m_onBad )
                     m_onBad( ex );
                 // NOTE: don't reimport since the queue should guarantee everything in the right
@@ -413,7 +412,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
         } while ( false );
     }
     return make_tuple(
-        ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain( badBlocks ), count );
+        ImportRoute{ dead, fresh, goodTransactions }, _bq.doneDrain( badBlocks ), count );
 }
 
 pair< ImportResult, ImportRoute > BlockChain::attemptImport(
@@ -474,6 +473,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
         LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
         LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
         LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        cerror << DETAILED_ERROR;
         exit( -1 );
     }
 
@@ -864,14 +864,16 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
             db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
         m_db->commit( "recompute_piece_usage" );
     } else {
-        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
+        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize || true ) {
             LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
                                     "should happen only if block rotation has occured!";
+        }
     }  // else
 } catch ( const std::exception& ex ) {
     LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
+    cerror << DETAILED_ERROR;
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -899,16 +901,17 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize << ". Piece DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize
+                        << ". Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
-        LOG( m_logger ) << "Rotated out some blocks";
+        LOG( m_loggerInfo ) << "Rotated out some blocks";
         m_db->revert();
         writeSize = prepareDbDataAndReturnSize(
             _block, _receipts, _totalDifficulty, pLogBloomFull, _performanceLogger );
         pieceUsageBytes = writeSize;
-        LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
+        LOG( m_loggerInfo ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
     // FINALLY! change our best hash.
@@ -959,9 +962,10 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to blocks_and_extras database: "
                   << boost::diagnostic_information( ex );
-            cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+            cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
+                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to blocks_and_extras database. Bombing out.";
+            cerror << DETAILED_ERROR;
             exit( -1 );
         }
     }
@@ -974,11 +978,11 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     unsigned const gasPerSecond = static_cast< double >( _block.info.gasUsed() ) /
                                   _performanceLogger.stageDuration( "enactment" );
-    _performanceLogger.onFinished( {{"blockHash", "\"" + _block.info.hash().abridged() + "\""},
-        {"blockNumber", toString( _block.info.number() )},
-        {"gasPerSecond", toString( gasPerSecond )},
-        {"transactions", toString( _block.transactions.size() )},
-        {"gasUsed", toString( _block.info.gasUsed() )}} );
+    _performanceLogger.onFinished( { { "blockHash", "\"" + _block.info.hash().abridged() + "\"" },
+        { "blockNumber", toString( _block.info.number() ) },
+        { "gasPerSecond", toString( gasPerSecond ) },
+        { "transactions", toString( _block.transactions.size() ) },
+        { "gasUsed", toString( _block.info.gasUsed() ) } } );
 
     noteCanonChanged();
 
@@ -993,7 +997,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         << cc::debug( "Insterted block with " ) << _block.transactions.size()
         << cc::debug( " transactions" );
 
-    return ImportRoute{dead, fresh, _block.transactions};
+    return ImportRoute{ dead, fresh, _block.transactions };
 }
 
 void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
@@ -1036,7 +1040,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
 }
 
 void BlockChain::rescue( State const& /*_state*/ ) {
-    cout << "Rescuing database..." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "Rescuing database..." << endl;
     throw std::logic_error( "Rescueing is not implemented" );
 
     unsigned u = 1;
@@ -1051,33 +1055,36 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    cout << cc::debug( "Finding last likely block number..." ) << endl;
+    clog( VerbosityInfo, "BlockChain" )
+        << cc::debug( "Finding last likely block number..." ) << endl;
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
-        cout << " " << m << flush;
+        clog( VerbosityInfo, "BlockChain" ) << " " << m << flush;
         if ( isKnown( numberHash( m ) ) )
             l = m;
         else
             u = m;
     }
-    cout << "  lowest is " << l << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l << endl;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        cout << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
-             << cc::debug( ")..." ) << flush;
+        clog( VerbosityInfo, "BlockChain" )
+            << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
+            << cc::debug( ")..." ) << flush;
         try {
-            cout << cc::debug( "block..." ) << flush;
+            clog( VerbosityInfo, "BlockChain" ) << cc::debug( "block..." ) << flush;
             BlockHeader bi( block( h ) );
-            cout << cc::debug( "extras..." ) << flush;
+            clog( VerbosityInfo, "BlockChain" ) << cc::debug( "extras..." ) << flush;
             details( h );
-            cout << cc::debug( "state..." ) << flush;
-            cout << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
+            clog( VerbosityInfo, "BlockChain" ) << cc::debug( "state..." ) << flush;
+            clog( VerbosityInfo, "BlockChain" )
+                << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {
         }
     }
-    cout << "OK." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "OK." << endl;
     rewind( l );
 }
 
@@ -1093,9 +1100,10 @@ void BlockChain::rewind( unsigned _newHead ) {
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
-            cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+            cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
+                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to extras database. Bombing out.";
+            cerror << DETAILED_ERROR;
             exit( -1 );
         }
         noteCanonChanged();
@@ -1275,6 +1283,7 @@ void BlockChain::garbageCollect( bool _force ) {
             case ExtraBlockHash: {
                 // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
                 // second noteUsed() in BlockChain.h, which is a no-op.
+                cerror << DETAILED_ERROR;
                 assert( false );
                 break;
             }
@@ -1480,7 +1489,7 @@ h256Hash BlockChain::allKinFrom( h256 const& _parent, unsigned _generations ) co
     // Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1,
     // ... parent + 5).
     h256 p = _parent;
-    h256Hash ret = {p};
+    h256Hash ret = { p };
     // p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be
     // cautious.
     for ( unsigned i = 0; i < _generations && p != m_genesisHash; ++i, p = details( p ).parent ) {

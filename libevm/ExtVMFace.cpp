@@ -119,7 +119,7 @@ void EvmCHost::emit_log( evmc::address const& _addr, uint8_t const* _data, size_
     ( void ) _addr;
     assert( fromEvmC( _addr ) == m_extVM.myAddress );
     h256 const* pTopics = reinterpret_cast< h256 const* >( _topics );
-    m_extVM.log( h256s{pTopics, pTopics + _numTopics}, bytesConstRef{_data, _dataSize} );
+    m_extVM.log( h256s{ pTopics, pTopics + _numTopics }, bytesConstRef{ _data, _dataSize } );
 }
 
 evmc_tx_context EvmCHost::get_tx_context() noexcept {
@@ -144,7 +144,7 @@ evmc::bytes32 EvmCHost::get_block_hash( int64_t _number ) noexcept {
 evmc::result EvmCHost::create( evmc_message const& _msg ) noexcept {
     u256 gas = _msg.gas;
     u256 value = fromEvmC( _msg.value );
-    bytesConstRef init = {_msg.input_data, _msg.input_size};
+    bytesConstRef init = { _msg.input_data, _msg.input_size };
     u256 salt = fromEvmC( _msg.create2_salt );
     Instruction opcode = _msg.kind == EVMC_CREATE ? Instruction::CREATE : Instruction::CREATE2;
 
@@ -180,7 +180,7 @@ evmc::result EvmCHost::create( evmc_message const& _msg ) noexcept {
             output.~bytes();
         };
     }
-    return evmc::result{evmcResult};
+    return evmc::result{ evmcResult };
 }
 
 evmc::result EvmCHost::call( evmc_message const& _msg ) noexcept {
@@ -198,7 +198,7 @@ evmc::result EvmCHost::call( evmc_message const& _msg ) noexcept {
     params.senderAddress = fromEvmC( _msg.sender );
     params.codeAddress = fromEvmC( _msg.destination );
     params.receiveAddress = _msg.kind == EVMC_CALL ? params.codeAddress : m_extVM.myAddress;
-    params.data = {_msg.input_data, _msg.input_size};
+    params.data = { _msg.input_data, _msg.input_size };
     params.staticCall = ( _msg.flags & EVMC_STATIC ) != 0;
     params.onOp = {};
 
@@ -227,7 +227,7 @@ evmc::result EvmCHost::call( evmc_message const& _msg ) noexcept {
         // This is normal pattern when placement new operator is used.
         output.~bytes();
     };
-    return evmc::result{evmcResult};
+    return evmc::result{ evmcResult };
 }
 
 ExtVMFace::ExtVMFace( EnvInfo const& _envInfo, Address _myAddress, Address _caller, Address _origin,

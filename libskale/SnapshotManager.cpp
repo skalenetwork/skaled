@@ -604,6 +604,7 @@ void SnapshotManager::computeAllVolumesHash(
     boost::filesystem::directory_iterator directory_it( blocks_extras_path ), end;
 
     std::vector< boost::filesystem::path > contents;
+
     while ( directory_it != end ) {
         contents.push_back( *directory_it );
         ++directory_it;
@@ -613,7 +614,11 @@ void SnapshotManager::computeAllVolumesHash(
             return lhs.string() < rhs.string();
         } );
 
+    // 5 is DB pieces count
+    size_t cnt = 0;
     for ( auto& content : contents ) {
+        if ( cnt++ >= 5 )
+            break;
         this->computeDatabaseHash( content, ctx );
     }
 

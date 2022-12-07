@@ -120,7 +120,7 @@ extern unsigned c_maxOpenLeveldbFiles;
 }  // namespace dev
 
 namespace {
-std::atomic< bool > g_silence = {false};
+std::atomic< bool > g_silence = { false };
 unsigned const c_lineWidth = 160;
 
 static void version() {
@@ -133,13 +133,19 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" ) << cc::attention( ver ) << "\n";
+    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" )
+              << cc::attention( ver ) << "\n";
     if ( !commit.empty() )
-        cout << cc::info( "Commit" ) << cc::debug( "............................" ) << cc::attention( commit ) << "\n";
+        cout << cc::info( "Commit" ) << cc::debug( "............................" )
+             << cc::attention( commit ) << "\n";
     std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
-              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." ) << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." ) << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) << cc::attention( buildinfo->system_name ) << cc::debug( "/" ) << cc::attention( buildinfo->build_type ) << "\n";
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." )
+              << cc::num10( c_minorProtocolVersion ) << "\n";
+    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." )
+              << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." )
+              << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
+              << cc::attention( buildinfo->build_type ) << "\n";
     std::cout.flush();
 }
 
@@ -151,8 +157,10 @@ static std::string clientVersion() {
 
 static std::string clientVersionColorized() {
     const auto* buildinfo = skale_get_buildinfo();
-    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) + cc::debug( "/" ) + cc::attention( buildinfo->system_name ) +
-           cc::debug( "/" ) + cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) + cc::debug( "/" ) + cc::attention( buildinfo->build_type );
+    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->system_name ) + cc::debug( "/" ) +
+           cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->build_type );
 }
 
 /*
@@ -201,12 +209,12 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
+    const set< string > filteredOptions = { "http-port", "https-port", "ws-port", "wss-port",
         "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
         "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors",
-        "info-acceptors"};
-    const set< string > emptyValues = {"NULL", "null", "None"};
+        "info-acceptors" };
+    const set< string > emptyValues = { "NULL", "null", "None" };
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
                               [&filteredOptions, &emptyValues]( const auto& option ) -> bool {
@@ -282,7 +290,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        vector< string > prefixes{"prices_", "blocks_"};
+        vector< string > prefixes{ "prices_", "blocks_" };
         for ( const string& prefix : prefixes ) {
             fs::path db_path;
             for ( auto& f :
@@ -334,10 +342,10 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
+static volatile bool g_bStopActionsStarted = false;
 static volatile bool g_bStopActionsComplete = false;
 
 static void stat_handle_stop_actions() {
-    static volatile bool g_bStopActionsStarted = false;
     if ( g_bStopActionsStarted )
         return;
     g_bStopActionsStarted = true;
@@ -368,11 +376,11 @@ static void stat_wait_stop_actions_complete() {
     if ( g_bStopActionsComplete )
         return;
     std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Will wait for stop actions compete..." ) + "\n\n" );
+                   cc::error( "Will wait for stop actions complete..." ) + "\n\n" );
     while ( !g_bStopActionsComplete )
         std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
     std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Done waiting for stop actions] compete" ) + "\n\n" );
+                   cc::error( "Done waiting for stop actions] complete" ) + "\n\n" );
 }
 
 static void stat_init_common_signal_handling() {
@@ -478,11 +486,6 @@ int main( int argc, char** argv ) try {
     Defaults::get();
     Ethash::init();
     NoProof::init();
-
-    //dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
-//    dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
-//    if( 1==1 )
-//        return 0;
 
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
@@ -727,8 +730,12 @@ int main( int argc, char** argv ) try {
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
     addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
-    addClientOption( "skale-network-browser-verbose", "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
-    addClientOption( "skale-network-browser-refresh", po::value< size_t >()->value_name( "<seconds>" ), "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain descriptions from Skale Manager" );
+    addClientOption( "skale-network-browser-verbose",
+        "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
+    addClientOption( "skale-network-browser-refresh",
+        po::value< size_t >()->value_name( "<seconds>" ),
+        "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain "
+        "descriptions from Skale Manager" );
 
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
@@ -942,7 +949,8 @@ int main( int argc, char** argv ) try {
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
               << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::debug( "Recent build intent is " )
+              << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
     std::cout.flush();
     version();
 
@@ -962,8 +970,8 @@ int main( int argc, char** argv ) try {
             n = nMin;
         nDispatchThreads = n;
     }
-    std::cout << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
-              << cc::debug( " threads in task dispatcher" ) << std::endl;
+    clog( VerbosityInfo, "main" ) << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
+                                  << cc::debug( " threads in task dispatcher" ) << std::endl;
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
@@ -996,22 +1004,22 @@ int main( int argc, char** argv ) try {
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
         } catch ( const char* str ) {
-            cerr << "Error: " << str << ": " << configPath << "\n";
+            clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath << "\n";
             return EX_USAGE;
         } catch ( const json_spirit::Error_position& err ) {
-            cerr << "error in parsing config json:\n";
-            cerr << configJSON << endl;
-            cerr << err.reason_ << " line " << err.line_ << endl;
+            clog( VerbosityError, "main" ) << "error in parsing config json:\n";
+            clog( VerbosityError, "main" ) << configJSON;
+            clog( VerbosityError, "main" ) << err.reason_ << " line " << err.line_;
             return EX_CONFIG;
         } catch ( const std::exception& ex ) {
-            cerr << "provided configuration is incorrect\n";
-            cerr << configJSON << endl;
-            cerr << nested_exception_what( ex ) << endl;
+            clog( VerbosityError, "main" ) << "provided configuration is incorrect\n";
+            clog( VerbosityError, "main" ) << configJSON;
+            clog( VerbosityError, "main" ) << nested_exception_what( ex );
             return EX_CONFIG;
         } catch ( ... ) {
-            cerr << "provided configuration is incorrect\n";
+            clog( VerbosityError, "main" ) << "provided configuration is incorrect\n";
             // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
-            cerr << configJSON << endl;
+            clog( VerbosityError, "main" ) << configJSON;
             return EX_CONFIG;
         }
     }
@@ -1023,15 +1031,16 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
-            cerr << "config=<path> should be specified before --main-net-url=<url>\n" << endl;
+            clog( VerbosityError, "main" )
+                << "config=<path> should be specified before --main-net-url=<url>\n";
             return EX_SOFTWARE;
         }
         skutils::json_config_file_accessor::g_strImaMainNetURL =
             skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
         if ( !g_configAccesssor->validateImaMainNetURL() ) {
-            cerr << "bad --main-net-url=<url> parameter value: "
-                 << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n"
-                 << endl;
+            clog( VerbosityError, "main" )
+                << "bad --main-net-url=<url> parameter value: "
+                << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
             return EX_SOFTWARE;
         }
         clog( VerbosityDebug, "main" )
@@ -1470,7 +1479,8 @@ int main( int argc, char** argv ) try {
         skale::network::browser::g_bVerboseLogging = true;
     }
     if ( vm.count( "skale-network-browser-refresh" ) ) {
-        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
+        skale::network::browser::g_nRefreshIntervalInSeconds =
+            vm["skale-network-browser-refresh"].as< size_t >();
     }
 
     std::shared_ptr< SharedSpace > shared_space;
@@ -1490,16 +1500,23 @@ int main( int argc, char** argv ) try {
         downloadSnapshotFlag = true;
     }
 
+    bool requireSnapshotMajority = true;
+    std::string ipToDownloadSnapshotFrom;
+    if ( vm.count( "no-snapshot-majority" ) ) {
+        requireSnapshotMajority = false;
+        ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
+    }
+
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
-            {BlockChain::getChainDirName( chainParams ), "filestorage",
+            { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db" },
             shared_space ? shared_space->getPath() : std::string() ) );
     }
-    
+
     if ( chainParams.nodeInfo.syncNode ) {
-        auto bc = BlockChain(chainParams, getDataDir());
+        auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
         }
@@ -1537,6 +1554,10 @@ int main( int argc, char** argv ) try {
 
         for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
             try {
+                if ( !requireSnapshotMajority &&
+                     std::string( chainParams.sChain.nodes[idx].ip ) != ipToDownloadSnapshotFrom )
+                    continue;
+
                 if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
                     continue;
 
@@ -1556,7 +1577,8 @@ int main( int argc, char** argv ) try {
                     << cc::p( std::to_string( blockNumber ) ) << " (from " << blockNumber_url
                     << ")";
 
-                SnapshotHashAgent snapshotHashAgent( chainParams, arrayCommonPublicKey );
+                SnapshotHashAgent snapshotHashAgent(
+                    chainParams, arrayCommonPublicKey, requireSnapshotMajority );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1646,14 +1668,21 @@ int main( int argc, char** argv ) try {
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
                         else {
-                            clog( VerbosityWarning, "main" )
-                                << cc::notice(
-                                       "Downloaded snapshot with incorrect hash! Incoming hash " )
-                                << cc::notice( voted_hash.first.hex() )
-                                << cc::notice( " is not equal to calculated hash " )
-                                << cc::notice( calculated_hash.hex() )
-                                << cc::notice( "Will try again" );
-                            snapshotManager->cleanup();
+                            if ( !requireSnapshotMajority ) {
+                                clog( VerbosityInfo, "main" )
+                                    << cc::notice( "Skip checking snapshot hash." );
+                                successfullDownload = true;
+                            } else {
+                                clog( VerbosityWarning, "main" )
+                                    << cc::notice(
+                                           "Downloaded snapshot with incorrect hash! Incoming "
+                                           "hash " )
+                                    << cc::notice( voted_hash.first.hex() )
+                                    << cc::notice( " is not equal to calculated hash " )
+                                    << cc::notice( calculated_hash.hex() )
+                                    << cc::notice( "Will try again" );
+                                snapshotManager->cleanup();
+                            }
                         }
                     } catch ( const std::exception& ex ) {
                         // just retry
@@ -1696,7 +1725,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( loggingOptions.verbosity > 0 )
-        cout << cc::attention( "skaled, a C++ Skale client" ) << "\n";
+        clog( VerbosityInfo, "main" ) << cc::attention( "skaled, a C++ Skale client" ) << "\n";
 
     m.execute();
 
@@ -1719,7 +1748,6 @@ int main( int argc, char** argv ) try {
     auto getResponse = [&]( string const& prompt, unordered_set< string > const& acceptable ) {
         bool s = g_silence;
         g_silence = true;
-        cout << "\n";
         string ret;
         while ( true ) {
             cout << prompt;
@@ -1742,7 +1770,7 @@ int main( int argc, char** argv ) try {
     netPrefs.pin = false;
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
-    auto caps = set< string >{"eth"};
+    auto caps = set< string >{ "eth" };
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
@@ -1762,8 +1790,6 @@ int main( int argc, char** argv ) try {
         NoProof::init();
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
-            //if( chainParams.sealEngineName == Ethash::name() )
-            //    return 0;
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
@@ -1796,7 +1822,8 @@ int main( int argc, char** argv ) try {
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
-            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL );
+            &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
+            !chainParams.nodeInfo.syncNode );
         dev::eth::g_skaleHost = skaleHost;
 
         // XXX nested lambdas and strlen hacks..
@@ -1814,7 +1841,7 @@ int main( int argc, char** argv ) try {
         g_client->injectSkaleHost( skaleHost );
 
         skale_get_buildinfo();
-        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
+        g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
@@ -1884,9 +1911,9 @@ int main( int argc, char** argv ) try {
         if ( strAA == "yes" || strAA == "no" || strAA == "always" )
             autoAuthAnswer = strAA;
         else {
-            cerr << "Bad "
-                 << "--aa"
-                 << " option: " << strAA << "\n";
+            clog( VerbosityError, "main" ) << "Bad "
+                                           << "--aa"
+                                           << " option: " << strAA << "\n";
             return EX_USAGE;
         }
         clog( VerbosityDebug, "main" )
@@ -2408,11 +2435,22 @@ int main( int argc, char** argv ) try {
             serverOpts.lfExecutionDurationMaxForPerformanceWarning_ =
                 lfExecutionDurationMaxForPerformanceWarning;
             try {
-                serverOpts.strEthErc20Address_ =
-                    joConfig["skaleConfig"]["contractSettings"]["IMA"]["ethERC20Address"]
-                        .get< std::string >();
-                serverOpts.strEthErc20Address_ =
-                    skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                static const char* g_arrVarNamesToTryEthERC20[] = {
+                    "EthERC20",
+                    "ethERC20Address",
+                };
+                for ( size_t idxVar = 0; idxVar < sizeof( g_arrVarNamesToTryEthERC20 ) /
+                                                      sizeof( g_arrVarNamesToTryEthERC20[0] );
+                      ++idxVar ) {
+                    const char* strVarName = g_arrVarNamesToTryEthERC20[idxVar];
+                    serverOpts.strEthErc20Address_ =
+                        joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
+                            .get< std::string >();
+                    serverOpts.strEthErc20Address_ =
+                        skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                    if ( !serverOpts.strEthErc20Address_.empty() )
+                        break;
+                }
                 if ( serverOpts.strEthErc20Address_.empty() )
                     throw std::runtime_error( "\"ethERC20Address\" was not found in config JSON" );
                 clog( VerbosityDebug, "main" ) << ( cc::debug( "\"ethERC20Address\" is" ) + " " +
@@ -2774,7 +2812,8 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    skale::network::browser::refreshing_start( configPath.string() );
+    skale::network::browser::refreshing_start(
+        configPath.string(), []() -> bool { return g_bStopActionsStarted; } );
 
     dev::setThreadName( "main" );
     if ( g_client ) {
@@ -2815,9 +2854,8 @@ int main( int argc, char** argv ) try {
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
     if ( ec != ExitHandler::ec_success ) {
-        std::cerr << cc::error( "Exiting main with code " ) << cc::num10( int( ec ) )
-                  << cc::error( "...\n" );
-        std::cerr.flush();
+        clog( VerbosityError, "main" ) << cc::error( "Exiting main with code " )
+                                       << cc::num10( int( ec ) ) << cc::error( "...\n" );
     }
     return int( ec );
 } catch ( const Client::CreationException& ex ) {

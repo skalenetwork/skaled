@@ -110,6 +110,7 @@ BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(
     BOOST_LOG_STREAM_WITH_PARAMS( dev::g_clogLogger::get(), \
         ( boost::log::keywords::severity = SEVERITY )( boost::log::keywords::channel = CHANNEL ) )
 
+#define DETAILED_ERROR "Exception in: " << __FUNCTION__ << ' ' << __FILE__ << ' ' << __LINE__;
 
 struct LoggingOptions {
     int verbosity = VerbosityInfo;

@@ -226,7 +226,7 @@ std::string parser::banner_text() const {
 }
 std::string parser::options_text(
     parser::e_options_publishing_type_t eoptt  // = parser::e_options_publishing_type_t::eoptt_auto
-    ) const {
+) const {
     if ( list_sequence_handlers_.empty() )
         return "";
     parser::e_options_publishing_type_t eoptt_effective = eoptt;
@@ -310,7 +310,7 @@ std::string parser::options_text(
 }
 std::string parser::help_text(
     parser::e_options_publishing_type_t eoptt  // = parser::e_options_publishing_type_t::eoptt_auto
-    ) const {
+) const {
     std::string b = banner_text(), o = options_text( eoptt );
     if ( b.empty() )
         return o;

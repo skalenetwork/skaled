@@ -64,8 +64,7 @@ bool Eth::isEnabledTransactionSending() const {
             throw std::runtime_error(
                 "error config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"syncNode\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode =
-            joSkaleConfig_nodeInfo["syncNode"];
+        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
         isEnabled = joSkaleConfig_nodeInfo_syncNode.get< bool >() ? false : true;
     } catch ( ... ) {
     }
@@ -343,8 +342,18 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
         int64_t gas = static_cast< int64_t >( t.gas );
-        return toJS(
-            client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice ).first );
+        auto result = client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice );
+
+        std::string strRevertReason;
+        if ( result.second.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = skutils::eth::call_error_message_2_str( result.second.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            throw std::logic_error( strRevertReason );
+        }
+        return toJS( result.first );
+    } catch ( std::logic_error& error ) {
+        throw error;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
