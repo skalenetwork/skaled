@@ -349,11 +349,7 @@ bool server::start() {
 
 
     if ( threads_ <= 0 ) {
-        threads_ = sysconf( _SC_NPROCESSORS_ONLN );
-        if ( threads_ <= 0 ) {
-            stop();
-            return false;
-        }
+        threads_ = 1;
         if ( threads_limit_ > 0 && threads_ > threads_limit_ )
             threads_ = threads_limit_;
     }
