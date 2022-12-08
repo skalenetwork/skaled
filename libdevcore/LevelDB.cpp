@@ -103,7 +103,7 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
-      m_path(_path){
+      m_path( _path ) {
     auto db = static_cast< leveldb::DB* >( nullptr );
     auto const status = leveldb::DB::Open( _dbOptions, _path.string(), &db );
     checkStatus( status, _path );
