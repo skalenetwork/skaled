@@ -350,9 +350,10 @@ bool server::start() {
 
     if ( threads_ <= 0 ) {
         threads_ = 1;
-        if ( threads_limit_ > 0 && threads_ > threads_limit_ )
-            threads_ = threads_limit_;
     }
+
+    if ( threads_limit_ > 0 && threads_ > threads_limit_ )
+        threads_ = threads_limit_;
 
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
