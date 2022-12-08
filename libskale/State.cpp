@@ -692,7 +692,7 @@ void State::clearStorage( Address const& _contract ) {
     Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
 
-    if (accStorageUsed == 0) {
+    if ( accStorageUsed == 0 ) {
         return;
     }
 
