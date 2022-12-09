@@ -764,7 +764,6 @@ AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     assert(storageDB.root());
                     s.append(storageDB.root());
                 }
-
                 if (i.second.hasNewCode()) {
                     h256 ch = i.second.codeHash();
                     // Store the size of the code
@@ -783,10 +782,6 @@ AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
         }
     return ret;
 }
-
-
-
-
 
 
 

@@ -103,10 +103,12 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 const auto IMPORT_BATCH_SIZE = 10000;
 
 void State::populateHistoricStateFromSkaleState() {
-    clog( VerbosityInfo, "statedb" ) <<
-        "Historic state does not yet exist. Populating historic state";
 
+
+    cout << "Historic state does not yet exist. Populating historic state.";
     auto allAccountAddresses = this->addresses();
+
+    cout << "Number of addresses in statedb:" << allAccountAddresses.size();
 
     eth::AccountMap accountMap;
 
@@ -117,25 +119,35 @@ void State::populateHistoricStateFromSkaleState() {
         auto address = item.first;
 
         Account account = *this->account(address);
+
+
+        if (addressHasCode(address)) {
+            account.resetCode();
+            account.setCode(bytes(code(address)), account.version());
+            account.changed();
+        }
+
+        account.changed();
+
         accountMap.emplace(address, account);
 
         if (accountMap.size() == IMPORT_BATCH_SIZE) {
-            m_historicState.commitExternalChanges( accountMap );
-            clog( VerbosityInfo, "statedb" ) << "Processed addresses:" << accountMap.size();
+            m_historicState.commitExternalChanges( accountMap);
+            cout << "Number of addresses in statedb:" << "Processed addresses:" << accountMap.size();
             accountMap.clear();
         }
-
 
     }
 
     // commit last chuck
 
     if (accountMap.size() > 0) {
-        m_historicState.commitExternalChanges( accountMap );
-        clog( VerbosityInfo, "statedb" ) << "Processed addresses:" << accountMap.size();
+        m_historicState.commitExternalChanges( accountMap);
+        cout << "Number of addresses in statedb:" << "Processed addresses:" << accountMap.size();
     }
 
-    clog( VerbosityInfo, "statedb" ) << "Successfully populated historic state" ;
+
+    cnote << "Successfully populated historic state" ;
 
 }
 #endif
