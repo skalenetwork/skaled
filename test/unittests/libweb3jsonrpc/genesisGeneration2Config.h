@@ -27,6 +27,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
         "skaleDisableChainIdCheck": true
     },
     "unddos": {
+        "enabled": false,
         "origins": [
             {
                 "origin": [
@@ -38,7 +39,14 @@ static std::string const c_genesisGeneration2ConfigString = R"(
                 "max_calls_per_second": 1000000000,
                 "max_ws_conn": 20000
             }
-        ]
+        ],
+        "global": {
+            "ban_lengthy": 120,
+            "ban_peak": 15,
+            "max_calls_per_minute": 1000000000,
+            "max_calls_per_second": 1000000000,
+            "max_ws_conn": 20000
+        }
     },
     "genesis": {
         "nonce": "0x0000000000000042",
