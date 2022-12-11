@@ -115,7 +115,6 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
     cout << "Completed state import" << endl;
-    m_historicState.db().setCommitOnEveryInsert(false);
 }
 
 

@@ -68,7 +68,7 @@ private:
     // a flag to commit to disk on every insert to save memory
     // this is currently only used for historic state conversion
 
-    bool m_commitOnEveryInsert = true;
+    bool m_commitOnEveryInsert = false;
 };
 
 }  // namespace dev
