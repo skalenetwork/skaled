@@ -231,7 +231,7 @@ void Client::populateNewChainStateFromGenesis() {
 void Client::initStateFromDiskOrGenesis() {
 #ifdef HISTORIC_STATE
     // Check if If the historic state databases do not yet exist
-    bool historicStateExists = !fs::exists(
+    bool historicStateExists = fs::exists(
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
@@ -244,9 +244,9 @@ void Client::initStateFromDiskOrGenesis() {
         populateNewChainStateFromGenesis();
     } else {
 #ifdef HISTORIC_STATE
-        // if SKALE state but historic state does not, we need to populate the historic state from
-        // SKALE state
-        if ( historicStateExists ) {
+        // if SKALE state exists but historic state does not, we need to populate the historic state
+        // from SKALE state
+        if (!historicStateExists ) {
             m_state.populateHistoricStateFromSkaleState();
         }
 #endif

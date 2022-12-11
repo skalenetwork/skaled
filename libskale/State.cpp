@@ -34,6 +34,7 @@
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
+#include <libethereum/StateImporter.h>
 
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
@@ -64,11 +65,9 @@ using dev::eth::TransactionReceipt;
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-              dev::OverlayDB const & _historicDb,
-              dev::OverlayDB const & _historicBlockToStateRootDb,
+    dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
 #endif
-              skale::BaseState _bs,
-    u256 _initialFunds, s256 _contractStorageLimit )
+    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
@@ -77,9 +76,10 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_initial_funds( _initialFunds ),
       contractStorageLimit_( _contractStorageLimit )
 #ifdef HISTORIC_STATE
-      ,m_historicState(_accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs)
+      ,
+      m_historicState( _accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs )
 #endif
-    {
+{
     auto state = createStateReadOnlyCopy();
     totalStorageUsed_ = state.storageUsedTotal();
 #ifdef HISTORIC_STATE
@@ -87,67 +87,80 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
-    }
-    else if ( _bs == BaseState::Empty ) {
+    } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
         m_db_ptr->clearDB();
-    }
-    else {
+    } else {
         throw std::logic_error( "Not implemented" );
     }
 }
 
 #ifdef HISTORIC_STATE
 
-const auto IMPORT_BATCH_SIZE = 10000;
+// we do state import in 16 passes to minimize memory consumption
+const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 
 void State::populateHistoricStateFromSkaleState() {
-
-
-    cout << "Historic state does not yet exist. Populating historic state.";
     auto allAccountAddresses = this->addresses();
 
-    cout << "Number of addresses in statedb:" << allAccountAddresses.size();
+    cout << "Number of addresses in statedb:" << allAccountAddresses.size() << endl;
+    cout << "Historic state does not yet exist. Populating historic state ..." << endl;
+    cout << "Please be patient as it may take up to several hours for a large state" << endl;
 
-    eth::AccountMap accountMap;
 
-    h256 key{};
+    // this is done to save memory, otherwise OverlayDB will frow
+    for ( uint64_t i = 0; i < 1; i++ ) {
+    //for ( uint64_t i = 0; i < STATE_IMPORT_BATCH_COUNT; i++ )
+        populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
+    }
+    cout << "Completed state import" << endl;
+    m_historicState.db().setCommitOnEveryInsert(false);
+}
 
-    for (auto&& item: allAccountAddresses) {
 
+void State::populateHistoricStateBatchFromSkaleState(
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
+    cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
+
+    dev::eth::AccountMap accountMap;
+
+    for ( auto&& item : _allAccountAddresses ) {
         auto address = item.first;
 
-        Account account = *this->account(address);
+        // we split addresses into 16 batches
+        uint64_t first8BytesOfAddress = *( uint64_t* ) address.asArray().data();
+        if ( first8BytesOfAddress % STATE_IMPORT_BATCH_COUNT != _batchNumber ) {
+            continue;
+        }
+
+        Account account = *this->account( address );
 
 
-        if (addressHasCode(address)) {
+        if ( addressHasCode( address ) ) {
             account.resetCode();
-            account.setCode(bytes(code(address)), account.version());
+            account.setCode( bytes( code( address ) ), account.version() );
             account.changed();
         }
 
-        account.changed();
 
-        accountMap.emplace(address, account);
-
-        if (accountMap.size() == IMPORT_BATCH_SIZE) {
-            m_historicState.commitExternalChanges( accountMap);
-            cout << "Number of addresses in statedb:" << "Processed addresses:" << accountMap.size();
-            accountMap.clear();
-        }
-
-    }
-
-    // commit last chuck
-
-    if (accountMap.size() > 0) {
-        m_historicState.commitExternalChanges( accountMap);
-        cout << "Number of addresses in statedb:" << "Processed addresses:" << accountMap.size();
+        accountMap.emplace( address, account );
     }
 
 
-    cnote << "Successfully populated historic state" ;
+    this->m_db_ptr->copyStorageIntoAccountMap( accountMap );
+
+    for ( auto&& item : accountMap ) {
+        dev::eth::AccountMap tmpMap;
+        if (item.second.codeHash() == EmptySHA3)
+            continue;
+        tmpMap[item.first] = item.second;
+        // save memory by immediately writing to disk
+
+        m_historicState.commitExternalChanges( tmpMap );
+
+    }
+
 
 }
 #endif
@@ -192,9 +205,9 @@ skale::OverlayDB State::openDB(
 
 State::State( const State& _s )
 #ifdef HISTORIC_STATE
-      : m_historicState(_s.m_historicState)
+    : m_historicState( _s.m_historicState )
 #endif
-    {
+{
     x_db_ptr = _s.x_db_ptr;
     if ( _s.m_db_read_lock ) {
         m_db_read_lock.emplace( *x_db_ptr );
@@ -292,7 +305,6 @@ void State::populateFrom( eth::AccountMap const& _map ) {
         }
     }
     commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
-
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -340,7 +352,7 @@ std::pair< State::AddressMap, h256 > State::addresses(
         next = next_ptr->first;
         addresses.erase( next_ptr, addresses.end() );
     }
-    return {addresses, next};
+    return { addresses, next };
 }
 
 u256 const& State::requireAccountStartNonce() const {
@@ -429,57 +441,57 @@ void State::clearCacheIfTooLarge() const {
 }
 
 void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
-    if (_commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts)
+    if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
     {
-        if (!m_db_write_lock) {
-            BOOST_THROW_EXCEPTION(AttemptToWriteToNotLockedStateObject());
+        if ( !m_db_write_lock ) {
+            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
         }
-        boost::upgrade_to_unique_lock<boost::shared_mutex> lock(*m_db_write_lock);
-        if (!checkVersion()) {
-            BOOST_THROW_EXCEPTION(AttemptToWriteToStateInThePast());
+        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
+        if ( !checkVersion() ) {
+            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
 
-        for (auto const &addressAccountPair: m_cache) {
-            const Address &address = addressAccountPair.first;
-            const eth::Account &account = addressAccountPair.second;
+        for ( auto const& addressAccountPair : m_cache ) {
+            const Address& address = addressAccountPair.first;
+            const eth::Account& account = addressAccountPair.second;
 
-            if (account.isDirty()) {
-                if (!account.isAlive()) {
-                    m_db_ptr->kill(address);
-                    m_db_ptr->killAuxiliary(address, Auxiliary::CODE);
+            if ( account.isDirty() ) {
+                if ( !account.isAlive() ) {
+                    m_db_ptr->kill( address );
+                    m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
                     // TODO: remove account storage
                 } else {
-                    RLPStream rlpStream(4);
-                    rlpStream << account.nonce() << account.balance() << u256(account.codeHash())
+                    RLPStream rlpStream( 4 );
+                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
                               << account.storageUsed();
                     auto rawValue = rlpStream.out();
 
-                    m_db_ptr->insert(address, ref(rawValue));
+                    m_db_ptr->insert( address, ref( rawValue ) );
 
-                    for (auto const &storageAddressValuePair: account.storageOverlay()) {
-                        const u256 &storageAddress = storageAddressValuePair.first;
-                        const u256 &value = storageAddressValuePair.second;
+                    for ( auto const& storageAddressValuePair : account.storageOverlay() ) {
+                        const u256& storageAddress = storageAddressValuePair.first;
+                        const u256& value = storageAddressValuePair.second;
 
-                        m_db_ptr->insert(address, storageAddress, value);
+                        m_db_ptr->insert( address, storageAddress, value );
                     }
 
-                    if (account.hasNewCode()) {
+                    if ( account.hasNewCode() ) {
                         m_db_ptr->insertAuxiliary(
-                                address, ref(account.code()), Auxiliary::CODE);
+                            address, ref( account.code() ), Auxiliary::CODE );
                     }
                 }
             }
         }
-        m_db_ptr->updateStorageUsage(totalStorageUsed_);
-        m_db_ptr->commit(std::to_string(++*m_storedVersion));
+        m_db_ptr->updateStorageUsage( totalStorageUsed_ );
+        m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
         m_currentVersion = *m_storedVersion;
     }
 
 
 #ifdef HISTORIC_STATE
-m_historicState.commitExternalChanges(m_cache);
+    m_historicState.commitExternalChanges( m_cache );
 #endif
 
     m_changeLog.clear();
@@ -577,7 +589,7 @@ void State::setBalance( Address const& _addr, u256 const& _value ) {
 }
 
 void State::createContract( Address const& _address ) {
-    createAccount( _address, {requireAccountStartNonce(), m_initial_funds} );
+    createAccount( _address, { requireAccountStartNonce(), m_initial_funds } );
 }
 
 void State::createAccount( Address const& _address, eth::Account const&& _account ) {
@@ -605,7 +617,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
     for ( auto const& addressValuePair : m_db_ptr->storage( _contract ) ) {
         u256 const& address = addressValuePair.first;
         u256 const& value = addressValuePair.second;
-        storage[sha3( address )] = {address, value};
+        storage[sha3( address )] = { address, value };
     }
     for ( auto const& addressAccountPair : m_cache ) {
         Address const& accountAddress = addressAccountPair.first;
@@ -1045,7 +1057,8 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                         contout << std::endl
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
-                                           cached.count( j.first ) ? " .     " : "       " )
+                                       cached.count( j.first ) ? " .     " :
+                                                                 "       " )
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
