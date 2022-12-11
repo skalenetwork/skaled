@@ -110,8 +110,7 @@ void State::populateHistoricStateFromSkaleState() {
 
 
     // this is done to save memory, otherwise OverlayDB will frow
-    for ( uint64_t i = 0; i < 1; i++ ) {
-    //for ( uint64_t i = 0; i < STATE_IMPORT_BATCH_COUNT; i++ )
+    for ( uint64_t i = 0; i < STATE_IMPORT_BATCH_COUNT; i++ )
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
     cout << "Completed state import" << endl;
