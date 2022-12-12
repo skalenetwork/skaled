@@ -11,8 +11,8 @@ jobs:
       - name: Get issues
         id: get-issues
         uses: mondeja/pr-linked-issues-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: PR has not linked issues
         if: join(steps.get-issues.outputs.issues) == ''
         run: 
