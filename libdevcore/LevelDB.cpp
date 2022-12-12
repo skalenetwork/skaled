@@ -17,12 +17,12 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "LevelDB.h"
+
+#include "Log.h"
 #include "Assertions.h"
-
 #include <libdevcore/microprofile.h>
-
 #include <secp256k1_sha256.h>
+#include "LevelDB.h"
 
 namespace dev {
 namespace db {
