@@ -611,7 +611,7 @@ void State::clearStorage( Address const& _contract ) {
     Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
 
-    if ( accStorageUsed == 0 ) {
+    if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
         return;
     }
 
@@ -624,6 +624,7 @@ void State::clearStorage( Address const& _contract ) {
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
+    // TODO Do we need to clear storageUsage[_contract] here?
 }
 
 
