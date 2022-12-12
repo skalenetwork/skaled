@@ -689,9 +689,16 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage,
     testCreate2collisionWithNonEmptyStorage();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
-    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
-}
+
+// Disable this test since SKALE cleans the storage in a different way
+// There is now need to ALWAYS clean contract storage,
+// because the only case when a contract is created on non-empty
+//storage is create2 -> selfdestruct -> create2_with_the_same_sed
+// Note: the combination above will cease to exist in Shanhai fork because
+// there will be no selfdestruct
+//BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
+//    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
+//}
 
 BOOST_AUTO_TEST_CASE( LegacyVMCreate2costIncludesInitCodeHashing ) {
     testCreate2costIncludesInitCodeHashing();
