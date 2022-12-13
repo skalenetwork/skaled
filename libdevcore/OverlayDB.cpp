@@ -122,6 +122,16 @@ bool OverlayDB::exists( h256 const& _h ) const {
     return m_db && m_db->exists( toSlice( _h ) );
 }
 
+
+void OverlayDB::insert( h256 const& _h, bytesConstRef _v ) {
+    MemoryDB::insert(_h, _v);
+
+   if (m_commitOnEveryInsert) {
+        // commit immediately to save memory
+        commit();
+   }
+}
+
 void OverlayDB::kill( h256 const& _h ) {
 #if ETH_PARANOIA || 1
     if ( !MemoryDB::kill( _h ) ) {

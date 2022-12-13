@@ -244,9 +244,11 @@ public:
         return originalStorageValue(_key, _db);
     }
 
-private:
+
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
+
+private:
 
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;

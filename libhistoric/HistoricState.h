@@ -344,14 +344,13 @@ private:
 
     uint64_t readLatestBlock();
 
+    AddressHash commit( AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
+
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );
 
 
-
-template < class DB >
-AddressHash commit( AccountMap const& _cache, SecureTrieDB< Address, DB >& _state );
 
 }  // namespace eth
 }  // namespace dev
