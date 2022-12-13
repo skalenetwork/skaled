@@ -34,9 +34,7 @@ namespace dev {
 class OverlayDB : public MemoryDB {
 public:
     explicit OverlayDB( std::unique_ptr< db::DatabaseFace > _db = nullptr )
-        : m_db( _db.release(), []( db::DatabaseFace* db ) {
-              delete db;
-          } ) {}
+        : m_db( _db.release(), []( db::DatabaseFace* db ) { delete db; } ) {}
 
     ~OverlayDB();
 
@@ -50,16 +48,27 @@ public:
     void commit();
     void rollback();
 
+    void insert( h256 const& _h, bytesConstRef _v ) override;
+
     std::string lookup( h256 const& _h ) const;
     bool exists( h256 const& _h ) const;
     void kill( h256 const& _h );
 
     bytes lookupAux( h256 const& _h ) const;
 
+    void setCommitOnEveryInsert( bool _value ) {
+        commit();
+        m_commitOnEveryInsert = _value;
+    }
+
 private:
     using MemoryDB::clear;
-
     std::shared_ptr< db::DatabaseFace > m_db;
+
+    // a flag to commit to disk on every insert to save memory
+    // this is currently only used for historic state conversion
+
+    bool m_commitOnEveryInsert = false;
 };
 
 }  // namespace dev

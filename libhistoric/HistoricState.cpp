@@ -191,7 +191,7 @@ void HistoricState::clearCacheIfTooLarge() const {
 }
 
 void HistoricState::commitExternalChanges(AccountMap const &_accountMap) {
-    dev::eth::commit(_accountMap, m_state);
+    commit(_accountMap, m_state);
     m_state.db()->commit();
     m_changeLog.clear();
     m_cache.clear();
@@ -736,8 +736,8 @@ std::ostream &dev::eth::operator<<(std::ostream &_out, HistoricState const &_s) 
 }
  */
 
-template<class DB>
-AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB> &_state) {
+
+AddressHash HistoricState::commit(AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state) {
     AddressHash ret;
     for (auto const &i: _cache)
         if (i.second.isDirty()) {
@@ -755,16 +755,19 @@ AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
                     assert(i.second.baseRoot());
                     s.append(i.second.baseRoot());
                 } else {
-                    SecureTrieDB<h256, DB> storageDB(_state.db(), i.second.baseRoot());
-                    for (auto const &j: i.second.storageOverlay())
-                        if (j.second)
-                            storageDB.insert(j.first, rlp(j.second));
+                    SecureTrieDB<h256, OverlayDB> storageDB(_state.db(), i.second.baseRoot());
+                    for (auto const &j: i.second.storageOverlay()) {
+                        if ( j.second ) {
+                            storageDB.insert( j.first, rlp( j.second ) );
+
+                        }
                         else
-                            storageDB.remove(j.first);
+                            storageDB.remove( j.first );
+
+                    }
                     assert(storageDB.root());
                     s.append(storageDB.root());
                 }
-
                 if (i.second.hasNewCode()) {
                     h256 ch = i.second.codeHash();
                     // Store the size of the code
@@ -783,14 +786,3 @@ AddressHash dev::eth::commit(AccountMap const &_cache, SecureTrieDB<Address, DB>
         }
     return ret;
 }
-
-
-
-
-
-
-
-template AddressHash dev::eth::commit<OverlayDB>(AccountMap const &_cache, SecureTrieDB<Address, OverlayDB> &_state);
-
-template AddressHash
-dev::eth::commit<MemoryDB>(AccountMap const &_cache, SecureTrieDB<Address, MemoryDB> &_state);
