@@ -889,9 +889,10 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
     testCreate2collisionWithNonEmptyStorage();
 }
 
-BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
-    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
-}
+// Disable this test since we clean storage in a different way
+//BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
+//    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
+//}
 
 BOOST_AUTO_TEST_SUITE_END()
 
