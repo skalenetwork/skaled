@@ -446,6 +446,9 @@ public:
 
 #ifdef HISTORIC_STATE
     void populateHistoricStateFromSkaleState();
+    void populateHistoricStateBatchFromSkaleState(
+        std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
+        uint64_t _batchNumber);
 #endif
 
 private:

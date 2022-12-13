@@ -23,6 +23,7 @@
  */
 
 #include "OverlayDB.h"
+#include "libhistoric/HistoricState.h"
 
 #include <thread>
 
@@ -34,7 +35,7 @@ using std::vector;
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
 
-//#include "SHA3.h"
+// #include "SHA3.h"
 
 using dev::bytes;
 using dev::bytesConstRef;
@@ -329,6 +330,44 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     }
     return storage;
 }
+
+void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map) const {
+
+    static uint64_t counter = 0;
+
+    if ( m_db_face ) {
+        m_db_face->forEach( [&_map]( Slice key, Slice value ) {
+            if ( key.size() == h160::size + h256::size ) {
+                // key is storage address
+                string keyString( key.begin(), key.end() );
+                [[maybe_unused]] h160 address = h160(
+                    keyString.substr( 0, h160::size ), h160::ConstructFromStringType::FromBinary );
+
+                if (_map.count(address) == 0)
+                    return true;
+
+                [[maybe_unused]] h256 memoryAddress = h256(
+                    keyString.substr( h160::size ), h256::ConstructFromStringType::FromBinary );
+                [[maybe_unused]] u256 memoryValue = h256( string( value.begin(), value.end() ),
+                    h256::ConstructFromStringType::FromBinary );
+
+
+                _map.at(address).setStorage(memoryAddress, memoryValue);
+                counter++;
+                if (counter % 1000000 == 0) {
+                    std::cout << ".";
+                    std::cout.flush();
+                }
+            }
+            return true;
+        } );
+
+    std::cout << std::endl;
+    } else {
+        cerror << "Try to load account's storage but connection to database is not established";
+    }
+}
+
 
 void OverlayDB::rollback() {
 #if DEV_GUARDED_DB
