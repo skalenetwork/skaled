@@ -151,16 +151,13 @@ void State::populateHistoricStateBatchFromSkaleState(
 
     for ( auto&& item : accountMap ) {
         dev::eth::AccountMap tmpMap;
-        if (item.second.codeHash() == EmptySHA3)
+        if ( item.second.codeHash() == EmptySHA3 )
             continue;
         tmpMap[item.first] = item.second;
         // save memory by immediately writing to disk
 
         m_historicState.commitExternalChanges( tmpMap );
-
     }
-
-
 }
 #endif
 
