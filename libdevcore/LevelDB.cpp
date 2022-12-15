@@ -17,12 +17,12 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "LevelDB.h"
+
+#include "Log.h"
 #include "Assertions.h"
-
 #include <libdevcore/microprofile.h>
-
 #include <secp256k1_sha256.h>
+#include "LevelDB.h"
 
 namespace dev {
 namespace db {
@@ -102,7 +102,8 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
     leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions )
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
-      m_writeOptions( std::move( _writeOptions ) ) {
+      m_writeOptions( std::move( _writeOptions ) ),
+      m_path( _path ) {
     auto db = static_cast< leveldb::DB* >( nullptr );
     auto const status = leveldb::DB::Open( _dbOptions, _path.string(), &db );
     checkStatus( status, _path );
@@ -164,6 +165,7 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
 }
 
 void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
+    cwarn << "Iterating over the entire LevelDB database: " << this->m_path;
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );

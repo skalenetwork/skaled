@@ -151,16 +151,13 @@ void State::populateHistoricStateBatchFromSkaleState(
 
     for ( auto&& item : accountMap ) {
         dev::eth::AccountMap tmpMap;
-        if (item.second.codeHash() == EmptySHA3)
+        if ( item.second.codeHash() == EmptySHA3 )
             continue;
         tmpMap[item.first] = item.second;
         // save memory by immediately writing to disk
 
         m_historicState.commitExternalChanges( tmpMap );
-
     }
-
-
 }
 #endif
 
@@ -701,18 +698,35 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
     }
 }
 
+
+// Clear storage needs to be called when a new contract is
+// created for an address that included a different contract
+// that was destroyed using selfdestruct op code
+// The only way this can happen if one calls
+// CREATE2, self-destruct, and then CREATE2 again, which is
+// extremely rare and a bad security practice
+// Note that in Shanhai fork the selfdestruct op code will be removed
 void State::clearStorage( Address const& _contract ) {
-    // TODO: This is extremely inefficient
+    // only clear storage if the storage used is not 0
+
     Account* acc = account( _contract );
+    dev::s256 accStorageUsed = acc->storageUsed();
+
+    if ( accStorageUsed == 0 ) {
+        return;
+    }
+
+    // TODO: This is extremely inefficient
     for ( auto const& hashPairPair : storage( _contract ) ) {
         auto const& key = hashPairPair.second.first;
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
     }
-    dev::s256 accStorageUsed = acc->storageUsed();
+
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
 }
+
 
 bytes const& State::code( Address const& _addr ) const {
     eth::Account const* a = account( _addr );
