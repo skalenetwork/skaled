@@ -274,6 +274,8 @@ void HistoricState::setRoot(h256 const &_r) {
 
 
 void HistoricState::setRootByBlockNumber(uint64_t _blockNumber) {
+
+
     auto key = h256(_blockNumber);
     if (!m_blockToStateRootDB.exists(key)) {
         BOOST_THROW_EXCEPTION(UnknownBlockNumberInRootDB());
@@ -281,27 +283,28 @@ void HistoricState::setRootByBlockNumber(uint64_t _blockNumber) {
     auto value = m_blockToStateRootDB.lookup(key);
     auto root = h256 (value, h256::ConstructFromStringType::FromBinary);
     setRoot(root);
+
 }
 
 
 void HistoricState::saveRootForBlock(uint64_t _blockNumber) {
+
+
     auto key = h256(_blockNumber);
+
     m_blockToStateRootDB.insert(key, m_state.root().ref());
-    if (!m_blockToStateRootDB.exists(key)) {
-        BOOST_THROW_EXCEPTION(UnknownBlockNumberInRootDB());
-    }
+
     auto bn = to_string(_blockNumber);
 
-    clog(VerbosityInfo, "statedb") << "Saving Root:" << m_state.root() <<
-        "for block :" << _blockNumber;
-
-    auto bnk = h256("latest", FixedHash<32>::FromBinary);
+    // record the latest block number
+    auto bnk = sha3("latest");
     m_blockToStateRootDB.insert(bnk, &bn);
     m_blockToStateRootDB.commit();
+
 }
 
 void HistoricState::setRootFromDB() {
-        auto key = h256("latest", FixedHash<32>::FromBinary);
+        auto key =  sha3("latest");
         if (!m_blockToStateRootDB.exists(key)) {
             // new database
             return;
