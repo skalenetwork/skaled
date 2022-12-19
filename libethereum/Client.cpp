@@ -1322,7 +1322,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             // historic state
             try
             {
-                u256 nonce = max<u256>(historicBlock.transactionsFrom(_from), m_tq.maxNonce(_from));
+                u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce(_from);
                 u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
                 Transaction t(_value, gasPrice, gas, _dest, _data, nonce);
@@ -1335,6 +1335,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             catch (...)
             {
                 cwarn << boost::current_exception_diagnostic_information();
+                throw;
             }
             return ret;
 
