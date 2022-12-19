@@ -689,8 +689,22 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     cntPast = to.count_to_past( ttmNow, 1 );
     if ( cntPast > oe.max_calls_per_second( strMethod ) ) {
         to.ban_until_ = ttmNow + oe.ban_peak_;
+        return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+    }
+    //
+    //
+    cntPast = tracked_global_.count_to_past( ttmNow, durationToPast );  // 60
+    if ( cntPast > settings_.global_limit_.max_calls_per_minute( strMethod ) ) {
+        tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_lengthy_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
+    cntPast = tracked_global_.count_to_past( ttmNow, 1 );
+    if ( cntPast > settings_.global_limit_.max_calls_per_second( strMethod ) ) {
+        tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_peak_;
+        return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+    }
+    //
+    //
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 
