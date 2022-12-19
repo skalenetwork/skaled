@@ -2,6 +2,7 @@
   "name": "hardhat-project",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
-    "hardhat": "^2.12.2"
+    "hardhat": "^2.12.2",
+    "wait-for-user-input": "^1.0.0"
   }
 }

@@ -460,6 +460,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     // TODO: remove account storage
                 } else {
                     RLPStream rlpStream( 4 );
+
                     rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
                               << account.storageUsed();
                     auto rawValue = rlpStream.out();

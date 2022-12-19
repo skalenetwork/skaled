@@ -1315,7 +1315,6 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     try {
 
 
-        Block temp = latestBlock();
 
 #ifdef HISTORIC_STATE
         Block historicBlock = blockByNumber(_blockNumber);
@@ -1330,8 +1329,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.forceSender(_from);
                 t.forceChainId( chainParams().chainID );
                 if (_ff == FudgeFactor::Lenient)
-                    temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
-                ret = temp.executeHistoricCall(bc().lastBlockHashes(), t);
+                    historicBlock.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+                ret = historicBlock.executeHistoricCall(bc().lastBlockHashes(), t);
             }
             catch (...)
             {
@@ -1341,6 +1340,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 
         }
 #endif
+
+        Block temp = latestBlock();
 
         // TODO there can be race conditions between prev and next line!
         State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
