@@ -12,6 +12,7 @@ OWNER_ADDRESS = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const hre = require("hardhat");
 const ethers = require('ethers')
 const fs = require('fs')
+const waitForUserInput = require("wait-for-user-input");
 const KEY_DIR = "/tmp/tmp_test_keys"
 
 // GLOBAL VARS
@@ -101,17 +102,16 @@ async function deployContracts() {
     b = await lockContract.balanceOf(OWNER_ADDRESS);
     console.log(`Contract balance before transform: ${b}`);
 
-
-    bn = await await hre.ethers.provider.getBlockNumber();
-
-
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : bn - 5});
-
-    console.log(`Contract balance before transform at minus 5: ${b}`);
-
     const waitForUserInput = require('wait-for-user-input');
 
     const userInput = await waitForUserInput('');
+
+
+    bn = await await hre.ethers.provider.getBlockNumber();
+    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : bn - 3});
+
+    console.log(`Contract balance after transform at minus 3: ${b}`);
+
 
     b = await lockContract.balanceOf(OWNER_ADDRESS);
     console.log(`Contract balance after transform: ${b}`);
