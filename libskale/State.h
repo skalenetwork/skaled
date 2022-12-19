@@ -489,6 +489,9 @@ private:
 public:
         /// Get the backing state object.
         dev::eth::HistoricState &  mutableHistoricState()  { return m_historicState; }
+
+        dev::eth::AccountMap getBatchOfAccounts(std::unordered_map< dev::Address,
+                                 dev::u256 >& _allAccountAddresses, uint64_t _batchNumber );
 #endif
 
 public:
@@ -498,6 +501,7 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
+
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

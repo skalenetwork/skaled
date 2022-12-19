@@ -118,11 +118,11 @@ void State::populateHistoricStateFromSkaleState() {
 }
 
 
-void State::populateHistoricStateBatchFromSkaleState(
-    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
-    cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
 
-    dev::eth::AccountMap accountMap;
+dev::eth::AccountMap State::getBatchOfAccounts(
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber) {
+
+    dev::eth::AccountMap accountBatch;
 
     for ( auto&& item : _allAccountAddresses ) {
         auto address = item.first;
@@ -135,29 +135,29 @@ void State::populateHistoricStateBatchFromSkaleState(
 
         Account account = *this->account( address );
 
-
         if ( addressHasCode( address ) ) {
             account.resetCode();
             account.setCode( bytes( code( address ) ), account.version() );
-            account.changed();
         }
 
-
-        accountMap.emplace( address, account );
+        // mark the account changed so it will be written into the database
+        account.changed();
+        accountBatch.emplace( address, account );
     }
 
+    return accountBatch;
+}
 
-    this->m_db_ptr->copyStorageIntoAccountMap( accountMap );
+void State::populateHistoricStateBatchFromSkaleState(
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
+    cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
 
-    for ( auto&& item : accountMap ) {
-        dev::eth::AccountMap tmpMap;
-        if ( item.second.codeHash() == EmptySHA3 )
-            continue;
-        tmpMap[item.first] = item.second;
-        // save memory by immediately writing to disk
+    dev::eth::AccountMap accountMap = getBatchOfAccounts(_allAccountAddresses, _batchNumber);
 
-        m_historicState.commitExternalChanges( tmpMap );
-    }
+    m_db_ptr->copyStorageIntoAccountMap( accountMap );
+
+    m_historicState.commitExternalChanges( accountMap );
+
 }
 #endif
 
