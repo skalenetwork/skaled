@@ -87,7 +87,7 @@ contract Lock is IERC20 {
 
         owner = payable(msg.sender);
 
-        mint(1);
+       // mint(1);
 
     }
 
