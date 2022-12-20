@@ -6,11 +6,13 @@
 // global scope, and execute the script.
 
 
-WALLETS_COUNT = 10000;
+WALLETS_COUNT = 10;
+OWNER_ADDRESS = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 
 const hre = require("hardhat");
 const ethers = require('ethers')
 const fs = require('fs')
+const waitForUserInput = require("wait-for-user-input");
 const KEY_DIR = "/tmp/tmp_test_keys"
 
 // GLOBAL VARS
@@ -21,6 +23,8 @@ let privateKeys = [];
 let amounts = [];
 let lockContract;
 let multiSendContract;
+
+
 
 
 function delay(time) {
@@ -86,16 +90,33 @@ async function deployContracts() {
     console.log(`Deploying ...`);
 
     const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-    const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-    const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
 
     const lockedAmount = hre.ethers.utils.parseEther("10");
 
     const Lock = await hre.ethers.getContractFactory("Lock");
-    const lock = await Lock.deploy(unlockTime, {value: lockedAmount});
+    const lock = await Lock.deploy({value: lockedAmount});
     lockContract = await lock.deployed();
 
     console.log(`Lock deployed to ${lockContract.address}`);
+
+    b = await lockContract.balanceOf(OWNER_ADDRESS);
+    console.log(`Contract balance before transform: ${b}`);
+
+    const waitForUserInput = require('wait-for-user-input');
+
+    const userInput = await waitForUserInput('');
+
+
+    bn = await await hre.ethers.provider.getBlockNumber();
+    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : bn - 3});
+
+    console.log(`Contract balance after transform at minus 3: ${b}`);
+
+
+    b = await lockContract.balanceOf(OWNER_ADDRESS);
+    console.log(`Contract balance after transform: ${b}`);
+
+
 
     const MultiSend = await hre.ethers.getContractFactory("MultiSend");
     const multiSend = await MultiSend.deploy({value: ethers.utils.parseEther("100000")});
@@ -143,13 +164,13 @@ async function main() {
             await promises[k];
         }
 
-        NUMBER_OF_READS = 1;
+        NUMBER_OF_READS = 100;
 
         console.log(`Calling block number ${NUMBER_OF_READS} times  ...`);
-        for (let j = 0; j < NUMBER_OF_READS; j++) {
+        for (let j = 0; j < 1; j++) {
             //await hre.ethers.provider.getBlockNumber();
-            //await wallets[0].getBalance();
-            await lockContract.blockNumber();
+            balance = await wallets[0].getBalance();
+            //await lockContract.blockNumber();
         }
 
 
