@@ -1315,7 +1315,6 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     try {
 
 
-        Block temp = latestBlock();
 
 #ifdef HISTORIC_STATE
         Block historicBlock = blockByNumber(_blockNumber);
@@ -1323,24 +1322,27 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             // historic state
             try
             {
-                u256 nonce = max<u256>(historicBlock.transactionsFrom(_from), m_tq.maxNonce(_from));
+                u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce(_from);
                 u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
                 Transaction t(_value, gasPrice, gas, _dest, _data, nonce);
                 t.forceSender(_from);
                 t.forceChainId( chainParams().chainID );
                 if (_ff == FudgeFactor::Lenient)
-                    temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
-                ret = temp.executeHistoricCall(bc().lastBlockHashes(), t);
+                    historicBlock.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+                ret = historicBlock.executeHistoricCall(bc().lastBlockHashes(), t);
             }
             catch (...)
             {
                 cwarn << boost::current_exception_diagnostic_information();
+                throw;
             }
             return ret;
 
         }
 #endif
+
+        Block temp = latestBlock();
 
         // TODO there can be race conditions between prev and next line!
         State readStateForLock = temp.mutableState().createStateReadOnlyCopy();

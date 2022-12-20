@@ -634,6 +634,9 @@ HistoricState::execute(EnvInfo const &_envInfo, SealEngineFace const &_sealEngin
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
 bool HistoricState::executeTransaction(AlethExecutive &_e, Transaction const &_t, OnOpFunc const &_onOp) {
+
+
+
     size_t const savept = savepoint();
     try {
         _e.initialize(_t);
