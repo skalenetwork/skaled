@@ -681,16 +681,35 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     //    to.ban_until_ = ttmNow + oe.ban_lengthy_;
     //    return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
     //}
-    size_t cntPast = to.count_to_past( ttmNow, durationToPast );  // 60
-    if ( cntPast > oe.max_calls_per_minute( strMethod ) ) {
+    size_t cntPast = 0, mcpm = 0, mcps = 0;
+    cntPast = to.count_to_past( ttmNow, durationToPast );  // 60
+    mcpm = oe.max_calls_per_minute( strMethod );
+    if ( mcpm > 0 && cntPast > mcpm ) {
         to.ban_until_ = ttmNow + oe.ban_lengthy_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
     cntPast = to.count_to_past( ttmNow, 1 );
-    if ( cntPast > oe.max_calls_per_second( strMethod ) ) {
+    mcps = oe.max_calls_per_second( strMethod );
+    if ( mcps > 0 && cntPast > mcps ) {
         to.ban_until_ = ttmNow + oe.ban_peak_;
+        return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+    }
+    //
+    //
+    cntPast = tracked_global_.count_to_past( ttmNow, durationToPast );  // 60
+    mcpm = settings_.global_limit_.max_calls_per_minute( strMethod );
+    if ( mcpm > 0 && cntPast > mcpm ) {
+        tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_lengthy_;
         return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
     }
+    cntPast = tracked_global_.count_to_past( ttmNow, 1 );
+    mcps = settings_.global_limit_.max_calls_per_second( strMethod );
+    if ( mcps > 0 && cntPast > mcps ) {
+        tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_peak_;
+        return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+    }
+    //
+    //
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 
