@@ -612,8 +612,8 @@ size_t tracked_origin::count_to_past(
         }
     }
     if ( bNeedReScaling ) {
-        cnt *= ttRescaling;
-        cnt /= durationToPast;
+        cnt *= durationToPast;
+        cnt /= ttRescaling;
     }
     return cnt;
 }
