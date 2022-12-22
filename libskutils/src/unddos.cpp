@@ -611,7 +611,7 @@ size_t tracked_origin::count_to_past(
             break;
         }
     }
-    if ( bNeedReScaling ) {
+    if ( bNeedReScaling && cnt > 0 ) {
         cnt *= durationToPast;
         cnt /= ttRescaling;
     }
