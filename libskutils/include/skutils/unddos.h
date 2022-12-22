@@ -16,6 +16,8 @@
 #include <skutils/multithreading.h>
 #include <skutils/utils.h>
 
+#define __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ 1
+
 namespace skutils {
 namespace unddos {
 
@@ -105,7 +107,9 @@ class settings {
 public:
     bool enabled_ = true;
     origin_entry_settings_t origins_;
+#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     origin_entry_setting global_limit_;
+#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     settings();
     settings( const settings& other );
     settings( settings&& other );
@@ -262,7 +266,8 @@ public:
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
     size_t unload_old_data_by_count( size_t cntEntriesMax );
     size_t count_to_past( time_tick_mark ttmNow = time_tick_mark( 0 ),
-        duration durationToPast = duration( 60 ) ) const;
+        duration durationToPast = duration( 60 ),
+        size_t cndOptimizedMaxSteps = size_t( -1 ) ) const;
     bool clear_ban();
     bool check_ban( time_tick_mark ttmNow = time_tick_mark( 0 ), bool isAutoClear = true );
 };  /// class tracked_origin
@@ -286,10 +291,24 @@ class algorithm {
     mutable mutex_type mtx_;
     mutable settings settings_;
     tracked_origins_t tracked_origins_;
+#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     tracked_origin tracked_global_;
+#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     typedef std::map< std::string, size_t > map_ws_conn_counts_t;
     map_ws_conn_counts_t map_ws_conn_counts_;
+#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     size_t ws_conn_count_global_ = 0;
+#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
+    size_t cntOptimizedMaxSteps4cm_ =
+        15;  // local per one caller, per minute (optimize approximation for calls per time unit)
+    size_t cntOptimizedMaxSteps4cs_ =
+        15;  // local per one caller, per second (optimize approximation for calls per time unit)
+#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
+    size_t cntOptimizedMaxSteps4gm_ =
+        10;  // global for all callers, per minute (optimize approximation for calls per time unit)
+    size_t cntOptimizedMaxSteps4gs_ =
+        10;  // global for all callers, per second (optimize approximation for calls per time unit)
+#endif       // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
 
 public:
     algorithm();
