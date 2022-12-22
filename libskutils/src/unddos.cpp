@@ -596,14 +596,24 @@ size_t tracked_origin::count_to_past(
     adjust_now_tick_mark( ttmNow );
     time_tick_mark ttmUntil = ttmNow - durationToPast;
     size_t cnt = 0;
+    bool bNeedReScaling = false;
+    time_tick_mark ttRescaling = ttmUntil;
     time_entries_t::const_reverse_iterator itWalk = time_entries_.crbegin(),
                                            itEnd = time_entries_.crend();
     for ( size_t idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
         const time_entry& te = ( *itWalk );
-        if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
+        if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow ) {
             ++cnt;
-        if ( idxStep >= cndOptimizedMaxSteps )
+            ttRescaling = te.ttm_ - ttmUntil;
+        }
+        if ( idxStep >= cndOptimizedMaxSteps ) {
+            bNeedReScaling = true;
             break;
+        }
+    }
+    if ( bNeedReScaling ) {
+        cnt *= ttRescaling;
+        cnt /= durationToPast;
     }
     return cnt;
 }
