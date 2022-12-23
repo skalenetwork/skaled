@@ -138,13 +138,13 @@ public:
     };
 
 
-
     class CouldNotFindBlocksDB : public std::exception {
     protected:
         std::string m_whatStr;
+
     public:
-        CouldNotFindBlocksDB(const std::string& _path, const std::string& _message) {
-            m_whatStr =  "Could not find BlocksDB at " + _path + "." + _message;
+        CouldNotFindBlocksDB( const std::string& _path, const std::string& _message ) {
+            m_whatStr = "Could not find BlocksDB at " + _path + "." + _message;
         }
         virtual const char* what() const noexcept override { return m_whatStr.c_str(); }
     };
@@ -174,7 +174,7 @@ public:
     uint64_t getBlockTimestamp(
         unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const;
 
-    static std::string findMostRecentBlocksDBPath(const std::string& _prefix);
+    static std::string findMostRecentBlocksDBPath( const std::string& _prefix );
 
 private:
     boost::filesystem::path data_dir;
@@ -200,7 +200,6 @@ private:
     void computeDatabaseHash(
         const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
     void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
-
 };
 
 #endif  // SNAPSHOTAGENT_H

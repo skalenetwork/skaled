@@ -29,15 +29,15 @@
 #include <sstream>
 #include <string>
 
+#include "UnsafeRegion.h"
 #include "boost/filesystem.hpp"
-#include <boost/filesystem/operations.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
+#include <libbatched-io/batched_io.h>
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/Log.h>
 #include <libdevcrypto/Hash.h>
-#include <libbatched-io/batched_io.h>
 #include <skutils/btrfs.h>
-#include "UnsafeRegion.h"
+#include <boost/filesystem/operations.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
 
 
 #include "SnapshotManager.h"
@@ -724,23 +724,22 @@ uint64_t SnapshotManager::getBlockTimestamp(
 }
 
 
-
 /*
       Find the most recent database out of the four rotated block atabases in consensus
       This will find the directory in the form "${_dirname}/.db.X" with the largest X
 */
-string SnapshotManager::findMostRecentBlocksDBPath(const string& _dirName) {
+string SnapshotManager::findMostRecentBlocksDBPath( const string& _dirName ) {
     vector< boost::filesystem::path > dirs;
     vector< uint64_t > indices;
 
     // First check that _dirname exists and is a directory
 
-    if (!exists( boost::filesystem::path(_dirName))) {
-             throw CouldNotFindBlocksDB(_dirName, "The provided does not exist.");
+    if ( !exists( boost::filesystem::path( _dirName ) ) ) {
+        throw CouldNotFindBlocksDB( _dirName, "The provided does not exist." );
     }
 
-    if (!is_directory( boost::filesystem::path(_dirName))) {
-        throw CouldNotFindBlocksDB(_dirName, "The provided path is not a directory.");
+    if ( !is_directory( boost::filesystem::path( _dirName ) ) ) {
+        throw CouldNotFindBlocksDB( _dirName, "The provided path is not a directory." );
     }
 
     // Find and sort all directories and files in _dirName
@@ -766,15 +765,11 @@ string SnapshotManager::findMostRecentBlocksDBPath(const string& _dirName) {
 
     // Could not find any database in the correct format. Throw exception
     if ( indices.size() == 0 ) {
-        throw CouldNotFindBlocksDB(_dirName, "No rotated databases in correct format found");
+        throw CouldNotFindBlocksDB( _dirName, "No rotated databases in correct format found" );
     }
 
     // Now find the maximum index X. This is the most recent database
     auto maxIndex = *max_element( begin( indices ), end( indices ) );
 
-    return _dirName + "/db." + to_string(maxIndex);
+    return _dirName + "/db." + to_string( maxIndex );
 }
-
-
-
-

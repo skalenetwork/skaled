@@ -1511,10 +1511,10 @@ int main( int argc, char** argv ) try {
         auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
             "blocks_" + chainParams.nodeInfo.id.str() + ".db");
 
-        snapshotManager.reset( new SnapshotManager( getDataDir(),
+         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                mostRecentBlocksDBPath },
+    RecentBlocksDBPath },
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
@@ -1809,7 +1809,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t )( cl ockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
