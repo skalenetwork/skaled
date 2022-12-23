@@ -26,10 +26,9 @@ add_custom_target(format-check
     # Use ! to negate the result for correct output
     COMMAND !
     ${CLANG_FORMAT_BIN}
-    -style=file
+    -style=file --Werror
     -output-replacements-xml
     ${ALL_SOURCE_FILES}
-    | grep -q "replacement offset"
 )
 
 # Get the path to this file

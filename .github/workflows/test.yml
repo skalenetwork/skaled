@@ -138,7 +138,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Release
           export CODE_COVERAGE=ON
           cd build
-          make format-check
+          # make format-check
           cd ..
       - name: Build all
         run: |

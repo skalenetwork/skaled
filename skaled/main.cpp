@@ -1483,14 +1483,14 @@ int main( int argc, char** argv ) try {
             vm["skale-network-browser-refresh"].as< size_t >();
     }
 
-    std::shared_ptr< SharedSpace > shared_space;
+    std::shared_ptr< SharedSpace > sharedSpace;
     if ( vm.count( "shared-space-path" ) ) {
         try {
             fs::create_directory( vm["shared-space-path"].as< string >() );
         } catch ( const fs::filesystem_error& ex ) {
         }
 
-        shared_space.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
+        sharedSpace.reset( new SharedSpace( vm["shared-space-path"].as< string >() ) );
     }
 
     bool downloadSnapshotFlag = false;
@@ -1508,11 +1508,14 @@ int main( int argc, char** argv ) try {
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-        snapshotManager.reset( new SnapshotManager( getDataDir(),
+        auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
+            "blocks_" + chainParams.nodeInfo.id.str() + ".db");
+
+         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db" },
-            shared_space ? shared_space->getPath() : std::string() ) );
+    RecentBlocksDBPath },
+            sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
     if ( chainParams.nodeInfo.syncNode ) {
@@ -1527,9 +1530,9 @@ int main( int argc, char** argv ) try {
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
 
-        std::unique_ptr< std::lock_guard< SharedSpace > > shared_space_lock;
-        if ( shared_space )
-            shared_space_lock.reset( new std::lock_guard< SharedSpace >( *shared_space ) );
+        std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
+        if ( sharedSpace )
+            sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
 
         std::array< std::string, 4 > arrayCommonPublicKey;
         bool isRotationtrigger = true;
@@ -1806,7 +1809,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t )( cl ockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
@@ -2009,7 +2012,7 @@ int main( int argc, char** argv ) try {
         auto pNetFace = new rpc::Net( chainParams );
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
-        auto pSkaleFace = new rpc::Skale( *g_client, shared_space );
+        auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
         auto pSkaleStatsFace =
             new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
         pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
