@@ -598,10 +598,16 @@ size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationTo
             break;
         }
     }
-    if ( bNeedReScaling && cnt > 0 && ttRescaling > 0 ) {
-        cnt *= durationToPast;
-        cnt /= ttRescaling;
-        if ( cntTargetUnDDoS != 0 && cntTargetUnDDoS != size_t( -1 ) && cnt >= cntTargetUnDDoS ) {
+    if ( bNeedReScaling && cnt > 0 ) {
+        bool isNeedRescan = false;
+        if ( ttRescaling > 0 ) {
+            cnt *= durationToPast;
+            cnt /= ttRescaling;
+            if ( cntTargetUnDDoS != 0 && cntTargetUnDDoS != size_t( -1 ) && cnt >= cntTargetUnDDoS )
+                isNeedRescan = true;
+        } else
+            isNeedRescan = true;
+        if ( isNeedRescan ) {
             // need exact full result
             cnt = 0;
             time_entries_.crbegin();
