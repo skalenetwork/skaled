@@ -105,7 +105,16 @@ jobs:
         run: |
           clang-format --help
           clang-format --version
-
+      - name: Format-check source code
+        run: |
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Release
+          export CODE_COVERAGE=ON
+          cd build
+          make format-check
+          cd ..
       - name: Build dependencies
         run: |
           export CC=gcc-9
@@ -129,16 +138,6 @@ jobs:
           cd build
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
-          cd ..
-      - name: Format-check source code
-        run: |
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
-          cd build
-          make format-check
           cd ..
       - name: Build all
         run: |
