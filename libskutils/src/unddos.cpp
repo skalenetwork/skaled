@@ -292,19 +292,15 @@ bool settings::empty() const {
         return true;
     if ( !origins_.empty() )
         return false;
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     if ( !global_limit_.empty() )
         return false;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     return true;
 }
 
 void settings::clear() {
     enabled_ = true;
     origins_.clear();
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     global_limit_.clear();
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
 }
 
 settings& settings::assign( const settings& other ) {
@@ -313,9 +309,7 @@ settings& settings::assign( const settings& other ) {
     clear();
     enabled_ = other.enabled_;
     origins_ = other.origins_;
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     global_limit_ = other.global_limit_;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     return ( *this );
 }
 
@@ -324,9 +318,7 @@ settings& settings::merge( const settings& other ) {
         return ( *this );
     for ( const origin_entry_setting& oe : other.origins_ )
         merge( oe );
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     global_limit_.merge( other.global_limit_ );
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     return ( *this );
 }
 settings& settings::merge( const origin_entry_setting& oe ) {
@@ -378,14 +370,12 @@ void settings::fromJSON( const nlohmann::json& jo ) {
             }
         }
     }
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     if ( jo.find( "global" ) != jo.end() ) {
         const nlohmann::json& joGlobalLimit = jo["global"];
         origin_entry_setting oe;
         oe.fromJSON( joGlobalLimit );
         global_limit_ = oe;
     }
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     bool isEnabled = true;
     if ( jo.find( "enabled" ) != jo.end() ) {
         const nlohmann::json& joEnabled = jo["enabled"];
@@ -403,15 +393,11 @@ void settings::toJSON( nlohmann::json& jo ) const {
         oe.toJSON( joOrigin );
         joOrigins.push_back( joOrigin );
     }
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     nlohmann::json joGlobalLimit = nlohmann::json::object();
     global_limit_.toJSON( joGlobalLimit );
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     jo["enabled"] = enabled_;
     jo["origins"] = joOrigins;
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     jo["global"] = joGlobalLimit;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
 }
 
 size_t settings::find_origin_entry_setting_match( const char* origin, size_t idxStart ) const {
@@ -570,7 +556,7 @@ size_t tracked_origin::unload_old_data_by_time_to_past(
     while ( !time_entries_.empty() ) {
         const time_entry& te = time_entries_.front();
         if ( te.ttm_ < ttmUntil ) {
-            time_entries_.pop_front();
+            time_entries_.erase( time_entries_.begin() );  // time_entries_.pop_front();
             ++cntRemoved;
         } else
             break;
@@ -581,32 +567,33 @@ size_t tracked_origin::unload_old_data_by_time_to_past(
 size_t tracked_origin::unload_old_data_by_count( size_t cntEntriesMax ) {
     size_t cntRemoved = 0;
     while ( time_entries_.size() > cntEntriesMax ) {
-        time_entries_.pop_front();
+        time_entries_.erase( time_entries_.begin() );  // time_entries_.pop_front();
         ++cntRemoved;
     }
     return cntRemoved;
 }
 
-size_t tracked_origin::count_to_past(
-    time_tick_mark ttmNow, duration durationToPast, size_t cndOptimizedMaxSteps ) const {
+size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationToPast,
+    size_t cntOptimizedMaxSteps, size_t cntTargetUnDDoS ) const {
     // if ( durationToPast == duration( 0 ) )
     //    return 0;
-    if ( cndOptimizedMaxSteps == 0 )
+    if ( cntOptimizedMaxSteps == 0 )
         return 0;
     adjust_now_tick_mark( ttmNow );
     time_tick_mark ttmUntil = ttmNow - durationToPast;
-    size_t cnt = 0;
+    size_t cnt = 0, idxStep;
     bool bNeedReScaling = false;
     time_tick_mark ttRescaling = ttmUntil;
     time_entries_t::const_reverse_iterator itWalk = time_entries_.crbegin(),
                                            itEnd = time_entries_.crend();
-    for ( size_t idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
+    for ( idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
         const time_entry& te = ( *itWalk );
         if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow ) {
             ++cnt;
             ttRescaling = te.ttm_ - ttmUntil;
         }
-        if ( idxStep >= cndOptimizedMaxSteps ) {
+        if ( cntOptimizedMaxSteps != 0 && cntOptimizedMaxSteps != size_t( -1 ) &&
+             idxStep >= cntOptimizedMaxSteps ) {
             bNeedReScaling = true;
             break;
         }
@@ -614,6 +601,17 @@ size_t tracked_origin::count_to_past(
     if ( bNeedReScaling && cnt > 0 && ttRescaling > 0 ) {
         cnt *= durationToPast;
         cnt /= ttRescaling;
+        if ( cntTargetUnDDoS != 0 && cntTargetUnDDoS != size_t( -1 ) && cnt >= cntTargetUnDDoS ) {
+            // need exact full result
+            cnt = 0;
+            time_entries_.crbegin();
+            itEnd = time_entries_.crend();
+            for ( idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
+                const time_entry& te = ( *itWalk );
+                if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
+                    ++cnt;
+            }
+        }
     }
     return cnt;
 }
@@ -674,9 +672,9 @@ size_t algorithm::unload_old_data_by_time_to_past(
     }
     for ( const std::string& origin : setOriginsTorRemove )
         tracked_origins_.erase( origin );
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
+    //
     tracked_global_.unload_old_data_by_time_to_past( ttmNow, durationToPast );
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
+    //
     return cnt;
 }
 
@@ -689,11 +687,9 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     adjust_now_tick_mark( ttmNow );
     lock_type lock( mtx_ );
     //
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     tracked_global_.time_entries_.push_back( time_entry( ttmNow ) );
     if ( tracked_global_.check_ban( ttmNow ) )
         return e_high_load_detection_result_t::ehldr_ban;  // still banned
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     //
     unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
     tracked_origins_t::iterator itFind = tracked_origins_.find( origin ),
@@ -716,7 +712,8 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     //}
     size_t nMaxCallsPerTimeUnit = oe.max_calls_per_minute( strMethod );
     if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast = to.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4cm_ );
+        size_t cntPast = to.count_to_past(
+            ttmNow, durationToPast, cntOptimizedMaxSteps4cm_, nMaxCallsPerTimeUnit );
         if ( cntPast > nMaxCallsPerTimeUnit ) {
             to.ban_until_ = ttmNow + oe.ban_lengthy_;
             return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per
@@ -725,7 +722,8 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     }
     nMaxCallsPerTimeUnit = oe.max_calls_per_second( strMethod );
     if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast = to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_ );
+        size_t cntPast =
+            to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_, nMaxCallsPerTimeUnit );
         if ( cntPast > nMaxCallsPerTimeUnit ) {
             to.ban_until_ = ttmNow + oe.ban_peak_;
             return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
@@ -733,11 +731,10 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     }
     //
     //
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     nMaxCallsPerTimeUnit = settings_.global_limit_.max_calls_per_minute( strMethod );
     if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast =
-            tracked_global_.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4gm_ );
+        size_t cntPast = tracked_global_.count_to_past(
+            ttmNow, durationToPast, cntOptimizedMaxSteps4gm_, nMaxCallsPerTimeUnit );
         if ( cntPast > nMaxCallsPerTimeUnit ) {
             tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_lengthy_;
             return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per
@@ -746,13 +743,13 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     }
     nMaxCallsPerTimeUnit = settings_.global_limit_.max_calls_per_second( strMethod );
     if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast = tracked_global_.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4gs_ );
+        size_t cntPast = tracked_global_.count_to_past(
+            ttmNow, 1, cntOptimizedMaxSteps4gs_, nMaxCallsPerTimeUnit );
         if ( cntPast > nMaxCallsPerTimeUnit ) {
             tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_peak_;
             return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
         }
     }
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     //
     //
     return e_high_load_detection_result_t::ehldr_no_error;
@@ -764,10 +761,8 @@ bool algorithm::is_ban_ws_conn_for_origin( const char* origin ) const {
     if ( origin == nullptr || origin[0] == '\0' )
         return true;
     lock_type lock( mtx_ );
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     if ( ws_conn_count_global_ > settings_.global_limit_.max_ws_conn_ )
         return true;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     map_ws_conn_counts_t::const_iterator itFind = map_ws_conn_counts_.find( origin ),
                                          itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd )
@@ -784,11 +779,9 @@ e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const cha
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
     lock_type lock( mtx_ );
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     ++ws_conn_count_global_;
     if ( ws_conn_count_global_ > settings_.global_limit_.max_ws_conn_ )
         return e_high_load_detection_result_t::ehldr_peak;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd ) {
@@ -809,10 +802,8 @@ bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
         return false;
     }
     lock_type lock( mtx_ );
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
     if ( ws_conn_count_global_ > 0 )
         --ws_conn_count_global_;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd ) {
@@ -873,9 +864,10 @@ nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast 
     for ( const tracked_origin& to : tracked_origins_ ) {
         nlohmann::json joOriginCallInfo = nlohmann::json::object();
         bool isBan = ( to.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
-        joOriginCallInfo["cps"] = to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_ );
+        joOriginCallInfo["cps"] =
+            to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_, size_t( -1 ) );
         joOriginCallInfo["cpm"] =
-            to.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4cm_ );
+            to.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4cm_, size_t( -1 ) );
         joOriginCallInfo["ban"] = isBan;
         joCalls[to.origin_] = joOriginCallInfo;
         if ( isBan )
@@ -901,14 +893,15 @@ nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast 
     joStats["counts"] = joCounts;
     joStats["calls"] = joCalls;
     joStats["ws_conns"] = joWsConns;
-#if ( defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__ )
+    //
     joStats["global_ws_conns_count"] = ws_conn_count_global_;
-    joStats["global_cps"] = tracked_global_.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4gs_ );
-    joStats["global_cpm"] =
-        tracked_global_.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4gm_ );
+    joStats["global_cps"] =
+        tracked_global_.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4gs_, size_t( -1 ) );
+    joStats["global_cpm"] = tracked_global_.count_to_past(
+        ttmNow, durationToPast, cntOptimizedMaxSteps4gm_, size_t( -1 ) );
     bool isGlobalBan = ( tracked_global_.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
     joStats["global_ban"] = isGlobalBan;
-#endif  // (defined __UNDDOS_SUPPORT_4_GLOBAL_SUMMARY__)
+    //
     return joStats;
 }
 
