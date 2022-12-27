@@ -242,6 +242,11 @@ ChainParams ChainParams::loadConfig(
                 sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
                 0;
 
+        s.contractStorageZeroValuePatchTimestamp =
+            sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
+                sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
+                0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
