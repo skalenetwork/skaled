@@ -149,16 +149,18 @@ void OverlayDB::commitStorageValues() {
             h256 const& value = stateAddressValuePair.second;
 
             static const h256 ZERO_VALUE( 0 );
-            auto keySlice = skale::slicing::toSlice( getStorageKey( address, storageAddress ) );
 
             if ( ContractStorageZeroValuePatch::isEnabled() && value == ZERO_VALUE ) {
                 // if the value is zero, the pair will be deleted in LevelDB
                 // if it exists
-                m_db_face->kill( keySlice );
+                m_db_face->kill(
+                    skale::slicing::toSlice( getStorageKey( address, storageAddress ) ) );
             } else {
                 // if the value is not zero, the pair will be inserted or
                 // updated in the LevelDB
-                m_db_face->insert( keySlice, skale::slicing::toSlice( value ) );
+                m_db_face->insert(
+                    skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
+                    skale::slicing::toSlice( value ) );
             }
         }
     }
