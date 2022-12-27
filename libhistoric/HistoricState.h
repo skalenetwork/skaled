@@ -38,7 +38,6 @@ class TransactionQueue;
 struct VerifiedBlockRef;
 
 
-
 DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );
 DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
 
@@ -272,7 +271,7 @@ public:
 
     // Sets root by reading the block number from DB
 
-    void setRootByBlockNumber(uint64_t _blockNumber);
+    void setRootByBlockNumber( uint64_t _blockNumber );
 
     /// Get the account start nonce. May be required.
     u256 const& accountStartNonce() const { return m_accountStartNonce; }
@@ -345,11 +344,9 @@ private:
     uint64_t readLatestBlock();
 
     AddressHash commit( AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
-
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );
-
 
 
 }  // namespace eth

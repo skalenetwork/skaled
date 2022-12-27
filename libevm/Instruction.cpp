@@ -222,7 +222,7 @@ InstructionInfo instructionInfo( Instruction _inst ) {
     auto it = c_instructionInfo.find( _inst );
     if ( it != c_instructionInfo.end() )
         return it->second;
-    return InstructionInfo{{}, 0, 0, Tier::Invalid};
+    return InstructionInfo{ {}, 0, 0, Tier::Invalid };
 }
 
 

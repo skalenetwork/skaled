@@ -124,12 +124,12 @@ bool OverlayDB::exists( h256 const& _h ) const {
 
 
 void OverlayDB::insert( h256 const& _h, bytesConstRef _v ) {
-    MemoryDB::insert(_h, _v);
+    MemoryDB::insert( _h, _v );
 
-   if (m_commitOnEveryInsert) {
+    if ( m_commitOnEveryInsert ) {
         // commit immediately to save memory
         commit();
-   }
+    }
 }
 
 void OverlayDB::kill( h256 const& _h ) {

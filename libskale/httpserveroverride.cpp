@@ -558,7 +558,8 @@ bool SkaleStatsSubscriptionManager::subscribe(
     subscriptionData.m_idSubscription = idSubscription;
     subscriptionData.m_pPeer = pPeer;
     subscriptionData.m_nIntervalMilliseconds = nIntervalMilliseconds;
-    skutils::dispatch::repeat( subscriptionData.m_pPeer->m_strPeerQueueID,
+    skutils::dispatch::repeat(
+        subscriptionData.m_pPeer->m_strPeerQueueID,
         [=]() -> void {
             if ( subscriptionData.m_pPeer && subscriptionData.m_pPeer->isConnected() ) {
                 nlohmann::json joParams = nlohmann::json::object();
@@ -1186,8 +1187,8 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
 }
 
 const SkaleWsPeer::ws_rpc_map_t SkaleWsPeer::g_ws_rpc_map = {
-    {"eth_subscribe", &SkaleWsPeer::eth_subscribe},
-    {"eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe},
+    { "eth_subscribe", &SkaleWsPeer::eth_subscribe },
+    { "eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe },
 };
 
 void SkaleWsPeer::eth_subscribe(
@@ -1975,8 +1976,7 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
         } catch ( ... ) {
         }
         // pThis->m_isRunning = false;
-    } )
-        .detach();
+    } ).detach();
     clog( dev::VerbosityDebug, cc::info( m_strSchemeUC ) )
         << ( cc::success( "OK, server started on port " ) + cc::c( m_nPort ) );
     return true;
@@ -2047,9 +2047,9 @@ SkaleRelayProxygenHTTP::SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ip
       ca_path_( ca_path ? ca_path : "" ),
       threads_( threads ),
       threads_limit_( threads_limit ) {
-    skutils::http_pg::pg_accumulate_entry pge = {ipVer_, strBindAddr_, nPort_,
+    skutils::http_pg::pg_accumulate_entry pge = { ipVer_, strBindAddr_, nPort_,
         m_bHelperIsSSL ? cert_path_.c_str() : "", m_bHelperIsSSL ? private_key_path_.c_str() : "",
-        m_bHelperIsSSL ? ca_path_.c_str() : ""};
+        m_bHelperIsSSL ? ca_path_.c_str() : "" };
     skutils::http_pg::pg_accumulate_add( pge );
 }
 
@@ -3529,7 +3529,7 @@ bool SkaleServerOverride::handleInformationalRequest(
 }
 
 const SkaleServerOverride::informational_rpc_map_t SkaleServerOverride::g_informational_rpc_map = {
-    {"eth_getBalance", &SkaleServerOverride::informational_eth_getBalance},
+    { "eth_getBalance", &SkaleServerOverride::informational_eth_getBalance },
 };
 
 static std::string stat_prefix_align( const std::string& strSrc, size_t n, char ch ) {
@@ -3568,13 +3568,7 @@ void SkaleServerOverride::informational_eth_getBalance(
     std::string strAddress = joAddress.get< std::string >();
 
 
-
-
     try {
-
-
-
-
         skutils::tools::replace_all( strAddress, "0x", "" );
         skutils::tools::replace_all( strAddress, "0X", "" );
         strAddress = skutils::tools::trim_copy( strAddress );
@@ -3596,20 +3590,20 @@ void SkaleServerOverride::informational_eth_getBalance(
 
 
 #ifdef HISTORIC_STATE
-        if (cntParams > 1) {
+        if ( cntParams > 1 ) {
             blockNumber = joParams[1];
         };
-        auto bNumber = dev::eth::jsToBlockNumber(blockNumber);
+        auto bNumber = dev::eth::jsToBlockNumber( blockNumber );
 #endif
 
         dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _jsonCallArgs );
         // setTransactionDefaults( t );
-        dev::eth::ExecutionResult er = pClient->call(
-            t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+        dev::eth::ExecutionResult er =
+            pClient->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
 #ifdef HISTORIC_STATE
-            bNumber,
+                bNumber,
 #endif
-            dev::eth::FudgeFactor::Lenient );
+                dev::eth::FudgeFactor::Lenient );
 
         std::string strRevertReason;
         if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -3662,8 +3656,8 @@ bool SkaleServerOverride::handleAdminOriginFilter(
     // std::cout << cc::attention( "------------ " ) << cc::info( strOriginURL ) <<
     // cc::attention( "
     // ------------> " ) << cc::info( strMethod ) << "\n";
-    static const std::set< std::string > g_setAdminMethods = {
-        "skale_getSnapshot", "skale_downloadSnapshotFragment"};
+    static const std::set< std::string > g_setAdminMethods = { "skale_getSnapshot",
+        "skale_downloadSnapshotFragment" };
     if ( g_setAdminMethods.find( strMethod ) == g_setAdminMethods.end() )
         return true;  // not an admin methhod
     std::string origin = strOriginURL;
@@ -3691,14 +3685,15 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( const std::string& strO
 }
 
 const SkaleServerOverride::protocol_rpc_map_t SkaleServerOverride::g_protocol_rpc_map = {
-    {"setSchainExitTime", &SkaleServerOverride::setSchainExitTime},
-    {"eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction},
-    {"eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt},
-    {"eth_call", &SkaleServerOverride::eth_call},
-    {"eth_getBalance", &SkaleServerOverride::eth_getBalance},
-    {"eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt},
-    {"eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount},
-    {"eth_getCode", &SkaleServerOverride::eth_getCode}};
+    { "setSchainExitTime", &SkaleServerOverride::setSchainExitTime },
+    { "eth_sendRawTransaction", &SkaleServerOverride::eth_sendRawTransaction },
+    { "eth_getTransactionReceipt", &SkaleServerOverride::eth_getTransactionReceipt },
+    { "eth_call", &SkaleServerOverride::eth_call },
+    { "eth_getBalance", &SkaleServerOverride::eth_getBalance },
+    { "eth_getStorageAt", &SkaleServerOverride::eth_getStorageAt },
+    { "eth_getTransactionCount", &SkaleServerOverride::eth_getTransactionCount },
+    { "eth_getCode", &SkaleServerOverride::eth_getCode }
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

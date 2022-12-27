@@ -118,10 +118,8 @@ void State::populateHistoricStateFromSkaleState() {
 }
 
 
-
 dev::eth::AccountMap State::getBatchOfAccounts(
-    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber) {
-
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     dev::eth::AccountMap accountBatch;
 
     for ( auto&& item : _allAccountAddresses ) {
@@ -152,12 +150,11 @@ void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
 
-    dev::eth::AccountMap accountMap = getBatchOfAccounts(_allAccountAddresses, _batchNumber);
+    dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
     m_db_ptr->copyStorageIntoAccountMap( accountMap );
 
     m_historicState.commitExternalChanges( accountMap );
-
 }
 #endif
 
@@ -1071,8 +1068,7 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                         contout << std::endl
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
-                                       cached.count( j.first ) ? " .     " :
-                                                                 "       " )
+                                           cached.count( j.first ) ? " .     " : "       " )
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else

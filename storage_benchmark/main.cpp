@@ -128,7 +128,8 @@ void testState() {
 
     cout << "Balances reads:" << endl;
     cout << measure_performance(
-                [&state, &address]() { state.createStateModifyCopy().balance( address ); }, 100000 ) /
+                [&state, &address]() { state.createStateModifyCopy().balance( address ); },
+                100000 ) /
                 1e6
          << " Mreads per second" << endl;
     cout << endl;

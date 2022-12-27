@@ -192,8 +192,8 @@ private:
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
 
-    dev::Logger m_debugLogger{dev::createLogger( dev::VerbosityDebug, "skale-host" )};
-    dev::Logger m_traceLogger{dev::createLogger( dev::VerbosityTrace, "skale-host" )};
+    dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
+    dev::Logger m_traceLogger{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
     void logState();
 
     std::unique_ptr< ConsensusExtFace > m_extFace;

@@ -67,7 +67,8 @@ void goOnOffloadedStack( Executive& _e, OnOpFunc const& _onOp ) {
     // TODO: It is possible to switch the implementation to Boost.Context or similar when the API is
     // stable.
     boost::exception_ptr exception;
-    boost::thread{attrs,
+    boost::thread{
+        attrs,
         [&] {
             try {
                 _e.go( _onOp );
@@ -75,8 +76,8 @@ void goOnOffloadedStack( Executive& _e, OnOpFunc const& _onOp ) {
                 exception = boost::current_exception();  // Catch all exceptions to be rethrown in
                                                          // parent thread.
             }
-        }}
-        .join();
+        }
+    }.join();
     if ( exception )
         boost::rethrow_exception( exception );
 }
@@ -126,14 +127,14 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
 
 
 CallResult ExtVM::call( CallParameters& _p ) {
-    Executive e{m_s, envInfo(), m_sealEngine, 0, depth + 1, m_readOnly};
+    Executive e{ m_s, envInfo(), m_sealEngine, 0, depth + 1, m_readOnly };
     if ( !e.call( _p, gasPrice, origin ) ) {
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
     }
     _p.gas = e.gas();
 
-    return {transactionExceptionToEvmcStatusCode( e.getException() ), e.takeOutput()};
+    return { transactionExceptionToEvmcStatusCode( e.getException() ), e.takeOutput() };
 }
 
 size_t ExtVM::codeSizeAt( dev::Address _a ) {
@@ -150,7 +151,7 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
-    Executive e{m_s, envInfo(), m_sealEngine, 0, depth + 1};
+    Executive e{ m_s, envInfo(), m_sealEngine, 0, depth + 1 };
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
@@ -164,8 +165,8 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
         e.accrueSubState( sub );
     }
     io_gas = e.gas();
-    return {
-        transactionExceptionToEvmcStatusCode( e.getException() ), e.takeOutput(), e.newAddress()};
+    return { transactionExceptionToEvmcStatusCode( e.getException() ), e.takeOutput(),
+        e.newAddress() };
 }
 
 void ExtVM::suicide( Address _a ) {

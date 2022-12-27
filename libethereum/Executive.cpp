@@ -281,8 +281,8 @@ bool Executive::execute() {
 
 bool Executive::call( Address const& _receiveAddress, Address const& _senderAddress,
     u256 const& _value, u256 const& _gasPrice, bytesConstRef _data, u256 const& _gas ) {
-    CallParameters params{
-        _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data, {}};
+    CallParameters params{ _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas,
+        _data, {} };
     return call( params, _gasPrice, _senderAddress );
 }
 
@@ -331,7 +331,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
             // m_s = dev::eth::g_state.delegateWrite();
             size_t outputSize = output.size();
-            m_output = owning_bytes_ref{std::move( output ), 0, outputSize};
+            m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
                 m_gas = 0;
                 m_excepted = TransactionException::OutOfGas;
@@ -378,8 +378,8 @@ bool Executive::createOpcode( Address const& _sender, u256 const& _endowment, u2
 bool Executive::create2Opcode( Address const& _sender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _salt ) {
-    m_newAddress =
-        right160( sha3( bytes{0xff} + _sender.asBytes() + toBigEndian( _salt ) + sha3( _init ) ) );
+    m_newAddress = right160(
+        sha3( bytes{ 0xff } + _sender.asBytes() + toBigEndian( _salt ) + sha3( _init ) ) );
     return executeCreate(
         _sender, _endowment, _gasPrice, _gas, _init, _origin, m_s.version( _sender ) );
 }

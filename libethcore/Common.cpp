@@ -74,13 +74,13 @@ Address toAddress( std::string const& _s ) {
 }
 
 vector< pair< u256, string > > const& units() {
-    static const vector< pair< u256, string > > s_units = {{exp10< 54 >(), "Uether"},
-        {exp10< 51 >(), "Vether"}, {exp10< 48 >(), "Dether"}, {exp10< 45 >(), "Nether"},
-        {exp10< 42 >(), "Yether"}, {exp10< 39 >(), "Zether"}, {exp10< 36 >(), "Eether"},
-        {exp10< 33 >(), "Pether"}, {exp10< 30 >(), "Tether"}, {exp10< 27 >(), "Gether"},
-        {exp10< 24 >(), "Mether"}, {exp10< 21 >(), "grand"}, {exp10< 18 >(), "ether"},
-        {exp10< 15 >(), "finney"}, {exp10< 12 >(), "szabo"}, {exp10< 9 >(), "Gwei"},
-        {exp10< 6 >(), "Mwei"}, {exp10< 3 >(), "Kwei"}, {exp10< 0 >(), "wei"}};
+    static const vector< pair< u256, string > > s_units = { { exp10< 54 >(), "Uether" },
+        { exp10< 51 >(), "Vether" }, { exp10< 48 >(), "Dether" }, { exp10< 45 >(), "Nether" },
+        { exp10< 42 >(), "Yether" }, { exp10< 39 >(), "Zether" }, { exp10< 36 >(), "Eether" },
+        { exp10< 33 >(), "Pether" }, { exp10< 30 >(), "Tether" }, { exp10< 27 >(), "Gether" },
+        { exp10< 24 >(), "Mether" }, { exp10< 21 >(), "grand" }, { exp10< 18 >(), "ether" },
+        { exp10< 15 >(), "finney" }, { exp10< 12 >(), "szabo" }, { exp10< 9 >(), "Gwei" },
+        { exp10< 6 >(), "Mwei" }, { exp10< 3 >(), "Kwei" }, { exp10< 0 >(), "wei" } };
 
     return s_units;
 }

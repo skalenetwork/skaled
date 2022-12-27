@@ -85,7 +85,7 @@ DEV_SIMPLE_EXCEPTION( FutureTime );
 DEV_SIMPLE_EXCEPTION( TransientError );
 DEV_SIMPLE_EXCEPTION( FailedToWriteChainStart );
 DEV_SIMPLE_EXCEPTION( UnknownBlockNumber );
-DEV_SIMPLE_EXCEPTION( UnknownBlockNumberInRootDB);
+DEV_SIMPLE_EXCEPTION( UnknownBlockNumberInRootDB );
 
 // TODO: Move all this Genesis stuff into Genesis.h/.cpp
 std::unordered_map< Address, Account > const& genesisState();
@@ -132,13 +132,16 @@ public:
 
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain( ChainParams const& _p, boost::filesystem::path const& _path, bool _applyPatches = false,
-        WithExisting _we = WithExisting::Trust );
+    BlockChain( ChainParams const& _p, boost::filesystem::path const& _path,
+        bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
     ~BlockChain();
 
     /// Reopen everything.
-    void reopen( bool _applyPatches = false, WithExisting _we = WithExisting::Trust ) { reopen( m_params, _applyPatches, _we ); }
-    void reopen( ChainParams const& _p, bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
+    void reopen( bool _applyPatches = false, WithExisting _we = WithExisting::Trust ) {
+        reopen( m_params, _applyPatches, _we );
+    }
+    void reopen(
+        ChainParams const& _p, bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
 
     /// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
     /// To be called from main loop every 100ms or so.
@@ -605,10 +608,10 @@ private:
 
     boost::filesystem::path m_dbPath;
 
-    mutable Logger m_loggerInfo{createLogger( VerbosityInfo, "chain" )};
-    mutable Logger m_logger{createLogger( VerbosityDebug, "chain" )};
-    mutable Logger m_loggerDetail{createLogger( VerbosityTrace, "chain" )};
-    mutable Logger m_loggerError{createLogger( VerbosityError, "chain" )};
+    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "chain" ) };
+    mutable Logger m_logger{ createLogger( VerbosityDebug, "chain" ) };
+    mutable Logger m_loggerDetail{ createLogger( VerbosityTrace, "chain" ) };
+    mutable Logger m_loggerError{ createLogger( VerbosityError, "chain" ) };
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };

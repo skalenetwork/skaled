@@ -120,7 +120,7 @@ extern unsigned c_maxOpenLeveldbFiles;
 }  // namespace dev
 
 namespace {
-std::atomic< bool > g_silence = {false};
+std::atomic< bool > g_silence = { false };
 unsigned const c_lineWidth = 160;
 
 static void version() {
@@ -133,13 +133,19 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" ) << cc::attention( ver ) << "\n";
+    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" )
+              << cc::attention( ver ) << "\n";
     if ( !commit.empty() )
-        cout << cc::info( "Commit" ) << cc::debug( "............................" ) << cc::attention( commit ) << "\n";
+        cout << cc::info( "Commit" ) << cc::debug( "............................" )
+             << cc::attention( commit ) << "\n";
     std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
-              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." ) << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." ) << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << cc::info( "Build" ) << cc::debug( "............................." ) << cc::attention( buildinfo->system_name ) << cc::debug( "/" ) << cc::attention( buildinfo->build_type ) << "\n";
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." )
+              << cc::num10( c_minorProtocolVersion ) << "\n";
+    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." )
+              << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." )
+              << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
+              << cc::attention( buildinfo->build_type ) << "\n";
     std::cout.flush();
 }
 
@@ -151,8 +157,10 @@ static std::string clientVersion() {
 
 static std::string clientVersionColorized() {
     const auto* buildinfo = skale_get_buildinfo();
-    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) + cc::debug( "/" ) + cc::attention( buildinfo->system_name ) +
-           cc::debug( "/" ) + cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) + cc::debug( "/" ) + cc::attention( buildinfo->build_type );
+    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->system_name ) + cc::debug( "/" ) +
+           cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) +
+           cc::debug( "/" ) + cc::attention( buildinfo->build_type );
 }
 
 /*
@@ -201,12 +209,12 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
+    const set< string > filteredOptions = { "http-port", "https-port", "ws-port", "wss-port",
         "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
         "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors",
-        "info-acceptors"};
-    const set< string > emptyValues = {"NULL", "null", "None"};
+        "info-acceptors" };
+    const set< string > emptyValues = { "NULL", "null", "None" };
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
                               [&filteredOptions, &emptyValues]( const auto& option ) -> bool {
@@ -282,7 +290,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        vector< string > prefixes{"prices_", "blocks_"};
+        vector< string > prefixes{ "prices_", "blocks_" };
         for ( const string& prefix : prefixes ) {
             fs::path db_path;
             for ( auto& f :
@@ -479,10 +487,10 @@ int main( int argc, char** argv ) try {
     Ethash::init();
     NoProof::init();
 
-    //dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
-//    dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
-//    if( 1==1 )
-//        return 0;
+    // dump_blocks_and_extras_db("/home/dimalit/Downloads/btrfs/208", 1800000);
+    //    dump_blocks_and_extras_db("/home/dimalit/.ethereum", 1800000);
+    //    if( 1==1 )
+    //        return 0;
 
     /// General params for Node operation
     NodeMode nodeMode = NodeMode::Full;
@@ -727,8 +735,12 @@ int main( int argc, char** argv ) try {
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
     addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
-    addClientOption( "skale-network-browser-verbose", "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
-    addClientOption( "skale-network-browser-refresh", po::value< size_t >()->value_name( "<seconds>" ), "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain descriptions from Skale Manager" );
+    addClientOption( "skale-network-browser-verbose",
+        "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
+    addClientOption( "skale-network-browser-refresh",
+        po::value< size_t >()->value_name( "<seconds>" ),
+        "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain "
+        "descriptions from Skale Manager" );
 
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
@@ -942,7 +954,8 @@ int main( int argc, char** argv ) try {
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
               << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent build intent is " ) << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::debug( "Recent build intent is " )
+              << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
     std::cout.flush();
     version();
 
@@ -1470,7 +1483,8 @@ int main( int argc, char** argv ) try {
         skale::network::browser::g_bVerboseLogging = true;
     }
     if ( vm.count( "skale-network-browser-refresh" ) ) {
-        skale::network::browser::g_nRefreshIntervalInSeconds = vm["skale-network-browser-refresh"].as< size_t >();
+        skale::network::browser::g_nRefreshIntervalInSeconds =
+            vm["skale-network-browser-refresh"].as< size_t >();
     }
 
     std::shared_ptr< SharedSpace > shared_space;
@@ -1492,14 +1506,14 @@ int main( int argc, char** argv ) try {
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         snapshotManager.reset( new SnapshotManager( getDataDir(),
-            {BlockChain::getChainDirName( chainParams ), "filestorage",
+            { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db"},
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db" },
             shared_space ? shared_space->getPath() : std::string() ) );
     }
-    
+
     if ( chainParams.nodeInfo.syncNode && !chainParams.nodeInfo.syncFromCatchup ) {
-        auto bc = BlockChain(chainParams, getDataDir());
+        auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
         }
@@ -1517,7 +1531,7 @@ int main( int argc, char** argv ) try {
         std::array< std::string, 4 > arrayCommonPublicKey;
         bool isRotationtrigger = true;
         if ( chainParams.sChain.nodeGroups.size() > 1 ) {
-            if ( (uint64_t ) time( NULL ) >=
+            if ( ( uint64_t ) time( NULL ) >=
                  chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
                      .finishTs ) {
                 isRotationtrigger = false;
@@ -1742,7 +1756,7 @@ int main( int argc, char** argv ) try {
     netPrefs.pin = false;
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
-    auto caps = set< string >{"eth"};
+    auto caps = set< string >{ "eth" };
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
@@ -1762,7 +1776,7 @@ int main( int argc, char** argv ) try {
         NoProof::init();
 
         if ( chainParams.sealEngineName == Ethash::name() ) {
-            //if( chainParams.sealEngineName == Ethash::name() )
+            // if( chainParams.sealEngineName == Ethash::name() )
             //    return 0;
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
@@ -1814,7 +1828,7 @@ int main( int argc, char** argv ) try {
         g_client->injectSkaleHost( skaleHost );
 
         skale_get_buildinfo();
-        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
+        g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();

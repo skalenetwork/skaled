@@ -331,8 +331,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     return storage;
 }
 
-void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map) const {
-
+void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
     static uint64_t counter = 0;
 
     if ( m_db_face ) {
@@ -343,7 +342,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map) const {
                 [[maybe_unused]] h160 address = h160(
                     keyString.substr( 0, h160::size ), h160::ConstructFromStringType::FromBinary );
 
-                if (_map.count(address) == 0)
+                if ( _map.count( address ) == 0 )
                     return true;
 
                 [[maybe_unused]] h256 memoryAddress = h256(
@@ -352,9 +351,9 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map) const {
                     h256::ConstructFromStringType::FromBinary );
 
 
-                _map.at(address).setStorage(memoryAddress, memoryValue);
+                _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
-                if (counter % 1000000 == 0) {
+                if ( counter % 1000000 == 0 ) {
                     std::cout << ".";
                     std::cout.flush();
                 }
@@ -362,7 +361,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map) const {
             return true;
         } );
 
-    std::cout << std::endl;
+        std::cout << std::endl;
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }

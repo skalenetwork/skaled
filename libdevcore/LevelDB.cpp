@@ -18,11 +18,11 @@
 */
 
 
-#include "Log.h"
+#include "LevelDB.h"
 #include "Assertions.h"
+#include "Log.h"
 #include <libdevcore/microprofile.h>
 #include <secp256k1_sha256.h>
-#include "LevelDB.h"
 
 namespace dev {
 namespace db {

@@ -291,8 +291,8 @@ static void stat_calc_ports( node_t& node ) {
     node.infoHttpRpcPort = node.schain_base_port + SkaledPorts::INFO_HTTP_JSON;
 }
 
-dev::u256 get_schains_count(
-    const skutils::url& u, const dev::u256& /*addressFrom*/, const dev::u256& addressSchainsInternal ) {
+dev::u256 get_schains_count( const skutils::url& u, const dev::u256& /*addressFrom*/,
+    const dev::u256& addressSchainsInternal ) {
     static const char g_strContractMethodName[] = "numberOfSchains()";
     // 0x77ad87c1a3f5c981edbb22216a0b27bcf0b6c20e34df970e44c43bc8d7952fc6
     // 0x77ad87c1

@@ -43,8 +43,8 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
-#include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/AmsterdamFixPatch.h>
+#include <libskale/TotalStorageUsedPatch.h>
 
 #include "Block.h"
 #include "Defaults.h"
@@ -66,8 +66,8 @@ using namespace skale::error;
 #define ETH_TIMED_IMPORTS 1
 
 namespace {
-std::string const c_chainStart{"chainStart"};
-db::Slice const c_sliceChainStart{c_chainStart};
+std::string const c_chainStart{ "chainStart" };
+db::Slice const c_sliceChainStart{ c_chainStart };
 }  // namespace
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, BlockChain const& _bc ) {
@@ -76,7 +76,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, BlockChain const& _bc ) 
         if ( string( _key.data(), _key.size() ) != "best" ) {
             const string key( _key.data(), _key.size() );
             try {
-                BlockHeader d( bytesConstRef{_value} );
+                BlockHeader d( bytesConstRef{ _value } );
                 _out << toHex( key ) << ":   " << d.number() << " @ " << d.parentHash()
                      << ( cmp == key ? "  BEST" : "" ) << std::endl;
             } catch ( ... ) {
@@ -176,9 +176,9 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
-    : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-      m_dbPath( _dbPath ) {
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches,
+    WithExisting _we ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
+                             m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
@@ -303,7 +303,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-//    dump_blocks_and_extras_db( *this, 0 );
+    //    dump_blocks_and_extras_db( *this, 0 );
 
     if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
@@ -413,7 +413,7 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
         } while ( false );
     }
     return make_tuple(
-        ImportRoute{dead, fresh, goodTransactions}, _bq.doneDrain( badBlocks ), count );
+        ImportRoute{ dead, fresh, goodTransactions }, _bq.doneDrain( badBlocks ), count );
 }
 
 pair< ImportResult, ImportRoute > BlockChain::attemptImport(
@@ -899,7 +899,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize << ". Piece DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize
+                        << ". Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
@@ -974,11 +975,11 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 
     unsigned const gasPerSecond = static_cast< double >( _block.info.gasUsed() ) /
                                   _performanceLogger.stageDuration( "enactment" );
-    _performanceLogger.onFinished( {{"blockHash", "\"" + _block.info.hash().abridged() + "\""},
-        {"blockNumber", toString( _block.info.number() )},
-        {"gasPerSecond", toString( gasPerSecond )},
-        {"transactions", toString( _block.transactions.size() )},
-        {"gasUsed", toString( _block.info.gasUsed() )}} );
+    _performanceLogger.onFinished( { { "blockHash", "\"" + _block.info.hash().abridged() + "\"" },
+        { "blockNumber", toString( _block.info.number() ) },
+        { "gasPerSecond", toString( gasPerSecond ) },
+        { "transactions", toString( _block.transactions.size() ) },
+        { "gasUsed", toString( _block.info.gasUsed() ) } } );
 
     noteCanonChanged();
 
@@ -993,7 +994,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         << cc::debug( "Insterted block with " ) << _block.transactions.size()
         << cc::debug( " transactions" );
 
-    return ImportRoute{dead, fresh, _block.transactions};
+    return ImportRoute{ dead, fresh, _block.transactions };
 }
 
 void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
@@ -1480,7 +1481,7 @@ h256Hash BlockChain::allKinFrom( h256 const& _parent, unsigned _generations ) co
     // Get all uncles cited given a parent (i.e. featured as uncles/main in parent, parent + 1,
     // ... parent + 5).
     h256 p = _parent;
-    h256Hash ret = {p};
+    h256Hash ret = { p };
     // p and (details(p).parent: i == 5) is likely to be overkill, but can't hurt to be
     // cautious.
     for ( unsigned i = 0; i < _generations && p != m_genesisHash; ++i, p = details( p ).parent ) {

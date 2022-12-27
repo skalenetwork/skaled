@@ -101,8 +101,9 @@ ChainParams ChainParams::loadConfig(
         params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
-    cp.skaleDisableChainIdCheck =
-        params.count( c_skaleDisableChainIdCheck ) ? params[c_skaleDisableChainIdCheck].get_bool() : false;
+    cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
+                                      params[c_skaleDisableChainIdCheck].get_bool() :
+                                      false;
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {

@@ -120,7 +120,7 @@ private:
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
-    void copyStorageIntoAccountMap(dev::eth::AccountMap&  _map) const;
+    void copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const;
 };
 
 }  // namespace skale
