@@ -1509,12 +1509,11 @@ int main( int argc, char** argv ) try {
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
-            "blocks_" + chainParams.nodeInfo.id.str() + ".db");
+            "blocks_" + chainParams.nodeInfo.id.str() + ".db" );
 
-         snapshotManager.reset( new SnapshotManager( getDataDir(),
+        snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
-                "prices_" + chainParams.nodeInfo.id.str() + ".db",
-    RecentBlocksDBPath },
+                "prices_" + chainParams.nodeInfo.id.str() + ".db", RecentBlocksDBPath },
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
