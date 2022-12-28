@@ -145,6 +145,8 @@ jobs:
       - name: Testeth verbosity 4
         if: steps.testethVerbosity1.outcome == 'failure'      
         run : |
+          # Since tests failed, we are rerunning them with higher verbosity
+          # ToDo: add logic to only re-run failed tests
           cd build/test      
           NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
           cd ..            
