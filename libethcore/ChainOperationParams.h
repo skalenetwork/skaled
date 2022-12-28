@@ -96,13 +96,13 @@ public:
                                "5655852781",
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
-                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531"},
         const std::array< std::string, 4 >&
             _commonBLSPublicKeys = { "1085704699902305713594457076223282948137075635957851808699051"
                                      "9993285655852781",
-                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
-                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
-                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+            "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+            "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+            "4082367875863433681332203403145435568316851327593401208105741076214120093531"},
         bool _syncNode = false, bool _archiveMode = false, bool _syncFromCatchup = false ) {
         name = _name;
         id = _id;
@@ -163,10 +163,14 @@ public:
     uint64_t dbStorageLimit = 0;
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
+    time_t snapshotDownloadTimeout = 3600;
+    time_t snapshotDownloadInactiveTimeout = 60;
     bool freeContractDeployment = false;
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
+    time_t revertableFSPatchTimestamp = 0;
+    time_t contractStoragePatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";
@@ -174,8 +178,8 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-        sChainNode me = { u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
-            "0xfa", { "0", "1", "0", "1" } };
+        sChainNode me = {u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
+            "0xfa", {"0", "1", "0", "1"}};
         nodes.push_back( me );
     }
 };

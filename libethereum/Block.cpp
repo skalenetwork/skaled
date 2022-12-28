@@ -526,6 +526,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // throw;
             // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
+            cerror << DETAILED_ERROR;
         }
     }
 
@@ -651,7 +652,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
-                cerr << "Skale does not support state root in receipt" << endl;
+                cwarn << "Skale does not support state root in receipt";
                 break;
             }
         }
@@ -843,6 +844,7 @@ ExecutionResult Block::execute(
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
+        cerror << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );

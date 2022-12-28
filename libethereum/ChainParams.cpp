@@ -186,7 +186,7 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
             BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
 
@@ -207,6 +207,15 @@ ChainParams ChainParams::loadConfig(
         s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
                                     0;
+
+        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
+                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
+                                        3600;
+
+        s.snapshotDownloadInactiveTimeout =
+            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
+                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
+                3600;
 
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
@@ -230,6 +239,14 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
+        if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
+            s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
+
+        s.contractStoragePatchTimestamp =
+            sChainObj.count( "contractStoragePatchTimestamp" ) ?
+                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+                0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
@@ -246,7 +263,7 @@ ChainParams ChainParams::loadConfig(
                     u256 id = groupNodeConfObj[0].get_uint64();
                     u256 sChainIndex = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
-                    groupNodes.push_back( { id, sChainIndex, publicKey } );
+                    groupNodes.push_back( {id, sChainIndex, publicKey} );
                 }
                 nodeGroup.nodes = groupNodes;
 

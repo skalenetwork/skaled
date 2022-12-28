@@ -90,6 +90,7 @@ public:
         }
     };
 
+
     class CannotPerformBtrfsOperation : public std::exception {
     protected:
         std::string what_str;
@@ -136,6 +137,18 @@ public:
         virtual const char* what() const noexcept override { return what_str.c_str(); }
     };
 
+
+    class CouldNotFindBlocksDB : public std::exception {
+    protected:
+        std::string m_whatStr;
+
+    public:
+        CouldNotFindBlocksDB( const std::string& _path, const std::string& _message ) {
+            m_whatStr = "Could not find BlocksDB at " + _path + "." + _message;
+        }
+        virtual const char* what() const noexcept override { return m_whatStr.c_str(); }
+    };
+
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
@@ -160,6 +173,8 @@ public:
 
     uint64_t getBlockTimestamp(
         unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const;
+
+    static std::string findMostRecentBlocksDBPath( const std::string& _prefix );
 
 private:
     boost::filesystem::path data_dir;

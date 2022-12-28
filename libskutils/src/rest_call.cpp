@@ -197,7 +197,7 @@ std::pair< EVP_PKEY*, X509* > sz_cli::stat_cert_2_public_key( const std::string&
     BIO_free( bo );
     if ( !key )
         throw std::runtime_error( "sz_cli: X509_get_pubkey() failed(2)" );
-    return { key, cert };
+    return {key, cert};
 }
 
 static void stat_append_msgSig( std::string& src, const std::string& sig ) {
@@ -251,7 +251,7 @@ std::string sz_cli::stat_sendMessageZMQ( std::string& jvRequest, bool bException
     s_send( *pClientSocket_, jvRequest );
     ++idxAttempt;
     while ( true ) {
-        zmq::pollitem_t items[] = { { static_cast< void* >( *pClientSocket_ ), 0, ZMQ_POLLIN, 0 } };
+        zmq::pollitem_t items[] = {{static_cast< void* >( *pClientSocket_ ), 0, ZMQ_POLLIN, 0}};
         zmq::poll( &items[0], 1, timeoutMilliseconds );
         if ( items[0].revents & ZMQ_POLLIN ) {
             std::string reply = s_recv( *pClientSocket_ );
@@ -339,19 +339,23 @@ bool sz_cli::sendMessage( const std::string& strMessage, std::string& strAnswer 
 }
 
 
-client::client() {
+client::client( long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     async_remove_all();
 }
 
-client::client( const skutils::url& u ) {
+client::client( const skutils::url& u, long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     open( u );
 }
 
-client::client( const std::string& url_str ) {
+client::client( const std::string& url_str, long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     open( url_str );
 }
 
-client::client( const char* url_str ) {
+client::client( const char* url_str, long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     open( std::string( url_str ? url_str : "" ) );
 }
 
@@ -368,6 +372,13 @@ std::string client::u_path() const {
 std::string client::u_path_and_args() const {
     std::string s = u_path() + u_.str_query();
     return s;
+}
+
+long client::client_connection_timeout() const {
+    return nClientConnectionTimeoutMS_;
+}
+void client::client_connection_timeout( long nClientConnectionTimeoutMS ) {
+    nClientConnectionTimeoutMS_ = nClientConnectionTimeoutMS;
 }
 
 bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, size_t cntSteps ) {
@@ -390,29 +401,38 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
         }
         int nPort = std::atoi( strPort.c_str() );
         //
+        long nEffectiveClientConnectionTimeoutMS =
+            ( nClientConnectionTimeoutMS_ > 0 ) ?
+                nClientConnectionTimeoutMS_ :
+                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__;
         if ( strScheme == "http" ) {
             close();
-#if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http_curl::client(
-                u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+                u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
-#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
-            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort,
-                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, nullptr ) );
-#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http::client(
+                -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, nullptr ) );
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "https" ) {
             close();
-#if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             ch_.reset( new skutils::http_curl::client(
-                u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+                u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
-#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
-            ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
-                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
-#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            ch_.reset( new skutils::http::SSL_client(
+                -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
             close();
             cw_.reset( new skutils::ws::client );
+            cw_->access_api().timeout_handshake_open_ =
+                nEffectiveClientConnectionTimeoutMS / 1000 +
+                        ( nEffectiveClientConnectionTimeoutMS % 1000 ) ?
+                    1 :
+                    0;
             cw_->onMessage_ = [&]( skutils::ws::basic_participant&, skutils::ws::hdl_t,
                                   skutils::ws::opcv eOpCode, const std::string& s ) -> void {
                 data_t d;
@@ -634,22 +654,22 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
-#if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             std::string strOutData, strOutContentType;
             skutils::http::common_network_exception::error_info ei;
             bool ret = ch_->query(
                 strJsonIn.c_str(), "application/json", strOutData, strOutContentType, ei );
             d.ei_ = ei;
-            if ( ( !ret ) || strOutData.empty() ) {
+            if( ( ! ret ) || strOutData.empty() ) {
                 d.err_s_ = ei.strError_.empty() ? "call failed" : ei.strError_;
                 return d;  // data_t();
             }
             d.s_ = strOutData;
             std::string h;
-            if ( !strOutContentType.empty() )
+            if( ! strOutContentType.empty() )
                 h = stat_extract_short_content_type_string( strOutContentType );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
-#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp = ch_->Post(
                 strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponse );
@@ -670,7 +690,7 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
                 h = stat_extract_short_content_type_string(
                     resp->get_header_value( "Content-Type" ) );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
-#endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#endif // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             handle_data_arrived( d );
         }
     } else if ( cw_ ) {
@@ -792,23 +812,23 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
     if ( ch_ ) {
         if ( ch_->is_valid() ) {
             data_t d;
-#if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
+#if (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             std::string strOutData, strOutContentType;
             skutils::http::common_network_exception::error_info ei;
             bool ret = ch_->query(
                 strJsonIn.c_str(), "application/json", strOutData, strOutContentType, ei );
             d.ei_ = ei;
-            if ( ( !ret ) || strOutData.empty() ) {
+            if( ( ! ret ) || strOutData.empty() ) {
                 d.err_s_ = ei.strError_.empty() ? "call failed" : ei.strError_;
                 onError( jo, d.err_s_.c_str() );
                 return;
             }
             d.s_ = strOutData;
             std::string h;
-            if ( !strOutContentType.empty() )
+            if( ! strOutContentType.empty() )
                 h = stat_extract_short_content_type_string( strOutContentType );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
-#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else  // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp =
                 ch_->Post( strHttpQueryPath.c_str(), strJsonIn, "application/json" );

@@ -451,6 +451,13 @@ public:
     /// snapshot import.
     unsigned chainStartBlockNumber() const;
 
+    uint64_t pieceUsageBytes() const {
+        if ( this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
+            return std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
+        }
+        return 0;
+    }
+
 private:
     static h256 chunkId( unsigned _level, unsigned _index ) {
         return h256( _index * 0xff + _level );

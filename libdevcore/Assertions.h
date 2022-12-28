@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include <libdevcore/Log.h>
+
 #include <boost/exception/info.hpp>
 #include <iostream>
 
@@ -45,8 +47,8 @@ namespace dev {
 inline bool assertAux(
     bool _a, char const* _aStr, unsigned _line, char const* _file, char const* _func ) {
     if ( !_a )
-        std::cerr << "Assertion failed:" << _aStr << " [func=" << _func << ", line=" << _line
-                  << ", file=" << _file << "]" << std::endl;
+        cerror << "Assertion failed:" << _aStr << " [func=" << _func << ", line=" << _line
+               << ", file=" << _file << "]";
     return !_a;
 }
 
@@ -55,9 +57,9 @@ inline bool assertEqualAux( A const& _a, B const& _b, char const* _aStr, char co
     unsigned _line, char const* _file, char const* _func ) {
     bool c = _a == _b;
     if ( !c ) {
-        std::cerr << "Assertion failed: " << _aStr << " == " << _bStr << " [func=" << _func
-                  << ", line=" << _line << ", file=" << _file << "]" << std::endl;
-        std::cerr << "   Fail equality: " << _a << "==" << _b << std::endl;
+        cerror << "Assertion failed: " << _aStr << " == " << _bStr << " [func=" << _func
+               << ", line=" << _line << ", file=" << _file << "]";
+        cerror << "   Fail equality: " << _a << "==" << _b;
     }
     return !c;
 }

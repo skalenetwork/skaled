@@ -109,7 +109,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class pending_ima_txns : public skutils::json_config_file_accessor {
+class txn_pending_tracker_system_impl : public skutils::json_config_file_accessor {
 public:
     typedef std::list< txn_entry > list_txns_t;
     typedef std::set< txn_entry > set_txns_t;
@@ -124,15 +124,18 @@ protected:
 public:
     static std::atomic_size_t g_nMaxPendingTxns;
     static std::string g_strDispatchQueueID;
-    pending_ima_txns( const std::string& configPath, const std::string& strSgxWalletURL );
-    pending_ima_txns( const pending_ima_txns& ) = delete;
-    pending_ima_txns( pending_ima_txns&& ) = delete;
-    virtual ~pending_ima_txns();
-    pending_ima_txns& operator=( const pending_ima_txns& ) = delete;
-    pending_ima_txns& operator=( pending_ima_txns&& ) = delete;
+    txn_pending_tracker_system_impl(
+        const std::string& configPath, const std::string& strSgxWalletURL );
+    txn_pending_tracker_system_impl( const txn_pending_tracker_system_impl& ) = delete;
+    txn_pending_tracker_system_impl( txn_pending_tracker_system_impl&& ) = delete;
+    virtual ~txn_pending_tracker_system_impl();
+    txn_pending_tracker_system_impl& operator=( const txn_pending_tracker_system_impl& ) = delete;
+    txn_pending_tracker_system_impl& operator=( txn_pending_tracker_system_impl&& ) = delete;
     //
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
+
+    std::string url_sgx_wallet() const { return strSgxWalletURL_; }
 
 private:
     mutable mutex_type mtx_;
@@ -192,10 +195,23 @@ public:
     //
     bool check_txn_is_mined( const txn_entry& txe );
     bool check_txn_is_mined( const dev::u256& hash );
-};  /// class pending_ima_txns
+};  /// class txn_pending_tracker_system_impl
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class txn_pending_tracker_system : public txn_pending_tracker_system_impl {
+    static std::unique_ptr< txn_pending_tracker_system > g_ptr;
+
+public:
+    txn_pending_tracker_system( const std::string& configPath, const std::string& strSgxWalletURL );
+    txn_pending_tracker_system( const txn_pending_tracker_system_impl& ) = delete;
+    txn_pending_tracker_system( txn_pending_tracker_system_impl&& ) = delete;
+    virtual ~txn_pending_tracker_system();
+    static txn_pending_tracker_system& init(
+        const std::string& configPath, const std::string& strSgxWalletURL );
+    static txn_pending_tracker_system& instance();
+};  /// class txn_pending_tracker_system
 
 };  // namespace tracking
 
@@ -209,7 +225,7 @@ namespace rpc {
  */
 class SkaleStats : public dev::rpc::SkaleStatsFace,
                    public dev::rpc::SkaleStatsConsumerImpl,
-                   public dev::tracking::pending_ima_txns {
+                   public skutils::json_config_file_accessor {
     int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
     int findThisNodeIndex();
 
@@ -246,6 +262,9 @@ public:
 protected:
     eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
+
+    std::string pick_own_s_chain_url_s();
+    skutils::url pick_own_s_chain_url();
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

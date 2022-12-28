@@ -72,9 +72,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     //
-    std::cout << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() )
-              << "\n";
-    std::cout.flush();
+    clog( VerbosityInfo, "skale-host" )
+        << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() ) << "\n";
     //
     auto ts = nfo.timestamp();
     auto consensus_engine_ptr = make_unique< ConsensusEngine >(
@@ -244,12 +243,12 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL ) try
-    : m_client( _client ),
-      m_tq( _client.m_tq ),
-      m_instanceMonitor( _instanceMonitor ),
-      total_sent( 0 ),
-      total_arrived( 0 ) {
+    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
+    bool _broadcastEnabled ) try : m_client( _client ),
+                                   m_tq( _client.m_tq ),
+                                   m_instanceMonitor( _instanceMonitor ),
+                                   total_sent( 0 ),
+                                   total_arrived( 0 ) {
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     };
@@ -448,6 +447,34 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
+    // HACK For IS-348
+    auto saved_txns = txns;
+    std::stable_sort( txns.begin(), txns.end(), TransactionQueue::PriorityCompare{ m_tq } );
+    bool found_difference = false;
+    for ( size_t i = 0; i < txns.size(); ++i ) {
+        if ( txns[i].sha3() != saved_txns[i].sha3() )
+            found_difference = true;
+    }
+    if ( found_difference ) {
+        clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
+        clog( VerbosityError, "skale-host" ) << "<i> <old> <new>";
+        for ( size_t i = 0; i < txns.size(); ++i ) {
+            clog( VerbosityError, "skale-host" )
+                << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
+        }
+    }
+
+    // drop by block gas limit
+    u256 blockGasLimit = this->m_client.chainParams().gasLimit;
+    u256 gasAcc = 0;
+    auto first_to_drop_it = txns.begin();
+    for ( ; first_to_drop_it != txns.end(); ++first_to_drop_it ) {
+        gasAcc += first_to_drop_it->gas();
+        if ( gasAcc > blockGasLimit )
+            break;
+    }  // for
+    txns.erase( first_to_drop_it, txns.end() );
+
     m_debugTracer.tracepoint( "drop_bad_transactions" );
 
     {
@@ -591,6 +618,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
+            cerror << DETAILED_ERROR;
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
                 ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
                 _exit( int( ExitHandler::ec_state_root_mismatch ) );
@@ -756,17 +784,19 @@ void SkaleHost::startWorking() {
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
-            std::cout << "Thread " << g_strThreadName << " started\n";
+            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " started\n";
             m_consensus->bootStrapAll();
-            std::cout << "Thread " << g_strThreadName << " will exit\n";
+            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " will exit\n";
         } catch ( std::exception& ex ) {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            std::cout << "Consensus thread in scale host will exit with exception: " << s << "\n";
+            clog( VerbosityError, "skale-host" )
+                << "Consensus thread in skale host will exit with exception: " << s << "\n";
         } catch ( ... ) {
-            std::cout << "Consensus thread in scale host will exit with unknown exception\n";
-            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            clog( VerbosityError, "skale-host" )
+                << "Consensus thread in skale host will exit with unknown exception\n"
+                << skutils::signal::generate_stack_trace() << "\n";
         }
 
         bootstrap_promise.set_value();
@@ -804,7 +834,7 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    std::cerr << "1 before exitGracefully()" << std::endl;
+    cnote << "1 before exitGracefully()";
 
     if ( ExitHandler::shouldExit() ) {
         // requested exit
@@ -818,14 +848,14 @@ void SkaleHost::stopWorking() {
 
     m_consensus->exitGracefully();
 
-    std::cerr << "2 after exitGracefully()" << std::endl;
+    cnote << "2 after exitGracefully()";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    std::cerr << "3 after wait loop" << std::endl;
+    cnote << "3 after wait loop";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -835,7 +865,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    std::cerr << "4 before dtor" << std::endl;
+    cnote << "4 before dtor";
 }
 
 void SkaleHost::broadcastFunc() {
@@ -899,10 +929,12 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            cerror << DETAILED_ERROR;
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
+            cerror << DETAILED_ERROR;
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         }
@@ -917,6 +949,10 @@ u256 SkaleHost::getGasPrice() const {
 
 u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
+}
+
+std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
+    return m_consensus->getConsensusDbUsage();
 }
 
 std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {

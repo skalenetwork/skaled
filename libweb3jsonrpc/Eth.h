@@ -64,7 +64,7 @@ public:
     Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{ RPCModule{ "eth", "1.0" } };
+        return RPCModules{RPCModule{"eth", "1.0"}};
     }
 
     bool isEnabledTransactionSending() const;

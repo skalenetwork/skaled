@@ -2782,6 +2782,7 @@ bool client::query( const char* strInData,
         if ( !strDnsServers_.empty() )
             curl_easy_setopt( curl, CURLOPT_DNS_SERVERS, strDnsServers_.c_str() );
         curl_easy_setopt( curl, CURLOPT_COOKIEFILE, "" );
+        curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT_MS, timeout_milliseconds_ );
         curl_easy_setopt( curl, CURLOPT_TIMEOUT_MS, timeout_milliseconds_ );
         curl_easy_setopt( curl, CURLOPT_POST, 1L );
         curl_easy_setopt( curl, CURLOPT_HTTPHEADER, headers );
