@@ -197,7 +197,7 @@ jobs:
           ./testeth -t OverlayDBTests -- --express && touch /tmp/OverlayDBTestsPassed
           ./testeth -t AccountHolderTest -- --express && touch /tmp/AccountHolderTestPassed
           ./testeth -t ClientTests -- --express && touch /tmp/ClientTestsPassed
-          ./testeth -t JsonRpcSuite  -- --express && touch /tmp/JsonRpcSuitePassed
+          ./testeth -t JsonRpcSuite  -- --express && touch /tmp/JsonRpcSuitePassed 
           ./testeth -t SingleConsensusTests  -- --express && touch /tmp/SingleConsensusTestsPassed
           ./testeth -t ConsensusTests  -- --express && touch /tmp/ConsensusTestsPassed
           cd ..     
@@ -213,11 +213,10 @@ jobs:
           ls /tmp/LevelDBTestsPassed || ./testeth -t LevelDBTests -- --express --verbosity 4
           ls /tmp/SharedSpaceTestsPassed || ./testeth -t SharedSpaceTests -- --express --verbosity 4
           ls /tmp/SealEngineTestsPassed || ./testeth -t SealEngineTests -- --express --verbosity 4
-          ls /tmp/SealEngineTestsPassed || ./testeth -t SealEngineTests -- --express --verbosity 4
           ls /tmp/BlockChainMainNetworkSuitePassed || ./testeth -t BlockChainMainNetworkSuite -- --express --verbosity 4
           ls /tmp/BlockChainFrontierSuitePassed || ./testeth -t BlockChainFrontierSuite -- --express --verbosity 4
           ls /tmp/BlockQueueSuitePassed || ./testeth -t BlockQueueSuite -- --express --verbosity 4
-          ls /tmp/BlockQueueSuitePassed || ./testeth -t ClientBase -- --express --verbosity 4
+          ls /tmp/ClientBasePassed || ./testeth -t ClientBase -- --express --verbosity 4
           ls /tmp/EstimateGasPassed || ./testeth -t EstimateGas -- --express --verbosity 4
           ls /tmp/IMABLSPublicKeyPassed || ./testeth -t IMABLSPublicKey -- --express --verbosity 4
           ls /tmp/ClientSnapshotsSuitePassed || ./testeth -t ClientSnapshotsSuite -- --express --verbosity 4
@@ -243,7 +242,7 @@ jobs:
           ls /tmp/OverlayDBTestsPassed || ./testeth -t OverlayDBTests -- --express --verbosity 4
           ls /tmp/AccountHolderTestPassed || ./testeth -t AccountHolderTest -- --express --verbosity 4
           ls /tmp/ClientTestsPassed || ./testeth -t ClientTests -- --express --verbosity 4
-          ls /tmp/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite  -- --express --verbosity 4
+          ls /tmp/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite  -- --express --verbosity 4 
           ls /tmp/SingleConsensusTestsPassed || ./testeth -t SingleConsensusTests  -- --express --verbosity 4
           ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4    
           cd ..
