@@ -120,7 +120,7 @@ extern unsigned c_maxOpenLeveldbFiles;
 }  // namespace dev
 
 namespace {
-std::atomic< bool > g_silence = {false};
+std::atomic< bool > g_silence = { false };
 unsigned const c_lineWidth = 160;
 
 static void version() {
@@ -209,12 +209,12 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
 }
 
 void removeEmptyOptions( po::parsed_options& parsed ) {
-    const set< string > filteredOptions = {"http-port", "https-port", "ws-port", "wss-port",
+    const set< string > filteredOptions = { "http-port", "https-port", "ws-port", "wss-port",
         "http-port6", "https-port6", "ws-port6", "wss-port6", "info-http-port", "info-https-port",
         "info-ws-port", "info-wss-port", "info-http-port6", "info-https-port6", "info-ws-port6",
         "info-wss-port6", "ws-log", "ssl-key", "ssl-cert", "ssl-ca", "acceptors",
-        "info-acceptors"};
-    const set< string > emptyValues = {"NULL", "null", "None"};
+        "info-acceptors" };
+    const set< string > emptyValues = { "NULL", "null", "None" };
 
     parsed.options.erase( remove_if( parsed.options.begin(), parsed.options.end(),
                               [&filteredOptions, &emptyValues]( const auto& option ) -> bool {
@@ -290,7 +290,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        vector< string > prefixes{"prices_", "blocks_"};
+        vector< string > prefixes{ "prices_", "blocks_" };
         for ( const string& prefix : prefixes ) {
             fs::path db_path;
             for ( auto& f :
@@ -971,7 +971,7 @@ int main( int argc, char** argv ) try {
         nDispatchThreads = n;
     }
     clog( VerbosityInfo, "main" ) << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
-              << cc::debug( " threads in task dispatcher" ) << std::endl;
+                                  << cc::debug( " threads in task dispatcher" ) << std::endl;
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
@@ -1509,17 +1509,16 @@ int main( int argc, char** argv ) try {
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
-            "blocks_" + chainParams.nodeInfo.id.str() + ".db");
+            "blocks_" + chainParams.nodeInfo.id.str() + ".db" );
 
         snapshotManager.reset( new SnapshotManager( getDataDir(),
-            {BlockChain::getChainDirName( chainParams ), "filestorage",
-                "prices_" + chainParams.nodeInfo.id.str() + ".db",
-    RecentBlocksDBPath },
+            { BlockChain::getChainDirName( chainParams ), "filestorage",
+                "prices_" + chainParams.nodeInfo.id.str() + ".db", RecentBlocksDBPath },
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
-    
+
     if ( chainParams.nodeInfo.syncNode && !chainParams.nodeInfo.syncFromCatchup ) {
-        auto bc = BlockChain(chainParams, getDataDir());
+        auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
         }
@@ -1676,15 +1675,15 @@ int main( int argc, char** argv ) try {
                                     << cc::notice( "Skip checking snapshot hash." );
                                 successfullDownload = true;
                             } else {
-                            clog( VerbosityWarning, "main" )
-                                << cc::notice(
+                                clog( VerbosityWarning, "main" )
+                                    << cc::notice(
                                            "Downloaded snapshot with incorrect hash! Incoming "
                                            "hash " )
-                                << cc::notice( voted_hash.first.hex() )
-                                << cc::notice( " is not equal to calculated hash " )
-                                << cc::notice( calculated_hash.hex() )
-                                << cc::notice( "Will try again" );
-                            snapshotManager->cleanup();
+                                    << cc::notice( voted_hash.first.hex() )
+                                    << cc::notice( " is not equal to calculated hash " )
+                                    << cc::notice( calculated_hash.hex() )
+                                    << cc::notice( "Will try again" );
+                                snapshotManager->cleanup();
                             }
                         }
                     } catch ( const std::exception& ex ) {
@@ -1774,7 +1773,7 @@ int main( int argc, char** argv ) try {
     netPrefs.pin = false;
 
     auto nodesState = contents( getDataDir() / fs::path( "network.rlp" ) );
-    auto caps = set< string >{"eth"};
+    auto caps = set< string >{ "eth" };
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "skaled" ), getDataDir(),
     //    "",
@@ -1845,7 +1844,7 @@ int main( int argc, char** argv ) try {
         g_client->injectSkaleHost( skaleHost );
 
         skale_get_buildinfo();
-        g_client->setExtraData( dev::bytes{'s', 'k', 'a', 'l', 'e'} );
+        g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
@@ -1916,8 +1915,8 @@ int main( int argc, char** argv ) try {
             autoAuthAnswer = strAA;
         else {
             clog( VerbosityError, "main" ) << "Bad "
-                 << "--aa"
-                 << " option: " << strAA << "\n";
+                                           << "--aa"
+                                           << " option: " << strAA << "\n";
             return EX_USAGE;
         }
         clog( VerbosityDebug, "main" )
@@ -2447,11 +2446,11 @@ int main( int argc, char** argv ) try {
                                                       sizeof( g_arrVarNamesToTryEthERC20[0] );
                       ++idxVar ) {
                     const char* strVarName = g_arrVarNamesToTryEthERC20[idxVar];
-                serverOpts.strEthErc20Address_ =
+                    serverOpts.strEthErc20Address_ =
                         joConfig["skaleConfig"]["contractSettings"]["IMA"][strVarName]
-                        .get< std::string >();
-                serverOpts.strEthErc20Address_ =
-                    skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
+                            .get< std::string >();
+                    serverOpts.strEthErc20Address_ =
+                        skutils::tools::trim_copy( serverOpts.strEthErc20Address_ );
                     if ( !serverOpts.strEthErc20Address_.empty() )
                         break;
                 }

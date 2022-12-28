@@ -210,8 +210,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
             if ( ( _transaction.nonce() != nonceReq && !_allowFuture ) ||
                  ( _transaction.nonce() < nonceReq && _allowFuture ) ) {
                 cdebug << "WARNING: Transaction " << _transaction.sha3() << " nonce "
-                          << _transaction.nonce() << " is not equal to required nonce " << nonceReq
-                          << "\n";
+                       << _transaction.nonce() << " is not equal to required nonce " << nonceReq
+                       << "\n";
                 BOOST_THROW_EXCEPTION(
                     InvalidNonce() << RequirementError( static_cast< bigint >( nonceReq ),
                         static_cast< bigint >( _transaction.nonce() ) ) );
@@ -330,7 +330,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
                 m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
             // m_s = dev::eth::g_state.delegateWrite();
             size_t outputSize = output.size();
-            m_output = owning_bytes_ref{std::move( output ), 0, outputSize};
+            m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
                 m_gas = 0;
                 m_excepted = TransactionException::OutOfGas;

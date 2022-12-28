@@ -86,7 +86,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{ 1024, 1024 } );
     /// Destructor.
     virtual ~Client();
 
@@ -491,8 +491,8 @@ protected:
     std::queue< std::function< void() > > m_functionQueue;  ///< Functions waiting to be executed in
                                                             ///< the main thread.
 
-    std::atomic< bool > m_syncTransactionQueue = {false};
-    std::atomic< bool > m_syncBlockQueue = {false};
+    std::atomic< bool > m_syncTransactionQueue = { false };
+    std::atomic< bool > m_syncBlockQueue = { false };
 
     bytes m_extraData;
 
@@ -500,8 +500,8 @@ protected:
                                                    ///< the DB
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
-    Logger m_logger{createLogger( VerbosityInfo, "client" )};
-    Logger m_loggerDetail{createLogger( VerbosityTrace, "client" )};
+    Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
 
 
     /// skale

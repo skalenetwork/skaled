@@ -126,7 +126,7 @@ string Eth::eth_getBalance( string const& _address, string const&
             return toJS( client()->historicStateBalanceAt(
                 jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
         } else {
-        return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+            return toJS( client()->balanceAt( jsToAddress( _address ) ) );
         }
 #else
         return toJS( client()->balanceAt( jsToAddress( _address ) ) );

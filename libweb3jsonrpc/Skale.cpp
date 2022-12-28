@@ -414,8 +414,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         if ( !fl ) {
             clog( VerbosityError, "skale_getSnapshotSignature" )
                 << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while trying to connect to sgx server: " )
-                      << cc::warn( "connection refused" ) << std::endl;
+                << cc::error( " Exception while trying to connect to sgx server: " )
+                << cc::warn( "connection refused" ) << std::endl;
         }
 
         skutils::rest::data_t d;
@@ -428,15 +428,15 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                      d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
                     clog( VerbosityError, "skale_getSnapshotSignature" )
                         << cc::error( "ERROR:" )
-                              << cc::error( " Exception while trying to connect to sgx server: " )
+                        << cc::error( " Exception while trying to connect to sgx server: " )
                         << cc::error( " error with connection: " ) << cc::info( " retrying... " )
                         << std::endl;
                 } else {
                     clog( VerbosityError, "skale_getSnapshotSignature" )
                         << cc::error( "ERROR:" )
-                              << cc::error( " Exception while trying to connect to sgx server: " )
-                              << cc::error( " error with ssl certificates " )
-                              << cc::error( d.ei_.strError_ ) << std::endl;
+                        << cc::error( " Exception while trying to connect to sgx server: " )
+                        << cc::error( " error with ssl certificates " )
+                        << cc::error( d.ei_.strError_ ) << std::endl;
                 }
             } else {
                 break;
@@ -447,7 +447,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
             clog( VerbosityError, "skale_getSnapshotSignature" )
                 << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
-                      << std::endl;
+                << std::endl;
             throw std::runtime_error( g_strErrMsg );
         }
 
@@ -575,7 +575,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                     ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
                 clog( VerbosityError, "download snapshot" )
                     << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "REST failed to connect to server(1)" ) << "\n";
+                    << cc::error( "REST failed to connect to server(1)" ) << "\n";
                 return false;
             }
 
@@ -589,7 +589,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                     ( *pStrErrorDescription ) = "Failed to get latest bockNumber";
                 clog( VerbosityError, "download snapshot" )
                     << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "Failed to get latest bockNumber" ) << "\n";
+                    << cc::error( "Failed to get latest bockNumber" ) << "\n";
                 return false;
             }
             // TODO catch?
@@ -604,7 +604,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
             clog( VerbosityError, "download snapshot" )
                 << cc::fatal( "FATAL:" ) << " "
-                      << cc::error( "REST failed to connect to server(2)" ) << "\n";
+                << cc::error( "REST failed to connect to server(2)" ) << "\n";
             return false;
         }
         cli.client_connection_timeout( 30 * 60 * 1000 );  // milliseconds
@@ -621,7 +621,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 ( *pStrErrorDescription ) = "REST call failed: " + d.err_s_;
             clog( VerbosityError, "download snapshot" )
                 << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed: " )
-                      << cc::warn( d.err_s_ ) << "\n";
+                << cc::warn( d.err_s_ ) << "\n";
             return false;
         }
         if ( d.empty() ) {
@@ -683,7 +683,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                     ( *pStrErrorDescription ) = "REST call failed(fragment downloader)";
                 clog( VerbosityError, "download snapshot" )
                     << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "REST call failed(fragment downloader)" ) << "\n";
+                    << cc::error( "REST call failed(fragment downloader)" ) << "\n";
                 return false;
             }
             std::vector< uint8_t > buffer;

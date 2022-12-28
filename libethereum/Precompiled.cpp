@@ -103,26 +103,26 @@ ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in ) {
                 if ( Public rec = recover( sig, in.hash ) ) {
                     ret = dev::sha3( rec );
                     memset( ret.data(), 0, 12 );
-                    return {true, ret.asBytes()};
+                    return { true, ret.asBytes() };
                 }
             } catch ( ... ) {
             }
         }
     }
-    return {true, {}};
+    return { true, {} };
 }
 
 ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in ) {
-    return {true, dev::sha256( _in ).asBytes()};
+    return { true, dev::sha256( _in ).asBytes() };
 }
 
 ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in ) {
-    return {true, h256( dev::ripemd160( _in ), h256::AlignRight ).asBytes()};
+    return { true, h256( dev::ripemd160( _in ), h256::AlignRight ).asBytes() };
 }
 
 ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in ) {
     MICROPROFILE_SCOPEI( "VM", "identity", MP_RED );
-    return {true, _in.toBytes()};
+    return { true, _in.toBytes() };
 }
 
 // Parse _count bytes of _in starting with _begin offset as big endian int.
@@ -133,8 +133,8 @@ bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigin
     assert( _count <= numeric_limits< size_t >::max() / 8 );  // Otherwise, the return value would
                                                               // not fit in the memory.
 
-    size_t const begin{_begin};
-    size_t const count{_count};
+    size_t const begin{ _begin };
+    size_t const count{ _count };
 
     // crop _in, not going beyond its size
     bytesConstRef cropped = _in.cropped( begin, min( count, _in.count() - begin ) );
@@ -156,20 +156,20 @@ ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in ) {
     assert( baseLength <= numeric_limits< size_t >::max() / 8 );  // Otherwise, gas should be too
                                                                   // expensive.
     if ( modLength == 0 && baseLength == 0 )
-        return {true, bytes{}};  // This is a special case where expLength can be very big.
+        return { true, bytes{} };  // This is a special case where expLength can be very big.
     assert( expLength <= numeric_limits< size_t >::max() / 8 );
 
     bigint const base( parseBigEndianRightPadded( _in, 96, baseLength ) );
     bigint const exp( parseBigEndianRightPadded( _in, 96 + baseLength, expLength ) );
     bigint const mod( parseBigEndianRightPadded( _in, 96 + baseLength + expLength, modLength ) );
 
-    bigint const result = mod != 0 ? boost::multiprecision::powm( base, exp, mod ) : bigint{0};
+    bigint const result = mod != 0 ? boost::multiprecision::powm( base, exp, mod ) : bigint{ 0 };
 
     size_t const retLength( modLength );
     bytes ret( retLength );
     toBigEndian( result, ret );
 
-    return {true, ret};
+    return { true, ret };
 }
 
 namespace {
@@ -295,7 +295,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -306,7 +306,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
@@ -340,7 +340,7 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -351,7 +351,7 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
@@ -375,7 +375,7 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
         size_t const chunkLength = byteChunkLength.convert_to< size_t >();
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        const fs::path canonicalPath = fs::canonical(filePath);
+        const fs::path canonicalPath = fs::canonical( filePath );
         if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
              0 ) {
             throw std::runtime_error( "readChunk() failed because file couldn't be read" );
@@ -391,7 +391,7 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
         bytes buffer( chunkLength );
         infile.read(
             reinterpret_cast< char* >( &buffer[0] ), static_cast< long >( buffer.size() ) );
-        return {true, buffer};
+        return { true, buffer };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -402,7 +402,7 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
@@ -416,7 +416,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, filename, filenameLength );
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        const fs::path canonicalPath = fs::canonical(filePath);
+        const fs::path canonicalPath = fs::canonical( filePath );
         if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
              0 ) {
             throw std::runtime_error( "getFileSize() failed because file couldn't be read" );
@@ -424,7 +424,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
 
         size_t const fileSize = stat_compute_file_size( filePath.c_str() );
         bytes response = toBigEndian( static_cast< u256 >( fileSize ) );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -435,7 +435,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
@@ -454,7 +454,7 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -465,7 +465,7 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
@@ -482,7 +482,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -493,7 +493,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
@@ -517,7 +517,7 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -528,7 +528,7 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
@@ -575,7 +575,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -587,7 +587,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};
+    return { false, response };
 }
 
 ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
@@ -601,7 +601,7 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
         if ( !bLoggingIsEnabledForContracts ) {
             u256 code = 1;
             bytes response = toBigEndian( code );
-            return {true, response};
+            return { true, response };
         }
 
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
@@ -683,7 +683,7 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
 
         u256 code = 1;
         bytes response = toBigEndian( code );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -695,10 +695,10 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
-static const std::list< std::string > g_listReadableConfigParts{"sealEngine",
+static const std::list< std::string > g_listReadableConfigParts{ "sealEngine",
     //"genesis.*"
     //"params.*",
 
@@ -716,7 +716,7 @@ static const std::list< std::string > g_listReadableConfigParts{"sealEngine",
 
     "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
 
-    "skaleConfig.sChain.nodes.*"};
+    "skaleConfig.sChain.nodes.*" };
 
 static bool stat_is_accessible_json_path( const std::string& strPath ) {
     if ( strPath.empty() )
@@ -805,7 +805,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         //          << "\n";
 
         bytes response = toBigEndian( uValue );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -818,7 +818,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
@@ -840,7 +840,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
         dev::u256 uValue( strValue.c_str() );
 
         bytes response = toBigEndian( uValue );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -853,7 +853,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
@@ -872,7 +872,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
             skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
         std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
         bytes response = stat_string_to_bytes_with_length( strValue );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -885,13 +885,13 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef /*_in*/ ) {
     u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 static dev::u256 stat_s2a( const std::string& saIn ) {
@@ -950,7 +950,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
         }
 
         bytes response = toBigEndian( uValue );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -963,7 +963,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
@@ -972,7 +972,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
         dev::u256 uValue = g_skaleHost->getBlockRandom();
         bytes response = toBigEndian( uValue );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -984,37 +984,37 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
-/*
-    try {
-        auto rawAddress = _in.cropped( 0, 20 ).toBytes();
-        std::string address;
-        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-        auto add = parseBigEndianRightPadded( _in, 20, 32 );
+    /*
+        try {
+            auto rawAddress = _in.cropped( 0, 20 ).toBytes();
+            std::string address;
+            boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+            auto add = parseBigEndianRightPadded( _in, 20, 32 );
 
-        auto value = u256( add );
+            auto value = u256( add );
 
-        g_state.addBalance( Address( address ), value );
+            g_state.addBalance( Address( address ), value );
 
-        dev::u256 code = 1;
-        bytes response = toBigEndian( code );
-        return {true, response};
-    } catch ( std::exception& ex ) {
-        std::string strError = ex.what();
-        if ( strError.empty() )
-            strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
-            << "Exception in precompiled/addBalance(): " << strError << "\n";
-    } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
-    }
-*/
+            dev::u256 code = 1;
+            bytes response = toBigEndian( code );
+            return {true, response};
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/addBalance(): " << strError << "\n";
+        } catch ( ... ) {
+            LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
+        }
+    */
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
@@ -1026,7 +1026,7 @@ ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
                          toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) +
                          toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
                          toBigEndian( dev::u256( imaBLSPublicKey[3] ) );
-        return {true, response};
+        return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
@@ -1039,7 +1039,7 @@ ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
-    return {false, response};  // 1st false - means bad error occur
+    return { false, response };  // 1st false - means bad error occur
 }
 
 // ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {

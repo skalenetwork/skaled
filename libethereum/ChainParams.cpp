@@ -186,7 +186,7 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
             BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
 
@@ -263,7 +263,7 @@ ChainParams ChainParams::loadConfig(
                     u256 id = groupNodeConfObj[0].get_uint64();
                     u256 sChainIndex = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
-                    groupNodes.push_back( {id, sChainIndex, publicKey} );
+                    groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
                 nodeGroup.nodes = groupNodes;
 

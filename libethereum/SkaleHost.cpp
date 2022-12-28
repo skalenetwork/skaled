@@ -61,7 +61,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 60*4;
+const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 60 * 4;
 
 #ifndef CONSENSUS
 #define CONSENSUS 1

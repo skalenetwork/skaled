@@ -155,9 +155,9 @@ Client::~Client() {
 }
 
 void Client::stopWorking() {
-// TODO Try this in develop. For hotfix we will keep as is
-//    if ( !Worker::isWorking() )
-//        return;
+    // TODO Try this in develop. For hotfix we will keep as is
+    //    if ( !Worker::isWorking() )
+    //        return;
 
     Worker::stopWorking();
 
@@ -1003,14 +1003,14 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     std::stringstream ssBlockStats;
     ssBlockStats << cc::success( "Block stats:" ) << "BN:" << number()
                  << ":BTS:" << bc().info().timestamp() << ":TXS:" << TransactionBase::howMany()
-                    << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
-                    << ":SENGS:" << SealEngineBase::howMany()
-                    << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
-                    << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
+                 << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
+                 << ":SENGS:" << SealEngineBase::howMany()
+                 << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
+                 << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
-                    << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                    << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+                 << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                 << ":CMM:" << bc().getTotalCacheMemory();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
