@@ -10,4 +10,4 @@ jobs:
         uses: jidicula/clang-format-action@v4.10.0
         with:
           clang-format-version: '10'          
-          exclude-regex: '^(CMakeFiles|cmake|deps|build|skaled_ssl_test*|newer_lcov)'
+          exclude-regex: '(^CMakeFiles|^cmake|^deps|^build|^skaled_ssl_test|^newer_lcov)'
