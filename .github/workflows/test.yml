@@ -30,8 +30,7 @@ jobs:
         with:
           path: |
             /var/cache/apt/archives
-            /go/pkg/mod
-            key: ${{ runner.os }}-apt-go-cache
+          key: ${{ runner.os }}-apt-cache
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
       - name: install packages
