@@ -143,6 +143,7 @@ jobs:
           NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 1
           cd ..     
       - name: Testeth verbosity 4
+        if: testethVerbosity1.outcome == 'failure'      
         run : |
           cd build/test      
           NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
