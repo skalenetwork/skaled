@@ -141,7 +141,12 @@ jobs:
           #first run with verbosity 1. If test fails, rerun with verbosity 4
           cd build/test      
           NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 1
-          cd ..        
+          cd ..     
+      - name: Testeth verbosity 4
+        run : |
+          cd build/test      
+          NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
+          cd ..            
       - name: Brtfs test
         run : |
           cd build/test                          
