@@ -141,7 +141,7 @@ jobs:
           cd build
           make testeth -j$(nproc)
           cd ..
-      - name: Print ccache stats after deps
+      - name: Print ccache stats after full build
         run: |
           ccache --show-stats
       - name: Testeth verbosity 1
