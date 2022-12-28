@@ -988,6 +988,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
 }
 
 ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
+/*
     try {
         auto rawAddress = _in.cropped( 0, 20 ).toBytes();
         std::string address;
@@ -1010,6 +1011,7 @@ ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
     }
+*/
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return {false, response};  // 1st false - means bad error occur
