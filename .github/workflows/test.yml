@@ -134,6 +134,14 @@ jobs:
           cd build
           make testeth -j$(nproc)
           cd ..
+      - name: Testeth verbosity 1
+        continue-on-error: true
+        id: testethVerbosity1
+        run : |
+          #first run with verbosity 1. If test fails, rerun with verbosity 4
+          cd build/test      
+          NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 1
+          cd ..        
       - name: Brtfs test
         run : |
           cd build/test                          
