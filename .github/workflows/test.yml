@@ -31,6 +31,7 @@ jobs:
           path: |
             /var/cache/apt/archives
           key: ${{ runner.os }}-apt-cache
+          ttl: 1000000 # purge cache every 1000000 seconds (10 days). This is to pull updated packages
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
       - name: install packages
