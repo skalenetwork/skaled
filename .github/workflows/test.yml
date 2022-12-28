@@ -111,6 +111,7 @@ jobs:
       - name: Build dependencies
         run: |
           ccache --max-size=20G
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
@@ -123,6 +124,7 @@ jobs:
           cd ..
       - name: Configure all
         run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
@@ -138,6 +140,7 @@ jobs:
           ccache --show-stats
       - name: Build all
         run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
