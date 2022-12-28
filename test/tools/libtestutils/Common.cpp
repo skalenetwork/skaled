@@ -42,7 +42,7 @@ boost::filesystem::path dev::test::getTestPath() {
     const char* ptestPath = getenv( "ETHEREUM_TEST_PATH" );
 
     if ( ptestPath == nullptr ) {
-        clog( VerbosityWarning, "test" )
+        clog( VerbosityDebug, "test" )
             << " could not find environment variable ETHEREUM_TEST_PATH \n";
         testPath = "../../test/jsontests";
     } else
