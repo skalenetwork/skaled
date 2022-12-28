@@ -105,12 +105,14 @@ jobs:
         run: |
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-      - name: Print ccache stats before start
+      - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
         run: |
+          ccache --max-size=20G
+          ccache -z
           ccache --show-stats
       - name: Build dependencies
         run: |
-          ccache --max-size=20G
+          
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
