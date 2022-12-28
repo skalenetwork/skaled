@@ -11,4 +11,4 @@ jobs:
         with:
           clang-format-version: '10'         
           check-path: '.'
-          exclude-regex: '(CMakeFiles/*|cmake/*|deps/*|build/*|skaled_ssl_test/*|newer_lcov/*|libskutils/*c)'
+          exclude-regex: '(CMakeFiles/*|cmake/*|deps/*|build/*|skaled_ssl_test/*|newer_lcov/*|libskutils/src/*)'
