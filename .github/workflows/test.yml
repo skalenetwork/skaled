@@ -139,8 +139,49 @@ jobs:
         id: testethVerbosity1
         run : |
           #first run with verbosity 1. If test fails, rerun with verbosity 4
-          cd build/test      
-          NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 1
+          cd build/test
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1          
+          # we specifically run each test for easier log review
+          testeth -t BlockchainTests -- --express
+          testeth -t TransactionTests -- --express
+          testeth -t VMTests -- --express
+          testeth -t LevelDBTests -- --express
+          testeth -t SharedSpaceTests -- --express
+          testeth -t SealEngineTests -- --express
+          testeth -t SealEngineTests -- --express
+          testeth -t BlockChainMainNetworkSuite -- --express
+          testeth -t BlockChainFrontierSuite -- --express
+          testeth -t BlockQueueSuite -- --express
+          testeth -t ClientBase -- --express
+          testeth -t EstimateGas -- --express
+          testeth -t IMABLSPublicKey -- --express
+          testeth -t ClientSnapshotsSuite -- --express
+          testeth -t ExtVmSuite -- --express
+          testeth -t GasPricer -- --express
+          testeth -t BasicTests -- --express
+          testeth -t InstanceMonitorSuite -- --express
+          testeth -t PrecompiledTests -- --express
+          testeth -t SkaleHostSuite -- --express
+          testeth -t StateUnitTests -- --express
+          testeth -t libethereum -- --express
+          testeth -t TransactionQueueSuite -- --express
+          testeth -t LegacyVMSuite -- --express
+          testeth -t SkaleInterpreterSuite -- --express
+          testeth -t SnapshotSigningTestSuite -- --express
+          testeth -t HashSnapshotTestSuite
+          testeth -t BtrfsTestSuite -- --express
+          testeth -t SkUtils -- --express
+          testeth -t BlockChainTestSuite -- --express
+          testeth -t TestHelperSuite -- --express
+          testeth -t LevelDBHashBase -- --express
+          testeth -t memDB -- --express
+          testeth -t OverlayDBTests -- --express
+          testeth -t AccountHolderTest -- --express
+          testeth -t ClientTests -- --express
+          testeth -t JsonRpcSuite  -- --express
+          testeth -t SingleConsensusTests  -- --express
+          testeth -t ConsensusTests  -- --express
           cd ..     
       - name: Testeth verbosity 4
         if: steps.testethVerbosity1.outcome == 'failure'      
@@ -148,33 +189,48 @@ jobs:
           # Since tests failed, we are rerunning them with higher verbosity
           # ToDo: add logic to only re-run failed tests
           cd build/test      
-          NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
-          cd ..            
-      - name: Brtfs test
-        run : |
-          cd build/test                          
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1          
+          testeth -t BlockchainTests -- --express --verbosity 4
+          testeth -t TransactionTests -- --express --verbosity 4
+          testeth -t VMTests -- --express --verbosity 4
+          testeth -t LevelDBTests -- --express --verbosity 4
+          testeth -t SharedSpaceTests -- --express --verbosity 4
+          testeth -t SealEngineTests -- --express --verbosity 4
+          testeth -t SealEngineTests -- --express --verbosity 4
+          testeth -t BlockChainMainNetworkSuite -- --express --verbosity 4
+          testeth -t BlockChainFrontierSuite -- --express --verbosity 4
+          testeth -t BlockQueueSuite -- --express --verbosity 4
+          testeth -t ClientBase -- --express --verbosity 4
+          testeth -t EstimateGas -- --express --verbosity 4
+          testeth -t IMABLSPublicKey -- --express --verbosity 4
+          testeth -t ClientSnapshotsSuite -- --express --verbosity 4
+          testeth -t ExtVmSuite -- --express --verbosity 4
+          testeth -t GasPricer -- --express --verbosity 4
+          testeth -t BasicTests -- --express --verbosity 4
+          testeth -t InstanceMonitorSuite -- --express --verbosity 4
+          testeth -t PrecompiledTests -- --express --verbosity 4
+          testeth -t SkaleHostSuite -- --express --verbosity 4
+          testeth -t StateUnitTests -- --express --verbosity 4
+          testeth -t libethereum -- --express --verbosity 4
+          testeth -t TransactionQueueSuite -- --express --verbosity 4
+          testeth -t LegacyVMSuite -- --express --verbosity 4
+          testeth -t SkaleInterpreterSuite -- --express --verbosity 4
+          testeth -t SnapshotSigningTestSuite -- --express --verbosity 4
+          testeth -t HashSnapshotTestSuite --verbosity 4
+          testeth -t BtrfsTestSuite -- --express --verbosity 4
+          testeth -t SkUtils -- --express --verbosity 4
+          testeth -t BlockChainTestSuite -- --express --verbosity 4
+          testeth -t TestHelperSuite -- --express --verbosity 4
+          testeth -t LevelDBHashBase -- --express --verbosity 4
+          testeth -t memDB -- --express --verbosity 4
+          testeth -t OverlayDBTests -- --express --verbosity 4
+          testeth -t AccountHolderTest -- --express --verbosity 4
+          testeth -t ClientTests -- --express --verbosity 4
+          testeth -t JsonRpcSuite  -- --express --verbosity 4
+          testeth -t SingleConsensusTests  -- --express --verbosity 4
+          testeth -t ConsensusTests  -- --express --verbosity 4    
           cd ..
-      - name: HashSnapshot test
-        run : |
-          cd build/test                                  
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          cd ..
-      - name: ClientSnapshot test
-        run : |
-          cd build/test                                  
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
-          cd ..           
-          # Create lcov report
-          #lcov --capture --directory . --output-file coverage.info
-          #lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-          #lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          #lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused 
-          #lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused
-          #lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-          #- lcov --list coverage.info # debug info
-          # Uploading report to CodeCov
-          #  bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
       - run: |
           sudo umount build/test/btrfs || true
           sudo rm -rf /tmp/tmp*
