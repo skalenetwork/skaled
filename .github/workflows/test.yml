@@ -100,7 +100,6 @@ jobs:
         run: |
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-
       - name: Build dependencies
         run: |
           export CC=gcc-9
@@ -135,7 +134,6 @@ jobs:
           cd build
           make testeth -j$(nproc)
           cd ..
-
       - name: Testeth verbosity 1
         continue-on-error: true
         id: testethVerbosity1
@@ -146,7 +144,6 @@ jobs:
           cd ..
       - name: Testeth verbosity 4
         if: testethVerbosity1.outcome == 'failure'
-        continue-on-error: true
         run : |
           #first run with verbosity 1. If test fails, rerun with verbosity 4
           cd build/test      
