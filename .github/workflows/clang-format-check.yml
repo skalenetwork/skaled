@@ -10,5 +10,5 @@ jobs:
         uses: jidicula/clang-format-action@v4.10.0
         with:
           clang-format-version: '10'
-          include-regex: '^.*\.((((c|pp|xx|\+\+)?$)|((h|H)h?(pp|xx|\+\+)?$))|(ino|pde|proto|cu))$'          
+          include-regex: '\.(cpp|cxx|h|hpp)$'          
           exclude-regex: '^(CMakeFiles|cmake|deps|build|skaled_ssl_test|newer_lcov)'
