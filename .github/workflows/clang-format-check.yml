@@ -12,4 +12,4 @@ jobs:
           clang-format-version: '10'         
           check-path: '.'
           include-regex: '^.*\.((((c|C)(c|pp|xx|\+\+)?$)|((h|H)h?(pp|xx|\+\+)?$))|(ino|pde|proto|cu))$'
-          exclude-regex: '(CMakeFiles/*|cmake/*|deps/*|build/*|skaled_ssl_test/*|newer_lcov/*|libskutils/src/*)'
+          exclude-regex: '(CMakeFiles/*|cmake/*|deps/*|build/*|skaled_ssl_test/*|newer_lcov/*)'
