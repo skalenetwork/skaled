@@ -25,7 +25,12 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
-
+      - name: Cache apt packages
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-cache
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
       - name: install packages
