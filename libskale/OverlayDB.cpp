@@ -22,8 +22,8 @@
  * @date 2018
  */
 
-#include "ContractStorageZeroValuePatch.h"
 #include "OverlayDB.h"
+#include "ContractStorageZeroValuePatch.h"
 
 #include <thread>
 
@@ -167,7 +167,7 @@ void OverlayDB::commitStorageValues() {
 }
 
 
-void OverlayDB::commit( const std::string& _debugCommitId) {
+void OverlayDB::commit( const std::string& _debugCommitId ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";

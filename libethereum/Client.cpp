@@ -146,7 +146,6 @@ Client::Client( ChainParams const& _params, int _networkID,
     ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
         chainParams().sChain.contractStorageZeroValuePatchTimestamp;
     RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
-
 }
 
 Client::~Client() {

@@ -1511,7 +1511,9 @@ int main( int argc, char** argv ) try {
         auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
             "blocks_" + chainParams.nodeInfo.id.str() + ".db");
 
-         snapshotManager.reset( new SnapshotManager( getDataDir(),
+
+
+        shotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db", mostRecentBlocksDBPath },
             sharedSpace ? sharedSpace->getPath() : "" ) );
