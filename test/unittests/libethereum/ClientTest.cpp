@@ -362,8 +362,6 @@ static std::string const c_configString = R"(
 }
 )";
 
-static size_t rand_port = 1024 + rand() % 64000;
-
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
 {

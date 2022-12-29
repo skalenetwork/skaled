@@ -23,8 +23,8 @@
  */
 
 #include "OverlayDB.h"
-#include "libhistoric/HistoricState.h"
 #include "ContractStorageZeroValuePatch.h"
+#include "libhistoric/HistoricState.h"
 
 #include <thread>
 

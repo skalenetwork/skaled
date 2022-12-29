@@ -71,10 +71,6 @@ public:
         return 0;
     }
 
-    std::map< std::string, uint64_t > getConsensusDbUsage() const {
-        return {};
-    }
-
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
         if ( _blockId == block_gas_prices.size() )
@@ -90,11 +86,11 @@ public:
     }
 
     uint64_t checkOracleResult( const string&
-           /*_receipt*/, string& /*_result */) override {
+           /*_receipt*/, string& /*_result */) {
         return 0;
     }
 
-    map< string, uint64_t > getConsensusDbUsage() const override {
+    map< string, uint64_t > getConsensusDbUsage() const {
         return map< string, uint64_t >();
     };
 };
@@ -713,7 +709,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().startWrite();
+        auto wr_state = client->state().createStateModifyCopy();
         wr_state.addBalance( account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
         wr_state.commit();
     }
