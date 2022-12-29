@@ -8,6 +8,8 @@
 
 WALLETS_COUNT = 10;
 OWNER_ADDRESS = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
+ZERO_ADDRESS =  "0xO000000000000000000000000000000000000000";
+INITIAL_MINT = 10000000000000000000000000000000000000000;
 
 require("hardhat");
 const ethers2 = require('ethers')
@@ -84,52 +86,32 @@ async function generateOrReadKeys() {
 }
 
 
-async function deployContracts() {
 
+function CHECK(result) {
+    if (!result) {
+        message = `Check failed ${result}`
+        console.log(message);
+        throw message;
+    }
+}
 
+async function waitUntilNextBlock() {
 
-    console.log(`Deploying ...`);
+    current = await hre.ethers.provider.getBlockNumber();
+    newBlock = current;
+    console.log(`BLOCK_NUMBER ${current}`);
 
-    const currentTimestampInSeconds = Math.round(Date.now() / 1000);
+    while (newBlock == current) {
+        newBlock = await hre.ethers.provider.getBlockNumber();
+    }
 
-    const lockedAmount = ethers.utils.parseEther("10");
+    console.log(`BLOCK_NUMBER ${newBlock}`);
 
-    const Lock = await ethers.getContractFactory("Lock");
-    const lock = await Lock.deploy({value: lockedAmount});
-    lockContract = await lock.deployed();
-    deployBn = await ethers.provider.getBlockNumber();
-
-    console.log(`Lock deployed to ${lockContract.address} at block ${deployBn}`);
-
-   //b = await lockContract.balanceOf(OWNER_ADDRESS);
-   //console.log(`Contract balance before transfer: ${b}`);
-
-   transferReceipt = await lockContract.transfer(
-        "0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
-    await transferReceipt.wait();
-    transferBn = await hre.ethers.provider.getBlockNumber();
-
-    console.log('Transferred: ${b} at ${transferBn}');
-
-    await delay(30);
-
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : transferBn});
-
-    console.log(`Contract balance after transform: ${b}`);
-
-
-    b = await lockContract.balanceOf(OWNER_ADDRESS);
-
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : transferBn - 1});
-    console.log(`Contract balance before transform: ${b}`);
-
-    const MultiSend = await hre.ethers.getContractFactory("MultiSend");
-    const multiSend = await MultiSend.deploy({value: ethers.utils.parseEther("100000")});
-    multiSendContract = await multiSend.deployed();
-    console.log(`Multisend deployed to ${multiSend.address}`);
+    return current;
 
 
 }
+
 
 async function deployContractsProxy() {
 
@@ -137,39 +119,47 @@ async function deployContractsProxy() {
 
     const currentTimestampInSeconds = Math.round(Date.now() / 1000);
 
-    const lockedAmount = hre.ethers.utils.parseEther("10");
+    //const lockedAmount = hre.ethers.utils.parseEther("10");
+
+    console.log(`Testing deploy transfer`);
 
     const Lock = await hre.ethers.getContractFactory("Lock");
-
-    const box = await hre.upgrades.deployProxy(Lock);
-
-    const lock = await Lock.deploy();
+    const lock = await hre.upgrades.deployContract(Lock);
     lockContract = await lock.deployed();
+
     deployBn = await hre.ethers.provider.getBlockNumber();
 
     console.log(`Lock deployed to ${lockContract.address} at block ${deployBn}`);
 
-    //b = await lockContract.balanceOf(OWNER_ADDRESS);
-    //console.log(`Contract balance before transfer: ${b}`);
+    previousBlock = await waitUntilNextBlock();
+    previousBlock = await waitUntilNextBlock();
 
-    transferReceipt = await lockContract.transfer(
-        "0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
-    await transferReceipt.wait();
-    transferBn = await hre.ethers.provider.getBlockNumber();
+    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
+    owner = await lockContract.owner({blockTag : previousBlock});
+    console.log(`Contract owner is ${owner}`);
 
-    console.log('Transferred: ${b} at ${transferBn}');
-
-    await delay(30);
-
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : transferBn});
-
-    console.log(`Contract balance after transform: ${b}`);
+    CHECK(b == INITIAL_MINT)
 
 
-    b = await lockContract.balanceOf(OWNER_ADDRESS);
+    console.log(`Now testing transfer`);
 
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : transferBn - 1});
-    console.log(`Contract balance before transform: ${b}`);
+      transferReceipt = await lockContract.transfer("0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
+//    await transferReceipt.wait();
+
+
+
+    previousBlock =  await waitUntilNextBlock();
+
+    owner = await lockContract.owner({blockTag : previousBlock});
+    console.log(`Contract owner is ${owner}`);
+
+    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
+
+    console.log(`Balance after transfer ${b}`);
+
+    CHECK(b  == INITIAL_MINT - 0x02)
+    console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
+
 
     const MultiSend = await hre.ethers.getContractFactory("MultiSend");
     const multiSend = await MultiSend.deploy({value: ethers.utils.parseEther("100000")});

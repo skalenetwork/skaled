@@ -1,31 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 
 
-interface IERC20 {
-    function totalSupply() external view returns (uint);
 
-    function balanceOf(address account) external view returns (uint);
-
-    function transfer(address recipient, uint amount) external returns (bool);
-
-    function allowance(address owner, address spender) external view returns (uint);
-
-    function approve(address spender, uint amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint amount
-    ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint value);
-    event Approval(address indexed owner, address indexed spender, uint value);
-}
-
-contract Lock is IERC20 {
+contract Lock is Initializable {
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
@@ -34,14 +15,15 @@ contract Lock is IERC20 {
     uint8 public decimals;
     bool private initialized;
 
-
-
     uint constant ARRAY_SIZE = 1000;
     uint256[ARRAY_SIZE] balance;
     uint256 counter;
     mapping(uint256 => uint256) public writeMap;
     uint public unlockTime;
     address public owner;
+
+    event Transfer(address indexed from, address indexed to, uint value);
+    event Approval(address indexed owner, address indexed spender, uint value);
 
 
     function transfer(address recipient, uint amount) external returns (bool) {
@@ -62,10 +44,10 @@ contract Lock is IERC20 {
         address recipient,
         uint amount
     ) external returns (bool) {
-        allowance[sender][msg.sender] -= amount;
-        balanceOf[sender] -= amount;
-        balanceOf[recipient] += amount;
-        emit Transfer(sender, recipient, amount);
+      //  allowance[sender][msg.sender] -= amount;
+      //  balanceOf[sender] -= amount;
+     //   balanceOf[recipient] += amount;
+      //  emit Transfer(sender, recipient, amount);
         return true;
     }
 
