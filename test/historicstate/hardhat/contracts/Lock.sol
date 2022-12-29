@@ -29,17 +29,19 @@ contract Lock is IERC20 {
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
-    string public name = "Lock";
-    string public symbol = "LOCK";
-    uint8 public decimals = 18;
+    string public name;
+    string public symbol;
+    uint8 public decimals;
+    bool private initialized;
+
 
 
     uint constant ARRAY_SIZE = 1000;
     uint256[ARRAY_SIZE] balance;
-    uint256 counter = 1;
+    uint256 counter;
     mapping(uint256 => uint256) public writeMap;
     uint public unlockTime;
-    address payable public owner;
+    address public owner;
 
 
     function transfer(address recipient, uint amount) external returns (bool) {
@@ -83,13 +85,25 @@ contract Lock is IERC20 {
 
 
 
-    constructor() payable {
+    function  initialize() public {
+      require(!initialized, "Contract instance has already been initialized");
+      initialized = true;
 
-        owner = payable(msg.sender);
+        name = "Lock";
+        symbol = "LOCK";
+        decimals = 18;
+        owner = msg.sender;
+        counter = 1;
 
-        mint(1);
+
+        mint(10000000000000000000000000000000000000000);
+
 
     }
+
+
+
+
 
     function store() public {
         // Uncomment this line, and the import of "hardhat/console.sol", to print a log in your terminal
