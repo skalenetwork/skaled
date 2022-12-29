@@ -733,6 +733,7 @@ void Listener::notifySuiteStarted( string const& _name ) {
 }
 
 void Listener::notifyTestStarted( string const& _name ) {
+
     if ( g_listener )
         g_listener->testStarted( _name );
 }
