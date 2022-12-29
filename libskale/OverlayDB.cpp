@@ -24,6 +24,7 @@
 
 #include "OverlayDB.h"
 #include "libhistoric/HistoricState.h"
+#include "ContractStorageZeroValuePatch.h"
 
 #include <thread>
 
@@ -35,7 +36,7 @@ using std::vector;
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
 
-// #include "SHA3.h"
+//#include "SHA3.h"
 
 using dev::bytes;
 using dev::bytesConstRef;
@@ -139,6 +140,34 @@ void OverlayDB::clearPartialTransactionReceipts() {
     setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
+
+void OverlayDB::commitStorageValues() {
+    for ( auto const& addressStoragePair : m_storageCache ) {
+        h160 const& address = addressStoragePair.first;
+        unordered_map< h256, h256 > const& storage = addressStoragePair.second;
+        for ( auto const& stateAddressValuePair : storage ) {
+            h256 const& storageAddress = stateAddressValuePair.first;
+            h256 const& value = stateAddressValuePair.second;
+
+            static const h256 ZERO_VALUE( 0 );
+
+            if ( ContractStorageZeroValuePatch::isEnabled() && value == ZERO_VALUE ) {
+                // if the value is zero, the pair will be deleted in LevelDB
+                // if it exists
+                m_db_face->kill(
+                    skale::slicing::toSlice( getStorageKey( address, storageAddress ) ) );
+            } else {
+                // if the value is not zero, the pair will be inserted or
+                // updated in the LevelDB
+                m_db_face->insert(
+                    skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
+                    skale::slicing::toSlice( value ) );
+            }
+        }
+    }
+}
+
+
 void OverlayDB::commit( const std::string& _debugCommitId ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
@@ -165,18 +194,9 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
                             skale::slicing::toSlice( value ) );
                     }
                 }
-                for ( auto const& addressStoragePair : m_storageCache ) {
-                    h160 const& address = addressStoragePair.first;
-                    unordered_map< h256, h256 > const& storage = addressStoragePair.second;
-                    for ( auto const& stateAddressValuePair : storage ) {
-                        h256 const& storageAddress = stateAddressValuePair.first;
-                        h256 const& value = stateAddressValuePair.second;
 
-                        m_db_face->insert(
-                            skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
-                            skale::slicing::toSlice( value ) );
-                    }
-                }
+                commitStorageValues();
+
                 m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
                     skale::slicing::toSlice( storageUsed_.str() ) );
 

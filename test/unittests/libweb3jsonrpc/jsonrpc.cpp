@@ -2218,7 +2218,9 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
     BOOST_REQUIRE_THROW(fixture.rpcClient->setSchainExitTime(requestJson), jsonrpc::JsonRpcException);
 }
 
+/*
 BOOST_AUTO_TEST_CASE( oracle, *boost::unit_test::disabled() ) {
+
     JsonRpcFixture fixture;
     std::string receipt;
     std::string result;
@@ -2241,7 +2243,10 @@ BOOST_AUTO_TEST_CASE( oracle, *boost::unit_test::disabled() ) {
     uint64_t resultStatus = fixture.client->checkOracleResult(receipt, result);
     BOOST_REQUIRE_EQUAL(resultStatus, 0);
     BOOST_CHECK(result != "");
-}
+
+
+
+}*/
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;

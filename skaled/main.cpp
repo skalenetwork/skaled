@@ -1509,11 +1509,11 @@ int main( int argc, char** argv ) try {
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
         auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
-            "blocks_" + chainParams.nodeInfo.id.str() + ".db" );
+            "blocks_" + chainParams.nodeInfo.id.str() + ".db");
 
-        snapshotManager.reset( new SnapshotManager( getDataDir(),
+         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
-                "prices_" + chainParams.nodeInfo.id.str() + ".db", RecentBlocksDBPath },
+                "prices_" + chainParams.nodeInfo.id.str() + ".db", mostRecentBlocksDBPath },
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
@@ -1750,7 +1750,6 @@ int main( int argc, char** argv ) try {
     auto getResponse = [&]( string const& prompt, unordered_set< string > const& acceptable ) {
         bool s = g_silence;
         g_silence = true;
-        cout << "\n";
         string ret;
         while ( true ) {
             cout << prompt;
@@ -1809,7 +1808,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t )( cl ockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();

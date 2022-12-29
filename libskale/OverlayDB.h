@@ -70,6 +70,8 @@ public:
     void addReceiptToPartials( const dev::eth::TransactionReceipt& );
     void clearPartialTransactionReceipts();
 
+    // commit key-value pairs in storage
+    void commitStorageValues();
     void commit( const std::string& _debugCommitId );
     void rollback();
     void clearDB();

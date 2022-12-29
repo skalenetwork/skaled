@@ -171,6 +171,7 @@ public:
     size_t t = 1;
     time_t revertableFSPatchTimestamp = 0;
     time_t contractStoragePatchTimestamp = 0;
+    time_t contractStorageZeroValuePatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";
