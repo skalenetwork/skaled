@@ -124,7 +124,7 @@ async function deployContractsProxy() {
     console.log(`Testing deploy transfer`);
 
     const Lock = await hre.ethers.getContractFactory("Lock");
-    const lock = await hre.upgrades.deployContract(Lock);
+    const lock = await hre.upgrades.deployProxy(Lock);
     lockContract = await lock.deployed();
 
     deployBn = await hre.ethers.provider.getBlockNumber();
