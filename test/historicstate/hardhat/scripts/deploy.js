@@ -134,11 +134,11 @@ async function deployContractsProxy() {
     previousBlock = await waitUntilNextBlock();
     previousBlock = await waitUntilNextBlock();
 
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
-    owner = await lockContract.owner({blockTag : previousBlock});
-    console.log(`Contract owner is ${owner}`);
+//   b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
+  //  owner = await lockContract.owner({blockTag : previousBlock});
+  //  console.log(`Contract owner is ${owner}`);
 
-    CHECK(b == INITIAL_MINT)
+ //   CHECK(b == INITIAL_MINT)
 
 
     console.log(`Now testing transfer`);
