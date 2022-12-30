@@ -184,7 +184,7 @@ PopulationStatistics Block::populateFromChain(
     BlockChain const& _bc, h256 const& _h, ImportRequirements::value _ir ) {
     noteChain( _bc );
 
-    PopulationStatistics ret{0.0, 0.0};
+    PopulationStatistics ret{ 0.0, 0.0 };
 
     if ( !_bc.isKnown( _h ) ) {
         // Might be worth throwing here.
@@ -426,8 +426,6 @@ pair< TransactionReceipts, bool > Block::sync(
     }
 
 
-
-
     return ret;
 }
 
@@ -532,7 +530,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     }
 
 #ifdef HISTORIC_STATE
-    m_state.mutableHistoricState().saveRootForBlock(m_currentBlock.number());
+    m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
 #endif
 
     m_state.releaseWriteLock();
@@ -786,26 +784,23 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 }
 
 
-#ifdef  HISTORIC_STATE
+#ifdef HISTORIC_STATE
 ExecutionResult Block::executeHistoricCall(
-        LastBlockHashesFace const& _lh, Transaction const& _t)
-{
-
-
+    LastBlockHashesFace const& _lh, Transaction const& _t ) {
     auto p = Permanence::Reverted;
 
     auto onOp = OnOpFunc();
 
-    if (isSealed())
-        BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
+    if ( isSealed() )
+        BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
     // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
     // transaction as possible.
     uncommitToSeal();
 
-    EnvInfo const envInfo{info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID};
-    std::pair<ExecutionResult, TransactionReceipt> resultReceipt =
-            m_state.mutableHistoricState().execute(envInfo, *m_sealEngine, _t, p, onOp);
+    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
+        m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, p, onOp );
 
     return resultReceipt.first;
 }
@@ -825,7 +820,8 @@ ExecutionResult Block::execute(
     // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
-    State stateSnapshot = _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
+    State stateSnapshot =
+        _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
 
     EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
 
@@ -835,11 +831,12 @@ ExecutionResult Block::execute(
             TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
             TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
 
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ExecutionResult(), null_receipt};
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{
+        ExecutionResult(), null_receipt };
 
     try {
         if ( _t.isInvalid() )
-            throw - 1;  // will catch below
+            throw -1;  // will catch below
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
 
@@ -927,7 +924,7 @@ void Block::updateBlockhashContract() {
             e.go();
         e.finalize();
 
-        m_state.commit(  dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        m_state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     }
 }
 

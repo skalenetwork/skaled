@@ -761,12 +761,12 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
                 RLPStream s( version != 0 ? 5 : 4 );
                 s << i.second.nonce() << i.second.balance();
 
-                auto existingAccount = account(i.first);
+                auto existingAccount = account( i.first );
 
                 // if we already have the account we use it
                 // otherwise we create it
-                StorageRoot storageRoot(EmptyTrie);
-                if (existingAccount != nullptr) {
+                StorageRoot storageRoot( EmptyTrie );
+                if ( existingAccount != nullptr ) {
                     storageRoot = existingAccount->originalStorageRoot();
                 }
 

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "SecureTrieDB.h"
 #include "HistoricAccount.h"
+#include "SecureTrieDB.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
@@ -36,9 +36,6 @@ class BlockChain;
 class HistoricState;
 class TransactionQueue;
 struct VerifiedBlockRef;
-
-
-
 
 
 DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );

@@ -52,6 +52,6 @@ public:
         u256 const& _version, Changedness _c, s256 _storageUsed = 0 )
         : Account( _nonce, _balance, _storageRoot, _codeHash, _version, _c, _storageUsed ){};
 };
-}
-}
+}  // namespace eth
+}  // namespace dev
 #endif
