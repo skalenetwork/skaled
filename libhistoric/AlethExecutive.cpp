@@ -110,7 +110,6 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
                                 << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                                 << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
-            m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
                                                    << errinfo_comment( m_t.sender().hex() ) );

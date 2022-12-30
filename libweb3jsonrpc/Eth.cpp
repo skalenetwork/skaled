@@ -372,7 +372,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 #endif
 ) {
 
-    const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
+    // not used: const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
 
     // Remove this temporary fix.
     string blockNumber = "latest";
