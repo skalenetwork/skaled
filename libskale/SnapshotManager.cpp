@@ -728,22 +728,23 @@ uint64_t SnapshotManager::getBlockTimestamp(
       Find the most recent database out of the four rotated block atabases in consensus
       This will find the directory in the form "${_dirname}/.db.X" with the largest X
 */
-string SnapshotManager::findMostRecentBlocksDBPath( const string& _dirName ) {
+boost::filesystem::path SnapshotManager::findMostRecentBlocksDBPath(
+    const boost::filesystem::path& _dirPath ) {
     vector< boost::filesystem::path > dirs;
     vector< uint64_t > indices;
 
     // First check that _dirname exists and is a directory
 
-    if ( !exists( boost::filesystem::path( _dirName ) ) ) {
-        throw CouldNotFindBlocksDB( _dirName, "The provided does not exist." );
+    if ( !exists( _dirPath ) ) {
+        throw CouldNotFindBlocksDB( _dirPath.string(), "The provided path does not exist." );
     }
 
-    if ( !is_directory( boost::filesystem::path( _dirName ) ) ) {
-        throw CouldNotFindBlocksDB( _dirName, "The provided path is not a directory." );
+    if ( !is_directory( _dirPath ) ) {
+        throw CouldNotFindBlocksDB( _dirPath.string(), "The provided path is not a directory." );
     }
 
     // Find and sort all directories and files in _dirName
-    copy( boost::filesystem::directory_iterator( boost::filesystem::path( _dirName ) ),
+    copy( boost::filesystem::directory_iterator( _dirPath ),
         boost::filesystem::directory_iterator(), back_inserter( dirs ) );
     sort( dirs.begin(), dirs.end() );
 
@@ -765,11 +766,12 @@ string SnapshotManager::findMostRecentBlocksDBPath( const string& _dirName ) {
 
     // Could not find any database in the correct format. Throw exception
     if ( indices.size() == 0 ) {
-        throw CouldNotFindBlocksDB( _dirName, "No rotated databases in correct format found" );
+        throw CouldNotFindBlocksDB(
+            _dirPath.string(), "No rotated databases in correct format found" );
     }
 
     // Now find the maximum index X. This is the most recent database
     auto maxIndex = *max_element( begin( indices ), end( indices ) );
 
-    return _dirName + "/db." + to_string( maxIndex );
+    return _dirPath / ( "db." + to_string( maxIndex ) );
 }
