@@ -10,7 +10,6 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/MemoryDB.h>
-#include <libdevcore/TrieHash.h>
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>

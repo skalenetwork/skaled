@@ -5,12 +5,12 @@
 #pragma once
 
 #include "SecureTrieDB.h"
+#include "HistoricAccount.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
-#include <libethereum/Account.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/GasPricer.h>
 #include <libethereum/Transaction.h>
@@ -38,33 +38,8 @@ class TransactionQueue;
 struct VerifiedBlockRef;
 
 
-class HistoricAccount : public Account {
-public:
-    /// @returns the root of the trie (whose nodes are stored in the state db externally to this
-    /// class) which encodes the base-state of the account's storage (upon which the storage is
-    /// overlaid).
-    StorageRoot originalStorageRoot() const {
-        assert( m_storageRoot );
-        return m_storageRoot;
-    }
 
 
-    /// Construct a dead Account.
-    HistoricAccount() : Account(){};
-
-    HistoricAccount( const HistoricAccount& _value ) : Account( _value ){};
-
-    HistoricAccount( u256 _nonce, u256 _balance, Changedness _c = Changed )
-        : Account( _nonce, _balance, _c ){};
-
-
-    /// Explicit constructor for wierd cases of construction or a contract account.
-    HistoricAccount( u256 _nonce, u256 _balance, StorageRoot _storageRoot, h256 _codeHash,
-        u256 const& _version, Changedness _c, s256 _storageUsed = 0 )
-        : Account( _nonce, _balance, _storageRoot, _codeHash, _version, _c, _storageUsed ){};
-};
-
-using HistoricAccountMap = std::unordered_map< Address, HistoricAccount >;
 
 DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );
 DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
