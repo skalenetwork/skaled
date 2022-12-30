@@ -3230,7 +3230,7 @@ bool SkaleServerOverride::StartListening() {
                         nPort = 80;
                 } else
                     nPort = atoi( u.port().c_str() );
-                int nServerIndex = 0;  // TO-FIX: detect server index here
+                int nServerIndex = 0;  // TO-FIX: detect server index here"
                 e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
                 skutils::result_of_http_request rslt = implHandleHttpRequest(
                     joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
@@ -3610,15 +3610,9 @@ void SkaleServerOverride::informational_eth_getBalance(
     if ( !joAddress.is_string() )
         throw std::runtime_error( "\"params[0]\" must be address string for \"eth_getBalance\"" );
     std::string strAddress = joAddress.get< std::string >();
-    try {
-        /*
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
-        std::string strBallance = dev::toJS( pClient->balanceAt( dev::jsToAddress( strAddress ) ) );
-        joResponse["result"] = strBallance;
-        */
 
+
+    try {
         skutils::tools::replace_all( strAddress, "0x", "" );
         skutils::tools::replace_all( strAddress, "0X", "" );
         strAddress = skutils::tools::trim_copy( strAddress );
@@ -3637,10 +3631,23 @@ void SkaleServerOverride::informational_eth_getBalance(
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
+
+
+#ifdef HISTORIC_STATE
+        if ( cntParams > 1 ) {
+            blockNumber = joParams[1];
+        };
+        auto bNumber = dev::eth::jsToBlockNumber( blockNumber );
+#endif
+
         dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _jsonCallArgs );
         // setTransactionDefaults( t );
-        dev::eth::ExecutionResult er = pClient->call(
-            t.from, t.value, t.to, t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+        dev::eth::ExecutionResult er =
+            pClient->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+#ifdef HISTORIC_STATE
+                bNumber,
+#endif
+                dev::eth::FudgeFactor::Lenient );
 
         std::string strRevertReason;
         if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {

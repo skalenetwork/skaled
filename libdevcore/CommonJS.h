@@ -121,7 +121,7 @@ FixedHash< N > jsToFixed( std::string const& _s ) {
         return ( typename FixedHash< N >::Arith )( _s );
     else
         // Binary
-        return FixedHash< N >();  // FAIL
+        throw std::invalid_argument( "Wrong input format: jsToFixed()" );  // FAIL
 }
 
 template < unsigned N >
@@ -140,7 +140,7 @@ jsToInt( std::string const& _s ) {
             _s );
     else
         // Binary
-        return 0;  // FAIL
+        throw std::invalid_argument( "Wrong input format: jsToInt<>()" );  // FAIL
 }
 
 inline u256 jsToU256( std::string const& _s ) {
@@ -151,9 +151,11 @@ inline u256 jsToU256( std::string const& _s ) {
 /// String can be a normal decimal number, or a hex prefixed by 0x or 0X, or an octal if prefixed by
 /// 0 Returns 0 in case of failure
 inline int jsToInt( std::string const& _s ) {
-    int ret = 0;
-    DEV_IGNORE_EXCEPTIONS( ret = std::stoi( _s, nullptr, 0 ) );
-    return ret;
+    try {
+        return std::stoi( _s, nullptr, 0 );
+    } catch ( const std::exception& ) {
+        throw std::invalid_argument( "Wrong input format: jsToInt()" );
+    }
 }
 
 inline std::string jsToDecimal( std::string const& _s ) {

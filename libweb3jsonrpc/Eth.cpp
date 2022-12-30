@@ -46,12 +46,15 @@ using namespace eth;
 using namespace dev::rpc;
 
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
+const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
+
 
 Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
     : skutils::json_config_file_accessor( configPath ),
       m_eth( _eth ),
       m_ethAccounts( _ethAccounts ),
-      m_callCache( MAX_CALL_CACHE_ENTRIES ) {}
+      m_callCache( MAX_CALL_CACHE_ENTRIES ),
+      m_receiptsCache( MAX_RECEIPT_CACHE_ENTRIES ) {}
 
 bool Eth::isEnabledTransactionSending() const {
     bool isEnabled = true;
@@ -112,23 +115,43 @@ string Eth::eth_blockNumber() {
 }
 
 
-string Eth::eth_getBalance( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getBalance( string const& _address, string const&
+#ifdef HISTORIC_STATE
+                                                        _blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifdef HISTORIC_STATE
+        if ( _blockNumber != "latest" && _blockNumber != "pending" ) {
+            return toJS( client()->historicStateBalanceAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        } else {
+            return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+        }
+#else
         return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
 
-string Eth::eth_getStorageAt(
-    string const& _address, string const& _position, string const& /* _blockNumber */ ) {
+
+string Eth::eth_getStorageAt( string const& _address, string const& _position,
+    string const&
+#ifdef HISTORIC_STATE
+        _blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifdef HISTORIC_STATE
+        if ( _blockNumber != "latest" && _blockNumber != "pending" ) {
+            return toJS(
+                toCompactBigEndian( client()->historicStateAt( jsToAddress( _address ),
+                                        jsToU256( _position ), jsToBlockNumber( _blockNumber ) ),
+                    32 ) );
+        }
+#endif
         return toJS( toCompactBigEndian(
             client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
     } catch ( ... ) {
@@ -136,11 +159,23 @@ string Eth::eth_getStorageAt(
     }
 }
 
-string Eth::eth_getStorageRoot( string const& /*_address*/, string const& /*_blockNumber*/ ) {
+string Eth::eth_getStorageRoot( string const&
+#ifdef HISTORIC_STATE
+                                    _address
+#endif
+    ,
+    string const&
+#ifdef HISTORIC_STATE
+        _blockNumber
+#endif
+) {
     try {
+#ifdef HISTORIC_STATE
+        return toString( client()->historicStateRootAt(
+            jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+#else
         throw std::logic_error( "Storage root is not exist in Skale state" );
-        //        return toString(
-        //            client()->stateRootAt(jsToAddress(_address), jsToBlockNumber(_blockNumber)));
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -160,13 +195,21 @@ Json::Value Eth::eth_pendingTransactions() {
 
     return toJson( ours );
 }
-
-string Eth::eth_getTransactionCount( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getTransactionCount( string const& _address, string const&
+#ifdef HISTORIC_STATE
+                                                                 _blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifdef HISTORIC_STATE
+        if ( _blockNumber != "latest" && _blockNumber != "pending" ) {
+            return toString( client()->historicStateCountAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        }
+#endif
+
         return toJS( client()->countAt( jsToAddress( _address ) ) );
+
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -220,11 +263,18 @@ Json::Value Eth::eth_getUncleCountByBlockNumber( string const& _blockNumber ) {
     }
 }
 
-string Eth::eth_getCode( string const& _address, string const& /* _blockNumber */ ) {
+string Eth::eth_getCode( string const& _address, string const&
+#ifdef HISTORIC_STATE
+                                                     _blockNumber
+#endif
+) {
     try {
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
+#ifdef HISTORIC_STATE
+        if ( _blockNumber != "latest" && _blockNumber != "pending" ) {
+            return toJS( client()->historicStateCodeAt(
+                jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
+        }
+#endif
         return toJS( client()->codeAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -316,14 +366,22 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
 }
 
 
-recursive_mutex cacheLock;
+string Eth::eth_call( TransactionSkeleton& t, string const&
+#ifdef HISTORIC_STATE
+                                                  _blockNumber
+#endif
+) {
 
-const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
+    // not used: const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
 
-string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ ) {
-    // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
     // Remove this temporary fix.
     string blockNumber = "latest";
+
+#ifdef HISTORIC_STATE
+    blockNumber = _blockNumber;
+#endif
+
+    auto bN = jsToBlockNumber( blockNumber );
 
     // if an identical call has been made for the same block number
     // and the result is in cache, return the result from cache
@@ -332,8 +390,19 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
 
     // Step 1 Look into the cache for the same request at the same block number
     // no need to lock since cache is synchronized internally
-    uint64_t currentBlockNumber = client()->number();
-    auto key = t.toString().append( to_string( currentBlockNumber ) );
+    string key;
+
+    if ( bN == LatestBlock || bN == PendingBlock ) {
+        bN = client()->number();
+    }
+
+    if ( !client()->isKnown( bN ) ) {
+        throw std::logic_error( "Unknown block number:" + blockNumber );
+    }
+
+
+    key = t.toString().append( to_string( bN ) );
+
     auto result = m_callCache.getIfExists( key );
     if ( result.has_value() ) {
         // found an identical request in cache, return
@@ -342,8 +411,12 @@ string Eth::eth_call( TransactionSkeleton& t, string const& /* _blockNumber */ )
 
     // Step 2. We got a cache miss. Execute the call now.
     setTransactionDefaults( t );
-    ExecutionResult er =
-        client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice, FudgeFactor::Lenient );
+
+    ExecutionResult er = client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+#ifdef HISTORIC_STATE
+        bN,
+#endif
+        FudgeFactor::Lenient );
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -474,12 +547,46 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
 }
 
 LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _transactionHash ) {
+    // Step 1. Check receipts cache transactions first. It is faster than
+    // calling client()->isKnownTransaction()
+
     h256 h = jsToFixed< 32 >( _transactionHash );
+
+    uint64_t currentBlockNumber = client()->number();
+    string cacheKey = _transactionHash + toString( currentBlockNumber );
+
+    // note that the cache object is thread safe, so we do not need locks
+    auto result = m_receiptsCache.getIfExists( cacheKey );
+    if ( result.has_value() ) {
+        // we hit cache. This means someone already made this call for the same
+        // block number
+        auto receipt = any_cast< ptr< LocalisedTransactionReceipt > >( result );
+
+        if ( receipt == nullptr ) {
+            // no receipt yet at this block number
+            throw std::invalid_argument( "Not known transaction" );
+        } else {
+            // we have receipt in the cache. Return it.
+            return *receipt;
+        }
+    }
+
+
+    // Step 2. We got cache miss. Do the work and put the result into the cach
     if ( !client()->isKnownTransaction( h ) ) {
+        // transaction is not yet in the blockchain. Put null as receipt
+        // into the cache
+        m_receiptsCache.put( cacheKey, nullptr );
         throw std::invalid_argument( "Not known transaction" );
     }
+
     auto cli = client();
     auto rcp = cli->localisedTransactionReceipt( h );
+
+    // got a receipt. Put it into the cache before returning
+    // so that we have it if anyone asks again
+    m_receiptsCache.put( cacheKey, make_shared< LocalisedTransactionReceipt >( rcp ) );
+
     return rcp;
 }
 

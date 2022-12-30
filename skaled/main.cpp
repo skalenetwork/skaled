@@ -1508,16 +1508,18 @@ int main( int argc, char** argv ) try {
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-        auto mostRecentBlocksDBPath = SnapshotManager::findMostRecentBlocksDBPath(
-            "blocks_" + chainParams.nodeInfo.id.str() + ".db" );
+        // auto mostRecentBlocksDBPath = (getDataDir() / ( "blocks_" + chainParams.nodeInfo.id.str()
+        // + ".db" )) / "1.db";
 
         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
-                "prices_" + chainParams.nodeInfo.id.str() + ".db", mostRecentBlocksDBPath },
+                "prices_" + chainParams.nodeInfo.id.str() + ".db",
+                "blocks_" + chainParams.nodeInfo.id.str() + ".db"/*,
+                mostRecentBlocksDBPath.string()*/ },
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
-    if ( chainParams.nodeInfo.syncNode ) {
+    if ( chainParams.nodeInfo.syncNode && !chainParams.nodeInfo.syncFromCatchup ) {
         auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
@@ -1536,7 +1538,7 @@ int main( int argc, char** argv ) try {
         std::array< std::string, 4 > arrayCommonPublicKey;
         bool isRotationtrigger = true;
         if ( chainParams.sChain.nodeGroups.size() > 1 ) {
-            if ( time( NULL ) >=
+            if ( ( uint64_t ) time( NULL ) >=
                  chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2]
                      .finishTs ) {
                 isRotationtrigger = false;

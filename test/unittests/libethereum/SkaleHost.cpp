@@ -41,7 +41,8 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL ) override {}
+    void parseFullConfigAndCreateNode( const std::string& /*_jsonConfig */,
+                 const string& /*_gethURL*/ ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }
@@ -70,25 +71,28 @@ public:
         return 0;
     }
 
-    std::map< std::string, uint64_t > getConsensusDbUsage() const {
-        return {};
-    }
-
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
         if ( _blockId == block_gas_prices.size() )
             block_gas_prices.push_back( _gasPrice );
         else
             block_gas_prices[_blockId] = _gasPrice;
-    }
-
-    uint64_t submitOracleRequest( const string& _spec, string& _receipt) {
         return 0;
     }
 
-    uint64_t checkOracleResult( const string& _receipt, string& _result) {
+    uint64_t submitOracleRequest( const string& /*_spec*/, string&
+                          /*_receipt*/) override {
         return 0;
     }
+
+    uint64_t checkOracleResult( const string&
+           /*_receipt*/, string& /*_result */) {
+        return 0;
+    }
+
+    map< string, uint64_t > getConsensusDbUsage() const {
+        return map< string, uint64_t >();
+    };
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -705,7 +709,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().startWrite();
+        auto wr_state = client->state().createStateModifyCopy();
         wr_state.addBalance( account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
         wr_state.commit();
     }
@@ -922,7 +926,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().startWrite();
+        auto wr_state = client->state().createStateModifyCopy();
         wr_state.addBalance( account2.address(), 1 * ether );
         wr_state.commit();
     }

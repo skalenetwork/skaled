@@ -184,6 +184,11 @@ if( TESTS )
     include( ProjectBinaryen )
 endif()
 
+
+if (HISTORIC_STATE)
+add_definitions(-DHISTORIC_STATE=1)
+endif (HISTORIC_STATE)
+
 add_subdirectory( evmc )
 
 #Global include path for all libs:
@@ -205,7 +210,9 @@ add_subdirectory( libdevcore )
 add_subdirectory( libdevcrypto )
 add_subdirectory( libp2p )
 
+add_subdirectory( libhistoric )
 add_subdirectory( libskale )
+
 
 add_subdirectory( libethcore )
 add_subdirectory( libevm )
@@ -224,7 +231,6 @@ add_subdirectory( skaled_ssl_test )
 if( TOOLS )
     add_subdirectory( skale-key )
     add_subdirectory( skale-vm )
-    add_subdirectory( rlp )
 endif()
 
 if( TESTS )

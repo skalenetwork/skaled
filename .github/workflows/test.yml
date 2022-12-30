@@ -153,7 +153,7 @@ jobs:
           make testeth -j$(nproc)
           cd ..
       - name: Print ccache stats after full build
-        run: |
+        run : |
           ccache --show-stats
       - name: Testeth verbosity 1
         run : |
@@ -174,7 +174,6 @@ jobs:
           ./testeth -t ClientBase -- --express && touch /tmp/ClientBasePassed
           ./testeth -t EstimateGas -- --express && touch /tmp/EstimateGasPassed
           ./testeth -t IMABLSPublicKey -- --express && touch /tmp/IMABLSPublicKeyPassed
-          ./testeth -t ClientSnapshotsSuite -- --express && touch /tmp/ClientSnapshotsSuitePassed
           ./testeth -t ExtVmSuite -- --express && touch /tmp/ExtVmSuitePassed
           ./testeth -t GasPricer -- --express && touch /tmp/GasPricerPassed
           ./testeth -t BasicTests -- --express && touch /tmp/BasicTestsPassed
@@ -187,8 +186,6 @@ jobs:
           ./testeth -t LegacyVMSuite -- --express && touch /tmp/LegacyVMSuitePassed
           ./testeth -t SkaleInterpreterSuite -- --express && touch /tmp/SkaleInterpreterSuitePassed
           ./testeth -t SnapshotSigningTestSuite -- --express && touch /tmp/SnapshotSigningTestSuitePassed
-          ./testeth -t HashSnapshotTestSuite && touch /tmp/HashSnapshotTestSuitePassed
-          ./testeth -t BtrfsTestSuite -- --express && touch /tmp/BtrfsTestSuitePassed
           ./testeth -t SkUtils -- --express && touch /tmp/SkUtilsPassed
           ./testeth -t BlockChainTestSuite -- --express && touch /tmp/BlockChainTestSuitePassed
           ./testeth -t TestHelperSuite -- --express && touch /tmp/TestHelperSuitePassed
@@ -200,7 +197,7 @@ jobs:
           ./testeth -t JsonRpcSuite  -- --express && touch /tmp/JsonRpcSuitePassed 
           ./testeth -t SingleConsensusTests  -- --express && touch /tmp/SingleConsensusTestsPassed
           ./testeth -t ConsensusTests  -- --express && touch /tmp/ConsensusTestsPassed
-          cd ..     
+          cd ..
       - name: Testeth verbosity 4
         run : |
           # Since a tests failed, we are rerunning the failed test with higher verbosity          
@@ -219,7 +216,6 @@ jobs:
           ls /tmp/ClientBasePassed || ./testeth -t ClientBase -- --express --verbosity 4
           ls /tmp/EstimateGasPassed || ./testeth -t EstimateGas -- --express --verbosity 4
           ls /tmp/IMABLSPublicKeyPassed || ./testeth -t IMABLSPublicKey -- --express --verbosity 4
-          ls /tmp/ClientSnapshotsSuitePassed || ./testeth -t ClientSnapshotsSuite -- --express --verbosity 4
           ls /tmp/ExtVmSuitePassed || ./testeth -t ExtVmSuite -- --express --verbosity 4
           ls /tmp/GasPricerPassed || ./testeth -t GasPricer -- --express --verbosity 4
           ls /tmp/BasicTestsPassed || ./testeth -t BasicTests -- --express --verbosity 4
@@ -232,8 +228,6 @@ jobs:
           ls /tmp/LegacyVMSuitePassed || ./testeth -t LegacyVMSuite -- --express --verbosity 4
           ls /tmp/SkaleInterpreterSuitePassed || ./testeth -t SkaleInterpreterSuite -- --express --verbosity 4
           ls /tmp/SnapshotSigningTestSuitePassed || ./testeth -t SnapshotSigningTestSuite -- --express --verbosity 4
-          ls /tmp/HashSnapshotTestSuitePassed || ./testeth -t HashSnapshotTestSuite --verbosity 4
-          ls /tmp/BtrfsTestSuitePassed || ./testeth -t BtrfsTestSuite -- --express --verbosity 4
           ls /tmp/SkUtilsPassed || ./testeth -t SkUtils -- --express --verbosity 4
           ls /tmp/BlockChainTestSuitePassed || ./testeth -t BlockChainTestSuite -- --express --verbosity 4
           ls /tmp/TestHelperSuitePassed || ./testeth -t TestHelperSuite -- --express --verbosity 4

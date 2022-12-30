@@ -71,13 +71,13 @@ void debug() {
         b = rand();
     }
     state.setCode( address, code, 0 );
-    state.commit( State::CommitBehaviour::KeepEmptyAccounts );
+    state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
     return;
 
     state.addBalance( address, 5 );
     u256 value = state.storage( address, 7 );
     state.setStorage( address, 7, value + 7 );
-    state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+    state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
     cout << state.balance( address ) << endl;
     cout << state.storage( address, 7 ) << endl;
 
@@ -118,9 +118,9 @@ void testState() {
     cout << "Balances writes:" << endl;
     cout << measure_performance(
                 [&state, &address]() {
-                    State writeState = state.startWrite();
+                    State writeState = state.createStateModifyCopy();
                     writeState.addBalance( address, 1 );
-                    writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                    writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
                 1000 )
          << " writes per second" << endl;
@@ -128,7 +128,8 @@ void testState() {
 
     cout << "Balances reads:" << endl;
     cout << measure_performance(
-                [&state, &address]() { state.startRead().balance( address ); }, 100000 ) /
+                [&state, &address]() { state.createStateModifyCopy().balance( address ); },
+                100000 ) /
                 1e6
          << " Mreads per second" << endl;
     cout << endl;
@@ -137,10 +138,10 @@ void testState() {
     size_t memory_address = 0;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {
-                    State writeState = state.startWrite();
+                    State writeState = state.createStateModifyCopy();
                     writeState.setStorage( address, memory_address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
-                    writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                    writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
                 10 )
          << " writes per second" << endl;
@@ -149,7 +150,7 @@ void testState() {
     cout << "EVM storate reads:" << endl;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {
-                    state.startRead().storage( address, memory_address );
+                    state.createStateReadOnlyCopy().storage( address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
                 },
                 1000 ) /
@@ -165,9 +166,9 @@ void testState() {
     }
     cout << measure_performance(
                 [&state, &address, &code]() {
-                    State writeState = state.startWrite();
+                    State writeState = state.createStateModifyCopy();
                     writeState.setCode( address, code, 0 );
-                    writeState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+                    writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
                 10 )
          << " writes per second" << endl;
@@ -175,7 +176,7 @@ void testState() {
 
     cout << "EVM code reads:" << endl;
     cout << measure_performance(
-                [&state, &address]() { state.startRead().code( address ); }, 1000 ) /
+                [&state, &address]() { state.createStateReadOnlyCopy().code( address ); }, 1000 ) /
                 1e6
          << " Mreads per second" << endl;
 }
