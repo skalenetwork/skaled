@@ -38,6 +38,33 @@ class TransactionQueue;
 struct VerifiedBlockRef;
 
 
+class HistoricAccount : public Account {
+public:
+    /// @returns the root of the trie (whose nodes are stored in the state db externally to this
+    /// class) which encodes the base-state of the account's storage (upon which the storage is
+    /// overlaid).
+    StorageRoot originalStorageRoot() const {
+        assert( m_storageRoot );
+        return m_storageRoot;
+    }
+
+
+    /// Construct a dead Account.
+    HistoricAccount() : Account(){};
+
+    HistoricAccount( const HistoricAccount& _value ) : Account( _value ){};
+
+    HistoricAccount( u256 _nonce, u256 _balance, Changedness _c = Changed )
+        : Account( _nonce, _balance, _c ){};
+
+
+    /// Explicit constructor for wierd cases of construction or a contract account.
+    HistoricAccount( u256 _nonce, u256 _balance, StorageRoot _storageRoot, h256 _codeHash,
+        u256 const& _version, Changedness _c, s256 _storageUsed = 0 )
+        : Account( _nonce, _balance, _storageRoot, _codeHash, _version, _c, _storageUsed ){};
+};
+
+using HistoricAccountMap = std::unordered_map< Address, HistoricAccount >;
 
 DEV_SIMPLE_EXCEPTION( InvalidAccountStartNonceInState );
 DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
@@ -263,16 +290,16 @@ public:
     u256 getNonce( Address const& _addr ) const;
 
     /// The hash of the root of our state tree.
-    h256 rootHash() const { return m_state.root(); }
+    GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
     void commitExternalChanges( AccountMap const& _cache );
 
     /// Resets any uncommitted changes to the cache.
-    void setRoot( h256 const& _root );
+    void setRoot( GlobalRoot const& _root );
 
     // Sets root by reading the block number from DB
 
-    void setRootByBlockNumber(uint64_t _blockNumber);
+    void setRootByBlockNumber( uint64_t _blockNumber );
 
     /// Get the account start nonce. May be required.
     u256 const& accountStartNonce() const { return m_accountStartNonce; }
@@ -303,16 +330,16 @@ private:
 
     /// @returns the account at the given address or a null pointer if it does not exist.
     /// The pointer is valid until the next access to the state or account.
-    Account const* account( Address const& _addr ) const;
+    HistoricAccount const* account( Address const& _addr ) const;
 
     /// @returns the account at the given address or a null pointer if it does not exist.
     /// The pointer is valid until the next access to the state or account.
-    Account* account( Address const& _addr );
+    HistoricAccount* account( Address const& _addr );
 
     /// Purges non-modified entries in m_cache if it grows too large.
     void clearCacheIfTooLarge() const;
 
-    void createAccount( Address const& _address, Account const&& _account );
+    void createAccount( Address const& _address, HistoricAccount const&& _account );
 
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
@@ -327,7 +354,7 @@ private:
     SecureTrieDB< Address, OverlayDB > m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
     /// been changed.
-    mutable std::unordered_map< Address, Account > m_cache;
+    mutable std::unordered_map< Address, HistoricAccount > m_cache;
     /// Tracks entries in m_cache that can potentially be purged if it grows too large.
     mutable std::vector< Address > m_unchangedCacheEntries;
     /// Tracks addresses that are known to not exist.
@@ -344,12 +371,11 @@ private:
 
     uint64_t readLatestBlock();
 
-    AddressHash commit( AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
-
+    AddressHash commitExternalChangesIntoTrieDB(
+        AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );
-
 
 
 }  // namespace eth

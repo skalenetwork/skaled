@@ -143,10 +143,8 @@ async function deployContractsProxy() {
 
     console.log(`Now testing transfer`);
 
-      transferReceipt = await lockContract.transfer("0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
-//    await transferReceipt.wait();
-
-
+    transferReceipt = await lockContract.transfer("0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
+    await transferReceipt.wait();
 
     previousBlock =  await waitUntilNextBlock();
 

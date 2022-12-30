@@ -774,9 +774,9 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     //    // Hash the state trie and check against the state_root hash in m_currentBlock.
     //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
-    //        m_currentBlock.stateRoot() != rootHash())
+    //        m_currentBlock.stateRoot() != globalRoot())
     //    {
-    //        auto r = rootHash();
+    //        auto r = globalRoot();
     //        m_state.db().rollback();  // TODO: API in State for this?
     //        BOOST_THROW_EXCEPTION(
     //            InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
@@ -1069,12 +1069,12 @@ void Block::cleanup() {
 
     // Commit the new trie to disk.
     //    LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << " = "
-    //                  << rootHash() << " = " << toHex(asBytes(db().lookup(rootHash())));
+    //                  << rootHash() << " = " << toHex(asBytes(db().lookup(globalRoot())));
 
     //    try
     //    {
     //        EnforceRefs er(db(), true);
-    //        rootHash();
+    //        globalRoot();
     //    }
     //    catch (BadRoot const&)
     //    {

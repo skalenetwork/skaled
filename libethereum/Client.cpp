@@ -737,7 +737,8 @@ size_t Client::syncTransactions(
         m_state = m_state.createNewCopyWithLocks();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
-        m_state.mutableHistoricState().setRoot(m_working.mutableState().mutableHistoricState().rootHash());
+        m_state.mutableHistoricState().setRoot(
+            m_working.mutableState().mutableHistoricState().globalRoot());
 #endif
 
     }

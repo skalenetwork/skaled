@@ -531,8 +531,8 @@ void testBCTest( json_spirit::mObject const& _o ) {
             " expected: " + _o.at( "lastblockhash" ).get_str() );
 
     // Check final state (just to be sure)
-    //    BOOST_CHECK_MESSAGE(toString(testChain.topBlock().state().rootHash()) ==
-    //                            toString(blockchain.topBlock().state().rootHash()),
+    //    BOOST_CHECK_MESSAGE(toString(testChain.topBlock().state().globalRoot()) ==
+    //                            toString(blockchain.topBlock().state().globalRoot()),
     //        testName + "State root in chain from RLP blocks != State root in chain from Field
     //        blocks!");
 
