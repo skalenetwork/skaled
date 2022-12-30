@@ -13,6 +13,7 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     ContractStorageLimitPatch.cpp
+	ContractStorageZeroValuePatch.cpp
     AmsterdamFixPatch.cpp
     RevertableFSPatch.cpp
     OverlayFS.cpp

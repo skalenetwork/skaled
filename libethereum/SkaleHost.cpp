@@ -61,7 +61,7 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 20;
+const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 60 * 4;
 
 #ifndef CONSENSUS
 #define CONSENSUS 1
@@ -244,48 +244,67 @@ void ConsensusExtImpl::terminateApplication() {
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
-    bool _broadcastEnabled ) try : m_client( _client ),
-                                   m_tq( _client.m_tq ),
-                                   m_instanceMonitor( _instanceMonitor ),
-                                   total_sent( 0 ),
-                                   total_arrived( 0 ) {
-    m_debugHandler = [this]( const std::string& arg ) -> std::string {
-        return DebugTracer_handler( arg, this->m_debugTracer );
-    };
+    bool _broadcastEnabled )
+    : m_client( _client ),
+      m_tq( _client.m_tq ),
+      m_instanceMonitor( _instanceMonitor ),
+      total_sent( 0 ),
+      total_arrived( 0 ) {
+    try {
+        m_debugHandler = [this]( const std::string& arg ) -> std::string {
+            return DebugTracer_handler( arg, this->m_debugTracer );
+        };
 
-    m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
-        skutils::task::performance::action action(
-            "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
+        m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
+            skutils::task::performance::action action(
+                "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
 
-        // HACK reduce TRACEPOINT log output
-        static uint64_t last_block_when_log = -1;
-        if ( name == "fetch_transactions" || name == "drop_bad_transactions" ) {
-            uint64_t current_block = this->m_client.number();
-            if ( current_block == last_block_when_log )
-                return;
-            if ( name == "drop_bad_transactions" )
-                last_block_when_log = current_block;
-        }
+            // HACK reduce TRACEPOINT log output
+            static uint64_t last_block_when_log = -1;
+            if ( name == "fetch_transactions" || name == "drop_bad_transactions" ) {
+                uint64_t current_block = this->m_client.number();
+                if ( current_block == last_block_when_log )
+                    return;
+                if ( name == "drop_bad_transactions" )
+                    last_block_when_log = current_block;
+            }
 
-        LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
-                             << m_debugTracer.get_tracepoint_count( name );
-    } );
+            LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
+                                 << m_debugTracer.get_tracepoint_count( name );
+        } );
 
-    // m_broadcaster.reset( new HttpBroadcaster( _client ) );
-    m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
+        // m_broadcaster.reset( new HttpBroadcaster( _client ) );
+        m_broadcaster.reset( new ZmqBroadcaster( _client, *this ) );
 
-    m_extFace.reset( new ConsensusExtImpl( *this ) );
+        m_extFace.reset( new ConsensusExtImpl( *this ) );
 
-    // set up consensus
-    // XXX
-    if ( !_consFactory )
-        m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
-    else
-        m_consensus = _consFactory->create( *m_extFace );
+    } catch ( const std::exception& e ) {
+        clog( Verbosity::VerbosityError, "main" ) << "Could not init SkaleHost" << e.what();
+        std::throw_with_nested( CreationException() );
+    }
 
-    m_consensus->parseFullConfigAndCreateNode( m_client.chainParams().getOriginalJson(), _gethURL );
-} catch ( const std::exception& ) {
-    std::throw_with_nested( CreationException() );
+    try {
+        // set up consensus
+        // XXX
+        if ( !_consFactory )
+            m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
+        else
+            m_consensus = _consFactory->create( *m_extFace );
+
+    } catch ( const std::exception& e ) {
+        clog( Verbosity::VerbosityError, "main" )
+            << "Could not create consensus in SkaleHost" << e.what();
+        std::throw_with_nested( CreationException() );
+    }
+
+    try {
+        m_consensus->parseFullConfigAndCreateNode(
+            m_client.chainParams().getOriginalJson(), _gethURL );
+    } catch ( const std::exception& e ) {
+        clog( Verbosity::VerbosityError, "main" )
+            << "Could not create parse consensus config in SkaleHost" << e.what();
+        std::throw_with_nested( CreationException() );
+    }
 }
 
 SkaleHost::~SkaleHost() {}

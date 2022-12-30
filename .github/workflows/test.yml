@@ -25,7 +25,13 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
-
+      - name: Cache apt packages
+        uses: actions/cache@v2
+        with:
+          path: |
+            /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-cache
+          ttl: 1000000 # purge cache every 1000000 seconds (10 days). This is to pull updated packages
       - name: update apt
         run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
       - name: install packages
@@ -100,14 +106,15 @@ jobs:
         run: |
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-
-      - name: Test clang-format
+      - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
         run: |
-          clang-format --help
-          clang-format --version
-
+          ccache --max-size=20G
+          ccache -z
+          ccache --show-stats
       - name: Build dependencies
         run: |
+          
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
@@ -120,6 +127,7 @@ jobs:
           cd ..
       - name: Configure all
         run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
@@ -130,18 +138,12 @@ jobs:
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
-      - name: Format-check source code
+      - name: Print ccache stats for deps
         run: |
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
-          cd build
-          make format-check
-          cd ..
+          ccache --show-stats
       - name: Build all
         run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
@@ -150,25 +152,100 @@ jobs:
           cd build
           make testeth -j$(nproc)
           cd ..
-      - name: Testeth
+      - name: Print ccache stats after full build
+        run: |
+          ccache --show-stats
+      - name: Testeth verbosity 1
         run : |
+          #first run with verbosity 1. If test fails, rerun with verbosity 4
           cd build/test
-          NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -- --express --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1          
+          # we specifically run each test for easier log review
+          ./testeth -t BlockchainTests -- --express && touch /tmp/BlockchainTestsPassed
+          ./testeth -t TransactionTests -- --express && touch /tmp/TransactionTestsPassed
+          ./testeth -t VMTests -- --express && touch /tmp/VMTestsPassed
+          ./testeth -t LevelDBTests -- --express && touch /tmp/LevelDBTestsPassed
+          ./testeth -t SharedSpaceTests -- --express && touch /tmp/SharedSpaceTestsPassed
+          ./testeth -t SealEngineTests -- --express && touch /tmp/SealEngineTestsPassed  
+          ./testeth -t BlockChainMainNetworkSuite -- --express && touch /tmp/BlockChainMainNetworkSuitePassed
+          ./testeth -t BlockChainFrontierSuite -- --express && touch /tmp/BlockChainFrontierSuitePassed
+          ./testeth -t BlockQueueSuite -- --express && touch /tmp/BlockQueueSuitePassed
+          ./testeth -t ClientBase -- --express && touch /tmp/ClientBasePassed
+          ./testeth -t EstimateGas -- --express && touch /tmp/EstimateGasPassed
+          ./testeth -t IMABLSPublicKey -- --express && touch /tmp/IMABLSPublicKeyPassed
+          ./testeth -t ClientSnapshotsSuite -- --express && touch /tmp/ClientSnapshotsSuitePassed
+          ./testeth -t ExtVmSuite -- --express && touch /tmp/ExtVmSuitePassed
+          ./testeth -t GasPricer -- --express && touch /tmp/GasPricerPassed
+          ./testeth -t BasicTests -- --express && touch /tmp/BasicTestsPassed
+          ./testeth -t InstanceMonitorSuite -- --express && touch /tmp/InstanceMonitorSuitePassed
+          ./testeth -t PrecompiledTests -- --express && touch /tmp/PrecompiledTestsPassed
+          ./testeth -t SkaleHostSuite -- --express && touch /tmp/SkaleHostSuitePassed
+          ./testeth -t StateUnitTests -- --express && touch /tmp/StateUnitTestsPassed
+          ./testeth -t libethereum -- --express && touch /tmp/libethereumPassed
+          ./testeth -t TransactionQueueSuite -- --express && touch /tmp/TransactionQueueSuitePassed
+          ./testeth -t LegacyVMSuite -- --express && touch /tmp/LegacyVMSuitePassed
+          ./testeth -t SkaleInterpreterSuite -- --express && touch /tmp/SkaleInterpreterSuitePassed
+          ./testeth -t SnapshotSigningTestSuite -- --express && touch /tmp/SnapshotSigningTestSuitePassed
+          ./testeth -t HashSnapshotTestSuite && touch /tmp/HashSnapshotTestSuitePassed
+          ./testeth -t BtrfsTestSuite -- --express && touch /tmp/BtrfsTestSuitePassed
+          ./testeth -t SkUtils -- --express && touch /tmp/SkUtilsPassed
+          ./testeth -t BlockChainTestSuite -- --express && touch /tmp/BlockChainTestSuitePassed
+          ./testeth -t TestHelperSuite -- --express && touch /tmp/TestHelperSuitePassed
+          ./testeth -t LevelDBHashBase -- --express && touch /tmp/LevelDBHashBasePassed
+          ./testeth -t memDB -- --express && touch /tmp/memDBPassed
+          ./testeth -t OverlayDBTests -- --express && touch /tmp/OverlayDBTestsPassed
+          ./testeth -t AccountHolderTest -- --express && touch /tmp/AccountHolderTestPassed
+          ./testeth -t ClientTests -- --express && touch /tmp/ClientTestsPassed
+          ./testeth -t JsonRpcSuite  -- --express && touch /tmp/JsonRpcSuitePassed 
+          ./testeth -t SingleConsensusTests  -- --express && touch /tmp/SingleConsensusTestsPassed
+          ./testeth -t ConsensusTests  -- --express && touch /tmp/ConsensusTestsPassed
+          cd ..     
+      - name: Testeth verbosity 4
+        run : |
+          # Since a tests failed, we are rerunning the failed test with higher verbosity          
+          cd build/test      
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1          
+          ls /tmp/BlockchainTestsPassed || ./testeth -t BlockchainTests -- --express --verbosity 4
+          ls /tmp/TransactionTestsPassed || ./testeth -t TransactionTests -- --express --verbosity 4
+          ls /tmp/VMTestsPassed || ./testeth -t VMTests -- --express --verbosity 4
+          ls /tmp/LevelDBTestsPassed || ./testeth -t LevelDBTests -- --express --verbosity 4
+          ls /tmp/SharedSpaceTestsPassed || ./testeth -t SharedSpaceTests -- --express --verbosity 4
+          ls /tmp/SealEngineTestsPassed || ./testeth -t SealEngineTests -- --express --verbosity 4
+          ls /tmp/BlockChainMainNetworkSuitePassed || ./testeth -t BlockChainMainNetworkSuite -- --express --verbosity 4
+          ls /tmp/BlockChainFrontierSuitePassed || ./testeth -t BlockChainFrontierSuite -- --express --verbosity 4
+          ls /tmp/BlockQueueSuitePassed || ./testeth -t BlockQueueSuite -- --express --verbosity 4
+          ls /tmp/ClientBasePassed || ./testeth -t ClientBase -- --express --verbosity 4
+          ls /tmp/EstimateGasPassed || ./testeth -t EstimateGas -- --express --verbosity 4
+          ls /tmp/IMABLSPublicKeyPassed || ./testeth -t IMABLSPublicKey -- --express --verbosity 4
+          ls /tmp/ClientSnapshotsSuitePassed || ./testeth -t ClientSnapshotsSuite -- --express --verbosity 4
+          ls /tmp/ExtVmSuitePassed || ./testeth -t ExtVmSuite -- --express --verbosity 4
+          ls /tmp/GasPricerPassed || ./testeth -t GasPricer -- --express --verbosity 4
+          ls /tmp/BasicTestsPassed || ./testeth -t BasicTests -- --express --verbosity 4
+          ls /tmp/InstanceMonitorSuitePassed || ./testeth -t InstanceMonitorSuite -- --express --verbosity 4
+          ls /tmp/PrecompiledTestsPassed || ./testeth -t PrecompiledTests -- --express --verbosity 4
+          ls /tmp/SkaleHostSuitePassed || ./testeth -t SkaleHostSuite -- --express --verbosity 4
+          ls /tmp/StateUnitTestsPassed || ./testeth -t StateUnitTests -- --express --verbosity 4
+          ls /tmp/libethereumPassed || ./testeth -t libethereum -- --express --verbosity 4
+          ls /tmp/TransactionQueueSuitePassed || ./testeth -t TransactionQueueSuite -- --express --verbosity 4
+          ls /tmp/LegacyVMSuitePassed || ./testeth -t LegacyVMSuite -- --express --verbosity 4
+          ls /tmp/SkaleInterpreterSuitePassed || ./testeth -t SkaleInterpreterSuite -- --express --verbosity 4
+          ls /tmp/SnapshotSigningTestSuitePassed || ./testeth -t SnapshotSigningTestSuite -- --express --verbosity 4
+          ls /tmp/HashSnapshotTestSuitePassed || ./testeth -t HashSnapshotTestSuite --verbosity 4
+          ls /tmp/BtrfsTestSuitePassed || ./testeth -t BtrfsTestSuite -- --express --verbosity 4
+          ls /tmp/SkUtilsPassed || ./testeth -t SkUtils -- --express --verbosity 4
+          ls /tmp/BlockChainTestSuitePassed || ./testeth -t BlockChainTestSuite -- --express --verbosity 4
+          ls /tmp/TestHelperSuitePassed || ./testeth -t TestHelperSuite -- --express --verbosity 4
+          ls /tmp/LevelDBHashBasePassed || ./testeth -t LevelDBHashBase -- --express --verbosity 4
+          ls /tmp/memDBPassed || ./testeth -t memDB -- --express --verbosity 4
+          ls /tmp/OverlayDBTestsPassed || ./testeth -t OverlayDBTests -- --express --verbosity 4
+          ls /tmp/AccountHolderTestPassed || ./testeth -t AccountHolderTest -- --express --verbosity 4
+          ls /tmp/ClientTestsPassed || ./testeth -t ClientTests -- --express --verbosity 4
+          ls /tmp/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite  -- --express --verbosity 4 
+          ls /tmp/SingleConsensusTestsPassed || ./testeth -t SingleConsensusTests  -- --express --verbosity 4
+          ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4    
           cd ..
-          # Create lcov report
-          #lcov --capture --directory . --output-file coverage.info
-          #lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-          #lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          #lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused 
-          #lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files --ignore-errors unused
-          #lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-          #- lcov --list coverage.info # debug info
-
-          # Uploading report to CodeCov
-          #  bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
       - run: |
           sudo umount build/test/btrfs || true
           sudo rm -rf /tmp/tmp*
