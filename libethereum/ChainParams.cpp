@@ -115,6 +115,7 @@ ChainParams ChainParams::loadConfig(
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
         bool syncNode = false;
         bool archiveMode = false;
+        bool syncFromCatchup = false;
         std::string ip, ip6, keyShareName, sgxServerUrl;
         size_t t = 0;
         uint64_t port = 0, port6 = 0;
@@ -140,6 +141,10 @@ ChainParams ChainParams::loadConfig(
         }
         try {
             archiveMode = infoObj.at( "archiveMode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            syncFromCatchup = infoObj.at( "syncFromCatchup" ).get_bool();
         } catch ( ... ) {
         }
 
@@ -183,7 +188,7 @@ ChainParams ChainParams::loadConfig(
 
         cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode };
+            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};

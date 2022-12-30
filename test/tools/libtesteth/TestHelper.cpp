@@ -114,7 +114,7 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
 
 void simulateMining( Client& client, size_t numBlocks, const dev::Address &address ) {
     const auto balanceBefore = client.balanceAt( address );
-    State state = client.state().startWrite();
+    State state = client.state().createStateModifyCopy();
     u256 reward = 0;
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
         reward += client.sealEngine()->blockReward( blockNumber );
@@ -122,6 +122,7 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     state.addBalance( client.author(), reward );
     state.commit();
     const auto balanceAfter = client.balanceAt( address );
+    balanceAfter > balanceBefore; // make compiler happy
     assert( balanceAfter > balanceBefore );
 }
 
@@ -580,12 +581,12 @@ void checkCallCreates(
 void requireJsonFields( json_spirit::mObject const& _o, string const& _section,
     map< string, json_spirit::Value_type > const& _validationMap ) {
     // check for unexpected fiedls
-    for ( auto const field : _o )
+    for ( auto const& field : _o )
         BOOST_CHECK_MESSAGE( _validationMap.count( field.first ),
             field.first + " should not be declared in " + _section + " section!" );
 
     // check field types with validation map
-    for ( auto const vmap : _validationMap ) {
+    for ( auto const& vmap : _validationMap ) {
         BOOST_REQUIRE_MESSAGE(
             _o.count( vmap.first ) > 0, vmap.first + " not found in " + _section + " section!" );
         BOOST_REQUIRE_MESSAGE( _o.at( vmap.first ).type() == vmap.second,

@@ -23,7 +23,9 @@
 
 #include "Account.h"
 #include "ValidationSchemes.h"
+#include "libhistoric/SecureTrieDB.h"
 #include <libdevcore/JsonUtils.h>
+#include <libdevcore/OverlayDB.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethereum/Precompiled.h>
 
@@ -225,4 +227,18 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
     }
 
     return ret;
+}
+
+
+u256 Account::originalStorageValue( u256 const& _key, OverlayDB const& _db ) const {
+    auto it = m_storageOriginal.find( _key );
+    if ( it != m_storageOriginal.end() )
+        return it->second;
+
+    // Not in the original values cache - go to the DB.
+    SecureTrieDB< h256, OverlayDB > const memdb( const_cast< OverlayDB* >( &_db ), m_storageRoot );
+    std::string const payload = memdb.at( _key );
+    auto const value = payload.size() ? RLP( payload ).toInt< u256 >() : 0;
+    m_storageOriginal[_key] = value;
+    return value;
 }

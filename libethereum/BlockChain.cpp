@@ -501,7 +501,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
         s.cleanup();
 
-        _state = _state.startNew();
+        _state = _state.createNewCopyWithLocks();
 
         totalDifficulty = pd.totalDifficulty + tdIncrease;
 
@@ -1572,7 +1572,7 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
 
 Block BlockChain::genesisBlock(
     boost::filesystem::path const& _dbPath, dev::h256 const& _genesis ) const {
-    Block ret( *this, _dbPath, _genesis, BaseState::Empty );
+    Block ret( *this, _dbPath, _genesis, skale::BaseState::Empty );
 
     ret.noteChain( *this );
 
@@ -1585,7 +1585,7 @@ Block BlockChain::genesisBlock(
 }
 
 Block BlockChain::genesisBlock( const State& _state ) const {
-    Block ret( *this, m_genesisHash, _state, BaseState::PreExisting );
+    Block ret( *this, m_genesisHash, _state, skale::BaseState::PreExisting );
     ret.m_previousBlock = BlockHeader( m_params.genesisBlock() );
     ret.resetCurrent();
     return ret;

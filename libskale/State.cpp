@@ -34,6 +34,7 @@
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
+#include <libethereum/StateImporter.h>
 
 #include "ContractStorageLimitPatch.h"
 
@@ -65,17 +66,28 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
-State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs,
-    u256 _initialFunds, s256 _contractStorageLimit )
+State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
+#ifdef HISTORIC_STATE
+    dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
+#endif
+    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      contractStorageLimit_( _contractStorageLimit ) {
-    auto state = startRead();
+      contractStorageLimit_( _contractStorageLimit )
+#ifdef HISTORIC_STATE
+      ,
+      m_historicState( _accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs )
+#endif
+{
+    auto state = createStateReadOnlyCopy();
     totalStorageUsed_ = state.storageUsedTotal();
+#ifdef HISTORIC_STATE
+    m_historicState.setRootFromDB();
+#endif
     m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
@@ -87,6 +99,68 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _b
         throw std::logic_error( "Not implemented" );
     }
 }
+
+#ifdef HISTORIC_STATE
+
+// we do state import in 16 passes to minimize memory consumption
+const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
+
+void State::populateHistoricStateFromSkaleState() {
+    auto allAccountAddresses = this->addresses();
+
+    cout << "Number of addresses in statedb:" << allAccountAddresses.size() << endl;
+    cout << "Historic state does not yet exist. Populating historic state ..." << endl;
+    cout << "Please be patient as it may take up to several hours for a large state" << endl;
+
+
+    // this is done to save memory, otherwise OverlayDB will frow
+    for ( uint64_t i = 0; i < STATE_IMPORT_BATCH_COUNT; i++ ) {
+        populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
+    }
+
+    cout << "Completed state import" << endl;
+}
+
+
+dev::eth::AccountMap State::getBatchOfAccounts(
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
+    dev::eth::AccountMap accountBatch;
+
+    for ( auto&& item : _allAccountAddresses ) {
+        auto address = item.first;
+
+        // we split addresses into 16 batches
+        uint64_t first8BytesOfAddress = *( uint64_t* ) address.asArray().data();
+        if ( first8BytesOfAddress % STATE_IMPORT_BATCH_COUNT != _batchNumber ) {
+            continue;
+        }
+
+        Account account = *this->account( address );
+
+        if ( addressHasCode( address ) ) {
+            account.resetCode();
+            account.setCode( bytes( code( address ) ), account.version() );
+        }
+
+        // mark the account changed so it will be written into the database
+        account.changed();
+        accountBatch.emplace( address, account );
+    }
+
+    return accountBatch;
+}
+
+void State::populateHistoricStateBatchFromSkaleState(
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
+    cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
+
+    dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
+
+    m_db_ptr->copyStorageIntoAccountMap( accountMap );
+
+    m_historicState.commitExternalChanges( accountMap );
+}
+#endif
 
 skale::OverlayDB State::openDB(
     fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -126,8 +200,29 @@ skale::OverlayDB State::openDB(
     }
 }
 
-State::State( const State& _s ) {
-    *this = _s;
+State::State( const State& _s )
+#ifdef HISTORIC_STATE
+    : m_historicState( _s.m_historicState )
+#endif
+{
+    x_db_ptr = _s.x_db_ptr;
+    if ( _s.m_db_read_lock ) {
+        m_db_read_lock.emplace( *x_db_ptr );
+    }
+    if ( _s.m_db_write_lock ) {
+        std::logic_error( "Can't copy locked for writing state object" );
+    }
+    m_db_ptr = _s.m_db_ptr;
+    m_storedVersion = _s.m_storedVersion;
+    m_currentVersion = _s.m_currentVersion;
+    m_cache = _s.m_cache;
+    m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
+    m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
+    m_accountStartNonce = _s.m_accountStartNonce;
+    m_changeLog = _s.m_changeLog;
+    m_initial_funds = _s.m_initial_funds;
+    contractStorageLimit_ = _s.contractStorageLimit_;
+    totalStorageUsed_ = _s.storageUsedTotal();
 }
 
 State& State::operator=( const State& _s ) {
@@ -149,6 +244,9 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+#ifdef HISTORIC_STATE
+    m_historicState = _s.m_historicState;
+#endif
     m_fs_ptr = _s.m_fs_ptr;
 
     return *this;
@@ -205,7 +303,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-    commit( State::CommitBehaviour::KeepEmptyAccounts );
+    commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
@@ -341,8 +439,8 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( CommitBehaviour _commitBehaviour ) {
-    if ( _commitBehaviour == CommitBehaviour::RemoveEmptyAccounts )
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
+    if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
     {
@@ -365,6 +463,7 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
                     // TODO: remove account storage
                 } else {
                     RLPStream rlpStream( 4 );
+
                     rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
                               << account.storageUsed();
                     auto rawValue = rlpStream.out();
@@ -390,10 +489,16 @@ void State::commit( CommitBehaviour _commitBehaviour ) {
         m_currentVersion = *m_storedVersion;
     }
 
+
+#ifdef HISTORIC_STATE
+    m_historicState.commitExternalChanges( m_cache );
+#endif
+
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
 }
+
 
 bool State::addressInUse( Address const& _id ) const {
     return !!account( _id );
@@ -597,17 +702,34 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
     }
 }
 
+
+// Clear storage needs to be called when a new contract is
+// created for an address that included a different contract
+// that was destroyed using selfdestruct op code
+// The only way this can happen if one calls
+// CREATE2, self-destruct, and then CREATE2 again, which is
+// extremely rare and a bad security practice
+// Note that in Shanhai fork the selfdestruct op code will be removed
 void State::clearStorage( Address const& _contract ) {
-    // TODO: This is extremely inefficient
+    // only clear storage if the storage used is not 0
+
     Account* acc = account( _contract );
+    dev::s256 accStorageUsed = acc->storageUsed();
+
+    if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
+        return;
+    }
+
+    // TODO: This is extremely inefficient
     for ( auto const& hashPairPair : storage( _contract ) ) {
         auto const& key = hashPairPair.second.first;
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
     }
-    dev::s256 accStorageUsed = acc->storageUsed();
+
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
+    // TODO Do we need to clear storageUsage[_contract] here?
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -733,21 +855,21 @@ void State::updateToLatestVersion() {
     }
 }
 
-State State::startRead() const {
+State State::createStateReadOnlyCopy() const {
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::startWrite() const {
+State State::createStateModifyCopy() const {
     State stateCopy = State( *this );
     stateCopy.m_db_write_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::delegateWrite() {
+State State::createStateModifyCopyAndPassLock() {
     if ( m_db_write_lock ) {
         boost::upgrade_lock< boost::shared_mutex > lock;
         lock.swap( *m_db_write_lock );
@@ -757,18 +879,18 @@ State State::delegateWrite() {
         stateCopy.m_db_write_lock->swap( lock );
         return stateCopy;
     } else {
-        return startWrite();
+        return createStateModifyCopy();
     }
 }
 
-void State::stopWrite() {
+void State::releaseWriteLock() {
     m_db_write_lock = boost::none;
 }
 
-State State::startNew() {
+State State::createNewCopyWithLocks() {
     State copy;
     if ( m_db_write_lock )
-        copy = delegateWrite();
+        copy = createStateModifyCopyAndPassLock();
     else
         copy = State( *this );
     if ( m_db_read_lock )
@@ -858,8 +980,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
-        commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                      State::CommitBehaviour::KeepEmptyAccounts );
+        commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
         break;
     }
     case Permanence::Uncommitted:

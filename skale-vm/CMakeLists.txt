@@ -16,6 +16,7 @@ target_link_libraries(
     skale-vm
     PRIVATE
     ethereum
+    historic
     evm
     ethashseal
     devcore

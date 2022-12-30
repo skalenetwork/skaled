@@ -174,7 +174,8 @@ public:
     uint64_t getBlockTimestamp(
         unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const;
 
-    static std::string findMostRecentBlocksDBPath( const std::string& _prefix );
+    static boost::filesystem::path findMostRecentBlocksDBPath(
+        const boost::filesystem::path& _dirPath );
 
 private:
     boost::filesystem::path data_dir;

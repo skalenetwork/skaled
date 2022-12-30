@@ -7,14 +7,13 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     cpp-ethereum is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/lфicenses/>.
 */
 /** @file Interface.h
  * @author Gav Wood <i@gavwood.com>
@@ -85,12 +84,25 @@ public:
     /// Blocks until all pending transactions have been processed.
     virtual void flushTransactions() = 0;
 
+
     /// Makes the given call. Nothing is recorded into the state.
     virtual ExecutionResult call( Address const& _from, u256 _value, Address _dest,
-        bytes const& _data, u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) = 0;
+        bytes const& _data, u256 _gas, u256 _gasPrice,
+#ifdef HISTORIC_STATE
+        BlockNumber _blockNumber,
+#endif
+        FudgeFactor _ff = FudgeFactor::Strict ) = 0;
     ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
-        u256 _gas, u256 _gasPrice, FudgeFactor _ff = FudgeFactor::Strict ) {
-        return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice, _ff );
+        u256 _gas, u256 _gasPrice,
+#ifdef HISTORIC_STATE
+        BlockNumber _blockNumber,
+#endif
+        FudgeFactor _ff = FudgeFactor::Strict ) {
+        return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice,
+#ifdef HISTORIC_STATE
+            _blockNumber,
+#endif
+            _ff );
     }
 
     /// Injects the RLP-encoded block given by the _rlp into the block queue directly.
@@ -116,6 +128,17 @@ public:
     virtual u256 stateAt( Address _a, u256 _l ) const = 0;
     virtual bytes codeAt( Address _a ) const = 0;
     virtual h256 codeHashAt( Address _a ) const = 0;
+
+
+#ifdef HISTORIC_STATE
+    virtual u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateCountAt( Address _a, BlockNumber _block ) const = 0;
+    virtual u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const = 0;
+    virtual h256 historicStateRootAt( Address _a, BlockNumber _block ) const = 0;
+    virtual bytes historicStateCodeAt( Address _a, BlockNumber _block ) const = 0;
+#endif
+
+
     virtual std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const = 0;
 
     // [LOGS API]

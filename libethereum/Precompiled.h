@@ -43,6 +43,8 @@ class State;
 class OverlayFS;
 }  // namespace skale
 
+using skale::State;
+
 namespace dev {
 namespace eth {
 
