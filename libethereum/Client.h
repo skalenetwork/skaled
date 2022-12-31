@@ -377,7 +377,7 @@ protected:
 
 
 #ifdef HISTORIC_STATE
-        Block blockByNumber(BlockNumber _h) const;
+    Block blockByNumber( BlockNumber _h ) const;
 #endif
 
 protected:
@@ -453,8 +453,9 @@ protected:
 
 
 #ifdef HISTORIC_STATE
-    OverlayDB m_historicStateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
-    OverlayDB m_historicBlockToStateRootDB;         /// Maps hashes of block IDs to state roots
+    OverlayDB m_historicStateDB;  ///< Acts as the central point for the state database, so multiple
+                                  ///< States can share it.
+    OverlayDB m_historicBlockToStateRootDB;  /// Maps hashes of block IDs to state roots
 #endif
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
