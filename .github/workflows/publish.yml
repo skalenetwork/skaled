@@ -7,7 +7,6 @@ on:
       - develop
       - beta
       - stable
-      - syncnode_develop
 defaults:
   run:
     shell: bash
@@ -134,7 +133,7 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build historic state version
-        if: contains(github.ref, 'syncnode')
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           export CC=gcc-9
           export CXX=g++-9
@@ -181,7 +180,7 @@ jobs:
           asset_name: skaled
           asset_content_type: application/octet-stream
       - name: Build and publish historic-state container
-        if: contains(github.ref, 'syncnode_develop') || contains(github.ref, 'syncnode_beta') || contains(github.ref, 'syncnode_stable')
+        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           cp build-historic/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
