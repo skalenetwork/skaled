@@ -82,7 +82,7 @@ TransactionBase::TransactionBase(
 
             if ( isZeroSignature( r, s ) ) {
                 m_chainId = static_cast< uint64_t >( v );
-                m_vrs = SignatureStruct{r, s, 0};
+                m_vrs = SignatureStruct{ r, s, 0 };
             } else {
                 if ( v > 36 ) {
                     auto const chainId = ( v - 35 ) / 2;
@@ -94,9 +94,9 @@ TransactionBase::TransactionBase(
                 // else leave m_chainId as is (unitialized)
 
                 auto const recoveryID = m_chainId.has_value() ?
-                                            _byte_{v - ( u256{*m_chainId} * 2 + 35 )} :
-                                            _byte_{v - 27};
-                m_vrs = SignatureStruct{r, s, recoveryID};
+                                            _byte_{ v - ( u256{ *m_chainId } * 2 + 35 ) } :
+                                            _byte_{ v - 27 };
+                m_vrs = SignatureStruct{ r, s, recoveryID };
 
                 if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
@@ -118,8 +118,10 @@ TransactionBase::TransactionBase(
 
             if ( !_allowInvalid )
                 throw;
-            else
+            else {
                 cwarn << _e.what();
+                cwarn << DETAILED_ERROR;
+            }
         }
     } catch ( ... ) {
         m_type = Type::Invalid;
@@ -129,12 +131,12 @@ TransactionBase::TransactionBase(
 
         if ( !_allowInvalid )
             throw;
+        else
+            cwarn << DETAILED_ERROR;
     }
 }  // ctor
 
 Address const& TransactionBase::safeSender() const noexcept {
-    assert( !isInvalid() );
-
     try {
         return sender();
     } catch ( ... ) {

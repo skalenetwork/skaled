@@ -865,6 +865,8 @@ public:
     server& operator=( const server& ) = delete;
     server& operator=( server&& ) = delete;
     virtual ~server();
+    server_api& access_api() { return api_; }
+    const server_api& access_api() const { return api_; }
     size_t request_new_peer_serial_number();
     bool isServerSide() const override;
     std::string type() const;
@@ -926,6 +928,8 @@ public:
     client& operator=( const client& ) = delete;
     client& operator=( client&& ) = delete;
     virtual ~client();
+    client_api& access_api() { return api_; }
+    const client_api& access_api() const { return api_; }
     bool isServerSide() const override;
     bool is_ssl() const;
     std::string type() const;

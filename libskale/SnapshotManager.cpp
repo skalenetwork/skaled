@@ -22,23 +22,25 @@
  * @date 2019
  */
 
-#include "SnapshotManager.h"
-
-#include "UnsafeRegion.h"
-#include <libbatched-io/batched_io.h>
-
-#include <libdevcore/LevelDB.h>
-#include <libdevcore/Log.h>
-#include <libdevcrypto/Hash.h>
-#include <skutils/btrfs.h>
-
-#include <boost/interprocess/sync/named_mutex.hpp>
 
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
+
+#include "UnsafeRegion.h"
+#include "boost/filesystem.hpp"
+#include <libbatched-io/batched_io.h>
+#include <libdevcore/LevelDB.h>
+#include <libdevcore/Log.h>
+#include <libdevcrypto/Hash.h>
+#include <skutils/btrfs.h>
+#include <boost/filesystem/operations.hpp>
+#include <boost/interprocess/sync/named_mutex.hpp>
+
+
+#include "SnapshotManager.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -604,6 +606,7 @@ void SnapshotManager::computeAllVolumesHash(
     boost::filesystem::directory_iterator directory_it( blocks_extras_path ), end;
 
     std::vector< boost::filesystem::path > contents;
+
     while ( directory_it != end ) {
         contents.push_back( *directory_it );
         ++directory_it;
@@ -613,7 +616,11 @@ void SnapshotManager::computeAllVolumesHash(
             return lhs.string() < rhs.string();
         } );
 
+    // 5 is DB pieces count
+    size_t cnt = 0;
     for ( auto& content : contents ) {
+        if ( cnt++ >= 5 )
+            break;
         this->computeDatabaseHash( content, ctx );
     }
 
@@ -714,4 +721,57 @@ uint64_t SnapshotManager::getBlockTimestamp(
     }
 
     return timestamp;
+}
+
+
+/*
+      Find the most recent database out of the four rotated block atabases in consensus
+      This will find the directory in the form "${_dirname}/.db.X" with the largest X
+*/
+boost::filesystem::path SnapshotManager::findMostRecentBlocksDBPath(
+    const boost::filesystem::path& _dirPath ) {
+    vector< boost::filesystem::path > dirs;
+    vector< uint64_t > indices;
+
+    // First check that _dirname exists and is a directory
+
+    if ( !exists( _dirPath ) ) {
+        throw CouldNotFindBlocksDB( _dirPath.string(), "The provided path does not exist." );
+    }
+
+    if ( !is_directory( _dirPath ) ) {
+        throw CouldNotFindBlocksDB( _dirPath.string(), "The provided path is not a directory." );
+    }
+
+    // Find and sort all directories and files in _dirName
+    copy( boost::filesystem::directory_iterator( _dirPath ),
+        boost::filesystem::directory_iterator(), back_inserter( dirs ) );
+    sort( dirs.begin(), dirs.end() );
+
+    size_t offset = string( "db." ).size();
+
+    // First, find all databases in the correct format and collect indices
+    for ( auto& path : dirs ) {
+        if ( is_directory( path ) ) {
+            auto fileName = path.filename().string();
+            if ( fileName.find( "db." ) == 0 ) {
+                auto index = fileName.substr( offset );
+                auto value = strtoull( index.c_str(), nullptr, 10 );
+                if ( value != 0 ) {
+                    indices.push_back( value );
+                }
+            }
+        }
+    }
+
+    // Could not find any database in the correct format. Throw exception
+    if ( indices.size() == 0 ) {
+        throw CouldNotFindBlocksDB(
+            _dirPath.string(), "No rotated databases in correct format found" );
+    }
+
+    // Now find the maximum index X. This is the most recent database
+    auto maxIndex = *max_element( begin( indices ), end( indices ) );
+
+    return _dirPath / ( "db." + to_string( maxIndex ) );
 }

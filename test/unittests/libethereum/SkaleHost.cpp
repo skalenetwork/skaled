@@ -28,6 +28,8 @@ using namespace dev::eth;
 using namespace dev::test;
 using namespace std;
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 class ConsensusTestStub : public ConsensusInterface {
 private:
     ConsensusExtFace& m_extFace;
@@ -39,7 +41,8 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& _jsonConfig, const string& _gethURL ) override {}
+    void parseFullConfigAndCreateNode( const std::string& /*_jsonConfig */,
+                 const string& /*_gethURL*/ ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }
@@ -74,15 +77,22 @@ public:
             block_gas_prices.push_back( _gasPrice );
         else
             block_gas_prices[_blockId] = _gasPrice;
-    }
-
-    uint64_t submitOracleRequest( const string& _spec, string& _receipt) {
         return 0;
     }
 
-    uint64_t checkOracleResult( const string& _receipt, string& _result) {
+    uint64_t submitOracleRequest( const string& /*_spec*/, string&
+                          /*_receipt*/) override {
         return 0;
     }
+
+    uint64_t checkOracleResult( const string&
+           /*_receipt*/, string& /*_result */) {
+        return 0;
+    }
+
+    map< string, uint64_t > getConsensusDbUsage() const {
+        return map< string, uint64_t >();
+    };
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -111,6 +121,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
         chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
+        chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
+        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
         if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;
@@ -692,6 +704,50 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
     REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!
 }
 
+// Last transaction should be dropped from block proposal
+BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
+    auto receiver = KeyPair::create();
+
+    {
+        auto wr_state = client->state().createStateModifyCopy();
+        wr_state.addBalance( account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
+        wr_state.commit();
+    }
+
+    // 1 txn with max gas
+    Json::Value json;
+    json["from"] = toJS( coinbase.address() );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+    json["gasPrice"] = 1000;
+
+    Transaction tx1 = tx_from_json( json );
+
+    RLPStream stream1;
+    tx1.streamRLP( stream1 );
+
+    // 2 txn
+    json["from"]  = toJS( account2.address() );
+    json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
+
+    Transaction tx2 = tx_from_json( json );
+
+    RLPStream stream2;
+    tx2.streamRLP( stream2 );
+
+    // put already broadcasted txns
+    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    skaleHost->receiveTransaction( toJS( stream2.out() ) );
+
+    sleep( 1 );         // allow broadcast thread to move them
+
+    ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
+
+    BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
+    BOOST_REQUIRE( proposal[0] == stream1.out() );
+}
+
 // positive test for 4 next ones
 BOOST_AUTO_TEST_CASE( transactionDropReceive
                       //, *boost::unit_test::precondition( dev::test::run_not_express )
@@ -870,7 +926,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().startWrite();
+        auto wr_state = client->state().createStateModifyCopy();
         wr_state.addBalance( account2.address(), 1 * ether );
         wr_state.commit();
     }

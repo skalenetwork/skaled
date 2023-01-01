@@ -10,7 +10,9 @@
 
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
-Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for SKALE chains (elastic sidechains).
+Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for [SKALE blockchains](https://skale.space/technology).
+
+The SKALE network supports an unlimited number of independent blockchains with zero gas fees, instant finality, and high transaction throughput. SKALE is the first live blockchain with Linear Scaling. As more nodes join the network, the capacity of the network also grows.
 
 ## Forklessness
 
@@ -55,9 +57,12 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 ### Install required Ubuntu packages
 
 ```
-sudo apt-get update
-sudo apt-get install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs
+sudo apt update
+sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs 
+sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io
 ```
+
+NB cmake needs to be of version >=3.31, git of version >=2.18
 
 ### Build dependencies
 

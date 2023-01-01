@@ -97,7 +97,7 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     m_state = std::unique_ptr< State >(
         new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0, 1000000000 ) );
     ImportTest::importState( _stateObj, *m_state );
-    m_state->startWrite().commit( State::CommitBehaviour::KeepEmptyAccounts );
+    m_state->createStateModifyCopy().commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     json_spirit::mObject state = _stateObj;
     dev::test::replaceCodeInState( state );

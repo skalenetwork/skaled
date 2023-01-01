@@ -16,6 +16,7 @@ macro(configure_project)
     option(FASTCTEST "Enable fast ctest" OFF)
     option(CONSENSUS "Use Skale consensus algorithm" ON)
     option(MICROPROFILE "Enable generation of profile.html through MICROPROFILE lib" OFF)
+    option(HISTORIC_STATE "Use parallel Merkle Tree to maintain historic states" OFF)
 
     if(MINIUPNPC)
         message(WARNING

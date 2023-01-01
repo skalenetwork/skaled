@@ -27,7 +27,8 @@
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
-using skale::State;
+using skale::
+State;
 
 class ExtVMConstantinopleFixTestFixture : public TestOutputHelperFixture {
 public:

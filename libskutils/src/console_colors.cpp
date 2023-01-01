@@ -394,19 +394,19 @@ const char* json_prefix( nlohmann::json::value_t vt ) {
         return "";
     typedef std::map< nlohmann::json::value_t, const char* > map_json_prefixes_by_type_t;
     static const map_json_prefixes_by_type_t g_map{
-        {nlohmann::json::value_t::null, control::foreground::_red_},  // null value
-        {nlohmann::json::value_t::object,
-            control::foreground::_light_blue_},  // object (unordered set of name/value pairs)
-        {nlohmann::json::value_t::array, control::foreground::_green_},    // array (ordered
+        { nlohmann::json::value_t::null, control::foreground::_red_ },  // null value
+        { nlohmann::json::value_t::object,
+            control::foreground::_light_blue_ },  // object (unordered set of name/value pairs)
+        { nlohmann::json::value_t::array, control::foreground::_green_ },  // array (ordered
                                                                            // collection of values)
-        {nlohmann::json::value_t::string, control::foreground::_yellow_},  // string value
-        {nlohmann::json::value_t::boolean, control::foreground::_magenta_},      // boolean value
-        {nlohmann::json::value_t::number_integer, control::foreground::_blue_},  // number value
-                                                                                 // (integer)
-        {nlohmann::json::value_t::number_float, control::foreground::_cyan_},    // number value
+        { nlohmann::json::value_t::string, control::foreground::_yellow_ },        // string value
+        { nlohmann::json::value_t::boolean, control::foreground::_magenta_ },      // boolean value
+        { nlohmann::json::value_t::number_integer, control::foreground::_blue_ },  // number value
+                                                                                   // (integer)
+        { nlohmann::json::value_t::number_float, control::foreground::_cyan_ },    // number value
                                                                                  // (floating-point)
-        {nlohmann::json::value_t::discarded,
-            control::foreground::_red_},  // discarded by the the parser callback function
+        { nlohmann::json::value_t::discarded,
+            control::foreground::_red_ },  // discarded by the the parser callback function
     };
     map_json_prefixes_by_type_t::const_iterator itFind = g_map.find( vt );
     const char* s = ( itFind != g_map.end() ) ? itFind->second : reset();
@@ -1172,8 +1172,9 @@ std::string duration2string( std::chrono::nanoseconds time ) {
 
     using T = std::tuple< std::chrono::nanoseconds, int, const char* >;
 
-    constexpr T formats[] = {T{hours( 1 ), 2, ""}, T{minutes( 1 ), 2, ":"}, T{seconds( 1 ), 2, ":"},
-        T{milliseconds( 1 ), 3, "."}, T{microseconds( 1 ), 3, " "}, T{nanoseconds( 1 ), 3, " "}};
+    constexpr T formats[] = { T{ hours( 1 ), 2, "" }, T{ minutes( 1 ), 2, ":" },
+        T{ seconds( 1 ), 2, ":" }, T{ milliseconds( 1 ), 3, "." }, T{ microseconds( 1 ), 3, " " },
+        T{ nanoseconds( 1 ), 3, " " } };
 
     std::ostringstream o;
     tuple_for_each( formats, [&time, &o]( auto denominator, auto width, auto separator ) {
@@ -1657,7 +1658,7 @@ std::string pe( const char* strPath ) {  // path with comment about file existen
 }
 
 static bool stat_is_email_enabled_char( char c ) {
-    if (::isalnum( c ) || c == '.' || c == '_' )
+    if ( ::isalnum( c ) || c == '.' || c == '_' )
         return true;
     return false;
 }

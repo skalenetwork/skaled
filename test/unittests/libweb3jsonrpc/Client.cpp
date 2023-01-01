@@ -53,6 +53,8 @@ using namespace dev::p2p;
 namespace dev {
 namespace test {
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 BOOST_FIXTURE_TEST_SUITE( ClientTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( Personal ) {
@@ -69,6 +71,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     chainParams.allowFutureBlocks = true;
     chainParams.difficulty = chainParams.minimumDifficulty;
     chainParams.gasLimit = chainParams.maxGasLimit;
+    chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
+    chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),

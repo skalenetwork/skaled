@@ -52,7 +52,7 @@ class Create2TestFixture : public TestOutputHelperFixture {
 public:
     explicit Create2TestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
-    virtual ~Create2TestFixture() { state.stopWrite(); }
+    virtual ~Create2TestFixture() { state.releaseWriteLock(); }
 
     void testCreate2worksInConstantinople() {
         ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
@@ -171,7 +171,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
     //        State state{0};
-    State state = State( 0 ).startWrite();
+    State state = State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -378,7 +378,7 @@ public:
         state.addBalance( to, 1 * ether );
     }
 
-    virtual ~SstoreTestFixture() { state.stopWrite(); }
+    virtual ~SstoreTestFixture() { state.releaseWriteLock(); }
 
     void testEip1283Case1() { testGasConsumed( "0x60006000556000600055", 0, 412, 0 ); }
 
@@ -422,7 +422,7 @@ public:
         u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
         state.setStorageLimit(1000000000);
         state.setStorage( to, 0, _originalValue );
-        state.commit( State::CommitBehaviour::RemoveEmptyAccounts );
+        state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
         bytes const code = fromHex( _codeStr );
         ExtVM extVm( state, envInfo, *se, to, from, from, value, gasPrice, inputData, ref( code ),
@@ -440,7 +440,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address from{KeyPair::create().address()};
     Address to{KeyPair::create().address()};
-    State state = State( 0 ).startWrite();
+    State state = State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
@@ -689,6 +689,13 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage,
     testCreate2collisionWithNonEmptyStorage();
 }
 
+
+// Disable this test since SKALE cleans the storage in a different way
+// There is now need to ALWAYS clean contract storage,
+// because the only case when a contract is created on non-empty
+//storage is create2 -> selfdestruct -> create2_with_the_same_sed
+// Note: the combination above will cease to exist in Shanhai fork because
+// there will be no selfdestruct
 BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
     testCreate2collisionWithNonEmptyStorageEmptyInitCode();
 }
@@ -882,6 +889,7 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
     testCreate2collisionWithNonEmptyStorage();
 }
 
+// Disable this test since we clean storage in a different way
 BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
     testCreate2collisionWithNonEmptyStorageEmptyInitCode();
 }

@@ -23,6 +23,8 @@
  */
 
 #include "OverlayDB.h"
+#include "ContractStorageZeroValuePatch.h"
+#include "libhistoric/HistoricState.h"
 
 #include <thread>
 
@@ -138,6 +140,34 @@ void OverlayDB::clearPartialTransactionReceipts() {
     setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
+
+void OverlayDB::commitStorageValues() {
+    for ( auto const& addressStoragePair : m_storageCache ) {
+        h160 const& address = addressStoragePair.first;
+        unordered_map< h256, h256 > const& storage = addressStoragePair.second;
+        for ( auto const& stateAddressValuePair : storage ) {
+            h256 const& storageAddress = stateAddressValuePair.first;
+            h256 const& value = stateAddressValuePair.second;
+
+            static const h256 ZERO_VALUE( 0 );
+
+            if ( ContractStorageZeroValuePatch::isEnabled() && value == ZERO_VALUE ) {
+                // if the value is zero, the pair will be deleted in LevelDB
+                // if it exists
+                m_db_face->kill(
+                    skale::slicing::toSlice( getStorageKey( address, storageAddress ) ) );
+            } else {
+                // if the value is not zero, the pair will be inserted or
+                // updated in the LevelDB
+                m_db_face->insert(
+                    skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
+                    skale::slicing::toSlice( value ) );
+            }
+        }
+    }
+}
+
+
 void OverlayDB::commit( const std::string& _debugCommitId ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
@@ -164,18 +194,9 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
                             skale::slicing::toSlice( value ) );
                     }
                 }
-                for ( auto const& addressStoragePair : m_storageCache ) {
-                    h160 const& address = addressStoragePair.first;
-                    unordered_map< h256, h256 > const& storage = addressStoragePair.second;
-                    for ( auto const& stateAddressValuePair : storage ) {
-                        h256 const& storageAddress = stateAddressValuePair.first;
-                        h256 const& value = stateAddressValuePair.second;
 
-                        m_db_face->insert(
-                            skale::slicing::toSlice( getStorageKey( address, storageAddress ) ),
-                            skale::slicing::toSlice( value ) );
-                    }
-                }
+                commitStorageValues();
+
                 m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
                     skale::slicing::toSlice( storageUsed_.str() ) );
 
@@ -192,20 +213,21 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
                     cwarn << "Fail(1) writing to state database. Bombing out. ";
+                    cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
-                std::cerr << "Error(2) writing to state database (during DB commit): "
-                          << boost::diagnostic_information( ex ) << std::endl;
+                cerror << "Error(2) writing to state database (during DB commit): "
+                       << boost::diagnostic_information( ex );
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
                     cwarn << "Fail(2) writing to state database. Bombing out. ";
+                    cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
-                std::cerr << "Error(2) writing to state database (during DB commit): " << ex.what()
-                          << std::endl;
+                cerror << "Error(2) writing to state database (during DB commit): " << ex.what();
                 cwarn << "Error(2) writing to state database: " << ex.what();
                 cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
@@ -265,7 +287,7 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
             } else {
-                cnote << "Try to delete non existing key " << _address << "(" << _space << ")";
+                ctrace << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
         }
     }
@@ -287,6 +309,7 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
+    cnote << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
         m_db_face->forEach( [&accounts]( Slice key, Slice value ) {
@@ -328,6 +351,43 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     }
     return storage;
 }
+
+void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
+    static uint64_t counter = 0;
+
+    if ( m_db_face ) {
+        m_db_face->forEach( [&_map]( Slice key, Slice value ) {
+            if ( key.size() == h160::size + h256::size ) {
+                // key is storage address
+                string keyString( key.begin(), key.end() );
+                [[maybe_unused]] h160 address = h160(
+                    keyString.substr( 0, h160::size ), h160::ConstructFromStringType::FromBinary );
+
+                if ( _map.count( address ) == 0 )
+                    return true;
+
+                [[maybe_unused]] h256 memoryAddress = h256(
+                    keyString.substr( h160::size ), h256::ConstructFromStringType::FromBinary );
+                [[maybe_unused]] u256 memoryValue = h256( string( value.begin(), value.end() ),
+                    h256::ConstructFromStringType::FromBinary );
+
+
+                _map.at( address ).setStorage( memoryAddress, memoryValue );
+                counter++;
+                if ( counter % 1000000 == 0 ) {
+                    std::cout << ".";
+                    std::cout.flush();
+                }
+            }
+            return true;
+        } );
+
+        std::cout << std::endl;
+    } else {
+        cerror << "Try to load account's storage but connection to database is not established";
+    }
+}
+
 
 void OverlayDB::rollback() {
 #if DEV_GUARDED_DB
@@ -411,7 +471,7 @@ void OverlayDB::kill( h160 const& _h ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
             } else {
-                cnote << "Try to delete non existing key " << _h;
+                ctrace << "Try to delete non existing key " << _h;
             }
         }
     }
