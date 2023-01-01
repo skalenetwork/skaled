@@ -40,16 +40,18 @@
 
 #include <libdevcore/microprofile.h>
 
-#include <libdevcore/system_usage.h>
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>
 #endif
 
-#include <libskale/State.h>
-#include <libskale/UnsafeRegion.h>
+#include <libskale/ContractStorageLimitPatch.h>
+#include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/RevertableFSPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
+#include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -144,6 +146,11 @@ Client::Client( ChainParams const& _params, int _networkID,
     init( _forceAction, _networkID );
 
     TotalStorageUsedPatch::g_client = this;
+    ContractStorageLimitPatch::contractStoragePatchTimestamp =
+        chainParams().sChain.contractStoragePatchTimestamp;
+    ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
+        chainParams().sChain.contractStorageZeroValuePatchTimestamp;
+    RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
 }
 
 Client::~Client() {
@@ -151,9 +158,9 @@ Client::~Client() {
 }
 
 void Client::stopWorking() {
-// TODO Try this in develop. For hotfix we will keep as is
-//    if ( !Worker::isWorking() )
-//        return;
+    // TODO Try this in develop. For hotfix we will keep as is
+    //    if ( !Worker::isWorking() )
+    //        return;
 
     Worker::stopWorking();
 
@@ -235,9 +242,9 @@ void Client::initStateFromDiskOrGenesis() {
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
-    m_state = State(
-        chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
-        chainParams().accountInitialFunds, chainParams().sChain.contractStorageLimit );
+    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds,
+        chainParams().sChain.contractStorageLimit );
 
 
     if ( m_state.empty() ) {
@@ -246,11 +253,10 @@ void Client::initStateFromDiskOrGenesis() {
 #ifdef HISTORIC_STATE
         // if SKALE state exists but historic state does not, we need to populate the historic state
         // from SKALE state
-        if (!historicStateExists ) {
-
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert(true);
+        if ( !historicStateExists ) {
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert( true );
             m_state.populateHistoricStateFromSkaleState();
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert(false);
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert( false );
         }
 #endif
     }
@@ -261,7 +267,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     DEV_TIMED_FUNCTION_ABOVE( 500 );
     m_networkId = _networkId;
 
-   initStateFromDiskOrGenesis();
+    initStateFromDiskOrGenesis();
 
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
@@ -514,7 +520,6 @@ static std::string stat_transactions2str(
 
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
-
     // HACK here was m_blockImportMutex - but now it is acquired in SkaleHost!!!
     // TODO decouple Client and SkaleHost
     int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
@@ -685,6 +690,7 @@ size_t Client::importTransactionsAsBlock(
                     cerror << cc::fatal( "CRITICAL" ) << " "
                            << cc::warn( dev::nested_exception_what( ex ) )
                            << cc::error( " in computeSnapshotHash(). Exiting..." );
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
@@ -692,6 +698,7 @@ size_t Client::importTransactionsAsBlock(
                            << cc::error(
                                   " unknown exception in computeSnapshotHash(). "
                                   "Exiting..." );
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
@@ -717,7 +724,7 @@ size_t Client::syncTransactions(
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
-        cout << "m_working.isSealed. sleeping" << endl;
+        cnote << "m_working.isSealed. sleeping" << endl;
         usleep( 1000 );
     }
 
@@ -728,6 +735,11 @@ size_t Client::syncTransactions(
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
 
+    ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
+    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
+
+
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
@@ -737,9 +749,9 @@ size_t Client::syncTransactions(
         m_state = m_state.createNewCopyWithLocks();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
-        m_state.mutableHistoricState().setRoot(m_working.mutableState().mutableHistoricState().rootHash());
+        m_state.mutableHistoricState().setRoot(
+            m_working.mutableState().mutableHistoricState().rootHash() );
 #endif
-
     }
 
     DEV_READ_GUARDED( x_working )
@@ -995,17 +1007,15 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                     << " (" << header_struct.hash() << ")";
     std::stringstream ssBlockStats;
     ssBlockStats << cc::success( "Block stats:" ) << "BN:" << number()
-                    << ":BTS:" << bc().info().timestamp()
-                    << ":TXS:" << TransactionBase::howMany()
-                    << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
-                    << ":SENGS:" << SealEngineBase::howMany()
-                    << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
-                    << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
-                    << ":BDS:" << BlockDetails::howMany()
-                    << ":TSS:" << TransactionSkeleton::howMany()
-                    << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
-                    << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                    << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":BTS:" << bc().info().timestamp() << ":TXS:" << TransactionBase::howMany()
+                 << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
+                 << ":SENGS:" << SealEngineBase::howMany()
+                 << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
+                 << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
+                 << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
+                 << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
+                 << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
+                 << ":CMM:" << bc().getTotalCacheMemory();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
@@ -1150,19 +1160,18 @@ void Client::prepareForTransaction() {
 
 
 #ifdef HISTORIC_STATE
-Block Client::blockByNumber(BlockNumber _h) const
-{
+Block Client::blockByNumber( BlockNumber _h ) const {
     try {
-        auto hash = ClientBase::hashFromNumber(_h);
+        auto hash = ClientBase::hashFromNumber( _h );
 
-         if (_h == LatestBlock || _h == PendingBlock) {
-             _h = bc().number();
-         }
+        if ( _h == LatestBlock || _h == PendingBlock ) {
+            _h = bc().number();
+        }
 
         // blockByNumber is only used for reads
 
         auto readState = m_state.createStateReadOnlyCopy();
-        readState.mutableHistoricState().setRootByBlockNumber(_h);
+        readState.mutableHistoricState().setRootByBlockNumber( _h );
         DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
         assert( false );
         return Block( bc() );
@@ -1303,46 +1312,37 @@ h256 Client::importTransaction( Transaction const& _t ) {
 // TODO: remove try/catch, allow exceptions
 
 
-
-
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
     u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
-                              BlockNumber _blockNumber,
+    BlockNumber _blockNumber,
 #endif
-                              FudgeFactor _ff ) {
+    FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
-
-
-
 #ifdef HISTORIC_STATE
-        Block historicBlock = blockByNumber(_blockNumber);
-        if (_blockNumber < bc().number()) {
+        Block historicBlock = blockByNumber( _blockNumber );
+        if ( _blockNumber < bc().number() ) {
             // historic state
-            try
-            {
-                u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce(_from);
+            try {
+                u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
                 u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-                Transaction t(_value, gasPrice, gas, _dest, _data, nonce);
-                t.forceSender(_from);
+                Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
+                t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
                 t.checkOutExternalGas( ~u256( 0 ) );
-                if (_ff == FudgeFactor::Lenient) {
+                if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
-                ret = historicBlock.executeHistoricCall(bc().lastBlockHashes(), t);
-            }
-            catch (...)
-            {
+                ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t );
+            } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
                 throw;
             }
             return ret;
-
         }
 #endif
 
@@ -1477,6 +1477,21 @@ bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
 }
 
+std::pair< uint64_t, uint64_t > Client::getBlocksDbUsage() const {
+    uint64_t pieceUsageBytes = bc().pieceUsageBytes();
+    fs::path blocksDbPath =
+        m_dbPath / BlockChain::getChainDirName( chainParams() ) / fs::path( "blocks_and_extras" );
+    return { dev::getDirSize( blocksDbPath ), pieceUsageBytes };
+}
+
+std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
+    uint64_t contractStorageUsed = m_state.storageUsedTotal().convert_to< uint64_t >();
+    fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
+                           fs::path( toString( dev::eth::c_databaseVersion ) ) /
+                           fs::path( "state" );
+    return { dev::getDirSize( stateDbPath ), contractStorageUsed };
+}
+
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     assert( m_skaleHost );
     uint64_t status = -1;
@@ -1502,34 +1517,27 @@ const dev::h256 Client::empty_str_hash =
 
 
 #ifdef HISTORIC_STATE
-u256 Client::historicStateBalanceAt(Address _a, BlockNumber _block) const
-{
-
-    auto block = blockByNumber(_block);
+u256 Client::historicStateBalanceAt( Address _a, BlockNumber _block ) const {
+    auto block = blockByNumber( _block );
 
     auto aState = block.mutableState().mutableHistoricState();
 
-    return aState.balance(_a);
-
+    return aState.balance( _a );
 }
 
-u256 Client::historicStateCountAt(Address _a, BlockNumber _block) const
-{
-    return blockByNumber(_block).mutableState().mutableHistoricState().getNonce(_a);
+u256 Client::historicStateCountAt( Address _a, BlockNumber _block ) const {
+    return blockByNumber( _block ).mutableState().mutableHistoricState().getNonce( _a );
 }
 
-u256 Client::historicStateAt(Address _a, u256 _l, BlockNumber _block) const
-{
-    return blockByNumber(_block).mutableState().mutableHistoricState().storage(_a, _l);
+u256 Client::historicStateAt( Address _a, u256 _l, BlockNumber _block ) const {
+    return blockByNumber( _block ).mutableState().mutableHistoricState().storage( _a, _l );
 }
 
-h256 Client::historicStateRootAt(Address _a, BlockNumber _block) const
-{
-    return blockByNumber(_block).mutableState().mutableHistoricState().storageRoot(_a);
+h256 Client::historicStateRootAt( Address _a, BlockNumber _block ) const {
+    return blockByNumber( _block ).mutableState().mutableHistoricState().storageRoot( _a );
 }
 
-bytes Client::historicStateCodeAt(Address _a, BlockNumber _block) const
-{
-    return blockByNumber(_block).mutableState().mutableHistoricState().code(_a);
+bytes Client::historicStateCodeAt( Address _a, BlockNumber _block ) const {
+    return blockByNumber( _block ).mutableState().mutableHistoricState().code( _a );
 }
 #endif

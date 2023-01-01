@@ -36,6 +36,8 @@
 #include <libethereum/Defaults.h>
 #include <libethereum/StateImporter.h>
 
+#include "ContractStorageLimitPatch.h"
+
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
 
@@ -43,6 +45,7 @@
 #include <skutils/eth_utils.h>
 
 #include <libethereum/BlockDetails.h>
+#include <libskale/RevertableFSPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -85,6 +88,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+    m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
         clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
@@ -118,10 +122,8 @@ void State::populateHistoricStateFromSkaleState() {
 }
 
 
-
 dev::eth::AccountMap State::getBatchOfAccounts(
-    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber) {
-
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     dev::eth::AccountMap accountBatch;
 
     for ( auto&& item : _allAccountAddresses ) {
@@ -152,12 +154,11 @@ void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
 
-    dev::eth::AccountMap accountMap = getBatchOfAccounts(_allAccountAddresses, _batchNumber);
+    dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
     m_db_ptr->copyStorageIntoAccountMap( accountMap );
 
     m_historicState.commitExternalChanges( accountMap );
-
 }
 #endif
 
@@ -246,6 +247,8 @@ State& State::operator=( const State& _s ) {
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
+    m_fs_ptr = _s.m_fs_ptr;
+
     return *this;
 }
 
@@ -306,8 +309,8 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
-        cerr << "Current state version is " << m_currentVersion << " but stored version is "
-             << *m_storedVersion << endl;
+        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+               << *m_storedVersion << endl;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -388,8 +391,8 @@ eth::Account* State::account( Address const& _address ) {
         boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
 
         if ( !checkVersion() ) {
-            cerr << "Current state version is " << m_currentVersion << " but stored version is "
-                 << *m_storedVersion << endl;
+            cerror << "Current state version is " << m_currentVersion << " but stored version is "
+                   << *m_storedVersion << endl;
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
 
@@ -605,8 +608,8 @@ void State::kill( Address _addr ) {
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
-        cerr << "Current state version is " << m_currentVersion << " but stored version is "
-             << *m_storedVersion << endl;
+        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+               << *m_storedVersion << endl;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -713,7 +716,7 @@ void State::clearStorage( Address const& _contract ) {
     Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
 
-    if ( accStorageUsed == 0 ) {
+    if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
         return;
     }
 
@@ -726,8 +729,8 @@ void State::clearStorage( Address const& _contract ) {
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
+    // TODO Do we need to clear storageUsage[_contract] here?
 }
-
 
 bytes const& State::code( Address const& _addr ) const {
     eth::Account const* a = account( _addr );
@@ -805,7 +808,11 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            account.setStorage( change.key, change.value );
+            if ( ContractStorageLimitPatch::isEnabled() ) {
+                rollbackStorageChange( change, account );
+            } else {
+                account.setStorage( change.key, change.value );
+            }
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -830,6 +837,10 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     resetStorageChanges();
+    clearFileStorageCache();
+    if ( !ContractStorageLimitPatch::isEnabled() ) {
+        resetStorageChanges();
+    }
 }
 
 void State::updateToLatestVersion() {
@@ -919,6 +930,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     ExecutionResult res;
     e.setResultRecipient( res );
 
+    bool isCacheEnabled = RevertableFSPatch::isEnabled();
+    resetOverlayFS( isCacheEnabled );
+
     auto onOp = _onOp;
 #if ETH_VMTRACE
     if ( !onOp )
@@ -963,6 +977,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
+        m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
@@ -1004,9 +1019,24 @@ bool State::executeTransaction(
     }
 }
 
+void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
+    dev::u256 _currentValue = storage( _change.address, _change.key );
+    int count = 0;
+    if ( ( _change.value > 0 && _currentValue > 0 ) ||
+         ( _change.value == 0 && _currentValue == 0 ) ) {
+        count = 0;
+    } else {
+        count = ( _change.value == 0 ? -1 : 1 );
+    }
+    storageUsage[_change.address] += count * 32;
+    currentStorageUsed_ += count * 32;
+    _acc.setStorage( _change.key, _change.value );
+}
+
 void State::updateStorageUsage() {
     for ( const auto& [_address, _value] : storageUsage ) {
-        account( _address )->updateStorageUsage( _value );
+        if ( auto a = account( _address ) )
+            a->updateStorageUsage( _value );
     }
     resetStorageChanges();
 }
@@ -1071,8 +1101,7 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                         contout << std::endl
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
-                                       cached.count( j.first ) ? " .     " :
-                                                                 "       " )
+                                           cached.count( j.first ) ? " .     " : "       " )
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else

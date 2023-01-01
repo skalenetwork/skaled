@@ -10,23 +10,17 @@
 #include "libevm/VMFace.h"
 #include <cstdint>
 
-namespace Json
-{
+namespace Json {
 class Value;
 }
 
-namespace dev
-{
-namespace eth
-{
-    
-    
-    
-class AlethStandardTrace
-{
+namespace dev {
+namespace eth {
+
+
+class AlethStandardTrace {
 public:
-    struct DebugOptions
-    {
+    struct DebugOptions {
         bool disableStorage = false;
         bool disableMemory = false;
         bool disableStack = false;
@@ -34,27 +28,26 @@ public:
     };
 
     // Output json trace to stream, one line per op
-    explicit AlethStandardTrace(std::ostream& _outStream) noexcept : m_outStream{&_outStream} {}
+    explicit AlethStandardTrace( std::ostream& _outStream ) noexcept : m_outStream{ &_outStream } {}
     // Append json trace to given (array) value
-    explicit AlethStandardTrace(Json::Value& _outValue) noexcept : m_outValue{&_outValue} {}
+    explicit AlethStandardTrace( Json::Value& _outValue ) noexcept : m_outValue{ &_outValue } {}
 
-    void operator()(uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
-        bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM);
+    void operator()( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
+        bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM );
 
     void setShowMnemonics() { m_showMnemonics = true; }
-    void setOptions(DebugOptions _options) { m_options = _options; }
+    void setOptions( DebugOptions _options ) { m_options = _options; }
 
-    OnOpFunc onOp()
-    {
-        return [=](uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
-                   bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM) {
-            (*this)(_steps, _PC, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM);
+    OnOpFunc onOp() {
+        return [=]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
+                   bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
+            ( *this )( _steps, _PC, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM );
         };
     }
 
 private:
     bool m_showMnemonics = false;
-    std::vector<Instruction> m_lastInst;
+    std::vector< Instruction > m_lastInst;
     std::ostream* m_outStream = nullptr;
     Json::Value* m_outValue = nullptr;
     Json::FastWriter m_fastWriter;

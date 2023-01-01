@@ -11030,8 +11030,8 @@ size_t g_MicroProfileHtmlLive_begin_sizes[] = {
     sizeof( g_MicroProfileHtmlLive_begin_3 ),
 };
 size_t g_MicroProfileHtmlLive_begin_count = 4;
-const char* g_MicroProfileHtmlLive_end[] = {""};
-size_t g_MicroProfileHtmlLive_end_sizes[] = {0};
+const char* g_MicroProfileHtmlLive_end[] = { "" };
+size_t g_MicroProfileHtmlLive_end_sizes[] = { 0 };
 size_t g_MicroProfileHtmlLive_end_count = 0;
 #endif  // MICROPROFILE_EMBED_HTML
 

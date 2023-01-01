@@ -86,21 +86,21 @@ static nlohmann::json stat_parse_json_with_error_conversion(
     try {
         joAnswer = nlohmann::json::parse( s );
         return joAnswer;
-    } catch ( std::exception const & ex ) {
+    } catch ( std::exception const& ex ) {
         strError = ex.what();
-        if( strError.empty() )
+        if ( strError.empty() )
             strError = "exception without description";
     } catch ( ... ) {
         strError = "unknown exception";
     }
-    if( strError.empty() )
+    if ( strError.empty() )
         strError = "unknown error";
     std::string strErrorDescription =
         "JSON parser error \"" + strError + "\" while parsing JSON text \"" + s + "\"";
-    if( isThrowException )
+    if ( isThrowException )
         throw std::runtime_error( strErrorDescription );
     joAnswer = nlohmann::json::object();
-    joAnswer[ "error" ] = strErrorDescription;
+    joAnswer["error"] = strErrorDescription;
     return joAnswer;
 }
 
@@ -110,17 +110,17 @@ static bool stat_trim_func_with_quotes( unsigned char ch ) {
 
 static void stat_check_rpc_call_error_and_throw(
     const nlohmann::json& joAnswer, const std::string& strMethodName ) {
-    if( joAnswer.count( "error" ) > 0 ) {
-        std::string strError = joAnswer[ "error" ].dump();
+    if ( joAnswer.count( "error" ) > 0 ) {
+        std::string strError = joAnswer["error"].dump();
         strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
-        if( ! strError.empty() )
+        if ( !strError.empty() )
             throw std::runtime_error(
                 "Got \"" + strMethodName + "\" call error \"" + strError + "\"" );
     }
-    if( joAnswer.count( "errorMessage" ) > 0 ) {
-        std::string strError = joAnswer[ "errorMessage" ].dump();
+    if ( joAnswer.count( "errorMessage" ) > 0 ) {
+        std::string strError = joAnswer["errorMessage"].dump();
         strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
-        if( ! strError.empty() )
+        if ( !strError.empty() )
             throw std::runtime_error(
                 "Got \"" + strMethodName + "\" call error \"" + strError + "\"" );
     }
@@ -268,37 +268,37 @@ bool txn_entry::fromJSON( const nlohmann::json& jo ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::atomic_size_t pending_ima_txns::g_nMaxPendingTxns = 512;
-std::string pending_ima_txns::g_strDispatchQueueID = "IMA-txn-tracker";
+std::atomic_size_t txn_pending_tracker_system_impl::g_nMaxPendingTxns = 512;
+std::string txn_pending_tracker_system_impl::g_strDispatchQueueID = "IMA-txn-tracker";
 
-pending_ima_txns::pending_ima_txns(
+txn_pending_tracker_system_impl::txn_pending_tracker_system_impl(
     const std::string& configPath, const std::string& strSgxWalletURL )
     : skutils::json_config_file_accessor( configPath ), strSgxWalletURL_( strSgxWalletURL ) {}
 
-pending_ima_txns::~pending_ima_txns() {
+txn_pending_tracker_system_impl::~txn_pending_tracker_system_impl() {
     tracking_stop();
     clear();
 }
 
-bool pending_ima_txns::empty() const {
+bool txn_pending_tracker_system_impl::empty() const {
     lock_type lock( mtx() );
     if ( !set_txns_.empty() )
         return false;
     return true;
 }
-void pending_ima_txns::clear() {
+void txn_pending_tracker_system_impl::clear() {
     lock_type lock( mtx() );
     set_txns_.clear();
     list_txns_.clear();
     tracking_auto_start_stop();
 }
 
-size_t pending_ima_txns::max_txns() const {
+size_t txn_pending_tracker_system_impl::max_txns() const {
     size_t cnt = g_nMaxPendingTxns;
     return cnt;
 }
 
-size_t pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
+size_t txn_pending_tracker_system_impl::adjust_limits_impl( bool isEnableBroadcast ) {
     const size_t nMax = max_txns();
     if ( nMax < 1 )
         return nMax;  // no limits
@@ -313,13 +313,13 @@ size_t pending_ima_txns::adjust_limits_impl( bool isEnableBroadcast ) {
     cnt = list_txns_.size();
     return cnt;
 }
-size_t pending_ima_txns::adjust_limits( bool isEnableBroadcast ) {
+size_t txn_pending_tracker_system_impl::adjust_limits( bool isEnableBroadcast ) {
     lock_type lock( mtx() );
     size_t cnt = adjust_limits_impl( isEnableBroadcast );
     return cnt;
 }
 
-bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::insert( txn_entry& txe, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
 #if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
     tracking_step();
@@ -333,15 +333,15 @@ bool pending_ima_txns::insert( txn_entry& txe, bool isEnableBroadcast ) {
     adjust_limits_impl( isEnableBroadcast );
     return true;
 }
-bool pending_ima_txns::insert( dev::u256 hash, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::insert( dev::u256 hash, bool isEnableBroadcast ) {
     txn_entry txe( hash );
     return insert( txe, isEnableBroadcast );
 }
 
-bool pending_ima_txns::erase( txn_entry& txe, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::erase( txn_entry& txe, bool isEnableBroadcast ) {
     return erase( txe.hash_, isEnableBroadcast );
 }
-bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
+bool txn_pending_tracker_system_impl::erase( dev::u256 hash, bool isEnableBroadcast ) {
     lock_type lock( mtx() );
     set_txns_t::iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.end();
     if ( itFindS == itEndS )
@@ -358,13 +358,13 @@ bool pending_ima_txns::erase( dev::u256 hash, bool isEnableBroadcast ) {
     return true;
 }
 
-bool pending_ima_txns::find( txn_entry& txe ) const {
+bool txn_pending_tracker_system_impl::find( txn_entry& txe ) const {
     return find( txe.hash_ );
 }
-bool pending_ima_txns::find( const dev::u256& hash ) const {
+bool txn_pending_tracker_system_impl::find( const dev::u256& hash ) const {
     lock_type lock( mtx() );
     //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
-    //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
+    //    ( const_cast< txn_pending_tracker_system_impl* >( this ) )->tracking_step();
     //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     set_txns_t::const_iterator itFindS = set_txns_.find( hash ), itEndS = set_txns_.cend();
     if ( itFindS == itEndS )
@@ -372,27 +372,29 @@ bool pending_ima_txns::find( const dev::u256& hash ) const {
     return true;
 }
 
-void pending_ima_txns::list_all( list_txns_t& lst ) const {
+void txn_pending_tracker_system_impl::list_all( list_txns_t& lst ) const {
     lst.clear();
     //#if ( defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY )
-    //    ( const_cast< pending_ima_txns* >( this ) )->tracking_step();
+    //    ( const_cast< txn_pending_tracker_system_impl* >( this ) )->tracking_step();
     //#endif  // (defined __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY)
     lock_type lock( mtx() );
     lst = list_txns_;
 }
 
-void pending_ima_txns::on_txn_insert( const txn_entry& txe, bool isEnableBroadcast ) {
+void txn_pending_tracker_system_impl::on_txn_insert(
+    const txn_entry& txe, bool isEnableBroadcast ) {
     tracking_auto_start_stop();
     if ( isEnableBroadcast )
         broadcast_txn_insert( txe );
 }
-void pending_ima_txns::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
+void txn_pending_tracker_system_impl::on_txn_erase( const txn_entry& txe, bool isEnableBroadcast ) {
     tracking_auto_start_stop();
     if ( isEnableBroadcast )
         broadcast_txn_erase( txe );
 }
 
-bool pending_ima_txns::broadcast_txn_sign_is_enabled( const std::string& strWalletURL ) {
+bool txn_pending_tracker_system_impl::broadcast_txn_sign_is_enabled(
+    const std::string& strWalletURL ) {
     try {
         nlohmann::json joConfig = getConfigJSON();
         if ( joConfig.count( "skaleConfig" ) == 0 )
@@ -416,7 +418,7 @@ bool pending_ima_txns::broadcast_txn_sign_is_enabled( const std::string& strWall
     return false;
 }
 
-std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign ) {
+std::string txn_pending_tracker_system_impl::broadcast_txn_sign_string( const char* strToSign ) {
     std::string strBroadcastSignature;
     try {
         //
@@ -546,7 +548,7 @@ std::string pending_ima_txns::broadcast_txn_sign_string( const char* strToSign )
     return strBroadcastSignature;
 }
 
-std::string pending_ima_txns::broadcast_txn_compose_string(
+std::string txn_pending_tracker_system_impl::broadcast_txn_compose_string(
     const char* strActionName, const dev::u256& tx_hash ) {
     std::string strToSign;
     strToSign += strActionName ? strActionName : "N/A";
@@ -555,7 +557,7 @@ std::string pending_ima_txns::broadcast_txn_compose_string(
     return strToSign;
 }
 
-std::string pending_ima_txns::broadcast_txn_sign(
+std::string txn_pending_tracker_system_impl::broadcast_txn_sign(
     const char* strActionName, const dev::u256& tx_hash ) {
     clog( VerbosityTrace, "IMA" ) << ( cc::debug(
                                            "Will compose IMA broadcast message to sign from TX " ) +
@@ -571,7 +573,7 @@ std::string pending_ima_txns::broadcast_txn_sign(
     return strBroadcastSignature;
 }
 
-std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) {
+std::string txn_pending_tracker_system_impl::broadcast_txn_get_ecdsa_public_key( int node_id ) {
     std::string strEcdsaPublicKey;
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -616,7 +618,7 @@ std::string pending_ima_txns::broadcast_txn_get_ecdsa_public_key( int node_id ) 
     return strEcdsaPublicKey;
 }
 
-int pending_ima_txns::broadcast_txn_get_node_id() {
+int txn_pending_tracker_system_impl::broadcast_txn_get_node_id() {
     int node_id = 0;
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -640,7 +642,7 @@ int pending_ima_txns::broadcast_txn_get_node_id() {
     return node_id;
 }
 
-bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName,
+bool txn_pending_tracker_system_impl::broadcast_txn_verify_signature( const char* strActionName,
     const std::string& strBroadcastSignature, int node_id, const dev::u256& tx_hash ) {
     bool isSignatureOK = false;
     std::string strNextErrorType = "", strEcdsaPublicKey = "<null-key>",
@@ -677,10 +679,10 @@ bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName
         strNextErrorType = "encode TX hash";
         bytes v = dev::BMPBN::encode2vec< dev::u256 >( hashToSign, true );
         strNextErrorType = "do ECDSA signature verification";
-        try{
+        try {
             key->verifySGXSig( strBroadcastSignature, ( const char* ) v.data() );
             isSignatureOK = true;
-        } catch (...) {
+        } catch ( ... ) {
             isSignatureOK = false;
         }
         clog( VerbosityTrace, "IMA" )
@@ -713,7 +715,7 @@ bool pending_ima_txns::broadcast_txn_verify_signature( const char* strActionName
     return isSignatureOK;
 }
 
-void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
+void txn_pending_tracker_system_impl::broadcast_txn_insert( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
     dev::u256 tx_hash = txe.hash_;
     nlohmann::json jo_tx = txe.toJSON();
@@ -772,12 +774,14 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
                                cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " to node " ) + cc::u( strURL ) +
                                cc::error( " broadcast failed: " ) + cc::warn( ex.what() ) );
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
                                cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " broadcast to node " ) + cc::u( strURL ) +
                                cc::error( " failed: " ) + cc::warn( "unknown exception" ) );
+                    cerror << DETAILED_ERROR;
                 }
             } );
         }
@@ -786,14 +790,16 @@ void pending_ima_txns::broadcast_txn_insert( const txn_entry& txe ) {
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
     }
 }
-void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
+void txn_pending_tracker_system_impl::broadcast_txn_erase( const txn_entry& txe ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
     dev::u256 tx_hash = txe.hash_;
     nlohmann::json jo_tx = txe.toJSON();
@@ -852,6 +858,7 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                                cc::error( " Transaction " ) + cc::info( dev::toJS( tx_hash ) ) +
                                cc::error( " broadcast to node " ) + cc::u( strURL ) +
                                cc::error( " failed: " ) + cc::warn( ex.what() ) );
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( VerbosityError, "IMA" )
                         << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) +
@@ -859,6 +866,7 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
                                cc::error( " to node " ) + cc::u( strURL ) +
                                cc::error( " broadcast failed: " ) +
                                cc::warn( "unknown exception" ) );
+                    cerror << DETAILED_ERROR;
                 }
             } );
         }
@@ -867,25 +875,27 @@ void pending_ima_txns::broadcast_txn_erase( const txn_entry& txe ) {
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "ERROR:" ) + cc::error( " Transaction " ) +
                    cc::info( dev::toJS( tx_hash ) ) + cc::error( " broadcast failed: " ) +
                    cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
     }
 }
 
-std::atomic_size_t pending_ima_txns::g_nTrackingIntervalInSeconds = 90;
+std::atomic_size_t txn_pending_tracker_system_impl::g_nTrackingIntervalInSeconds = 90;
 
-size_t pending_ima_txns::tracking_interval_in_seconds() const {
+size_t txn_pending_tracker_system_impl::tracking_interval_in_seconds() const {
     return size_t( g_nTrackingIntervalInSeconds );
 }
 
-bool pending_ima_txns::is_tracking() const {
+bool txn_pending_tracker_system_impl::is_tracking() const {
     return bool( isTracking_ );
 }
 
-void pending_ima_txns::tracking_auto_start_stop() {
+void txn_pending_tracker_system_impl::tracking_auto_start_stop() {
     lock_type lock( mtx() );
     if ( list_txns_.size() == 0 ) {
         tracking_stop();
@@ -894,26 +904,29 @@ void pending_ima_txns::tracking_auto_start_stop() {
     }
 }
 
-void pending_ima_txns::tracking_step() {
+void txn_pending_tracker_system_impl::tracking_step() {
     try {
-            list_txns_t lst, lstMined;
-            list_all( lst );
-            for ( const dev::tracking::txn_entry& txe : lst ) {
-                if ( !check_txn_is_mined( txe ) )
-                    break;
-                lstMined.push_back( txe );
-            }
-            for ( const dev::tracking::txn_entry& txe : lstMined ) {
-                erase( txe.hash_, true );
-            }
+        list_txns_t lst, lstMined;
+        list_all( lst );
+        for ( const dev::tracking::txn_entry& txe : lst ) {
+            if ( !check_txn_is_mined( txe ) )
+                break;
+            lstMined.push_back( txe );
+        }
+        for ( const dev::tracking::txn_entry& txe : lstMined ) {
+            erase( txe.hash_, true );
+        }
     } catch ( std::exception const& ex ) {
-        std::cout << "pending_ima_txns::tracking_step() exception: " << ex.what() << "\n";
+        cerror << "txn_pending_tracker_system_impl::tracking_step() exception: " << ex.what()
+               << "\n";
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
-        std::cout << "pending_ima_txns::tracking_step() unknown exception\n";
+        cerror << "txn_pending_tracker_system_impl::tracking_step() unknown exception\n";
+        cerror << DETAILED_ERROR;
     }
 }
 
-void pending_ima_txns::tracking_start() {
+void txn_pending_tracker_system_impl::tracking_start() {
 #if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( is_tracking() )
@@ -926,7 +939,7 @@ void pending_ima_txns::tracking_start() {
 #endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
-void pending_ima_txns::tracking_stop() {
+void txn_pending_tracker_system_impl::tracking_stop() {
 #if ( defined __IMA_PTX_ENABLE_TRACKING_PARALLEL )
     lock_type lock( mtx() );
     if ( !is_tracking() )
@@ -937,11 +950,11 @@ void pending_ima_txns::tracking_stop() {
 #endif  // (defined __IMA_PTX_ENABLE_TRACKING_PARALLEL)
 }
 
-bool pending_ima_txns::check_txn_is_mined( const txn_entry& txe ) {
+bool txn_pending_tracker_system_impl::check_txn_is_mined( const txn_entry& txe ) {
     return check_txn_is_mined( txe.hash_ );
 }
 
-bool pending_ima_txns::check_txn_is_mined( const dev::u256 & hash ) {
+bool txn_pending_tracker_system_impl::check_txn_is_mined( const dev::u256& hash ) {
     try {
         skutils::url urlMainNet = getImaMainNetURL();
         //
@@ -961,7 +974,7 @@ bool pending_ima_txns::check_txn_is_mined( const dev::u256 & hash ) {
                 "Main Net call to \"eth_getTransactionReceipt\" failed, EMPTY data received" );
         const nlohmann::json joAnswer = dev::stat_parse_json_with_error_conversion( d.s_ );
         dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getTransactionReceipt" );
-        if( joAnswer.count( "result" ) == 0 )
+        if ( joAnswer.count( "result" ) == 0 )
             throw std::runtime_error(
                 "Got \"eth_getTransactionReceipt\" bad answer without \"result\" field, answer is "
                 "\"" +
@@ -971,13 +984,38 @@ bool pending_ima_txns::check_txn_is_mined( const dev::u256 & hash ) {
              joReceipt.count( "blockNumber" ) > 0 && joReceipt.count( "gasUsed" ) > 0 )
             return true;
     } catch ( std::exception const& ex ) {
-        std::cout << "pending_ima_txns::check_txn_is_mined() exception: " << ex.what() << "\n";
+        cerror << "txn_pending_tracker_system_impl::check_txn_is_mined() exception: " << ex.what()
+               << "\n";
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
-        std::cout << "pending_ima_txns::check_txn_is_mined() unknown exception\n";
+        cerror << "txn_pending_tracker_system_impl::check_txn_is_mined() unknown exception\n";
+        cerror << DETAILED_ERROR;
     }
-        return false;
-    }
+    return false;
+}
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr< txn_pending_tracker_system > txn_pending_tracker_system::g_ptr;
+
+txn_pending_tracker_system::txn_pending_tracker_system(
+    const std::string& configPath, const std::string& strSgxWalletURL )
+    : txn_pending_tracker_system_impl( configPath, strSgxWalletURL ) {}
+
+txn_pending_tracker_system::~txn_pending_tracker_system() {}
+
+txn_pending_tracker_system& txn_pending_tracker_system::init(
+    const std::string& configPath, const std::string& strSgxWalletURL ) {
+    if ( !g_ptr )
+        g_ptr = std::make_unique< txn_pending_tracker_system >( configPath, strSgxWalletURL );
+    return ( *( g_ptr.get() ) );
+}
+txn_pending_tracker_system& txn_pending_tracker_system::instance() {
+    if ( g_ptr )
+        return ( *( g_ptr.get() ) );
+    throw std::runtime_error( "no global instance for IMA pending TXN tracker initialized yet" );
+}
 
 };  // namespace tracking
 
@@ -999,10 +1037,7 @@ static std::string stat_guess_sgx_url_4_zmq( const std::string& strURL, bool isD
 
 SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     const dev::eth::ChainParams& chainParams, bool isDisableZMQ )
-    : pending_ima_txns(
-          configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) ),
-      chainParams_( chainParams ),
-      m_eth( _eth ) {
+    : skutils::json_config_file_accessor( configPath ), chainParams_( chainParams ), m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
     //
     try {
@@ -1010,6 +1045,8 @@ SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
+    dev::tracking::txn_pending_tracker_system::init(
+        configPath, stat_guess_sgx_url_4_zmq( chainParams.nodeInfo.sgxServerUrl, isDisableZMQ ) );
 }
 
 int SkaleStats::findThisNodeIndex() {
@@ -1347,7 +1384,7 @@ Json::Value SkaleStats::skale_imaInfo() {
             joSkaleConfig_nodeInfo_wallets["ima"];
         //
         // validate wallet description
-        static const char* g_arrMustHaveWalletFields[] = {// "url",
+        static const char* g_arrMustHaveWalletFields[] = { // "url",
             "keyShareName", "t", "n", "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2",
             "BLSPublicKey3", "commonBLSPublicKey0", "commonBLSPublicKey1", "commonBLSPublicKey2",
             "commonBLSPublicKey3"
@@ -1586,8 +1623,97 @@ static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
 //     return stat_append_u256_2_vec( vec, stat_h256_2_u256( val ) );
 // }
 
+std::string SkaleStats::pick_own_s_chain_url_s() {
+    std::string strURL;
+    try {
+        nlohmann::json joConfig = getConfigJSON();
+        //
+        if ( joConfig.count( "skaleConfig" ) == 0 )
+            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
+        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
+        //
+        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
+            throw std::runtime_error(
+                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
+        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
+        //
+        if ( joSkaleConfig_nodeInfo.count( "bindIP" ) > 0 ) {
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
+            if ( !strIpAddress.empty() ) {
+                if ( joSkaleConfig_nodeInfo.count( "httpRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "http://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wsRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wsRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "ws://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpsRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "https://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wssRpcPort" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wssRpcPort"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "wss://" ) + strIpAddress + ":" +
+                               skutils::tools::format( "%d", nPort );
+                }
+            }  // if ( !strIpAddress.empty() )
+        } else if ( joSkaleConfig_nodeInfo.count( "bindIP6" ) > 0 ) {
+            std::string strIpAddress =
+                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
+            if ( !strIpAddress.empty() ) {
+                if ( joSkaleConfig_nodeInfo.count( "httpRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "http://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wsRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wsRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "ws://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["httpsRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "https://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+                if ( joSkaleConfig_nodeInfo.count( "wssRpcPort6" ) > 0 ) {
+                    int nPort = joSkaleConfig_nodeInfo["wssRpcPort6"].get< int >();
+                    if ( 0 < nPort && nPort <= 65535 )
+                        return std::string( "wss://[" ) + strIpAddress +
+                               "]:" + skutils::tools::format( "%d", nPort );
+                }
+            }  // if ( !strIpAddress.empty() )
+        }
+    } catch ( ... ) {
+    }
+    strURL.clear();
+    return strURL;
+}
+
+skutils::url SkaleStats::pick_own_s_chain_url() {
+    std::string strURL = pick_own_s_chain_url_s();
+    skutils::url u( strURL );
+    return u;
+}
+
 Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA Verify+Sign" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
+    bool bHaveQaInRequest = false;
+    nlohmann::json joQA = nlohmann::json::object();
     try {
         if ( !isEnabledImaMessageSigning() )
             throw std::runtime_error( "IMA message signing feature is disabled on this instance" );
@@ -1601,11 +1727,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             << ( strLogPrefix + cc::debug( " Processing " ) + cc::notice( "IMA Verify and Sign" ) +
                    cc::debug( " request: " ) + cc::j( joRequest ) );
         //
-        bool bHaveQaInRequest = false;
-        nlohmann::json joQA = nlohmann::json::object();
         if ( joRequest.count( "qa" ) > 0 ) {
             bHaveQaInRequest = true;
-            joQA = joRequest[ "qa" ];
+            joQA = joRequest["qa"];
         }
         //
         if ( joRequest.count( "direction" ) == 0 )
@@ -1732,10 +1856,11 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         skutils::url urlSourceChain;
         if ( strDirection == "M2S" )
             urlSourceChain = urlMainNet;
-        else if ( strDirection == "S2M" )
-            urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url(
-                strSChainName );  // not used very much in "S2M" case
-        else if ( strDirection == "S2S" )
+        else if ( strDirection == "S2M" ) {
+            // urlSourceChain = skale::network::browser::refreshing_pick_s_chain_url( strSChainName
+            // );
+            urlSourceChain = pick_own_s_chain_url();
+        } else if ( strDirection == "S2S" )
             urlSourceChain =
                 skale::network::browser::refreshing_pick_s_chain_url( strFromChainName );
         else
@@ -1877,7 +2002,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
         //
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
-        const std::string strWalletURL = strSgxWalletURL_;
+        const std::string strWalletURL = strSgxWalletURL;
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad SGX wallet url" );
@@ -1907,9 +2032,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                                           "was not loaded from settings" ) );
         }
         if ( isExposeAllDebugInfo_ )
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
-                   cc::info( optsSSL.client_cert ) );
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " SGX Wallet client certificate file " ) +
+                       cc::info( optsSSL.client_cert ) );
         try {
             if ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyFile" ) > 0 )
                 optsSSL.client_key = skutils::tools::trim_copy(
@@ -1922,9 +2047,9 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                            "SGX Wallet client key file path was not loaded from settings" ) );
         }
         if ( isExposeAllDebugInfo_ )
-        clog( VerbosityDebug, "IMA" )
-            << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
-                   cc::info( optsSSL.client_key ) );
+            clog( VerbosityDebug, "IMA" )
+                << ( strLogPrefix + cc::debug( " SGX Wallet client key file " ) +
+                       cc::info( optsSSL.client_key ) );
         const std::string keyShareName =
             ( joSkaleConfig_nodeInfo_wallets_ima.count( "keyShareName" ) > 0 ) ?
                 joSkaleConfig_nodeInfo_wallets_ima["keyShareName"].get< std::string >() :
@@ -2053,7 +2178,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                             const nlohmann::json joAnswer =
                                 dev::stat_parse_json_with_error_conversion( d.s_ );
                             dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_blockNumber" );
-                            if( joAnswer.count( "result" ) == 0 )
+                            if ( joAnswer.count( "result" ) == 0 )
                                 throw std::runtime_error(
                                     "Got \"eth_blockNumber\" bad answer without \"result\" field, "
                                     "answer is \"" +
@@ -2139,7 +2264,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                         const nlohmann::json joAnswer =
                             dev::stat_parse_json_with_error_conversion( d.s_ );
                         dev::stat_check_rpc_call_error_and_throw( joAnswer, "eth_getLogs" );
-                        if( joAnswer.count( "result" ) == 0 )
+                        if ( joAnswer.count( "result" ) == 0 )
                             throw std::runtime_error(
                                 "Got \"eth_getLogs\" bad answer without \"result\" field, answer "
                                 "is \"" +
@@ -2240,6 +2365,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                        cc::info( dev::toJS( uBlockTo ) ) +
                                        cc::error( " block range, error:" ) + " " +
                                        cc::warn( ex.what() ) );
+                            cerror << DETAILED_ERROR;
                         } catch ( ... ) {
                             clog( VerbosityError, "IMA" )
                                 << ( strLogPrefix + " " + cc::fatal( "FAILED:" ) + " " +
@@ -2252,6 +2378,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                        cc::info( dev::toJS( uBlockTo ) ) +
                                        cc::error( " block range, error:" ) + " " +
                                        cc::warn( "unknown exception" ) );
+                            cerror << DETAILED_ERROR;
                         }
                         idxBlockSubRangeFrom = idxBlockSubRangeTo;
                         if ( idxBlockSubRangeFrom == uBlockTo )
@@ -2350,8 +2477,48 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                     return jarrFoundLogRecords;
                 };  /// do_logs_search_progressive()
 
-                nlohmann::json jarrFoundLogRecords =
-                    do_logs_search_progressive( do_getBlockNumber() );
+                bool isDefaultProgressiveLogsSearchNeeded = true, haveEffectiveBlockNo = false;
+                dev::u256 uBlockOptimized( 0 );
+                nlohmann::json jarrFoundLogRecords = nlohmann::json::array();
+                if ( joMessageToSign.count( "savedBlockNumberForOptimizations" ) > 0 ) {
+                    if ( joMessageToSign["savedBlockNumberForOptimizations"].is_string() ) {
+                        uBlockOptimized =
+                            dev::u256( joMessageToSign["savedBlockNumberForOptimizations"]
+                                           .get< std::string >() );
+                        haveEffectiveBlockNo = true;
+                    } else if ( joMessageToSign["savedBlockNumberForOptimizations"].is_number() ) {
+                        uBlockOptimized = dev::u256(
+                            joMessageToSign["savedBlockNumberForOptimizations"].get< uint64_t >() );
+                        haveEffectiveBlockNo = true;
+                    }
+                }
+                if ( haveEffectiveBlockNo ) {
+                    jarrFoundLogRecords = do_logs_search( uBlockOptimized, uBlockOptimized );
+                    if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 ) {
+                        isDefaultProgressiveLogsSearchNeeded = false;
+                        clog( VerbosityDebug, "IMA" )
+                            << ( cc::success( "Result of " ) +
+                                   cc::attention( "successful effective scan" ) +
+                                   cc::success( " in block " ) +
+                                   cc::info( dev::toJS( uBlockOptimized ) ) +
+                                   cc::success( " is: " ) + cc::j( jarrFoundLogRecords ) );
+                    } else {
+                        isDefaultProgressiveLogsSearchNeeded = true;
+                        clog( VerbosityDebug, "IMA" )
+                            << ( cc::warn( "Nothing was found using " ) +
+                                   cc::attention( "effective scan" ) + cc::warn( " in block " ) +
+                                   cc::info( dev::toJS( uBlockOptimized ) ) +
+                                   cc::warn( ", will use default progressive search algorithm" ) );
+                    }
+                }  // if( haveEffectiveBlockNo )
+                else {
+                    isDefaultProgressiveLogsSearchNeeded = true;
+                    clog( VerbosityDebug, "IMA" )
+                        << ( cc::warn( "Skipped " ) + cc::attention( "effective scan" ) +
+                               cc::warn( ", will use default progressive search algorithm" ) );
+                }  // else from if( haveEffectiveBlockNo )
+                if ( isDefaultProgressiveLogsSearchNeeded )
+                    jarrFoundLogRecords = do_logs_search_progressive( do_getBlockNumber() );
 
                 /* example of jarrFoundLogRecords value:
                     [{
@@ -2385,10 +2552,12 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                 bool bIsVerified = false;
                 if ( jarrFoundLogRecords.is_array() && jarrFoundLogRecords.size() > 0 )
                     bIsVerified = true;
-                if ( !bIsVerified )
+                if ( !bIsVerified ) {
+                    cerror << DETAILED_ERROR;
                     throw std::runtime_error( "IMA message " +
                                               std::to_string( nStartMessageIdx + idxMessage ) +
                                               " verification failed - not found in logs" );
+                }
                 //
                 //
                 // Find transaction, simlar to call tp eth_getTransactionByHash
@@ -2433,7 +2602,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 dev::stat_parse_json_with_error_conversion( d.s_ );
                             dev::stat_check_rpc_call_error_and_throw(
                                 joAnswer, "eth_getTransactionByHash" );
-                            if( joAnswer.count( "result" ) == 0 )
+                            if ( joAnswer.count( "result" ) == 0 )
                                 throw std::runtime_error(
                                     "Got \"eth_getTransactionByHash\" bad answer without "
                                     "\"result\" field, answer is \"" +
@@ -2450,12 +2619,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 Json::FastWriter().write( jvTransaction ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Transaction verification failed: " ) +
                                    cc::warn( ex.what() ) );
                         continue;
                     } catch ( ... ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Transaction verification failed: " ) +
@@ -2552,7 +2723,7 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 dev::stat_parse_json_with_error_conversion( d.s_ );
                             dev::stat_check_rpc_call_error_and_throw(
                                 joAnswer, "eth_getTransactionReceipt" );
-                            if( joAnswer.count( "result" ) == 0 )
+                            if ( joAnswer.count( "result" ) == 0 )
                                 throw std::runtime_error(
                                     "Got \"eth_getTransactionReceipt\" bad answer without "
                                     "\"result\" field, answer is \"" +
@@ -2570,12 +2741,14 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
                                 Json::FastWriter().write( jvTransactionReceipt ), true );
                         }  // else from if ( strDirection == "M2S" )
                     } catch ( const std::exception& ex ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Receipt verification failed: " ) +
                                    cc::warn( ex.what() ) );
                         continue;
                     } catch ( ... ) {
+                        cerror << DETAILED_ERROR;
                         clog( VerbosityError, "IMA" )
                             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                                    cc::error( " Receipt verification failed: " ) +
@@ -2876,8 +3049,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             //
             // Done, provide result to caller
             //
-            if( bHaveQaInRequest )
-                jo[ "qa" ] = joQA;
+            if ( bHaveQaInRequest )
+                jo["qa"] = joQA;
             std::string s = jo.dump();
             clog( VerbosityDebug, "IMA" )
                 << ( strLogPrefix + cc::success( " Success, got messages " ) +
@@ -2898,18 +3071,21 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
             return ret;
         }  // else from if ( !bOnlyVerify )
     } catch ( Exception const& ex ) {
+        cerror << DETAILED_ERROR;
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
+        cerror << DETAILED_ERROR;
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
+        cerror << DETAILED_ERROR;
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
@@ -2920,6 +3096,8 @@ Json::Value SkaleStats::skale_imaVerifyAndSign( const Json::Value& request ) {
 
 Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA BLS Sign U256" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         // if ( !isEnabledImaMessageSigning() )
         //     throw std::runtime_error( "IMA message signing feature is disabled on this instance"
@@ -2984,7 +3162,7 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
         //
         skutils::url u;
         skutils::http::SSL_client_options optsSSL;
-        const std::string strWalletURL = strSgxWalletURL_;
+        const std::string strWalletURL = strSgxWalletURL;
         u = skutils::url( strWalletURL );
         if ( u.scheme().empty() || u.host().empty() )
             throw std::runtime_error( "bad SGX wallet url" );
@@ -3086,20 +3264,23 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing " ) + cc::info( "IMA Verify and Sign" ) +
+                   cc::error( " Exception while processing " ) + cc::info( "IMA BLS Sign U256" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }  // skale_imaBSU256()
@@ -3107,6 +3288,8 @@ Json::Value SkaleStats::skale_imaBSU256( const Json::Value& request ) {
 
 Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN insert" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -3121,7 +3304,8 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        if ( broadcast_txn_sign_is_enabled( strSgxWalletURL_ ) ) {
+        if ( dev::tracking::txn_pending_tracker_system::instance().broadcast_txn_sign_is_enabled(
+                 strSgxWalletURL ) ) {
             if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
                     "IMA broadcast/insert call without \"broadcastSignature\" field specified" );
@@ -3131,11 +3315,13 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
             std::string strBroadcastSignature =
                 joRequest["broadcastSignature"].get< std::string >();
             int node_id = joRequest["broadcastFromNode"].get< int >();
-            if ( !broadcast_txn_verify_signature(
-                     "insert", strBroadcastSignature, node_id, txe.hash_ ) )
+            if ( !dev::tracking::txn_pending_tracker_system::instance()
+                      .broadcast_txn_verify_signature(
+                          "insert", strBroadcastSignature, node_id, txe.hash_ ) )
                 throw std::runtime_error( "IMA broadcast/insert signature verification failed" );
         }
-        bool wasInserted = insert( txe, false );
+        bool wasInserted =
+            dev::tracking::txn_pending_tracker_system::instance().insert( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasInserted;
@@ -3154,6 +3340,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3168,12 +3355,15 @@ Json::Value SkaleStats::skale_imaBroadcastTxnInsert( const Json::Value& request 
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
 Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request ) {
     std::string strLogPrefix = cc::deep_info( "IMA broadcast TXN erase" );
+    std::string strSgxWalletURL =
+        dev::tracking::txn_pending_tracker_system::instance().url_sgx_wallet();
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -3188,7 +3378,8 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        if ( broadcast_txn_sign_is_enabled( strSgxWalletURL_ ) ) {
+        if ( dev::tracking::txn_pending_tracker_system::instance().broadcast_txn_sign_is_enabled(
+                 strSgxWalletURL ) ) {
             if ( joRequest.count( "broadcastSignature" ) == 0 )
                 throw std::runtime_error(
                     "IMA broadcast/erase call without \"broadcastSignature\" field specified" );
@@ -3198,11 +3389,12 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
             std::string strBroadcastSignature =
                 joRequest["broadcastSignature"].get< std::string >();
             int node_id = joRequest["broadcastFromNode"].get< int >();
-            if ( !broadcast_txn_verify_signature(
-                     "erase", strBroadcastSignature, node_id, txe.hash_ ) )
+            if ( !dev::tracking::txn_pending_tracker_system::instance()
+                      .broadcast_txn_verify_signature(
+                          "erase", strBroadcastSignature, node_id, txe.hash_ ) )
                 throw std::runtime_error( "IMA broadcast/erase signature verification failed" );
         }
-        bool wasErased = erase( txe, false );
+        bool wasErased = dev::tracking::txn_pending_tracker_system::instance().erase( txe, false );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasErased;
@@ -3222,6 +3414,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3229,6 +3422,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
@@ -3236,6 +3430,7 @@ Json::Value SkaleStats::skale_imaBroadcastTxnErase( const Json::Value& request )
                    cc::error( " Exception while processing " ) +
                    cc::info( "IMA broadcast TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3253,7 +3448,8 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasInserted = insert( txe, true );
+        bool wasInserted =
+            dev::tracking::txn_pending_tracker_system::instance().insert( txe, true );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasInserted;
@@ -3271,18 +3467,21 @@ Json::Value SkaleStats::skale_imaTxnInsert( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN insert" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3300,7 +3499,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasErased = erase( txe, true );
+        bool wasErased = dev::tracking::txn_pending_tracker_system::instance().erase( txe, true );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasErased;
@@ -3319,18 +3518,21 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN erase" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3338,7 +3540,7 @@ Json::Value SkaleStats::skale_imaTxnErase( const Json::Value& request ) {
 Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "IMA TXN clear" );
     try {
-        clear();
+        dev::tracking::txn_pending_tracker_system::instance().clear();
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = true;
@@ -3353,18 +3555,21 @@ Json::Value SkaleStats::skale_imaTxnClear( const Json::Value& /*request*/ ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN clear" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3382,7 +3587,7 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
             throw std::runtime_error(
                 std::string( "failed to construct tracked IMA TXN entry from " ) +
                 joRequest.dump() );
-        bool wasFound = find( txe );
+        bool wasFound = dev::tracking::txn_pending_tracker_system::instance().find( txe );
         //
         nlohmann::json jo = nlohmann::json::object();
         jo["success"] = wasFound;
@@ -3399,18 +3604,21 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN find" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3418,8 +3626,8 @@ Json::Value SkaleStats::skale_imaTxnFind( const Json::Value& request ) {
 Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
     std::string strLogPrefix = cc::deep_info( "IMA TXN list-all" );
     try {
-        dev::tracking::pending_ima_txns::list_txns_t lst;
-        list_all( lst );
+        dev::tracking::txn_pending_tracker_system_impl::list_txns_t lst;
+        dev::tracking::txn_pending_tracker_system::instance().list_all( lst );
         nlohmann::json jarr = nlohmann::json::array();
         for ( const dev::tracking::txn_entry& txe : lst ) {
             jarr.push_back( txe.toJSON() );
@@ -3439,18 +3647,21 @@ Json::Value SkaleStats::skale_imaTxnListAll( const Json::Value& /*request*/ ) {
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
             << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
                    cc::error( " Exception while processing " ) + cc::info( "IMA TXN list-all" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3460,17 +3671,17 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
     try {
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " incoming refreshing(now) call to " ) +
+                   cc::debug( " incoming refreshing(now) call to " ) +
                    cc::bright( "skale_browseEntireNetwork" ) + cc::debug( "..." ) );
         clock_t tt = clock();
         skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_do_now();
         tt = clock() - tt;
-        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
+        double lf_time_taken = ( ( double ) tt ) / CLOCKS_PER_SEC;  // in seconds
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(now) done, " ) +
-                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
-                                                cc::debug( " second(s) spent" ) );
+                   cc::debug( " refreshing(now) done, " ) +
+                   cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                   cc::debug( " second(s) spent" ) );
         nlohmann::json jo = skale::network::browser::to_json( vec );
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
@@ -3480,7 +3691,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
         Json::Reader().parse( s, ret );
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(now) result is ready to sent back to client/caller" ) );
+                   cc::debug( " refreshing(now) result is ready to sent back to client/caller" ) );
         return ret;
     } catch ( Exception const& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3488,6 +3699,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_browseEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3495,6 +3707,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_browseEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
@@ -3502,6 +3715,7 @@ Json::Value SkaleStats::skale_browseEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_browseEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3511,17 +3725,17 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
     try {
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " incoming refreshing(cached) call to " ) +
+                   cc::debug( " incoming refreshing(cached) call to " ) +
                    cc::bright( "skale_cachedEntireNetwork" ) + cc::debug( "..." ) );
         clock_t tt = clock();
         skale::network::browser::vec_s_chains_t vec = skale::network::browser::refreshing_cached();
         tt = clock() - tt;
-        double lf_time_taken = ((double)tt)/CLOCKS_PER_SEC; // in seconds
+        double lf_time_taken = ( ( double ) tt ) / CLOCKS_PER_SEC;  // in seconds
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
-                                                cc::debug( " refreshing(cached) done, " ) +
-                                                cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
-                                                cc::debug( " second(s) spent" ) );
+                   cc::debug( " refreshing(cached) done, " ) +
+                   cc::notice( skutils::tools::format( "%f", lf_time_taken ) ) +
+                   cc::debug( " second(s) spent" ) );
         nlohmann::json jo = skale::network::browser::to_json( vec );
         clog( dev::VerbosityTrace, "snb" )
             << ( strLogPrefix + " " + cc::notice( "SKALE NETWORK BROWSER" ) +
@@ -3540,6 +3754,7 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_cachedEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
         clog( VerbosityError, "IMA" )
@@ -3547,6 +3762,7 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_cachedEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
         clog( VerbosityError, "IMA" )
@@ -3554,6 +3770,7 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
                    cc::error( " Exception while processing " ) +
                    cc::info( "skale_cachedEntireNetwork" ) +
                    cc::error( ", exception information: " ) + cc::warn( "unknown exception" ) );
+        cerror << DETAILED_ERROR;
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
@@ -3574,8 +3791,6 @@ Json::Value SkaleStats::skale_cachedEntireNetwork( const Json::Value& /*request*
 //    vecComputeMessagesHash.push_back( 'n' );
 //    vecComputeMessagesHash.push_back( 'e' );
 //    vecComputeMessagesHash.push_back( 't' );
-
-
 //    std::cout << ( strLogPrefix + cc::debug( " Accumulated vector " ) +
 //                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
 //                         vecComputeMessagesHash.size(), "" ) )

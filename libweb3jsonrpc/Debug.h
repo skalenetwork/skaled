@@ -25,7 +25,7 @@ public:
         const std::string& argv = std::string() );
 
     virtual RPCModules implementedModules() const override {
-        return RPCModules{RPCModule{"debug", "1.0"}};
+        return RPCModules{ RPCModule{ "debug", "1.0" } };
     }
 
     virtual Json::Value debug_accountRangeAt( std::string const& _blockHashOrNumber, int _txIndex,

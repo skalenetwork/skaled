@@ -37,7 +37,7 @@ void BasicAuthority::init() {
 }
 
 StringHashMap BasicAuthority::jsInfo( BlockHeader const& _bi ) const {
-    return {{"sig", toJS( sig( _bi ) )}};
+    return { { "sig", toJS( sig( _bi ) ) } };
 }
 
 bool BasicAuthority::shouldSeal( Interface* /*_i*/ ) {

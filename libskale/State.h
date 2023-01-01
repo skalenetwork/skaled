@@ -38,8 +38,9 @@
 #include <libethereum/TransactionReceipt.h>
 #include <libhistoric/HistoricState.h>
 
-#include "OverlayDB.h"
 #include "BaseState.h"
+#include "OverlayDB.h"
+#include "OverlayFS.h"
 
 
 namespace std {
@@ -86,9 +87,6 @@ DEV_SIMPLE_EXCEPTION( AttemptToWriteToStateInThePast );
 DEV_SIMPLE_EXCEPTION( AttemptToReadFromStateInThePast );
 DEV_SIMPLE_EXCEPTION( AttemptToWriteToNotLockedStateObject );
 }  // namespace error
-
-
-
 
 
 /// An atomic state changelog entry.
@@ -161,7 +159,6 @@ using ChangeLog = std::vector< Change >;
  */
 class State {
 public:
-
     using AddressMap = std::map< dev::h256, dev::Address >;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -169,10 +166,10 @@ public:
     explicit State( dev::u256 const& _accountStartNonce )
         : State( _accountStartNonce, OverlayDB(),
 #ifdef HISTORIC_STATE
-                 dev::OverlayDB(),
-                 dev::OverlayDB(),
+              dev::OverlayDB(), dev::OverlayDB(),
 #endif
-                 BaseState::Empty ) {}
+              BaseState::Empty ) {
+    }
 
     /// Basic state object from database.
     /// Use the default when you already have a database and you just want to make a State object
@@ -188,25 +185,30 @@ public:
                                                   dev::WithExisting::Kill ),
 #ifdef HISTORIC_STATE
               dev::eth::HistoricState::openDB(
-                  boost::filesystem::path(
-                      std::string(_dbPath.string()).append("/").append(dev::eth::HISTORIC_STATE_DIR))
-                  , _genesis,
+                  boost::filesystem::path( std::string( _dbPath.string() )
+                                               .append( "/" )
+                                               .append( dev::eth::HISTORIC_STATE_DIR ) ),
+                  _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
               dev::eth::HistoricState::openDB(
-                  boost::filesystem::path(std::string(
-                      _dbPath.string()).append("/").append(dev::eth::HISTORIC_ROOTS_DIR)), _genesis,
+                  boost::filesystem::path( std::string( _dbPath.string() )
+                                               .append( "/" )
+                                               .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
+                  _genesis,
                   _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
                                                   dev::WithExisting::Kill ),
-#endif    /// which uses it. If you have no preexisting database then set BaseState to something other
-              _bs, _initialFunds, _contractStorageLimit ) {}
+#endif  /// which uses it. If you have no preexisting database then set BaseState to something other
+              _bs, _initialFunds, _contractStorageLimit ) {
+    }
 
-    State() : State( dev::Invalid256, skale::OverlayDB(),
+    State()
+        : State( dev::Invalid256, skale::OverlayDB(),
 #ifdef HISTORIC_STATE
-                     dev::OverlayDB(),
-                     dev::OverlayDB(),
+              dev::OverlayDB(), dev::OverlayDB(),
 #endif
-                     BaseState::Empty ) {}
+              BaseState::Empty ) {
+    }
 
     /// Copy state object.
     State( State const& _s );
@@ -342,7 +344,8 @@ public:
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
 
-    void commit( dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+    void commit( dev::eth::CommitBehaviour _commitBehaviour =
+                     dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
@@ -397,18 +400,22 @@ public:
 
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
-    dev::s256 storageUsedTotal() const { return m_db_ptr->storageUsed(); }
+    dev::s256 storageUsedTotal() const {
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        return m_db_ptr->storageUsed();
+    }
 
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
+
 
 private:
     void updateToLatestVersion();
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-       dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
+        dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
         dev::s256 _contractStorageLimit = 32 );
@@ -439,7 +446,19 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+    void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
+
     void updateStorageUsage();
+
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    };
+
+    void clearFileStorageCache() {
+        if ( m_fs_ptr ) {
+            m_fs_ptr->reset();
+        }
+    };
 
 public:
     bool checkVersion() const;
@@ -448,7 +467,7 @@ public:
     void populateHistoricStateFromSkaleState();
     void populateHistoricStateBatchFromSkaleState(
         std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
-        uint64_t _batchNumber);
+        uint64_t _batchNumber );
 #endif
 
 private:
@@ -459,6 +478,7 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
+    std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
     std::shared_ptr< size_t > m_storedVersion;
     size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
@@ -485,13 +505,15 @@ private:
     dev::s256 currentStorageUsed_ = 0;
 
 #ifdef HISTORIC_STATE
-        dev::eth::HistoricState m_historicState;
-public:
-        /// Get the backing state object.
-        dev::eth::HistoricState &  mutableHistoricState()  { return m_historicState; }
+    dev::eth::HistoricState m_historicState;
 
-        dev::eth::AccountMap getBatchOfAccounts(std::unordered_map< dev::Address,
-                                 dev::u256 >& _allAccountAddresses, uint64_t _batchNumber );
+public:
+    /// Get the backing state object.
+    dev::eth::HistoricState& mutableHistoricState() { return m_historicState; }
+
+    dev::eth::AccountMap getBatchOfAccounts(
+        std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
+        uint64_t _batchNumber );
 #endif
 
 public:
@@ -502,6 +524,7 @@ public:
         return pDB;
     }
 
+    std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

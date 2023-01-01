@@ -696,9 +696,9 @@ BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorage,
 //storage is create2 -> selfdestruct -> create2_with_the_same_sed
 // Note: the combination above will cease to exist in Shanhai fork because
 // there will be no selfdestruct
-//BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
-//    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
-//}
+BOOST_AUTO_TEST_CASE( LegacyVMCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
+    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
+}
 
 BOOST_AUTO_TEST_CASE( LegacyVMCreate2costIncludesInitCodeHashing ) {
     testCreate2costIncludesInitCodeHashing();
@@ -890,9 +890,9 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorage,
 }
 
 // Disable this test since we clean storage in a different way
-//BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
-//    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
-//}
+BOOST_AUTO_TEST_CASE( SkaleInterpreterCreate2collisionWithNonEmptyStorageEmptyInitCode ) {
+    testCreate2collisionWithNonEmptyStorageEmptyInitCode();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 

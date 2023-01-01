@@ -449,7 +449,8 @@ public:
         case OperationMode::RecodeBare:
             for ( auto const& i : m_inputs )
                 if ( h128 u = fromUUID( i ) )
-                    if ( secretStore().recode( u, lockPassword( toUUID( u ) ),
+                    if ( secretStore().recode(
+                             u, lockPassword( toUUID( u ) ),
                              [&]() {
                                  return getPassword(
                                      "Enter passphrase for key " + toUUID( u ) + ": " );

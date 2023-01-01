@@ -1,6 +1,6 @@
 #include "rapidjson_handlers.h"
 
-#define ERROR_RPC_CUSTOM_ERROR (-32004)
+#define ERROR_RPC_CUSTOM_ERROR ( -32004 )
 
 using namespace dev::eth;
 
@@ -38,7 +38,8 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
-            if ( joRequest["params"].GetArray().Size() != 1 || !joRequest["params"].GetArray()[0].IsString() ) {
+            if ( joRequest["params"].GetArray().Size() != 1 ||
+                 !joRequest["params"].GetArray()[0].IsString() ) {
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
@@ -51,7 +52,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 
@@ -63,7 +66,8 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
-            if ( joRequest["params"].GetArray().Size() != 1 || !joRequest["params"].GetArray()[0].IsString() ) {
+            if ( joRequest["params"].GetArray().Size() != 1 ||
+                 !joRequest["params"].GetArray()[0].IsString() ) {
                 throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
             }
 
@@ -83,7 +87,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 
@@ -117,7 +123,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 
@@ -148,7 +156,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 
@@ -181,7 +191,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 
@@ -212,7 +224,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 
@@ -243,7 +257,9 @@ void inject_rapidjson_handlers( SkaleServerOverride::opts_t& serverOpts, dev::rp
             wrapJsonRpcException( joRequest, ex, joResponse );
         } catch ( const dev::Exception& ) {
             wrapJsonRpcException( joRequest,
-                jsonrpc::JsonRpcException( ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ), joResponse );
+                jsonrpc::JsonRpcException(
+                    ERROR_RPC_CUSTOM_ERROR, dev::rpc::exceptionToErrorMessage() ),
+                joResponse );
         }
     };
 

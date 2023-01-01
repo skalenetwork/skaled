@@ -134,10 +134,10 @@ private:
         GenericFarm< EthashProofOfWork > f;
         map< string, GenericFarm< EthashProofOfWork >::SealerDescriptor > sealers;
         sealers["cpu"] =
-            GenericFarm< EthashProofOfWork >::SealerDescriptor{&EthashCPUMiner::instances,
+            GenericFarm< EthashProofOfWork >::SealerDescriptor{ &EthashCPUMiner::instances,
                 []( GenericMiner< EthashProofOfWork >::ConstructionInfo ci ) {
                     return new EthashCPUMiner( ci );
-                }};
+                } };
         f.setSealers( sealers );
         f.onSolutionFound( [&]( EthashProofOfWork::Solution ) { return false; } );
 

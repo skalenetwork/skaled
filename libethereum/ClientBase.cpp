@@ -148,7 +148,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                     lowerBound = middle;
                 }
                 if ( _callback ) {
-                    _callback( GasEstimationProgress{lowerBound, upperBound} );
+                    _callback( GasEstimationProgress{ lowerBound, upperBound } );
                 }
             }
         }

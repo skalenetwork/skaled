@@ -35,7 +35,7 @@ bool sha3( bytesConstRef _input, bytesRef o_output ) noexcept {
     MICROPROFILE_SCOPEI( "sha3", "sha3", MP_MEDIUMBLUE );
 
     ethash::hash256 h = ethash::keccak256( _input.data(), _input.size() );
-    bytesConstRef{h.bytes, 32}.copyTo( o_output );
+    bytesConstRef{ h.bytes, 32 }.copyTo( o_output );
     return true;
 }
 }  // namespace dev

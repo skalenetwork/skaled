@@ -89,8 +89,9 @@ void EthashCPUMiner::minerBody() {
     for ( unsigned hashCount = 1; !m_shouldStop; tryNonce++, hashCount++ ) {
         auto result = ethash::hash( ethashContext, toEthash( w.headerHash() ), tryNonce );
         h256 value = h256( result.final_hash.bytes, h256::ConstructFromPointer );
-        if ( value <= boundary && submitProof( EthashProofOfWork::Solution{( h64 )( u64 ) tryNonce,
-                                      h256( result.mix_hash.bytes, h256::ConstructFromPointer )} ) )
+        if ( value <= boundary &&
+             submitProof( EthashProofOfWork::Solution{ ( h64 )( u64 ) tryNonce,
+                 h256( result.mix_hash.bytes, h256::ConstructFromPointer ) } ) )
             break;
         if ( !( hashCount % 100 ) )
             accumulateHashes( 100 );

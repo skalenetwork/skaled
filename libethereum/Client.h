@@ -86,7 +86,7 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024} );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{ 1024, 1024 } );
     /// Destructor.
     virtual ~Client();
 
@@ -115,9 +115,9 @@ public:
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
         u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
-                          BlockNumber _blockNumber,
+        BlockNumber _blockNumber,
 #endif
-                          FudgeFactor _ff = FudgeFactor::Strict ) override;
+        FudgeFactor _ff = FudgeFactor::Strict ) override;
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
@@ -309,6 +309,10 @@ public:
         return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
     }
 
+    std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
+
+    std::pair< uint64_t, uint64_t > getStateDbUsage() const;
+
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
@@ -373,7 +377,7 @@ protected:
 
 
 #ifdef HISTORIC_STATE
-        Block blockByNumber(BlockNumber _h) const;
+    Block blockByNumber( BlockNumber _h ) const;
 #endif
 
 protected:
@@ -449,8 +453,9 @@ protected:
 
 
 #ifdef HISTORIC_STATE
-    OverlayDB m_historicStateDB;                    ///< Acts as the central point for the state database, so multiple States can share it.
-    OverlayDB m_historicBlockToStateRootDB;         /// Maps hashes of block IDs to state roots
+    OverlayDB m_historicStateDB;  ///< Acts as the central point for the state database, so multiple
+                                  ///< States can share it.
+    OverlayDB m_historicBlockToStateRootDB;  /// Maps hashes of block IDs to state roots
 #endif
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
@@ -471,8 +476,8 @@ protected:
 
     bool remoteActive() const;     ///< Is there an active and valid remote worker?
     bool m_remoteWorking = false;  ///< Has the remote worker recently been reset?
-    std::atomic< bool > m_needStateReset = {false};  ///< Need reset working state to premin on next
-                                                     ///< sync
+    std::atomic< bool > m_needStateReset = { false };     ///< Need reset working state to premin on
+                                                          ///< next sync
     std::chrono::system_clock::time_point m_lastGetWork;  ///< Is there an active and valid remote
                                                           ///< worker?
 
@@ -503,8 +508,8 @@ protected:
     std::queue< std::function< void() > > m_functionQueue;  ///< Functions waiting to be executed in
                                                             ///< the main thread.
 
-    std::atomic< bool > m_syncTransactionQueue = {false};
-    std::atomic< bool > m_syncBlockQueue = {false};
+    std::atomic< bool > m_syncTransactionQueue = { false };
+    std::atomic< bool > m_syncBlockQueue = { false };
 
     bytes m_extraData;
 
@@ -512,8 +517,8 @@ protected:
                                                    ///< the DB
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
-    Logger m_logger{createLogger( VerbosityInfo, "client" )};
-    Logger m_loggerDetail{createLogger( VerbosityTrace, "client" )};
+    Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
 
 
     /// skale
@@ -629,14 +634,14 @@ public:
 
 
 #ifdef HISTORIC_STATE
-        u256 historicStateBalanceAt(Address _a, BlockNumber _block) const override;
-        u256 historicStateCountAt(Address _a, BlockNumber _block) const override;
-        u256 historicStateAt(Address _a, u256 _l, BlockNumber _block) const override;
-        h256 historicStateRootAt(Address _a, BlockNumber _block) const override;
-        bytes historicStateCodeAt(Address _a, BlockNumber _block) const override;
+    u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const override;
+    u256 historicStateCountAt( Address _a, BlockNumber _block ) const override;
+    u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const override;
+    h256 historicStateRootAt( Address _a, BlockNumber _block ) const override;
+    bytes historicStateCodeAt( Address _a, BlockNumber _block ) const override;
 #endif
-        void initStateFromDiskOrGenesis();
-        void populateNewChainStateFromGenesis();
+    void initStateFromDiskOrGenesis();
+    void populateNewChainStateFromGenesis();
 };
 
 }  // namespace eth

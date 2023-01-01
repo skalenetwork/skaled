@@ -349,14 +349,11 @@ bool server::start() {
 
 
     if ( threads_ <= 0 ) {
-        threads_ = sysconf( _SC_NPROCESSORS_ONLN );
-        if ( threads_ <= 0 ) {
-            stop();
-            return false;
-        }
-        if ( threads_limit_ > 0 && threads_ > threads_limit_ )
-            threads_ = threads_limit_;
+        threads_ = 1;
     }
+
+    if ( threads_limit_ > 0 && threads_ > threads_limit_ )
+        threads_ = threads_limit_;
 
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
@@ -376,7 +373,8 @@ bool server::start() {
     server_->bind( IPs );
     // start HTTPServer main loop in a separate thread
     thread_ = std::move( std::thread( [&]() {
-        skutils::multithreading::setThreadName( skutils::tools::format( "sklm-%p", (void*) this ) );
+        skutils::multithreading::setThreadName(
+            skutils::tools::format( "sklm-%p", ( void* ) this ) );
         server_->start();
     } ) );
 
@@ -457,8 +455,8 @@ size_t pg_accumulate_size() {
 
 void pg_accumulate_add( int ipVer, std::string strBindAddr, int nPort, const char* cert_path,
     const char* private_key_path, const char* ca_path ) {
-    pg_accumulate_entry pge = {ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
-        private_key_path ? private_key_path : "", ca_path ? ca_path : ""};
+    pg_accumulate_entry pge = { ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
+        private_key_path ? private_key_path : "", ca_path ? ca_path : "" };
     pg_accumulate_add( pge );
 }
 

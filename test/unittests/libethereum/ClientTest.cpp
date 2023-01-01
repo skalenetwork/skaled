@@ -38,6 +38,8 @@ using namespace dev::test;
 using namespace dev::p2p;
 namespace fs = boost::filesystem;
 
+static size_t rand_port = 1024 + rand() % 64000;
+
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
     const string BTRFS_DIR_PATH = "btrfs";
@@ -109,6 +111,11 @@ public:
         if ( _config != "" ) {
             chainParams = chainParams.loadConfig( _config );
         }
+        else {
+            chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
+            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+        }
+
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
 
@@ -354,8 +361,6 @@ static std::string const c_configString = R"(
     }
 }
 )";
-
-static size_t rand_port = 1024 + rand() % 64000;
 
 static std::string const c_genesisInfoSkaleTest = std::string() +
                                                   R"E(
@@ -917,9 +922,9 @@ BOOST_AUTO_TEST_CASE( initAndUpdateIMABLSPUblicKey ) {
 
     std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
 
-    std::cout << "HERE\n";
+
     BOOST_REQUIRE( testClient->getIMABLSPublicKey() == imaBLSPublicKeyOnStartUp );
-    std::cout << "HERE\n";
+
 
     BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
 
