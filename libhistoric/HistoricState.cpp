@@ -139,11 +139,11 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     return *this;
 }
 
-Account const* HistoricState::account( Address const& _a ) const {
+HistoricAccount const* HistoricState::account( Address const& _a ) const {
     return const_cast< HistoricState* >( this )->account( _a );
 }
 
-Account* HistoricState::account( Address const& _addr ) {
+HistoricAccount* HistoricState::account( Address const& _addr ) {
     auto it = m_cache.find( _addr );
     if ( it != m_cache.end() )
         return &it->second;
