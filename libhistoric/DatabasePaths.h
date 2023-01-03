@@ -7,14 +7,11 @@
 #include "boost/filesystem/path.hpp"
 #include "libdevcore/FixedHash.h"
 
-namespace dev
-{
-namespace eth
-{
-class DatabasePaths
-{
+namespace dev {
+namespace eth {
+class DatabasePaths {
 public:
-    DatabasePaths(boost::filesystem::path const& _rootPath, h256 const& _genesisHash) noexcept;
+    DatabasePaths( boost::filesystem::path const& _rootPath, h256 const& _genesisHash ) noexcept;
     boost::filesystem::path const& rootPath() const noexcept;
     boost::filesystem::path const& chainPath() const noexcept;
     boost::filesystem::path const& blocksPath() const noexcept;

@@ -372,7 +372,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 #endif
 ) {
 
-    const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
+    // not used: const uint64_t CALL_CACHE_ENTRY_LIFETIME_MS = 1000;
 
     // Remove this temporary fix.
     string blockNumber = "latest";
@@ -447,8 +447,18 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
         int64_t gas = static_cast< int64_t >( t.gas );
-        return toJS(
-            client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice ).first );
+        auto result = client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice );
+
+        std::string strRevertReason;
+        if ( result.second.excepted == dev::eth::TransactionException::RevertInstruction ) {
+            strRevertReason = skutils::eth::call_error_message_2_str( result.second.output );
+            if ( strRevertReason.empty() )
+                strRevertReason = "EVM revert instruction without description message";
+            throw std::logic_error( strRevertReason );
+        }
+        return toJS( result.first );
+    } catch ( std::logic_error& error ) {
+        throw error;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

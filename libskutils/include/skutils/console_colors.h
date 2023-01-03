@@ -461,7 +461,7 @@ inline std::string c( const char* x ) {
 //  inline std::string c( unsigned char          x ) { char s[2] = { char(x), '\0' }; return s; } //
 //  { return chr( x ); }
 inline std::string c( char x ) {
-    char s[2] = {char( x ), '\0'};
+    char s[2] = { char( x ), '\0' };
     return s;
 }  // { return chr( x ); }
    //  inline std::string c( int8_t                 x ) { return num( x ); }

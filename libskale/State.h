@@ -40,6 +40,7 @@
 
 #include "BaseState.h"
 #include "OverlayDB.h"
+#include "OverlayFS.h"
 
 
 namespace std {
@@ -404,12 +405,14 @@ public:
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
     dev::s256 storageUsedTotal() const {
+        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         return m_db_ptr->storageUsed();
     }
 
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
+
 
 private:
     void updateToLatestVersion();
@@ -447,7 +450,19 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+    void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
+
     void updateStorageUsage();
+
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
+    };
+
+    void clearFileStorageCache() {
+        if ( m_fs_ptr ) {
+            m_fs_ptr->reset();
+        }
+    };
 
 public:
     bool checkVersion() const;
@@ -467,6 +482,7 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
+    std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
     std::shared_ptr< size_t > m_storedVersion;
     size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
@@ -497,9 +513,7 @@ private:
 
 public:
     /// Get the backing state object.
-    dev::eth::HistoricState& mutableHistoricState() {
-        return m_historicState;
-    }
+    dev::eth::HistoricState& mutableHistoricState() { return m_historicState; }
 
     dev::eth::AccountMap getBatchOfAccounts(
         std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
@@ -513,6 +527,7 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
+    std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

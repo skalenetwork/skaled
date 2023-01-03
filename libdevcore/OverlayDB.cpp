@@ -70,6 +70,7 @@ void OverlayDB::commit() {
             } catch ( boost::exception const& ex ) {
                 if ( i == 9 ) {
                     cwarn << "Fail writing to state database. Bombing out.";
+                    cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
@@ -124,12 +125,12 @@ bool OverlayDB::exists( h256 const& _h ) const {
 
 
 void OverlayDB::insert( h256 const& _h, bytesConstRef _v ) {
-    MemoryDB::insert(_h, _v);
+    MemoryDB::insert( _h, _v );
 
-   if (m_commitOnEveryInsert) {
+    if ( m_commitOnEveryInsert ) {
         // commit immediately to save memory
         commit();
-   }
+    }
 }
 
 void OverlayDB::kill( h256 const& _h ) {

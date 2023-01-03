@@ -42,8 +42,7 @@ void initLibSnark() noexcept {
         libff::inhibit_profiling_counters = true;
         libff::alt_bn128_pp::init_public_params();
         return true;
-    }
-    ();
+    }();
     ( void ) s_initialized;
 }
 
@@ -126,7 +125,7 @@ pair< bool, bytes > dev::crypto::alt_bn128_pairing_product( dev::bytesConstRef _
     size_t const pairs = _in.size() / pairSize;
     if ( pairs * pairSize != _in.size() )
         // Invalid length.
-        return {false, bytes{}};
+        return { false, bytes{} };
 
     try {
         initLibSnark();
@@ -137,7 +136,7 @@ pair< bool, bytes > dev::crypto::alt_bn128_pairing_product( dev::bytesConstRef _
             libff::alt_bn128_G2 const p = decodePointG2( pair.cropped( 2 * 32 ) );
             if ( -libff::alt_bn128_G2::scalar_field::one() * p + p != libff::alt_bn128_G2::zero() )
                 // p is not an element of the group (has wrong order)
-                return {false, bytes()};
+                return { false, bytes() };
             if ( p.is_zero() || g1.is_zero() )
                 continue;  // the pairing is one
             x = x * libff::alt_bn128_miller_loop(
@@ -145,10 +144,10 @@ pair< bool, bytes > dev::crypto::alt_bn128_pairing_product( dev::bytesConstRef _
         }
         bool const result =
             libff::alt_bn128_final_exponentiation( x ) == libff::alt_bn128_GT::one();
-        return {true, h256{result}.asBytes()};
+        return { true, h256{ result }.asBytes() };
     } catch ( InvalidEncoding const& ) {
         // Signal the call failure for invalid input.
-        return {false, bytes{}};
+        return { false, bytes{} };
     }
 }
 
@@ -157,10 +156,10 @@ pair< bool, bytes > dev::crypto::alt_bn128_G1_add( dev::bytesConstRef _in ) {
         initLibSnark();
         libff::alt_bn128_G1 const p1 = decodePointG1( _in );
         libff::alt_bn128_G1 const p2 = decodePointG1( _in.cropped( 32 * 2 ) );
-        return {true, encodePointG1( p1 + p2 )};
+        return { true, encodePointG1( p1 + p2 ) };
     } catch ( InvalidEncoding const& ) {
         // Signal the call failure for invalid input.
-        return {false, bytes{}};
+        return { false, bytes{} };
     }
 }
 
@@ -170,9 +169,9 @@ pair< bool, bytes > dev::crypto::alt_bn128_G1_mul( dev::bytesConstRef _in ) {
         libff::alt_bn128_G1 const p = decodePointG1( _in.cropped( 0 ) );
         libff::alt_bn128_G1 const result =
             toLibsnarkBigint( h256( _in.cropped( 64 ), h256::AlignLeft ) ) * p;
-        return {true, encodePointG1( result )};
+        return { true, encodePointG1( result ) };
     } catch ( InvalidEncoding const& ) {
         // Signal the call failure for invalid input.
-        return {false, bytes{}};
+        return { false, bytes{} };
     }
 }

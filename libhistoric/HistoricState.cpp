@@ -10,6 +10,7 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/MemoryDB.h>
+#include <libdevcore/TrieHash.h>
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/ExtVM.h>
@@ -138,11 +139,11 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     return *this;
 }
 
-HistoricAccount const* HistoricState::account( Address const& _a ) const {
+Account const* HistoricState::account( Address const& _a ) const {
     return const_cast< HistoricState* >( this )->account( _a );
 }
 
-HistoricAccount* HistoricState::account( Address const& _addr ) {
+Account* HistoricState::account( Address const& _addr ) {
     auto it = m_cache.find( _addr );
     if ( it != m_cache.end() )
         return &it->second;
@@ -265,7 +266,6 @@ std::pair< HistoricState::AddressMap, h256 > HistoricState::addresses(
     return { addresses, nextKey };
 }
 
-
 void HistoricState::setRoot( GlobalRoot const& _r ) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -287,9 +287,7 @@ void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
 
 void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
     auto key = h256( _blockNumber );
-
     m_blockToStateRootDB.insert( key, m_state.root().ref() );
-
     auto bn = to_string( _blockNumber );
 
     // record the latest block number
@@ -378,7 +376,6 @@ void HistoricState::addBalance( Address const& _id, u256 const& _amount ) {
 void HistoricState::subBalance( Address const& _addr, u256 const& _value ) {
     if ( _value == 0 )
         return;
-
     HistoricAccount* a = account( _addr );
     if ( !a || a->balance() < _value )
         // TODO: I expect this never happens.
@@ -450,7 +447,6 @@ void HistoricState::clearStorage( Address const& _contract ) {
 map< h256, pair< u256, u256 > > HistoricState::storage( Address const& _id ) const {
 #if ETH_FATDB
     map< h256, pair< u256, u256 > > ret;
-
     if ( HistoricAccount const* a = account( _id ) ) {
         // Pull out all values from trie storage.
         if ( h256 root = a->originalStorageRoot() ) {
@@ -745,7 +741,6 @@ _txIndex, BlockChain const &_bc) {
 }
  */
 
-
 AddressHash HistoricState::commitExternalChangesIntoTrieDB(
     const AccountMap& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
     AddressHash ret;
@@ -781,8 +776,6 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
                 }
                 assert( storageDB.root() );
                 s.append( storageDB.root() );
-
-
                 if ( i.second.hasNewCode() ) {
                     h256 ch = i.second.codeHash();
                     // Store the size of the code

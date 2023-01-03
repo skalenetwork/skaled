@@ -101,8 +101,9 @@ ChainParams ChainParams::loadConfig(
         params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
-    cp.skaleDisableChainIdCheck =
-        params.count( c_skaleDisableChainIdCheck ) ? params[c_skaleDisableChainIdCheck].get_bool() : false;
+    cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
+                                      params[c_skaleDisableChainIdCheck].get_bool() :
+                                      false;
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {
@@ -207,6 +208,15 @@ ChainParams ChainParams::loadConfig(
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
                                     0;
 
+        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
+                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
+                                        3600;
+
+        s.snapshotDownloadInactiveTimeout =
+            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
+                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
+                3600;
+
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
                                      0;
@@ -228,6 +238,19 @@ ChainParams ChainParams::loadConfig(
 
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+        if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
+            s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
+
+        s.contractStoragePatchTimestamp =
+            sChainObj.count( "contractStoragePatchTimestamp" ) ?
+                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+                0;
+
+        s.contractStorageZeroValuePatchTimestamp =
+            sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
+                sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
+                0;
 
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;

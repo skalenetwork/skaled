@@ -215,10 +215,8 @@ public:
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
 
-
-#ifdef  HISTORIC_STATE
-    ExecutionResult executeHistoricCall(
-            LastBlockHashesFace const& _lh, Transaction const& _t);
+#ifdef HISTORIC_STATE
+    ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t );
 #endif
 
 
@@ -322,7 +320,7 @@ private:
     /// Creates and updates the special contract for storing block hashes according to EIP96
     void updateBlockhashContract();
 
-    State m_state;         ///< Our state.
+    State m_state;                ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the
                                   ///< state.
     TransactionReceipts m_receipts;  ///< The corresponding list of transaction receipts.
@@ -342,8 +340,8 @@ private:
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
 
-    Logger m_logger{createLogger( VerbosityDebug, "block" )};
-    Logger m_loggerDetailed{createLogger( VerbosityTrace, "block" )};
+    Logger m_logger{ createLogger( VerbosityDebug, "block" ) };
+    Logger m_loggerDetailed{ createLogger( VerbosityTrace, "block" ) };
 
     Counter< Block > c;
     ;

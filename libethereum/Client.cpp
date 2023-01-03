@@ -48,6 +48,9 @@
 #endif
 
 #include <libskale/State.h>
+#include <libskale/ContractStorageLimitPatch.h>
+#include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/RevertableFSPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
@@ -144,6 +147,11 @@ Client::Client( ChainParams const& _params, int _networkID,
     init( _forceAction, _networkID );
 
     TotalStorageUsedPatch::g_client = this;
+    ContractStorageLimitPatch::contractStoragePatchTimestamp =
+        chainParams().sChain.contractStoragePatchTimestamp;
+    ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
+        chainParams().sChain.contractStorageZeroValuePatchTimestamp;
+    RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
 }
 
 Client::~Client() {
@@ -683,6 +691,7 @@ size_t Client::importTransactionsAsBlock(
                     cerror << cc::fatal( "CRITICAL" ) << " "
                            << cc::warn( dev::nested_exception_what( ex ) )
                            << cc::error( " in computeSnapshotHash(). Exiting..." );
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
@@ -690,6 +699,7 @@ size_t Client::importTransactionsAsBlock(
                            << cc::error(
                                   " unknown exception in computeSnapshotHash(). "
                                   "Exiting..." );
+                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
@@ -715,7 +725,7 @@ size_t Client::syncTransactions(
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
-        cout << "m_working.isSealed. sleeping" << endl;
+        cnote << "m_working.isSealed. sleeping" << endl;
         usleep( 1000 );
     }
 
@@ -725,6 +735,11 @@ size_t Client::syncTransactions(
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
+
+    ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
+    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
+
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -1157,9 +1172,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) {
-            return Block( bc(), hash, readState );
-        }
+        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1323,7 +1336,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.checkOutExternalGas( ~u256( 0 ) );
                 if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t );
@@ -1465,6 +1478,21 @@ unsigned Client::installNewPendingTransactionWatch(
 }
 bool Client::uninstallNewPendingTransactionWatch( const unsigned& k ) {
     return m_new_pending_transaction_watch.uninstall( k );
+}
+
+std::pair< uint64_t, uint64_t > Client::getBlocksDbUsage() const {
+    uint64_t pieceUsageBytes = bc().pieceUsageBytes();
+    fs::path blocksDbPath =
+        m_dbPath / BlockChain::getChainDirName( chainParams() ) / fs::path( "blocks_and_extras" );
+    return { dev::getDirSize( blocksDbPath ), pieceUsageBytes };
+}
+
+std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
+    uint64_t contractStorageUsed = m_state.storageUsedTotal().convert_to< uint64_t >();
+    fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
+                           fs::path( toString( dev::eth::c_databaseVersion ) ) /
+                           fs::path( "state" );
+    return { dev::getDirSize( stateDbPath ), contractStorageUsed };
 }
 
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {

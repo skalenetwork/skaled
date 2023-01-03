@@ -70,6 +70,8 @@ public:
     void addReceiptToPartials( const dev::eth::TransactionReceipt& );
     void clearPartialTransactionReceipts();
 
+    // commit key-value pairs in storage
+    void commitStorageValues();
     void commit( const std::string& _debugCommitId );
     void rollback();
     void clearDB();
@@ -120,7 +122,7 @@ private:
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
-    void copyStorageIntoAccountMap(dev::eth::AccountMap&  _map) const;
+    void copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const;
 };
 
 }  // namespace skale

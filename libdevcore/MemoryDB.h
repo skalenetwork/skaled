@@ -31,8 +31,6 @@
 namespace dev {
 
 
-
-
 class MemoryDB {
     friend class EnforceRefs;
 
@@ -73,7 +71,6 @@ protected:
 };
 
 
-
 inline std::ostream& operator<<( std::ostream& _out, MemoryDB const& _m ) {
     for ( auto const& i : _m.get() ) {
         _out << i.first << ": ";
@@ -84,11 +81,9 @@ inline std::ostream& operator<<( std::ostream& _out, MemoryDB const& _m ) {
     return _out;
 }
 
-class EnforceRefs
-{
+class EnforceRefs {
 public:
-    EnforceRefs(MemoryDB const& _o, bool _r) : m_o(_o), m_r(_o.m_enforceRefs)
-    {
+    EnforceRefs( MemoryDB const& _o, bool _r ) : m_o( _o ), m_r( _o.m_enforceRefs ) {
         _o.m_enforceRefs = _r;
     }
     ~EnforceRefs() { m_o.m_enforceRefs = m_r; }
@@ -99,4 +94,3 @@ private:
 };
 
 }  // namespace dev
-

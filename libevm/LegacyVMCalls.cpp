@@ -124,7 +124,7 @@ void LegacyVM::caseCreate() {
     if ( m_OP == Instruction::CREATE2 ) {
         salt = m_SP[3];
         // charge for hashing initCode = GSHA3WORD * ceil(len(init_code) / 32)
-        m_runGas += toInt63( ( u512{initSize} + 31 ) / 32 * m_schedule->sha3WordGas );
+        m_runGas += toInt63( ( u512{ initSize } + 31 ) / 32 * m_schedule->sha3WordGas );
     }
 
     updateMem( memNeed( initOff, initSize ) );
@@ -143,7 +143,7 @@ void LegacyVM::caseCreate() {
         // Get init code. Casts are safe because the memory cost has been paid.
         auto off = static_cast< size_t >( initOff );
         auto size = static_cast< size_t >( initSize );
-        bytesConstRef initCode{m_mem.data() + off, size};
+        bytesConstRef initCode{ m_mem.data() + off, size };
 
 
         CreateResult result = m_ext->create( endowment, gas, initCode, m_OP, salt, m_onOp );
