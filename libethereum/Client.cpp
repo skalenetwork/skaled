@@ -47,10 +47,10 @@
 #include <libhistoric/HistoricState.h>
 #endif
 
-#include <libskale/State.h>
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/State.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
@@ -1172,7 +1172,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
+        DEV_GUARDED( m_blockImportMutex ) {
+            return Block( bc(), hash, readState );
+        }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1336,7 +1338,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.checkOutExternalGas( ~u256( 0 ) );
                 if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+                        _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t );

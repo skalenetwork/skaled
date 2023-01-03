@@ -414,8 +414,8 @@ eth::Account* State::account( Address const& _address ) {
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
-        std::forward_as_tuple( nonce, balance, dev::eth::StorageRoot(EmptyTrie), codeHash, version,
-            dev::eth::Account::Changedness::Unchanged, storageUsed ) );
+        std::forward_as_tuple( nonce, balance, dev::eth::StorageRoot( EmptyTrie ), codeHash,
+            version, dev::eth::Account::Changedness::Unchanged, storageUsed ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -1101,7 +1101,8 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                         contout << std::endl
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
-                                           cached.count( j.first ) ? " .     " : "       " )
+                                       cached.count( j.first ) ? " .     " :
+                                                                 "       " )
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
