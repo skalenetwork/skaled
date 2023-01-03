@@ -177,8 +177,8 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
 }
 
 BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches,
-        WithExisting _we ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-                                 m_dbPath( _dbPath ) {
+    WithExisting _we ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
+      m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
