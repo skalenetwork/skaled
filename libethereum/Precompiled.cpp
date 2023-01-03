@@ -56,7 +56,6 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
-skale::State g_state;
 std::shared_ptr< skale::OverlayFS > g_overlayFS;
 
 };  // namespace eth
