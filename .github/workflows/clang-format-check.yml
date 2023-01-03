@@ -11,4 +11,4 @@ jobs:
         source: '.'
         exclude: './CMakeFiles ./cmake ./deps ./build ./skaled_ssl_test ./newer_lcov'
         extensions: 'h,hpp,hxx,cpp,cxx,cc,ipp'
-        clangFormatVersion: 11
+        clangFormatVersion: 10
