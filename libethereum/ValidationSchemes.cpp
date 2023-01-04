@@ -256,6 +256,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "revertableFSPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "contractStorageZeroValuePatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
