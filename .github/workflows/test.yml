@@ -240,9 +240,30 @@ jobs:
           ls /tmp/SingleConsensusTestsPassed || ./testeth -t SingleConsensusTests  -- --express --verbosity 4
           ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4    
           cd ..
-      - run: |
-          sudo umount build/test/btrfs || true
-          sudo rm -rf /tmp/tmp*
-          sudo rm -rf /tmp/*.db
-        if: ${{ always() }}
-        continue-on-error: true
+      - name: Configure all as historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          mkdir -p build
+          cd build
+          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
+          cd ..
+      - name: Build all historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
+          make testeth -j$(nproc)          
+          cd ..
+      - name: Print ccache stats after full historic build
+        run : |
+          ccache --show-stats

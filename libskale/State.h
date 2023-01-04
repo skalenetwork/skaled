@@ -523,7 +523,6 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
-
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 };
 

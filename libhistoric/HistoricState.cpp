@@ -139,11 +139,11 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     return *this;
 }
 
-Account const* HistoricState::account( Address const& _a ) const {
+HistoricAccount const* HistoricState::account( Address const& _a ) const {
     return const_cast< HistoricState* >( this )->account( _a );
 }
 
-Account* HistoricState::account( Address const& _addr ) {
+HistoricAccount* HistoricState::account( Address const& _addr ) {
     auto it = m_cache.find( _addr );
     if ( it != m_cache.end() )
         return &it->second;
@@ -163,7 +163,7 @@ Account* HistoricState::account( Address const& _addr ) {
     RLP state( stateBack );
     auto const nonce = state[0].toInt< u256 >();
     auto const balance = state[1].toInt< u256 >();
-    auto const storageRoot = state[2].toHash< h256 >();
+    auto const storageRoot = StorageRoot( state[2].toHash< h256 >() );
     auto const codeHash = state[3].toHash< h256 >();
     // version is 0 if absent from RLP
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
@@ -193,7 +193,7 @@ void HistoricState::clearCacheIfTooLarge() const {
 }
 
 void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
-    commit( _accountMap, m_state );
+    commitExternalChangesIntoTrieDB( _accountMap, m_state );
     m_state.db()->commit();
     m_changeLog.clear();
     m_cache.clear();
@@ -266,8 +266,7 @@ std::pair< HistoricState::AddressMap, h256 > HistoricState::addresses(
     return { addresses, nextKey };
 }
 
-
-void HistoricState::setRoot( h256 const& _r ) {
+void HistoricState::setRoot( GlobalRoot const& _r ) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
@@ -282,15 +281,13 @@ void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
     }
     auto value = m_blockToStateRootDB.lookup( key );
     auto root = h256( value, h256::ConstructFromStringType::FromBinary );
-    setRoot( root );
+    setRoot( GlobalRoot( root ) );
 }
 
 
 void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
     auto key = h256( _blockNumber );
-
     m_blockToStateRootDB.insert( key, m_state.root().ref() );
-
     auto bn = to_string( _blockNumber );
 
     // record the latest block number
@@ -314,7 +311,7 @@ bool HistoricState::addressInUse( Address const& _id ) const {
 }
 
 bool HistoricState::accountNonemptyAndExisting( Address const& _address ) const {
-    if ( Account const* a = account( _address ) )
+    if ( HistoricAccount const* a = account( _address ) )
         return !a->isEmpty();
     else
         return false;
@@ -335,27 +332,27 @@ u256 HistoricState::balance( Address const& _id ) const {
 }
 
 void HistoricState::incNonce( Address const& _addr ) {
-    if ( Account* a = account( _addr ) ) {
+    if ( HistoricAccount* a = account( _addr ) ) {
         auto oldNonce = a->nonce();
         a->incNonce();
         m_changeLog.emplace_back( _addr, oldNonce );
     } else
         // This is possible if a transaction has gas price 0.
-        createAccount( _addr, Account( requireAccountStartNonce() + 1, 0 ) );
+        createAccount( _addr, HistoricAccount( requireAccountStartNonce() + 1, 0 ) );
 }
 
 void HistoricState::setNonce( Address const& _addr, u256 const& _newNonce ) {
-    if ( Account* a = account( _addr ) ) {
+    if ( HistoricAccount* a = account( _addr ) ) {
         auto oldNonce = a->nonce();
         a->setNonce( _newNonce );
         m_changeLog.emplace_back( _addr, oldNonce );
     } else
         // This is possible when a contract is being created.
-        createAccount( _addr, Account( _newNonce, 0 ) );
+        createAccount( _addr, HistoricAccount( _newNonce, 0 ) );
 }
 
 void HistoricState::addBalance( Address const& _id, u256 const& _amount ) {
-    if ( Account* a = account( _id ) ) {
+    if ( HistoricAccount* a = account( _id ) ) {
         // Log empty account being touched. Empty touched accounts are cleared
         // after the transaction, so this event must be also reverted.
         // We only log the first touch (not dirty yet), and only for empty
@@ -379,8 +376,7 @@ void HistoricState::addBalance( Address const& _id, u256 const& _amount ) {
 void HistoricState::subBalance( Address const& _addr, u256 const& _value ) {
     if ( _value == 0 )
         return;
-
-    Account* a = account( _addr );
+    HistoricAccount* a = account( _addr );
     if ( !a || a->balance() < _value )
         // TODO: I expect this never happens.
         BOOST_THROW_EXCEPTION( NotEnoughCash() );
@@ -390,7 +386,7 @@ void HistoricState::subBalance( Address const& _addr, u256 const& _value ) {
 }
 
 void HistoricState::setBalance( Address const& _addr, u256 const& _value ) {
-    Account* a = account( _addr );
+    HistoricAccount* a = account( _addr );
     u256 original = a ? a->balance() : 0;
 
     // Fall back to addBalance().
@@ -401,7 +397,7 @@ void HistoricState::createContract( Address const& _address ) {
     createAccount( _address, { requireAccountStartNonce(), 0 } );
 }
 
-void HistoricState::createAccount( Address const& _address, Account const&& _account ) {
+void HistoricState::createAccount( Address const& _address, HistoricAccount const&& _account ) {
     assert( !addressInUse( _address ) && "Account already exists" );
     m_cache[_address] = std::move( _account );
     m_nonExistingAccountsCache.erase( _address );
@@ -422,7 +418,7 @@ u256 HistoricState::getNonce( Address const& _addr ) const {
 }
 
 u256 HistoricState::storage( Address const& _id, u256 const& _key ) const {
-    if ( Account const* a = account( _id ) )
+    if ( HistoricAccount const* a = account( _id ) )
         return a->storageValue( _key, m_db );
     else
         return 0;
@@ -434,14 +430,14 @@ void HistoricState::setStorage( Address const& _contract, u256 const& _key, u256
 }
 
 u256 HistoricState::originalStorageValue( Address const& _contract, u256 const& _key ) const {
-    if ( Account const* a = account( _contract ) )
+    if ( HistoricAccount const* a = account( _contract ) )
         return a->originalStorageValue( _key, m_db );
     else
         return 0;
 }
 
 void HistoricState::clearStorage( Address const& _contract ) {
-    h256 const& oldHash{ m_cache[_contract].baseRoot() };
+    h256 const& oldHash{ m_cache[_contract].originalStorageRoot() };
     if ( oldHash == EmptyTrie )
         return;
     m_changeLog.emplace_back( Change::StorageRoot, _contract, oldHash );
@@ -451,10 +447,9 @@ void HistoricState::clearStorage( Address const& _contract ) {
 map< h256, pair< u256, u256 > > HistoricState::storage( Address const& _id ) const {
 #if ETH_FATDB
     map< h256, pair< u256, u256 > > ret;
-
-    if ( Account const* a = account( _id ) ) {
+    if ( HistoricAccount const* a = account( _id ) ) {
         // Pull out all values from trie storage.
-        if ( h256 root = a->baseRoot() ) {
+        if ( h256 root = a->originalStorageRoot() ) {
             SecureTrieDB< h256, OverlayDB > memdb( const_cast< OverlayDB* >( &m_db ),
                 root );  // promise we won't alter the overlay! :)
 
@@ -494,13 +489,13 @@ h256 HistoricState::storageRoot( Address const& _id ) const {
 }
 
 bytes const& HistoricState::code( Address const& _addr ) const {
-    Account const* a = account( _addr );
+    HistoricAccount const* a = account( _addr );
     if ( !a || a->codeHash() == EmptySHA3 )
         return NullBytes;
 
     if ( a->code().empty() ) {
         // Load the code from the backend.
-        Account* mutableAccount = const_cast< Account* >( a );
+        HistoricAccount* mutableAccount = const_cast< HistoricAccount* >( a );
         mutableAccount->noteCode( m_db.lookup( a->codeHash() ) );
         CodeSizeCache::instance().store( a->codeHash(), a->code().size() );
     }
@@ -517,14 +512,14 @@ void HistoricState::setCode( Address const& _address, bytes&& _code, u256 const&
 }
 
 h256 HistoricState::codeHash( Address const& _a ) const {
-    if ( Account const* a = account( _a ) )
+    if ( HistoricAccount const* a = account( _a ) )
         return a->codeHash();
     else
         return EmptySHA3;
 }
 
 size_t HistoricState::codeSize( Address const& _a ) const {
-    if ( Account const* a = account( _a ) ) {
+    if ( HistoricAccount const* a = account( _a ) ) {
         if ( a->hasNewCode() )
             return a->code().size();
         auto& codeSizeCache = CodeSizeCache::instance();
@@ -541,7 +536,7 @@ size_t HistoricState::codeSize( Address const& _a ) const {
 }
 
 u256 HistoricState::version( Address const& _a ) const {
-    Account const* a = account( _a );
+    HistoricAccount const* a = account( _a );
     return a ? a->version() : 0;
 }
 
@@ -624,7 +619,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
     TransactionReceipt const receipt =
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-            TransactionReceipt( rootHash(), startGasUsed + e.gasUsed(), e.logs() );
+            TransactionReceipt( globalRoot(), startGasUsed + e.gasUsed(), e.logs() );
     return make_pair( res, receipt );
 }
 
@@ -647,11 +642,11 @@ bool HistoricState::executeTransaction(
 }
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s ) {
-    _out << "--- " << _s.rootHash() << std::endl;
+    _out << "--- " << _s.globalRoot() << std::endl;
     std::set< Address > d;
     std::set< Address > dtr;
     auto trie =
-        SecureTrieDB< Address, OverlayDB >( const_cast< OverlayDB* >( &_s.m_db ), _s.rootHash() );
+        SecureTrieDB< Address, OverlayDB >( const_cast< OverlayDB* >( &_s.m_db ), _s.globalRoot() );
     for ( auto i : trie )
         d.insert( i.first ), dtr.insert( i.first );
     for ( auto i : _s.m_cache )
@@ -659,7 +654,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
 
     for ( auto i : d ) {
         auto it = _s.m_cache.find( i );
-        Account* cache = it != _s.m_cache.end() ? &it->second : nullptr;
+        HistoricAccount* cache = it != _s.m_cache.end() ? &it->second : nullptr;
         string rlpString = dtr.count( i ) ? trie.at( i ) : "";
         RLP r( rlpString );
         assert( cache || r );
@@ -736,7 +731,7 @@ _txIndex, BlockChain const &_bc) {
     // o_s = _block.state().historicState();
     u256 const rootHash = _block.stateRootBeforeTx(_txIndex);
     if (rootHash)
-        o_s.setRoot(rootHash);
+        o_s.setRoot(globalRoot);
     else {
         o_s.setRoot(_block.stateRootBeforeTx(0));
         o_s.executeBlockTransactions(_block, _txIndex, _bc.lastBlockHashes(), *_bc.sealEngine());
@@ -745,9 +740,8 @@ _txIndex, BlockChain const &_bc) {
 }
  */
 
-
-AddressHash HistoricState::commit(
-    AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
+AddressHash HistoricState::commitExternalChangesIntoTrieDB(
+    const AccountMap& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
     AddressHash ret;
     for ( auto const& i : _cache )
         if ( i.second.isDirty() ) {
@@ -761,21 +755,26 @@ AddressHash HistoricState::commit(
                 RLPStream s( version != 0 ? 5 : 4 );
                 s << i.second.nonce() << i.second.balance();
 
-                if ( i.second.storageOverlay().empty() ) {
-                    assert( i.second.baseRoot() );
-                    s.append( i.second.baseRoot() );
-                } else {
-                    SecureTrieDB< h256, OverlayDB > storageDB( _state.db(), i.second.baseRoot() );
-                    for ( auto const& j : i.second.storageOverlay() ) {
-                        if ( j.second ) {
-                            storageDB.insert( j.first, rlp( j.second ) );
+                auto existingAccount = account( i.first );
 
-                        } else
-                            storageDB.remove( j.first );
-                    }
-                    assert( storageDB.root() );
-                    s.append( storageDB.root() );
+                // if we already have the account we use it
+                // otherwise we create it
+                StorageRoot storageRoot( EmptyTrie );
+                if ( existingAccount != nullptr ) {
+                    storageRoot = existingAccount->originalStorageRoot();
                 }
+
+                SecureTrieDB< h256, OverlayDB > storageDB( _state.db(), storageRoot );
+
+                for ( auto const& j : i.second.storageOverlay() ) {
+                    if ( j.second ) {
+                        storageDB.insert( j.first, rlp( j.second ) );
+
+                    } else
+                        storageDB.remove( j.first );
+                }
+                assert( storageDB.root() );
+                s.append( storageDB.root() );
                 if ( i.second.hasNewCode() ) {
                     h256 ch = i.second.codeHash();
                     // Store the size of the code

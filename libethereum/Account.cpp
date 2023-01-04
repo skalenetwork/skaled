@@ -38,7 +38,7 @@ using namespace dev::eth::validation;
 
 namespace fs = boost::filesystem;
 
-std::unordered_map< u256, u256 > const& Account::originalStorageValue() const {
+std::unordered_map< u256, u256 > const& Account::originalStorageCache() const {
     return m_storageOriginal;
 }
 
