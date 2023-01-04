@@ -277,7 +277,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         //            true ) );
 
         mgr.reset( new SnapshotManager( boost::filesystem::path( BTRFS_DIR_PATH ),
-            {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+            "", {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
 
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );

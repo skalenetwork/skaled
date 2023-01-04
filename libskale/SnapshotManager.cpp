@@ -54,7 +54,7 @@ const std::string SnapshotManager::snapshot_hash_file_name = "snapshot_hash.txt"
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager( const fs::path& _dataDir,
+SnapshotManager::SnapshotManager( const fs::path& _dataDir, const std::string& _blocksDir,
     const std::vector< std::string >& _volumes, const std::string& _diffsDir ) {
     assert( _volumes.size() > 0 );
 

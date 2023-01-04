@@ -152,7 +152,7 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const boost::filesystem::path& _dataDir,
+    SnapshotManager( const boost::filesystem::path& _dataDir, const std::string& _blocksDir,
         const std::vector< std::string >& _volumes, const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
