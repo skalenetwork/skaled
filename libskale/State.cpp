@@ -414,8 +414,8 @@ eth::Account* State::account( Address const& _address ) {
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
-        std::forward_as_tuple( nonce, balance, EmptyTrie, codeHash, version,
-            dev::eth::Account::Changedness::Unchanged, storageUsed ) );
+        std::forward_as_tuple( nonce, balance, dev::eth::StorageRoot( EmptyTrie ), codeHash,
+            version, dev::eth::Account::Changedness::Unchanged, storageUsed ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -644,8 +644,8 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
         if ( memoryIterator != acc->storageOverlay().end() )
             return memoryIterator->second;
 
-        memoryIterator = acc->originalStorageValue().find( _key );
-        if ( memoryIterator != acc->originalStorageValue().end() )
+        memoryIterator = acc->originalStorageCache().find( _key );
+        if ( memoryIterator != acc->originalStorageCache().end() )
             return memoryIterator->second;
 
         // Not in the storage cache - go to the DB.
@@ -685,8 +685,8 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
     if ( Account const* acc = account( _contract ) ) {
-        auto memoryPtr = acc->originalStorageValue().find( _key );
-        if ( memoryPtr != acc->originalStorageValue().end() ) {
+        auto memoryPtr = acc->originalStorageCache().find( _key );
+        if ( memoryPtr != acc->originalStorageCache().end() ) {
             return memoryPtr->second;
         }
 

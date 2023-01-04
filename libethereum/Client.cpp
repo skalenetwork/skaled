@@ -50,6 +50,7 @@
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/State.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <skutils/console_colors.h>
@@ -750,7 +751,7 @@ size_t Client::syncTransactions(
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
         m_state.mutableHistoricState().setRoot(
-            m_working.mutableState().mutableHistoricState().rootHash() );
+            m_working.mutableState().mutableHistoricState().globalRoot() );
 #endif
     }
 

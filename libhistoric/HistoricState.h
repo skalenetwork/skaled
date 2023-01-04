@@ -4,13 +4,13 @@
 
 #pragma once
 
+#include "HistoricAccount.h"
 #include "SecureTrieDB.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
-#include <libethereum/Account.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/GasPricer.h>
 #include <libethereum/Transaction.h>
@@ -262,12 +262,12 @@ public:
     u256 getNonce( Address const& _addr ) const;
 
     /// The hash of the root of our state tree.
-    h256 rootHash() const { return m_state.root(); }
+    GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
     void commitExternalChanges( AccountMap const& _cache );
 
     /// Resets any uncommitted changes to the cache.
-    void setRoot( h256 const& _root );
+    void setRoot( GlobalRoot const& _root );
 
     // Sets root by reading the block number from DB
 
@@ -302,16 +302,16 @@ private:
 
     /// @returns the account at the given address or a null pointer if it does not exist.
     /// The pointer is valid until the next access to the state or account.
-    Account const* account( Address const& _addr ) const;
+    HistoricAccount const* account( Address const& _addr ) const;
 
     /// @returns the account at the given address or a null pointer if it does not exist.
     /// The pointer is valid until the next access to the state or account.
-    Account* account( Address const& _addr );
+    HistoricAccount* account( Address const& _addr );
 
     /// Purges non-modified entries in m_cache if it grows too large.
     void clearCacheIfTooLarge() const;
 
-    void createAccount( Address const& _address, Account const&& _account );
+    void createAccount( Address const& _address, HistoricAccount const&& _account );
 
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
@@ -326,7 +326,7 @@ private:
     SecureTrieDB< Address, OverlayDB > m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
     /// been changed.
-    mutable std::unordered_map< Address, Account > m_cache;
+    mutable std::unordered_map< Address, HistoricAccount > m_cache;
     /// Tracks entries in m_cache that can potentially be purged if it grows too large.
     mutable std::vector< Address > m_unchangedCacheEntries;
     /// Tracks addresses that are known to not exist.
@@ -343,7 +343,8 @@ private:
 
     uint64_t readLatestBlock();
 
-    AddressHash commit( AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
+    AddressHash commitExternalChangesIntoTrieDB(
+        AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );

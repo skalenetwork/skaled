@@ -8,9 +8,11 @@
 
 WALLETS_COUNT = 10;
 OWNER_ADDRESS = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
+ZERO_ADDRESS =  "0xO000000000000000000000000000000000000000";
+INITIAL_MINT = 10000000000000000000000000000000000000000;
 
-const hre = require("hardhat");
-const ethers = require('ethers')
+require("hardhat");
+const ethers2 = require('ethers')
 const fs = require('fs')
 const waitForUserInput = require("wait-for-user-input");
 const KEY_DIR = "/tmp/tmp_test_keys"
@@ -70,12 +72,11 @@ async function generateOrReadKeys() {
         await generateKeys()
     }
 
-
     console.log(`Initing wallets ...`);
 
     for (i = 0; i < WALLETS_COUNT; i++) {
 
-        const tmp = await new ethers.Wallet(privateKeys[i], hre.ethers.provider);
+        const tmp = await new ethers2.Wallet(privateKeys[i], ethers.provider);
 
         wallets.push(tmp);
         addresses.push(tmp.address)
@@ -85,37 +86,77 @@ async function generateOrReadKeys() {
 }
 
 
-async function deployContracts() {
+
+function CHECK(result) {
+    if (!result) {
+        message = `Check failed ${result}`
+        console.log(message);
+        throw message;
+    }
+}
+
+async function waitUntilNextBlock() {
+
+    current = await hre.ethers.provider.getBlockNumber();
+    newBlock = current;
+    console.log(`BLOCK_NUMBER ${current}`);
+
+    while (newBlock == current) {
+        newBlock = await hre.ethers.provider.getBlockNumber();
+    }
+
+    console.log(`BLOCK_NUMBER ${newBlock}`);
+
+    return current;
+
+
+}
+
+
+async function deployContractsProxy() {
 
     console.log(`Deploying ...`);
 
     const currentTimestampInSeconds = Math.round(Date.now() / 1000);
 
-    const lockedAmount = hre.ethers.utils.parseEther("10");
+    //const lockedAmount = hre.ethers.utils.parseEther("10");
+
+    console.log(`Testing deploy transfer`);
 
     const Lock = await hre.ethers.getContractFactory("Lock");
-    const lock = await Lock.deploy({value: lockedAmount});
+    const lock = await hre.upgrades.deployProxy(Lock);
     lockContract = await lock.deployed();
 
-    console.log(`Lock deployed to ${lockContract.address}`);
+    deployBn = await hre.ethers.provider.getBlockNumber();
 
-    b = await lockContract.balanceOf(OWNER_ADDRESS);
-    console.log(`Contract balance before transform: ${b}`);
+    console.log(`Lock deployed to ${lockContract.address} at block ${deployBn}`);
 
-    const waitForUserInput = require('wait-for-user-input');
+    previousBlock = await waitUntilNextBlock();
+    previousBlock = await waitUntilNextBlock();
 
-    const userInput = await waitForUserInput('');
+//   b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
+  //  owner = await lockContract.owner({blockTag : previousBlock});
+  //  console.log(`Contract owner is ${owner}`);
 
-
-    bn = await await hre.ethers.provider.getBlockNumber();
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : bn - 3});
-
-    console.log(`Contract balance after transform at minus 3: ${b}`);
+ //   CHECK(b == INITIAL_MINT)
 
 
-    b = await lockContract.balanceOf(OWNER_ADDRESS);
-    console.log(`Contract balance after transform: ${b}`);
+    console.log(`Now testing transfer`);
 
+    transferReceipt = await lockContract.transfer("0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
+    await transferReceipt.wait();
+
+    previousBlock =  await waitUntilNextBlock();
+
+    owner = await lockContract.owner({blockTag : previousBlock});
+    console.log(`Contract owner is ${owner}`);
+
+    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
+
+    console.log(`Balance after transfer ${b}`);
+
+    CHECK(b  == INITIAL_MINT - 0x02)
+    console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
 
 
     const MultiSend = await hre.ethers.getContractFactory("MultiSend");
@@ -125,6 +166,7 @@ async function deployContracts() {
 
 
 }
+
 
 
 async function multisend() {
@@ -141,7 +183,7 @@ async function main() {
     await generateOrReadKeys();
 
 
-    await deployContracts();
+    await deployContractsProxy();
 
 
     await multisend();
