@@ -1,5 +1,5 @@
 #ifndef VERIFYDASIGSPATCH_H
-#define  VERIFYDASIDSPATCH_H
+#define VERIFYDASIDSPATCH_H
 
 #include <libethereum/SchainPatch.h>
 
