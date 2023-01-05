@@ -14,6 +14,7 @@ set(sources
     TotalStorageUsedPatch.cpp
     ContractStorageLimitPatch.cpp
 	ContractStorageZeroValuePatch.cpp
+	VerifyDaSigsPatch.cpp
     AmsterdamFixPatch.cpp
     RevertableFSPatch.cpp
     OverlayFS.cpp

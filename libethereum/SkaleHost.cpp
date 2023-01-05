@@ -47,6 +47,7 @@ using namespace std;
 #include <libethereum/CommonNet.h>
 #include <libethereum/Executive.h>
 #include <libethereum/TransactionQueue.h>
+#include <libskale/VerifyDaSigsPatch.h>
 
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -76,8 +77,15 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() ) << "\n";
     //
     auto ts = nfo.timestamp();
-    auto consensus_engine_ptr = make_unique< ConsensusEngine >(
-        _extFace, m_client.number(), ts, 0, m_client.chainParams().sChain.consensusStorageLimit );
+
+    std::map< std::string, std::uint64_t > patchTimeStamps;
+
+    patchTimeStamps["verifyDaSigsPatchTimestamp"] =
+        VerifyDaSigsPatch::getVerifyDaSigsPatchTimestamp();
+
+
+    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
+        patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
 
     if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
         this->fillSgxInfo( *consensus_engine_ptr );
