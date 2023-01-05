@@ -49,6 +49,7 @@
 
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/VerifyDaSigsPatch.h>
 #include <libskale/RevertableFSPatch.h>
 #include <libskale/State.h>
 #include <libskale/TotalStorageUsedPatch.h>
@@ -151,6 +152,9 @@ Client::Client( ChainParams const& _params, int _networkID,
         chainParams().sChain.contractStoragePatchTimestamp;
     ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
         chainParams().sChain.contractStorageZeroValuePatchTimestamp;
+    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp =
+        chainParams().sChain.verifyDaSigsPatchTimestamp;
+
     RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
 }
 
