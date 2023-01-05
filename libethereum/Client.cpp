@@ -152,9 +152,7 @@ Client::Client( ChainParams const& _params, int _networkID,
         chainParams().sChain.contractStoragePatchTimestamp;
     ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
         chainParams().sChain.contractStorageZeroValuePatchTimestamp;
-    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp =
-        chainParams().sChain.verifyDaSigsPatchTimestamp;
-
+    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp = chainParams().sChain.verifyDaSigsPatchTimestamp;
     RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
 }
 

@@ -78,15 +78,14 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     //
     auto ts = nfo.timestamp();
 
-    std::map<std::string, std::uint64_t> patchTimeStamps;
+    std::map< std::string, std::uint64_t > patchTimeStamps;
 
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
         VerifyDaSigsPatch::getVerifyDaSigsPatchTimestamp();
 
 
-    auto consensus_engine_ptr = make_unique< ConsensusEngine >(
-        _extFace, m_client.number(), ts, 0, patchTimeStamps,
-        m_client.chainParams().sChain.consensusStorageLimit );
+    auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
+        patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
 
     if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
         this->fillSgxInfo( *consensus_engine_ptr );
