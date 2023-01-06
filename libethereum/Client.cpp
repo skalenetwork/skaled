@@ -47,12 +47,14 @@
 #include <libhistoric/HistoricState.h>
 #endif
 
+
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/RevertableFSPatch.h>
 #include <libskale/State.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
+#include <libskale/VerifyDaSigsPatch.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -151,6 +153,7 @@ Client::Client( ChainParams const& _params, int _networkID,
         chainParams().sChain.contractStoragePatchTimestamp;
     ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
         chainParams().sChain.contractStorageZeroValuePatchTimestamp;
+    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp = chainParams().sChain.verifyDaSigsPatchTimestamp;
     RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
 }
 

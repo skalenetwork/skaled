@@ -252,6 +252,11 @@ ChainParams ChainParams::loadConfig(
                 sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
                 0;
 
+        s.verifyDaSigsPatchTimestamp =
+            sChainObj.count( "verifyDaSigsPatchTimestamp" ) ?
+                sChainObj.at( "verifyDaSigsPatchTimestamp" ).get_int64() :
+                0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {

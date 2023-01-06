@@ -115,7 +115,8 @@ public:
         setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
 
         m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
+            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(),
+            0,  std::map<std::string, std::uint64_t>() ) );
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
@@ -217,8 +218,10 @@ public:
         chainParams.sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 
+
         m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ) );
+            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ,
+            std::map<std::string, std::uint64_t>()));
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
