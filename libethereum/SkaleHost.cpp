@@ -375,6 +375,16 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
+
+
+std::shared_ptr<std::vector<std::uint8_t>> SkaleHost::getSerializedConsensusBlock(
+    std::uint64_t _blockNumber) {
+    if (!m_extFace) {
+        throw std::runtime_error("Null m_extFace in " + string(__FUNCTION__));
+    }
+    return this->m_consensus->getSerializedBlock((uint64_t)_blockNumber);
+};
+
 ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );

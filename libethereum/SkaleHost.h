@@ -148,6 +148,11 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+    // Get serialized consensus block for a particular block number
+    // this is used for snapshots
+    std::shared_ptr<std::vector<std::uint8_t>> getSerializedConsensusBlock(
+          std::uint64_t _blockNumber);
+
 private:
     std::atomic_bool working = false;
     std::atomic_bool m_exitedForcefully = false;

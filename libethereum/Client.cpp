@@ -652,7 +652,17 @@ size_t Client::importTransactionsAsBlock(
                 m_debugTracer.tracepoint( "doing_snapshot" );
 
                 t1 = boost::chrono::high_resolution_clock::now();
-                m_snapshotManager->doSnapshot( block_number );
+
+
+                // get serialized last consensus block
+
+                if ( !m_skaleHost ) {
+                    throw std::runtime_error( "Null skalehost in " + string(__FUNCTION__) );
+                }
+
+                m_snapshotManager->doSnapshot( block_number,
+                    m_skaleHost->getSerializedConsensusBlock(block_number));
+
                 t2 = boost::chrono::high_resolution_clock::now();
                 this->snapshot_calculation_time_ms =
                     boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();

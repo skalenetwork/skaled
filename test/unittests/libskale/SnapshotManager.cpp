@@ -19,6 +19,14 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
+
+std::shared_ptr<std::vector<std::uint8_t>> getSampleLastConsensusBlock() {
+    std::shared_ptr<vector<uint8_t>> sampleLastConsensusBlock;
+    sampleLastConsensusBlock.reset(new vector<uint8_t> { 1, 2, 3, 4, 5});
+    return sampleLastConsensusBlock;
+}
+
+
 int setid_system( const char* cmd, uid_t uid, gid_t gid ) {
     pid_t pid = fork();
     if ( pid ) {
@@ -173,7 +181,7 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( latest0 == expected0 );
 
     // create snapshot 1 and check its presense
-    mgr.doSnapshot( 1 );
+    mgr.doSnapshot( 1 , getSampleLastConsensusBlock());
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "vol1" / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "vol2" / "d21" ) );
 
@@ -188,7 +196,7 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( latest1 == expected1 );
 
     // create snapshot 2 and check files 1 and files 2
-    mgr.doSnapshot( 2 );
+    mgr.doSnapshot( 2 , getSampleLastConsensusBlock());
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol2" / "d21" ) );
@@ -219,7 +227,7 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     std::pair< int, int > expected2 { 1, 2 };
     BOOST_REQUIRE( latest2 == expected2 );
 
-    mgr.doSnapshot( 3 );
+    mgr.doSnapshot( 3 , getSampleLastConsensusBlock());
     auto latest3 = mgr.getLatestSnasphots();
     std::pair< int, int > expected3 { 2, 3 };
     BOOST_REQUIRE( latest3 == expected3 );
@@ -287,14 +295,16 @@ BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
-    BOOST_REQUIRE_THROW( mgr.doSnapshot( 2 ), SnapshotManager::SnapshotPresent );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2, getSampleLastConsensusBlock() ) );
+    BOOST_REQUIRE_THROW( mgr.doSnapshot( 2, getSampleLastConsensusBlock() ),
+       SnapshotManager::SnapshotPresent );
 
     chmod( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" ).c_str(), 0 );
 
     dropRoot();
 
-    BOOST_REQUIRE_EXCEPTION( mgr.doSnapshot( 3 ), SnapshotManager::CannotRead,
+    BOOST_REQUIRE_EXCEPTION( mgr.doSnapshot( 3 ,
+        getSampleLastConsensusBlock()), SnapshotManager::CannotRead,
         [this]( const SnapshotManager::CannotRead& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "snapshots" / "3";
         } );
@@ -303,22 +313,25 @@ BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
     chmod( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" ).c_str(), 0111 );
     dropRoot();
 
-    BOOST_REQUIRE_EXCEPTION( mgr.doSnapshot( 3 ), SnapshotManager::CannotCreate,
+    BOOST_REQUIRE_EXCEPTION( mgr.doSnapshot( 3, getSampleLastConsensusBlock() ),
+        SnapshotManager::CannotCreate,
         [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "snapshots" / "3";
         } );
 
     // cannot delete
-    BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
+    BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ),
+                                 SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
-    BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::SnapshotAbsent );
+    BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ),
+                                              SnapshotManager::SnapshotAbsent );
 
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 , getSampleLastConsensusBlock()) );
 
     BOOST_REQUIRE_NO_THROW( mgr.restoreSnapshot( 2 ) );
 
@@ -331,9 +344,9 @@ BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
-    mgr.doSnapshot( 2 );
+    mgr.doSnapshot( 2, getSampleLastConsensusBlock() );
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "dir" );
-    mgr.doSnapshot( 4 );
+    mgr.doSnapshot( 4, getSampleLastConsensusBlock() );
 
     BOOST_REQUIRE_THROW( mgr.makeOrGetDiff( 3 ), SnapshotManager::SnapshotAbsent );
     BOOST_REQUIRE_NO_THROW( mgr.makeOrGetDiff( 2 ) );
@@ -367,8 +380,8 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 
     BOOST_REQUIRE_THROW( mgr.importDiff( 8 ), SnapshotManager::InvalidPath );
 
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 4 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2, getSampleLastConsensusBlock() ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 4, getSampleLastConsensusBlock() ) );
 
     fs::path diff24;
     BOOST_REQUIRE_NO_THROW( diff24 = mgr.makeOrGetDiff( 4 ) );
@@ -402,13 +415,13 @@ BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 1 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 1, getSampleLastConsensusBlock() ) );
     sleep( 1 );
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 0 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 0, getSampleLastConsensusBlock() ) );
     sleep( 1 );
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2, getSampleLastConsensusBlock() ) );
     sleep( 1 );
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 3 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 3, getSampleLastConsensusBlock() ) );
 
     BOOST_REQUIRE_NO_THROW( mgr.leaveNLastSnapshots( 2 ) );
 
@@ -453,8 +466,8 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
-    mgr.doSnapshot( 1 );
-    mgr.doSnapshot( 2 );
+    mgr.doSnapshot( 1 , getSampleLastConsensusBlock() );
+    mgr.doSnapshot( 2, getSampleLastConsensusBlock() );
 
     mgr.cleanupButKeepSnapshot( 1 );
 
@@ -463,7 +476,7 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
 
     BOOST_REQUIRE_NO_THROW( mgr.restoreSnapshot( 1 ) );
 
-    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
+    BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2, getSampleLastConsensusBlock() ) );
 }
 
 BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
@@ -471,8 +484,8 @@ BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SnapshotManager mgr( fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
 
-    mgr.doSnapshot( 1 );
-    mgr.doSnapshot( 2 );
+    mgr.doSnapshot( 1, getSampleLastConsensusBlock() );
+    mgr.doSnapshot( 2, getSampleLastConsensusBlock() );
 
     mgr.cleanup();
 

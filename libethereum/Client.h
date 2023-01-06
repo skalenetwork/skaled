@@ -380,7 +380,6 @@ protected:
     Block blockByNumber( BlockNumber _h ) const;
 #endif
 
-protected:
     /// Called when Worker is starting.
     void startedWorking() override;
 

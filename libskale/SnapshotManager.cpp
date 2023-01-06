@@ -106,7 +106,8 @@ SnapshotManager::SnapshotManager( const fs::path& _dataDir,
 // - exists
 // - cannot read
 // - cannot write
-void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
+void SnapshotManager::doSnapshot( unsigned _blockNumber,
+    std::shared_ptr<std::vector<std::uint8_t>> _serializedLastConsensusBlock) {
     fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
 
     UnsafeRegion::lock ur_lock;
@@ -125,6 +126,27 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
     }  // catch
 
     int dummy_counter = 0;
+
+
+    // consensus needs the last block to operate after a start from the snapshot
+    // just before creating snapshot, we copy the last consensus block
+    // if it was passed to us as a file into the prices.dir
+    if ( !_serializedLastConsensusBlock ) {
+        throw std::runtime_error( "Null consensus block in " + string( __FUNCTION__ ) );
+    }
+
+    auto pricesDir = volumes.at( SNAPSHOT_PRICES_DIR_INDEX );
+
+    // if file does not exist, it will be created, if exists it will be overwritten
+    std::ofstream outputFile(
+        pricesDir + "/" + LAST_CONSENSUS_BLOCK_FILE_NAME, std::ios::binary | std::ios::out );
+
+    outputFile.write( ( const char* ) _serializedLastConsensusBlock->data(),
+        _serializedLastConsensusBlock->size() );
+    outputFile.close();
+
+
+    // Now create shapshot for all volumes
     for ( const string& vol : volumes ) {
         int res = btrfs.subvolume.snapshot_r( ( data_dir / vol ).c_str(), snapshot_dir.c_str() );
         if ( res )
