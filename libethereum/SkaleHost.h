@@ -111,7 +111,8 @@ public:
         const std::string& _gethURL = "", bool _broadcastEnabled = true );
     virtual ~SkaleHost();
 
-    void startWorking();
+    void startWorking(std::shared_ptr< std::vector< std::uint8_t > >
+        _startingFromSnapshotWithThisAsLastBlock);
     void stopWorking();
     bool isWorking() const { return this->working; }
     bool exitedForcefully() const { return m_exitedForcefully; }
@@ -147,6 +148,11 @@ public:
     void forcedBroadcast( const dev::eth::Transaction& _txn );
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
+
+    // Get serialized consensus block for a particular block number
+    // this is used for snapshots
+    std::shared_ptr<std::vector<std::uint8_t>> getSerializedConsensusBlock(
+          std::uint64_t _blockNumber);
 
 private:
     std::atomic_bool working = false;

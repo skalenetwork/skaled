@@ -35,6 +35,13 @@
 #include <string>
 #include <vector>
 
+const std::string SNAPSHOT_PRICES_PREFIX = "prices_";
+const std::string LAST_CONSENSUS_BLOCK_FILE_NAME = "last_consensus_block.bin";
+
+constexpr std::uint64_t SNAPSHOT_PRICES_DIR_INDEX = 2;
+
+
+
 class SnapshotManager {
     //////////////////////// EXCEPTIONS /////////////////////
 
@@ -154,9 +161,10 @@ public:
 public:
     SnapshotManager( const boost::filesystem::path& _dataDir,
         const std::vector< std::string >& _volumes, const std::string& diffs_dir = std::string() );
-    void doSnapshot( unsigned _blockNumber );
+    void doSnapshot( unsigned _blockNumber,
+        std::shared_ptr<std::vector<std::uint8_t>> _serializedLastConsensusBlock );
     void restoreSnapshot( unsigned _blockNumber );
-    boost::filesystem::path makeOrGetDiff( unsigned _toBlock );
+    boost::filesystem::path makeOrGetDiff( unsigned _toBlock);
     void importDiff( unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _toBlock );
     void removeSnapshot( unsigned _blockNumber );

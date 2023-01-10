@@ -290,7 +290,11 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         }
 
         /// HACK refactor this piece of code! ///
-        vector< string > prefixes{ "prices_", "blocks_" };
+        // consensus prices directory now contains in addition to
+        // prices and the last consensus block
+        // this is the minimum needed for consensus to work well after a start
+        // from snapshot.
+        vector< string > prefixes{ SNAPSHOT_PRICES_PREFIX};
         for ( const string& prefix : prefixes ) {
             fs::path db_path;
             for ( auto& f :
@@ -1511,11 +1515,13 @@ int main( int argc, char** argv ) try {
         // auto mostRecentBlocksDBPath = (getDataDir() / ( "blocks_" + chainParams.nodeInfo.id.str()
         // + ".db" )) / "1.db";
 
+        // PRICES directory contains prices and the last consensus block
+        // This is the minimum needed for consensus to work. In particular,
+        // consensus needs the previous block to make sure that the proposal time stamp
+        // is more or equal the previous block timestamp
         snapshotManager.reset( new SnapshotManager( getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
-                "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db"/*,
-                mostRecentBlocksDBPath.string()*/ },
+                SNAPSHOT_PRICES_PREFIX + chainParams.nodeInfo.id.str() + ".db" },
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 

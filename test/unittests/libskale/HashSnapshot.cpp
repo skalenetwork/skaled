@@ -37,7 +37,16 @@ boost::unit_test::assertion_result option_all_test( boost::unit_test::test_unit_
 }
 
 namespace dev {
-namespace test {
+namespace test
+{
+
+
+std::shared_ptr<std::vector<std::uint8_t>> getSampleLastConsensusBlock() {
+    std::shared_ptr<vector<uint8_t>> sampleLastConsensusBlock;
+    sampleLastConsensusBlock.reset(new vector<uint8_t> { 1, 2, 3, 4, 5});
+    return sampleLastConsensusBlock;
+}
+
 class SnapshotHashAgentTest {
 public:
     SnapshotHashAgentTest( ChainParams& _chainParams, bool requireSnapshotMajority = true ) {
@@ -515,6 +524,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
 
+
 BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
@@ -529,11 +539,11 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     const int blocksToMine = 1;
     dev::eth::simulateMining( *( client ), blocksToMine );
 
-    mgr->doSnapshot( 1 );
+    mgr->doSnapshot( 1 , getSampleLastConsensusBlock());
     mgr->computeSnapshotHash( 1 );
 
     dev::eth::simulateMining( *( client ), blocksToMine );
-    mgr->doSnapshot( 2 );
+    mgr->doSnapshot( 2 , getSampleLastConsensusBlock());
 
     mgr->computeSnapshotHash( 2 );
 
@@ -554,7 +564,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
 
 BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    mgr->doSnapshot( 4 );
+    mgr->doSnapshot( 4 , getSampleLastConsensusBlock());
 
     mgr->computeSnapshotHash( 4, true );
 

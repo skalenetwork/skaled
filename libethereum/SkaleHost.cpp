@@ -375,6 +375,16 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
+
+
+std::shared_ptr<std::vector<std::uint8_t>> SkaleHost::getSerializedConsensusBlock(
+    std::uint64_t _blockNumber) {
+    if (!m_extFace) {
+        throw std::runtime_error("Null m_extFace in " + string(__FUNCTION__));
+    }
+    return this->m_consensus->getSerializedBlock((uint64_t)_blockNumber);
+};
+
 ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
@@ -773,7 +783,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
-void SkaleHost::startWorking() {
+// If starting from a snapshot, startWorking() all will pass to consensus the last comitted
+// block coming from the snapshot. Normally, nullptr is passed.
+void SkaleHost::startWorking(
+        std::shared_ptr< std::vector< std::uint8_t > >
+        _startingFromSnapshotWithThisAsLastBlock) {
     if ( working )
         return;
 
