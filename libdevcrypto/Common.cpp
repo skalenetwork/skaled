@@ -63,7 +63,8 @@ bool dev::SignatureStruct::isValid() const noexcept {
     static const h256 s_max{ "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141" };
     static const h256 s_zero;
 
-    return ( v <= 1 && r > s_zero && s > s_zero && r < s_max && s < s_max );
+    return ( ( v == 0 || ( v >= 27 && v <= 28 ) ) && r > s_zero && s > s_zero && r < s_max &&
+             s < s_max );
 }
 
 Public dev::toPublic( Secret const& _secret ) {
@@ -186,6 +187,7 @@ Public dev::recover( Signature const& _sig, h256 const& _message ) {
     MICROPROFILE_SCOPEI( "Common.cpp", "recover", MP_BROWN1 );
 
     int v = _sig[64];
+    v -= 27;
     if ( v > 3 )
         return {};
 
