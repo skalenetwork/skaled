@@ -111,7 +111,8 @@ public:
         const std::string& _gethURL = "", bool _broadcastEnabled = true );
     virtual ~SkaleHost();
 
-    void startWorking();
+    void startWorking(std::shared_ptr< std::vector< std::uint8_t > >
+        _startingFromSnapshotWithThisAsLastBlock);
     void stopWorking();
     bool isWorking() const { return this->working; }
     bool exitedForcefully() const { return m_exitedForcefully; }

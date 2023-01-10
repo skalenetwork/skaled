@@ -92,8 +92,8 @@ public:
 
     void stopWorking();
 
-    void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost = nullptr );
-
+    void injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost,
+        std::shared_ptr< std::vector< std::uint8_t > > _startingFromSnapshotWithThisAsLastBlock );
     /// Get information on this chain.
     ChainParams const& chainParams() const { return bc().chainParams(); }
 
@@ -245,10 +245,11 @@ public:
     Block latestBlock() const;
 
     /// should be called after the constructor of the most derived class finishes.
-    void startWorking() {
+    void startWorking(std::shared_ptr< std::vector< std::uint8_t > >
+            _startingFromSnapshotWithThisAsLastBlock) {
         assert( m_skaleHost );
         Worker::startWorking();  // these two lines are dependent!!
-        m_skaleHost->startWorking();
+        m_skaleHost->startWorking(_startingFromSnapshotWithThisAsLastBlock);
     };
 
     /// Change the function that is called when a new block is imported

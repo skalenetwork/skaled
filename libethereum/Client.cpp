@@ -214,7 +214,9 @@ void Client::stopWorking() {
 }
 
 
-void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
+void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost,
+                              std::shared_ptr< std::vector< std::uint8_t > >
+                                      _startingFromSnapshotWithThisAsLastBlock) {
     assert( !m_skaleHost );
 
     m_skaleHost = _skaleHost;

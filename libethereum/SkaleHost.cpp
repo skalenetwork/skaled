@@ -783,7 +783,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
 }
 
-void SkaleHost::startWorking() {
+// If starting from a snapshot, startWorking() all will pass to consensus the last comitted
+// block coming from the snapshot. Normally, nullptr is passed.
+void SkaleHost::startWorking(
+        std::shared_ptr< std::vector< std::uint8_t > >
+        _startingFromSnapshotWithThisAsLastBlock) {
     if ( working )
         return;
 
