@@ -59,12 +59,13 @@ secp256k1_context const* getCtx() {
 
 }  // namespace
 
-bool dev::SignatureStruct::isValid() const noexcept {
+bool dev::SignatureStruct::isValid( uint64_t chainId ) const noexcept {
     static const h256 s_max{ "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141" };
     static const h256 s_zero;
 
-    return ( ( v == 0 || ( v >= 27 && v <= 28 ) ) && r > s_zero && s > s_zero && r < s_max &&
-             s < s_max );
+    return ( ( v == 0 || ( chainId == 0 ? ( v >= 27 && v <= 28 ) :
+                                          ( v >= 2 * chainId + 35 && v <= 2 * chainId + 36 ) ) ) &&
+             r > s_zero && s > s_zero && r < s_max && s < s_max );
 }
 
 Public dev::toPublic( Secret const& _secret ) {
@@ -188,10 +189,10 @@ Public dev::recover( Signature const& _sig, h256 const& _message ) {
 
     int v = _sig[64];
     if ( v > 36 )
-        v = ( v - 35 ) / 2;
+        v %= 2;
     else if ( v == 27 || v == 28 )
         v -= 27;
-    else
+    else if ( v > 3 )
         return {};
 
     auto* ctx = getCtx();

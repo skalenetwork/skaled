@@ -51,7 +51,7 @@ struct SignatureStruct {
     operator Signature() const { return *( h520 const* ) this; }
 
     /// @returns true if r,s,v values are valid, otherwise false
-    bool isValid() const noexcept;
+    bool isValid( uint64_t chainId = 0 ) const noexcept;
 
     h256 r;
     h256 s;

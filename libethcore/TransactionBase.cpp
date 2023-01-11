@@ -96,7 +96,8 @@ TransactionBase::TransactionBase(
                 auto const recoveryID = _byte_{ v };
                 m_vrs = SignatureStruct{ r, s, recoveryID };
 
-                if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
+                if ( _checkSig >= CheckTransaction::Cheap &&
+                     !m_vrs->isValid( m_chainId.has_value() ? m_chainId.get() : 0 ) )
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
             }
 
