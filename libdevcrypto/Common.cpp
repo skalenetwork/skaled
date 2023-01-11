@@ -188,8 +188,9 @@ Public dev::recover( Signature const& _sig, h256 const& _message ) {
     MICROPROFILE_SCOPEI( "Common.cpp", "recover", MP_BROWN1 );
 
     int v = _sig[64];
+
     if ( v > 36 )
-        v %= 2;
+        v = ( v + 1 ) % 2;
     else if ( v == 27 || v == 28 )
         v -= 27;
     else if ( v > 3 )

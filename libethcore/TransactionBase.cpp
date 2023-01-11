@@ -200,8 +200,8 @@ void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _for
         if ( hasZeroSignature() )
             _s << ( m_chainId.has_value() ? *m_chainId : 0 );
         else {
-            uint64_t const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 8 : 0;
-            _s << ( m_vrs->v + vOffset );
+            //            uint64_t const vOffset = m_chainId.has_value() ? *m_chainId * 2 + 35 : 27;
+            _s << m_vrs->v;
         }
         _s << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
     } else if ( _forEip155hash )
