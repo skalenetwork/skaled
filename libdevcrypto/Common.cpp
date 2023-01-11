@@ -187,8 +187,11 @@ Public dev::recover( Signature const& _sig, h256 const& _message ) {
     MICROPROFILE_SCOPEI( "Common.cpp", "recover", MP_BROWN1 );
 
     int v = _sig[64];
-    v -= 27;
-    if ( v > 3 )
+    if ( v > 36 )
+        v = ( v - 35 ) / 2;
+    else if ( v == 27 || v == 28 )
+        v -= 27;
+    else
         return {};
 
     auto* ctx = getCtx();
