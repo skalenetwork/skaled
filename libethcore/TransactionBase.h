@@ -230,6 +230,8 @@ public:
         return m_chainId.has_value();
     }
 
+    uint64_t chainId() const { return m_chainId.has_value() ? m_chainId.get() : 0; }
+
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
     /// @throws TransactionIsUnsigned if signature was not initialized
     SignatureStruct const& signature() const;
