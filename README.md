@@ -110,7 +110,7 @@ All contributions are welcome! We try to keep a list of tasks that are suitable 
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
 
-All development goes in develop branch.
+All development goes in develop branch. 
 
 ## Note on mining
 
