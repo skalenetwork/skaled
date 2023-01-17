@@ -30,6 +30,7 @@
 
 namespace dev {
 
+
 class MemoryDB {
     friend class EnforceRefs;
 
@@ -49,7 +50,7 @@ public:
 
     std::string lookup( h256 const& _h ) const;
     bool exists( h256 const& _h ) const;
-    void insert( h256 const& _h, bytesConstRef _v );
+    virtual void insert( h256 const& _h, bytesConstRef _v );
     bool kill( h256 const& _h );
     void purge();
 
@@ -69,6 +70,17 @@ protected:
     mutable bool m_enforceRefs = false;
 };
 
+
+inline std::ostream& operator<<( std::ostream& _out, MemoryDB const& _m ) {
+    for ( auto const& i : _m.get() ) {
+        _out << i.first << ": ";
+        _out << RLP( i.second );
+        _out << " " << toHex( i.second );
+        _out << std::endl;
+    }
+    return _out;
+}
+
 class EnforceRefs {
 public:
     EnforceRefs( MemoryDB const& _o, bool _r ) : m_o( _o ), m_r( _o.m_enforceRefs ) {
@@ -80,15 +92,5 @@ private:
     MemoryDB const& m_o;
     bool m_r;
 };
-
-inline std::ostream& operator<<( std::ostream& _out, MemoryDB const& _m ) {
-    for ( auto const& i : _m.get() ) {
-        _out << i.first << ": ";
-        _out << RLP( i.second );
-        _out << " " << toHex( i.second );
-        _out << std::endl;
-    }
-    return _out;
-}
 
 }  // namespace dev

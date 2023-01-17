@@ -84,6 +84,8 @@ public:
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
     bool syncNode;
+    bool archiveMode;
+    bool syncFromCatchup;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
@@ -101,7 +103,7 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
-        bool _syncNode = false ) {
+        bool _syncNode = false, bool _archiveMode = false, bool _syncFromCatchup = false ) {
         name = _name;
         id = _id;
         ip = _ip;
@@ -114,6 +116,8 @@ public:
         BLSPublicKeys = _BLSPublicKeys;
         commonBLSPublicKeys = _commonBLSPublicKeys;
         syncNode = _syncNode;
+        archiveMode = _archiveMode;
+        syncFromCatchup = _syncFromCatchup;
     }
 };
 
@@ -143,12 +147,7 @@ struct GroupNode {
 struct NodeGroup {
     std::vector< GroupNode > nodes;
     uint64_t finishTs;
-    std::array< std::string, 4 > blsPublicKey = {
-        "10857046999023057135944570762232829481370756359578518086990519993285655852781",
-        "11559732032986387107991004021392285783925812861821192530917403151452391805634",
-        "8495653923123431417604973247489272438418190587263600148770280649306958101930",
-        "4082367875863433681332203403145435568316851327593401208105741076214120093531"
-    };
+    std::array< std::string, 4 > blsPublicKey;
 };
 
 /// skale
@@ -164,10 +163,16 @@ public:
     uint64_t dbStorageLimit = 0;
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
+    time_t snapshotDownloadTimeout = 3600;
+    time_t snapshotDownloadInactiveTimeout = 60;
     bool freeContractDeployment = false;
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
+    time_t revertableFSPatchTimestamp = 0;
+    time_t contractStoragePatchTimestamp = 0;
+    time_t contractStorageZeroValuePatchTimestamp = 0;
+    time_t verifyDaSigsPatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";
@@ -222,6 +227,7 @@ public:
     u256 skale512ForkBlock = c_infiniteBlockNumber;
     u256 skale1024ForkBlock = c_infiniteBlockNumber;
     u256 skaleUnlimitedForkBlock = c_infiniteBlockNumber;
+    bool skaleDisableChainIdCheck = false;
     uint64_t chainID = 0;  // Distinguishes different chains (mainnet, Ropsten, etc).
     int networkID = 0;     // Distinguishes different sub protocols.
 

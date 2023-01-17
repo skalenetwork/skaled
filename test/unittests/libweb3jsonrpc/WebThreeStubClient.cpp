@@ -396,6 +396,17 @@ std::string WebThreeStubClient::eth_sendTransaction( const Json::Value& param1 )
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+std::string WebThreeStubClient::eth_estimateGas( const Json::Value& param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "eth_estimateGas", p );
+    if ( result.isString() )
+        return result.asString();
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
 std::string WebThreeStubClient::eth_call( const Json::Value& param1, const std::string& param2 ) {
     Json::Value p;
     p.append( param1 );

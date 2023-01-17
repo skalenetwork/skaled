@@ -23,7 +23,9 @@
 
 #include "Account.h"
 #include "ValidationSchemes.h"
+#include "libhistoric/SecureTrieDB.h"
 #include <libdevcore/JsonUtils.h>
+#include <libdevcore/OverlayDB.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethereum/Precompiled.h>
 
@@ -36,7 +38,7 @@ using namespace dev::eth::validation;
 
 namespace fs = boost::filesystem;
 
-std::unordered_map< u256, u256 > const& Account::originalStorageValue() const {
+std::unordered_map< u256, u256 > const& Account::originalStorageCache() const {
     return m_storageOriginal;
 }
 
@@ -98,13 +100,16 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
                 for ( auto& el : arr ) {
                     if ( el.type() == json_spirit::str_type ) {
                         allowedAddresses.insert( Address( fromHex( el.get_str() ) ) );
-                    } else
-                        cerr << "Error parsing access restrictions for precompiled " << n
-                             << "! It should contain strings!\n";
+                    } else {
+                        cerror << "Error parsing access restrictions for precompiled " << n
+                               << "! It should contain strings!\n";
+                        cerror << DETAILED_ERROR;
+                    }
                 }  // for
             } else {
-                cerr << "Error parsing access restrictions for precompiled " << n
-                     << "! It should be array!\n";
+                cerror << "Error parsing access restrictions for precompiled " << n
+                       << "! It should be array!\n";
+                cerror << DETAILED_ERROR;
             }
         }  // restrictAccessIt
 
@@ -166,14 +171,17 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                 auto& codeObj = codeIt->second;
                 if ( codeObj.type() == json_spirit::str_type ) {
                     auto& codeStr = codeObj.get_str();
-                    if ( codeStr.find( "0x" ) != 0 && !codeStr.empty() )
-                        cerr << "Error importing code of account " << a
-                             << "! Code needs to be hex bytecode prefixed by \"0x\".";
-                    else
+                    if ( codeStr.find( "0x" ) != 0 && !codeStr.empty() ) {
+                        cerror << "Error importing code of account " << a
+                               << "! Code needs to be hex bytecode prefixed by \"0x\".";
+                        cerror << DETAILED_ERROR;
+                    } else
                         ret[a].setCode( fromHex( codeStr ), 0 );
-                } else
-                    cerr << "Error importing code of account " << a
-                         << "! Code field needs to be a string";
+                } else {
+                    cerror << "Error importing code of account " << a
+                           << "! Code field needs to be a string";
+                    cerror << DETAILED_ERROR;
+                }
             }
 
             auto codePathIt = accountMaskJson.find( c_codeFromFile );
@@ -185,13 +193,17 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                                                    // relative.
                         codePath = _configPath.parent_path() / codePath;
                     bytes code = contents( codePath );
-                    if ( code.empty() )
-                        cerr << "Error importing code of account " << a << "! Code file "
-                             << codePath << " empty or does not exist.\n";
+                    if ( code.empty() ) {
+                        cerror << "Error importing code of account " << a << "! Code file "
+                               << codePath << " empty or does not exist.\n";
+                        cerror << DETAILED_ERROR;
+                    }
                     ret[a].setCode( std::move( code ), 0 );
-                } else
-                    cerr << "Error importing code of account " << a
-                         << "! Code file path must be a string\n";
+                } else {
+                    cerror << "Error importing code of account " << a
+                           << "! Code file path must be a string\n";
+                    cerror << DETAILED_ERROR;
+                }
             }
 
             if ( haveStorage )
@@ -215,4 +227,18 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
     }
 
     return ret;
+}
+
+
+u256 Account::originalStorageValue( u256 const& _key, OverlayDB const& _db ) const {
+    auto it = m_storageOriginal.find( _key );
+    if ( it != m_storageOriginal.end() )
+        return it->second;
+
+    // Not in the original values cache - go to the DB.
+    SecureTrieDB< h256, OverlayDB > const memdb( const_cast< OverlayDB* >( &_db ), m_storageRoot );
+    std::string const payload = memdb.at( _key );
+    auto const value = payload.size() ? RLP( payload ).toInt< u256 >() : 0;
+    m_storageOriginal[_key] = value;
+    return value;
 }

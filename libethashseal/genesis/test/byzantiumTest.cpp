@@ -39,7 +39,8 @@ static std::string const c_genesisInfoByzantiumTest = std::string() +
 		"blockReward": "0x4563918244F40000",
 		"networkID" : "0x1",
 		"chainID": "0x01",
-		"allowFutureBlocks" : true
+                "allowFutureBlocks" : true,
+                "skaleDisableChainIdCheck": true
 	},
 	"genesis": {
 		"nonce": "0x0000000000000042",

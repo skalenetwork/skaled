@@ -112,8 +112,7 @@ static const EVMSchedule EIP158Schedule = [] {
     EVMSchedule schedule = EIP150Schedule;
     schedule.expByteGas = 50;
     schedule.eip158Mode = true;
-    schedule.maxCodeSize =
-        1024 * 32;  // HACK Use 32 k temporarily - then apply 32kForkBlock 0x6000;
+    schedule.maxCodeSize = 1024 * 64;  // We are now using 64k code size limit in SKALE
     return schedule;
 }();
 

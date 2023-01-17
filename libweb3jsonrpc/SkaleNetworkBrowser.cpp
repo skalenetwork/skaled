@@ -31,6 +31,12 @@ namespace browser {
 bool g_bVerboseLogging = false;
 size_t g_nRefreshIntervalInSeconds = 15 * 60;
 
+volatile fn_stop_indication_t g_fnStopIndication = nullptr;
+
+static bool stat_fnNonStopIndication() {
+    return false;
+}
+
 // see: https://docs.soliditylang.org/en/develop/abi-spec.html#abi
 // see: https://docs.soliditylang.org/en/develop/internals/layout_in_memory.html
 
@@ -293,6 +299,8 @@ static void stat_calc_ports( node_t& node ) {
 
 dev::u256 get_schains_count(
     const skutils::url& u, const dev::u256& addressFrom, const dev::u256& addressSchainsInternal ) {
+    if ( g_fnStopIndication() )
+        return dev::u256( 0 );
     static const char g_strContractMethodName[] = "numberOfSchains()";
     // 0x77ad87c1a3f5c981edbb22216a0b27bcf0b6c20e34df970e44c43bc8d7952fc6
     // 0x77ad87c1
@@ -386,6 +394,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
     // load s-chain
     //
     s_chain_t s_chain;
+    if ( g_fnStopIndication() )
+        return s_chain;
     dev::u256 hash;
     {  // block
         static const char g_strContractMethodName[] = "schainsAtSystem(uint256)";
@@ -455,6 +465,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
         hash = dev::u256( joResult.get< std::string >() );
     }  // block
     //
+    if ( g_fnStopIndication() )
+        return s_chain;
     {  // block
         static const char g_strContractMethodName[] = "schains(bytes32)";
         // mapping (bytes32 => Schain) public schains;
@@ -574,6 +586,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
     //
     // load s-chain parts
     //
+    if ( g_fnStopIndication() )
+        return s_chain;
     {  // block
         static const char g_strContractMethodName[] = "getNodesInGroup(bytes32)";
         // 0xb70a4223305cdb661a25301e0dd3a7d6dce139327a8f2e1ffeea696adcf2f42e
@@ -647,11 +661,15 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
             throw std::runtime_error( std::string( "Failed call to \"" ) + g_strContractMethodName +
                                       "\", provided \"result\" field is not string type" );
         }
+        if ( g_fnStopIndication() )
+            return s_chain;
         std::string strResult = joResult.get< std::string >();
         vec256_t vec = stat_split_raw_answer( strResult );
         vec256_t vecNodeIds = stat_extract_vector( vec, 0 );
         size_t idxNode, cntNodes = vecNodeIds.size();
         for ( idxNode = 0; idxNode < cntNodes; ++idxNode ) {
+            if ( g_fnStopIndication() )
+                return s_chain;
             const item256_t& node_id = vecNodeIds[idxNode];
             node_t node;
             {  // block
@@ -767,6 +785,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 node.publicIP = stat_extract_ipv4( vec, i++ );
                 node.nPort = ( int ) vec[i++].n;
             }  // block
+            if ( g_fnStopIndication() )
+                return s_chain;
             {  // block
                 static const char g_strContractMethodName[] = "getNodeDomainName(uint256)";
                 // function getNodeDomainName(uint nodeIndex)
@@ -853,6 +873,8 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 size_t i = 0;
                 node.domainName = stat_extract_string( vec, i++ );
             }  // block
+            if ( g_fnStopIndication() )
+                return s_chain;
             {  // block
                 static const char g_strContractMethodName[] = "isNodeInMaintenance(uint256)";
                 // function isNodeInMaintenance(uint nodeIndex)
@@ -935,12 +957,14 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 vec256_t vec = stat_split_raw_answer( strResult );
                 node.isMaintenance = ( vec[0].u256.is_zero() ) ? false : true;
             }  // block
+            if ( g_fnStopIndication() )
+                return s_chain;
             vec256_t vecSChainIds;
             {  // block
-                static const char g_strContractMethodName[] = "getSchainIdsForNode(uint256)";
-                // function getSchainIdsForNode(uint nodeIndex)
-                // 0xe6695e68be45d5fd8ac911d1cca0faed4ebe398c5b26fdef14a65f9c2d91294d
-                // 0xe6695e68
+                static const char g_strContractMethodName[] = "getSchainHashesForNode(uint256)";
+                // function getSchainHashesForNode(uint nodeIndex)
+                // 0x46660419a40b36978f951f5d6d936a614248a2628f5d1f05abce867aa8d189db
+                // 0x46660419
                 // out:
                 // 0000 0000000000000000000000000000000000000000000000000000000000000020 // array
                 // offset 0020 0000000000000000000000000000000000000000000000000000000000000001 //
@@ -951,7 +975,7 @@ s_chain_t load_schain( const skutils::url& u, const dev::u256& addressFrom,
                 nlohmann::json joParamsItem = nlohmann::json::object();
                 joParamsItem["from"] = dev::address_to_js( addressFrom );
                 joParamsItem["to"] = dev::address_to_js( addressSchainsInternal );
-                joParamsItem["data"] = "0xe6695e68" + stat_to_appendable_string( node_id.u256 );
+                joParamsItem["data"] = "0x46660419" + stat_to_appendable_string( node_id.u256 );
                 joCall["params"].push_back( joParamsItem );
                 joCall["params"].push_back( std::string( "latest" ) );
                 skutils::rest::client cli;
@@ -1055,6 +1079,10 @@ vec_s_chains_t load_schains( const skutils::url& u, const dev::u256& addressFrom
     vec_s_chains_t vec;
     dev::u256 cntSChains = get_schains_count( u, addressFrom, addressSchainsInternal );
     for ( dev::u256 idxSChain; idxSChain < cntSChains; ++idxSChain ) {
+        if ( g_fnStopIndication() ) {
+            vec.clear();
+            break;
+        }
         s_chain_t s_chain = load_schain(
             u, addressFrom, idxSChain, cntSChains, addressSchainsInternal, addressNodes );
         vec.push_back( s_chain );
@@ -1138,16 +1166,18 @@ static vec_s_chains_t g_last_cached;
 
 vec_s_chains_t refreshing_cached() {
     vec_s_chains_t vec;
-    {  // block
+    if ( !g_fnStopIndication() ) {
         std::lock_guard lock( g_mtx );
         vec = g_last_cached;
-    }  // block
+    }
     return vec;
 }
 
 bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
     const dev::u256& addressSchainsInternal, const dev::u256& addressNodes ) {
     try {
+        if ( g_fnStopIndication() )
+            return false;
         if ( g_bVerboseLogging ) {
             clog( dev::VerbosityTrace, "snb" ) << ( cc::info( "SKALE NETWORK BROWSER" ) +
                                                     cc::debug( " will perform cache refreshing" ) );
@@ -1165,20 +1195,24 @@ bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " Failed to download " ) + cc::note( "SKALE NETWORK" ) +
                    cc::error( " browsing data: " ) + cc::warn( strErrorDescription ) );
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         std::string strErrorDescription = "unknown exception";
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " Failed to download " ) + cc::note( "SKALE NETWORK" ) +
                    cc::error( " browsing data: " ) + cc::warn( strErrorDescription ) );
+        cerror << DETAILED_ERROR;
     }
     std::lock_guard lock( g_mtx );
     return false;
 }
 
-bool refreshing_start( const std::string& configPath ) {
+bool refreshing_start( const std::string& configPath, fn_stop_indication_t fnStopIndication ) {
     std::lock_guard lock( g_mtx );
     refreshing_stop();
+    g_fnStopIndication =
+        ( fnStopIndication != nullptr ) ? fnStopIndication : stat_fnNonStopIndication;
     clog( dev::VerbosityTrace, "snb" )
         << ( cc::info( "SKALE NETWORK BROWSER" ) +
                cc::debug( " refreshing(start) will prepare data to run..." ) );
@@ -1357,6 +1391,7 @@ bool refreshing_start( const std::string& configPath ) {
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " failed to get \"SchainsInternal\" contract address" ) );
+        cerror << DETAILED_ERROR;
         return false;
     }
     try {
@@ -1366,6 +1401,7 @@ bool refreshing_start( const std::string& configPath ) {
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " failed to get \"Nodes\" contract address" ) );
+        cerror << DETAILED_ERROR;
         return false;
     }
     if ( strAddressFrom.empty() ) {
@@ -1405,6 +1441,7 @@ bool refreshing_start( const std::string& configPath ) {
     } catch ( ... ) {
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                 cc::error( " Main Net URL is unknown" ) );
+        cerror << DETAILED_ERROR;
         return false;
     }
     //
@@ -1435,6 +1472,7 @@ bool refreshing_start( const std::string& configPath ) {
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " failed to construct needed addresses" ) );
+        cerror << DETAILED_ERROR;
         return false;
     }
     try {
@@ -1454,11 +1492,13 @@ bool refreshing_start( const std::string& configPath ) {
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                 cc::error( " refreshing(initial) exception: " ) +
                                                 cc::warn( strErrorDescription ) );
+        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         std::string strErrorDescription = "unknown exception";
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                 cc::error( " refreshing(initial) exception: " ) +
                                                 cc::warn( strErrorDescription ) );
+        cerror << DETAILED_ERROR;
     }
     clog( dev::VerbosityTrace, "snb" )
         << ( cc::info( "SKALE NETWORK BROWSER" ) +
@@ -1515,11 +1555,13 @@ vec_s_chains_t refreshing_do_now() {
             clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                     cc::error( " refreshing(now) exception: " ) +
                                                     cc::warn( strErrorDescription ) );
+            cerror << DETAILED_ERROR;
         } catch ( ... ) {
             std::string strErrorDescription = "unknown exception";
             clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                     cc::error( " refreshing(now) exception: " ) +
                                                     cc::warn( strErrorDescription ) );
+            cerror << DETAILED_ERROR;
         }
     } else {
         clog( dev::VerbosityTrace, "snb" )

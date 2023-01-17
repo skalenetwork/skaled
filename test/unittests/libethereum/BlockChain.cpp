@@ -56,12 +56,12 @@ BOOST_AUTO_TEST_CASE( opendb ) {
     TransientDirectory tempDirBlockchain;
     ChainParams p(
         genesisInfo( eth::Network::TransitionnetTest ), genesis.bytes(), genesis.accountMap() );
-    BlockChain bc( p, tempDirBlockchain.path(), WithExisting::Kill );
+    BlockChain bc( p, tempDirBlockchain.path(), false, WithExisting::Kill );
     auto is_critical = []( std::exception const& _e ) {
         return string( _e.what() ).find( "DatabaseAlreadyOpen" ) != string::npos;
     };
     BOOST_CHECK_EXCEPTION(
-        try { BlockChain bc2( p, tempDirBlockchain.path(), WithExisting::Verify ); } catch (
+        try { BlockChain bc2( p, tempDirBlockchain.path(), true, WithExisting::Verify ); } catch (
             const std::exception& ex ) { rethrow_most_nested( ex ); },
         DatabaseAlreadyOpen, is_critical );
 }

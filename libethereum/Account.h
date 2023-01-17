@@ -31,7 +31,28 @@
 #include <libethcore/Common.h>
 
 namespace dev {
+class OverlayDB;
 namespace eth {
+
+// introduce new classes StorageRoot and GlobalRoot to better separate storage and
+// global roots through the program
+
+
+class StorageRoot : public h256 {
+public:
+    StorageRoot( const u256& _value ) : h256( _value ) {}
+
+    StorageRoot( const StorageRoot& _value ) : h256( _value ){};
+};
+
+class GlobalRoot : public h256 {
+public:
+    GlobalRoot( const u256& _value ) : h256( _value ) {}
+
+    GlobalRoot( const GlobalRoot& _value ) : h256( _value ){};
+};
+
+
 /**
  * Models the state of a single Ethereum account.
  * Used to cache a portion of the full Ethereum state. State keeps a mapping of Address's to
@@ -41,10 +62,10 @@ namespace eth {
  * false). This allows State to explicitly store the notion of a deleted account in it's cache.
  * kill() can be used for this.
  *
- * For the account's storage, the class operates a cache. baseRoot() specifies the base state of the
- * storage given as the Trie root to be looked up in the state database. Alterations beyond this
- * base are specified in the overlay, stored in this class and retrieved with storageOverlay().
- * setStorage allows the overlay to be altered.
+ * For the account's storage, the class operates a cache. originalStorageRoot() specifies the base
+ * state of the storage given as the Trie root to be looked up in the state database. Alterations
+ * beyond this base are specified in the overlay, stored in this class and retrieved with
+ * storageOverlay(). setStorage allows the overlay to be altered.
  *
  * The code handling explicitly supports a two-stage commit model needed for contract-creation. When
  * creating a contract (running the initialisation code), the code of the account is considered
@@ -88,16 +109,16 @@ public:
           m_balance( _balance ) {}
 
     /// Explicit constructor for wierd cases of construction or a contract account.
-    Account( u256 _nonce, u256 _balance, h256 _contractRoot, h256 _codeHash, u256 const& _version,
-        Changedness _c, s256 _storageUsed = 0 )
+    Account( u256 _nonce, u256 _balance, StorageRoot _contractRoot, h256 _codeHash,
+        u256 const& _version, Changedness _c, s256 _storageUsed = 0 )
         : m_isAlive( true ),
           m_isUnchanged( _c == Unchanged ),
           m_nonce( _nonce ),
           m_balance( _balance ),
-          m_storageRoot( _contractRoot ),
           m_codeHash( _codeHash ),
           m_version( _version ),
-          m_storageUsed( _storageUsed ) {
+          m_storageUsed( _storageUsed ),
+          m_storageRoot( _contractRoot ) {
         assert( _contractRoot );
     }
 
@@ -108,7 +129,7 @@ public:
         m_isAlive = false;
         m_storageOverlay.clear();
         m_codeHash = EmptySHA3;
-        m_storageRoot = EmptyTrie;
+        m_storageRoot = StorageRoot( EmptyTrie );
         m_balance = 0;
         m_nonce = 0;
         m_version = 0;
@@ -155,17 +176,9 @@ public:
     }
 
 
-    /// @returns the root of the trie (whose nodes are stored in the state db externally to this
-    /// class) which encodes the base-state of the account's storage (upon which the storage is
-    /// overlaid).
-    h256 baseRoot() const {
-        assert( m_storageRoot );
-        return m_storageRoot;
-    }
-
     /// @returns account's original storage
     /// not taking into account overlayed modifications
-    std::unordered_map< u256, u256 > const& originalStorageValue() const;
+    std::unordered_map< u256, u256 > const& originalStorageCache() const;
 
     /// @returns the storage overlay as a simple hash map.
     std::unordered_map< u256, u256 > const& storageOverlay() const { return m_storageOverlay; }
@@ -180,21 +193,22 @@ public:
     /// Empty the storage.  Used when a contract is overwritten.
     void clearStorage() {
         m_storageOverlay.clear();
-        m_storageRoot = EmptyTrie;
+        m_storageRoot = StorageRoot( EmptyTrie );
         changed();
     }
 
-    /// Set the storage root.  Used when clearStorage() is reverted.
-    void setStorageRoot( h256 const& _root ) {
-        m_storageOverlay.clear();
-        m_storageRoot = _root;
-        changed();
-    }
 
     /// Set a key/value pair in the account's storage to a value that is already present inside the
     /// database.
     void setStorageCache( u256 _p, u256 _v ) const {
         const_cast< decltype( m_storageOriginal )& >( m_storageOriginal )[_p] = _v;
+    }
+
+    /// Set the storage root.  Used when clearStorage() is reverted.
+    void setStorageRoot( StorageRoot const& _root ) {
+        m_storageOverlay.clear();
+        m_storageRoot = _root;
+        changed();
     }
 
     /// @returns the hash of the account's code.
@@ -227,10 +241,26 @@ public:
         changed();
     }
 
-private:
+    /// @returns account's original storage value corresponding to the @_key
+    /// not taking into account overlayed modifications
+    u256 originalStorageValue( u256 const& _key, OverlayDB const& _db ) const;
+
+
+    /// @returns account's storage value corresponding to the @_key
+    /// taking into account overlayed modifications
+    u256 storageValue( u256 const& _key, OverlayDB const& _db ) const {
+        auto mit = m_storageOverlay.find( _key );
+        if ( mit != m_storageOverlay.end() )
+            return mit->second;
+
+        return originalStorageValue( _key, _db );
+    }
+
+
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
 
+private:
     /// Is this account existant? If not, it represents a deleted account.
     bool m_isAlive = false;
 
@@ -246,10 +276,6 @@ private:
 
     /// Account's balance.
     u256 m_balance = 0;
-
-    /// The base storage root. Used with the state DB to give a base to the storage.
-    /// m_storageOverlay is overlaid on this and takes precedence for all values set.
-    h256 m_storageRoot = EmptyTrie;
 
     /** If c_contractConceptionCodeHash then we're in the limbo where we're running the
      * initialisation code. We expect a setCode() at some point later. If EmptySHA3, then m_code,
@@ -278,6 +304,12 @@ private:
     s256 m_storageUsed = 0;
 
     Counter< Account > c;
+
+protected:
+    /// The base storage root. Used with the state DB to give a base to the storage.
+    /// m_storageOverlay is overlaid on this and takes precedence for all values set.
+    StorageRoot m_storageRoot = StorageRoot( EmptyTrie );
+
 
 public:
     static uint64_t howMany() { return Counter< Account >::howMany(); }

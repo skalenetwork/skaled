@@ -108,7 +108,8 @@ public:
 
     /// Checks equality of transactions.
     bool operator==( TransactionBase const& _c ) const {
-        return m_type == _c.m_type &&
+        return m_type == _c.m_type && ( safeSender() == _c.safeSender() ) &&
+               ( safeNonce() == _c.safeNonce() ) &&
                ( m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress ) &&
                m_value == _c.m_value && m_data == _c.m_data;
     }
@@ -126,6 +127,9 @@ public:
     /// Force the sender to a particular value. This will result in an invalid transaction RLP.
     void forceSender( Address const& _a ) { m_sender = _a; }
 
+    /// Force the chainId to a particular value. This will result in an invalid transaction RLP.
+    void forceChainId( uint64_t _chainID ) { m_chainId = _chainID; }
+
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
@@ -133,7 +137,7 @@ public:
     /// @throws InvalidSValue if the chain id is neither -4 nor equal to @a chainId
     /// Note that "-4" is the chain ID of the pre-155 rules, which should also be considered valid
     /// after EIP155
-    void checkChainId( uint64_t chainId ) const;
+    void checkChainId( uint64_t chainId, bool disableChainIdCheck ) const;
 
     /// @returns true if transaction is non-null.
     explicit operator bool() const { return m_type != NullTransaction && m_type != Invalid; }
@@ -199,6 +203,14 @@ public:
         return m_nonce;
     }
 
+    u256 safeNonce() const {
+        try {
+            return m_nonce;
+        } catch ( ... ) {
+            return u256();
+        }
+    }
+
     /// Sets the nonce to the given value. Clears any signature.
     void setNonce( u256 const& _n ) {
         assert( !isInvalid() );
@@ -217,6 +229,8 @@ public:
         assert( !isInvalid() );
         return m_chainId.has_value();
     }
+
+    uint64_t chainId() const { return m_chainId.has_value() ? m_chainId.get() : 0; }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
     /// @throws TransactionIsUnsigned if signature was not initialized

@@ -28,6 +28,8 @@
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/sha.h>
 
+#include <libdevcore/Log.h>
+
 using namespace dev;
 using namespace dev::crypto;
 
@@ -55,7 +57,7 @@ bytes dev::aesDecrypt(
         return asBytes( decrypted );
     } catch ( std::exception const& e ) {
         // FIXME: Handle this error better.
-        std::cerr << e.what() << '\n';
+        cerror << "Error in aesDecrypt()" << e.what() << '\n';
         return bytes();
     }
 }

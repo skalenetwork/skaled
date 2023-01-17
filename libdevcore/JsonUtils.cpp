@@ -19,6 +19,7 @@
 
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
+#include <libdevcore/Log.h>
 #include <boost/algorithm/string/join.hpp>
 #include <ostream>
 #include <set>
@@ -29,7 +30,7 @@ void dev::validateFieldNames(
     for ( auto const& elm : _obj )
         if ( _allowedFields.find( elm.first ) == _allowedFields.end() ) {
             std::string const comment = "Unknown field in config: " + elm.first;
-            std::cerr << comment << "\n";
+            cerror << comment << "\n";
             BOOST_THROW_EXCEPTION( UnknownField() << errinfo_comment( comment ) );
         }
 }
@@ -62,8 +63,8 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
         if ( !_validationMap.count( field.first ) ) {
             std::string const comment =
                 "Unexpected field '" + field.first + "' in config: " + _config;
-            std::cerr << comment << "\n"
-                      << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
+            cerror << comment << "\n"
+                   << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
             BOOST_THROW_EXCEPTION( UnknownField() << errinfo_comment( comment ) );
         }
     }
@@ -77,8 +78,8 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
             if ( expectedFieldPresence == JsonFieldPresence::Required ) {
                 std::string const comment =
                     "Expected field '" + expectedFieldName + "' not found in config: " + _config;
-                std::cerr << comment << "\n"
-                          << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
+                cerror << comment << "\n"
+                       << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
                 BOOST_THROW_EXCEPTION( MissingField() << errinfo_comment( comment ) );
             } else if ( expectedFieldPresence == JsonFieldPresence::Optional )
                 continue;
@@ -97,8 +98,8 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
                                         sTypes + ", but is set to " +
                                         jsonTypeAsString( _o.at( expectedFieldName ).type() ) +
                                         " in " + _config;
-            std::cerr << comment << "\n"
-                      << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
+            cerror << comment << "\n"
+                   << json_spirit::write_string( ( json_spirit::mValue ) _o, true ) << "\n";
             BOOST_THROW_EXCEPTION( WrongFieldType() << errinfo_comment( comment ) );
         }
     }

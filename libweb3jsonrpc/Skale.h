@@ -71,6 +71,7 @@ public:
     Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
     std::string skale_getLatestBlockNumber() override;
+    Json::Value skale_getDBUsage() override;
 
     std::string oracle_submitRequest( std::string& request ) override;
     std::string oracle_checkResult( std::string& receipt ) override;
@@ -101,8 +102,9 @@ private:
     std::shared_ptr< SharedSpace > m_shared_space;
     int currentSnapshotBlockNumber = -1;
     fs::path currentSnapshotPath;
-    time_t currentSnapshotTime = 0;
-    static const time_t SNAPSHOT_DOWNLOAD_TIMEOUT;
+    std::atomic< time_t > currentSnapshotTime = 0;
+    std::atomic< time_t > lastSnapshotDownloadFragmentTime = 0;
+    std::unique_ptr< std::thread > snapshotDownloadFragmentMonitorThread;
     mutable std::mutex m_snapshot_mutex;
 };
 

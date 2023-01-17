@@ -105,6 +105,7 @@ class settings {
 public:
     bool enabled_ = true;
     origin_entry_settings_t origins_;
+    origin_entry_setting global_limit_;
     settings();
     settings( const settings& other );
     settings( settings&& other );
@@ -178,7 +179,7 @@ public:
     }
 };  /// class time_entry
 
-typedef std::list< time_entry > time_entries_t;
+typedef std::vector< time_entry > time_entries_t;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +262,8 @@ public:
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
     size_t unload_old_data_by_count( size_t cntEntriesMax );
     size_t count_to_past( time_tick_mark ttmNow = time_tick_mark( 0 ),
-        duration durationToPast = duration( 60 ) ) const;
+        duration durationToPast = duration( 60 ), size_t cntOptimizedMaxSteps = size_t( -1 ),
+        size_t cntTargetUnDDoS = size_t( -1 ) ) const;
     bool clear_ban();
     bool check_ban( time_tick_mark ttmNow = time_tick_mark( 0 ), bool isAutoClear = true );
 };  /// class tracked_origin
@@ -285,8 +287,18 @@ class algorithm {
     mutable mutex_type mtx_;
     mutable settings settings_;
     tracked_origins_t tracked_origins_;
+    tracked_origin tracked_global_;
     typedef std::map< std::string, size_t > map_ws_conn_counts_t;
     map_ws_conn_counts_t map_ws_conn_counts_;
+    size_t ws_conn_count_global_ = 0;
+    size_t cntOptimizedMaxSteps4cm_ =
+        15;  // local per one caller, per minute (optimize approximation for calls per time unit)
+    size_t cntOptimizedMaxSteps4cs_ =
+        15;  // local per one caller, per second (optimize approximation for calls per time unit)
+    size_t cntOptimizedMaxSteps4gm_ =
+        10;  // global for all callers, per minute (optimize approximation for calls per time unit)
+    size_t cntOptimizedMaxSteps4gs_ =
+        10;  // global for all callers, per second (optimize approximation for calls per time unit)
 
 public:
     algorithm();

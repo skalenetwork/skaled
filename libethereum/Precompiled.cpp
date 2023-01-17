@@ -56,7 +56,7 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
-skale::State g_state;
+std::shared_ptr< skale::OverlayFS > g_overlayFS;
 
 };  // namespace eth
 };  // namespace dev
@@ -283,26 +283,14 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
-            bool isCreated = fs::create_directories( fsDirectoryPath );
-            if ( !isCreated ) {
-                throw std::runtime_error(
-                    "createFile() failed because cannot create subdirectory" );
-            }
+            g_overlayFS->createDirectory( fsDirectoryPath.string() );
         }
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
                 "createFile() failed because _hash extension is not allowed" );
         }
-        if ( !fs::exists( fsFilePath ) ) {
-            throw std::runtime_error( "createFile() failed because directory not exists" );
-        }
-        fstream file;
-        file.open( ( fsFilePath / filePath.filename() ).string(), ios::out );
-        if ( fileSize > 0 ) {
-            file.seekp( static_cast< long >( fileSize ) - 1 );
-            file.write( "0", 1 );
-        }
+        g_overlayFS->createFile( ( fsFilePath / filePath.filename() ).string(), fileSize );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -347,10 +335,7 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
         const _byte_* data =
             _in.cropped( 128 + filenameBlocksCount * UINT256_SIZE, dataLength ).data();
 
-        fstream file;
-        file.open( filePath.string(), ios::binary | ios::out | ios::in );
-        file.seekp( static_cast< long >( position ) );
-        file.write( ( char* ) data, dataLength );
+        g_overlayFS->writeChunk( filePath.string(), position, dataLength, data );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -368,7 +353,6 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
     return { false, response };
 }
 
-// TODO: Check vulnerabilities
 ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
     MICROPROFILE_SCOPEI( "VM", "readChunk", MP_ORANGERED );
     try {
@@ -390,7 +374,13 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
         size_t const chunkLength = byteChunkLength.convert_to< size_t >();
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        if ( position > stat_compute_file_size( filePath.c_str() ) ) {
+        const fs::path canonicalPath = fs::canonical( filePath );
+        if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
+             0 ) {
+            throw std::runtime_error( "readChunk() failed because file couldn't be read" );
+        }
+        if ( position > stat_compute_file_size( filePath.c_str() ) ||
+             position + chunkLength > stat_compute_file_size( filePath.c_str() ) ) {
             throw std::runtime_error(
                 "readChunk() failed because chunk gets out of the file bounds" );
         }
@@ -405,9 +395,9 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( getLogger( VerbosityError ) ) << "Exception in uploadChunk: " << strError << "\n";
+        LOG( getLogger( VerbosityError ) ) << "Exception in readChunk: " << strError << "\n";
     } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in uploadChunk\n";
+        LOG( getLogger( VerbosityError ) ) << "Unknown exception in readChunk\n";
     }
     u256 code = 0;
     bytes response = toBigEndian( code );
@@ -425,6 +415,12 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, filename, filenameLength );
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
+        const fs::path canonicalPath = fs::canonical( filePath );
+        if ( canonicalPath.string().find( getFileStorageDir( Address( address ) ).c_str(), 0 ) !=
+             0 ) {
+            throw std::runtime_error( "getFileSize() failed because file couldn't be read" );
+        }
+
         size_t const fileSize = stat_compute_file_size( filePath.c_str() );
         bytes response = toBigEndian( static_cast< u256 >( fileSize ) );
         return { true, response };
@@ -451,19 +447,9 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, filename, filenameLength );
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
-        if ( remove( filePath.c_str() ) != 0 ) {
-            throw std::runtime_error( "File cannot be deleted" );
-        }
 
-        try {
-            boost::filesystem::remove( filePath.string() + "._hash" );
-        } catch ( std::exception& ex ) {
-            std::string strError = ex.what();
-            if ( strError.empty() ) {
-                strError = "exception without description";
-            }
-            LOG( getLogger( VerbosityError ) ) << "Exception in deleteFile: " << strError << "\n";
-        }
+        g_overlayFS->deleteFile( filePath.string() );
+        g_overlayFS->deleteFile( filePath.string() + "._hash" );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -491,11 +477,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
         const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
-        bool isCreated = fs::create_directories( absolutePath );
-
-        if ( !isCreated ) {
-            throw std::runtime_error( "createDirectory() failed because cannot create directory" );
-        }
+        g_overlayFS->createDirectory( absolutePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -528,9 +510,10 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
         }
 
         const std::string absolutePathStr = absolutePath.string();
-        fs::remove( absolutePathStr + "._hash" );
 
-        fs::remove_all( absolutePath );
+        g_overlayFS->deleteFile( absolutePathStr + "._hash" );
+        g_overlayFS->deleteDirectory( absolutePath.string() );
+
         u256 code = 1;
         bytes response = toBigEndian( code );
         return { true, response };
@@ -572,9 +555,6 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
 
         const std::string fileHashName = filePath.string() + "._hash";
 
-        std::fstream fileHash;
-        fileHash.open( fileHashName, ios::binary | ios::out );
-
         std::string relativePath =
             filePath.string().substr( filePath.string().find( "filestorage" ) );
 
@@ -590,9 +570,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
         dev::h256 commonFileHash;
         secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
 
-        fileHash.clear();
-        fileHash << commonFileHash;
-        fileHash.close();
+        g_overlayFS->writeHashFile( fileHashName, commonFileHash );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -977,10 +955,10 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
         if ( strError.empty() )
             strError = "exception without description";
         LOG( getLogger( VerbosityError ) )
-            << "Exception in precompiled/getConfigVariableString(): " << strError << "\n";
+            << "Exception in precompiled/getConfigPermissionFlag(): " << strError << "\n";
     } catch ( ... ) {
         LOG( getLogger( VerbosityError ) )
-            << "Unknown exception in precompiled/getConfigVariableString()\n";
+            << "Unknown exception in precompiled/getConfigPermissionFlag()\n";
     }
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
@@ -1009,28 +987,30 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
 }
 
 ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
-    try {
-        auto rawAddress = _in.cropped( 0, 20 ).toBytes();
-        std::string address;
-        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-        auto add = parseBigEndianRightPadded( _in, 20, 32 );
+    /*
+        try {
+            auto rawAddress = _in.cropped( 0, 20 ).toBytes();
+            std::string address;
+            boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
+            auto add = parseBigEndianRightPadded( _in, 20, 32 );
 
-        auto value = u256( add );
+            auto value = u256( add );
 
-        g_state.addBalance( Address( address ), value );
+            g_state.addBalance( Address( address ), value );
 
-        dev::u256 code = 1;
-        bytes response = toBigEndian( code );
-        return { true, response };
-    } catch ( std::exception& ex ) {
-        std::string strError = ex.what();
-        if ( strError.empty() )
-            strError = "exception without description";
-        LOG( getLogger( VerbosityError ) )
-            << "Exception in precompiled/addBalance(): " << strError << "\n";
-    } catch ( ... ) {
-        LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
-    }
+            dev::u256 code = 1;
+            bytes response = toBigEndian( code );
+            return {true, response};
+        } catch ( std::exception& ex ) {
+            std::string strError = ex.what();
+            if ( strError.empty() )
+                strError = "exception without description";
+            LOG( getLogger( VerbosityError ) )
+                << "Exception in precompiled/addBalance(): " << strError << "\n";
+        } catch ( ... ) {
+            LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
+        }
+    */
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur

@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( trivialGasPricer ) {
     BOOST_CHECK_EQUAL( gp->ask( Block( Block::Null ) ), DefaultGasPrice );
     BOOST_CHECK_EQUAL( gp->bid(), DefaultGasPrice );
 
-    gp->update( BlockChain( eth::ChainParams(), TransientDirectory().path(), WithExisting::Kill ) );
+    gp->update( BlockChain( eth::ChainParams(), TransientDirectory().path(), false, WithExisting::Kill ) );
     BOOST_CHECK_EQUAL( gp->ask( Block( Block::Null ) ), DefaultGasPrice );
     BOOST_CHECK_EQUAL( gp->bid(), DefaultGasPrice );
 }

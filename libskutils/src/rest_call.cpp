@@ -339,19 +339,23 @@ bool sz_cli::sendMessage( const std::string& strMessage, std::string& strAnswer 
 }
 
 
-client::client() {
+client::client( long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     async_remove_all();
 }
 
-client::client( const skutils::url& u ) {
+client::client( const skutils::url& u, long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     open( u );
 }
 
-client::client( const std::string& url_str ) {
+client::client( const std::string& url_str, long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     open( url_str );
 }
 
-client::client( const char* url_str ) {
+client::client( const char* url_str, long nClientConnectionTimeoutMS )
+    : nClientConnectionTimeoutMS_( nClientConnectionTimeoutMS ) {
     open( std::string( url_str ? url_str : "" ) );
 }
 
@@ -368,6 +372,13 @@ std::string client::u_path() const {
 std::string client::u_path_and_args() const {
     std::string s = u_path() + u_.str_query();
     return s;
+}
+
+long client::client_connection_timeout() const {
+    return nClientConnectionTimeoutMS_;
+}
+void client::client_connection_timeout( long nClientConnectionTimeoutMS ) {
+    nClientConnectionTimeoutMS_ = nClientConnectionTimeoutMS;
 }
 
 bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, size_t cntSteps ) {
@@ -390,29 +401,38 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
         }
         int nPort = std::atoi( strPort.c_str() );
         //
+        long nEffectiveClientConnectionTimeoutMS =
+            ( nClientConnectionTimeoutMS_ > 0 ) ?
+                nClientConnectionTimeoutMS_ :
+                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__;
         if ( strScheme == "http" ) {
             close();
 #if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
             ch_.reset( new skutils::http_curl::client(
-                u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+                u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
 #else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
-            ch_.reset( new skutils::http::client( -1, strHost.c_str(), nPort,
-                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, nullptr ) );
+            ch_.reset( new skutils::http::client(
+                -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, nullptr ) );
 #endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "https" ) {
             close();
 #if ( defined __SKUTIS_REST_USE_CURL_FOR_HTTP )
             ch_.reset( new skutils::http_curl::client(
-                u, __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+                u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
 #else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
-            ch_.reset( new skutils::http::SSL_client( -1, strHost.c_str(), nPort,
-                __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__, &optsSSL_ ) );
+            ch_.reset( new skutils::http::SSL_client(
+                -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
 #endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
         } else if ( strScheme == "ws" || strScheme == "wss" ) {
             close();
             cw_.reset( new skutils::ws::client );
+            cw_->access_api().timeout_handshake_open_ =
+                nEffectiveClientConnectionTimeoutMS / 1000 +
+                        ( nEffectiveClientConnectionTimeoutMS % 1000 ) ?
+                    1 :
+                    0;
             cw_->onMessage_ = [&]( skutils::ws::basic_participant&, skutils::ws::hdl_t,
                                   skutils::ws::opcv eOpCode, const std::string& s ) -> void {
                 data_t d;

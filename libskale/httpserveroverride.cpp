@@ -608,6 +608,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                        cc::error( " will uninstall watcher callback because of "
                                                   "exception: " ) +
                                        cc::warn( ex.what() ) );
+                            cerror << DETAILED_ERROR;
                         } catch ( ... ) {
                             clog( dev::Verbosity::VerbosityError,
                                 cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) +
@@ -619,6 +620,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                        cc::warn( "eth_subscription/skaleStats" ) +
                                        cc::error( " will uninstall watcher callback because of "
                                                   "unknown exception" ) );
+                            cerror << DETAILED_ERROR;
                         }
                         if ( !bMessageSentOK ) {
                             stats::register_stats_error(
@@ -726,6 +728,7 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
                 << ( desc() + " " + cc::fatal( "UN-DDOS:" ) + " " +
                        cc::error( " cannot accept connection - UN-DDOS protection reported "
                                   "connection count overflow" ) );
+            cerror << DETAILED_ERROR;
             close( "UN-DDOS protection reported connection count overflow" );
             throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
                                       " connection from " + url_unddos_origin.str() +
@@ -835,6 +838,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
         nlohmann::json joErrorObj;
@@ -876,6 +880,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
                    pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
         nlohmann::json joErrorObj;
@@ -942,6 +947,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
                     joRequest );
                 stats::register_stats_message( "RPC", joRequest );
+
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
                          pThis->getRelay().esm_, joRequest, strResponse ) ) {
                     jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
@@ -949,6 +955,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                         throw std::runtime_error( "No client connection handler found" );
                     handler->HandleRequest( strRequest, strResponse );
                 }
+
                 nlohmann::json joResponse = nlohmann::json::parse( strResponse );
                 stats::register_stats_answer(
                     pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
@@ -967,6 +974,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
+                cerror << DETAILED_ERROR;
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 nlohmann::json joErrorObj;
@@ -992,6 +1000,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
                            pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+                cerror << DETAILED_ERROR;
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 nlohmann::json joErrorObj;
@@ -1156,32 +1165,41 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     std::string strResponseCopy = joResponse.dump();
     joResponseRapidjson.Parse( strResponseCopy.data() );
 
-    if ( !pso()->handleProtocolSpecificRequest(
-             getRemoteIp(), joRequestRapidjson, joResponseRapidjson ) ) {
-        if ( !handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
-            strResponse = joResponse.dump();
-            return false;
-        }
+    if ( handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
         strResponse = joResponse.dump();
-    } else {
+        return true;
+    }
+
+    bool isSkipProtocolSpecfic = false;
+    std::string strMethod = joRequest["method"].get< std::string >();
+
+    if ( esm == e_server_mode_t::esm_informational && strMethod == "eth_getBalance" )
+        isSkipProtocolSpecfic = true;
+
+    if ( ( !isSkipProtocolSpecfic ) && pso()->handleProtocolSpecificRequest( getRemoteIp(),
+                                           joRequestRapidjson, joResponseRapidjson ) ) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
         joResponseRapidjson.Accept( writer );
         strResponse = buffer.GetString();
+
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
     e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( esm == e_server_mode_t::esm_informational &&
-         pso()->handleInformationalRequest( joRequest, joResponse ) )
+         pso()->handleInformationalRequest( joRequest, joResponse ) ) {
         return true;
+    }
     std::string strMethod = joRequest["method"].get< std::string >();
     ws_rpc_map_t::const_iterator itFind = g_ws_rpc_map.find( strMethod );
-    if ( itFind == g_ws_rpc_map.end() )
+    if ( itFind == g_ws_rpc_map.end() ) {
         return false;
+    }
     ( ( *this ).*( itFind->second ) )( esm, joRequest, joResponse );
     return true;
 }
@@ -1273,8 +1291,11 @@ void SkaleWsPeer::eth_subscribe_logs(
                             if ( joRW.is_object() && joRW.count( "logs" ) > 0 &&
                                  joRW.count( "blockHash" ) > 0 &&
                                  joRW.count( "blockNumber" ) > 0 ) {
-                                std::string strBlockHash = joRW["blockHash"].get< std::string >();
-                                unsigned nBlockNumber = joRW["blockNumber"].get< unsigned >();
+                                const std::string strBlockHash =
+                                    joRW["blockHash"].get< std::string >();
+                                std::string strBlockNumber = joRW["blockNumber"].dump();
+                                const dev::u256 uBlockNumber( strBlockNumber.c_str() );
+                                strBlockNumber = dev::toJS( uBlockNumber );
                                 const nlohmann::json& joResultLogs = joRW["logs"];
                                 if ( joResultLogs.is_array() ) {
                                     for ( const auto& joWalk : joResultLogs ) {
@@ -1282,7 +1303,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                             continue;
                                         nlohmann::json joLog = joWalk;  // copy
                                         joLog["blockHash"] = strBlockHash;
-                                        joLog["blockNumber"] = nBlockNumber;
+                                        joLog["blockNumber"] = strBlockNumber;
                                         nlohmann::json joParams = nlohmann::json::object();
                                         joParams["subscription"] = dev::toJS( iw );
                                         joParams["result"] = joLog;
@@ -1333,6 +1354,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                            " will uninstall watcher callback "
                                                            "because of exception: " ) +
                                                        cc::warn( ex.what() ) );
+                                            cerror << DETAILED_ERROR;
                                         } catch ( ... ) {
                                             clog( dev::Verbosity::VerbosityError,
                                                 cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
@@ -1344,6 +1366,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                        cc::error(
                                                            " will uninstall watcher callback "
                                                            "because of unknown exception" ) );
+                                            cerror << DETAILED_ERROR;
                                         }
                                         if ( !bMessageSentOK ) {
                                             stats::register_stats_error(
@@ -1382,6 +1405,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                       cc::num10( getRelay().serverIndex() ) )
                 << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe/logs" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1395,6 +1419,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                       cc::num10( getRelay().serverIndex() ) )
                 << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe/logs" ) +
                        cc::error( " rpc method, unknown exception " ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/logs\" rpc method, unknown exception";
@@ -1454,6 +1479,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                                cc::error(
                                    " will uninstall watcher callback because of exception: " ) +
                                cc::warn( ex.what() ) );
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( dev::Verbosity::VerbosityError,
                         cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -1462,6 +1488,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                                cc::warn( "eth_subscription/newPendingTransactions" ) +
                                cc::error( " will uninstall watcher callback because of unknown "
                                           "exception" ) );
+                    cerror << DETAILED_ERROR;
                 }
                 if ( !bMessageSentOK ) {
                     stats::register_stats_error(
@@ -1492,6 +1519,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newPendingTransactions" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1508,6 +1536,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newPendingTransactions" ) +
                        cc::error( " rpc method, unknown exception " ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1580,6 +1609,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                                cc::error(
                                    " will uninstall watcher callback because of exception: " ) +
                                cc::warn( ex.what() ) );
+                    cerror << DETAILED_ERROR;
                 } catch ( ... ) {
                     clog( dev::Verbosity::VerbosityError,
                         cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -1588,6 +1618,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                                cc::warn( "eth_subscription/newHeads" ) +
                                cc::error( " will uninstall watcher callback because of unknown "
                                           "exception" ) );
+                    cerror << DETAILED_ERROR;
                 }
                 if ( !bMessageSentOK ) {
                     stats::register_stats_error(
@@ -1618,6 +1649,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1633,6 +1665,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, unknown exception " ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
@@ -1670,10 +1703,11 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
         joError["message"] =
-            std::string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) +
+            std::string( "error in \"eth_subscribe/SkaleStats(\" rpc method, exception: " ) +
             ex.what();
         joResponse["error"] = joError;
         return;
@@ -1685,9 +1719,10 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
                 << ( desc() + " " + cc::error( "error in " ) +
                        cc::warn( "eth_subscribe/newHeads(" ) +
                        cc::error( " rpc method, unknown exception " ) );
+        cerror << DETAILED_ERROR;
         nlohmann::json joError = nlohmann::json::object();
         joError["code"] = -32602;
-        joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
+        joError["message"] = "error in \"eth_subscribe/SkaleStats(\" rpc method, unknown exception";
         joResponse["error"] = joError;
         return;
     }
@@ -1963,7 +1998,7 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
     }
     std::thread( [pThis]() {
         pThis->m_isRunning = true;
-        skutils::multithreading::setThreadName( pThis->m_strSchemeUC + "-listener" );
+        skutils::multithreading::threadNameAppender tn( "/" + pThis->m_strSchemeUC + "-listener" );
         try {
             pThis->run( [pThis]() -> bool {
                 if ( !pThis->m_isRunning )
@@ -2164,7 +2199,8 @@ nlohmann::json SkaleServerOverride::generateBlocksStats() {
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
     if ( !pEth_ ) {
-        std::cerr << "SKALE server fatal error: no eth interface\n";
+        cerror << "SKALE server fatal error: no eth interface\n";
+        cerror << DETAILED_ERROR;
         std::cerr.flush();
         std::terminate();
     }
@@ -2506,6 +2542,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             rttElement->setError();
             logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( ex.what() ) );
+            cerror << DETAILED_ERROR;
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
             nlohmann::json joErrorObj;
@@ -2528,6 +2565,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             const char* e = "unknown exception in SkaleServerOverride";
             logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
                 nServerIndex, esm, strOrigin.c_str(), cc::warn( e ) );
+            cerror << DETAILED_ERROR;
             nlohmann::json joErrorResponce;
             joErrorResponce["id"] = joID;
             nlohmann::json joErrorObj;
@@ -2675,8 +2713,9 @@ bool SkaleServerOverride::implStartListening(  // mini HTTP
             ipVer, strAddr.c_str(), nPort, esm, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, this );
         // make server listen in its dedicated thread
         std::thread( [=]() {
-            skutils::multithreading::setthreadName( std::string( bIsSSL ? "HTTPS" : "HTTP" ) +
-"-listener" ); if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
+            skutils::multithreading::threadNameAppender tn(
+                "/" + std::string( bIsSSL ? "HTTPS" : "HTTP" ) + "-listener" );
+            if ( !pSrv->m_pServer->listen( ipVer, strAddr.c_str(), nPort ) ) {
                 stats::register_stats_error( bIsSSL ? "HTTPS" : "HTTP", "LISTEN" );
                 return;
             }
@@ -3191,7 +3230,7 @@ bool SkaleServerOverride::StartListening() {
                         nPort = 80;
                 } else
                     nPort = atoi( u.port().c_str() );
-                int nServerIndex = 0;  // TO-FIX: detect server index here
+                int nServerIndex = 0;  // TO-FIX: detect server index here"
                 e_server_mode_t esm = implGuessProxygenRequestESM( strDstAddress, nDstPort );
                 skutils::result_of_http_request rslt = implHandleHttpRequest(
                     joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
@@ -3203,6 +3242,7 @@ bool SkaleServerOverride::StartListening() {
             if ( !hProxygenServer_ ) {
                 clog( dev::VerbosityError, cc::fatal( "PROXYGEN ERROR:" ) )
                     << ( cc::error( "Failed to start server" ) );
+                cerror << DETAILED_ERROR;
                 return false;
             }
         }
@@ -3521,8 +3561,10 @@ bool SkaleServerOverride::handleInformationalRequest(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     std::string strMethod = joRequest["method"].get< std::string >();
     informational_rpc_map_t::const_iterator itFind = g_informational_rpc_map.find( strMethod );
-    if ( itFind == g_informational_rpc_map.end() )
+    if ( itFind == g_informational_rpc_map.end() ) {
         return false;
+    }
+
     ( ( *this ).*( itFind->second ) )( joRequest, joResponse );
     return true;
 }
@@ -3549,6 +3591,9 @@ static std::string stat_encode_eth_call_data_chunck_address(
 
 void SkaleServerOverride::informational_eth_getBalance(
     const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
+    std::cout << ( cc::debug( "Got call to informational version of " ) +
+                   cc::info( "eth_getBalance" ) + cc::debug( " JSON RPC API with request as " ) +
+                   cc::j( joRequest ) + "\n" );
     auto pEthereum = ethereum();
     if ( !pEthereum )
         throw std::runtime_error( "internal error, no Ethereum interface found" );
@@ -3565,15 +3610,9 @@ void SkaleServerOverride::informational_eth_getBalance(
     if ( !joAddress.is_string() )
         throw std::runtime_error( "\"params[0]\" must be address string for \"eth_getBalance\"" );
     std::string strAddress = joAddress.get< std::string >();
-    try {
-        /*
-        // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
-        // Remove this temporary fix.
-        string blockNumber = "latest";
-        std::string strBallance = dev::toJS( pClient->balanceAt( dev::jsToAddress( strAddress ) ) );
-        joResponse["result"] = strBallance;
-        */
 
+
+    try {
         skutils::tools::replace_all( strAddress, "0x", "" );
         skutils::tools::replace_all( strAddress, "0X", "" );
         strAddress = skutils::tools::trim_copy( strAddress );
@@ -3592,10 +3631,23 @@ void SkaleServerOverride::informational_eth_getBalance(
         // TODO: We ignore block number in order to be compatible with Metamask (SKALE-430).
         // Remove this temporary fix.
         string blockNumber = "latest";
+
+
+#ifdef HISTORIC_STATE
+        if ( cntParams > 1 ) {
+            blockNumber = joParams[1];
+        };
+        auto bNumber = dev::eth::jsToBlockNumber( blockNumber );
+#endif
+
         dev::eth::TransactionSkeleton t = dev::eth::toTransactionSkeleton( _jsonCallArgs );
         // setTransactionDefaults( t );
-        dev::eth::ExecutionResult er = pClient->call(
-            t.from, t.value, t.to, t.data, t.gas, t.gasPrice, dev::eth::FudgeFactor::Lenient );
+        dev::eth::ExecutionResult er =
+            pClient->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
+#ifdef HISTORIC_STATE
+                bNumber,
+#endif
+                dev::eth::FudgeFactor::Lenient );
 
         std::string strRevertReason;
         if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -3610,15 +3662,28 @@ void SkaleServerOverride::informational_eth_getBalance(
                                  cc::error( ", and using " ) + cc::info( "blockNumber" ) +
                                  cc::error( "=" ) + cc::bright( blockNumber );
             cerror << strOut;
+            cerror << DETAILED_ERROR;
             throw std::runtime_error( strRevertReason );
         }
 
         std::string strBallance = er.output.empty() ? "0x0" : dev::toJS( er.output );
         joResponse["result"] = strBallance;
     } catch ( const std::exception& ex ) {
+        const char* strError = ex.what();
+        if ( strError == nullptr || strError[0] == '\0' )
+            strError = "Error without description in informational version of \"eth_getBalance\"";
+        std::cout << ( cc::fatal( "ERROR:" ) +
+                       cc::error( " Got error in informational version of " ) +
+                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
+                       cc::error( strError ) + "\n" );
         throw ex;
     } catch ( ... ) {
-        throw std::runtime_error( "Unknown error in \"informational_eth_getBalance\"" );
+        const char* strError = "Unknown error in informational version of \"eth_getBalance\"";
+        std::cout << ( cc::fatal( "ERROR:" ) +
+                       cc::error( " Got error in informational version of " ) +
+                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
+                       cc::error( strError ) + "\n" );
+        throw std::runtime_error( strError );
     }
 }
 
@@ -3786,6 +3851,7 @@ void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        cerror << DETAILED_ERROR;
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
@@ -3801,6 +3867,7 @@ void SkaleServerOverride::setSchainExitTime( const std::string& strOrigin,
                 cc::debug( " during call from " ) + cc::u( strOrigin ) )
                 << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
                        cc::error( " rpc method, unknown exception " ) );
+        cerror << DETAILED_ERROR;
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
@@ -3866,23 +3933,24 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
     rapidjson::Value d;
     d.SetObject();
     joResponse.AddMember( "result", d, joResponse.GetAllocator() );
-    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
-        rapidjson::StringBuffer buffer;
-        rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-        joRequest.Accept( writer );
-        std::string strRequest = buffer.GetString();
-        nlohmann::json objRequest = nlohmann::json::parse( strRequest );
 
-        rapidjson::StringBuffer bufferResponse;
-        rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
-        joResponse.Accept( writerResponse );
-        std::string strResponseCopy = bufferResponse.GetString();
-        nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
-        if ( !handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
-            return false;
-        } else {
-            strResponse = joResponseObj.dump();
-        }
+    //    rapidjson::StringBuffer buffer;
+    //    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
+    //    joRequest.Accept( writer );
+    //    std::string strRequest = buffer.GetString();
+
+    rapidjson::StringBuffer bufferResponse;
+    rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
+    joResponse.Accept( writerResponse );
+    std::string strResponseCopy = bufferResponse.GetString();
+    nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
+    nlohmann::json objRequest = nlohmann::json::parse( strRequest );
+    if ( handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
+        strResponse = joResponseObj.dump();
+        return true;
+    }
+    if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {
+        return false;
     } else {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );

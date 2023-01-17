@@ -89,9 +89,9 @@ BOOST_AUTO_TEST_CASE( tqPriority ) {
     Transaction tx0_1( 1, gasCostMed, gas, dest, bytes(), 0, sender1 );
     Transaction tx1( 0, gasCostCheap, gas, dest, bytes(), 1, sender1 );
     Transaction tx2( 0, gasCostHigh, gas, dest, bytes(), 0, sender2 );
-    Transaction tx3( 0, gasCostCheap + 1, gas, dest, bytes(), 1, sender2 );
-    Transaction tx4( 0, gasCostHigh, gas, dest, bytes(), 2, sender1 );
-    Transaction tx5( 0, gasCostMed, gas, dest, bytes(), 2, sender2 );
+    Transaction tx3( 0, gasCostCheap - 1, gas, dest, bytes(), 1, sender2 );
+    Transaction tx4( 0, gasCostMed, gas, dest, bytes(), 2, sender1 );
+    Transaction tx5( 0, gasCostHigh, gas, dest, bytes(), 2, sender2 );
 
     txq.import( tx0 );
     BOOST_CHECK( Transactions{tx0} == txq.topTransactions( 256 ) );
@@ -121,10 +121,53 @@ BOOST_AUTO_TEST_CASE( tqPriority ) {
     txq.import( tx6 );
     BOOST_CHECK( ( Transactions{tx2, tx3, tx4, tx6} ) == txq.topTransactions( 256 ) );
 
-    Transaction tx7( 0, gasCostMed, gas, dest, bytes(), 2, sender2 );
+    Transaction tx7( 0, gasCostHigh, gas, dest, bytes(), 2, sender2 );
     txq.import( tx7 );
     // deterministic signature: hash of tx5 and tx7 will be same
     BOOST_CHECK( ( Transactions{tx2, tx3, tx4, tx6} ) == txq.topTransactions( 256 ) );
+}
+
+BOOST_AUTO_TEST_CASE( tqNonceChange ) {
+    dev::eth::TransactionQueue txq;
+
+    const u256 gasCost = 10 * szabo;
+    const u256 gas = 25000;
+    Address dest = Address( "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" );
+    Secret sender1 = Secret( "0x3333333333333333333333333333333333333333333333333333333333333333" );
+    Secret sender2 = Secret( "0x4444444444444444444444444444444444444444444444444444444444444444" );
+
+    Transaction tx10( 0, gasCost, gas, dest, bytes(), 0, sender1 );
+    Transaction tx11( 0, gasCost, gas, dest, bytes(), 1, sender1 );
+    Transaction tx12( 0, gasCost, gas, dest, bytes(), 2, sender1 );
+    Transaction tx13( 0, gasCost, gas, dest, bytes(), 3, sender1 );
+
+    Transaction tx20( 0, gasCost, gas, dest, bytes(), 0, sender2 );
+    Transaction tx21( 0, gasCost, gas, dest, bytes(), 1, sender2 );
+    Transaction tx22( 0, gasCost, gas, dest, bytes(), 2, sender2 );
+    Transaction tx23( 0, gasCost, gas, dest, bytes(), 3, sender2 );
+
+    // 1 insert 0,1,2 for both senders
+    txq.import( tx20 ); // h = 0
+    txq.import( tx21 ); // h = 1
+    txq.import( tx22 ); // h = 2
+    txq.import( tx10 ); // h = 0
+    txq.import( tx11 ); // h = 1
+    txq.import( tx12 ); // h = 2
+    txq.import( tx13 ); // h = 3
+
+    // 2 increase nonce for account 2
+    txq.dropGood( tx20 );
+    txq.dropGood( tx21 );
+
+    // 3 insert tx with height = 3-2=1
+    txq.import( tx23 ); // h = 1 => goes with tx11
+
+    Transactions top6 = txq.topTransactions(6);
+    for(auto tx: top6){
+        std::cout << tx.from() << " " << tx.nonce() << std::endl;
+    }
+    // expected BAD result       [tx10], [tx11, tx23], [tx12, tx22], [tx13] !!!
+    BOOST_REQUIRE( ( Transactions{tx10, tx11, tx22, tx23, tx12, tx13 } ) == top6 );
 }
 
 BOOST_AUTO_TEST_CASE( tqFuture ) {

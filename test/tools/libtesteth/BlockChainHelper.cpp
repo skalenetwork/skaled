@@ -97,7 +97,7 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     m_state = std::unique_ptr< State >(
         new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0, 1000000000 ) );
     ImportTest::importState( _stateObj, *m_state );
-    m_state->startWrite().commit( State::CommitBehaviour::KeepEmptyAccounts );
+    m_state->createStateModifyCopy().commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     json_spirit::mObject state = _stateObj;
     dev::test::replaceCodeInState( state );
@@ -461,7 +461,7 @@ void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
         _genesisBlock.bytes(), _genesisBlock.accountMap() );
 
     m_blockChain.reset(
-        new BlockChain( p, m_tempDirBlockchain.get()->path(), WithExisting::Kill ) );
+        new BlockChain( p, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
     if ( !m_blockChain->isKnown( BlockHeader::headerHashFromBlock( _genesisBlock.bytes() ) ) ) {
         cdebug << "Not known:" << BlockHeader::headerHashFromBlock( _genesisBlock.bytes() )
                << BlockHeader( p.genesisBlock() ).hash();

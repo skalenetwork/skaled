@@ -32,7 +32,7 @@
 #include <libdevcore/Assertions.h>
 #include <libdevcore/Common.h>
 
-//#include <libdevcore/DBImpl.h>
+// #include <libdevcore/DBImpl.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
 
 #include <libdevcore/FileSystem.h>
@@ -43,12 +43,17 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
+#include <libskale/AmsterdamFixPatch.h>
+#include <libskale/TotalStorageUsedPatch.h>
+
 #include "Block.h"
 #include "Defaults.h"
 #include "GenesisInfo.h"
 #include "ImportPerformanceLogger.h"
 
 #include <skutils/console_colors.h>
+
+extern void dump_blocks_and_extras_db( const dev::eth::BlockChain& _bc, size_t _startBlock );
 
 using namespace std;
 using namespace dev;
@@ -171,11 +176,11 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, WithExisting _we ) try
-    : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-      m_dbPath( _dbPath ) {
+BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches,
+    WithExisting _we ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
+                             m_dbPath( _dbPath ) {
     init( _p );
-    open( _dbPath, _we );
+    open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
     std::throw_with_nested( CreationException() );
 }
@@ -209,7 +214,7 @@ void BlockChain::init( ChainParams const& _p ) {
     genesis();
 }
 
-void BlockChain::open( fs::path const& _path, WithExisting _we ) {
+void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
     fs::path chainPath = path / getChainDirName( m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
@@ -225,7 +230,7 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
         auto rotator = std::make_shared< batched_io::rotating_db_io >(
-            chainPath / fs::path( "blocks_and_extras" ), 5 );
+            chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().nodeInfo.archiveMode );
         m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( m_rotating_db );
@@ -253,6 +258,9 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
             BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
         }
     }
+
+    if ( _applyPatches && AmsterdamFixPatch::isInitOnChainNeeded( *m_blocksDB, *m_extrasDB ) )
+        AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db, chainParams() );
 
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
         BlockHeader gb( m_params.genesisBlock() );
@@ -295,14 +303,16 @@ void BlockChain::open( fs::path const& _path, WithExisting _we ) {
     cdebug << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
            << m_lastBlockNumber;
 
-    if ( !this->m_db->exists( ( db::Slice ) "pieceUsageBytes" ) )
-        recomputeExistingOccupiedSpaceForBlockRotation();
+    //    dump_blocks_and_extras_db( *this, 0 );
+
+    if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
+        TotalStorageUsedPatch::initOnChain( *this );
 }
 
-void BlockChain::reopen( ChainParams const& _p, WithExisting _we ) {
+void BlockChain::reopen( ChainParams const& _p, bool _applyPatches, WithExisting _we ) {
     close();
     init( _p );
-    open( m_dbPath, _we );
+    open( m_dbPath, _applyPatches, _we );
 }
 
 void BlockChain::close() {
@@ -312,6 +322,8 @@ void BlockChain::close() {
     m_blocksDB = nullptr;
     m_db_splitter.reset();
     m_db.reset();
+    m_rotating_db.reset();
+
     DEV_WRITE_GUARDED( x_lastBlockHash ) {
         m_lastBlockHash = m_genesisHash;
         m_lastBlockNumber = 0;
@@ -388,10 +400,9 @@ tuple< ImportRoute, bool, unsigned > BlockChain::sync(
                 this_thread::sleep_for( chrono::milliseconds( 100 ) );
                 continue;
             } catch ( Exception& ex ) {
-                cerr << "Exception while importing block. Someone (Jeff? That you?) seems to be "
-                     << "giving us dodgy blocks !";
-                cerr << diagnostic_information( ex );
-                cerr.flush();
+                cerror << "Exception while importing block. Someone (Jeff? That you?) seems to be "
+                       << "giving us dodgy blocks !";
+                cerror << diagnostic_information( ex );
                 if ( m_onBad )
                     m_onBad( ex );
                 // NOTE: don't reimport since the queue should guarantee everything in the right
@@ -462,6 +473,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
         LOG( m_loggerError ) << "Block: " << BlockHeader( &parentBlock );
         LOG( m_loggerError ) << "RLP: " << RLP( parentBlock );
         LOG( m_loggerError ) << "DATABASE CORRUPTION: CRITICAL FAILURE";
+        cerror << DETAILED_ERROR;
         exit( -1 );
     }
 
@@ -489,7 +501,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
         s.cleanup();
 
-        _state = _state.startNew();
+        _state = _state.createNewCopyWithLocks();
 
         totalDifficulty = pd.totalDifficulty + tdIncrease;
 
@@ -770,6 +782,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 }
 
 // TOOD ACHTUNG This function must be kept in sync with prepareDbDataAndReturnSize defined above!!
+// TODO move it to TotalStorageUsedPatch!
 void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     unsigned number = this->number();
 
@@ -851,14 +864,16 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
             db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
         m_db->commit( "recompute_piece_usage" );
     } else {
-        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize )
+        if ( pieceUsageBytes != blocksBatchSize + extrasBatchSize || true ) {
             LOG( m_loggerError ) << "Computed db usage value is not equal to stored one! This "
                                     "should happen only if block rotation has occured!";
+        }
     }  // else
 } catch ( const std::exception& ex ) {
     LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
+    cerror << DETAILED_ERROR;
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -886,17 +901,17 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_logger ) << "Block " << tbi.number() << " DB usage is " << writeSize;
-    LOG( m_logger ) << "Piece DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize
+                        << ". Piece DB usage is " << pieceUsageBytes << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
-        LOG( m_logger ) << "Rotated out some blocks";
+        LOG( m_loggerInfo ) << "Rotated out some blocks";
         m_db->revert();
         writeSize = prepareDbDataAndReturnSize(
             _block, _receipts, _totalDifficulty, pLogBloomFull, _performanceLogger );
         pieceUsageBytes = writeSize;
-        LOG( m_loggerDetail ) << "DB usage is " << pieceUsageBytes << " bytes";
+        LOG( m_loggerInfo ) << "DB usage is " << pieceUsageBytes << " bytes";
     }
 
     // FINALLY! change our best hash.
@@ -937,11 +952,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
             // update storage usage
             m_db->insert(
                 db::Slice( "pieceUsageBytes" ), db::Slice( std::to_string( pieceUsageBytes ) ) );
-            // HACK This is for backward compatibility
-            // update totalStorageUsed only if schain already had it!
-            if ( m_blocksDB->exists( db::Slice( "totalStorageUsed" ) ) )
-                m_db->insert( db::Slice( "\x0totalStorageUsed" ),
-                    db::Slice( to_string( _block.info.number() * 32 ) ) );
+
+            TotalStorageUsedPatch::onProgress( *m_db, _block.info.number() );
 
             m_db->insert( db::Slice( "\x1"
                                      "best" ),
@@ -950,9 +962,10 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to blocks_and_extras database: "
                   << boost::diagnostic_information( ex );
-            cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+            cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
+                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to blocks_and_extras database. Bombing out.";
+            cerror << DETAILED_ERROR;
             exit( -1 );
         }
     }
@@ -1027,7 +1040,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
 }
 
 void BlockChain::rescue( State const& /*_state*/ ) {
-    cout << "Rescuing database..." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "Rescuing database..." << endl;
     throw std::logic_error( "Rescueing is not implemented" );
 
     unsigned u = 1;
@@ -1042,33 +1055,36 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    cout << cc::debug( "Finding last likely block number..." ) << endl;
+    clog( VerbosityInfo, "BlockChain" )
+        << cc::debug( "Finding last likely block number..." ) << endl;
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
-        cout << " " << m << flush;
+        clog( VerbosityInfo, "BlockChain" ) << " " << m << flush;
         if ( isKnown( numberHash( m ) ) )
             l = m;
         else
             u = m;
     }
-    cout << "  lowest is " << l << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l << endl;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        cout << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
-             << cc::debug( ")..." ) << flush;
+        clog( VerbosityInfo, "BlockChain" )
+            << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
+            << cc::debug( ")..." ) << flush;
         try {
-            cout << cc::debug( "block..." ) << flush;
+            clog( VerbosityInfo, "BlockChain" ) << cc::debug( "block..." ) << flush;
             BlockHeader bi( block( h ) );
-            cout << cc::debug( "extras..." ) << flush;
+            clog( VerbosityInfo, "BlockChain" ) << cc::debug( "extras..." ) << flush;
             details( h );
-            cout << cc::debug( "state..." ) << flush;
-            cout << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
+            clog( VerbosityInfo, "BlockChain" ) << cc::debug( "state..." ) << flush;
+            clog( VerbosityInfo, "BlockChain" )
+                << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {
         }
     }
-    cout << "OK." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "OK." << endl;
     rewind( l );
 }
 
@@ -1084,9 +1100,10 @@ void BlockChain::rewind( unsigned _newHead ) {
                 db::Slice( "best" ), db::Slice( ( char const* ) &m_lastBlockHash, 32 ) );
         } catch ( boost::exception const& ex ) {
             cwarn << "Error writing to extras database: " << boost::diagnostic_information( ex );
-            cout << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
-                 << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
+            cwarn << "Put" << toHex( bytesConstRef( db::Slice( "best" ) ) ) << "=>"
+                  << toHex( bytesConstRef( db::Slice( ( char const* ) &m_lastBlockHash, 32 ) ) );
             cwarn << "Fail writing to extras database. Bombing out.";
+            cerror << DETAILED_ERROR;
             exit( -1 );
         }
         noteCanonChanged();
@@ -1266,6 +1283,7 @@ void BlockChain::garbageCollect( bool _force ) {
             case ExtraBlockHash: {
                 // m_cacheUsage should not contain ExtraBlockHash elements currently.  See the
                 // second noteUsed() in BlockChain.h, which is a no-op.
+                cerror << DETAILED_ERROR;
                 assert( false );
                 break;
             }
@@ -1554,7 +1572,7 @@ bytes BlockChain::headerData( h256 const& _hash ) const {
 
 Block BlockChain::genesisBlock(
     boost::filesystem::path const& _dbPath, dev::h256 const& _genesis ) const {
-    Block ret( *this, _dbPath, _genesis, BaseState::Empty );
+    Block ret( *this, _dbPath, _genesis, skale::BaseState::Empty );
 
     ret.noteChain( *this );
 
@@ -1567,7 +1585,7 @@ Block BlockChain::genesisBlock(
 }
 
 Block BlockChain::genesisBlock( const State& _state ) const {
-    Block ret( *this, m_genesisHash, _state, BaseState::PreExisting );
+    Block ret( *this, m_genesisHash, _state, skale::BaseState::PreExisting );
     ret.m_previousBlock = BlockHeader( m_params.genesisBlock() );
     ret.resetCurrent();
     return ret;

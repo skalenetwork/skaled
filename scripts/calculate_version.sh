@@ -30,6 +30,9 @@ then
 elif [ $BRANCH = "beta" ]
 then
     LABEL="beta"
+elif [ $BRANCH = "syncnode_develop" ]
+then
+    LABEL="sync"
 fi
 
 for (( VERSION_NUMBER=0; ; VERSION_NUMBER++ ))

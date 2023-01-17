@@ -11,6 +11,13 @@ set(sources
     SnapshotManager.cpp
     SnapshotHashAgent.cpp
     UnsafeRegion.cpp
+    TotalStorageUsedPatch.cpp
+    ContractStorageLimitPatch.cpp
+	ContractStorageZeroValuePatch.cpp
+	VerifyDaSigsPatch.cpp
+    AmsterdamFixPatch.cpp
+    RevertableFSPatch.cpp
+    OverlayFS.cpp
 )
 
 set(headers
@@ -24,6 +31,11 @@ set(headers
     SnapshotManager.h
     SnapshotHashAgent.h
     UnsafeRegion.h
+    TotalStorageUsedPatch.h
+    ContractStorageLimitPatch.h
+    AmsterdamFixPatch.h
+    RevertableFSPatch.h
+    OverlayFS.h
 )
 
 add_library(skale ${sources} ${headers})

@@ -18,6 +18,7 @@ target_link_libraries(
     ${EXECUTABLE_NAME}
     PRIVATE
         ethereum
+        historic
         ethashseal
         evm
         web3jsonrpc

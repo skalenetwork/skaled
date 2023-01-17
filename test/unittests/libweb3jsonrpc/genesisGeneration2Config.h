@@ -23,9 +23,11 @@ static std::string const c_genesisGeneration2ConfigString = R"(
         "minimumDifficulty": "0x020000",
         "difficultyBoundDivisor": "0x0800",
         "durationLimit": "0x0d",
-        "blockReward": "0x4563918244F40000"
+        "blockReward": "0x4563918244F40000",
+        "skaleDisableChainIdCheck": true
     },
     "unddos": {
+        "enabled": false,
         "origins": [
             {
                 "origin": [
@@ -37,7 +39,14 @@ static std::string const c_genesisGeneration2ConfigString = R"(
                 "max_calls_per_second": 1000000000,
                 "max_ws_conn": 20000
             }
-        ]
+        ],
+        "global": {
+            "ban_lengthy": 120,
+            "ban_peak": 15,
+            "max_calls_per_minute": 1000000000,
+            "max_calls_per_second": 1000000000,
+            "max_ws_conn": 20000
+        }
     },
     "genesis": {
         "nonce": "0x0000000000000042",

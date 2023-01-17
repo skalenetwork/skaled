@@ -1,4 +1,4 @@
-/*
+﻿/*
     Modifications Copyright (C) 2018 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -58,7 +58,7 @@ public:
 
     bytes executeTest( bool _isFilling );
     int exportTest();
-    static int compareStates( skale::State const& _stateExpect, skale::State const& _statePost,
+    static int compareStates( skale::State const& _stateExpect, State const& _statePost,
         eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
         WhenError _throw = WhenError::Throw );
     bool checkGeneralTestSection( json_spirit::mObject const& _expects,

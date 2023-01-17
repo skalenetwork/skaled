@@ -118,8 +118,10 @@ TransactionBase::TransactionBase(
 
             if ( !_allowInvalid )
                 throw;
-            else
+            else {
                 cwarn << _e.what();
+                cwarn << DETAILED_ERROR;
+            }
         }
     } catch ( ... ) {
         m_type = Type::Invalid;
@@ -129,12 +131,12 @@ TransactionBase::TransactionBase(
 
         if ( !_allowInvalid )
             throw;
+        else
+            cwarn << DETAILED_ERROR;
     }
 }  // ctor
 
 Address const& TransactionBase::safeSender() const noexcept {
-    assert( !isInvalid() );
-
     try {
         return sender();
     } catch ( ... ) {
@@ -218,7 +220,12 @@ void TransactionBase::checkLowS() const {
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }
 
-void TransactionBase::checkChainId( uint64_t chainId ) const {
+void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck ) const {
+    if ( !disableChainIdCheck ) {
+        if ( !m_chainId.has_value() ) {
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
+        }
+    }
     if ( m_chainId.has_value() && m_chainId != chainId )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 }

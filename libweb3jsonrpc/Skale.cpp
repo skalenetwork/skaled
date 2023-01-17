@@ -62,8 +62,6 @@ using namespace dev::eth;
 namespace dev {
 namespace rpc {
 
-const time_t Skale::SNAPSHOT_DOWNLOAD_TIMEOUT = 3600;
-
 std::string exceptionToErrorMessage();
 
 Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
@@ -96,15 +94,15 @@ void Skale::onShutdownInvoke( fn_on_shutdown_t fn ) {
 
 std::string Skale::skale_shutdownInstance() {
     if ( !g_bShutdownViaWeb3Enabled ) {
-        std::cout << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
+        cwarn << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
         return toJS( "disabled" );
     }
     if ( g_bNodeInstanceShouldShutdown ) {
-        std::cout << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
+        cnote << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
         return toJS( "in progress(secondary attempt)" );
     }
     g_bNodeInstanceShouldShutdown = true;
-    std::cout << "\nINSTANCE SHUTDOWN EVENT\n\n";
+    cnote << "\nINSTANCE SHUTDOWN EVENT\n\n";
     for ( auto& fn : g_list_fn_on_shutdown ) {
         if ( !fn )
             continue;
@@ -114,9 +112,11 @@ std::string Skale::skale_shutdownInstance() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            std::cout << "Exception in shutdown event handler: " << s << "\n";
+            cerror << "Exception in shutdown event handler: " << s << "\n";
+            cerror << DETAILED_ERROR;
         } catch ( ... ) {
-            std::cout << "Unknown exception in shutdown event handler\n";
+            cerror << "Unknown exception in shutdown event handler\n";
+            cerror << DETAILED_ERROR;
         }
     }  // for( auto & fn : g_list_fn_on_shutdown )
     g_list_fn_on_shutdown.clear();
@@ -135,7 +135,7 @@ std::string Skale::skale_receiveTransaction( std::string const& _rlp ) {
     }
 }
 
-size_t g_nMaxChunckSize = 1024 * 1024;
+size_t g_nMaxChunckSize = 100 * 1024 * 1024;
 
 //
 // call example:
@@ -155,12 +155,12 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         throw std::runtime_error( "Snapshot for block 0 is absent" );
 
     // exit if too early
-    if ( currentSnapshotBlockNumber >= 0 &&
-         time( NULL ) - currentSnapshotTime <= SNAPSHOT_DOWNLOAD_TIMEOUT ) {
+    if ( currentSnapshotBlockNumber >= 0 ) {
         joResponse["error"] =
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
-        joResponse["timeValid"] = currentSnapshotTime + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] =
+            currentSnapshotTime + m_client.chainParams().sChain.snapshotDownloadTimeout;
         return joResponse;
     }
 
@@ -174,8 +174,14 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     // exit if shared space unavailable
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
-        joResponse["timeValid"] = time( NULL ) + SNAPSHOT_DOWNLOAD_TIMEOUT;
+        joResponse["timeValid"] =
+            time( NULL ) + m_client.chainParams().sChain.snapshotDownloadTimeout;
         return joResponse;
+    }
+
+    if ( snapshotDownloadFragmentMonitorThread != nullptr &&
+         snapshotDownloadFragmentMonitorThread->joinable() ) {
+        snapshotDownloadFragmentMonitorThread->join();
     }
 
     try {
@@ -187,22 +193,36 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     }
     currentSnapshotTime = time( NULL );
     currentSnapshotBlockNumber = blockNumber;
-    // TODO mutex here!!
-    skutils::dispatch::once(
-        "dummy-queue-for-snapshot",
-        [this]() {
+
+    if ( snapshotDownloadFragmentMonitorThread == nullptr ||
+         !snapshotDownloadFragmentMonitorThread->joinable() ) {
+        snapshotDownloadFragmentMonitorThread.reset( new std::thread( [this]() {
+            while ( ( time( NULL ) - lastSnapshotDownloadFragmentTime <
+                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
+                        time( NULL ) - currentSnapshotTime <
+                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
+                    time( NULL ) - currentSnapshotTime <
+                        m_client.chainParams().sChain.snapshotDownloadTimeout ) {
+                sleep( 30 );
+            }
+
+            clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
+                << "Unlocking shared space as timeout was reached.\n";
+
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
                 try {
                     fs::remove( currentSnapshotPath );
+                    clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
+                        << "Deleted snapshot file.\n";
                 } catch ( ... ) {
                 }
                 currentSnapshotBlockNumber = -1;
                 if ( m_shared_space )
                     m_shared_space->unlock();
             }
-        },
-        skutils::dispatch::duration_from_seconds( SNAPSHOT_DOWNLOAD_TIMEOUT ) );
+        } ) );
+    }
 
     //
     //
@@ -254,6 +274,8 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
     const nlohmann::json& joRequest ) {
     std::lock_guard< std::mutex > lock( m_snapshot_mutex );
 
+    lastSnapshotDownloadFragmentTime = time( NULL );
+
     if ( currentSnapshotBlockNumber < 0 ) {
         return std::vector< uint8_t >();
     }
@@ -275,6 +297,9 @@ std::vector< uint8_t > Skale::impl_skale_downloadSnapshotFragmentBinary(
 }
 nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::json& joRequest ) {
     std::lock_guard< std::mutex > lock( m_snapshot_mutex );
+
+    lastSnapshotDownloadFragmentTime = time( NULL );
+    nlohmann::json joResponse = nlohmann::json::object();
 
     if ( currentSnapshotBlockNumber < 0 )
         return "there's no current snapshot, or snapshot expired; please call skale_getSnapshot() "
@@ -300,7 +325,6 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
             << cc::success( "Sent all chunks for " ) << cc::p( currentSnapshotPath.string() )
             << "\n";
 
-    nlohmann::json joResponse = nlohmann::json::object();
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
     return joResponse;
@@ -388,27 +412,31 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         cli.optsSSL_ = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
-            std::cerr << cc::fatal( "FATAL:" )
-                      << cc::error( " Exception while trying to connect to sgx server: " )
-                      << cc::warn( "connection refused" ) << std::endl;
+            clog( VerbosityError, "skale_getSnapshotSignature" )
+                << cc::fatal( "FATAL:" )
+                << cc::error( " Exception while trying to connect to sgx server: " )
+                << cc::warn( "connection refused" ) << std::endl;
         }
 
         skutils::rest::data_t d;
         while ( true ) {
-            std::cout << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
+            clog( VerbosityInfo, "skale_getSnapshotSignature" )
+                << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
             d = cli.call( joCall );
             if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
                 if ( d.ei_.et_ == skutils::http::common_network_exception::error_type::et_unknown ||
                      d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
-                    std::cerr << cc::error( "ERROR:" )
-                              << cc::error( " Exception while trying to connect to sgx server: " )
-                              << cc::error( " error with connection: " )
-                              << cc::info( " retrying... " ) << std::endl;
+                    clog( VerbosityError, "skale_getSnapshotSignature" )
+                        << cc::error( "ERROR:" )
+                        << cc::error( " Exception while trying to connect to sgx server: " )
+                        << cc::error( " error with connection: " ) << cc::info( " retrying... " )
+                        << std::endl;
                 } else {
-                    std::cerr << cc::error( "ERROR:" )
-                              << cc::error( " Exception while trying to connect to sgx server: " )
-                              << cc::error( " error with ssl certificates " )
-                              << cc::error( d.ei_.strError_ ) << std::endl;
+                    clog( VerbosityError, "skale_getSnapshotSignature" )
+                        << cc::error( "ERROR:" )
+                        << cc::error( " Exception while trying to connect to sgx server: " )
+                        << cc::error( " error with ssl certificates " )
+                        << cc::error( d.ei_.strError_ ) << std::endl;
                 }
             } else {
                 break;
@@ -417,15 +445,17 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         if ( d.empty() ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-            std::cout << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
-                      << std::endl;
+            clog( VerbosityError, "skale_getSnapshotSignature" )
+                << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
+                << std::endl;
             throw std::runtime_error( g_strErrMsg );
         }
 
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
         nlohmann::json joResponse =
             ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
-        std::cout << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
+        clog( VerbosityInfo, "skale_getSnapshotSignature" )
+            << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
         if ( joResponse["status"] != 0 ) {
             throw std::runtime_error(
                 "SGX Server call to blsSignMessageHash returned non-zero status" );
@@ -450,6 +480,35 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     }
+}
+
+Json::Value Skale::skale_getDBUsage() {
+    nlohmann::json joDBUsageInfo = nlohmann::json::object();
+
+    nlohmann::json joSkaledDBUsage = nlohmann::json::object();
+
+    auto blocksDbUsage = m_client.getBlocksDbUsage();
+    auto stateDbUsage = m_client.getStateDbUsage();
+
+    joSkaledDBUsage["blocks.db_disk_usage"] = blocksDbUsage.first;
+    joSkaledDBUsage["pieceUsageBytes"] = blocksDbUsage.second;
+    joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
+    joSkaledDBUsage["contractStorageUsed"] = stateDbUsage.second;
+
+    joDBUsageInfo["skaledDBUsage"] = joSkaledDBUsage;
+
+    nlohmann::json joConsensusDBUsage = nlohmann::json::object();
+    auto consensusDbUsage = m_client.skaleHost()->getConsensusDbUsage();
+    for ( const auto& [key, val] : consensusDbUsage ) {
+        joConsensusDBUsage[key] = val;
+    }
+
+    joDBUsageInfo["consensusDBUsage"] = joConsensusDBUsage;
+
+    std::string strResponse = joDBUsageInfo.dump();
+    Json::Value response;
+    Json::Reader().parse( strResponse, response );
+    return response;
 }
 
 std::string Skale::oracle_submitRequest( std::string& request ) {
@@ -514,8 +573,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( !cli.open( strURLWeb3 ) ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
-                std::cout << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "REST failed to connect to server(1)" ) << "\n";
+                clog( VerbosityError, "download snapshot" )
+                    << cc::fatal( "FATAL:" ) << " "
+                    << cc::error( "REST failed to connect to server(1)" ) << "\n";
                 return false;
             }
 
@@ -527,8 +587,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( d.empty() ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "Failed to get latest bockNumber";
-                std::cout << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "Failed to get latest bockNumber" ) << "\n";
+                clog( VerbosityError, "download snapshot" )
+                    << cc::fatal( "FATAL:" ) << " "
+                    << cc::error( "Failed to get latest bockNumber" ) << "\n";
                 return false;
             }
             // TODO catch?
@@ -541,10 +602,12 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
-            std::cout << cc::fatal( "FATAL:" ) << " "
-                      << cc::error( "REST failed to connect to server(2)" ) << "\n";
+            clog( VerbosityError, "download snapshot" )
+                << cc::fatal( "FATAL:" ) << " "
+                << cc::error( "REST failed to connect to server(2)" ) << "\n";
             return false;
         }
+        cli.client_connection_timeout( 30 * 60 * 1000 );  // milliseconds
 
         nlohmann::json joIn = nlohmann::json::object();
         joIn["jsonrpc"] = "2.0";
@@ -556,14 +619,16 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         if ( !d.err_s_.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed: " + d.err_s_;
-            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed: " )
-                      << cc::warn( d.err_s_ ) << "\n";
+            clog( VerbosityError, "download snapshot" )
+                << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed: " )
+                << cc::warn( d.err_s_ ) << "\n";
             return false;
         }
         if ( d.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed";
-            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed" ) << "\n";
+            clog( VerbosityError, "download snapshot" )
+                << cc::fatal( "FATAL:" ) << " " << cc::error( "REST call failed" ) << "\n";
             return false;
         }
         // std::cout << cc::success( "REST call success" ) << "\n" << cc::j( d.s_ ) << "\n";
@@ -575,12 +640,14 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             s += "skale_getSnapshot error: ";
             s += joSnapshotInfo["error"].get< std::string >();
             if ( joSnapshotInfo.count( "timeValid" ) > 0 ) {
+                std::time_t timeStamp = joSnapshotInfo["timeValid"].get< time_t >();
                 s += "; Invalid time to download snapshot. Valid time is ";
-                s += joSnapshotInfo["timeValid"].get< time_t >();
+                s += std::string( std::asctime( std::gmtime( &timeStamp ) ) );
             }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
-            std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
+            clog( VerbosityError, "download snapshot" )
+                << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
             return false;
         }
         size_t sizeOfFile = joSnapshotInfo["dataSize"].get< size_t >();
@@ -614,8 +681,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( d.empty() ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST call failed(fragment downloader)";
-                std::cout << cc::fatal( "FATAL:" ) << " "
-                          << cc::error( "REST call failed(fragment downloader)" ) << "\n";
+                clog( VerbosityError, "download snapshot" )
+                    << cc::fatal( "FATAL:" ) << " "
+                    << cc::error( "REST call failed(fragment downloader)" ) << "\n";
                 return false;
             }
             std::vector< uint8_t > buffer;
@@ -633,7 +701,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                     s += joFragment["error"].get< std::string >();
                     if ( pStrErrorDescription )
                         ( *pStrErrorDescription ) = s;
-                    std::cout << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
+                    clog( VerbosityError, "download snapshot" )
+                        << cc::fatal( "FATAL:" ) << " " << cc::error( s ) << "\n";
                     return false;
                 }
                 // size_t sizeArrived = joFragment["size"];

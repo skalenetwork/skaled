@@ -63,8 +63,13 @@ BlockNumber jsToBlockNumber( std::string const& _js ) {
         return 0;
     else if ( _js == "pending" )
         return PendingBlock;
-    else
-        return ( unsigned ) jsToInt( _js );
+    else {
+        int bn_ = jsToInt( _js );
+        if ( bn_ < 0 )
+            throw std::invalid_argument( "Invalid block number format" );
+        else
+            return bn_;
+    }
 }
 
 }  // namespace eth

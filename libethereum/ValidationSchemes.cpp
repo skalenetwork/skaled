@@ -73,6 +73,7 @@ string const c_skale256ForkBlock = "skale256ForkBlock";
 string const c_skale512ForkBlock = "skale512ForkBlock";
 string const c_skale1024ForkBlock = "skale1024ForkBlock";
 string const c_skaleUnlimitedForkBlock = "skaleUnlimitedForkBlock";
+string const c_skaleDisableChainIdCheck = "skaleDisableChainIdCheck";
 
 string const c_accountStartNonce = "accountStartNonce";
 string const c_maximumExtraDataSize = "maximumExtraDataSize";
@@ -208,6 +209,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "imaCallerAddressSChain", { { js::str_type }, JsonFieldPresence::Optional } },
             { "imaCallerAddressMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
             { "syncNode", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "syncFromCatchup", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     std::string keyShareName = "";
@@ -238,8 +241,12 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "snapshotDownloadTimeout", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "snapshotDownloadInactiveTimeout",
+                { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "contractStoragePatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
@@ -248,6 +255,10 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "revertableFSPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "contractStorageZeroValuePatchTimestamp",
+                { { js::int_type }, JsonFieldPresence::Optional } },
+            { "verifyDaSigsPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
