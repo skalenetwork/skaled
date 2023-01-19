@@ -1497,14 +1497,14 @@ std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
 }
 
 #ifdef HISTORIC_STATE
-uint64_t getHistoricStateDbUsage() const {
+uint64_t Client::getHistoricStateDbUsage() const {
     fs::path historicStateDbPath = m_dbPath / fs::path( "historic_state" ) /
                                    BlockChain::getChainDirName( chainParams() ) /
                                    fs::path( "state" );
     return dev::getDirSize( historicStateDbPath );
 }
 
-uint64_t getHistoricRootsDbUsage() const {
+uint64_t Client::getHistoricRootsDbUsage() const {
     fs::path blocksDbPath = m_dbPath / fs::path( "historic_roots" ) /
                             BlockChain::getChainDirName( chainParams() ) / fs::path( "state" );
     return dev::getDirSize( blocksDbPath );
