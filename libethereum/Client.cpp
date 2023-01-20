@@ -1506,7 +1506,8 @@ uint64_t Client::getHistoricStateDbUsage() const {
 
 uint64_t Client::getHistoricRootsDbUsage() const {
     fs::path historicRootsDbPath = m_dbPath / fs::path( "historic_roots" ) /
-                            BlockChain::getChainDirName( chainParams() ) / fs::path( "state" );
+                                   BlockChain::getChainDirName( chainParams() ) /
+                                   fs::path( "state" );
     return dev::getDirSize( historicRootsDbPath );
 }
 #endif  // HISTORIC_STATE
