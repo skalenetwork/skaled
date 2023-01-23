@@ -108,7 +108,8 @@ public:
 
     /// Checks equality of transactions.
     bool operator==( TransactionBase const& _c ) const {
-        return m_type == _c.m_type &&
+        return m_type == _c.m_type && ( safeSender() == _c.safeSender() ) &&
+               ( safeNonce() == _c.safeNonce() ) &&
                ( m_type == ContractCreation || m_receiveAddress == _c.m_receiveAddress ) &&
                m_value == _c.m_value && m_data == _c.m_data;
     }
@@ -202,6 +203,14 @@ public:
         return m_nonce;
     }
 
+    u256 safeNonce() const {
+        try {
+            return m_nonce;
+        } catch ( ... ) {
+            return u256();
+        }
+    }
+
     /// Sets the nonce to the given value. Clears any signature.
     void setNonce( u256 const& _n ) {
         assert( !isInvalid() );
@@ -220,6 +229,8 @@ public:
         assert( !isInvalid() );
         return m_chainId.has_value();
     }
+
+    uint64_t chainId() const { return m_chainId.has_value() ? m_chainId.get() : 0; }
 
     /// @returns the signature of the transaction (the signature has the sender encoded in it)
     /// @throws TransactionIsUnsigned if signature was not initialized

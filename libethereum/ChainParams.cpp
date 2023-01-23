@@ -101,8 +101,9 @@ ChainParams ChainParams::loadConfig(
         params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
     cp.setBlockReward(
         u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
-    cp.skaleDisableChainIdCheck =
-        params.count( c_skaleDisableChainIdCheck ) ? params[c_skaleDisableChainIdCheck].get_bool() : false;
+    cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
+                                      params[c_skaleDisableChainIdCheck].get_bool() :
+                                      false;
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {
@@ -112,6 +113,9 @@ ChainParams ChainParams::loadConfig(
 
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
+        bool syncNode = false;
+        bool archiveMode = false;
+        bool syncFromCatchup = false;
         std::string ip, ip6, keyShareName, sgxServerUrl;
         size_t t = 0;
         uint64_t port = 0, port6 = 0;
@@ -129,6 +133,18 @@ ChainParams ChainParams::loadConfig(
         }
         try {
             port6 = infoObj.at( "basePort6" ).get_int();
+        } catch ( ... ) {
+        }
+        try {
+            syncNode = infoObj.at( "syncNode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            archiveMode = infoObj.at( "archiveMode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            syncFromCatchup = infoObj.at( "syncFromCatchup" ).get_bool();
         } catch ( ... ) {
         }
 
@@ -170,9 +186,9 @@ ChainParams ChainParams::loadConfig(
                 throw;
         }
 
-        cp.nodeInfo = {nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
             static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys};
+            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
         SChain s{};
@@ -191,6 +207,15 @@ ChainParams ChainParams::loadConfig(
         s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
                                     0;
+
+        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
+                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
+                                        3600;
+
+        s.snapshotDownloadInactiveTimeout =
+            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
+                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
+                3600;
 
         s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
@@ -214,6 +239,24 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
+        if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
+            s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
+
+        s.contractStoragePatchTimestamp =
+            sChainObj.count( "contractStoragePatchTimestamp" ) ?
+                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+                0;
+
+        s.contractStorageZeroValuePatchTimestamp =
+            sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
+                sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
+                0;
+
+        s.verifyDaSigsPatchTimestamp =
+            sChainObj.count( "verifyDaSigsPatchTimestamp" ) ?
+                sChainObj.at( "verifyDaSigsPatchTimestamp" ).get_int64() :
+                0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
@@ -230,7 +273,7 @@ ChainParams ChainParams::loadConfig(
                     u256 id = groupNodeConfObj[0].get_uint64();
                     u256 sChainIndex = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
-                    groupNodes.push_back( {id, sChainIndex, publicKey} );
+                    groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
                 nodeGroup.nodes = groupNodes;
 

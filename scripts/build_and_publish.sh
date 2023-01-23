@@ -19,6 +19,11 @@ then
 fi
 LATEST_IMAGE_NAME=$REPO_NAME:$LABEL-latest
 
+if [[ $VERSION == *"historic" ]]
+then
+    LATEST_IMAGE_NAME=$LATEST_IMAGE_NAME-historic
+fi
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 

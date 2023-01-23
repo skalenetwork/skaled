@@ -34,7 +34,8 @@ string Personal::personal_sendTransaction(
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 
-    if ( Secret s = m_keyManager.secret( t.from, [&]() { return _password; }, false ) ) {
+    if ( Secret s = m_keyManager.secret(
+             t.from, [&]() { return _password; }, false ) ) {
         // return the tx hash
         try {
             return toJS( m_eth.submitTransaction( t, s ) );

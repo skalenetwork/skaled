@@ -112,7 +112,7 @@ void VM::caseCreate() {
     if ( m_OP == Instruction::CREATE2 ) {
         salt = m_SP[3];
         // charge for hashing initCode = GSHA3WORD * ceil(len(init_code) / 32)
-        m_runGas += toInt63( ( u512{initSize} + 31 ) / 32 * uint64_t{VMSchedule::sha3WordGas} );
+        m_runGas += toInt63( ( u512{ initSize } + 31 ) / 32 * uint64_t{ VMSchedule::sha3WordGas } );
     }
 
     updateMem( memNeed( initOff, initSize ) );
@@ -173,7 +173,7 @@ void VM::caseCall() {
         evmc_result result = m_context->host->call( m_context, &msg );
 
         m_returnData.assign( result.output_data, result.output_data + result.output_size );
-        bytesConstRef{&m_returnData}.copyTo( output );
+        bytesConstRef{ &m_returnData }.copyTo( output );
 
         m_SPP[0] = result.status_code == EVMC_SUCCESS ? 1 : 0;
         m_io_gas += result.gas_left;

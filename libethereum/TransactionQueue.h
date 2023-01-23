@@ -231,7 +231,8 @@ public:
         static uint64_t howMany() { return Counter< UnverifiedTransaction >::howMany(); }
     };
 
-private:
+    // private:
+    // HACK for IS-348
     struct PriorityCompare {
         TransactionQueue& queue;
         /// Compare transaction by nonce height and gas price.
@@ -265,6 +266,7 @@ private:
         }
     };
 
+private:
     // Use a set with dynamic comparator for minmax priority queue. The comparator takes into
     // account min account nonce. Updating it does not affect the order.
     using PriorityQueue = boost::container::multiset< VerifiedTransaction, PriorityCompare >;
@@ -327,8 +329,8 @@ private:
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
-    Logger m_logger{createLogger( VerbosityInfo, "tq" )};
-    Logger m_loggerDetail{createLogger( VerbosityDebug, "tq" )};
+    Logger m_logger{ createLogger( VerbosityInfo, "tq" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityDebug, "tq" ) };
 };
 
 template < class... Args >

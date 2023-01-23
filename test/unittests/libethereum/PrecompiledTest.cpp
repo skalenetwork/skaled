@@ -26,6 +26,8 @@
 #include <libethereum/ChainParams.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+#include <libskale/OverlayFS.h>
+#include <libskale/RevertableFSPatch.h>
 
 #include <secp256k1_sha256.h>
 
@@ -1587,6 +1589,8 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         file.write( "a b", 3 );
         file.seekp( static_cast< long >( fileSize ) - 1 );
         file.write( "0", 1 );
+
+        dev::eth::g_overlayFS = std::make_shared< skale::OverlayFS >( true );
     }
 
     ~FilestorageFixture() override {
@@ -1615,6 +1619,8 @@ BOOST_AUTO_TEST_CASE( createFile ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
+
+    dev::eth::g_overlayFS->commit();
     BOOST_REQUIRE( boost::filesystem::exists( path ) );
     BOOST_REQUIRE( boost::filesystem::file_size( path ) == fileSize );
     remove( path.c_str() );
@@ -1629,8 +1635,9 @@ BOOST_AUTO_TEST_CASE( fileWithHashExtension ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
             numberToHex( fileSize ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
-
     BOOST_REQUIRE( res.first == false);
+
+    dev::eth::g_overlayFS->commit();
     BOOST_REQUIRE( !boost::filesystem::exists( path ) );
 }
 
@@ -1642,6 +1649,8 @@ BOOST_AUTO_TEST_CASE( uploadChunk ) {
                         numberToHex( 0 ) + numberToHex( data.length() ) + stringToHex( data ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
+
+    dev::eth::g_overlayFS->commit();
     std::ifstream ifs( pathToFile.string() );
     std::string content;
     std::copy_n( std::istreambuf_iterator< char >( ifs.rdbuf() ), data.length(),
@@ -1699,10 +1708,13 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     bytes inCreate = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                             numberToHex( fileSize ) );
     execCreate( bytesConstRef( inCreate.data(), inCreate.size() ) );
+    dev::eth::g_overlayFS->commit();
+
     PrecompiledExecutor execHash = PrecompiledRegistrar::executor( "calculateFileHash" );
     bytes inHash = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) +
                         numberToHex( fileSize ) );
     execHash( bytesConstRef( inHash.data(), inHash.size() ) );
+    dev::eth::g_overlayFS->commit();
 
     BOOST_REQUIRE( boost::filesystem::exists( pathToFile.string() + "._hash" ) );
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "deleteFile" );
@@ -1710,6 +1722,8 @@ BOOST_AUTO_TEST_CASE( deleteFile ) {
     bytes in = fromHex( hexAddress + numberToHex( fileName.length() ) + stringToHex( fileName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
+
+    dev::eth::g_overlayFS->commit();
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile ) );
     BOOST_REQUIRE( !boost::filesystem::exists( pathToFile.string() + "._hash" ) );
 }
@@ -1724,6 +1738,8 @@ BOOST_AUTO_TEST_CASE( createDirectory ) {
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
     BOOST_REQUIRE( res.first );
+
+    dev::eth::g_overlayFS->commit();
     BOOST_REQUIRE( boost::filesystem::exists( pathToDir ) );
     remove( pathToDir.c_str() );
 }
@@ -1738,7 +1754,10 @@ BOOST_AUTO_TEST_CASE( deleteDirectory ) {
 
     bytes in = fromHex( hexAddress + numberToHex( dirName.length() ) + stringToHex( dirName ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
     BOOST_REQUIRE( res.first );
+
+    dev::eth::g_overlayFS->commit();
     BOOST_REQUIRE( !boost::filesystem::exists( pathToDir ) );
 }
 
@@ -1759,6 +1778,8 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
+
+    dev::eth::g_overlayFS->commit();
     BOOST_REQUIRE( boost::filesystem::exists( fileHashName ) );
 
     std::ifstream resultFile( fileHashName );

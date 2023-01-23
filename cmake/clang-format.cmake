@@ -5,7 +5,7 @@ set(CLANG_FORMAT_CXX_FILE_EXTENSIONS ${CLANG_FORMAT_CXX_FILE_EXTENSIONS} *.cpp *
 file(GLOB_RECURSE ALL_SOURCE_FILES ${CLANG_FORMAT_CXX_FILE_EXTENSIONS})
 
 # Don't include some common build folders
-set(CLANG_FORMAT_EXCLUDE_PATTERNS ${CLANG_FORMAT_EXCLUDE_PATTERNS} "/CMakeFiles/" "cmake" "deps" "/build.*" "skaled_ssl_test*" )
+set(CLANG_FORMAT_EXCLUDE_PATTERNS ${CLANG_FORMAT_EXCLUDE_PATTERNS} "/CMakeFiles/" "cmake" "deps" "/build.*" "skaled_ssl_test*" "/newer_lcov")
 
 # get all project files file
 foreach (EXCLUDE_PATTERN ${CLANG_FORMAT_EXCLUDE_PATTERNS})
@@ -26,10 +26,9 @@ add_custom_target(format-check
     # Use ! to negate the result for correct output
     COMMAND !
     ${CLANG_FORMAT_BIN}
-    -style=file
+    -style=file --Werror
     -output-replacements-xml
     ${ALL_SOURCE_FILES}
-    | grep -q "replacement offset"
 )
 
 # Get the path to this file

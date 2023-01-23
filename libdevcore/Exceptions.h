@@ -76,6 +76,7 @@ DEV_SIMPLE_EXCEPTION( WrongFieldType );
 DEV_SIMPLE_EXCEPTION( InterfaceNotSupported );
 DEV_SIMPLE_EXCEPTION( ExternalFunctionFailure );
 DEV_SIMPLE_EXCEPTION( StorageOverflow );
+DEV_SIMPLE_EXCEPTION( DatabaseCorruption );
 
 // error information to be added to exceptions
 using errinfo_invalidSymbol = boost::error_info< struct tag_invalidSymbol, char >;

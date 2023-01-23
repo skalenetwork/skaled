@@ -17,3 +17,4 @@ jobs:
             1. Build custom container here: https://github.com/skalenetwork/skaled/actions?query=workflow%3A%22Custom+Docker+and+Binary%22
             2. Test it here: https://github.com/skalenetwork/skale-ci-integration_tests/actions?query=workflow%3A%22Skaled+Nightly+Tests%22
             3. Edit VERSION file appropriately to your changes!
+            See https://skalelabs.atlassian.net/wiki/spaces/SKALE/pages/2444951553/Branching+instructions

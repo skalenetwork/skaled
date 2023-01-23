@@ -90,11 +90,11 @@ void origin_entry_setting::load_custom_method_as_multiplier_of_default(
 
 void origin_entry_setting::load_recommended_custom_methods_as_multiplier_of_default(
     double lfMultiplier ) {
-    static const char* g_arr[] = {"web3_clientVersion", "web3_sha3", "net_version", "eth_syncing",
+    static const char* g_arr[] = { "web3_clientVersion", "web3_sha3", "net_version", "eth_syncing",
         "eth_protocolVersion", "eth_gasPrice", "eth_blockNumber", "eth_getBalance",
         "eth_getBlockByHash", "eth_getBlockByNumber", "eth_getTransactionCount",
         "eth_getTransactionReceipt", "eth_getTransactionByHash",
-        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex"};
+        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex" };
     for ( size_t i = 0; i < sizeof( g_arr ) / sizeof( g_arr[0] ); ++i )
         load_custom_method_as_multiplier_of_default( g_arr[i], lfMultiplier );
 }
@@ -292,12 +292,15 @@ bool settings::empty() const {
         return true;
     if ( !origins_.empty() )
         return false;
+    if ( !global_limit_.empty() )
+        return false;
     return true;
 }
 
 void settings::clear() {
     enabled_ = true;
     origins_.clear();
+    global_limit_.clear();
 }
 
 settings& settings::assign( const settings& other ) {
@@ -306,6 +309,7 @@ settings& settings::assign( const settings& other ) {
     clear();
     enabled_ = other.enabled_;
     origins_ = other.origins_;
+    global_limit_ = other.global_limit_;
     return ( *this );
 }
 
@@ -314,6 +318,7 @@ settings& settings::merge( const settings& other ) {
         return ( *this );
     for ( const origin_entry_setting& oe : other.origins_ )
         merge( oe );
+    global_limit_.merge( other.global_limit_ );
     return ( *this );
 }
 settings& settings::merge( const origin_entry_setting& oe ) {
@@ -365,6 +370,12 @@ void settings::fromJSON( const nlohmann::json& jo ) {
             }
         }
     }
+    if ( jo.find( "global" ) != jo.end() ) {
+        const nlohmann::json& joGlobalLimit = jo["global"];
+        origin_entry_setting oe;
+        oe.fromJSON( joGlobalLimit );
+        global_limit_ = oe;
+    }
     bool isEnabled = true;
     if ( jo.find( "enabled" ) != jo.end() ) {
         const nlohmann::json& joEnabled = jo["enabled"];
@@ -382,8 +393,11 @@ void settings::toJSON( nlohmann::json& jo ) const {
         oe.toJSON( joOrigin );
         joOrigins.push_back( joOrigin );
     }
+    nlohmann::json joGlobalLimit = nlohmann::json::object();
+    global_limit_.toJSON( joGlobalLimit );
     jo["enabled"] = enabled_;
     jo["origins"] = joOrigins;
+    jo["global"] = joGlobalLimit;
 }
 
 size_t settings::find_origin_entry_setting_match( const char* origin, size_t idxStart ) const {
@@ -542,7 +556,7 @@ size_t tracked_origin::unload_old_data_by_time_to_past(
     while ( !time_entries_.empty() ) {
         const time_entry& te = time_entries_.front();
         if ( te.ttm_ < ttmUntil ) {
-            time_entries_.pop_front();
+            time_entries_.erase( time_entries_.begin() );  // time_entries_.pop_front();
             ++cntRemoved;
         } else
             break;
@@ -553,24 +567,57 @@ size_t tracked_origin::unload_old_data_by_time_to_past(
 size_t tracked_origin::unload_old_data_by_count( size_t cntEntriesMax ) {
     size_t cntRemoved = 0;
     while ( time_entries_.size() > cntEntriesMax ) {
-        time_entries_.pop_front();
+        time_entries_.erase( time_entries_.begin() );  // time_entries_.pop_front();
         ++cntRemoved;
     }
     return cntRemoved;
 }
 
-size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationToPast ) const {
+size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationToPast,
+    size_t cntOptimizedMaxSteps, size_t cntTargetUnDDoS ) const {
     // if ( durationToPast == duration( 0 ) )
     //    return 0;
+    if ( cntOptimizedMaxSteps == 0 )
+        return 0;
     adjust_now_tick_mark( ttmNow );
     time_tick_mark ttmUntil = ttmNow - durationToPast;
-    size_t cnt = 0;
+    size_t cnt = 0, idxStep;
+    bool bNeedReScaling = false;
+    time_tick_mark ttRescaling = ttmUntil;
     time_entries_t::const_reverse_iterator itWalk = time_entries_.crbegin(),
                                            itEnd = time_entries_.crend();
-    for ( ; itWalk != itEnd; ++itWalk ) {
+    for ( idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
         const time_entry& te = ( *itWalk );
-        if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
+        if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow ) {
             ++cnt;
+            ttRescaling = te.ttm_ - ttmUntil;
+        }
+        if ( cntOptimizedMaxSteps != 0 && cntOptimizedMaxSteps != size_t( -1 ) &&
+             idxStep >= cntOptimizedMaxSteps ) {
+            bNeedReScaling = true;
+            break;
+        }
+    }
+    if ( bNeedReScaling && cnt > 0 ) {
+        bool isNeedRescan = false;
+        if ( ttRescaling > 0 ) {
+            cnt *= durationToPast;
+            cnt /= ttRescaling;
+            if ( cntTargetUnDDoS != 0 && cntTargetUnDDoS != size_t( -1 ) && cnt >= cntTargetUnDDoS )
+                isNeedRescan = true;
+        } else
+            isNeedRescan = true;
+        if ( isNeedRescan ) {
+            // need exact full result
+            cnt = 0;
+            time_entries_.crbegin();
+            itEnd = time_entries_.crend();
+            for ( idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
+                const time_entry& te = ( *itWalk );
+                if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
+                    ++cnt;
+            }
+        }
     }
     return cnt;
 }
@@ -631,6 +678,9 @@ size_t algorithm::unload_old_data_by_time_to_past(
     }
     for ( const std::string& origin : setOriginsTorRemove )
         tracked_origins_.erase( origin );
+    //
+    tracked_global_.unload_old_data_by_time_to_past( ttmNow, durationToPast );
+    //
     return cnt;
 }
 
@@ -642,6 +692,11 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
         return e_high_load_detection_result_t::ehldr_bad_origin;
     adjust_now_tick_mark( ttmNow );
     lock_type lock( mtx_ );
+    //
+    tracked_global_.time_entries_.push_back( time_entry( ttmNow ) );
+    if ( tracked_global_.check_ban( ttmNow ) )
+        return e_high_load_detection_result_t::ehldr_ban;  // still banned
+    //
     unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
     tracked_origins_t::iterator itFind = tracked_origins_.find( origin ),
                                 itEnd = tracked_origins_.end();
@@ -661,16 +716,48 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     //    to.ban_until_ = ttmNow + oe.ban_lengthy_;
     //    return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
     //}
-    size_t cntPast = to.count_to_past( ttmNow, durationToPast );  // 60
-    if ( cntPast > oe.max_calls_per_minute( strMethod ) ) {
-        to.ban_until_ = ttmNow + oe.ban_lengthy_;
-        return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
+    size_t nMaxCallsPerTimeUnit = oe.max_calls_per_minute( strMethod );
+    if ( nMaxCallsPerTimeUnit > 0 ) {
+        size_t cntPast = to.count_to_past(
+            ttmNow, durationToPast, cntOptimizedMaxSteps4cm_, nMaxCallsPerTimeUnit );
+        if ( cntPast > nMaxCallsPerTimeUnit ) {
+            to.ban_until_ = ttmNow + oe.ban_lengthy_;
+            return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per
+                                                                   // second
+        }
     }
-    cntPast = to.count_to_past( ttmNow, 1 );
-    if ( cntPast > oe.max_calls_per_second( strMethod ) ) {
-        to.ban_until_ = ttmNow + oe.ban_peak_;
-        return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per second
+    nMaxCallsPerTimeUnit = oe.max_calls_per_second( strMethod );
+    if ( nMaxCallsPerTimeUnit > 0 ) {
+        size_t cntPast =
+            to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_, nMaxCallsPerTimeUnit );
+        if ( cntPast > nMaxCallsPerTimeUnit ) {
+            to.ban_until_ = ttmNow + oe.ban_peak_;
+            return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+        }
     }
+    //
+    //
+    nMaxCallsPerTimeUnit = settings_.global_limit_.max_calls_per_minute( strMethod );
+    if ( nMaxCallsPerTimeUnit > 0 ) {
+        size_t cntPast = tracked_global_.count_to_past(
+            ttmNow, durationToPast, cntOptimizedMaxSteps4gm_, nMaxCallsPerTimeUnit );
+        if ( cntPast > nMaxCallsPerTimeUnit ) {
+            tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_lengthy_;
+            return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per
+                                                                   // second
+        }
+    }
+    nMaxCallsPerTimeUnit = settings_.global_limit_.max_calls_per_second( strMethod );
+    if ( nMaxCallsPerTimeUnit > 0 ) {
+        size_t cntPast = tracked_global_.count_to_past(
+            ttmNow, 1, cntOptimizedMaxSteps4gs_, nMaxCallsPerTimeUnit );
+        if ( cntPast > nMaxCallsPerTimeUnit ) {
+            tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_peak_;
+            return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+        }
+    }
+    //
+    //
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 
@@ -680,6 +767,8 @@ bool algorithm::is_ban_ws_conn_for_origin( const char* origin ) const {
     if ( origin == nullptr || origin[0] == '\0' )
         return true;
     lock_type lock( mtx_ );
+    if ( ws_conn_count_global_ > settings_.global_limit_.max_ws_conn_ )
+        return true;
     map_ws_conn_counts_t::const_iterator itFind = map_ws_conn_counts_.find( origin ),
                                          itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd )
@@ -696,6 +785,9 @@ e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const cha
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
     lock_type lock( mtx_ );
+    ++ws_conn_count_global_;
+    if ( ws_conn_count_global_ > settings_.global_limit_.max_ws_conn_ )
+        return e_high_load_detection_result_t::ehldr_peak;
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd ) {
@@ -716,6 +808,8 @@ bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
         return false;
     }
     lock_type lock( mtx_ );
+    if ( ws_conn_count_global_ > 0 )
+        --ws_conn_count_global_;
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd ) {
@@ -776,8 +870,10 @@ nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast 
     for ( const tracked_origin& to : tracked_origins_ ) {
         nlohmann::json joOriginCallInfo = nlohmann::json::object();
         bool isBan = ( to.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
-        joOriginCallInfo["cps"] = to.count_to_past( ttmNow, 1 );
-        joOriginCallInfo["cpm"] = to.count_to_past( ttmNow, durationToPast );
+        joOriginCallInfo["cps"] =
+            to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_, size_t( -1 ) );
+        joOriginCallInfo["cpm"] =
+            to.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4cm_, size_t( -1 ) );
         joOriginCallInfo["ban"] = isBan;
         joCalls[to.origin_] = joOriginCallInfo;
         if ( isBan )
@@ -803,6 +899,15 @@ nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast 
     joStats["counts"] = joCounts;
     joStats["calls"] = joCalls;
     joStats["ws_conns"] = joWsConns;
+    //
+    joStats["global_ws_conns_count"] = ws_conn_count_global_;
+    joStats["global_cps"] =
+        tracked_global_.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4gs_, size_t( -1 ) );
+    joStats["global_cpm"] = tracked_global_.count_to_past(
+        ttmNow, durationToPast, cntOptimizedMaxSteps4gm_, size_t( -1 ) );
+    bool isGlobalBan = ( tracked_global_.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
+    joStats["global_ban"] = isGlobalBan;
+    //
     return joStats;
 }
 

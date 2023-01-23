@@ -387,13 +387,13 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     }
 
     output["blocks"] = blArray;
-    output["postState"] = fillJsonWithState( testChain.topBlock().state().startRead() );
+    output["postState"] = fillJsonWithState( testChain.topBlock().state().createStateReadOnlyCopy() );
     output["lastblockhash"] = toHexPrefixed( testChain.topBlock().blockHeader().hash( WithSeal ) );
 
     // make all values hex in pre section
     State prestate = State();
     ImportTest::importState( _input.at( "pre" ).get_obj(), prestate );
-    output["pre"] = fillJsonWithState( prestate.startRead() );
+    output["pre"] = fillJsonWithState( prestate.createStateReadOnlyCopy() );
 
     for ( auto iterator = chainMap.begin(); iterator != chainMap.end(); iterator++ )
         delete iterator->second;
@@ -531,8 +531,8 @@ void testBCTest( json_spirit::mObject const& _o ) {
             " expected: " + _o.at( "lastblockhash" ).get_str() );
 
     // Check final state (just to be sure)
-    //    BOOST_CHECK_MESSAGE(toString(testChain.topBlock().state().rootHash()) ==
-    //                            toString(blockchain.topBlock().state().rootHash()),
+    //    BOOST_CHECK_MESSAGE(toString(testChain.topBlock().state().globalRoot()) ==
+    //                            toString(blockchain.topBlock().state().globalRoot()),
     //        testName + "State root in chain from RLP blocks != State root in chain from Field
     //        blocks!");
 

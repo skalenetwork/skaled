@@ -257,7 +257,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 }
 
 void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _miningReward ) {
-    State pre = _pre.startRead(), post = _post.startRead();
+    State pre = _pre.createStateReadOnlyCopy(), post = _post.createStateReadOnlyCopy();
     bigint preBalance = 0;
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
@@ -272,13 +272,13 @@ void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _mi
             TestOutputHelper::get().testName() );
 }
 
-std::tuple< State, ImportTest::ExecOutput, ChangeLog > ImportTest::executeTransaction(
+std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::executeTransaction(
     eth::Network const _sealEngineNetwork, eth::EnvInfo const& _env, State const& _preState,
     eth::Transaction const& _tr ) {
     assert( m_envInfo );
 
     bool removeEmptyAccounts = false;
-    State initialState = _preState.startWrite();
+    State initialState = _preState.createStateModifyCopy();
     initialState.addBalance( _env.author(), 0 );  // imitate mining reward
     ExecOutput out( std::make_pair(
         eth::ExecutionResult(), eth::TransactionReceipt( h256(), u256(), eth::LogEntries() ) ) );
@@ -298,17 +298,17 @@ std::tuple< State, ImportTest::ExecOutput, ChangeLog > ImportTest::executeTransa
 
         // the changeLog might be broken under --jsontrace, because it uses intialState.execute with
         // Permanence::Committed rather than Permanence::Uncommitted
-        ChangeLog changeLog = initialState.changeLog();
+        skale::ChangeLog changeLog = initialState.changeLog();
         ImportTest::checkBalance( _preState, initialState );
 
         // Finalize the state manually (clear logs)
-        initialState.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                                   State::CommitBehaviour::KeepEmptyAccounts );
+        initialState.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                                   dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
         if ( !removeEmptyAccounts ) {
             // Touch here bacuse coinbase might be suicided above
             initialState.addBalance( _env.author(), 0 );  // imitate mining reward
-            initialState.commit( State::CommitBehaviour::KeepEmptyAccounts );
+            initialState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
         return std::make_tuple( initialState, out, changeLog );
     } catch ( Exception const& _e ) {
@@ -317,8 +317,8 @@ std::tuple< State, ImportTest::ExecOutput, ChangeLog > ImportTest::executeTransa
         cnote << "state execution exception: " << _e.what();
     }
 
-    initialState.commit( removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-                                               State::CommitBehaviour::KeepEmptyAccounts );
+    initialState.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                               dev::eth::CommitBehaviour::KeepEmptyAccounts );
     return std::make_tuple( initialState, out, initialState.changeLog() );
 }
 
@@ -400,7 +400,7 @@ void ImportTest::importState(
         validation::validateAccountMaskObj( accountMaskJson );
     }
     std::string jsondata = json_spirit::write_string( ( json_spirit::mValue ) o, false );
-    _state.startWrite().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
+    _state.createStateModifyCopy().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
 }
 
 void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
@@ -515,7 +515,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
 
 int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    State stateExpect = _stateExpect.startRead(), statePost = _statePost.startRead();
+    State stateExpect = _stateExpect.createStateReadOnlyCopy(), statePost = _statePost.createStateReadOnlyCopy();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \
@@ -741,12 +741,12 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                 } else if ( _expects.count( "hash" ) ) {
                     // checking filled state test against client
                     //                    BOOST_CHECK_MESSAGE(_expects.at("hash").get_str() ==
-                    //                                            toHexPrefixed(tr.postState.rootHash().asBytes()),
+                    //                                            toHexPrefixed(tr.postState.globalRoot().asBytes()),
                     //                        TestOutputHelper::get().testName() + " on " +
                     //                            test::netIdToString(tr.netId) +
                     //                            ": Expected another postState hash! expected: " +
                     //                            _expects.at("hash").get_str() + " actual: " +
-                    //                            toHexPrefixed(tr.postState.rootHash().asBytes()) +
+                    //                            toHexPrefixed(tr.postState.globalRoot().asBytes()) +
                     //                            " in " + trInfo);
                     if ( _expects.count( "logs" ) )
                         BOOST_CHECK_MESSAGE(

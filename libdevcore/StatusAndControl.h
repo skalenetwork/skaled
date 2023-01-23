@@ -20,9 +20,12 @@ public:
     enum ExitState { ClearDataDir, StartAgain, StartFromSnapshot, ExitTimeReached };
     enum ConsensusRunningState { None, WaitingForPeers, Bootstrapping, Operation };
 
-    std::array< std::string, 6 > subsystemString = { "SnapshotDownloader", "Blockchain", "Rpc", "Consensus", "Snapshotting", "WaitingForTimestamp" };
-    std::array< std::string, 4 > exitStateString = { "ClearDataDir", "StartAgain", "StartFromSnapshot", "ExitTimeReached" };
-    std::array< std::string, 4 > consensusRunningStateString = { "None", "WaitingForPeers", "Bootstrapping", "Operation" };
+    std::array< std::string, 6 > subsystemString = { "SnapshotDownloader", "Blockchain", "Rpc",
+        "Consensus", "Snapshotting", "WaitingForTimestamp" };
+    std::array< std::string, 4 > exitStateString = { "ClearDataDir", "StartAgain",
+        "StartFromSnapshot", "ExitTimeReached" };
+    std::array< std::string, 4 > consensusRunningStateString = { "None", "WaitingForPeers",
+        "Bootstrapping", "Operation" };
 
     virtual ~StatusAndControl();
 
