@@ -154,14 +154,15 @@ dev::eth::LogFilter toLogFilter( const nlohmann::json& jo ) {
     return filter;
 }
 
-nlohmann::json nljsBlockNumber( dev::eth::BlockNumber bn ) {
-    if ( bn == dev::eth::LatestBlock )
+nlohmann::json nljsBlockNumber( dev::eth::BlockNumber uBlockNumber ) {
+    if ( uBlockNumber == dev::eth::LatestBlock )
         return nlohmann::json( "latest" );
-    if ( bn == 0 )
+    if ( uBlockNumber == 0 )
         return nlohmann::json( "earliest" );
-    if ( bn == dev::eth::PendingBlock )
+    if ( uBlockNumber == dev::eth::PendingBlock )
         return nlohmann::json( "pending" );
-    return nlohmann::json( unsigned( bn ) );
+    // return nlohmann::json( unsigned( uBlockNumber ) );
+    return dev::toJS( uBlockNumber );
 }
 
 nlohmann::json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > const& eb,
