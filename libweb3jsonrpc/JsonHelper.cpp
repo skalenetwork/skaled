@@ -405,7 +405,7 @@ Json::Value toJson(
         Json::Value currentBlock( Json::objectValue );
         LocalisedLogEntry entry = entries[0];
         if ( entry.mined ) {
-            currentBlock["blockNumber"] = entry.blockNumber;
+            currentBlock["blockNumber"] = toJS( entry.blockNumber );
             currentBlock["blockHash"] = toJS( entry.blockHash );
             currentBlock["type"] = "mined";
         } else
