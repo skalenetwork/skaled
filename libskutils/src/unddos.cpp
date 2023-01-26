@@ -375,7 +375,8 @@ void settings::fromJSON( const nlohmann::json& jo ) {
         origin_entry_setting oe;
         oe.fromJSON( joGlobalLimit );
         global_limit_ = oe;
-    }
+    } else
+        global_limit_.load_unlim_for_any_origin();
     bool isEnabled = true;
     if ( jo.find( "enabled" ) != jo.end() ) {
         const nlohmann::json& joEnabled = jo["enabled"];
