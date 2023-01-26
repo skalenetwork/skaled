@@ -109,7 +109,7 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
       - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
         run: |
-          ccache --max-size=20G
+          ccache --max-size=15G
           ccache -z
           ccache --show-stats
       - name: Build dependencies
