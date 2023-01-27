@@ -357,7 +357,9 @@ bool server::start() {
 
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
-    options.idleTimeout = std::chrono::milliseconds( 60000 );
+    options.idleTimeout =
+        std::chrono::milliseconds( 1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
+        );
     // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`
     // here
     options.enableContentCompression = false;

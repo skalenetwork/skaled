@@ -225,7 +225,8 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }
 
 unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
-    skutils::rest::client cli;
+    skutils::rest::client cli( 1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
+    );
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
     }
