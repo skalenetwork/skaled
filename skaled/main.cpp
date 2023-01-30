@@ -225,8 +225,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }
 
 unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
-    skutils::rest::client cli( 1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
-    );
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
     }
@@ -631,6 +630,9 @@ int main( int argc, char** argv ) try {
         "Run informational web3 WSS(IPv6) server(s) on specified port(and next set of ports if "
         "--info-acceptors > 1)" );
 
+    addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timiout>" ),
+        "Idle wait timeout for JSON RPC calls in milliseconds" );
+
     std::string strPerformanceWarningDurationOptionDescription =
         "Specifies time margin in floating point format, in seconds, for displaying performance "
         "warning messages in log output if JSON RPC call processing exeeds it, default is " +
@@ -836,6 +838,9 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
+    if ( vm.count( "network-idle-timeout" ) )
+        skutils::rest::g_nClientConnectionTimeoutMS = vm["network-idle-timeout"].as< long >();
+
     if ( vm.count( "test-enable-crash-at" ) ) {
         std::string crash_at = vm["test-enable-crash-at"].as< string >();
         batched_io::test_enable_crash_at( crash_at );
@@ -916,7 +921,7 @@ int main( int argc, char** argv ) try {
                            cc::p( strPathKey ) + "\n" );
         }
         try {
-            skutils::rest::client cli;
+            skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
             cli.optsSSL_ = optsSSL;
             cli.open( u );
             const bool isAutoGenJsonID = true;

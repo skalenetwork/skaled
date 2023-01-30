@@ -408,8 +408,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
         ssl_options.client_key = sgx_cert_path + sgx_key_filename;
 
-        skutils::rest::client cli( 1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
-        );
+        skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
         cli.optsSSL_ = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
@@ -570,9 +569,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         //
         if ( block_number == unsigned( -1 ) ) {
             // this means "latest"
-            skutils::rest::client cli(
-                1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
-            );
+            skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
             if ( !cli.open( strURLWeb3 ) ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
@@ -601,8 +598,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         }
         //
         //
-        skutils::rest::client cli( 1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
-        );
+        skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST failed to connect to server(2)";

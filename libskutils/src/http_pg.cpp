@@ -5,6 +5,7 @@
 
 #include <skutils/console_colors.h>
 #include <skutils/multithreading.h>
+#include <skutils/rest_call.h>
 
 #include <glog/logging.h>
 
@@ -357,9 +358,7 @@ bool server::start() {
 
     proxygen::HTTPServerOptions options;
     options.threads = static_cast< size_t >( threads_ );
-    options.idleTimeout =
-        std::chrono::milliseconds( 1000 * 60 * 30  // 30 minutes in milliseconds, connect timeout
-        );
+    options.idleTimeout = std::chrono::milliseconds( skutils::rest::g_nClientConnectionTimeoutMS );
     // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`
     // here
     options.enableContentCompression = false;
