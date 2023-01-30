@@ -630,7 +630,7 @@ int main( int argc, char** argv ) try {
         "Run informational web3 WSS(IPv6) server(s) on specified port(and next set of ports if "
         "--info-acceptors > 1)" );
 
-    addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timiout>" ),
+    addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
         "Idle wait timeout for JSON RPC calls in milliseconds" );
 
     std::string strPerformanceWarningDurationOptionDescription =
