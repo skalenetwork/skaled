@@ -211,7 +211,7 @@ void ZmqBroadcaster::startService() {
                 try {
                     m_skaleHost.receiveTransaction( str );
                 } catch ( const std::exception& ex ) {
-                    clog( dev::VerbosityInfo, "skale-host" )
+                    clog( dev::VerbosityDebug, "skale-host" )
                         << "Received bad transaction through broadcast: " << ex.what();
                 }
 
