@@ -121,7 +121,6 @@ jobs:
           strip skaled/skaled
           cd ..
       - name: Configure historic state build
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           export CC=gcc-9
           export CXX=g++-9
@@ -134,7 +133,6 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build historic state version
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           export CC=gcc-9
           export CXX=g++-9
@@ -147,7 +145,6 @@ jobs:
           strip skaled/skaled
           cd ..
       - name: Build and publish container
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
@@ -160,18 +157,16 @@ jobs:
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
       - name: Create Release
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         id: create_release
         uses: actions/create-release@latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.VERSION }}
           release_name: ${{ env.VERSION }}
           draft: false
           prerelease: true
       - name: Upload skaled binary to Release
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
         uses: actions/upload-release-asset@latest
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -181,7 +176,6 @@ jobs:
           asset_name: skaled
           asset_content_type: application/octet-stream
       - name: Build and publish historic-state container
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')
         run: |
           cp build-historic/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${GITHUB_REF##*/}
@@ -193,7 +187,6 @@ jobs:
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
       - name: Upload historic-state skaled binary to Release
-        if: contains(github.ref, 'develop') || contains(github.ref, 'beta') || contains(github.ref, 'master') || contains(github.ref, 'stable')      
         uses: actions/upload-release-asset@latest
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
