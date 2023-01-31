@@ -1195,14 +1195,12 @@ bool stat_refresh_now( const skutils::url& u, const dev::u256& addressFrom,
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " Failed to download " ) + cc::note( "SKALE NETWORK" ) +
                    cc::error( " browsing data: " ) + cc::warn( strErrorDescription ) );
-        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         std::string strErrorDescription = "unknown exception";
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " Failed to download " ) + cc::note( "SKALE NETWORK" ) +
                    cc::error( " browsing data: " ) + cc::warn( strErrorDescription ) );
-        cerror << DETAILED_ERROR;
     }
     std::lock_guard lock( g_mtx );
     return false;
@@ -1391,7 +1389,6 @@ bool refreshing_start( const std::string& configPath, fn_stop_indication_t fnSto
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " failed to get \"SchainsInternal\" contract address" ) );
-        cerror << DETAILED_ERROR;
         return false;
     }
     try {
@@ -1401,7 +1398,6 @@ bool refreshing_start( const std::string& configPath, fn_stop_indication_t fnSto
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " failed to get \"Nodes\" contract address" ) );
-        cerror << DETAILED_ERROR;
         return false;
     }
     if ( strAddressFrom.empty() ) {
@@ -1441,7 +1437,6 @@ bool refreshing_start( const std::string& configPath, fn_stop_indication_t fnSto
     } catch ( ... ) {
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                 cc::error( " Main Net URL is unknown" ) );
-        cerror << DETAILED_ERROR;
         return false;
     }
     //
@@ -1472,7 +1467,6 @@ bool refreshing_start( const std::string& configPath, fn_stop_indication_t fnSto
         clog( dev::VerbosityError, "snb" )
             << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                    cc::error( " failed to construct needed addresses" ) );
-        cerror << DETAILED_ERROR;
         return false;
     }
     try {
@@ -1492,13 +1486,11 @@ bool refreshing_start( const std::string& configPath, fn_stop_indication_t fnSto
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                 cc::error( " refreshing(initial) exception: " ) +
                                                 cc::warn( strErrorDescription ) );
-        cerror << DETAILED_ERROR;
     } catch ( ... ) {
         std::string strErrorDescription = "unknown exception";
         clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                 cc::error( " refreshing(initial) exception: " ) +
                                                 cc::warn( strErrorDescription ) );
-        cerror << DETAILED_ERROR;
     }
     clog( dev::VerbosityTrace, "snb" )
         << ( cc::info( "SKALE NETWORK BROWSER" ) +
@@ -1555,13 +1547,11 @@ vec_s_chains_t refreshing_do_now() {
             clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                     cc::error( " refreshing(now) exception: " ) +
                                                     cc::warn( strErrorDescription ) );
-            cerror << DETAILED_ERROR;
         } catch ( ... ) {
             std::string strErrorDescription = "unknown exception";
             clog( dev::VerbosityError, "snb" ) << ( cc::fatal( "SKALE NETWORK BROWSER FAILURE:" ) +
                                                     cc::error( " refreshing(now) exception: " ) +
                                                     cc::warn( strErrorDescription ) );
-            cerror << DETAILED_ERROR;
         }
     } else {
         clog( dev::VerbosityTrace, "snb" )

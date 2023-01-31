@@ -873,7 +873,6 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
-    cerror << DETAILED_ERROR;
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,

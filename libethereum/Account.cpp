@@ -103,13 +103,11 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
                     } else {
                         cerror << "Error parsing access restrictions for precompiled " << n
                                << "! It should contain strings!\n";
-                        cerror << DETAILED_ERROR;
                     }
                 }  // for
             } else {
                 cerror << "Error parsing access restrictions for precompiled " << n
                        << "! It should be array!\n";
-                cerror << DETAILED_ERROR;
             }
         }  // restrictAccessIt
 
@@ -174,13 +172,11 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                     if ( codeStr.find( "0x" ) != 0 && !codeStr.empty() ) {
                         cerror << "Error importing code of account " << a
                                << "! Code needs to be hex bytecode prefixed by \"0x\".";
-                        cerror << DETAILED_ERROR;
                     } else
                         ret[a].setCode( fromHex( codeStr ), 0 );
                 } else {
                     cerror << "Error importing code of account " << a
                            << "! Code field needs to be a string";
-                    cerror << DETAILED_ERROR;
                 }
             }
 
@@ -196,13 +192,11 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                     if ( code.empty() ) {
                         cerror << "Error importing code of account " << a << "! Code file "
                                << codePath << " empty or does not exist.\n";
-                        cerror << DETAILED_ERROR;
                     }
                     ret[a].setCode( std::move( code ), 0 );
                 } else {
                     cerror << "Error importing code of account " << a
                            << "! Code file path must be a string\n";
-                    cerror << DETAILED_ERROR;
                 }
             }
 

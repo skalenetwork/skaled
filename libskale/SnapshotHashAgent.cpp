@@ -88,7 +88,6 @@ size_t SnapshotHashAgent::verifyAllData() const {
                     this->signatures_[i], this->public_keys_[i] );
             } catch ( std::exception& ex ) {
                 cerror << ex.what();
-                cerror << DETAILED_ERROR;
             }
 
             verified += is_verified;
@@ -157,12 +156,10 @@ bool SnapshotHashAgent::voteForHash() {
                 cerror << cc::error(
                               "Exception while recovering common signature from other skaleds: " )
                        << cc::warn( ex.what() ) << std::endl;
-                cerror << DETAILED_ERROR;
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
                 cerror << cc::error(
                               "Exception while recovering common signature from other skaleds: " )
                        << cc::warn( ex.what() ) << std::endl;
-                cerror << DETAILED_ERROR;
             }
 
             bool is_verified = false;
@@ -176,7 +173,6 @@ bool SnapshotHashAgent::voteForHash() {
                 cerror << cc::error(
                               "Exception while verifying common signature from other skaleds: " )
                        << cc::warn( ex.what() ) << std::endl;
-                cerror << DETAILED_ERROR;
             }
 
             if ( !is_verified ) {
@@ -207,7 +203,6 @@ bool SnapshotHashAgent::voteForHash() {
                         << cc::error(
                                "Exception while verifying common signature from other skaleds: " )
                         << cc::warn( ex.what() ) << std::endl;
-                    cerror << DETAILED_ERROR;
                 }
 
                 if ( !is_verified ) {
@@ -215,14 +210,12 @@ bool SnapshotHashAgent::voteForHash() {
                                   "Common BLS signature wasn't verified, snapshot will not be "
                                   "downloaded. Try to backup node manually using skale-node-cli." )
                            << std::endl;
-                    cerror << DETAILED_ERROR;
                     return false;
                 } else {
                     cnote << cc::info(
                                  "Common BLS signature was verified with common public key "
                                  "from config." )
                           << std::endl;
-                    cerror << DETAILED_ERROR;
                     this->common_public_key_ = common_public_key_from_config;
                 }
             }
@@ -277,7 +270,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     cerror << "WARNING "
                            << "Error while trying to get snapshot signature from "
                            << this->chain_params_.sChain.nodes[i].ip << " : " << ex.what();
-                    cerror << DETAILED_ERROR;
                     delete jsonRpcClient;
                     return;
                 }
@@ -288,7 +280,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                            << " Signature from " + std::to_string( i ) +
                                   "-th node was not received during "
                                   "getNodesToDownloadSnapshotFrom ";
-                    cerror << DETAILED_ERROR;
                     delete jsonRpcClient;
                 } else {
                     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
@@ -331,7 +322,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     << cc::error(
                            "Exception while collecting snapshot signatures from other skaleds: " )
                     << cc::warn( ex.what() ) << std::endl;
-                cerror << DETAILED_ERROR;
             }
         } ) );
     }
@@ -377,11 +367,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         } catch ( SnapshotHashAgentException& ex ) {
             cerror << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
                    << cc::warn( ex.what() ) << std::endl;
-            cerror << DETAILED_ERROR;
         } catch ( std::exception& ex ) {
             cerror << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
                    << cc::warn( ex.what() ) << std::endl;
-            cerror << DETAILED_ERROR;
         }  // catch
 
     if ( !result ) {
