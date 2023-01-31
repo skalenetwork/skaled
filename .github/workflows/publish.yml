@@ -153,6 +153,8 @@ jobs:
           export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
           echo "::set-env name=VERSION::$VERSION"
           echo "Version $VERSION"
+          ( test $BRANCH = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
+          echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
           export RELEASE=true
           echo "::set-env name=RELEASE::$RELEASE"
           bash ./scripts/build_and_publish.sh
@@ -165,7 +167,7 @@ jobs:
           tag_name: ${{ env.VERSION }}
           release_name: ${{ env.VERSION }}
           draft: false
-          prerelease: true
+          prerelease: ${{ env.PRERELEASE }}
       - name: Upload skaled binary to Release
         uses: actions/upload-release-asset@latest
         env: 
