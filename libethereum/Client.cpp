@@ -613,11 +613,14 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
-    LOG( m_loggerDetail ) << "Total unsafe time so far = "
-                          << std::chrono::duration_cast< std::chrono::seconds >(
-                                 UnsafeRegion::getTotalTime() )
-                                 .count()
-                          << " seconds";
+    if ( !UnsafeRegion::isActive() ) {
+        LOG( m_loggerDetail ) << "Total unsafe time so far = "
+                              << std::chrono::duration_cast< std::chrono::seconds >(
+                                     UnsafeRegion::getTotalTime() )
+                                     .count()
+                              << " seconds";
+    } else
+        cwarn << "Warning: UnsafeRegion still active!";
 
     if ( bIsPartial )
         cntSucceeded += cntPassed;
