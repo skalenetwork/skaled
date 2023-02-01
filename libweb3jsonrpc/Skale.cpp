@@ -113,10 +113,8 @@ std::string Skale::skale_shutdownInstance() {
             if ( s.empty() )
                 s = "no description";
             cerror << "Exception in shutdown event handler: " << s << "\n";
-            cerror << DETAILED_ERROR;
         } catch ( ... ) {
             cerror << "Unknown exception in shutdown event handler\n";
-            cerror << DETAILED_ERROR;
         }
     }  // for( auto & fn : g_list_fn_on_shutdown )
     g_list_fn_on_shutdown.clear();
@@ -408,7 +406,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
         ssl_options.client_key = sgx_cert_path + sgx_key_filename;
 
-        skutils::rest::client cli;
+        skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
         cli.optsSSL_ = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
@@ -569,7 +567,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         //
         if ( block_number == unsigned( -1 ) ) {
             // this means "latest"
-            skutils::rest::client cli;
+            skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
             if ( !cli.open( strURLWeb3 ) ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
@@ -598,7 +596,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         }
         //
         //
-        skutils::rest::client cli;
+        skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
@@ -607,7 +605,6 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 << cc::error( "REST failed to connect to server(2)" ) << "\n";
             return false;
         }
-        cli.client_connection_timeout( 30 * 60 * 1000 );  // milliseconds
 
         nlohmann::json joIn = nlohmann::json::object();
         joIn["jsonrpc"] = "2.0";
