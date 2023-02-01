@@ -113,10 +113,8 @@ std::string Skale::skale_shutdownInstance() {
             if ( s.empty() )
                 s = "no description";
             cerror << "Exception in shutdown event handler: " << s << "\n";
-            cerror << DETAILED_ERROR;
         } catch ( ... ) {
             cerror << "Unknown exception in shutdown event handler\n";
-            cerror << DETAILED_ERROR;
         }
     }  // for( auto & fn : g_list_fn_on_shutdown )
     g_list_fn_on_shutdown.clear();
