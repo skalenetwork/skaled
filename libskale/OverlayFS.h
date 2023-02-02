@@ -90,15 +90,14 @@ private:
     const _byte_* data;
 };
 
-class WriteHashFileOp : public BaseOp {
+class calculateFileHashOp : public BaseOp {
 public:
-    WriteHashFileOp( const std::string& _path, const dev::h256 _commonFileHash )
-        : path( _path ), commonFileHash( _commonFileHash ) {}
+    calculateFileHashOp( const std::string& _path )
+        : path( _path ) {}
     bool execute() override;
 
 private:
     const std::string path;
-    const dev::h256 commonFileHash;
 };
 
 class OverlayFS {
@@ -125,7 +124,7 @@ public:
         const _byte_* data );
     void deleteFile( const std::string& filePath );
     void deleteDirectory( const std::string& path );
-    void writeHashFile( const std::string& filePath, const dev::h256& commonFileHash );
+    void calculateFileHash( const std::string& filePath );
 
 private:
     std::vector< std::shared_ptr< BaseOp > > m_cache;  // vector of filestorage operations for

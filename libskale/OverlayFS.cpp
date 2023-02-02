@@ -125,7 +125,7 @@ bool WriteChunkOp::execute() {
     return false;
 }
 
-bool WriteHashFileOp::execute() {
+bool calculateFileHashOp::execute() {
     try {
         std::ifstream file( this->path );
         file.seekg( 0, std::ios::end );
@@ -154,7 +154,7 @@ bool WriteHashFileOp::execute() {
         std::fstream fileHash;
         fileHash.open( fileHashName, std::ios::binary | std::ios::out );
         fileHash.clear();
-        fileHash << this->commonFileHash;
+        fileHash << commonFileHash;
         fileHash.close();
         return true;
     } catch ( std::exception& ex ) {
@@ -209,8 +209,8 @@ void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
         operation->execute();
 }
 
-void OverlayFS::writeHashFile( const std::string& filePath, const dev::h256& commonFileHash ) {
-    auto operation = std::make_shared< WriteHashFileOp >( filePath, commonFileHash );
+void OverlayFS::calculateFileHash( const std::string& filePath ) {
+    auto operation = std::make_shared< calculateFileHashOp >( filePath );
     if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else
