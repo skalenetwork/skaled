@@ -92,8 +92,7 @@ private:
 
 class calculateFileHashOp : public BaseOp {
 public:
-    calculateFileHashOp( const std::string& _path )
-        : path( _path ) {}
+    calculateFileHashOp( const std::string& _path ) : path( _path ) {}
     bool execute() override;
 
 private:

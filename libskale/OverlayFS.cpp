@@ -136,8 +136,7 @@ bool calculateFileHashOp::execute() {
 
         const std::string fileHashName = this->path + "._hash";
 
-        std::string relativePath =
-            this->path.substr( this->path.find( "filestorage" ) );
+        std::string relativePath = this->path.substr( this->path.find( "filestorage" ) );
 
         dev::h256 filePathHash = dev::sha256( relativePath );
 
