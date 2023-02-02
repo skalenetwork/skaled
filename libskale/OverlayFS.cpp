@@ -125,7 +125,7 @@ bool WriteChunkOp::execute() {
     return false;
 }
 
-bool calculateFileHashOp::execute() {
+bool CalculateFileHash::execute() {
     try {
         std::ifstream file( this->path );
         file.seekg( 0, std::ios::end );
@@ -209,7 +209,7 @@ void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
 }
 
 void OverlayFS::calculateFileHash( const std::string& filePath ) {
-    auto operation = std::make_shared< calculateFileHashOp >( filePath );
+    auto operation = std::make_shared< CalculateFileHash >( filePath );
     if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else

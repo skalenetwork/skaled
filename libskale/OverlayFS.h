@@ -90,9 +90,9 @@ private:
     const _byte_* data;
 };
 
-class calculateFileHashOp : public BaseOp {
+class CalculateFileHash : public BaseOp {
 public:
-    calculateFileHashOp( const std::string& _path ) : path( _path ) {}
+    CalculateFileHash( const std::string& _path ) : path( _path ) {}
     bool execute() override;
 
 private:
