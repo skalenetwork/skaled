@@ -121,6 +121,7 @@ uint64_t dev::getDirSize( const fs::path& _p ) {
             totalSize += fs::file_size( *directory_it );
         } else {
             totalSize += dev::getDirSize( *directory_it );
+        }
         ++directory_it;
     }
 
