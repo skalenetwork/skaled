@@ -24,6 +24,8 @@
 
 #include "OverlayFS.h"
 #include "RevertableFSPatch.h"
+#include <libdevcrypto/Hash.h>
+#include <secp256k1_sha256.h>
 #include <fstream>
 
 
@@ -125,8 +127,32 @@ bool WriteChunkOp::execute() {
 
 bool WriteHashFileOp::execute() {
     try {
+        std::ifstream file( this->path );
+        file.seekg( 0, std::ios::end );
+        size_t fileSize = file.tellg();
+        std::string fileContent( fileSize, ' ' );
+        file.seekg( 0 );
+        file.read( &fileContent[0], fileSize );
+
+        const std::string fileHashName = this->path + "._hash";
+
+        std::string relativePath =
+            this->path.substr( this->path.find( "filestorage" ) );
+
+        dev::h256 filePathHash = dev::sha256( relativePath );
+
+        dev::h256 fileContentHash = dev::sha256( fileContent );
+
+        secp256k1_sha256_t ctx;
+        secp256k1_sha256_initialize( &ctx );
+        secp256k1_sha256_write( &ctx, filePathHash.data(), filePathHash.size );
+        secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 commonFileHash;
+        secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
+
         std::fstream fileHash;
-        fileHash.open( this->path, std::ios::binary | std::ios::out );
+        fileHash.open( fileHashName, std::ios::binary | std::ios::out );
         fileHash.clear();
         fileHash << this->commonFileHash;
         fileHash.close();
