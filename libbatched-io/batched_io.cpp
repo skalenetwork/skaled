@@ -16,7 +16,6 @@ void test_crash_before_commit( const std::string& id ) {
         cnote << "test_crash_before_commit: " << id << std::endl;
         if ( id == test_crash_at ) {
             cerror << "test_crash_before_commit: crashing at " << test_crash_at << std::endl;
-            cerror << DETAILED_ERROR;
             _exit( 33 );
         }
     }  // if 1

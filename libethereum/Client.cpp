@@ -613,11 +613,14 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
-    LOG( m_loggerDetail ) << "Total unsafe time so far = "
-                          << std::chrono::duration_cast< std::chrono::seconds >(
-                                 UnsafeRegion::getTotalTime() )
-                                 .count()
-                          << " seconds";
+    if ( !UnsafeRegion::isActive() ) {
+        LOG( m_loggerDetail ) << "Total unsafe time so far = "
+                              << std::chrono::duration_cast< std::chrono::seconds >(
+                                     UnsafeRegion::getTotalTime() )
+                                     .count()
+                              << " seconds";
+    } else
+        cwarn << "Warning: UnsafeRegion still active!";
 
     if ( bIsPartial )
         cntSucceeded += cntPassed;
@@ -694,7 +697,6 @@ size_t Client::importTransactionsAsBlock(
                     cerror << cc::fatal( "CRITICAL" ) << " "
                            << cc::warn( dev::nested_exception_what( ex ) )
                            << cc::error( " in computeSnapshotHash(). Exiting..." );
-                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
@@ -702,7 +704,6 @@ size_t Client::importTransactionsAsBlock(
                            << cc::error(
                                   " unknown exception in computeSnapshotHash(). "
                                   "Exiting..." );
-                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }

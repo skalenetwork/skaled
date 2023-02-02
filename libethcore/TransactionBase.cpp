@@ -120,7 +120,6 @@ TransactionBase::TransactionBase(
                 throw;
             else {
                 cwarn << _e.what();
-                cwarn << DETAILED_ERROR;
             }
         }
     } catch ( ... ) {
@@ -129,10 +128,10 @@ TransactionBase::TransactionBase(
         s.append( _rlpData.toBytes() );  // add "string" header
         m_rawData = s.out();
 
-        if ( !_allowInvalid )
+        if ( !_allowInvalid ) {
+            cerror << "Got invalid transaction.";
             throw;
-        else
-            cwarn << DETAILED_ERROR;
+        }
     }
 }  // ctor
 
