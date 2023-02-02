@@ -119,8 +119,6 @@ uint64_t dev::getDirSize( const fs::path& _p ) {
     while ( directory_it != end ) {
         if ( fs::is_regular_file( *directory_it ) ) {
             totalSize += fs::file_size( *directory_it );
-        } else {
-            totalSize += dev::getDirSize( *directory_it );
         }
         ++directory_it;
     }
