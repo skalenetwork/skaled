@@ -313,6 +313,11 @@ public:
 
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
 
+#ifdef HISTORIC_STATE
+    uint64_t getHistoricStateDbUsage() const;
+    uint64_t getHistoricRootsDbUsage() const;
+#endif  // HISTORIC_STATE
+
     uint64_t submitOracleRequest( const string& _spec, string& _receipt );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
