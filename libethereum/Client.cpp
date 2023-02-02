@@ -1497,6 +1497,22 @@ std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
     return { dev::getDirSize( stateDbPath ), contractStorageUsed };
 }
 
+#ifdef HISTORIC_STATE
+uint64_t Client::getHistoricStateDbUsage() const {
+    fs::path historicStateDbPath = m_dbPath / fs::path( "historic_state" ) /
+                                   BlockChain::getChainDirName( chainParams() ) /
+                                   fs::path( "state" );
+    return dev::getDirSize( historicStateDbPath );
+}
+
+uint64_t Client::getHistoricRootsDbUsage() const {
+    fs::path historicRootsDbPath = m_dbPath / fs::path( "historic_roots" ) /
+                                   BlockChain::getChainDirName( chainParams() ) /
+                                   fs::path( "state" );
+    return dev::getDirSize( historicRootsDbPath );
+}
+#endif  // HISTORIC_STATE
+
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     assert( m_skaleHost );
     uint64_t status = -1;
