@@ -161,8 +161,8 @@ nlohmann::json nljsBlockNumber( dev::eth::BlockNumber uBlockNumber ) {
         return nlohmann::json( "earliest" );
     if ( uBlockNumber == dev::eth::PendingBlock )
         return nlohmann::json( "pending" );
-    // return nlohmann::json( unsigned( uBlockNumber ) );
-    return dev::toJS( uBlockNumber );
+    return nlohmann::json( unsigned( uBlockNumber ) );
+    // return dev::toJS( uBlockNumber );
 }
 
 nlohmann::json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > const& eb,
