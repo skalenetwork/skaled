@@ -309,11 +309,11 @@ public:
         return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
     }
 
-    void doStateDbCompaction() {
+    void doStateDbCompaction() const {
         m_state.doLevelDbCompaction();
     }
 
-    void doBlocksDbCompaction() {
+    void doBlocksDbCompaction() const {
         m_bc.doLevelDbCompaction();
     }
 

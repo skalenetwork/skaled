@@ -393,7 +393,7 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    void doLevelDbCompaction() {
+    void doLevelDbCompaction() const {
         boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         m_db_ptr->db()->doDbCompaction();
     }

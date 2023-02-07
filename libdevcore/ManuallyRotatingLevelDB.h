@@ -43,7 +43,7 @@ public:
     virtual void forEach( std::function< bool( Slice, Slice ) > f ) const;
     virtual h256 hashBase() const;
 
-    void doDbsCompaction() {
+    void doDbsCompaction() const {
         for (auto it = io_backend->begin(); it != io_backend->end(); ++it) {
             LevelDB* ldb = dynamic_cast< LevelDB* >( it->get() );
             ldb->doCompaction();

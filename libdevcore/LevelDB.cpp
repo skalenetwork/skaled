@@ -227,7 +227,7 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     return hash;
 }
 
-void LevelDB::doCompaction() {
+void LevelDB::doCompaction() const {
     m_db->CompactRange(NULL, NULL);
 }
 

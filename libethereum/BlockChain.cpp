@@ -1364,7 +1364,7 @@ void BlockChain::clearCaches() {
     }
 }
 
-void BlockChain::doLevelDbCompaction() {
+void BlockChain::doLevelDbCompaction() const {
     m_rotating_db->doDbsCompaction();
 }
 
