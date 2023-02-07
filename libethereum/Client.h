@@ -309,6 +309,14 @@ public:
         return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
     }
 
+    void doStateDbCompaction() {
+        m_state.doLevelDbCompaction();
+    }
+
+    void doBlocksDbCompaction() {
+        m_bc.doLevelDbCompaction();
+    }
+
     std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
 
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
