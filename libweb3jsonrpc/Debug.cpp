@@ -299,7 +299,7 @@ uint64_t Debug::debug_getSnapshotHashCalculationTime() {
     return m_eth.getSnapshotHashCalculationTime();
 }
 
-uint64_t debug_doStateDbCompaction() {
+uint64_t Debug::debug_doStateDbCompaction() {
     auto t1 = boost::chrono::high_resolution_clock::now();
     m_eth.state().doLevelDbCompaction();
     auto t2 = boost::chrono::high_resolution_clock::now();
@@ -307,7 +307,7 @@ uint64_t debug_doStateDbCompaction() {
     return boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
 }
 
-uint64_t debug_doBlocksDbCompaction() {
+uint64_t Debug::debug_doBlocksDbCompaction() {
     auto t1 = boost::chrono::high_resolution_clock::now();
     m_eth.bc().doLevelDbCompaction();
     auto t2 = boost::chrono::high_resolution_clock::now();
