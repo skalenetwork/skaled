@@ -471,7 +471,7 @@ public:
     /// Finalise everything and close the database.
     void close();
     /// compact db before snapshot
-    void doLevelDbCompaction();
+    void doLevelDbCompaction() const;
 
 private:
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
