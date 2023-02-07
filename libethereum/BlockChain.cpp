@@ -1364,6 +1364,10 @@ void BlockChain::clearCaches() {
     }
 }
 
+void BlockChain::doLevelDbCompaction() {
+    m_rotating_db->doDbsCompaction();
+}
+
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 

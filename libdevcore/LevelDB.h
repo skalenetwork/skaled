@@ -51,6 +51,8 @@ public:
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
+    void doCompaction();
+
 private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;

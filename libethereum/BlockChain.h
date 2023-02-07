@@ -470,6 +470,8 @@ public:
     void open( boost::filesystem::path const& _path, bool _applyPatches, WithExisting _we );
     /// Finalise everything and close the database.
     void close();
+    /// compact db before snapshot
+    void doLevelDbCompaction();
 
 private:
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
