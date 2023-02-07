@@ -112,7 +112,7 @@ bool WriteChunkOp::execute() {
         std::fstream file;
         file.open( this->path, std::ios::binary | std::ios::out | std::ios::in );
         file.seekp( static_cast< long >( this->position ) );
-        file.write( ( char* ) this->data, this->dataLength );
+        file.write( reinterpret_cast< const char* >( &this->data[0] ), this->dataLength );
         return true;
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
@@ -201,7 +201,11 @@ void OverlayFS::deleteDirectory( const std::string& path ) {
 
 void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
     const size_t dataLength, const _byte_* data ) {
-    auto operation = std::make_shared< WriteChunkOp >( filePath, position, dataLength, data );
+    std::vector< _byte_ > convertedData( dataLength );
+    std::copy( data, data + dataLength, convertedData.begin() );
+
+    auto operation =
+        std::make_shared< WriteChunkOp >( filePath, position, dataLength, convertedData );
     if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else

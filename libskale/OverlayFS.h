@@ -79,7 +79,7 @@ private:
 class WriteChunkOp : public BaseOp {
 public:
     WriteChunkOp( const std::string& _path, const size_t _position, const size_t _dataLength,
-        const _byte_* _data )
+        std::vector< _byte_ > _data )
         : path( _path ), position( _position ), dataLength( _dataLength ), data( _data ) {}
     bool execute() override;
 
@@ -87,7 +87,7 @@ private:
     const std::string path;
     const size_t position;
     const size_t dataLength;
-    const _byte_* data;
+    std::vector< _byte_ > data;
 };
 
 class CalculateFileHash : public BaseOp {
