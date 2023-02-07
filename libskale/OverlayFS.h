@@ -79,8 +79,11 @@ private:
 class WriteChunkOp : public BaseOp {
 public:
     WriteChunkOp( const std::string& _path, const size_t _position, const size_t _dataLength,
-        std::vector< _byte_ > _data )
-        : path( _path ), position( _position ), dataLength( _dataLength ), data( _data ) {}
+        const _byte_* _data )
+        : path( _path ),
+          position( _position ),
+          dataLength( _dataLength ),
+          data( _data, _data + dataLength ) {}
     bool execute() override;
 
 private:
