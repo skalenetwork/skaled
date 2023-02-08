@@ -90,7 +90,7 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getSnapshotHashCalculationTime",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_getSnapshotHashCalculationTimeI );
-        
+
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_doStateDbCompaction",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_doStateDbCompactionI );
@@ -171,13 +171,11 @@ public:
         response = this->debug_getSnapshotHashCalculationTime();
     }
 
-    virtual void debug_doStateDbCompactionI(
-        const Json::Value&, Json::Value& response ) {
+    virtual void debug_doStateDbCompactionI( const Json::Value&, Json::Value& response ) {
         response = this->debug_doStateDbCompaction();
     }
 
-    virtual void debug_doBlocksDbCompactionI(
-        const Json::Value&, Json::Value& response ) {
+    virtual void debug_doBlocksDbCompactionI( const Json::Value&, Json::Value& response ) {
         response = this->debug_doBlocksDbCompaction();
     }
 
