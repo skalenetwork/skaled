@@ -487,6 +487,12 @@ Json::Value Skale::skale_getDBUsage() {
 
     auto blocksDbUsage = m_client.getBlocksDbUsage();
     auto stateDbUsage = m_client.getStateDbUsage();
+#ifdef HISTORIC_STATE
+    auto historicStateDbUsage = m_client.getHistoricStateDbUsage();
+    auto historicRootsDbUsage = m_client.getHistoricRootsDbUsage();
+    joSkaledDBUsage["historic_state.db_disk_usage"] = historicStateDbUsage;
+    joSkaledDBUsage["historic_roots.db_disk_usage"] = historicRootsDbUsage;
+#endif  // HISTORIC_STATE
 
     joSkaledDBUsage["blocks.db_disk_usage"] = blocksDbUsage.first;
     joSkaledDBUsage["pieceUsageBytes"] = blocksDbUsage.second;

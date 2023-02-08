@@ -80,25 +80,26 @@ class WriteChunkOp : public BaseOp {
 public:
     WriteChunkOp( const std::string& _path, const size_t _position, const size_t _dataLength,
         const _byte_* _data )
-        : path( _path ), position( _position ), dataLength( _dataLength ), data( _data ) {}
+        : path( _path ),
+          position( _position ),
+          dataLength( _dataLength ),
+          data( _data, _data + dataLength ) {}
     bool execute() override;
 
 private:
     const std::string path;
     const size_t position;
     const size_t dataLength;
-    const _byte_* data;
+    std::vector< _byte_ > data;
 };
 
-class WriteHashFileOp : public BaseOp {
+class CalculateFileHash : public BaseOp {
 public:
-    WriteHashFileOp( const std::string& _path, const dev::h256 _commonFileHash )
-        : path( _path ), commonFileHash( _commonFileHash ) {}
+    CalculateFileHash( const std::string& _path ) : path( _path ) {}
     bool execute() override;
 
 private:
     const std::string path;
-    const dev::h256 commonFileHash;
 };
 
 class OverlayFS {
@@ -125,7 +126,7 @@ public:
         const _byte_* data );
     void deleteFile( const std::string& filePath );
     void deleteDirectory( const std::string& path );
-    void writeHashFile( const std::string& filePath, const dev::h256& commonFileHash );
+    void calculateFileHash( const std::string& filePath );
 
 private:
     std::vector< std::shared_ptr< BaseOp > > m_cache;  // vector of filestorage operations for
