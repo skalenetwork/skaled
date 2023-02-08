@@ -546,31 +546,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
             throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
         }
 
-        std::ifstream file( filePath.string() );
-        file.seekg( 0, std::ios::end );
-        size_t fileSize = file.tellg();
-        std::string fileContent( fileSize, ' ' );
-        file.seekg( 0 );
-        file.read( &fileContent[0], fileSize );
-
-        const std::string fileHashName = filePath.string() + "._hash";
-
-        std::string relativePath =
-            filePath.string().substr( filePath.string().find( "filestorage" ) );
-
-        dev::h256 filePathHash = dev::sha256( relativePath );
-
-        dev::h256 fileContentHash = dev::sha256( fileContent );
-
-        secp256k1_sha256_t ctx;
-        secp256k1_sha256_initialize( &ctx );
-        secp256k1_sha256_write( &ctx, filePathHash.data(), filePathHash.size );
-        secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
-
-        dev::h256 commonFileHash;
-        secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
-
-        g_overlayFS->writeHashFile( fileHashName, commonFileHash );
+        g_overlayFS->calculateFileHash( filePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
