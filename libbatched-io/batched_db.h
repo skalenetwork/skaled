@@ -13,7 +13,6 @@ class db_operations_face {
 public:
     virtual void insert( dev::db::Slice _key, dev::db::Slice _value ) = 0;
     virtual void kill( dev::db::Slice _key ) = 0;
-    virtual void doDbCompaction() const = 0;
 
     // readonly
     virtual std::string lookup( dev::db::Slice _key ) const = 0;
@@ -48,10 +47,6 @@ public:
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
         m_batch->kill( _key );
-    }
-    virtual void doDbCompaction() const {
-        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( m_db.get() );
-        ldb->doCompaction();
     }
     virtual void revert() {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );

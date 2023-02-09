@@ -41,6 +41,7 @@
 #include "BaseState.h"
 #include "OverlayDB.h"
 #include "OverlayFS.h"
+#include <libdevcore/DBImpl.h>
 
 
 namespace std {
@@ -393,10 +394,7 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    void doLevelDbCompaction() const {
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
-        m_db_ptr->db()->doDbCompaction();
-    }
+    const dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
     void resetStorageChanges() {
         storageUsage.clear();
@@ -427,7 +425,7 @@ private:
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
-    static OverlayDB openDB( boost::filesystem::path const& _path, dev::h256 const& _genesisHash,
+    OverlayDB openDB( boost::filesystem::path const& _path, dev::h256 const& _genesisHash,
         dev::WithExisting _we = dev::WithExisting::Trust );
 
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -484,6 +482,9 @@ private:
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
+    // HACK
+    // TODO Implement DB-registry, remove it!
+    std::shared_ptr< dev::db::DBImpl > m_orig_db;
     std::shared_ptr< size_t > m_storedVersion;
     size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
