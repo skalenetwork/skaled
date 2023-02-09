@@ -100,7 +100,6 @@ private:
         virtual void commit( const std::string& test_crash_string = std::string() ) {
             backend->commit( test_crash_string );
         }
-        virtual void doDbCompaction() const {};
 
         // readonly
         virtual std::string lookup( dev::db::Slice _key ) const;
