@@ -589,6 +589,7 @@ private:
     uint64_t m_maxStorageUsage;
 
     /// The disk DBs. Thread-safe, so no need for locks.
+    std::shared_ptr< batched_io::rotating_db_io > m_rotator;       // for compaction
     std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;  // rotate()
     std::shared_ptr< batched_io::db_face > m_db;                   // insert()/commit()
     std::unique_ptr< batched_io::db_splitter > m_db_splitter;      // new_interface()
