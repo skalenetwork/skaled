@@ -178,9 +178,9 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        std::shared_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
+        m_orig_db.reset( new db::DBImpl( state_path ) );
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
-        bdb->open( db );
+        bdb->open( m_orig_db );
         assert( bdb->is_open() );
         clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( bdb ) );

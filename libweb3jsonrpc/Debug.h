@@ -57,6 +57,9 @@ public:
     virtual uint64_t debug_getSnapshotCalculationTime() override;
     virtual uint64_t debug_getSnapshotHashCalculationTime() override;
 
+    virtual uint64_t debug_doStateDbCompaction() override;
+    virtual uint64_t debug_doBlocksDbCompaction() override;
+
 private:
     eth::Client const& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;

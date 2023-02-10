@@ -3,7 +3,7 @@
 
 #include "batched_io.h"
 
-#include <libdevcore/db.h>
+#include <libdevcore/LevelDB.h>
 
 #include <shared_mutex>
 
