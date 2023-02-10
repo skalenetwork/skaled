@@ -229,9 +229,9 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        auto rotator = std::make_shared< batched_io::rotating_db_io >(
+        m_rotator = std::make_shared< batched_io::rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().nodeInfo.archiveMode );
-        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( m_rotating_db );
         m_db = db;
@@ -1361,6 +1361,14 @@ void BlockChain::clearCaches() {
     {
         WriteGuard l( x_blockHashes );
         m_blockHashes.clear();
+    }
+}
+
+void BlockChain::doLevelDbCompaction() const {
+    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
+        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
+        assert( ldb );
+        ldb->doCompaction();
     }
 }
 
