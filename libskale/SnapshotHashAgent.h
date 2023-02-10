@@ -67,7 +67,7 @@ class SnapshotHashAgent {
 public:
     SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
         const std::array< std::string, 4 >& common_public_key,
-        bool requireSnapshotMajority = true );
+        const std::string& ipToDownloadSnapshotFrom );
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
 
@@ -78,7 +78,7 @@ public:
 private:
     dev::eth::ChainParams chain_params_;
     unsigned n_;
-    bool requireSnapshotMajority_;
+    std::string ipToDownloadSnapshotFrom_;
     std::shared_ptr< libBLS::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;
