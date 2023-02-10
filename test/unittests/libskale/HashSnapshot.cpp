@@ -40,7 +40,7 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest {
 public:
-    SnapshotHashAgentTest( ChainParams& _chainParams, bool requireSnapshotMajority = true ) {
+    SnapshotHashAgentTest( ChainParams& _chainParams, const std::string& ipToDownloadSnapshotFrom ) {
         std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
@@ -84,7 +84,9 @@ public:
 
         this->secret_as_is = keys.first;
 
-        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, requireSnapshotMajority ) );
+        isSnapshotMajorityRequired = !ipToDownloadSnapshotFrom.empty();
+
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, ipToDownloadSnapshotFrom ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
@@ -111,6 +113,9 @@ public:
         if ( !res ) {
             return {};
         }
+
+        if ( isSnapshotMajorityRequired )
+            return this->hashAgent_->nodes_to_download_snapshot_from_;
 
         std::vector< size_t > ret;
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
@@ -140,6 +145,8 @@ public:
     libff::alt_bn128_Fr secret_as_is;
 
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
+
+    bool isSnapshotMajorityRequired = false;
 
     std::vector< libff::alt_bn128_Fr > blsPrivateKeys_;
 };
@@ -422,7 +429,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams );
+    SnapshotHashAgentTest test_agent( chainParams, "" );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
@@ -447,7 +454,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 6;
-    SnapshotHashAgentTest test_agent( chainParams );
+    SnapshotHashAgentTest test_agent( chainParams, "" );
     dev::h256 hash = dev::h256::random();  // `correct` hash
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
@@ -467,7 +474,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams );
+    SnapshotHashAgentTest test_agent( chainParams, "" );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
@@ -485,7 +492,7 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams );
+    SnapshotHashAgentTest test_agent( chainParams, "" );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
@@ -502,13 +509,18 @@ BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
         chainParams.sChain.nodes[i].id = i;
     }
     chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, false );
+
+    chainParams.sChain.nodes[3].ip = "123.45.67.89";
+
+    SnapshotHashAgentTest test_agent( chainParams, chainParams.sChain.nodes[3].ip );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() == 3);
-    BOOST_REQUIRE_NO_THROW( test_agent.voteForHash() );
+
+    auto nodesToDownloadSnapshotFrom = test_agent.getNodesToDownloadSnapshotFrom();
+    BOOST_REQUIRE( nodesToDownloadSnapshotFrom.size() == 1 );
+    BOOST_REQUIRE( nodesToDownloadSnapshotFrom[0] == 3 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
