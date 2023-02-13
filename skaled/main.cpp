@@ -1539,7 +1539,8 @@ int main( int argc, char** argv ) try {
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
 
-        if ( !ipToDownloadSnapshotFrom.empty() && std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
+        if ( !ipToDownloadSnapshotFrom.empty() &&
+             std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
                  [&ipToDownloadSnapshotFrom]( const dev::eth::sChainNode& node ) {
                      return node.ip == ipToDownloadSnapshotFrom;
                  } ) == chainParams.sChain.nodes.end() )
