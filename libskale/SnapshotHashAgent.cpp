@@ -107,7 +107,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
 bool SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
-    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 ) {
+    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 && ipToDownloadSnapshotFrom_.empty() ) {
         return false;
     }
 
