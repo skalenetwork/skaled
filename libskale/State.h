@@ -179,29 +179,8 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 )
-        : State( _accountStartNonce,
-              openDB( _dbPath, _genesis,
-                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                  dev::WithExisting::Kill ),
-#ifdef HISTORIC_STATE
-              dev::eth::HistoricState::openDB(
-                  boost::filesystem::path( std::string( _dbPath.string() )
-                                               .append( "/" )
-                                               .append( dev::eth::HISTORIC_STATE_DIR ) ),
-                  _genesis,
-                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                  dev::WithExisting::Kill ),
-              dev::eth::HistoricState::openDB(
-                  boost::filesystem::path( std::string( _dbPath.string() )
-                                               .append( "/" )
-                                               .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
-                  _genesis,
-                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                  dev::WithExisting::Kill ),
-#endif  /// which uses it. If you have no preexisting database then set BaseState to something other
-              _bs, _initialFunds, _contractStorageLimit ) {
-    }
+        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
+    /// which uses it. If you have no preexisting database then set BaseState to something other
 
     State()
         : State( dev::Invalid256, skale::OverlayDB(),

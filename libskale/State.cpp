@@ -66,6 +66,49 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
+State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
+    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
+    dev::s256 _contractStorageLimit )
+    : x_db_ptr( make_shared< boost::shared_mutex >() ),
+      m_storedVersion( make_shared< size_t >( 0 ) ),
+      m_currentVersion( *m_storedVersion ),
+      m_accountStartNonce( _accountStartNonce ),
+      m_initial_funds( _initialFunds ),
+      contractStorageLimit_( _contractStorageLimit ) {
+    m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
+        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
+
+#ifdef HISTORIC_STATE
+    auto historicDB = dev::eth::HistoricState::openDB( boost::filesystem::path(
+        std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_STATE_DIR ),
+        _genesis,
+        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
+    auto historicBlockToStateRootDb = dev::eth::HistoricState::openDB(
+        boost::filesystem::path(
+            std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_ROOTS_DIR ) ),
+        _genesis,
+        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill );
+    m_historicState =
+        dev::eth::HistoricState( _accountStartNonce, historicDB, historicBlockToStateRootDb );
+#endif
+
+    auto state = createStateReadOnlyCopy();
+    totalStorageUsed_ = state.storageUsedTotal();
+#ifdef HISTORIC_STATE
+    m_historicState.setRootFromDB();
+#endif
+    m_fs_ptr = state.fs();
+    if ( _bs == BaseState::PreExisting ) {
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+    } else if ( _bs == BaseState::Empty ) {
+        // Initialise to the state entailed by the genesis block; this guarantees the trie is built
+        // correctly.
+        m_db_ptr->clearDB();
+    } else {
+        throw std::logic_error( "Not implemented" );
+    }
+}
+
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
     dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
