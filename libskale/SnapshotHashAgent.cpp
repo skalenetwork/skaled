@@ -227,16 +227,23 @@ bool SnapshotHashAgent::voteForHash() {
             return true;
         }
     } else {
-        it = map_hash.begin();
-
-        this->voted_hash_.first = ( *it ).first;
-        this->voted_hash_.second = libff::alt_bn128_G1::random_element();
-        this->nodes_to_download_snapshot_from_.push_back( std::distance(
-            this->chain_params_.sChain.nodes.begin(),
+        size_t nodeIdx = std::distance( this->chain_params_.sChain.nodes.begin(),
             std::find_if( this->chain_params_.sChain.nodes.begin(),
                 this->chain_params_.sChain.nodes.end(), [this]( const dev::eth::sChainNode& node ) {
                     return node.ip == ipToDownloadSnapshotFrom_;
-                } ) ) );
+                } ) );
+
+        dev::h256 requiredHashValue = this->hashes_[nodeIdx];
+        if ( requiredHashValue == dev::h256() ) {
+            throw IsNotVerified( "Hash from the required node is empty" );
+        }
+
+        it = map_hash.find( requiredHashValue );
+
+        this->voted_hash_.first = ( *it ).first;
+        this->voted_hash_.second = this->signatures_[nodeIdx];
+
+        this->nodes_to_download_snapshot_from_.push_back( nodeIdx );
     }
 
     return true;
