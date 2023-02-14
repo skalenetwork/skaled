@@ -221,9 +221,9 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        std::shared_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
+        m_orig_db.reset( new db::DBImpl( state_path ) );
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
-        bdb->open( db );
+        bdb->open( m_orig_db );
         assert( bdb->is_open() );
         clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( bdb ) );
@@ -256,6 +256,7 @@ State::State( const State& _s )
         std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
+    m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
     m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
@@ -277,6 +278,7 @@ State& State::operator=( const State& _s ) {
         std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
+    m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
     m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
