@@ -271,7 +271,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
                     if ( n == 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-                        if ( ipToDownloadSnapshotFrom_ == chain_params_.sChain.nodes[i].ip )
+                        if ( ipToDownloadSnapshotFrom_.empty() )
+                            nodes_to_download_snapshot_from_.push_back( i );
+                        else if ( ipToDownloadSnapshotFrom_ == chain_params_.sChain.nodes[i].ip )
                             nodes_to_download_snapshot_from_.push_back( i );
                         delete jsonRpcClient;
                         return;
