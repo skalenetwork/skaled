@@ -80,9 +80,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 
 #ifdef HISTORIC_STATE
     auto historicDB = dev::eth::HistoricState::openDB( boost::filesystem::path(
-        std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_STATE_DIR ),
+        std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_STATE_DIR ) ),
         _genesis,
-        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
+        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill );
     auto historicBlockToStateRootDb = dev::eth::HistoricState::openDB(
         boost::filesystem::path(
             std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_ROOTS_DIR ) ),
