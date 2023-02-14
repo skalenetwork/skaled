@@ -1287,9 +1287,8 @@ void SkaleWsPeer::eth_subscribe_logs(
                                  joRW.count( "blockNumber" ) > 0 ) {
                                 const std::string strBlockHash =
                                     joRW["blockHash"].get< std::string >();
-                                std::string strBlockNumber = joRW["blockNumber"].dump();
-                                const dev::u256 uBlockNumber( strBlockNumber.c_str() );
-                                strBlockNumber = dev::toJS( uBlockNumber );
+                                std::string strBlockNumber =
+                                    joRW["blockNumber"].get< std::string >();
                                 const nlohmann::json& joResultLogs = joRW["logs"];
                                 if ( joResultLogs.is_array() ) {
                                     for ( const auto& joWalk : joResultLogs ) {
