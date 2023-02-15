@@ -140,6 +140,12 @@
 |Not supported
 |
 
+|eth_signTransaction
+|Not supported
+|Not supported
+|Not supported
+|Not supported as SKALE does not support Personal API methods
+
 |eth_sendTransaction
 |Supported
 |Not supported
