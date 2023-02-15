@@ -89,10 +89,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
                                            .append( "/" )
                                            .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
               _genesis,
-              _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                              dev::WithExisting::Kill ) )
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) )
 #endif
-    {
+{
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
