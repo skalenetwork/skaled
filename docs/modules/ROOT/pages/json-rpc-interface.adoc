@@ -2,7 +2,7 @@
 
 = JSON-RPC Interface Compatibility 
 
-[%header,cols="1,1,2"]
+[%header,cols="1,1,4"]
 |===
 |Method |Core Node Status |Sync Node Status |Archive Node Status |Comments
 
