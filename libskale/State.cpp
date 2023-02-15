@@ -74,7 +74,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      contractStorageLimit_( _contractStorageLimit ),
+      contractStorageLimit_( _contractStorageLimit )
+#ifdef HISTORIC_STATE
+      ,
       m_historicState( _accountStartNonce,
           dev::eth::HistoricState::openDB(
               boost::filesystem::path( std::string( _dbPath.string() )
@@ -88,7 +90,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
                                            .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
               _genesis,
               _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                              dev::WithExisting::Kill ) ) {
+                                              dev::WithExisting::Kill ) )
+#endif
+    {
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
