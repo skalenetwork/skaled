@@ -74,23 +74,23 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
       m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
-      contractStorageLimit_( _contractStorageLimit ) {
+      contractStorageLimit_( _contractStorageLimit ),
+      m_historicState( _accountStartNonce,
+          dev::eth::HistoricState::openDB(
+              boost::filesystem::path( std::string( _dbPath.string() )
+                                           .append( "/" )
+                                           .append( dev::eth::HISTORIC_STATE_DIR ) ),
+              _genesis,
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ),
+          dev::eth::HistoricState::openDB(
+              boost::filesystem::path( std::string( _dbPath.string() )
+                                           .append( "/" )
+                                           .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
+              _genesis,
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
+                                              dev::WithExisting::Kill ) ) {
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
-
-#ifdef HISTORIC_STATE
-    auto historicDB = dev::eth::HistoricState::openDB( boost::filesystem::path(
-        std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_STATE_DIR ) ),
-        _genesis,
-        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill );
-    auto historicBlockToStateRootDb = dev::eth::HistoricState::openDB(
-        boost::filesystem::path(
-            std::string( _dbPath.string() ).append( "/" ).append( dev::eth::HISTORIC_ROOTS_DIR ) ),
-        _genesis,
-        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill );
-    m_historicState =
-        dev::eth::HistoricState( _accountStartNonce, historicDB, historicBlockToStateRootDb );
-#endif
 
     auto state = createStateReadOnlyCopy();
     totalStorageUsed_ = state.storageUsedTotal();
