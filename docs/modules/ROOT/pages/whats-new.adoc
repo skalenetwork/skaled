@@ -1,7 +1,7 @@
-= What's New in SKALE Chains 3.14 (v2 Network)
+= What's New in SKALE Chains 3.16
 
-* Added SKALE Oracle APIs
-* Added RNG endpoint based on BLS
-* Added new precompile for RNG endpoint support
-* Added new predeploys for multisig support
-* Added Multitransaction mode
+* Added Archive and Sync builds
+* Updated JSON-RPC interface docs
+* Added ERC1820 registry predeployed
+* Fixed Blocknumber formatting in eth_subscription
+* Various bug fixes and performance improvements

@@ -1,17 +1,5 @@
 = SKALE Chain FUEL
 
-SKALE Chains enable dApps to run gasless transactions. This provides an effective way to scale your dApp not only for speed but also to scale economically. However, SKALE Chains do require sFUEL to conduct transactions – this sFUEL is a free gas token with no economic value, providing a way for dApps to facilitate permissive access to SKALE Chains and protects against DDoS attacks.
+SKALE Chains enable dApps to run zero-cost gas transactions. This provides an effective way to scale your dApp not only for speed but also to scale economically. However, SKALE Chains do require sFUEL to conduct transactions – this sFUEL is a free gas token with no economic value, providing a way for dApps to facilitate permissive access to SKALE Chains and protects against DDoS attacks.
 
-There are a few ways to get SKALE FUEL (sFUEL), depending on your setup.
-
-== sFUEL on SKALE SDKs
-
-For SKALE SDKs, an account is pre-allocated with SKALE FUEL (sFUEL). You can use this for conducting transactions, sending to users on your SKALE Chain, and more. See the README in the SDK for the pre-allocated account.
-
-== sFUEL on Mainnet SKALE Chains
-
-For Mainnet, the SKALE Chain owner account is provided sFUEL for the SKALE Chain. From this account, the owner can fund contracts, accounts, conduct transactions, etc. 
-
-== ETH on SKALE Chains
-
-To view a user's ETH locked in DepositBox on SKALE Chains, you can use the _informational RPC ports_ for an endpoint. 
+See xref:develop::sfuel-gas-token.adoc[developing with sFUEL] for more information.

@@ -1,5 +1,6 @@
 name: skaled
 title: SKALE Chains
-version: 3.14.x
+version: 3.16.x-beta
+prelease: true
 nav:
   - modules/ROOT/nav.adoc

@@ -48,5 +48,9 @@ NOTE: currently, when MTM set, it’s always enabled
 | ProxyAdminPredeployed
 | Allow owner to change implementations of predeployed contracts
 
+|`0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24`
+| ERC1820 Registry
+| See https://eips.ethereum.org/EIPS/eip-1820
+
 |===
 
