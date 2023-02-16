@@ -147,10 +147,10 @@
 |Not supported as SKALE does not support Personal API methods
 
 |eth_sendTransaction
-|Supported
+|Partially supported
 |Not supported
 |Not supported
-|Not supported on Sync and Archive Node as they don't mine blocks
+|Not supported on Sync and Archive Node as they don't mine blocks. Partially supported on Core Node as Personal API is disabled
 
 |eth_sendRawTransaction
 |Supported
