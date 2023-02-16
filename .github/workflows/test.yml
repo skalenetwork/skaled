@@ -16,6 +16,8 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         NO_ULIMIT_CHECK: 1
+        ccache_compress: 'true'
+        ccache_compresslevel: 9
     steps:
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
@@ -107,7 +109,7 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
       - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
         run: |
-          ccache --max-size=20G
+          ccache --max-size=15G
           ccache -z
           ccache --show-stats
       - name: Build dependencies

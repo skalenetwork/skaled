@@ -526,7 +526,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // throw;
             // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
-            cerror << DETAILED_ERROR;
         }
     }
 

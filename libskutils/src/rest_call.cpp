@@ -24,6 +24,8 @@
 namespace skutils {
 namespace rest {
 
+long g_nClientConnectionTimeoutMS = 1000 * 60 * 30;  // 30 minutes in milliseconds, connect timeout
+
 data_t::data_t() {}
 data_t::data_t( const data_t& d ) {
     assign( d );

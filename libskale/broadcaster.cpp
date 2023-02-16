@@ -211,18 +211,16 @@ void ZmqBroadcaster::startService() {
                 try {
                     m_skaleHost.receiveTransaction( str );
                 } catch ( const std::exception& ex ) {
-                    clog( dev::VerbosityInfo, "skale-host" )
+                    clog( dev::VerbosityDebug, "skale-host" )
                         << "Received bad transaction through broadcast: " << ex.what();
                 }
 
             } catch ( const std::exception& ex ) {
                 cerror << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
-                cerror << DETAILED_ERROR;
                 cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 sleep( 2 );
             } catch ( ... ) {
                 cerror << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
-                cerror << DETAILED_ERROR;
                 cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                 sleep( 2 );
             }

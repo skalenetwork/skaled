@@ -873,7 +873,6 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     LOG( m_loggerError )
         << "Exception when recomputing old blocks sizes (but it's normal if DB has rotated): "
         << ex.what();
-    cerror << DETAILED_ERROR;
 }
 
 ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
@@ -1364,6 +1363,14 @@ void BlockChain::clearCaches() {
         m_blockHashes.clear();
     }
 }
+
+// void BlockChain::doLevelDbCompaction() const {
+//    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
+//        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
+//        assert( ldb );
+//        ldb->doCompaction();
+//    }
+//}
 
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }

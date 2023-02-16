@@ -613,11 +613,14 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
-    LOG( m_loggerDetail ) << "Total unsafe time so far = "
-                          << std::chrono::duration_cast< std::chrono::seconds >(
-                                 UnsafeRegion::getTotalTime() )
-                                 .count()
-                          << " seconds";
+    if ( !UnsafeRegion::isActive() ) {
+        LOG( m_loggerDetail ) << "Total unsafe time so far = "
+                              << std::chrono::duration_cast< std::chrono::seconds >(
+                                     UnsafeRegion::getTotalTime() )
+                                     .count()
+                              << " seconds";
+    } else
+        cwarn << "Warning: UnsafeRegion still active!";
 
     if ( bIsPartial )
         cntSucceeded += cntPassed;
@@ -694,7 +697,6 @@ size_t Client::importTransactionsAsBlock(
                     cerror << cc::fatal( "CRITICAL" ) << " "
                            << cc::warn( dev::nested_exception_what( ex ) )
                            << cc::error( " in computeSnapshotHash(). Exiting..." );
-                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 } catch ( ... ) {
@@ -702,7 +704,6 @@ size_t Client::importTransactionsAsBlock(
                            << cc::error(
                                   " unknown exception in computeSnapshotHash(). "
                                   "Exiting..." );
-                    cerror << DETAILED_ERROR;
                     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
                     ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
                 }
@@ -1495,6 +1496,22 @@ std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
                            fs::path( "state" );
     return { dev::getDirSize( stateDbPath ), contractStorageUsed };
 }
+
+#ifdef HISTORIC_STATE
+uint64_t Client::getHistoricStateDbUsage() const {
+    fs::path historicStateDbPath = m_dbPath / fs::path( "historic_state" ) /
+                                   BlockChain::getChainDirName( chainParams() ) /
+                                   fs::path( "state" );
+    return dev::getDirSize( historicStateDbPath );
+}
+
+uint64_t Client::getHistoricRootsDbUsage() const {
+    fs::path historicRootsDbPath = m_dbPath / fs::path( "historic_roots" ) /
+                                   BlockChain::getChainDirName( chainParams() ) /
+                                   fs::path( "state" );
+    return dev::getDirSize( historicRootsDbPath );
+}
+#endif  // HISTORIC_STATE
 
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     assert( m_skaleHost );
