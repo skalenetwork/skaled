@@ -2,261 +2,393 @@
 
 = JSON-RPC Interface Compatibility 
 
-[%header,cols="1,1,2"]
+[%header,cols="1,1,1,1,2"]
 |===
-|Method |Status |Comments
+|Method |Core Node Status |Sync Node Status |Archive Node Status |Comments
 
 |web3_clientVersion
+|Supported
+|Supported
 |Supported
 |
 
 |web3_sha3
 |Supported
+|Supported
+|Supported
 |
 
 |net_version
+|Supported
+|Supported
 |Supported
 |Returns ChainID from config.json
 
 
 |net_listening
 |Supported
+|Supported
+|Supported
 |
 
 
 |net_peerCount
 |Partially supported
+|Partially supported
+|Partially supported
 |Always returns 0
 
 |eth_protocolVersion
+|Supported
+|Supported
 |Supported
 |
 
 |eth_syncing
 |Partially supported
+|Partially supported
+|Partially supported
 |Always returns false
 
 |eth_coinbase
 |Supported
+|Supported
+|Supported
 |Returns sChainOwner address from config.json (it is used as coinbase address)
 
 |eth_mining
-|Partially supported 
+|Partially supported
+|Partially supported
+|Partially supported
 |There is no mining for SKALE s-chains, always returns false
 
-|eth_hashrate                            
-|Partially supported 
+|eth_hashrate
+|Partially supported
+|Partially supported
+|Partially supported
 |There is no hashrate for SKALE s-chains, always returns 0
 
 |eth_gasPrice
+|Supported
+|Supported
 |Supported
 |Gas price is dynamically adjusted from 1000 wei and above as load grows
 
 |eth_accounts
 |Supported
+|Supported
+|Supported
 |                                                                          
 
 |eth_blockNumber
 |Supported
+|Supported
+|Supported
 |                                                                          
 
 |eth_getBalance
-|Partially supported 
-|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
+|Partially supported
+|Partially supported
+|Supported
+|Second parameter is ignored and always set to "latest" on Core and Sync Node, supports EIP-1898 interface
 
 |eth_getStorageAt
-|Partially supported 
-|Third parameter is ignored and always set to "latest", supports EIP-1898 interface
+|Partially supported
+|Partially supported
+|Supported
+|Third parameter is ignored and always set to "latest" on Core and Sync Node, supports EIP-1898 interface
 
 |eth_getTransactionCount
 |Partially supported
-|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
+|Partially supported
+|Supported
+|Second parameter is ignored and always set to "latest" on Core and Sync Node, supports EIP-1898 interface
 
 |eth_getBlockTransactionCountByHash
+|Partially supported
+|Partially supported
 |Partially supported
 |Old blocks are "rotated out"
 
 |eth_getBlockTransactionCountByNumber
 |Partially supported
+|Partially supported
+|Partially supported
 |Old blocks are "rotated out"
 
 |eth_getUncleCountByBlockHash
-|Supported      
+|Supported
+|Supported
+|Supported
 |There are no uncles in SKALE s-chains
 
 |eth_getUncleCountByBlockNumber
+|Supported
+|Supported
 |Supported
 |There are no uncles in SKALE s-chains
 
 |eth_getCode
 |Partially supported
-|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
+|Partially supported
+|Supported
+|Second parameter is ignored and always set to "latest" on Core and Sync Node, supports EIP-1898 interface
 
 |eth_sign
 |Not supported
+|Not supported
+|Not supported
 |
 
+|eth_signTransaction
+|Not supported
+|Not supported
+|Not supported
+|Not supported as SKALE does not support Personal API methods
+
 |eth_sendTransaction
-|Supported
-|
+|Partially supported
+|Not supported
+|Not supported
+|Not supported on Sync and Archive Node as they don't mine blocks. Partially supported on Core Node as Personal API is disabled
 
 |eth_sendRawTransaction
 |Supported
-|
+|Not supported
+|Not supported
+|Not supported on Sync and Archive Node as they don't mine blocks
 
 |eth_call
 |Partially supported
-|Second parameter is ignored and always set to "latest", supports EIP-1898 interface
+|Partially supported
+|Supported
+|Second parameter is ignored and always set to "latest" on Core and Sync Node, supports EIP-1898 interface
 
 |eth_estimateGas
+|Supported
+|Supported
 |Supported
 |But does not use binary search
 
 |eth_getBlockByHash
 |Supported
-|Old blocks are "rotated out". Block contains 3 extra fields: author, boundary, seedHash
+|Supported
+|Supported
+|Old blocks are "rotated out" on Core and Sync Node. Block contains 3 extra fields: author, boundary, seedHash
 
 |eth_getBlockByNumber
 |Supported
-|Raises "block not found" error if block is "rotated out". Block contains 3 extra fields: `author`, `boundary`, `seedHash`
+|Supported
+|Supported
+|Old blocks are "rotated out" on Core and Sync Node. Block contains 3 extra fields: author, boundary, seedHash
 
 |eth_getTransactionByHash
+|Supported
+|Supported
 |Supported
 |Doesn't contain fields: `chainId`, `v`, `r`, `s`, `type`
 
 |eth_getTransactionByBlockHashAndIndex 
 |Supported
+|Supported
+|Supported
 |
 
 |eth_getTransactionByBlockNumberAndIndex
+|Supported
+|Supported
 |Supported
 |
 
 |eth_getTransactionReceipt
 |Supported
+|Supported
+|Supported
 |Receipt doesn't contain fields: `effectiveGasPrice`, `type`                                                                         
 
 |eth_getUncleByBlockHashAndIndex
+|Supported
+|Supported
 |Supported
 |There are no uncles in SKALE s-chains
 
 |eth_getUncleByBlockNumberAndIndex
 |Supported
+|Supported
+|Supported
 |There are no uncles in SKALE s-chains
 
 |eth_getCompilers
+|Not supported
+|Not supported
 |Not supported
 |
 
 |eth_compileSolidity
 |Not supported
+|Not supported
+|Not supported
 |
 
 |eth_compileLLL
+|Not supported
+|Not supported
 |Not supported    
 |                                                                          
 
 |eth_compileSerpent
 |Not supported
+|Not supported
+|Not supported
 |
 
 |eth_newFilter
-|Partially supported 
-|Ignores logs that originated from blocks that were "rotated out"
+|Partially supported
+|Partially supported
+|Supported
+|Ignores logs that originated from blocks that were "rotated out" on Core and Sync Node
 
 |eth_newBlockFilter
+|Supported
+|Supported
 |Supported
 |
 
 |eth_newPendingTransactionFilter
 |Supported
+|Supported
+|Supported
 |
 
 |eth_uninstallFilter
-|Supported      
-|                                                                          
+|Supported
+|Supported
+|Supported
+|                  
 
 |eth_getFilterChanges
-|Supported      
-|                                                                          
+|Supported
+|Supported
+|Supported
+|
 
 |eth_getFilterLogs
+|Supported
+|Supported
 |Supported
 |
 
 |eth_getLogs
 |Partially supported
-|Ignores logs that originated from blocks that were "rotated out"
+|Partially supported
+|Supported
+|Ignores logs that originated from blocks that were "rotated out" on Core and Sync Node
 
 |eth_getWork
+|Supported
+|Supported
 |Supported
 |
 
 |eth_submitWork
 |Not supported
+|Not supported
+|Not supported
 |
 
 |eth_submitHashrate
+|Supported
+|Supported
 |Supported
 |
 
 |eth_getProof
 |Not supported
+|Not supported
+|Not supported
 |
 
 |db_putString
+|Not supported
+|Not supported
 |Not supported
 |
 
 |db_getString
 |Not supported
+|Not supported
+|Not supported
 |
 
 |db_putHex
+|Not supported
+|Not supported
 |Not supported
 |
 
 |db_getHex
 |Not supported
+|Not supported
+|Not supported
 |
 
 |shh_version
+|Not supported
+|Not supported
 |Not supported
 |
 
 |shh_post
 |Not supported
+|Not supported
+|Not supported
 |
 
 |shh_newIdentity
+|Not supported
+|Not supported
 |Not supported
 |
 
 |shh_hasIdentity
 |Not supported
+|Not supported
+|Not supported
 |
 
 |shh_newGroup
+|Not supported
+|Not supported
 |Not supported
 |
 
 |shh_addToGroup
 |Not supported
+|Not supported
+|Not supported
 |
 
 |shh_newFilter
+|Not supported
+|Not supported
 |Not supported
 |
 
 |shh_uninstallFilter
 |Not supported
+|Not supported
+|Not supported
 |
 
 |shh_getFilterChanges
 |Not supported
+|Not supported
+|Not supported
 |
 
 |shh_getMessages
+|Not supported
+|Not supported
 |Not supported
 |
 
