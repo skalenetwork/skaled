@@ -34,10 +34,11 @@
 #include <libff/common/profiling.hpp>
 
 SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
-    const std::array< std::string, 4 >& common_public_key, bool requireSnapshotMajority )
+    const std::array< std::string, 4 >& common_public_key,
+    const std::string& ipToDownloadSnapshotFrom )
     : chain_params_( chain_params ),
       n_( chain_params.sChain.nodes.size() ),
-      requireSnapshotMajority_( requireSnapshotMajority ) {
+      ipToDownloadSnapshotFrom_( ipToDownloadSnapshotFrom ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
     this->public_keys_.resize( n_ );
@@ -106,7 +107,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
 bool SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
-    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 ) {
+    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 && ipToDownloadSnapshotFrom_.empty() ) {
         return false;
     }
 
@@ -121,7 +122,7 @@ bool SnapshotHashAgent::voteForHash() {
     }
 
     std::map< dev::h256, size_t >::iterator it;
-    if ( requireSnapshotMajority_ ) {
+    if ( ipToDownloadSnapshotFrom_.empty() ) {
         it = std::find_if(
             map_hash.begin(), map_hash.end(), [this]( const std::pair< dev::h256, size_t > p ) {
                 return 3 * p.second > 2 * this->n_;
@@ -226,10 +227,23 @@ bool SnapshotHashAgent::voteForHash() {
             return true;
         }
     } else {
-        it = map_hash.begin();
+        size_t nodeIdx = std::distance( this->chain_params_.sChain.nodes.begin(),
+            std::find_if( this->chain_params_.sChain.nodes.begin(),
+                this->chain_params_.sChain.nodes.end(), [this]( const dev::eth::sChainNode& node ) {
+                    return node.ip == ipToDownloadSnapshotFrom_;
+                } ) );
+
+        dev::h256 requiredHashValue = this->hashes_[nodeIdx];
+        if ( requiredHashValue == dev::h256() ) {
+            throw IsNotVerified( "Hash from the required node is empty" );
+        }
+
+        it = map_hash.find( requiredHashValue );
 
         this->voted_hash_.first = ( *it ).first;
-        this->voted_hash_.second = libff::alt_bn128_G1::random_element();
+        this->voted_hash_.second = this->signatures_[nodeIdx];
+
+        this->nodes_to_download_snapshot_from_.push_back( nodeIdx );
     }
 
     return true;
@@ -257,7 +271,10 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
                     if ( n == 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-                        this->nodes_to_download_snapshot_from_.push_back( i );
+                        if ( ipToDownloadSnapshotFrom_.empty() )
+                            nodes_to_download_snapshot_from_.push_back( i );
+                        else if ( ipToDownloadSnapshotFrom_ == chain_params_.sChain.nodes[i].ip )
+                            nodes_to_download_snapshot_from_.push_back( i );
                         delete jsonRpcClient;
                         return;
                     }

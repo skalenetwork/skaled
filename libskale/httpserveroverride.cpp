@@ -161,8 +161,7 @@ nlohmann::json nljsBlockNumber( dev::eth::BlockNumber uBlockNumber ) {
         return nlohmann::json( "earliest" );
     if ( uBlockNumber == dev::eth::PendingBlock )
         return nlohmann::json( "pending" );
-    return nlohmann::json( unsigned( uBlockNumber ) );
-    // return dev::toJS( uBlockNumber );
+    return dev::toJS( uBlockNumber );
 }
 
 nlohmann::json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > const& eb,
@@ -1280,102 +1279,91 @@ void SkaleWsPeer::eth_subscribe_logs(
                 skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
                     dev::eth::LocalisedLogEntries le = pThis->ethereum()->checkWatch( iw );
                     nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
-                    if ( joResult.is_array() ) {
-                        for ( const auto& joRW : joResult ) {
-                            if ( joRW.is_object() && joRW.count( "logs" ) > 0 &&
-                                 joRW.count( "blockHash" ) > 0 &&
-                                 joRW.count( "blockNumber" ) > 0 ) {
-                                const std::string strBlockHash =
-                                    joRW["blockHash"].get< std::string >();
-                                std::string strBlockNumber = joRW["blockNumber"].dump();
-                                const dev::u256 uBlockNumber( strBlockNumber.c_str() );
-                                strBlockNumber = dev::toJS( uBlockNumber );
-                                const nlohmann::json& joResultLogs = joRW["logs"];
-                                if ( joResultLogs.is_array() ) {
-                                    for ( const auto& joWalk : joResultLogs ) {
-                                        if ( !joWalk.is_object() )
-                                            continue;
-                                        nlohmann::json joLog = joWalk;  // copy
-                                        joLog["blockHash"] = strBlockHash;
-                                        joLog["blockNumber"] = strBlockNumber;
-                                        nlohmann::json joParams = nlohmann::json::object();
-                                        joParams["subscription"] = dev::toJS( iw );
-                                        joParams["result"] = joLog;
-                                        nlohmann::json joNotification = nlohmann::json::object();
-                                        joNotification["jsonrpc"] = "2.0";
-                                        joNotification["method"] = "eth_subscription";
-                                        joNotification["params"] = joParams;
-                                        std::string strNotification = joNotification.dump();
-                                        const SkaleServerOverride* pSO = pThis->pso();
-                                        if ( pSO->opts_.isTraceCalls_ )
-                                            clog( dev::VerbosityDebug,
-                                                cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                                    cc::ws_tx_inv(
-                                                        " <<< " +
-                                                        pThis->getRelay().nfoGetSchemeUC() +
-                                                        "/TX <<< " ) )
-                                                << ( pThis->desc() + cc::ws_tx( " <<< " ) +
-                                                       pThis->implPreformatTrafficJsonMessage(
-                                                           strNotification, false ) );
-                                        // skutils::dispatch::async( pThis->m_strPeerQueueID,
-                                        // [pThis, strNotification]() -> void {
-                                        bool bMessageSentOK = false;
-                                        try {
-                                            bMessageSentOK =
-                                                const_cast< SkaleWsPeer* >( pThis.get() )
-                                                    ->sendMessage( skutils::tools::trim_copy(
-                                                        strNotification ) );
-                                            if ( !bMessageSentOK )
-                                                throw std::runtime_error(
-                                                    "eth_subscription/logs failed to sent "
-                                                    "message" );
-                                            stats::register_stats_answer(
-                                                ( std::string( "RPC/" ) +
-                                                    pThis->getRelay().nfoGetSchemeUC() )
-                                                    .c_str(),
-                                                "eth_subscription/logs", strNotification.size() );
-                                            stats::register_stats_answer( "RPC",
-                                                "eth_subscription/logs", strNotification.size() );
-                                        } catch ( std::exception& ex ) {
-                                            clog( dev::Verbosity::VerbosityError,
-                                                cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                                    cc::debug( "/" ) +
-                                                    cc::num10( pThis->getRelay().serverIndex() ) )
-                                                << ( pThis->desc() + " " +
-                                                       cc::error( "error in " ) +
-                                                       cc::warn( "eth_subscription/logs" ) +
-                                                       cc::error(
-                                                           " will uninstall watcher callback "
-                                                           "because of exception: " ) +
-                                                       cc::warn( ex.what() ) );
-                                        } catch ( ... ) {
-                                            clog( dev::Verbosity::VerbosityError,
-                                                cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                                    cc::debug( "/" ) +
-                                                    cc::num10( pThis->getRelay().serverIndex() ) )
-                                                << ( pThis->desc() + " " +
-                                                       cc::error( "error in " ) +
-                                                       cc::warn( "eth_subscription/logs" ) +
-                                                       cc::error(
-                                                           " will uninstall watcher callback "
-                                                           "because of unknown exception" ) );
-                                        }
-                                        if ( !bMessageSentOK ) {
-                                            stats::register_stats_error(
-                                                ( std::string( "RPC/" ) +
-                                                    pThis->getRelay().nfoGetSchemeUC() )
-                                                    .c_str(),
-                                                "eth_subscription/logs" );
-                                            stats::register_stats_error(
-                                                "RPC", "eth_subscription/logs" );
-                                            pThis->ethereum()->uninstallWatch( iw );
-                                        }
-                                        //    } );
-                                    }  // for ( const auto& joWalk : joResultLogs )
-                                }      // if ( joResultLogs.is_array() )
+
+                    if ( !joResult.is_array() )
+                        throw std::runtime_error( "Log entries should be array" );
+                    for ( const auto& joRW : joResult ) {
+                        if ( joRW.count( "logs" ) > 0 && joRW.count( "blockHash" ) > 0 &&
+                             joRW.count( "blockNumber" ) > 0 ) {
+                            const std::string strBlockHash = joRW["blockHash"].get< std::string >();
+                            std::string strBlockNumber = joRW["blockNumber"].get< std::string >();
+                            const nlohmann::json& joResultLogs = joRW["logs"];
+                            if ( !joResultLogs.is_array() )
+                                throw std::runtime_error( "Result logs should be array" );
+                            for ( const auto& joWalk : joResultLogs ) {
+                                if ( !joWalk.is_object() )
+                                    continue;
+                                nlohmann::json joLog = joWalk;  // copy
+                                joLog["blockHash"] = strBlockHash;
+                                joLog["blockNumber"] = strBlockNumber;
+                                nlohmann::json joParams = nlohmann::json::object();
+                                joParams["subscription"] = dev::toJS( iw );
+                                joParams["result"] = joLog;
+                                nlohmann::json joNotification = nlohmann::json::object();
+                                joNotification["jsonrpc"] = "2.0";
+                                joNotification["method"] = "eth_subscription";
+                                joNotification["params"] = joParams;
+                                std::string strNotification = joNotification.dump();
+                                const SkaleServerOverride* pSO = pThis->pso();
+                                if ( pSO->opts_.isTraceCalls_ )
+                                    clog( dev::VerbosityDebug,
+                                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                            cc::ws_tx_inv( " <<< " +
+                                                           pThis->getRelay().nfoGetSchemeUC() +
+                                                           "/TX <<< " ) )
+                                        << ( pThis->desc() + cc::ws_tx( " <<< " ) +
+                                               pThis->implPreformatTrafficJsonMessage(
+                                                   strNotification, false ) );
+                                // skutils::dispatch::async( pThis->m_strPeerQueueID,
+                                // [pThis, strNotification]() -> void {
+                                bool bMessageSentOK = false;
+                                try {
+                                    bMessageSentOK = const_cast< SkaleWsPeer* >( pThis.get() )
+                                                         ->sendMessage( skutils::tools::trim_copy(
+                                                             strNotification ) );
+                                    if ( !bMessageSentOK )
+                                        throw std::runtime_error(
+                                            "eth_subscription/logs failed to sent "
+                                            "message" );
+                                    stats::register_stats_answer(
+                                        ( std::string( "RPC/" ) +
+                                            pThis->getRelay().nfoGetSchemeUC() )
+                                            .c_str(),
+                                        "eth_subscription/logs", strNotification.size() );
+                                    stats::register_stats_answer(
+                                        "RPC", "eth_subscription/logs", strNotification.size() );
+                                } catch ( std::exception& ex ) {
+                                    clog( dev::Verbosity::VerbosityError,
+                                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                            cc::debug( "/" ) +
+                                            cc::num10( pThis->getRelay().serverIndex() ) )
+                                        << ( pThis->desc() + " " + cc::error( "error in " ) +
+                                               cc::warn( "eth_subscription/logs" ) +
+                                               cc::error( " will uninstall watcher callback "
+                                                          "because of exception: " ) +
+                                               cc::warn( ex.what() ) );
+                                } catch ( ... ) {
+                                    clog( dev::Verbosity::VerbosityError,
+                                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
+                                            cc::debug( "/" ) +
+                                            cc::num10( pThis->getRelay().serverIndex() ) )
+                                        << ( pThis->desc() + " " + cc::error( "error in " ) +
+                                               cc::warn( "eth_subscription/logs" ) +
+                                               cc::error( " will uninstall watcher callback "
+                                                          "because of unknown exception" ) );
+                                }
+                                if ( !bMessageSentOK ) {
+                                    stats::register_stats_error(
+                                        ( std::string( "RPC/" ) +
+                                            pThis->getRelay().nfoGetSchemeUC() )
+                                            .c_str(),
+                                        "eth_subscription/logs" );
+                                    stats::register_stats_error( "RPC", "eth_subscription/logs" );
+                                    pThis->ethereum()->uninstallWatch( iw );
+                                }
                             }
-                        }  // for ( const auto& joRW : joResult )
-                    }      // if ( joResult.is_array() )
+                        }
+                    }
                 } );
             } );
         };

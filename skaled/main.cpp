@@ -1509,7 +1509,7 @@ int main( int argc, char** argv ) try {
     }
 
     bool requireSnapshotMajority = true;
-    std::string ipToDownloadSnapshotFrom;
+    std::string ipToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
         requireSnapshotMajority = false;
         ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
@@ -1538,6 +1538,14 @@ int main( int argc, char** argv ) try {
         statusAndControl->setExitState( StatusAndControl::StartAgain, true );
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
+
+        if ( !ipToDownloadSnapshotFrom.empty() &&
+             std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
+                 [&ipToDownloadSnapshotFrom]( const dev::eth::sChainNode& node ) {
+                     return node.ip == ipToDownloadSnapshotFrom;
+                 } ) == chainParams.sChain.nodes.end() )
+            throw std::runtime_error(
+                "ipToDownloadSnapshotFrom provided is incorrect - no such node in schain" );
 
         std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
         if ( sharedSpace )
@@ -1590,7 +1598,7 @@ int main( int argc, char** argv ) try {
                     << ")";
 
                 SnapshotHashAgent snapshotHashAgent(
-                    chainParams, arrayCommonPublicKey, requireSnapshotMajority );
+                    chainParams, arrayCommonPublicKey, ipToDownloadSnapshotFrom );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1650,7 +1658,7 @@ int main( int argc, char** argv ) try {
                 }
 
                 clog( VerbosityInfo, "main" )
-                    << cc::notice( "Will cleanup data dir and snasphots dir" );
+                    << cc::notice( "Will cleanup data dir and snapshots dir" );
                 snapshotManager->cleanup();
 
                 size_t n_found = list_urls_to_download.size();
@@ -1680,21 +1688,15 @@ int main( int argc, char** argv ) try {
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
                         else {
-                            if ( !requireSnapshotMajority ) {
-                                clog( VerbosityInfo, "main" )
-                                    << cc::notice( "Skip checking snapshot hash." );
-                                successfullDownload = true;
-                            } else {
-                                clog( VerbosityWarning, "main" )
-                                    << cc::notice(
-                                           "Downloaded snapshot with incorrect hash! Incoming "
-                                           "hash " )
-                                    << cc::notice( voted_hash.first.hex() )
-                                    << cc::notice( " is not equal to calculated hash " )
-                                    << cc::notice( calculated_hash.hex() )
-                                    << cc::notice( "Will try again" );
-                                snapshotManager->cleanup();
-                            }
+                            clog( VerbosityWarning, "main" )
+                                << cc::notice(
+                                       "Downloaded snapshot with incorrect hash! Incoming "
+                                       "hash " )
+                                << cc::notice( voted_hash.first.hex() )
+                                << cc::notice( " is not equal to calculated hash " )
+                                << cc::notice( calculated_hash.hex() )
+                                << cc::notice( "Will try again" );
+                            snapshotManager->cleanup();
                         }
                     } catch ( const std::exception& ex ) {
                         // just retry

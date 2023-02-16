@@ -484,9 +484,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     }
     if ( found_difference ) {
         clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
-        clog( VerbosityError, "skale-host" ) << "<i> <old> <new>";
+        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
         for ( size_t i = 0; i < txns.size(); ++i ) {
-            clog( VerbosityError, "skale-host" )
+            clog( VerbosityTrace, "skale-host" )
                 << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
         }
     }

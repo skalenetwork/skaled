@@ -1364,6 +1364,14 @@ void BlockChain::clearCaches() {
     }
 }
 
+// void BlockChain::doLevelDbCompaction() const {
+//    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
+//        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
+//        assert( ldb );
+//        ldb->doCompaction();
+//    }
+//}
+
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
