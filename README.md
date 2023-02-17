@@ -59,7 +59,7 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 ```
 sudo apt update
 sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs 
-sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io
+sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gprof
 ```
 
 NB cmake needs to be of version >=3.31, git of version >=2.18
