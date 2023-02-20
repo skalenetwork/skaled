@@ -108,7 +108,7 @@ Then try building again
 
 ## Documentation
 
-_in process_
+[SKALED documentation] (https://docs.skale.network/skaled/3.16.x-beta/)
 
 ## Contributing
 
@@ -124,10 +124,6 @@ All contributions are welcome! We try to keep a list of tasks that are suitable 
 
 
 All development goes in develop branch. 
-
-## Note on mining
-
-The SKALE Network uses Proof-of-Stake, therefore this project is **not suitable for Ethereum mining**.
 
 
 ## For more information
