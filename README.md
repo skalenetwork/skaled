@@ -93,6 +93,19 @@ cd build/test
 ./testeth -- --all
 ```
 
+# Hunter fix
+
+If Hunter throws "Incorrect Hash Error" on your Ubuntu version
+
+```
+cd ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
+wget https://github.com/hunter-packages/crc32c/archive/refs/tags/hunter-1.0.5.tar.gz
+```
+
+Then try building again
+
+
+
 ## Documentation
 
 _in process_
