@@ -108,7 +108,7 @@ Then try building again
 
 ## Documentation
 
-[SKALED documentation] (https://docs.skale.network/skaled/3.16.x-beta/)
+[SKALED documentation](https://docs.skale.network/skaled/3.16.x-beta/)
 
 ## Contributing
 
