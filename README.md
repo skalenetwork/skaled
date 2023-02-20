@@ -71,8 +71,6 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
 sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
 sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
 sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
-echo "Checking alternative for gcc"
-which gcc
 gcc --version
 ```
 
