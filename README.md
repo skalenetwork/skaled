@@ -65,6 +65,7 @@ sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-de
 NB cmake needs to be of version >=3.31, git of version >=2.18
 
 ### Set  gcc-9 as default compiler
+```
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
 sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
@@ -88,8 +89,6 @@ or, if you want to build debug version of skaled
 cd deps
 ./build.sh DEBUG=1
 ```
-
-
 
 
 ## Hunter fix
