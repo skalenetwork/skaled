@@ -270,8 +270,8 @@ ChainParams ChainParams::loadConfig(
                 auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
                 for ( const auto& groupNodeConf : groupNodesObj ) {
                     auto groupNodeConfObj = groupNodeConf.second.get_array();
-                    u256 id = groupNodeConfObj[0].get_uint64();
-                    u256 sChainIndex = groupNodeConfObj[1].get_uint64();
+                    u256 sChainIndex = groupNodeConfObj[0].get_uint64();
+                    u256 id = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
                     groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
