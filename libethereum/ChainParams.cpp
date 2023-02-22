@@ -275,6 +275,10 @@ ChainParams ChainParams::loadConfig(
                     std::string publicKey = groupNodeConfObj[2].get_str();
                     groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
+                std::sort( groupNodes.begin(), groupNodes.end(),
+                    []( const GroupNode& lhs, const GroupNode& rhs ) {
+                        return lhs.schainIndex < rhs.schainIndex;
+                    } );
                 nodeGroup.nodes = groupNodes;
 
                 std::array< std::string, 4 > nodeGroupBlsPublicKey;
