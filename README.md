@@ -59,16 +59,41 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 ```
 sudo apt update
 sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs 
-sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io
+sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gprof  gcc-9 g++-9
 ```
 
 NB cmake needs to be of version >=3.31, git of version >=2.18
+
+### Set  gcc-9 as default compiler
+```
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
+sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
+sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+gcc --version
+```
 
 ### Build dependencies
 
 ```
 cd deps
 ./build.sh
+```
+
+or, if you want to build debug version of skaled
+
+```
+cd deps
+./build.sh DEBUG=1
+```
+
+
+## Hunter fix
+
+```
+cd ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
+wget https://github.com/hunter-packages/crc32c/archive/refs/tags/hunter-1.0.5.tar.gz
 ```
 
 ### Configure and build skaled
@@ -93,9 +118,10 @@ cd build/test
 ./testeth -- --all
 ```
 
+
 ## Documentation
 
-_in process_
+[SKALED documentation](https://docs.skale.network/skaled/3.16.x-beta/)
 
 ## Contributing
 
@@ -111,10 +137,6 @@ All contributions are welcome! We try to keep a list of tasks that are suitable 
 
 
 All development goes in develop branch. 
-
-## Note on mining
-
-The SKALE Network uses Proof-of-Stake, therefore this project is **not suitable for Ethereum mining**.
 
 
 ## For more information
