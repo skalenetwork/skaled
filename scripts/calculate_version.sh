@@ -17,22 +17,16 @@ fi
 
 git fetch --tags
 
-if [ $BRANCH = "master" ]
+if [ $BRANCH = "stable" ]
 then
     echo $VERSION
     exit 0
 fi
 
 LABEL="develop"
-if [ $BRANCH = "stable" ]
-then
-    LABEL="stable"
-elif [ $BRANCH = "beta" ]
+if [ $BRANCH = "beta" ]
 then
     LABEL="beta"
-elif [ $BRANCH = "syncnode_develop" ]
-then
-    LABEL="sync"
 fi
 
 for (( VERSION_NUMBER=0; ; VERSION_NUMBER++ ))
