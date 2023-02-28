@@ -2249,6 +2249,14 @@ BOOST_AUTO_TEST_CASE( oracle, *boost::unit_test::disabled() ) {
 
 }*/
 
+BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
+    JsonRpcFixture fixture;
+
+    fixture.rpcClient->debug_doStateDbCompaction();
+
+    fixture.rpcClient->debug_doBlocksDbCompaction();
+}
+
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
 
