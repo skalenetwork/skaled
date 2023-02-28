@@ -24,6 +24,8 @@
 
 #include "OverlayFS.h"
 #include "RevertableFSPatch.h"
+#include <libdevcrypto/Hash.h>
+#include <secp256k1_sha256.h>
 #include <fstream>
 
 
@@ -110,7 +112,7 @@ bool WriteChunkOp::execute() {
         std::fstream file;
         file.open( this->path, std::ios::binary | std::ios::out | std::ios::in );
         file.seekp( static_cast< long >( this->position ) );
-        file.write( ( char* ) this->data, this->dataLength );
+        file.write( reinterpret_cast< const char* >( &this->data[0] ), this->dataLength );
         return true;
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
@@ -123,12 +125,35 @@ bool WriteChunkOp::execute() {
     return false;
 }
 
-bool WriteHashFileOp::execute() {
+bool CalculateFileHash::execute() {
     try {
+        std::ifstream file( this->path );
+        file.seekg( 0, std::ios::end );
+        size_t fileSize = file.tellg();
+        std::string fileContent( fileSize, ' ' );
+        file.seekg( 0 );
+        file.read( &fileContent[0], fileSize );
+
+        const std::string fileHashName = this->path + "._hash";
+
+        std::string relativePath = this->path.substr( this->path.find( "filestorage" ) );
+
+        dev::h256 filePathHash = dev::sha256( relativePath );
+
+        dev::h256 fileContentHash = dev::sha256( fileContent );
+
+        secp256k1_sha256_t ctx;
+        secp256k1_sha256_initialize( &ctx );
+        secp256k1_sha256_write( &ctx, filePathHash.data(), filePathHash.size );
+        secp256k1_sha256_write( &ctx, fileContentHash.data(), fileContentHash.size );
+
+        dev::h256 commonFileHash;
+        secp256k1_sha256_finalize( &ctx, commonFileHash.data() );
+
         std::fstream fileHash;
-        fileHash.open( this->path, std::ios::binary | std::ios::out );
+        fileHash.open( fileHashName, std::ios::binary | std::ios::out );
         fileHash.clear();
-        fileHash << this->commonFileHash;
+        fileHash << commonFileHash;
         fileHash.close();
         return true;
     } catch ( std::exception& ex ) {
@@ -183,8 +208,8 @@ void OverlayFS::writeChunk( const std::string& filePath, const size_t position,
         operation->execute();
 }
 
-void OverlayFS::writeHashFile( const std::string& filePath, const dev::h256& commonFileHash ) {
-    auto operation = std::make_shared< WriteHashFileOp >( filePath, commonFileHash );
+void OverlayFS::calculateFileHash( const std::string& filePath ) {
+    auto operation = std::make_shared< CalculateFileHash >( filePath );
     if ( isCacheEnabled() )
         m_cache.push_back( operation );
     else

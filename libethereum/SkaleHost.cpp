@@ -201,7 +201,7 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
         std::vector< uint64_t > nodes;
         // add ecdsa keys info and historic groups info
         for ( const auto& node : nodeGroup.nodes ) {
-            historicECDSAKeys[u256toUint64( node.id )] = node.publicKey;
+            historicECDSAKeys[u256toUint64( node.id )] = node.publicKey.substr( 2 );
             nodes.push_back( u256toUint64( node.id ) );
         }
         historicNodeGroups[nodeGroup.finishTs] = nodes;
@@ -484,9 +484,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     }
     if ( found_difference ) {
         clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
-        clog( VerbosityError, "skale-host" ) << "<i> <old> <new>";
+        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
         for ( size_t i = 0; i < txns.size(); ++i ) {
-            clog( VerbosityError, "skale-host" )
+            clog( VerbosityTrace, "skale-host" )
                 << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
         }
     }
@@ -645,7 +645,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::p( "/data_dir" )
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
-            cerror << DETAILED_ERROR;
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
                 ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
                 _exit( int( ExitHandler::ec_state_root_mismatch ) );
@@ -956,12 +955,10 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
-            cerror << DETAILED_ERROR;
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
-            cerror << DETAILED_ERROR;
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
             sleep( 2 );
         }

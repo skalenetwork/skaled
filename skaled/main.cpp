@@ -225,7 +225,7 @@ void removeEmptyOptions( po::parsed_options& parsed ) {
 }
 
 unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
-    skutils::rest::client cli;
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
     }
@@ -630,6 +630,11 @@ int main( int argc, char** argv ) try {
         "Run informational web3 WSS(IPv6) server(s) on specified port(and next set of ports if "
         "--info-acceptors > 1)" );
 
+    addClientOption( "no-snapshot-majority", po::value< string >()->value_name( "<url>" ), "" );
+
+    addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
+        "Idle wait timeout for JSON RPC calls in milliseconds" );
+
     std::string strPerformanceWarningDurationOptionDescription =
         "Specifies time margin in floating point format, in seconds, for displaying performance "
         "warning messages in log output if JSON RPC call processing exeeds it, default is " +
@@ -835,6 +840,9 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
+    if ( vm.count( "network-idle-timeout" ) )
+        skutils::rest::g_nClientConnectionTimeoutMS = vm["network-idle-timeout"].as< long >();
+
     if ( vm.count( "test-enable-crash-at" ) ) {
         std::string crash_at = vm["test-enable-crash-at"].as< string >();
         batched_io::test_enable_crash_at( crash_at );
@@ -915,7 +923,7 @@ int main( int argc, char** argv ) try {
                            cc::p( strPathKey ) + "\n" );
         }
         try {
-            skutils::rest::client cli;
+            skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
             cli.optsSSL_ = optsSSL;
             cli.open( u );
             const bool isAutoGenJsonID = true;
@@ -1501,7 +1509,7 @@ int main( int argc, char** argv ) try {
     }
 
     bool requireSnapshotMajority = true;
-    std::string ipToDownloadSnapshotFrom;
+    std::string ipToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
         requireSnapshotMajority = false;
         ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
@@ -1530,6 +1538,14 @@ int main( int argc, char** argv ) try {
         statusAndControl->setExitState( StatusAndControl::StartAgain, true );
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
+
+        if ( !ipToDownloadSnapshotFrom.empty() &&
+             std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
+                 [&ipToDownloadSnapshotFrom]( const dev::eth::sChainNode& node ) {
+                     return node.ip == ipToDownloadSnapshotFrom;
+                 } ) == chainParams.sChain.nodes.end() )
+            throw std::runtime_error(
+                "ipToDownloadSnapshotFrom provided is incorrect - no such node in schain" );
 
         std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
         if ( sharedSpace )
@@ -1582,7 +1598,7 @@ int main( int argc, char** argv ) try {
                     << ")";
 
                 SnapshotHashAgent snapshotHashAgent(
-                    chainParams, arrayCommonPublicKey, requireSnapshotMajority );
+                    chainParams, arrayCommonPublicKey, ipToDownloadSnapshotFrom );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1642,7 +1658,7 @@ int main( int argc, char** argv ) try {
                 }
 
                 clog( VerbosityInfo, "main" )
-                    << cc::notice( "Will cleanup data dir and snasphots dir" );
+                    << cc::notice( "Will cleanup data dir and snapshots dir" );
                 snapshotManager->cleanup();
 
                 size_t n_found = list_urls_to_download.size();
@@ -1672,21 +1688,15 @@ int main( int argc, char** argv ) try {
                         if ( calculated_hash == voted_hash.first )
                             successfullDownload = true;
                         else {
-                            if ( !requireSnapshotMajority ) {
-                                clog( VerbosityInfo, "main" )
-                                    << cc::notice( "Skip checking snapshot hash." );
-                                successfullDownload = true;
-                            } else {
-                                clog( VerbosityWarning, "main" )
-                                    << cc::notice(
-                                           "Downloaded snapshot with incorrect hash! Incoming "
-                                           "hash " )
-                                    << cc::notice( voted_hash.first.hex() )
-                                    << cc::notice( " is not equal to calculated hash " )
-                                    << cc::notice( calculated_hash.hex() )
-                                    << cc::notice( "Will try again" );
-                                snapshotManager->cleanup();
-                            }
+                            clog( VerbosityWarning, "main" )
+                                << cc::notice(
+                                       "Downloaded snapshot with incorrect hash! Incoming "
+                                       "hash " )
+                                << cc::notice( voted_hash.first.hex() )
+                                << cc::notice( " is not equal to calculated hash " )
+                                << cc::notice( calculated_hash.hex() )
+                                << cc::notice( "Will try again" );
+                            snapshotManager->cleanup();
                         }
                     } catch ( const std::exception& ex ) {
                         // just retry
