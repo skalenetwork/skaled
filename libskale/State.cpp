@@ -836,7 +836,6 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
-    resetStorageChanges();
     clearFileStorageCache();
     if ( !ContractStorageLimitPatch::isEnabled() ) {
         resetStorageChanges();
