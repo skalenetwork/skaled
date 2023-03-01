@@ -916,6 +916,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "maxSkaledLeveldbStorageBytes": 178124851,
             "maxFileStorageBytes": 178124851,
             "maxReservedStorageBytes": 59374950,
+            "contractStoragePatchTimestamp": 1000,
             "nodes": [
                 {
                     "nodeID": 8,
