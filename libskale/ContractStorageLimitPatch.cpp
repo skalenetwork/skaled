@@ -1,4 +1,5 @@
 #include "ContractStorageLimitPatch.h"
+#include <iostream>
 
 time_t ContractStorageLimitPatch::contractStoragePatchTimestamp;
 time_t ContractStorageLimitPatch::lastBlockTimestamp;
