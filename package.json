@@ -1,0 +1,14 @@
+{
+  "name": "skaled",
+  "version": "0.1.0",
+  "main": "index.js",
+  "repository": "https://github.com/skalenetwork/skaled.git",
+  "license": "GPL-3.0",
+  "private": true,
+  "scripts": {
+    "docs:watch": "npx skl-reload --node-runner yarn --path docs --ui-repo https://github.com/skalenetwork/doc-ui.git --ui-path doc-ui --ui-only --docs-playbook local-playbook-ui.yml --docs-stacktrace --watch-paths docs/**/*.yml,docs/**/*.adoc --watch-event change --server-open --server-dir build/site/"
+  },
+  "dependencies": {
+    "@skalenetwork/doc-utils": "https://github.com/skalenetwork/doc-utils.git"
+  }
+}
