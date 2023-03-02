@@ -1,0 +1,20 @@
+site:
+  title: SKALED - SKALE C++ Client
+  robots: allow
+  # start_page: docs::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: docs
+ui:
+  bundle:
+    url: ./doc-ui/build/sn-docs-ui-bundle.zip
+  supplemental_files: ./doc-ui/static
+asciidoc:
+  attributes:
+    :plantuml-server-url: https://www.plantuml.com/plantuml
+  extensions:
+    - node_modules/@skalenetwork/doc-utils/lib/cjs/tabs-block.js
+    - '@djencks/asciidoctor-mathjax'
+    - asciidoctor-kroki

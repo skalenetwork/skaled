@@ -122,3 +122,7 @@ saved_environment_on_startup.txt
 qtbuild/
 
 scripts/skale_build/executable/skaled
+
+# Docs Branch ONLY
+package-lock.json
+yarn-error.log
