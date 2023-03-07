@@ -2,9 +2,9 @@
 
 == Introduction
 
-SKALE Chain Block rotation is set by the _rotate_after_block_ parameter in static_schain_params.json. The current default value is 1,024,000 blocks and is tuned by performance of consensus, skaled, and node storage.
+SKALE Chain Block rotation allows to limit the space on hard drive which is occupied by blocks. The current default value is 12.6GB.
 
-Each SKALE Chain maintains a minimum to maximum number of blocks, currently 4,096,000 to 5,119,999 blocks.
+Each SKALE Chain maintains a minimum to maximum number of blocks, which are 80% and 100% of the above value respectively.
 
 Rotation is performed across 4 databases. Each database contains:
 
@@ -13,12 +13,6 @@ Rotation is performed across 4 databases. Each database contains:
 * log blooms
 * "best" (lastBlockHash, best block of the canonical chain)
 * "chainStart" (firstBlockHash, used when full chain isn't available, for example after snapshot import)
-
-== Specification
-
-* SKALED maintains not an exact amount of blocks set in the config, but at least this amount.
-* Config parameter _rotate_after_block_ sets the number of blocks after which skaled rotates 1 out of 4 databases. As a result, skaled maintains a minimum of rotate_after_block * 4, and a maximum rotate_after_block * 5 – 1 blocks.
-* Database rotation happens just before a new block is inserted.
 
 == API Changes
 
@@ -51,46 +45,3 @@ Rotation is performed across 4 databases. Each database contains:
 |eth_getFilterLogs/eth_getLogs
 |will treat removed blocks as if they have 0 logs
 |===
-
-== Mechanisms
-
-Rotation is performed in the following DBs: `blocks_and_extras`
-
-This database contains:
-
-* Blocks
-* Transactions and their receipts
-* Log blooms
-* “best” and “chainStart”
-
-link:https://github.com/ethereum/aleth/blob/master/doc/database_layout.rst[See database_layout.rst]
-
-Directory with DB contains subdirectories:
-
-1. 0.db
-2. 1.db
-3. 2.db
-4. 3.db
-5. 4.db
-
-These directories are created automatically.
-
-On rotation, one directory is deleted and re-created. The order of rotation is `0->4->3->2->1->0`
-
-The “current” piece for writing is marked with the key:
-
-```
-const std::string current_piece_mark_key =
-    "ead48ec575aaa7127384dee432fc1c02d9f6a22950234e5ecf59f35ed9f6e78d"
-```
-with an empty value.
-
-On rotation, this key is killed in old current piece and is created in new current piece.
-
-On start, it's searched in all pieces.
-
-Insert/update operations go to current piece.
-
-Read operations are performed in all pieces from most recent to least recent, until found.
-
-Kill operations are performed in all pieces.
