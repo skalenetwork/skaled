@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: (GPL-3.0-only OR CC-BY-4.0)
 
-= JSON-RPC Interface Compatibility 
+= JSON-RPC Interface Compatibility
+
+[NOTE]
+**All** Ethereum debug Namespace methods (for example, `debug_traceCall`) are currently not supported.
 
 [%header,cols="1,1,2"]
 |===
