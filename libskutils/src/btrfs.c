@@ -189,7 +189,7 @@ int btrfs_send(const char* parent, const char* file, const char* vol){
 }
 
 int btrfs_subvolume_property_set(const char* path, const char* name, const char* value){
-    char fmt[] = "btrfs property set -ts %s %s %s";
+    char fmt[] = "btrfs property set -ts -f %s %s %s";
 
     int len = 1 + snprintf(NULL, 0, fmt, path, name, value);
 
