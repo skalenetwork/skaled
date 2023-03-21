@@ -321,7 +321,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 )( _p.gas - g );
+            m_gas = ( u256 ) ( _p.gas - g );
             bytes output;
             bool success;
             // dev::eth::g_state = m_s.delegateWrite();

@@ -624,7 +624,8 @@ std::string client::stat_extract_short_content_type_string( const std::string& s
 }
 
 uint64_t client::stat_get_random_number( uint64_t const& min, uint64_t const& max ) {
-    return ( ( ( uint64_t )( unsigned int ) rand() << 32 ) + ( uint64_t )( unsigned int ) rand() ) %
+    return ( ( ( uint64_t ) ( unsigned int ) rand() << 32 ) +
+               ( uint64_t ) ( unsigned int ) rand() ) %
                ( max - min ) +
            min;
 }
