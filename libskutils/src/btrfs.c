@@ -7,6 +7,7 @@
 
 static _Thread_local char errbuf[256];
 static _Thread_local char last_cmd[256];
+static _Thread_local int need_f = -1;     // 0 false, 1 true, -1 unknown
 
 static int shell_call(const char* cmd){
 
@@ -55,6 +56,12 @@ const char* btrfs_last_cmd(){
     return last_cmd;
 }
 
+const char* btrfs_version(){
+    int res = shell_call("btrfs --version");
+    if( res != 0 )
+        return NULL;
+    return errbuf;
+}
 
 int btrfs_present(const char* path){
     const char fmt[] = "btrfs filesystem df %s";
@@ -189,7 +196,28 @@ int btrfs_send(const char* parent, const char* file, const char* vol){
 }
 
 int btrfs_subvolume_property_set(const char* path, const char* name, const char* value){
-    char fmt[] = "btrfs property set -ts -f %s %s %s";
+    char* fmt;
+
+    // check version if needed
+    if(need_f == -1){
+
+        const char* ver = btrfs_version();
+        if(ver==NULL)
+            return -1;
+
+        int v1,v2,v3;
+        int res = sscanf(ver, "btrfs-progs v%d.%d.%d", &v1, &v2, &v3);
+        if(res != 3)
+            return -1;
+
+        // check v5.14.2 or higher
+        need_f = v1>5 || (v1==5 && (v2>14 || (v2==14 && v3>=2)));
+    }// if -1
+
+    if(need_f)
+        fmt = "btrfs property set -ts -f %s %s %s";
+    else
+        fmt = "btrfs property set -ts %s %s %s";
 
     int len = 1 + snprintf(NULL, 0, fmt, path, name, value);
 
@@ -202,4 +230,4 @@ int btrfs_subvolume_property_set(const char* path, const char* name, const char*
     return res;
 }
 
-btrfs_t btrfs = {btrfs_strerror, btrfs_last_cmd, btrfs_present, {btrfs_subvolume_list, btrfs_subvolume_create, btrfs_subvolume_delete, btrfs_subvolume_snapshot, btrfs_subvolume_snapshot_r}, btrfs_receive, btrfs_send, btrfs_subvolume_property_set};
+btrfs_t btrfs = {btrfs_strerror, btrfs_last_cmd, btrfs_present, btrfs_version, {btrfs_subvolume_list, btrfs_subvolume_create, btrfs_subvolume_delete, btrfs_subvolume_snapshot, btrfs_subvolume_snapshot_r, btrfs_subvolume_property_set}, btrfs_receive, btrfs_send};
