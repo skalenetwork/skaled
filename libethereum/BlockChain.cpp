@@ -176,9 +176,9 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
 
-BlockChain::BlockChain( ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches,
-    WithExisting _we ) try : m_lastBlockHashes( new LastBlockHashes( *this ) ),
-                             m_dbPath( _dbPath ) {
+BlockChain::BlockChain(
+    ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
+    : m_lastBlockHashes( new LastBlockHashes( *this ) ), m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
 } catch ( ... ) {
@@ -1373,7 +1373,9 @@ void BlockChain::clearCaches() {
 //}
 
 void BlockChain::checkConsistency() {
-    DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
+    DEV_WRITE_GUARDED( x_details ) {
+        m_details.clear();
+    }
 
     m_blocksDB->forEach( [this]( db::Slice const& _key, db::Slice const& /* _value */ ) {
         if ( _key.size() == 32 ) {

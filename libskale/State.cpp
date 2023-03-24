@@ -1101,7 +1101,8 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                         contout << std::endl
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
-                                           cached.count( j.first ) ? " .     " : "       " )
+                                       cached.count( j.first ) ? " .     " :
+                                                                 "       " )
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else

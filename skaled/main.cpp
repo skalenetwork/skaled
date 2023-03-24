@@ -1820,7 +1820,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t ) ( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();

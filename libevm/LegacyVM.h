@@ -35,7 +35,9 @@ public:
     void validateSubroutine( uint64_t _PC, uint64_t* _rp, u256* _sp );
 #endif
 
-    bytes const& memory() const { return m_mem; }
+    bytes const& memory() const {
+        return m_mem;
+    }
     u256s stack() const {
         u256s stack( m_SP, m_stackEnd );
         reverse( stack.begin(), stack.end() );
@@ -73,7 +75,9 @@ private:
     // space for data stack, grows towards smaller addresses from the end
     u256 m_stack[1024];
     u256* m_stackEnd = &m_stack[1024];
-    size_t stackSize() { return m_stackEnd - m_SP; }
+    size_t stackSize() {
+        return m_stackEnd - m_SP;
+    }
 
 #if EIP_615
     // space for return stack

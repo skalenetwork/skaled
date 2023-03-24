@@ -74,7 +74,9 @@ public:
 
     mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 
-    bool isWS() const { return isWS_; };
+    bool isWS() const {
+        return isWS_;
+    };
 };
 
 class ClientBase : public Interface {

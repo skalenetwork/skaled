@@ -137,8 +137,8 @@ template < class T, class _In >
 inline T fromBigEndian( _In const& _bytes ) {
     T ret = ( T ) 0;
     for ( auto i : _bytes )
-        ret = ( T )(
-            ( ret << 8 ) | ( _byte_ )( typename std::make_unsigned< decltype( i ) >::type ) i );
+        ret = ( T ) ( ( ret << 8 ) |
+                      ( _byte_ ) ( typename std::make_unsigned< decltype( i ) >::type ) i );
     return ret;
 }
 

@@ -282,18 +282,26 @@ public:
      * // unlock
      * @endcode
      */
-    bool sealBlock( bytes const& _header ) { return sealBlock( &_header ); }
+    bool sealBlock( bytes const& _header ) {
+        return sealBlock( &_header );
+    }
     bool sealBlock( bytesConstRef _header );
 
     /// @returns true if sealed - in this case you can no longer append transactions.
-    bool isSealed() const { return !m_currentBytes.empty(); }
+    bool isSealed() const {
+        return !m_currentBytes.empty();
+    }
 
     /// Get the complete current block, including valid nonce.
     /// Only valid when isSealed() is true.
-    bytes const& blockData() const { return m_currentBytes; }
+    bytes const& blockData() const {
+        return m_currentBytes;
+    }
 
     /// Get the header information on the present block.
-    BlockHeader const& info() const { return m_currentBlock; }
+    BlockHeader const& info() const {
+        return m_currentBlock;
+    }
 
     void startReadState();
 
@@ -312,7 +320,9 @@ private:
         std::vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward );
 
     /// @returns gas used by transactions thus far executed.
-    u256 gasUsed() const { return m_receipts.size() ? m_receipts.back().cumulativeGasUsed() : 0; }
+    u256 gasUsed() const {
+        return m_receipts.size() ? m_receipts.back().cumulativeGasUsed() : 0;
+    }
 
     /// Performs irregular modifications right after initialization, e.g. to implement a hard fork.
     void performIrregularModifications();
@@ -347,7 +357,9 @@ private:
     ;
 
 public:
-    static uint64_t howMany() { return Counter< Block >::howMany(); }
+    static uint64_t howMany() {
+        return Counter< Block >::howMany();
+    }
 };
 
 

@@ -436,7 +436,9 @@ public:
 
     bool is_running() const;
     void stop();
-    virtual bool is_ssl() const { return false; }
+    virtual bool is_ssl() const {
+        return false;
+    }
 
 protected:
     bool process_request(
@@ -493,7 +495,9 @@ protected:
     void remove_all_tasks();
 
 public:
-    bool is_in_loop() const { return is_in_loop_; }
+    bool is_in_loop() const {
+        return is_in_loop_;
+    }
     void wait_while_in_loop() const {
         while ( is_in_loop() )
             std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );

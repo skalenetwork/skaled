@@ -118,7 +118,9 @@ public:
 
     // [STATE-QUERY API]
 
-    int getDefault() const { return PendingBlock; }
+    int getDefault() const {
+        return PendingBlock;
+    }
     void setDefault( BlockNumber /*_block*/ ) {
         throw std::logic_error( "setDefault is not supported" );
     }
@@ -202,10 +204,16 @@ public:
     virtual Transactions transactions( BlockNumber _block ) const = 0;
     virtual TransactionHashes transactionHashes( h256 _blockHash ) const = 0;
 
-    virtual BlockHeader pendingInfo() const { return BlockHeader(); }
-    virtual BlockDetails pendingDetails() const { return BlockDetails(); }
+    virtual BlockHeader pendingInfo() const {
+        return BlockHeader();
+    }
+    virtual BlockDetails pendingDetails() const {
+        return BlockDetails();
+    }
     /// @returns the EVMSchedule in the context of the pending block.
-    virtual EVMSchedule evmSchedule() const { return EVMSchedule(); }
+    virtual EVMSchedule evmSchedule() const {
+        return EVMSchedule();
+    }
 
     BlockHeader blockInfo( BlockNumber _block ) const;
     BlockDetails blockDetails( BlockNumber _block ) const;
@@ -268,20 +276,30 @@ public:
     virtual bool wouldSeal() const = 0;
 
     /// Are we updating the chain (syncing or importing a new block)?
-    virtual bool isSyncing() const { return false; }
+    virtual bool isSyncing() const {
+        return false;
+    }
     /// Are we syncing the chain?
-    virtual bool isMajorSyncing() const { return false; }
+    virtual bool isMajorSyncing() const {
+        return false;
+    }
 
     /// Gets the network id.
-    virtual u256 networkId() const { return 0; }
+    virtual u256 networkId() const {
+        return 0;
+    }
     /// Sets the network id.
     virtual void setNetworkId( u256 const& ) {}
 
     /// Gets the chain id
-    virtual uint64_t chainId() const { return 0; }
+    virtual uint64_t chainId() const {
+        return 0;
+    }
 
     /// Get the seal engine.
-    virtual SealEngineFace* sealEngine() const { return nullptr; }
+    virtual SealEngineFace* sealEngine() const {
+        return nullptr;
+    }
 
 public:
     // new block watch

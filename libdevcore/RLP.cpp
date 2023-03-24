@@ -241,9 +241,9 @@ void RLPStream::noteAppended( size_t _itemCount ) {
             m_out.resize( os + encodeSize );
             memmove( m_out.data() + p + encodeSize, m_out.data() + p, os - p );
             if ( s < c_rlpListImmLenCount )
-                m_out[p] = ( _byte_ )( c_rlpListStart + s );
+                m_out[p] = ( _byte_ ) ( c_rlpListStart + s );
             else if ( c_rlpListIndLenZero + brs <= 0xff ) {
-                m_out[p] = ( _byte_ )( c_rlpListIndLenZero + brs );
+                m_out[p] = ( _byte_ ) ( c_rlpListIndLenZero + brs );
                 _byte_* b = &( m_out[p + brs] );
                 for ( ; s; s >>= 8 )
                     *( b-- ) = ( _byte_ ) s;
@@ -267,7 +267,7 @@ RLPStream& RLPStream::appendList( size_t _items ) {
 
 RLPStream& RLPStream::appendList( bytesConstRef _rlp ) {
     if ( _rlp.size() < c_rlpListImmLenCount )
-        m_out.push_back( ( _byte_ )( _rlp.size() + c_rlpListStart ) );
+        m_out.push_back( ( _byte_ ) ( _rlp.size() + c_rlpListStart ) );
     else
         pushCount( _rlp.size(), c_rlpListIndLenZero );
     appendRaw( _rlp, 1 );
@@ -285,7 +285,7 @@ RLPStream& RLPStream::append( bytesConstRef _s, bool _compact ) {
         m_out.push_back( *d );
     else {
         if ( s < c_rlpDataImmLenCount )
-            m_out.push_back( ( _byte_ )( s + c_rlpDataImmLenStart ) );
+            m_out.push_back( ( _byte_ ) ( s + c_rlpDataImmLenStart ) );
         else
             pushCount( s, c_rlpDataIndLenZero );
         appendRaw( bytesConstRef( d, s ), 0 );
@@ -302,13 +302,13 @@ RLPStream& RLPStream::append( bigint _i ) {
     else {
         unsigned br = bytesRequired( _i );
         if ( br < c_rlpDataImmLenCount )
-            m_out.push_back( ( _byte_ )( br + c_rlpDataImmLenStart ) );
+            m_out.push_back( ( _byte_ ) ( br + c_rlpDataImmLenStart ) );
         else {
             auto brbr = bytesRequired( br );
             if ( c_rlpDataIndLenZero + brbr > 0xff )
                 BOOST_THROW_EXCEPTION(
                     RLPException() << errinfo_comment( "Number too large for RLP" ) );
-            m_out.push_back( ( _byte_ )( c_rlpDataIndLenZero + brbr ) );
+            m_out.push_back( ( _byte_ ) ( c_rlpDataIndLenZero + brbr ) );
             pushInt( br, brbr );
         }
         pushInt( _i, br );
@@ -321,7 +321,7 @@ void RLPStream::pushCount( size_t _count, _byte_ _base ) {
     auto br = bytesRequired( _count );
     if ( int( br ) + _base > 0xff )
         BOOST_THROW_EXCEPTION( RLPException() << errinfo_comment( "Count too large for RLP" ) );
-    m_out.push_back( ( _byte_ )( br + _base ) );  // max 8 bytes.
+    m_out.push_back( ( _byte_ ) ( br + _base ) );  // max 8 bytes.
     pushInt( _count, br );
 }
 
