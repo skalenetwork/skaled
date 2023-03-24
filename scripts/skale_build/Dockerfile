@@ -1,4 +1,5 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -q update && \
     apt-get -qy install \
