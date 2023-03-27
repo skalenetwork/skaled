@@ -197,3 +197,12 @@ jobs:
           asset_path: ./build-historic/skaled/skaled
           asset_name: skaled-historic
           asset_content_type: application/octet-stream
+
+  functional-tests:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test
+        run: | 
+          echo Test
+  
