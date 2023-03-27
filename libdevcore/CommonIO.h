@@ -134,9 +134,10 @@ inline std::string toString(
     char buffer[1024];
     if ( strftime( buffer, sizeof( buffer ), _format.c_str(), &timeValue ) )
         return std::string( buffer ) + "." +
-               ( millisRemainder < 1 ?
-                       "000" :
-                       millisRemainder < 10 ? "00" : millisRemainder < 100 ? "0" : "" ) +
+               ( millisRemainder < 1     ? "000" :
+                   millisRemainder < 10  ? "00" :
+                   millisRemainder < 100 ? "0" :
+                                           "" ) +
                std::to_string( millisRemainder ) + "Z";
     return std::string();
 }
