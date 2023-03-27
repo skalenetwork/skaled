@@ -569,14 +569,14 @@ typedef struct mz_dummy_time_t_tag {
 #define MZ_READ_LE16( p ) *( ( const mz_uint16* ) ( p ) )
 #define MZ_READ_LE32( p ) *( ( const mz_uint32* ) ( p ) )
 #else
-#define MZ_READ_LE16( p )                                  \
-    ( ( mz_uint32 ) ( ( ( const mz_uint8* ) ( p ) )[0] ) | \
-        ( ( mz_uint32 ) ( ( ( const mz_uint8* ) ( p ) )[1] ) << 8U ) )
-#define MZ_READ_LE32( p )                                               \
-    ( ( mz_uint32 ) ( ( ( const mz_uint8* ) ( p ) )[0] ) |              \
-        ( ( mz_uint32 ) ( ( ( const mz_uint8* ) ( p ) )[1] ) << 8U ) |  \
-        ( ( mz_uint32 ) ( ( ( const mz_uint8* ) ( p ) )[2] ) << 16U ) | \
-        ( ( mz_uint32 ) ( ( ( const mz_uint8* ) ( p ) )[3] ) << 24U ) )
+#define MZ_READ_LE16( p )                                 \
+    ( ( mz_uint32 )( ( ( const mz_uint8* ) ( p ) )[0] ) | \
+        ( ( mz_uint32 )( ( ( const mz_uint8* ) ( p ) )[1] ) << 8U ) )
+#define MZ_READ_LE32( p )                                              \
+    ( ( mz_uint32 )( ( ( const mz_uint8* ) ( p ) )[0] ) |              \
+        ( ( mz_uint32 )( ( ( const mz_uint8* ) ( p ) )[1] ) << 8U ) |  \
+        ( ( mz_uint32 )( ( ( const mz_uint8* ) ( p ) )[2] ) << 16U ) | \
+        ( ( mz_uint32 )( ( ( const mz_uint8* ) ( p ) )[3] ) << 24U ) )
 #endif
 
 #define MZ_READ_LE64( p )                                                                   \
@@ -858,7 +858,7 @@ void* tinfl_decompress_mem_to_heap(
 /* tinfl_decompress_mem_to_mem() decompresses a block in memory to another block in memory. */
 /* Returns TINFL_DECOMPRESS_MEM_TO_MEM_FAILED on failure, or the number of bytes written on success.
  */
-#define TINFL_DECOMPRESS_MEM_TO_MEM_FAILED ( ( size_t ) ( -1 ) )
+#define TINFL_DECOMPRESS_MEM_TO_MEM_FAILED ( ( size_t )( -1 ) )
 size_t tinfl_decompress_mem_to_mem(
     void* pOut_buf, size_t out_buf_len, const void* pSrc_buf, size_t src_buf_len, int flags );
 

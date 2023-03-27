@@ -1431,7 +1431,7 @@ bool async_read_and_close_socket_base::schedule_check_clock() {
     if ( retry_index_ > retry_count_ )
         return false;
     clock_t tpNow = clock();
-    clock_t tpMin = ( clock_t ) ( ( retry_index_ == 0 ) ? retry_first_ms_ : retry_after_ms_ );
+    clock_t tpMin = ( clock_t )( ( retry_index_ == 0 ) ? retry_first_ms_ : retry_after_ms_ );
     clock_t tpDist = tpNow - tpStep_;
     if ( tpDist < tpMin )
         return false;  // too early

@@ -405,9 +405,7 @@ public:
     ~loop();
     loop& operator=( const loop& ) = delete;
     loop& operator=( loop&& ) = delete;
-    uv_loop_s* internal_handle() {
-        return p_uvLoop_;
-    }
+    uv_loop_s* internal_handle() { return p_uvLoop_; }
     mutex_type& loop_mtx() const;
     static loop_ptr_t get_current();
     bool is_running() const;

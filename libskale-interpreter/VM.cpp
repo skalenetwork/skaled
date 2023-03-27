@@ -107,12 +107,12 @@ uint64_t VM::memNeed( u256 const& _offset, u256 const& _size ) {
 
 template < class S >
 S divWorkaround( S const& _a, S const& _b ) {
-    return ( S ) ( s512( _a ) / s512( _b ) );
+    return ( S )( s512( _a ) / s512( _b ) );
 }
 
 template < class S >
 S modWorkaround( S const& _a, S const& _b ) {
-    return ( S ) ( s512( _a ) % s512( _b ) );
+    return ( S )( s512( _a ) % s512( _b ) );
 }
 
 
@@ -374,7 +374,7 @@ void VM::interpretCases() {
             updateMem( toInt63( m_SP[0] ) + 1 );
             updateIOGas();
 
-            m_mem[( unsigned ) m_SP[0]] = ( _byte_ ) ( m_SP[1] & 0xff );
+            m_mem[( unsigned ) m_SP[0]] = ( _byte_ )( m_SP[1] & 0xff );
         }
         NEXT
 
@@ -779,9 +779,7 @@ void VM::interpretCases() {
         CASE( XPUT )
         CASE( XGET )
         CASE( XSWIZZLE )
-        CASE( XSHUFFLE ) {
-            throwBadInstruction();
-        }
+        CASE( XSHUFFLE ) { throwBadInstruction(); }
         CONTINUE
 
         CASE( ADDRESS ) {

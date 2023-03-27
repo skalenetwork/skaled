@@ -281,7 +281,8 @@ int main( int argc, char** argv ) {
             std::string strCode{ reinterpret_cast< char const* >( code.data() ), code.size() };
             strCode.erase( strCode.find_last_not_of( " \t\n\r" ) + 1 );  // Right trim.
             code = fromHex( strCode, WhenError::Throw );
-        } catch ( BadHexCharacter const& ) {
+        }
+        catch ( BadHexCharacter const& ) {
         }  // Ignore decoding errors.
     }
 

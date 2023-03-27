@@ -147,9 +147,7 @@ public:
     /// @returns the status of the transaction queue.
     Status status() const {
         Status ret;
-        DEV_GUARDED( x_queue ) {
-            ret.unverified = m_unverified.size();
-        }
+        DEV_GUARDED( x_queue ) { ret.unverified = m_unverified.size(); }
         ReadGuard l( m_lock );
         ret.dropped = m_dropped.size();
         ret.current = m_currentByHash.size();

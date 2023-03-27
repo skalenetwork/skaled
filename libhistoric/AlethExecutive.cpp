@@ -175,7 +175,7 @@ bool AlethExecutive::call(
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 ) ( _p.gas - g );
+            m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) =

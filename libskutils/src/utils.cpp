@@ -1038,7 +1038,7 @@ void md5::finalize() {
     // save number of bits
     encode( bits, count, 8 );
     // pad out to 56 mod 64.
-    index = ( uint4 ) ( ( count[0] >> 3 ) & 0x3f );
+    index = ( uint4 )( ( count[0] >> 3 ) & 0x3f );
     padLen = ( index < 56 ) ? ( 56 - index ) : ( 120 - index );
     update( PADDING, padLen );
     update( bits, 8 );                // append length (before padding)
@@ -1203,10 +1203,10 @@ void md5::encode( uint1* output, uint4* input, uint4 len ) {
     // Encodes input (UINT4) into output (unsigned char). Assumes len is a multiple of 4.
     unsigned int i, j;
     for ( i = 0, j = 0; j < len; i++, j += 4 ) {
-        output[j] = ( uint1 ) ( input[i] & 0xff );
-        output[j + 1] = ( uint1 ) ( ( input[i] >> 8 ) & 0xff );
-        output[j + 2] = ( uint1 ) ( ( input[i] >> 16 ) & 0xff );
-        output[j + 3] = ( uint1 ) ( ( input[i] >> 24 ) & 0xff );
+        output[j] = ( uint1 )( input[i] & 0xff );
+        output[j + 1] = ( uint1 )( ( input[i] >> 8 ) & 0xff );
+        output[j + 2] = ( uint1 )( ( input[i] >> 16 ) & 0xff );
+        output[j + 3] = ( uint1 )( ( input[i] >> 24 ) & 0xff );
     }
 }
 void md5::decode( uint4* output, uint1* input, uint4 len ) {
