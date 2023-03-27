@@ -242,18 +242,21 @@ jobs:
           ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4    
           cd ..
           
-      - name: Codecov report
+      - name: Create lcov report
         run: |
-          # Create lcov report
           lcov --capture --directory . --output-file coverage.info
           lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
           lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
           lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
           lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
           lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-          
-          # Uploading report to CodeCov
-          bash <(curl -s https://codecov.io/bash) -f coverage.info -t $CODECOV_TOKEN || echo "Codecov did not collect coverage reports"
+           
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.info
+    
       - name: Configure all as historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
