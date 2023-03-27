@@ -648,7 +648,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     int dummy_counter = 0;
 
     for ( const auto& volume : this->volumes ) {
-        int res = btrfs.btrfs_subvolume_property_set(
+        int res = btrfs.subvolume.property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "false" );
 
@@ -663,7 +663,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );
 
     for ( const auto& volume : this->volumes ) {
-        int res = btrfs.btrfs_subvolume_property_set(
+        int res = btrfs.subvolume.property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "true" );
 
@@ -701,7 +701,7 @@ uint64_t SnapshotManager::getBlockTimestamp(
 
     fs::path db_dir = this->snapshots_dir / std::to_string( _blockNumber );
 
-    int res = btrfs.btrfs_subvolume_property_set(
+    int res = btrfs.subvolume.property_set(
         ( db_dir / this->volumes[0] ).string().c_str(), "ro", "false" );
 
     if ( res != 0 ) {
@@ -713,7 +713,7 @@ uint64_t SnapshotManager::getBlockTimestamp(
     uint64_t timestamp = dev::eth::BlockHeader( bc.block( hash ) ).timestamp();
 
 
-    res = btrfs.btrfs_subvolume_property_set(
+    res = btrfs.subvolume.property_set(
         ( db_dir / this->volumes[0] ).string().c_str(), "ro", "true" );
 
     if ( res != 0 ) {
