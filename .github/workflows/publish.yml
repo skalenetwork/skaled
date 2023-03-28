@@ -200,6 +200,7 @@ jobs:
 
   functional-tests:
     needs: [build]
+    name: Functional tests
     runs-on: ubuntu-latest
     steps:
       - name: Test
