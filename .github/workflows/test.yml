@@ -20,6 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
+        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
         submodules: true
     - name: Set up Node 
