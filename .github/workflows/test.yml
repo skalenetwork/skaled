@@ -22,7 +22,7 @@ jobs:
       with:
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
-        submodules: true
+        submodules: recursive
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
       with:
