@@ -13,6 +13,7 @@ jobs:
     uses: ./.github/workflows/functional-tests.yml
     with:
       version: '3.16.0-develop.1'
+    secrets: inherit
       
   build:
     runs-on: self-hosted
