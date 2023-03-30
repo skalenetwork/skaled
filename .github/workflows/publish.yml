@@ -202,8 +202,8 @@ jobs:
 
 
   functional-tests:
-    needs: [build]
     name: Functional tests
+    needs: [build]
     runs-on: ubuntu-20.04
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -212,7 +212,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
+        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
+        submodules: recursive
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
       with:
@@ -284,4 +286,4 @@ jobs:
           *.log
           ./integration_tests/skaled/internals/third_party/skale-node-tests/btrfs
           !**/.env
-  
+
