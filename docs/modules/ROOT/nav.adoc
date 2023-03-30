@@ -2,7 +2,7 @@
 * xref:whats-new.adoc[What’s New]
 * xref:skale-chain-fuel.adoc[SKALE Chain FUEL]
 * xref:json-rpc-interface.adoc[JSON RPC Interface Compatibility]
-* xref:contract-code-size-limits.adoc[Contract Code Size Limits]
+* xref:code-size-limits.adoc[Contract Code Size Limits]
 * xref:snapshots.adoc[Snapshots]
 * xref:block-rotation.adoc[Block Rotation]
 * xref:random-number-generator.adoc[RNG Endpoint]
