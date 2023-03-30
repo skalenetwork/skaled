@@ -18,10 +18,10 @@ coverage:
       app:
         target: auto
         threshold: 0.05
-        paths: "!test/"
+        paths: ["!test/"]
       tests:
         target: auto
-        paths: "test/"
+        paths: ["test/"]
     changes:
       default:
         enabled: no
