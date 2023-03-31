@@ -2,11 +2,6 @@ codecov:
   branch: develop
 coverage:
   range: 50...100
-  #notify:
-    #gitter:
-      #default:
-        #threshold: 0
-        #url: https://gitter.im/ethereum/cpp-ethereum-development
   status:
     patch:
       default:
@@ -15,13 +10,6 @@ coverage:
       default:
         target: auto
         threshold: 0.05
-      app:
-        target: auto
-        threshold: 0.05
-        paths: ["!test/"]
-      tests:
-        target: auto
-        paths: ["test/"]
     changes:
       default:
         enabled: no
