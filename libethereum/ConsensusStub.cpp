@@ -57,8 +57,7 @@ void ConsensusStub::parseFullConfigAndCreateNode( const std::string&, const std:
     // TODO think this architecture thoroughly
 }
 
-void ConsensusStub::startAll(std::shared_ptr< std::vector< std::uint8_t > >
-        _startingFromSnapshotWithThisAsLastBlock) {
+void ConsensusStub::startAll() {
     Worker::startWorking();
 }
 
