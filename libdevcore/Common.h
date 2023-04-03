@@ -300,8 +300,8 @@ private:
     std::chrono::high_resolution_clock::time_point m_t;
 };
 
-#define DEV_TIMED( S )                                                               \
-    for ( ::std::pair<::dev::TimerHelper, bool > __eth_t( S, true ); __eth_t.second; \
+#define DEV_TIMED( S )                                                                \
+    for ( ::std::pair< ::dev::TimerHelper, bool > __eth_t( S, true ); __eth_t.second; \
           __eth_t.second = false )
 #define DEV_TIMED_SCOPE( S ) ::dev::TimerHelper __eth_t( S )
 #if defined( _WIN32 )
@@ -310,8 +310,8 @@ private:
 #define DEV_TIMED_FUNCTION DEV_TIMED_SCOPE( __PRETTY_FUNCTION__ )
 #endif
 
-#define DEV_TIMED_ABOVE( S, MS )                                                               \
-    for ( ::std::pair<::dev::TimerHelper, bool > __eth_t( ::dev::TimerHelper( S, MS ), true ); \
+#define DEV_TIMED_ABOVE( S, MS )                                                                \
+    for ( ::std::pair< ::dev::TimerHelper, bool > __eth_t( ::dev::TimerHelper( S, MS ), true ); \
           __eth_t.second; __eth_t.second = false )
 #define DEV_TIMED_SCOPE_ABOVE( S, MS ) ::dev::TimerHelper __eth_t( S, MS )
 #if defined( _WIN32 )

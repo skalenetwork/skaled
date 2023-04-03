@@ -2108,7 +2108,7 @@ SkaleServerOverride::SkaleServerOverride(
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
             fnOnSunscriptionEvent =
-                [this]( const unsigned& /*iw*/, const dev::eth::Transaction & /*tx*/ ) -> void {
+                [this]( const unsigned& /*iw*/, const dev::eth::Transaction& /*tx*/ ) -> void {
             lock_type lock( mtxStats_ );
             statsPendingTx_.event_add( "transactionsPending", 1 );
         };
