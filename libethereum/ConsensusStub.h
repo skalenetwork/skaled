@@ -41,7 +41,8 @@ public:
     ~ConsensusStub() override;
     void parseFullConfigAndCreateNode(
         const std::string& _jsonConfig, const string& _gethURL ) override;
-    void startAll() override;
+    void startAll(std::shared_ptr< std::vector< std::uint8_t > >
+            _startingFromSnapshotWithThisAsLastBlock) override;
     void bootStrapAll() override;
     void exitGracefully() override;
     u256 getPriceForBlockId( uint64_t /*_blockId*/ ) const override { return 1000; }

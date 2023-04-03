@@ -530,7 +530,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
     } catch ( const std::exception& e ) {
-        throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
+        throw jsonrpc::JsonRpcException( , e.what() );
     }
 }
 
