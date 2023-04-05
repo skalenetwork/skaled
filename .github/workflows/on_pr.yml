@@ -5,7 +5,7 @@ on:
     types: [opened]
 jobs:
   main_job:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     name: Add some useful instructions to PR creator
     steps:
       - uses: actions/checkout@v1
