@@ -95,4 +95,9 @@ Used for IMA SKALE Chain testing.
 | Return a random number based on BLS threshold signature common coin of the current block.
 | Any
 
+| `0x19`
+| getIMABLSPublicKey
+| Returns relevant BLSPublicKey according to block timestamp.
+| Any
+
 |===
