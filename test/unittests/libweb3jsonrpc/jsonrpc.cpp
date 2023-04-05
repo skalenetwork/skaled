@@ -2902,7 +2902,14 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
-    RestrictedAddressFixture fixture( c_genesisConfigString );
+    
+    auto _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1; 
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    RestrictedAddressFixture fixture( config );
 
     auto senderAddress = fixture.coinbase.address();
     fixture.client->setAuthor( senderAddress );

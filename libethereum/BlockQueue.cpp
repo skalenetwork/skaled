@@ -386,13 +386,11 @@ BlockQueueStatus BlockQueue::status() const {
 
 QueueStatus BlockQueue::blockStatus( h256 const& _h ) const {
     ReadGuard l( m_lock );
-    return m_readySet.count( _h ) ?
-               QueueStatus::Ready :
-               m_drainingSet.count( _h ) ?
-               QueueStatus::Importing :
-               m_unknownSet.count( _h ) ?
-               QueueStatus::UnknownParent :
-               m_knownBad.count( _h ) ? QueueStatus::Bad : QueueStatus::Unknown;
+    return m_readySet.count( _h )    ? QueueStatus::Ready :
+           m_drainingSet.count( _h ) ? QueueStatus::Importing :
+           m_unknownSet.count( _h )  ? QueueStatus::UnknownParent :
+           m_knownBad.count( _h )    ? QueueStatus::Bad :
+                                       QueueStatus::Unknown;
 }
 
 bool BlockQueue::knownFull() const {

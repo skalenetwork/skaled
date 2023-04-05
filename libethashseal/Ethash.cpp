@@ -177,7 +177,7 @@ u256 Ethash::calculateDifficulty( BlockHeader const& _bi, BlockHeader const& _pa
         bigint const adjFactor =
             _bi.number() < chainParams().byzantiumForkBlock ?
                 max< bigint >( 1 - timestampDiff / 10, -99 ) :  // Homestead-era difficulty
-                                                                // adjustment
+                                                                  // adjustment
                 max< bigint >( ( _parent.hasUncles() ? 2 : 1 ) - timestampDiff / 9,
                     -99 );  // Byzantium-era difficulty adjustment
 
