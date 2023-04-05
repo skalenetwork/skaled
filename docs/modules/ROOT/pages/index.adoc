@@ -42,15 +42,15 @@ Transactions on SKALE Chain run in a gas-*free* way. This means there is gas on 
 
 === Empty Block Intervals
 
-Your SKALE Chain will continue to mine blocks in the absence of transactions. Empty blocks are used to signal to the SKALE Network that your SKALE Chain is healthy and operational. The default empty block interval is 5 seconds. When transactions fill blocks, blocks are mined as fast as possible, up to sub-second blocks depending on validator-node performance.
+Your SKALE Chain will continue to mine blocks in the absence of transactions. Empty blocks are used to signal to the SKALE Network that your SKALE Chain is healthy and operational. The default empty block interval is 10 seconds. When transactions fill blocks, blocks are mined as fast as possible, up to sub-second blocks depending on validator-node performance.
 
 === Block Gas Limit
 
-SKALE Chains have a block gas limit of 160 million.
+SKALE Chains have a block gas limit of 268435455.
 
 === Contract Code Size Limit
 
-SKALE chains have a default code size limit of 32 kB, and are configurable at chain deployment to code size limits of 16, 32, 64, 128, 256, 512, 1024 kB and unlimited. (Ethereum has a contract code size limit of 24576 bytes.)
+SKALE chains have a default code size limit of 64 kB, and are configurable at chain deployment to code size limits of 16, 32, 64, 128, 256, 512, 1024 kB and unlimited. (Ethereum has a contract code size limit of 24576 bytes.)
 
 === JSON-RPC Methods
 
@@ -61,8 +61,6 @@ xref:json-rpc-interface.adoc[See the JSON-RPC interface Compatibility table for 
 === SKALE Chain Rotation
 
 SKALE Chains run across 16 randomly chosen nodes. Your SKALE Chain can be configured to randomly swap out nodes for other nodes in the network. This helps reduce any potential collusion over time. To the SKALE Chain owner and end-users, this is a process that runs behind the scenes...  The incoming node will gather all previous blocks, transactions, etc from the SKALE Chain in a catchup procedure, and the updated node set will form a new BLS public key through DKG, and all subsequent blocks will be signed with the new BLS public key.
-
-Note that Chain rotation won't be available until later in 2021.
 
 === Block Rotation
 
