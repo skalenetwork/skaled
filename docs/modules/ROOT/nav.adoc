@@ -6,6 +6,6 @@
 * xref:snapshots.adoc[Snapshots]
 * xref:block-rotation.adoc[Block Rotation]
 * xref:random-number-generator.adoc[RNG Endpoint]
-* xref:predeploys.adoc[Predeployed Contracts]
-* xref:precompiles.adoc[Precompiles]
+* xref:predeployed.adoc[Predeployed Contracts]
+* xref:precompiled.adoc[Precompiled Contracts]
 * xref:oracle.adoc[Oracle API]

@@ -1,4 +1,4 @@
-= SKALE Chain Deploys
+= SKALE Chain Predeployed
 
 SKALE Chains have several predeployed contracts.
 

@@ -2,7 +2,7 @@
 
 :stem: asciimath
 
-Each SKALE Chain supports a special random number generator (RNG) precompile. This RNG is generated for every block and is based on the current block's threshold signature shares of at least latexmath:[\frac{11}{16}] SKALE nodes supporting any given SKALE Chain.
+Each SKALE Chain supports a special random number generator (RNG) precompiled. This RNG is generated for every block and is based on the current block's threshold signature shares of at least latexmath:[\frac{11}{16}] SKALE nodes supporting any given SKALE Chain.
 
 Each SKALE chain block is signed by at least latexmath:[\frac{11}{16}] nodes. Each signature is glued together such that no single party can influence the resulting signature.
 
@@ -12,7 +12,7 @@ General steps:
 . The BLAKE3 hash of the signatures is created.
 . The resulting hex RNG is presented.
 
-To use the RNG precompile, you can use the following code example to access the `getBlockRandom` precompile at address `0x18`:
+To use the RNG precompiled, you can use the following code example to access the `getBlockRandom` precompiled at address `0x18`:
 
 [source, javascript]
 ----

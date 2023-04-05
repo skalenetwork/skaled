@@ -1,8 +1,8 @@
-= SKALE Chain Precompiles
+= SKALE Chain Precompiled Contracts
 
-Each SKALE Chain comes with a set of precompiled contracts in addition to the precompiles included with Ethereum (i.e. `ecrecover`, `sha256`, `modexp`, ...).
+Each SKALE Chain comes with a set of precompiled contracts in addition to the precompiled contracts included with Ethereum (i.e. `ecrecover`, `sha256`, `modexp`, ...).
 
-.SKALE Specific Precompiles
+.SKALE Chain Precompiled Contracts
 [%header,cols="1,2,8a,1"]
 |===
 | Address
