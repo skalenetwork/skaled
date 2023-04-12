@@ -1513,11 +1513,12 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 }
 #endif  // HISTORIC_STATE
 
-uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
+uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt,
+    string& _errorMessage ) {
     assert( m_skaleHost );
     uint64_t status = -1;
     if ( m_skaleHost )
-        status = m_skaleHost->submitOracleRequest( _spec, _receipt );
+        status = m_skaleHost->submitOracleRequest( _spec, _receipt, _errorMessage );
     else
         throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
