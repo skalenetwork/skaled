@@ -1513,8 +1513,8 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 }
 #endif  // HISTORIC_STATE
 
-uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt,
-    string& _errorMessage ) {
+uint64_t Client::submitOracleRequest(
+    const string& _spec, string& _receipt, string& _errorMessage ) {
     assert( m_skaleHost );
     uint64_t status = -1;
     if ( m_skaleHost )
