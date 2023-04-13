@@ -524,7 +524,8 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
 
         clog( VerbosityDebug, "Oracle request:" ) << request;
 
-        uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
+        uint64_t status = this->m_client.submitOracleRequest( request, receipt,
+            errorMessage );
         if ( status != ORACLE_SUCCESS ) {
             throw jsonrpc::JsonRpcException( status, errorMessage );
         }
