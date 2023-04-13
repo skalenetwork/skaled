@@ -8,7 +8,7 @@ on:
 defaults:
   run:
     shell: bash
-jobs:
+jobs: 
   build:
     runs-on: self-hosted
     env:
@@ -259,6 +259,22 @@ jobs:
           ls /tmp/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           ls /tmp/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
+          
+      - name: Create lcov report
+        run: |
+          lcov --capture --directory . --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+          lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
+          lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
+           
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.info
+    
       - name: Configure all as historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"

@@ -197,3 +197,13 @@ jobs:
           asset_path: ./build-historic/skaled/skaled
           asset_name: skaled-historic
           asset_content_type: application/octet-stream
+    outputs:
+      version: ${{ env.VERSION }}
+    
+  functional-tests:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for build
+    needs: [build]
+    with:
+      version: ${{ needs.build.outputs.version }}
+    secrets: inherit
