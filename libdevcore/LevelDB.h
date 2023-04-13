@@ -22,6 +22,7 @@
 #include "db.h"
 
 #include <leveldb/db.h>
+#include <leveldb/filter_policy.h>
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
@@ -37,6 +38,8 @@ public:
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
         leveldb::Options _dbOptions = defaultDBOptions() );
+
+    ~LevelDB();
 
     std::string lookup( Slice _key ) const override;
     bool exists( Slice _key ) const override;
@@ -57,6 +60,7 @@ private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
+    leveldb::Options m_options;
     boost::filesystem::path const m_path;
 };
 
