@@ -517,7 +517,7 @@ Json::Value Skale::skale_getDBUsage() {
 
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
-        if ( this->m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().nodeInfo.syncNode )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
         std::string errorMessage;
@@ -525,29 +525,28 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         clog( VerbosityDebug, "Oracle request:" ) << request;
 
         uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
-        if ( status != 0 ) {
+        if ( status != ORACLE_SUCCESS ) {
             throw jsonrpc::JsonRpcException( status, errorMessage );
         }
         return receipt;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
-    } catch ( InvalidStateException const& e ) {
-        throw e;
     } catch ( const std::exception& e ) {
-        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
+        throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
 
 std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
-        if ( this->m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().nodeInfo.syncNode )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string result;
-        uint64_t status = this->m_client.checkOracleResult( receipt, result );
+        // this function is guaranteed not to throw exceptions
+        uint64_t status = m_client.checkOracleResult( receipt, result );
         switch ( status ) {
-        case 0:
+        case ORACLE_SUCCESS:
             break;
-        case 5:
+        case ORACLE_RESULT_NOT_READY:
             throw jsonrpc::JsonRpcException( status, "Oracle result is not ready" );
         default:
             throw jsonrpc::JsonRpcException(
@@ -557,10 +556,8 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
-    } catch ( InvalidStateException const& e ) {
-        throw e;
     } catch ( const std::exception& e ) {
-        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, e.what() );
+        throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
 
