@@ -201,7 +201,7 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
         std::vector< uint64_t > nodes;
         // add ecdsa keys info and historic groups info
         for ( const auto& node : nodeGroup.nodes ) {
-            historicECDSAKeys[u256toUint64( node.id )] = node.publicKey;
+            historicECDSAKeys[u256toUint64( node.id )] = node.publicKey.substr( 2 );
             nodes.push_back( u256toUint64( node.id ) );
         }
         historicNodeGroups[nodeGroup.finishTs] = nodes;
