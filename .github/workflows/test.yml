@@ -164,11 +164,17 @@ jobs:
           export NO_ULIMIT_CHECK=1          
           # we specifically run each test for easier log review
           ./testeth -t BlockchainTests -- --express && touch /tmp/BlockchainTestsPassed
+          ./testeth -t TransitionTests  -- --express && touch /tmp/TransitionTestsPassed
           ./testeth -t TransactionTests -- --express && touch /tmp/TransactionTestsPassed
           ./testeth -t VMTests -- --express && touch /tmp/VMTestsPassed
           ./testeth -t LevelDBTests -- --express && touch /tmp/LevelDBTestsPassed
+          ./testeth -t CoreLibTests -- --express && touch /tmp/CoreLibTestsPassed
+          ./testeth -t RlpTests -- --express && touch /tmp/RlpTestsPassed
           ./testeth -t SharedSpaceTests -- --express && touch /tmp/SharedSpaceTestsPassed
-          ./testeth -t SealEngineTests -- --express && touch /tmp/SealEngineTestsPassed  
+          ./testeth -t EthashTests -- --express && touch /tmp/EthashTestsPassed
+          ./testeth -t SealEngineTests -- --express && touch /tmp/SealEngineTestsPassed
+          ./testeth -t DifficultyTests -- --express && touch /tmp/DifficultyTestsPassed
+          ./testeth -t BlockSuite -- --express && touch /tmp/BlockSuitePassed
           ./testeth -t BlockChainMainNetworkSuite -- --express && touch /tmp/BlockChainMainNetworkSuitePassed
           ./testeth -t BlockChainFrontierSuite -- --express && touch /tmp/BlockChainFrontierSuitePassed
           ./testeth -t BlockQueueSuite -- --express && touch /tmp/BlockQueueSuitePassed
@@ -198,6 +204,9 @@ jobs:
           ./testeth -t JsonRpcSuite  -- --express && touch /tmp/JsonRpcSuitePassed 
           ./testeth -t SingleConsensusTests  -- --express && touch /tmp/SingleConsensusTestsPassed
           ./testeth -t ConsensusTests  -- --express && touch /tmp/ConsensusTestsPassed
+          sudo ./testeth -t BtrfsTestSuite -- --all && touch /tmp/BtrfsTestSuitePassed
+          sudo ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/HashSnapshotTestSuitePassed
+          sudo ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/ClientSnapshotsSuitePassed
           cd ..
       - name: Testeth verbosity 4
         run : |
@@ -206,11 +215,17 @@ jobs:
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
           ls /tmp/BlockchainTestsPassed || ./testeth -t BlockchainTests -- --express --verbosity 4
+          ls /tmp/TransitionTestsPassed || ./testeth -t TransitionTests -- --express --verbosity 4
           ls /tmp/TransactionTestsPassed || ./testeth -t TransactionTests -- --express --verbosity 4
           ls /tmp/VMTestsPassed || ./testeth -t VMTests -- --express --verbosity 4
           ls /tmp/LevelDBTestsPassed || ./testeth -t LevelDBTests -- --express --verbosity 4
+          ls /tmp/CoreLibTestsPassed || ./testeth -t CoreLibTests -- --express --verbosity 4
+          ls /tmp/RlpTestsPassed || ./testeth -t RlpTests -- --express --verbosity 4
           ls /tmp/SharedSpaceTestsPassed || ./testeth -t SharedSpaceTests -- --express --verbosity 4
+          ls /tmp/EthashTestsPassed || ./testeth -t EthashTests -- --express --verbosity 4
           ls /tmp/SealEngineTestsPassed || ./testeth -t SealEngineTests -- --express --verbosity 4
+          ls /tmp/DifficultyTestsPassed || ./testeth -t DifficultyTests -- --express --verbosity 4
+          ls /tmp/BlockSuitePassed || ./testeth -t BlockSuite -- --express --verbosity 4
           ls /tmp/BlockChainMainNetworkSuitePassed || ./testeth -t BlockChainMainNetworkSuite -- --express --verbosity 4
           ls /tmp/BlockChainFrontierSuitePassed || ./testeth -t BlockChainFrontierSuite -- --express --verbosity 4
           ls /tmp/BlockQueueSuitePassed || ./testeth -t BlockQueueSuite -- --express --verbosity 4
@@ -239,7 +254,10 @@ jobs:
           ls /tmp/ClientTestsPassed || ./testeth -t ClientTests -- --express --verbosity 4
           ls /tmp/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite  -- --express --verbosity 4 
           ls /tmp/SingleConsensusTestsPassed || ./testeth -t SingleConsensusTests  -- --express --verbosity 4
-          ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4    
+          ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4
+          ls /tmp/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          ls /tmp/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          ls /tmp/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
           
       - name: Create lcov report
