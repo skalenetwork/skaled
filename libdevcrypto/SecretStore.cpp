@@ -46,9 +46,9 @@ static js::mValue upgraded( string const& _s ) {
     if ( v.type() != js::obj_type )
         return js::mValue();
     js::mObject ret = v.get_obj();
-    unsigned version = ret.count( "Version" ) ?
-                           stoi( ret["Version"].get_str() ) :
-                           ret.count( "version" ) ? ret["version"].get_int() : 0;
+    unsigned version = ret.count( "Version" ) ? stoi( ret["Version"].get_str() ) :
+                       ret.count( "version" ) ? ret["version"].get_int() :
+                                                0;
     if ( version == 1 ) {
         // upgrade to version 2
         js::mObject old;
