@@ -95,7 +95,7 @@ leveldb::Options LevelDB::defaultDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
     options.max_open_files = c_maxOpenLeveldbFiles;
-    options.filter_policy = leveldb::NewBloomFilterPolicy(10);
+    options.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
     return options;
 }
 
