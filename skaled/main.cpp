@@ -102,6 +102,8 @@
 #include <skutils/url.h>
 #include <skutils/utils.h>
 
+#include "taskmon.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -429,13 +431,38 @@ static void stat_init_common_signal_handling() {
             static volatile bool g_bSelfKillStarted = false;
             if ( !g_bSelfKillStarted ) {
                 g_bSelfKillStarted = true;
-                std::thread( [nSignalNo]() {
+
+                auto start_time = std::chrono::steady_clock::now();
+
+                std::thread( [nSignalNo, start_time]() {
                     std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
                                    cc::error( "Will sleep " ) +
                                    cc::size10( ExitHandler::KILL_TIMEOUT ) +
                                    cc::error( " seconds before force exit..." ) + "\n\n" );
                     std::cerr.flush();
-                    sleep( ExitHandler::KILL_TIMEOUT );
+
+                    clog( VerbosityInfo, "exit" ) << "THREADS timer started";
+
+                    vector< string > threads;
+                    for ( int i = 0; i < ExitHandler::KILL_TIMEOUT * 10; ++i ) {
+                        auto end_time = std::chrono::steady_clock::now();
+                        float seconds =
+                            std::chrono::duration< float >( end_time - start_time ).count();
+
+                        vector< string > new_threads = taskmon::list_names();
+                        vector< string > threads_diff = taskmon::lists_diff( threads, new_threads );
+                        threads = new_threads;
+
+                        if ( threads_diff.size() ) {
+                            cerr << seconds << " THREADS " << threads.size() << ":";
+                            for ( const string& t : threads_diff )
+                                cerr << " " << t;
+                            cerr << endl;
+                        }
+
+                        usleep( 100 * 1000 );
+                    }
+
                     std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
                                    cc::error( "Will force exit after sleeping " ) +
                                    cc::size10( ExitHandler::KILL_TIMEOUT ) +
