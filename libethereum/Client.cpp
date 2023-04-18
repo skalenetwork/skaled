@@ -1067,11 +1067,10 @@ void Client::noteChanged( h256Hash const& _filters ) {
                 w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
-                    LOG( m_loggerWatch )
-                        << "!!! " << w.first << " "
-                        << ( w.second.id == PendingChangedFilter ?
-                                   "pending" :
-                                   w.second.id == ChainChangedFilter ? "chain" : "???" );
+                    LOG( m_loggerWatch ) << "!!! " << w.first << " "
+                                         << ( w.second.id == PendingChangedFilter ? "pending" :
+                                                w.second.id == ChainChangedFilter ? "chain" :
+                                                                                    "???" );
                     w.second.append_changes( LocalisedLogEntry( SpecialLogEntry, hash ) );
                 }
         }
@@ -1513,11 +1512,12 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 }
 #endif  // HISTORIC_STATE
 
-uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
+uint64_t Client::submitOracleRequest(
+    const string& _spec, string& _receipt, string& _errorMessage ) {
     assert( m_skaleHost );
     uint64_t status = -1;
     if ( m_skaleHost )
-        status = m_skaleHost->submitOracleRequest( _spec, _receipt );
+        status = m_skaleHost->submitOracleRequest( _spec, _receipt, _errorMessage );
     else
         throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
