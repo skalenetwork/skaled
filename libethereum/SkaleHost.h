@@ -167,8 +167,6 @@ private:
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
                                                  // pendingTransactions() and createBock()
 
-    std::timed_mutex m_consensusWorkingMutex;  // unlocks when it's OK to exit
-
     std::atomic_int m_bcast_counter = 0;
 
     void penalizePeer(){};  // fake function for now
@@ -188,7 +186,10 @@ private:
                                 // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
+
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
+    std::atomic_bool m_ignoreNewBlocks = false;  // used when we need to exit at specific block
+
     bool m_broadcastEnabled;
 
     dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };

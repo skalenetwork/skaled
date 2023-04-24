@@ -598,6 +598,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
+    if ( m_ignoreNewBlocks ) {
+        clog( VerbosityWarning, "skale-host" ) << "WARNING: skaled got new block #" << _blockID
+                                               << " after timestamp-related exit initiated!";
+        return;
+    }
+
     LOG( m_debugLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
     m_debugTracer.tracepoint( "create_block" );
@@ -740,6 +746,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
+            m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
             ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
