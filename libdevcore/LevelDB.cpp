@@ -115,7 +115,8 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
 }
 
 LevelDB::~LevelDB() {
-    delete m_options.filter_policy;
+    if (m_options.filter_policy)
+        delete m_options.filter_policy;
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
