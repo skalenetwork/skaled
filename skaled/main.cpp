@@ -449,15 +449,20 @@ static void stat_init_common_signal_handling() {
                         float seconds =
                             std::chrono::duration< float >( end_time - start_time ).count();
 
-                        vector< string > new_threads = taskmon::list_names();
-                        vector< string > threads_diff = taskmon::lists_diff( threads, new_threads );
-                        threads = new_threads;
+                        try {
+                            vector< string > new_threads = taskmon::list_names();
+                            vector< string > threads_diff =
+                                taskmon::lists_diff( threads, new_threads );
+                            threads = new_threads;
 
-                        if ( threads_diff.size() ) {
-                            cerr << seconds << " THREADS " << threads.size() << ":";
-                            for ( const string& t : threads_diff )
-                                cerr << " " << t;
-                            cerr << endl;
+                            if ( threads_diff.size() ) {
+                                cerr << seconds << " THREADS " << threads.size() << ":";
+                                for ( const string& t : threads_diff )
+                                    cerr << " " << t;
+                                cerr << endl;
+                            }
+                        } catch ( ... ) {
+                            // swallow it
                         }
 
                         usleep( 100 * 1000 );
