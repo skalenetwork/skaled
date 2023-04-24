@@ -115,7 +115,7 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
 }
 
 LevelDB::~LevelDB() {
-    if (m_options.filter_policy)
+    if ( m_options.filter_policy )
         delete m_options.filter_policy;
 }
 
