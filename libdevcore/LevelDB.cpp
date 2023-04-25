@@ -88,7 +88,9 @@ leveldb::ReadOptions LevelDB::defaultReadOptions() {
 }
 
 leveldb::WriteOptions LevelDB::defaultWriteOptions() {
-    return leveldb::WriteOptions();
+    leveldb::WriteOptions writeOptions = leveldb::WriteOptions();
+    writeOptions.sync = true;
+    return writeOptions;
 }
 
 leveldb::Options LevelDB::defaultDBOptions() {
