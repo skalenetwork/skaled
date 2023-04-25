@@ -33,6 +33,7 @@
 
 #include <libethcore/Exceptions.h>
 #include <libethereum/Account.h>
+#include <libethereum/ChainParams.h>
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
@@ -227,6 +228,12 @@ public:
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
+
+    /// Add accountMap to database as key
+    void commitGenesisState( const dev::eth::ChainParams& _params );
+
+    /// returns initial genesis state
+    std::string genesisState() const;
 
     /// @returns the set containing all addresses currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
@@ -509,6 +516,8 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+
+    static const std::string m_genesisStateKey;
 
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;

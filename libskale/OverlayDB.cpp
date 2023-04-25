@@ -518,6 +518,13 @@ void OverlayDB::insert(
     }
 }
 
+std::string OverlayDB::genesisState() const {
+    if ( m_db_face ) {
+        return m_db_face->lookup( skale::slicing::toSlice( "genesisState" ) );
+    }
+    return "";
+}
+
 dev::s256 OverlayDB::storageUsed() const {
     if ( m_db_face ) {
         return dev::s256( m_db_face->lookup( skale::slicing::toSlice( "storageUsed" ) ) );

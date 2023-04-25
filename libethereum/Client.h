@@ -317,6 +317,8 @@ public:
 
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
 
+    std::string genesisState() const { return m_state.genesisState(); }
+
 #ifdef HISTORIC_STATE
     uint64_t getHistoricStateDbUsage() const;
     uint64_t getHistoricRootsDbUsage() const;

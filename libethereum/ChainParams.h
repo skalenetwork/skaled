@@ -71,6 +71,8 @@ struct ChainParams : public ChainOperationParams {
     ChainParams loadConfig(
         std::string const& _json, const boost::filesystem::path& _configPath = {} ) const;
 
+    ChainParams loadGenesisState( const std::string& _json, const boost::filesystem::path& _configPath = {} ) const;
+
     const std::string& getOriginalJson() const;
     void resetJson() { originalJSON = ""; }
 

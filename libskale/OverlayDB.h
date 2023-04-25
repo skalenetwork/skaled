@@ -95,6 +95,8 @@ public:
     void insertAuxiliary(
         dev::h160 const& _address, dev::bytesConstRef _value, _byte_ space = 0xFF );
 
+    std::string genesisState() const;
+
     dev::s256 storageUsed() const;
     void updateStorageUsage( dev::s256 const& _storageUsed );
 

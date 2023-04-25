@@ -749,6 +749,7 @@ int main( int argc, char** argv ) try {
     //    "Path of file to save downloaded snapshot to" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
+    addClientOption( "download-genesis-state", "Download genesis state from core nodes to import it on archive node" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -1508,11 +1509,21 @@ int main( int argc, char** argv ) try {
         downloadSnapshotFlag = true;
     }
 
+    bool downloadGenesisState = false;
+    if ( chainParams.nodeInfo.syncNode && vm.count( "download-genesis-state" ) ) {
+        downloadGenesisState = true;
+    }
+
     bool requireSnapshotMajority = true;
     std::string ipToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
         requireSnapshotMajority = false;
         ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
+    }
+
+    if ( downloadGenesisState ) {
+        std::string genesisStateStr;
+
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {

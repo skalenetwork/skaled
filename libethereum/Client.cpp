@@ -253,6 +253,7 @@ void Client::initStateFromDiskOrGenesis() {
 
     if ( m_state.empty() ) {
         populateNewChainStateFromGenesis();
+        m_state.commitGenesisState( chainParams() );
     } else {
 #ifdef HISTORIC_STATE
         // if SKALE state exists but historic state does not, we need to populate the historic state

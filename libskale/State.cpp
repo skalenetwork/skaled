@@ -30,11 +30,14 @@
 #include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
+#include <json_spirit/JsonSpiritHeaders.h>
+
 #include <libdevcore/DBImpl.h>
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
 #include <libethereum/StateImporter.h>
+#include <libethereum/ValidationSchemes.h>
 
 #include "ContractStorageLimitPatch.h"
 
@@ -65,6 +68,8 @@ using dev::eth::TransactionReceipt;
 #ifndef ETH_VMTRACE
 #define ETH_VMTRACE 0
 #endif
+
+const std::string State::m_genesisStateKey = "genesisState";
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
@@ -304,6 +309,27 @@ void State::populateFrom( eth::AccountMap const& _map ) {
         }
     }
     commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+}
+
+void State::commitGenesisState( const dev::eth::ChainParams& _params ) {
+    auto configStr = _params.getOriginalJson();
+    json_spirit::mValue val;
+    json_spirit::read_string_or_throw( configStr, val );
+    json_spirit::mObject configJson = val.get_obj();
+    auto genesisStateStr = json_spirit::write_string( configJson[dev::eth::validation::c_accounts], false );
+
+    if ( !m_db_write_lock ) {
+        BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
+    }
+    boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
+
+    m_db_ptr->db()->insert( slicing::toSlice( m_genesisStateKey ), slicing::toSlice( genesisStateStr ) );
+    m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
+}
+
+std::string State::genesisState() const {
+    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    return m_db_ptr->genesisState();
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
