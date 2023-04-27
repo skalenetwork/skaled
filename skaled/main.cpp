@@ -465,7 +465,7 @@ static void stat_init_common_signal_handling() {
                             // swallow it
                         }
 
-                        usleep( 100 * 1000 );
+                        std::this_thread::sleep_for( 100ms );
                     }
 
                     std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
