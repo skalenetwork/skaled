@@ -955,7 +955,8 @@ std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
 }
 
 uint64_t SkaleHost::submitOracleRequest( const string& _spec, string& _receipt ) {
-    return m_consensus->submitOracleRequest( _spec, _receipt );
+    std::string error;
+    return m_consensus->submitOracleRequest( _spec, _receipt, error );
 }
 
 uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {

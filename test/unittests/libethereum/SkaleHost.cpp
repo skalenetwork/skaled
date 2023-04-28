@@ -81,7 +81,7 @@ public:
     }
 
     uint64_t submitOracleRequest( const string& /*_spec*/, string&
-                          /*_receipt*/) override {
+                          /*_receipt*/, string& /*error*/) override {
         return 0;
     }
 
