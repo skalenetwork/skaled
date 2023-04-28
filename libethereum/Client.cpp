@@ -41,6 +41,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcrypto/Hash.h>
 #include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
@@ -1512,6 +1513,16 @@ uint64_t Client::getHistoricRootsDbUsage() const {
     return dev::getDirSize( historicRootsDbPath );
 }
 #endif  // HISTORIC_STATE
+
+dev::h256 Client::genesisStateHash() const {
+    std::string genesisStateStr = m_state.genesisState();
+
+    const std::vector< uint8_t > usc( genesisStateStr.begin(), genesisStateStr.end() );
+    bytesConstRef message( usc.data(), usc.size() );
+    dev::h256 genesisStateHash = dev::sha256( message );
+
+    return genesisStateHash;
+}
 
 uint64_t Client::submitOracleRequest( const string& _spec, string& _receipt ) {
     assert( m_skaleHost );

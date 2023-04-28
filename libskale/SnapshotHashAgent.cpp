@@ -96,7 +96,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
                 cerror << "WARNING "
                        << " Signature from " + std::to_string( i ) +
                               "-th node was not verified during "
-                              "getNodesToDownloadSnapshotFrom ";
+                              "getNodesToDownloadFrom ";
             }
         }
     }
@@ -249,7 +249,7 @@ bool SnapshotHashAgent::voteForHash() {
     return true;
 }
 
-std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadFrom(
     unsigned block_number ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
@@ -282,7 +282,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
                 Json::Value joSignatureResponse;
                 try {
-                    joSignatureResponse = skaleClient.skale_getSnapshotSignature( block_number );
+                    joSignatureResponse = skaleClient.skale_getMessageSignature( block_number );
                 } catch ( jsonrpc::JsonRpcException& ex ) {
                     cerror << "WARNING "
                            << "Error while trying to get snapshot signature from "
@@ -296,7 +296,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     cerror << "WARNING "
                            << " Signature from " + std::to_string( i ) +
                                   "-th node was not received during "
-                                  "getNodesToDownloadSnapshotFrom ";
+                                  "getNodesToDownloadFrom ";
                     delete jsonRpcClient;
                 } else {
                     const std::lock_guard< std::mutex > lock( this->hashes_mutex );

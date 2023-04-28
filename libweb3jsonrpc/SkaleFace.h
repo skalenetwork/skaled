@@ -60,7 +60,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     inline virtual void skale_getSnapshotSignatureI(
         const Json::Value& request, Json::Value& response ) {
         unsigned blockNumber = request[0u].asInt();
-        response = this->skale_getSnapshotSignature( blockNumber );
+        response = this->skale_getMessageSignature( blockNumber );
     }
 
     inline virtual void skale_getLatestSnapshotBlockNumberI(
@@ -73,6 +73,12 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->skale_getLatestBlockNumber();
+    }
+
+    inline virtual void skale_getGenesisStateI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->skale_getGenesisState();
     }
 
     inline virtual void skale_getDBUsageI( const Json::Value& request, Json::Value& response ) {
@@ -95,10 +101,11 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string skale_shutdownInstance() = 0;
     virtual Json::Value skale_getSnapshot( const Json::Value& request ) = 0;
     virtual Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) = 0;
-    virtual Json::Value skale_getSnapshotSignature( unsigned blockNumber ) = 0;
+    virtual Json::Value skale_getMessageSignature( unsigned blockNumber ) = 0;
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
     virtual std::string skale_getLatestBlockNumber() = 0;
     virtual Json::Value skale_getDBUsage() = 0;
+    virtual Json::Value skale_getGenesisState() = 0;
     virtual std::string oracle_submitRequest( std::string& request ) = 0;
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
 
@@ -124,7 +131,7 @@ public:
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::skale_downloadSnapshotFragmentI );
         this->bindAndAddMethod(
-            jsonrpc::Procedure( "skale_getSnapshotSignature", jsonrpc::PARAMS_BY_POSITION,
+            jsonrpc::Procedure( "skale_getMessageSignature", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getSnapshotSignatureI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestSnapshotBlockNumber",
@@ -135,6 +142,9 @@ public:
             &dev::rpc::SkaleFace::skale_getLatestBlockNumberI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getDBUsage", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_INTEGER, NULL ),
+            &dev::rpc::SkaleFace::skale_getDBUsageI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getGenesisState",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getDBUsageI );
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_submitRequest",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),

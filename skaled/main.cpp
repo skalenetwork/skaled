@@ -749,7 +749,8 @@ int main( int argc, char** argv ) try {
     //    "Path of file to save downloaded snapshot to" );
     addClientOption( "start-timestamp", po::value< time_t >()->value_name( "<seconds>" ),
         "Start at specified timestamp (since epoch) - usually after downloading a snapshot" );
-    addClientOption( "download-genesis-state", "Download genesis state from core nodes to import it on archive node" );
+    addClientOption( "download-genesis-state",
+        "Download genesis state from core nodes to import it on archive node" );
 
     LoggingOptions loggingOptions;
     po::options_description loggingProgramOptions(
@@ -1524,6 +1525,7 @@ int main( int argc, char** argv ) try {
     if ( downloadGenesisState ) {
         std::string genesisStateStr;
 
+        chainParams = chainParams.loadGenesisState( genesisStateStr );
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
@@ -1616,7 +1618,7 @@ int main( int argc, char** argv ) try {
                 std::vector< std::string > list_urls_to_download;
                 try {
                     list_urls_to_download =
-                        snapshotHashAgent.getNodesToDownloadSnapshotFrom( blockNumber );
+                        snapshotHashAgent.getNodesToDownloadFrom( blockNumber );
                     clog( VerbosityInfo, "main" )
                         << cc::notice( "Got urls to download snapshot from " )
                         << cc::p( std::to_string( list_urls_to_download.size() ) )

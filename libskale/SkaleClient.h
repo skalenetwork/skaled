@@ -39,7 +39,7 @@ public:
 
     std::string skale_shutdownInstance() noexcept( false );
 
-    Json::Value skale_getSnapshotSignature( unsigned blockNumber ) noexcept( false );
+    Json::Value skale_getMessageSignature( unsigned blockNumber ) noexcept( false );
 
     Json::Value skale_imaInfo() noexcept( false );
 

@@ -69,7 +69,7 @@ public:
         const std::array< std::string, 4 >& common_public_key,
         const std::string& ipToDownloadSnapshotFrom );
 
-    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
+    std::vector< std::string > getNodesToDownloadFrom( unsigned block_number );
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
 

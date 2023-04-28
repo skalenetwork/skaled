@@ -65,12 +65,12 @@ std::string SkaleClient::skale_receiveTransaction( const std::string& _rlp ) {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value SkaleClient::skale_getSnapshotSignature( unsigned blockNumber ) {
+Json::Value SkaleClient::skale_getMessageSignature( unsigned blockNumber ) {
     Json::Value p;
     Json::Value result;
     p.append( blockNumber );
 
-    result = this->CallMethod( "skale_getSnapshotSignature", p );
+    result = this->CallMethod( "skale_getMessageSignature", p );
 
     if ( result.isObject() ) {
         return result;

@@ -352,14 +352,18 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
-Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
+Json::Value Skale::skale_getMessageSignature( unsigned blockNumber ) {
     dev::eth::ChainParams chainParams = this->m_client.chainParams();
     if ( chainParams.nodeInfo.keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     try {
-        dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );
-        if ( !snapshot_hash )
+        dev::h256 messageHash;
+        if ( blockNumber )
+             messageHash = this->m_client.getSnapshotHash( blockNumber );
+        else
+            messageHash = this->m_client.genesisStateHash();
+        if ( !messageHash )
             throw std::runtime_error(
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
@@ -374,7 +378,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         nlohmann::json obj = nlohmann::json::object();
 
         obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
-        obj["messageHash"] = snapshot_hash.hex();
+        obj["messageHash"] = messageHash.hex();
         obj["n"] = chainParams.sChain.nodes.size();
         obj["t"] = chainParams.sChain.t;
 
@@ -410,7 +414,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         cli.optsSSL_ = ssl_options;
         bool fl = cli.open( sgxServerURL );
         if ( !fl ) {
-            clog( VerbosityError, "skale_getSnapshotSignature" )
+            clog( VerbosityError, "skale_getMessageSignature" )
                 << cc::fatal( "FATAL:" )
                 << cc::error( " Exception while trying to connect to sgx server: " )
                 << cc::warn( "connection refused" ) << std::endl;
@@ -418,19 +422,19 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         skutils::rest::data_t d;
         while ( true ) {
-            clog( VerbosityInfo, "skale_getSnapshotSignature" )
+            clog( VerbosityInfo, "skale_getMessageSignature" )
                 << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
             d = cli.call( joCall );
             if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
                 if ( d.ei_.et_ == skutils::http::common_network_exception::error_type::et_unknown ||
                      d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
-                    clog( VerbosityError, "skale_getSnapshotSignature" )
+                    clog( VerbosityError, "skale_getMessageSignature" )
                         << cc::error( "ERROR:" )
                         << cc::error( " Exception while trying to connect to sgx server: " )
                         << cc::error( " error with connection: " ) << cc::info( " retrying... " )
                         << std::endl;
                 } else {
-                    clog( VerbosityError, "skale_getSnapshotSignature" )
+                    clog( VerbosityError, "skale_getMessageSignature" )
                         << cc::error( "ERROR:" )
                         << cc::error( " Exception while trying to connect to sgx server: " )
                         << cc::error( " error with ssl certificates " )
@@ -443,7 +447,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
         if ( d.empty() ) {
             static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-            clog( VerbosityError, "skale_getSnapshotSignature" )
+            clog( VerbosityError, "skale_getMessageSignature" )
                 << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
                 << std::endl;
             throw std::runtime_error( g_strErrMsg );
@@ -452,7 +456,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
         nlohmann::json joResponse =
             ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
-        clog( VerbosityInfo, "skale_getSnapshotSignature" )
+        clog( VerbosityInfo, "skale_getMessageSignature" )
             << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
         if ( joResponse["status"] != 0 ) {
             throw std::runtime_error(
@@ -469,7 +473,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
         joSignature["X"] = splited_string[0];
         joSignature["Y"] = splited_string[1];
         joSignature["helper"] = splited_string[3];
-        joSignature["hash"] = snapshot_hash.hex();
+        joSignature["hash"] = messageHash.hex();
 
         std::string strSignature = joSignature.dump();
         Json::Value response;
@@ -512,6 +516,14 @@ Json::Value Skale::skale_getDBUsage() {
     std::string strResponse = joDBUsageInfo.dump();
     Json::Value response;
     Json::Reader().parse( strResponse, response );
+    return response;
+}
+
+Json::Value Skale::skale_getGenesisState() {
+    Json::Value response;
+
+    response["genesisStateStr"] = m_client.genesisState();
+
     return response;
 }
 

@@ -316,14 +316,16 @@ void State::commitGenesisState( const dev::eth::ChainParams& _params ) {
     json_spirit::mValue val;
     json_spirit::read_string_or_throw( configStr, val );
     json_spirit::mObject configJson = val.get_obj();
-    auto genesisStateStr = json_spirit::write_string( configJson[dev::eth::validation::c_accounts], false );
+    auto genesisStateStr =
+        json_spirit::write_string( configJson[dev::eth::validation::c_accounts], false );
 
     if ( !m_db_write_lock ) {
         BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
     }
     boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
 
-    m_db_ptr->db()->insert( slicing::toSlice( m_genesisStateKey ), slicing::toSlice( genesisStateStr ) );
+    m_db_ptr->db()->insert(
+        slicing::toSlice( m_genesisStateKey ), slicing::toSlice( genesisStateStr ) );
     m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
 }
 

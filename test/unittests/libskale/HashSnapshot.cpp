@@ -107,7 +107,7 @@ public:
         return this->hashAgent_->verifyAllData();
     }
 
-    std::vector< size_t > getNodesToDownloadSnapshotFrom() {
+    std::vector< size_t > getNodesToDownloadFrom() {
         bool res = this->voteForHash();
 
         if ( !res ) {
@@ -434,7 +434,7 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
-    auto res = test_agent.getNodesToDownloadSnapshotFrom();
+    auto res = test_agent.getNodesToDownloadFrom();
     std::vector< size_t > excpected = {0, 1, 2};
     BOOST_REQUIRE( res == excpected );
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
@@ -460,7 +460,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 6 );
-    auto res = test_agent.getNodesToDownloadSnapshotFrom();
+    auto res = test_agent.getNodesToDownloadFrom();
     std::vector< size_t > excpected = {0, 1, 2, 3, 5};
     BOOST_REQUIRE( res == excpected );
 }
@@ -518,7 +518,7 @@ BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
 
-    auto nodesToDownloadSnapshotFrom = test_agent.getNodesToDownloadSnapshotFrom();
+    auto nodesToDownloadSnapshotFrom = test_agent.getNodesToDownloadFrom();
     BOOST_REQUIRE( nodesToDownloadSnapshotFrom.size() == 1 );
     BOOST_REQUIRE( nodesToDownloadSnapshotFrom[0] == 3 );
 }

@@ -319,6 +319,8 @@ public:
 
     std::string genesisState() const { return m_state.genesisState(); }
 
+    dev::h256 genesisStateHash() const;
+
 #ifdef HISTORIC_STATE
     uint64_t getHistoricStateDbUsage() const;
     uint64_t getHistoricRootsDbUsage() const;
