@@ -443,6 +443,7 @@ static void stat_init_common_signal_handling() {
 
                     clog( VerbosityInfo, "exit" ) << "THREADS timer started";
 
+                    // while waiting, every 0.1s check whch threades exited
                     vector< string > threads;
                     for ( int i = 0; i < ExitHandler::KILL_TIMEOUT * 10; ++i ) {
                         auto end_time = std::chrono::steady_clock::now();
