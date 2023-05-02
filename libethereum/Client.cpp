@@ -41,8 +41,8 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
-#include <libdevcrypto/Hash.h>
 #include <libdevcore/system_usage.h>
+#include <libdevcrypto/Hash.h>
 
 #ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>

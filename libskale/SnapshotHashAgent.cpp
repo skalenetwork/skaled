@@ -27,6 +27,7 @@
 
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libconsensus/libBLS/tools/utils.h>
+#include <libdevcrypto/Hash.h>
 #include <libethcore/CommonJS.h>
 #include <libskale/AmsterdamFixPatch.h>
 #include <libweb3jsonrpc/Skale.h>
@@ -249,8 +250,7 @@ bool SnapshotHashAgent::voteForHash() {
     return true;
 }
 
-std::vector< std::string > SnapshotHashAgent::getNodesToDownloadFrom(
-    unsigned block_number ) {
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadFrom( unsigned block_number ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
@@ -266,19 +266,21 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadFrom(
                     ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
                 SkaleClient skaleClient( *jsonRpcClient );
 
-                // just ask block number in this special case
-                if ( block_number == 0 ) {
-                    unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
-                    if ( n == 0 ) {
-                        const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-                        if ( ipToDownloadSnapshotFrom_.empty() )
-                            nodes_to_download_snapshot_from_.push_back( i );
-                        else if ( ipToDownloadSnapshotFrom_ == chain_params_.sChain.nodes[i].ip )
-                            nodes_to_download_snapshot_from_.push_back( i );
-                        delete jsonRpcClient;
-                        return;
-                    }
-                }
+                //                // just ask block number in this special case
+                //                if ( block_number == 0 ) {
+                //                    unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
+                //                    if ( n == 0 ) {
+                //                        const std::lock_guard< std::mutex > lock(
+                //                        this->hashes_mutex ); if (
+                //                        ipToDownloadSnapshotFrom_.empty() )
+                //                            nodes_to_download_snapshot_from_.push_back( i );
+                //                        else if ( ipToDownloadSnapshotFrom_ ==
+                //                        chain_params_.sChain.nodes[i].ip )
+                //                            nodes_to_download_snapshot_from_.push_back( i );
+                //                        delete jsonRpcClient;
+                //                        return;
+                //                    }
+                //                }
 
                 Json::Value joSignatureResponse;
                 try {
@@ -376,9 +378,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadFrom(
 
         }  // for i
         result = this->nodes_to_download_snapshot_from_.size() > 0;
-    } else if ( block_number == 0 )
-        result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
-    else
+    } else
         try {
             result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {
@@ -420,4 +420,12 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() co
     }
 
     return this->voted_hash_;
+}
+
+dev::h256 SnapshotHashAgent::computeHash( const std::string& message ) {
+    const std::vector< uint8_t > usc( message.begin(), message.end() );
+    dev::bytesConstRef bytesMessage( usc.data(), usc.size() );
+    dev::h256 hash = dev::sha256( bytesMessage );
+
+    return hash;
 }

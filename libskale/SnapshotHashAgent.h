@@ -73,6 +73,8 @@ public:
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
 
+    static dev::h256 computeHash( const std::string& message );
+
     friend class dev::test::SnapshotHashAgentTest;
 
 private:

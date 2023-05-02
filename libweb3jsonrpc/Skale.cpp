@@ -360,7 +360,7 @@ Json::Value Skale::skale_getMessageSignature( unsigned blockNumber ) {
     try {
         dev::h256 messageHash;
         if ( blockNumber )
-             messageHash = this->m_client.getSnapshotHash( blockNumber );
+            messageHash = this->m_client.getSnapshotHash( blockNumber );
         else
             messageHash = this->m_client.genesisStateHash();
         if ( !messageHash )
@@ -523,6 +523,7 @@ Json::Value Skale::skale_getGenesisState() {
     Json::Value response;
 
     response["genesisStateStr"] = m_client.genesisState();
+    response["genesisStateHash"] = m_client.genesisStateHash().hex();
 
     return response;
 }

@@ -145,7 +145,7 @@ public:
             &dev::rpc::SkaleFace::skale_getDBUsageI );
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getGenesisState",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
-            &dev::rpc::SkaleFace::skale_getDBUsageI );
+            &dev::rpc::SkaleFace::skale_getGenesisStateI );
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_submitRequest",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_submitRequestI );

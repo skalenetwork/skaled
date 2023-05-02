@@ -324,6 +324,30 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
         fs::remove( saveTo );
 }
 
+std::string downloadGenesisState( const std::string& url ) {
+    nlohmann::json joIn = nlohmann::json::object();
+    joIn["jsonrpc"] = "2.0";
+    joIn["method"] = "skale_getGenesisState";
+    joIn["params"] = nlohmann::json::object();
+
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
+    if ( !cli.open( url ) ) {
+        clog( VerbosityError, "downloadGenesisState" )
+            << cc::fatal( "FATAL:" ) << " " << cc::error( "REST failed to connect to server(1)" )
+            << "\n";
+        return "";
+    }
+    skutils::rest::data_t d = cli.call( joIn );
+    if ( d.empty() ) {
+        clog( VerbosityError, "downloadGenesisState" )
+            << cc::fatal( "FATAL:" ) << " " << cc::error( "Failed to get latest bockNumber" )
+            << "\n";
+        return "";
+    }
+    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+    return joAnswer["genesisStateStr"].get< std::string >();
+}
+
 }  // namespace
 
 static const std::list< std::pair< std::string, std::string > >
@@ -1510,9 +1534,9 @@ int main( int argc, char** argv ) try {
         downloadSnapshotFlag = true;
     }
 
-    bool downloadGenesisState = false;
-    if ( chainParams.nodeInfo.syncNode && vm.count( "download-genesis-state" ) ) {
-        downloadGenesisState = true;
+    bool downloadGenesisStateFlag = false;
+    if ( vm.count( "download-genesis-state" ) ) {
+        downloadGenesisStateFlag = true;
     }
 
     bool requireSnapshotMajority = true;
@@ -1522,8 +1546,79 @@ int main( int argc, char** argv ) try {
         ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
     }
 
-    if ( downloadGenesisState ) {
+    if ( downloadGenesisStateFlag ) {
         std::string genesisStateStr;
+
+        std::array< std::string, 4 > arrayCommonPublicKey =
+            chainParams.sChain.nodeGroups[0].blsPublicKey;
+
+        SnapshotHashAgent snapshotHashAgent(
+            chainParams, arrayCommonPublicKey, ipToDownloadSnapshotFrom );
+
+        libff::init_alt_bn128_params();
+        std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
+        std::vector< std::string > list_urls_to_download;
+        try {
+            list_urls_to_download = snapshotHashAgent.getNodesToDownloadFrom( 0 );
+            clog( VerbosityInfo, "main" ) << cc::notice( "Got urls to download snapshot from " )
+                                          << cc::p( std::to_string( list_urls_to_download.size() ) )
+                                          << cc::notice( " nodes " );
+
+            if ( list_urls_to_download.size() == 0 ) {
+                clog( VerbosityError, "main" ) << cc::error(
+                    "No nodes to download geneis state - probably other skaleds are offline" );
+                throw std::runtime_error( "No nodes to download geneis state" );
+            }
+
+            voted_hash = snapshotHashAgent.getVotedHash();
+
+        } catch ( std::exception& ex ) {
+            std::throw_with_nested( std::runtime_error( cc::error(
+                "Exception while collecting genesis state hash from other skaleds " ) ) );
+        }
+
+        bool successfullDownload = false;
+
+        size_t n_found = list_urls_to_download.size();
+
+        size_t shift = rand() % n_found;
+
+        for ( size_t cnt = 0; cnt < n_found && !successfullDownload; ++cnt )
+            try {
+                size_t i = ( shift + cnt ) % n_found;
+
+                std::string urlToDownloadSnapshot;
+                urlToDownloadSnapshot = list_urls_to_download[i];
+
+                genesisStateStr = downloadGenesisState( urlToDownloadSnapshot );
+
+                dev::h256 calculated_hash;
+                try {
+                    calculated_hash = snapshotHashAgent.computeHash( genesisStateStr );
+                } catch ( const std::exception& ) {
+                    std::throw_with_nested( std::runtime_error(
+                        cc::fatal( "FATAL:" ) + " " +
+                        cc::error( "Exception while computing genesis state hash " ) ) );
+                }
+
+                if ( calculated_hash == voted_hash.first )
+                    successfullDownload = true;
+                else {
+                    clog( VerbosityWarning, "main" )
+                        << cc::notice(
+                               "Downloaded genesis state with incorrect hash! Incoming "
+                               "hash " )
+                        << cc::notice( voted_hash.first.hex() )
+                        << cc::notice( " is not equal to calculated hash " )
+                        << cc::notice( calculated_hash.hex() ) << cc::notice( "Will try again" );
+                }
+            } catch ( const std::exception& ex ) {
+                // just retry
+                clog( VerbosityWarning, "main" ) << dev::nested_exception_what( ex );
+            }  // for download url
+
+        if ( !successfullDownload )
+            throw std::runtime_error( "FATAL: tried to download genesis state from everywhere!" );
 
         chainParams = chainParams.loadGenesisState( genesisStateStr );
     }
@@ -1617,8 +1712,7 @@ int main( int argc, char** argv ) try {
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
                 std::vector< std::string > list_urls_to_download;
                 try {
-                    list_urls_to_download =
-                        snapshotHashAgent.getNodesToDownloadFrom( blockNumber );
+                    list_urls_to_download = snapshotHashAgent.getNodesToDownloadFrom( blockNumber );
                     clog( VerbosityInfo, "main" )
                         << cc::notice( "Got urls to download snapshot from " )
                         << cc::p( std::to_string( list_urls_to_download.size() ) )
