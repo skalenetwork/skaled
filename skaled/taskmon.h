@@ -25,8 +25,8 @@ public:
     // get thread status by name (see above)
     static std::string status( const std::string& name );
 
-    //return how list1 and list2 differ
-    //adds '+' or '-' signs to elements
+    // return how list1 and list2 differ
+    // adds '+' or '-' signs to elements
     static std::vector< std::string > lists_diff(
         const std::vector< std::string >& from, const std::vector< std::string >& to );
 
