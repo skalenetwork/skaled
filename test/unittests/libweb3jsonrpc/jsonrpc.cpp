@@ -31,6 +31,7 @@
 #include <libethereum/ClientTest.h>
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
+#include <libskale/SnapshotHashAgent.h>
 #include <libskale/httpserveroverride.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
@@ -2214,6 +2215,12 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["gasUsed"] != "0x0" );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+}
+
+BOOST_AUTO_TEST_CASE( genesisState ) {
+    JsonRpcFixture fixture;
+
+    BOOST_REQUIRE( fixture.client->genesisStateHash() == SnapshotHashAgent::computeHash( fixture.client->genesisState() ) );
 }
 
 BOOST_AUTO_TEST_CASE( setSchainExitTime ) {

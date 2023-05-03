@@ -51,7 +51,6 @@ public:
             }
         }
 
-
         blsPrivateKeys_.resize( _chainParams.sChain.nodes.size() );
         for ( size_t i = 0; i < _chainParams.sChain.nodes.size(); ++i ) {
             blsPrivateKeys_[i] = libff::alt_bn128_Fr::zero();

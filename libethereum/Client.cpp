@@ -235,6 +235,7 @@ void Client::populateNewChainStateFromGenesis() {
     m_state.releaseWriteLock();
 #else
     m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
+    m_state.createStateModifyCopy().commitGenesisState( chainParams() );
     m_state = m_state.createNewCopyWithLocks();
 #endif
 }
@@ -254,7 +255,6 @@ void Client::initStateFromDiskOrGenesis() {
 
     if ( m_state.empty() ) {
         populateNewChainStateFromGenesis();
-        m_state.commitGenesisState( chainParams() );
     } else {
 #ifdef HISTORIC_STATE
         // if SKALE state exists but historic state does not, we need to populate the historic state
