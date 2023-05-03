@@ -508,7 +508,11 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                 if ( !account.isAlive() ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
-                    // TODO: remove account storage
+
+                    if (2023) {
+                        clearStorage( address );
+                    }
+
                 } else {
                     RLPStream rlpStream( 4 );
 
@@ -777,7 +781,6 @@ void State::clearStorage( Address const& _contract ) {
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
-    // TODO Do we need to clear storageUsage[_contract] here?
 }
 
 bytes const& State::code( Address const& _addr ) const {

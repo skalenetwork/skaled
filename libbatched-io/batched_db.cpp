@@ -59,4 +59,16 @@ void db_splitter::prefixed_db::forEach(
     } );
 }
 
+void db_splitter::prefixed_db::forEachWithPrefix(std::string& _prefix,
+    std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
+    backend->forEachWithPrefix(_prefix, [&]( dev::db::Slice _key, dev::db::Slice _val ) -> bool {
+        if ( _key[0] != this->prefix )
+            return true;
+        dev::db::Slice key_short = dev::db::Slice( _key.data() + 1, _key.size() - 1 );
+        return f( key_short, _val );
+    } );
+}
+
+
+
 }  // namespace batched_io
