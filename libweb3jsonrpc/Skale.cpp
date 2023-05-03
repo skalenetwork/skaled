@@ -520,11 +520,13 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         if ( m_client.chainParams().nodeInfo.syncNode )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
-        // this function is guaranteed not to throw exceptions
-        uint64_t status = m_client.submitOracleRequest( request, receipt );
+        std::string errorMessage;
+
+        clog( VerbosityDebug, "Oracle request:" ) << request;
+
+        uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
         if ( status != ORACLE_SUCCESS ) {
-            throw jsonrpc::JsonRpcException(
-                status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
+            throw jsonrpc::JsonRpcException( status, errorMessage );
         }
         return receipt;
     } catch ( jsonrpc::JsonRpcException const& e ) {
@@ -550,6 +552,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
+        clog( VerbosityDebug, "Oracle result:" ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;
