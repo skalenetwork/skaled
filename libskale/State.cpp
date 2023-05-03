@@ -71,6 +71,52 @@ using dev::eth::TransactionReceipt;
 
 const std::string State::m_genesisStateKey = "genesisState";
 
+State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
+    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
+    dev::s256 _contractStorageLimit )
+    : x_db_ptr( make_shared< boost::shared_mutex >() ),
+      m_storedVersion( make_shared< size_t >( 0 ) ),
+      m_currentVersion( *m_storedVersion ),
+      m_accountStartNonce( _accountStartNonce ),
+      m_initial_funds( _initialFunds ),
+      contractStorageLimit_( _contractStorageLimit )
+#ifdef HISTORIC_STATE
+      ,
+      m_historicState( _accountStartNonce,
+          dev::eth::HistoricState::openDB(
+              boost::filesystem::path( std::string( _dbPath.string() )
+                                           .append( "/" )
+                                           .append( dev::eth::HISTORIC_STATE_DIR ) ),
+              _genesis,
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ),
+          dev::eth::HistoricState::openDB(
+              boost::filesystem::path( std::string( _dbPath.string() )
+                                           .append( "/" )
+                                           .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
+              _genesis,
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) )
+#endif
+{
+    m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
+        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
+
+    auto state = createStateReadOnlyCopy();
+    totalStorageUsed_ = state.storageUsedTotal();
+#ifdef HISTORIC_STATE
+    m_historicState.setRootFromDB();
+#endif
+    m_fs_ptr = state.fs();
+    if ( _bs == BaseState::PreExisting ) {
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+    } else if ( _bs == BaseState::Empty ) {
+        // Initialise to the state entailed by the genesis block; this guarantees the trie is built
+        // correctly.
+        m_db_ptr->clearDB();
+    } else {
+        throw std::logic_error( "Not implemented" );
+    }
+}
+
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
     dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
@@ -183,9 +229,9 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        std::shared_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
+        m_orig_db.reset( new db::DBImpl( state_path ) );
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
-        bdb->open( db );
+        bdb->open( m_orig_db );
         assert( bdb->is_open() );
         clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( bdb ) );
@@ -218,6 +264,7 @@ State::State( const State& _s )
         std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
+    m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
     m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
@@ -239,6 +286,7 @@ State& State::operator=( const State& _s ) {
         std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
+    m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
     m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;

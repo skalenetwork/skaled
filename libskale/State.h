@@ -180,29 +180,8 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 )
-        : State( _accountStartNonce,
-              openDB( _dbPath, _genesis,
-                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                  dev::WithExisting::Kill ),
-#ifdef HISTORIC_STATE
-              dev::eth::HistoricState::openDB(
-                  boost::filesystem::path( std::string( _dbPath.string() )
-                                               .append( "/" )
-                                               .append( dev::eth::HISTORIC_STATE_DIR ) ),
-                  _genesis,
-                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                  dev::WithExisting::Kill ),
-              dev::eth::HistoricState::openDB(
-                  boost::filesystem::path( std::string( _dbPath.string() )
-                                               .append( "/" )
-                                               .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
-                  _genesis,
-                  _bs == BaseState::PreExisting ? dev::WithExisting::Trust :
-                                                  dev::WithExisting::Kill ),
-#endif  /// which uses it. If you have no preexisting database then set BaseState to something other
-              _bs, _initialFunds, _contractStorageLimit ) {
-    }
+        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
+    /// which uses it. If you have no preexisting database then set BaseState to something other
 
     State()
         : State( dev::Invalid256, skale::OverlayDB(),
@@ -401,7 +380,7 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    //    const dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
+    const dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
     void resetStorageChanges() {
         storageUsage.clear();
@@ -432,7 +411,7 @@ private:
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
-    static OverlayDB openDB( boost::filesystem::path const& _path, dev::h256 const& _genesisHash,
+    OverlayDB openDB( boost::filesystem::path const& _path, dev::h256 const& _genesisHash,
         dev::WithExisting _we = dev::WithExisting::Trust );
 
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -489,9 +468,9 @@ private:
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
-                                            //    // HACK
-                                            //    // TODO Implement DB-registry, remove it!
-                                            //    std::shared_ptr< dev::db::DBImpl > m_orig_db;
+    // HACK
+    // TODO Implement DB-registry, remove it!
+    std::shared_ptr< dev::db::DBImpl > m_orig_db;
     std::shared_ptr< size_t > m_storedVersion;
     size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
