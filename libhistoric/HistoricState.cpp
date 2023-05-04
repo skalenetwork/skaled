@@ -399,7 +399,10 @@ void HistoricState::createContract( Address const& _address ) {
 
 void HistoricState::createAccount( Address const& _address, HistoricAccount const&& _account ) {
     assert( !addressInUse( _address ) && "Account already exists" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
     m_cache[_address] = std::move( _account );
+#pragma GCC diagnostic pop
     m_nonExistingAccountsCache.erase( _address );
     m_changeLog.emplace_back( Change::Create, _address );
 }
@@ -762,7 +765,10 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
                 // otherwise we create it
                 StorageRoot storageRoot( EmptyTrie );
                 if ( existingAccount != nullptr ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
                     storageRoot = existingAccount->originalStorageRoot();
+#pragma GCC diagnostic pop
                 }
 
                 SecureTrieDB< h256, OverlayDB > storageDB( _state.db(), storageRoot );

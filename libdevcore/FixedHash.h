@@ -392,6 +392,9 @@ public:
     using FixedHash< T >::operator<=;
     using FixedHash< T >::operator>;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
     // The obvious binary operators.
     SecureFixedHash& operator^=( FixedHash< T > const& _c ) {
         static_cast< FixedHash< T >& >( *this ).operator^=( _c );
@@ -444,11 +447,16 @@ public:
         return static_cast< SecureFixedHash const& >( r );
     }
 
+#pragma GCC diagnostic pop
+
     using FixedHash< T >::abridged;
     using FixedHash< T >::abridgedMiddle;
 
     bytesConstRef ref() const { return FixedHash< T >::ref(); }
     _byte_ const* data() const { return FixedHash< T >::data(); }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 
     static SecureFixedHash< T > random() {
         SecureFixedHash< T > ret;
@@ -456,6 +464,8 @@ public:
         return ret;
     }
     using FixedHash< T >::firstBitSet;
+
+#pragma GCC diagnostic pop
 
     void clear() { ref().cleanse(); }
 };

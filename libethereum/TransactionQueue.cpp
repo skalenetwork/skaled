@@ -299,8 +299,11 @@ void TransactionQueue::insertCurrent_WITH_LOCK( std::pair< h256, Transaction > c
     auto inserted = m_currentByAddressAndNonce[t.from()].insert(
         std::make_pair( t.nonce(), PriorityQueue::iterator() ) );
     PriorityQueue::iterator handle = m_current.emplace( VerifiedTransaction( t ) );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
     inserted.first->second = handle;
     m_currentByHash[_p.first] = handle;
+#pragma GCC diagnostic pop
 
     // Move following transactions from future to current
     makeCurrent_WITH_LOCK( t );
@@ -394,8 +397,11 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
                 auto inserted = m_currentByAddressAndNonce[_t.from()].insert(
                     std::make_pair( ft->second.transaction.nonce(), PriorityQueue::iterator() ) );
                 PriorityQueue::iterator handle = m_current.emplace( move( ft->second ) );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
                 inserted.first->second = handle;
                 m_currentByHash[( *handle ).transaction.sha3()] = handle;
+#pragma GCC diagnostic pop
                 --m_futureSize;
                 ++ft;
                 ++nonce;

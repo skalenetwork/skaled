@@ -23,6 +23,9 @@
 
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
@@ -139,3 +142,5 @@ public:
 
 }  // namespace eth
 }  // namespace dev
+
+#pragma GCC diagnostic pop

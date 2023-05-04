@@ -19,6 +19,9 @@
 
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 #include "Common.h"
 
 #include <libdevcore/Address.h>
@@ -95,3 +98,5 @@ inline LogBloom bloom( LogEntries const& _logs ) {
 
 }  // namespace eth
 }  // namespace dev
+
+#pragma GCC diagnostic pop

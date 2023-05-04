@@ -47,11 +47,16 @@ inline h256 sha3( bytesConstRef _input ) noexcept {
     return ret;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 inline SecureFixedHash< 32 > sha3Secure( bytesConstRef _input ) noexcept {
     SecureFixedHash< 32 > ret;
     sha3( _input, ret.writable().ref() );
     return ret;
 }
+
+#pragma GCC diagnostic pop
 
 /// Calculate SHA3-256 hash of the given input, returning as a 256-bit hash.
 inline h256 sha3( bytes const& _input ) noexcept {

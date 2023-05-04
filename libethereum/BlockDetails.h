@@ -23,6 +23,9 @@
 
 #pragma once
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 #include "TransactionReceipt.h"
 #include <libdevcore/Log.h>
 #include <libdevcore/RLP.h>
@@ -165,3 +168,5 @@ static const BlocksBlooms NullBlocksBlooms;
 
 }  // namespace eth
 }  // namespace dev
+
+#pragma GCC diagnostic pop

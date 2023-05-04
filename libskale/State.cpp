@@ -394,7 +394,10 @@ std::pair< State::AddressMap, h256 > State::addresses(
     }
     addresses.erase( addresses.begin(), addresses.lower_bound( _begin ) );
     if ( addresses.size() > _maxResults ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
         assert( numeric_limits< long >::max() >= _maxResults );
+#pragma GCC diagnostic pop
         auto next_ptr = std::next( addresses.begin(), static_cast< long >( _maxResults ) );
         next = next_ptr->first;
         addresses.erase( next_ptr, addresses.end() );
@@ -642,7 +645,10 @@ void State::createContract( Address const& _address ) {
 
 void State::createAccount( Address const& _address, eth::Account const&& _account ) {
     assert( !addressInUse( _address ) && "Account already exists" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
     m_cache[_address] = std::move( _account );
+#pragma GCC diagnostic pop
     m_nonExistingAccountsCache.erase( _address );
     m_changeLog.emplace_back( Change::Create, _address );
 }

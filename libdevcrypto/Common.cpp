@@ -259,11 +259,16 @@ bytesSec dev::scrypt( std::string const& _pass, bytes const& _salt, uint64_t _n,
     return ret;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 KeyPair::KeyPair( Secret const& _sec ) : m_secret( _sec ), m_public( toPublic( _sec ) ) {
     // Assign address only if the secret key is valid.
     if ( m_public )
         m_address = toAddress( m_public );
 }
+
+#pragma GCC diagnostic pop
 
 KeyPair KeyPair::create() {
     while ( true ) {

@@ -5,6 +5,9 @@
 namespace dev {
 namespace eth {
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 template < typename T >
 class Counter {
 public:
@@ -22,6 +25,8 @@ private:
 
 template < typename T >
 std::atomic_uint64_t Counter< T >::count = 0;
+
+#pragma GCC diagnostic pop
 
 }  // namespace eth
 }  // namespace dev
