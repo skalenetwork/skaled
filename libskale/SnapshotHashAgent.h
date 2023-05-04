@@ -80,7 +80,7 @@ public:
 private:
     dev::eth::ChainParams chain_params_;
     unsigned n_;
-    std::string ipToDownloadSnapshotFrom_;
+    std::string ipToDownloadFrom_;
     std::shared_ptr< libBLS::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;

@@ -1540,10 +1540,10 @@ int main( int argc, char** argv ) try {
     }
 
     bool requireSnapshotMajority = true;
-    std::string ipToDownloadSnapshotFrom = "";
+    std::string ipToDownloadFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
         requireSnapshotMajority = false;
-        ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
+        ipToDownloadFrom = vm["no-snapshot-majority"].as< string >();
     }
 
     if ( downloadGenesisStateFlag ) {
@@ -1552,8 +1552,7 @@ int main( int argc, char** argv ) try {
         std::array< std::string, 4 > arrayCommonPublicKey =
             chainParams.sChain.nodeGroups[0].blsPublicKey;
 
-        SnapshotHashAgent snapshotHashAgent(
-            chainParams, arrayCommonPublicKey, ipToDownloadSnapshotFrom );
+        SnapshotHashAgent snapshotHashAgent( chainParams, arrayCommonPublicKey, ipToDownloadFrom );
 
         libff::init_alt_bn128_params();
         std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
@@ -1587,10 +1586,10 @@ int main( int argc, char** argv ) try {
             try {
                 size_t i = ( shift + cnt ) % n_found;
 
-                std::string urlToDownloadSnapshot;
-                urlToDownloadSnapshot = list_urls_to_download[i];
+                std::string urlToDownload;
+                urlToDownload = list_urls_to_download[i];
 
-                genesisStateStr = downloadGenesisState( urlToDownloadSnapshot );
+                genesisStateStr = downloadGenesisState( urlToDownload );
 
                 dev::h256 calculated_hash;
                 try {
@@ -1647,10 +1646,10 @@ int main( int argc, char** argv ) try {
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
 
-        if ( !ipToDownloadSnapshotFrom.empty() &&
+        if ( !ipToDownloadFrom.empty() &&
              std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-                 [&ipToDownloadSnapshotFrom]( const dev::eth::sChainNode& node ) {
-                     return node.ip == ipToDownloadSnapshotFrom;
+                 [&ipToDownloadFrom]( const dev::eth::sChainNode& node ) {
+                     return node.ip == ipToDownloadFrom;
                  } ) == chainParams.sChain.nodes.end() )
             throw std::runtime_error(
                 "ipToDownloadSnapshotFrom provided is incorrect - no such node in schain" );
@@ -1683,7 +1682,7 @@ int main( int argc, char** argv ) try {
         for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
             try {
                 if ( !requireSnapshotMajority &&
-                     std::string( chainParams.sChain.nodes[idx].ip ) != ipToDownloadSnapshotFrom )
+                     std::string( chainParams.sChain.nodes[idx].ip ) != ipToDownloadFrom )
                     continue;
 
                 if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
@@ -1706,7 +1705,7 @@ int main( int argc, char** argv ) try {
                     << ")";
 
                 SnapshotHashAgent snapshotHashAgent(
-                    chainParams, arrayCommonPublicKey, ipToDownloadSnapshotFrom );
+                    chainParams, arrayCommonPublicKey, ipToDownloadFrom );
 
                 libff::init_alt_bn128_params();
                 std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash;
