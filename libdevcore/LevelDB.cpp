@@ -88,16 +88,13 @@ leveldb::ReadOptions LevelDB::defaultReadOptions() {
 }
 
 leveldb::WriteOptions LevelDB::defaultWriteOptions() {
-    leveldb::WriteOptions writeOptions = leveldb::WriteOptions();
-    writeOptions.sync = true;
-    return writeOptions;
+    return leveldb::WriteOptions();
 }
 
 leveldb::Options LevelDB::defaultDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
     options.max_open_files = c_maxOpenLeveldbFiles;
-    options.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
     return options;
 }
 
@@ -106,19 +103,13 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
-      m_options( std::move( _dbOptions ) ),
       m_path( _path ) {
     auto db = static_cast< leveldb::DB* >( nullptr );
-    auto const status = leveldb::DB::Open( m_options, _path.string(), &db );
+    auto const status = leveldb::DB::Open( _dbOptions, _path.string(), &db );
     checkStatus( status, _path );
 
     assert( db );
     m_db.reset( db );
-}
-
-LevelDB::~LevelDB() {
-    if ( m_options.filter_policy )
-        delete m_options.filter_policy;
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
@@ -236,9 +227,9 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     return hash;
 }
 
-void LevelDB::doCompaction() const {
-    m_db->CompactRange( nullptr, nullptr );
-}
+// void LevelDB::doCompaction() const {
+//    m_db->CompactRange( NULL, NULL );
+//}
 
 }  // namespace db
 }  // namespace dev

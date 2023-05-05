@@ -1322,23 +1322,3 @@ Json::Value WebThreeStubClient::debug_traceCall(
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
-
-Json::Value WebThreeStubClient::debug_doStateDbCompaction() {
-    Json::Value p;
-    Json::Value result = this->CallMethod( "debug_doStateDbCompaction", p );
-    if ( result.isUInt64() )
-        return result.asUInt64();
-    else
-        throw jsonrpc::JsonRpcException(
-            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
-}
-
-Json::Value WebThreeStubClient::debug_doBlocksDbCompaction() {
-    Json::Value p;
-    Json::Value result = this->CallMethod( "debug_doBlocksDbCompaction", p );
-    if ( result.isUInt64() )
-        return result.asUInt64();
-    else
-        throw jsonrpc::JsonRpcException(
-            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
-}
