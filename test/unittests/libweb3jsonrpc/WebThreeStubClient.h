@@ -158,8 +158,6 @@ public:
         const std::string& param1, const Json::Value& param2 ) noexcept( false );
     Json::Value debug_traceCall( const Json::Value& param1, const std::string& param2,
         const Json::Value& param3 ) noexcept( false );
-    Json::Value debug_doStateDbCompaction() noexcept( false );
-    Json::Value debug_doBlocksDbCompaction() noexcept( false );
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

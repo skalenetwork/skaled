@@ -229,9 +229,9 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        m_rotator = std::make_shared< batched_io::rotating_db_io >(
+        auto rotator = std::make_shared< batched_io::rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().nodeInfo.archiveMode );
-        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( m_rotating_db );
         m_db = db;
@@ -1364,13 +1364,13 @@ void BlockChain::clearCaches() {
     }
 }
 
-void BlockChain::doLevelDbCompaction() const {
-    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
-        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
-        assert( ldb );
-        ldb->doCompaction();
-    }
-}
+// void BlockChain::doLevelDbCompaction() const {
+//    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
+//        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
+//        assert( ldb );
+//        ldb->doCompaction();
+//    }
+//}
 
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }

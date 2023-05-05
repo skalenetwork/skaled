@@ -22,7 +22,6 @@
 #include "db.h"
 
 #include <leveldb/db.h>
-#include <leveldb/filter_policy.h>
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
@@ -39,8 +38,6 @@ public:
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
         leveldb::Options _dbOptions = defaultDBOptions() );
 
-    ~LevelDB();
-
     std::string lookup( Slice _key ) const override;
     bool exists( Slice _key ) const override;
     void insert( Slice _key, Slice _value ) override;
@@ -54,13 +51,12 @@ public:
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
-    void doCompaction() const;
+    //    void doCompaction() const;
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
-    leveldb::Options m_options;
     boost::filesystem::path const m_path;
 };
 
