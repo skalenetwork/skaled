@@ -101,6 +101,13 @@ leveldb::Options LevelDB::defaultDBOptions() {
     return options;
 }
 
+leveldb::Options LevelDB::defaultSnapshotDBOptions() {
+    leveldb::Options options;
+    options.create_if_missing = true;
+    options.max_open_files = c_maxOpenLeveldbFiles;
+    return options;
+}
+
 LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
     leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions )
     : m_db( nullptr ),
