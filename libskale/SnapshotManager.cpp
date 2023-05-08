@@ -436,7 +436,9 @@ void SnapshotManager::computeDatabaseHash(
         BOOST_THROW_EXCEPTION( InvalidPath( _dbDir ) );
     }
 
-    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string() ) );
+    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
+        dev::db::LevelDB::defaultReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
+        dev::db::LevelDB::defaultSnapshotDBOptions() ) );
     dev::h256 hash_volume = m_db->hashBase();
     cnote << _dbDir << " hash is: " << hash_volume << std::endl;
 
@@ -455,7 +457,9 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
         std::string last_price_str;
         std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
         while ( it != end ) {
-            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string() ) );
+            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string(),
+                dev::db::LevelDB::defaultReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
+                dev::db::LevelDB::defaultSnapshotDBOptions() ) );
             if ( m_db->exists( last_price_key ) ) {
                 last_price_str = m_db->lookup( last_price_key );
                 break;
