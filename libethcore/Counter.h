@@ -5,17 +5,14 @@
 namespace dev {
 namespace eth {
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-
 template < typename T >
 class Counter {
 public:
     Counter() { ++count; }
-
     Counter( const Counter& ) { ++count; }
-
     ~Counter() { --count; }
+
+    Counter& operator=( const Counter& other ) = default;
 
     static uint64_t howMany() { return count; }
 
@@ -25,8 +22,6 @@ private:
 
 template < typename T >
 std::atomic_uint64_t Counter< T >::count = 0;
-
-#pragma GCC diagnostic pop
 
 }  // namespace eth
 }  // namespace dev

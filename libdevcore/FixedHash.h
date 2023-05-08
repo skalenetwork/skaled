@@ -72,6 +72,8 @@ public:
     /// Construct an empty hash.
     FixedHash() { m_data.fill( 0 ); }
 
+    FixedHash( const FixedHash< N >& other ) = default;
+
     /// Construct from another hash, filling with zeroes or cropping as necessary.
     template < unsigned M >
     explicit FixedHash( FixedHash< M > const& _h, ConstructFromHashType _t = AlignLeft ) {
@@ -312,6 +314,8 @@ public:
     using ConstructFromStringType = typename FixedHash< T >::ConstructFromStringType;
     using ConstructFromPointerType = typename FixedHash< T >::ConstructFromPointerType;
     SecureFixedHash() = default;
+    SecureFixedHash( const SecureFixedHash< T >& other ) = default;
+
     explicit SecureFixedHash(
         bytes const& _b, ConstructFromHashType _t = FixedHash< T >::FailIfDifferent )
         : FixedHash< T >( _b, _t ) {}
@@ -392,8 +396,6 @@ public:
     using FixedHash< T >::operator<=;
     using FixedHash< T >::operator>;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 
     // The obvious binary operators.
     SecureFixedHash& operator^=( FixedHash< T > const& _c ) {
@@ -447,16 +449,11 @@ public:
         return static_cast< SecureFixedHash const& >( r );
     }
 
-#pragma GCC diagnostic pop
-
     using FixedHash< T >::abridged;
     using FixedHash< T >::abridgedMiddle;
 
     bytesConstRef ref() const { return FixedHash< T >::ref(); }
     _byte_ const* data() const { return FixedHash< T >::data(); }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 
     static SecureFixedHash< T > random() {
         SecureFixedHash< T > ret;
@@ -464,8 +461,6 @@ public:
         return ret;
     }
     using FixedHash< T >::firstBitSet;
-
-#pragma GCC diagnostic pop
 
     void clear() { ref().cleanse(); }
 };

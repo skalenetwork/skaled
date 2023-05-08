@@ -19,9 +19,6 @@
 
 #pragma once
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
 #include "Common.h"
 
 #include <libdevcore/Address.h>
@@ -37,9 +34,12 @@ namespace eth {
 
 struct LogEntry {
     LogEntry() = default;
+    LogEntry( const LogEntry& other ) = default;
     explicit LogEntry( RLP const& _r );
     LogEntry( Address const& _address, h256s _topics, bytes _data )
         : address( _address ), topics( std::move( _topics ) ), data( std::move( _data ) ) {}
+
+    LogEntry& operator=( const LogEntry& other ) = default;
 
     void streamRLP( RLPStream& _s ) const;
 
@@ -98,5 +98,3 @@ inline LogBloom bloom( LogEntries const& _logs ) {
 
 }  // namespace eth
 }  // namespace dev
-
-#pragma GCC diagnostic pop

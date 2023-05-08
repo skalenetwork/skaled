@@ -38,28 +38,21 @@ namespace eth {
 // global roots through the program
 
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
 class StorageRoot : public h256 {
 public:
+    StorageRoot() = default;
     StorageRoot( const u256& _value ) : h256( _value ) {}
-
     StorageRoot( const StorageRoot& _value ) : h256( _value ){};
+    StorageRoot& operator=( const StorageRoot& other ) = default;
 };
-
-#pragma GCC diagnostic pop
 
 class GlobalRoot : public h256 {
 public:
+    GlobalRoot() = default;
     GlobalRoot( const u256& _value ) : h256( _value ) {}
-
     GlobalRoot( const GlobalRoot& _value ) : h256( _value ){};
+    GlobalRoot& operator=( const GlobalRoot& other ) = default;
 };
-
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 
 /**
  * Models the state of a single Ethereum account.
@@ -107,6 +100,8 @@ public:
 
     /// Construct a dead Account.
     Account() {}
+    Account( const Account& other ) = default;
+    Account& operator=( const Account& other ) = default;
 
     /// Construct an alive Account, with given endowment, for either a normal (non-contract) account
     /// or for a contract account in the conception phase, where the code is not yet known.
@@ -130,10 +125,6 @@ public:
         assert( _contractRoot );
     }
 
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
     /// false.
     void kill() {
@@ -146,8 +137,6 @@ public:
         m_version = 0;
         changed();
     }
-
-#pragma GCC diagnostic pop
 
     /// @returns true iff this object represents an account in the state. Returns false if this
     /// object represents an account that should no longer exist in the trie (an account that never
@@ -196,9 +185,6 @@ public:
     /// @returns the storage overlay as a simple hash map.
     std::unordered_map< u256, u256 > const& storageOverlay() const { return m_storageOverlay; }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
     /// Set a key/value pair in the account's storage. This actually goes into the overlay, for
     /// committing to the trie later.
     void setStorage( u256 _p, u256 _v ) {
@@ -225,8 +211,6 @@ public:
         m_storageRoot = _root;
         changed();
     }
-
-#pragma GCC diagnostic pop
 
     /// @returns the hash of the account's code.
     h256 codeHash() const { return m_codeHash; }
@@ -331,8 +315,6 @@ protected:
 public:
     static uint64_t howMany() { return Counter< Account >::howMany(); }
 };
-
-#pragma GCC diagnostic pop
 
 class AccountMask {
 public:

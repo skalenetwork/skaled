@@ -39,9 +39,6 @@ inline Public jsToPublic( std::string const& _s ) {
     return jsToFixed< sizeof( dev::Public ) >( _s );
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
 /// Leniently convert string to Secret (h256). Accepts integers, "0x" prefixing, non-exact length.
 inline Secret jsToSecret( std::string const& _s ) {
     h256 d = jsToFixed< sizeof( dev::Secret ) >( _s );
@@ -49,8 +46,6 @@ inline Secret jsToSecret( std::string const& _s ) {
     d.ref().cleanse();
     return ret;
 }
-
-#pragma GCC diagnostic pop
 
 /// Leniently convert string to Address (h160). Accepts integers, "0x" prefixing, non-exact length.
 inline Address jsToAddress( std::string const& _s ) {

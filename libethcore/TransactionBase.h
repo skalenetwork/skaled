@@ -19,9 +19,6 @@
 
 #pragma once
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
 #include <libdevcore/RLP.h>
 #include <libdevcore/SHA3.h>
 #include <libdevcrypto/Common.h>
@@ -314,5 +311,3 @@ inline std::ostream& operator<<( std::ostream& _out, TransactionBase const& _t )
 
 }  // namespace eth
 }  // namespace dev
-
-#pragma GCC diagnostic pop

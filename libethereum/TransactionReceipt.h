@@ -23,9 +23,6 @@
 
 #pragma once
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
 #include <libdevcore/RLP.h>
 #include <libethcore/Common.h>
 #include <libethcore/Counter.h>
@@ -47,6 +44,8 @@ public:
     TransactionReceipt( bytesConstRef _rlp );
     TransactionReceipt( h256 const& _root, u256 const& _gasUsed, LogEntries const& _log );
     TransactionReceipt( uint8_t _status, u256 const& _gasUsed, LogEntries const& _log );
+    TransactionReceipt( const TransactionReceipt& other ) = default;
+    TransactionReceipt& operator=( const TransactionReceipt& other ) = default;
 
     /// @returns true if the receipt has a status code.  Otherwise the receipt has a state root
     /// (pre-EIP658).
@@ -113,6 +112,8 @@ public:
             m_localisedLogs.push_back( LocalisedLogEntry(
                 entries[i], m_blockHash, m_blockNumber, m_hash, m_transactionIndex, i ) );
     }
+    LocalisedTransactionReceipt( const LocalisedTransactionReceipt& other ) = default;
+    LocalisedTransactionReceipt& operator=( const LocalisedTransactionReceipt& other ) = default;
 
     h256 const& hash() const { return m_hash; }
     h256 const& blockHash() const { return m_blockHash; }
@@ -142,5 +143,3 @@ public:
 
 }  // namespace eth
 }  // namespace dev
-
-#pragma GCC diagnostic pop

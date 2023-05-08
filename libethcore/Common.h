@@ -201,9 +201,6 @@ private:
 template < class... Args >
 using Handler = std::shared_ptr< typename Signal< Args... >::HandlerAux >;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-
 struct TransactionSkeleton {
     bool creation = false;
     Address from;
@@ -213,6 +210,11 @@ struct TransactionSkeleton {
     u256 nonce = Invalid256;
     u256 gas = Invalid256;
     u256 gasPrice = Invalid256;
+
+    TransactionSkeleton() = default;
+    TransactionSkeleton( const TransactionSkeleton& other ) = default;
+
+    TransactionSkeleton& operator=( const TransactionSkeleton& other ) = default;
 
     std::string userReadable( bool _toProxy,
         std::function< std::pair< bool, std::string >( TransactionSkeleton const& ) > const&
@@ -225,8 +227,6 @@ struct TransactionSkeleton {
 public:
     static uint64_t howMany() { return Counter< TransactionSkeleton >::howMany(); }
 };
-
-#pragma GCC diagnostic pop
 
 void badBlock( bytesConstRef _header, std::string const& _err );
 inline void badBlock( bytes const& _header, std::string const& _err ) {
