@@ -33,6 +33,7 @@ public:
     static leveldb::ReadOptions defaultReadOptions();
     static leveldb::WriteOptions defaultWriteOptions();
     static leveldb::Options defaultDBOptions();
+    static leveldb::Options defaultSnapshotDBOptions();
 
     explicit LevelDB( boost::filesystem::path const& _path,
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
