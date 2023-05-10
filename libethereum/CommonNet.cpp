@@ -27,5 +27,5 @@ using namespace dev;
 using namespace dev::eth;
 
 namespace {
-char dummy;
+[[maybe_unused]] char dummy;
 }
