@@ -131,8 +131,8 @@ static void stat_check_rpc_call_error_and_throw(
 
 namespace rpc {
 
-SkaleStats::SkaleStats( const std::string& configPath, eth::Interface& _eth,
-    const dev::eth::ChainParams& chainParams )
+SkaleStats::SkaleStats(
+    const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
     : skutils::json_config_file_accessor( configPath ), chainParams_( chainParams ), m_eth( _eth ) {
     nThisNodeIndex_ = findThisNodeIndex();
     //

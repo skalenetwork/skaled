@@ -2019,8 +2019,7 @@ int main( int argc, char** argv ) try {
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
         auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
-        auto pSkaleStatsFace =
-            new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
+        auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
         pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
         auto pPersonalFace = bEnabledAPIs_personal ?
                                  new rpc::Personal( keyManager, *accountHolder, *g_client ) :
