@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Account.h"
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/ChainOperationParams.h>
@@ -71,8 +70,8 @@ struct ChainParams : public ChainOperationParams {
     ChainParams loadConfig(
         std::string const& _json, const boost::filesystem::path& _configPath = {} ) const;
 
-    ChainParams loadGenesisState(
-        const std::string& genesisStateStr, const boost::filesystem::path& _configPath = {} ) const;
+    // start with *this, add state to it and return result
+    ChainParams overwriteGenesisState( const std::string& genesisStateStr ) const;
 
     const std::string& getOriginalJson() const;
     void resetJson() { originalJSON = ""; }

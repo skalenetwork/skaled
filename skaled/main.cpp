@@ -1619,7 +1619,7 @@ int main( int argc, char** argv ) try {
         if ( !successfullDownload )
             throw std::runtime_error( "FATAL: tried to download genesis state from everywhere!" );
 
-        chainParams = chainParams.loadGenesisState( genesisStateStr );
+        chainParams = chainParams.overwriteGenesisState( genesisStateStr );
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {

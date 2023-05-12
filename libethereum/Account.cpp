@@ -126,7 +126,7 @@ PrecompiledContract createPrecompiledContract( js::mObject const& _precompiled )
 
 // TODO move AccountMaskObj to libtesteth (it is used only in test logic)
 AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _defaultNonce,
-    AccountMaskMap* o_mask, PrecompiledContractMap* o_precompiled, const fs::path& _configPath ) {
+    AccountMaskMap* o_mask, PrecompiledContractMap* o_precompiled ) {
     auto u256Safe = []( std::string const& s ) -> u256 {
         bigint ret( s );
         if ( ret >= bigint( 1 ) << 256 )
@@ -147,7 +147,7 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
         bool haveBalance = ( accountMaskJson.count( c_wei ) || accountMaskJson.count( c_finney ) ||
                              accountMaskJson.count( c_balance ) );
         bool haveNonce = accountMaskJson.count( c_nonce );
-        bool haveCode = accountMaskJson.count( c_code ) || accountMaskJson.count( c_codeFromFile );
+        bool haveCode = accountMaskJson.count( c_code );
         bool haveStorage = accountMaskJson.count( c_storage );
         bool shouldNotExists = accountMaskJson.count( c_shouldnotexist );
 
@@ -177,26 +177,6 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
                 } else {
                     cerror << "Error importing code of account " << a
                            << "! Code field needs to be a string";
-                }
-            }
-
-            auto codePathIt = accountMaskJson.find( c_codeFromFile );
-            if ( codePathIt != accountMaskJson.end() ) {
-                auto& codePathObj = codePathIt->second;
-                if ( codePathObj.type() == json_spirit::str_type ) {
-                    fs::path codePath{ codePathObj.get_str() };
-                    if ( codePath.is_relative() )  // Append config dir if code file path is
-                                                   // relative.
-                        codePath = _configPath.parent_path() / codePath;
-                    bytes code = contents( codePath );
-                    if ( code.empty() ) {
-                        cerror << "Error importing code of account " << a << "! Code file "
-                               << codePath << " empty or does not exist.\n";
-                    }
-                    ret[a].setCode( std::move( code ), 0 );
-                } else {
-                    cerror << "Error importing code of account " << a
-                           << "! Code file path must be a string\n";
                 }
             }
 

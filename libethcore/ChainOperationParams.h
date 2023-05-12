@@ -27,6 +27,7 @@
 #include <vector>
 
 #include <libdevcore/Common.h>
+#include <libethereum/Account.h>
 #include <libethereum/Precompiled.h>
 
 #include "libethcore/Common.h"
@@ -237,7 +238,7 @@ public:
     bool allowFutureBlocks = false;
 
     /// Precompiled contracts as specified in the chain params.
-    std::unordered_map< Address, PrecompiledContract > precompiled;
+    PrecompiledContractMap precompiled;
 
     /// skale
     /// Skale additional config

@@ -401,21 +401,20 @@ ChainParams ChainParams::loadConfig(
     // genesis state
     string genesisStateStr = json_spirit::write_string( obj[c_accounts], false );
 
-    cp.genesisState = jsonToAccountMap(
-        genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath );
+    cp.genesisState =
+        jsonToAccountMap( genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled );
 
     return cp;
 }
 
-ChainParams ChainParams::loadGenesisState(
-    const std::string& genesisStateStr, const boost::filesystem::path& _configPath ) const {
+ChainParams ChainParams::overwriteGenesisState( const std::string& genesisStateStr ) const {
     ChainParams cp( *this );
 
-    std::unique_ptr< std::unordered_map< Address, PrecompiledContract > > precompiled;
+    PrecompiledContractMap precompileds;
 
-    cp.genesisState = jsonToAccountMap(
-        genesisStateStr, cp.accountStartNonce, nullptr, precompiled.get(), _configPath );
-    cp.precompiled = *precompiled;
+    cp.genesisState =
+        jsonToAccountMap( genesisStateStr, cp.accountStartNonce, nullptr, &precompileds );
+    cp.precompiled = precompileds;
 
     return cp;
 }

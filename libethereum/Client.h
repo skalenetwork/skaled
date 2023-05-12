@@ -317,7 +317,7 @@ public:
 
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
 
-    std::string genesisState() const { return m_state.genesisState(); }
+    std::string genesisState() const { return m_state.genesisStateStr(); }
 
     dev::h256 genesisStateHash() const;
 

@@ -209,10 +209,10 @@ public:
     void populateFrom( dev::eth::AccountMap const& _map );
 
     /// Add accountMap to database as key
-    void commitGenesisState( const dev::eth::ChainParams& _params );
+    void commitGenesisStateStr( const std::string& _str );
 
     /// returns initial genesis state
-    std::string genesisState() const;
+    std::string genesisStateStr() const;
 
     /// @returns the set containing all addresses currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds

@@ -28,6 +28,7 @@
 #include "SkaleHost.h"
 #include "SnapshotStorage.h"
 #include "TransactionQueue.h"
+#include "ValidationSchemes.h"
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
 
@@ -39,6 +40,8 @@
 #include <thread>
 
 #include <libdevcore/microprofile.h>
+
+#include <json_spirit/JsonSpiritHeaders.h>
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
@@ -235,7 +238,15 @@ void Client::populateNewChainStateFromGenesis() {
     m_state.releaseWriteLock();
 #else
     m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
-    m_state.createStateModifyCopy().commitGenesisState( chainParams() );
+
+    // save genesis state as separate string in DB
+    auto configStr = chainParams().getOriginalJson();
+    json_spirit::mValue val;
+    json_spirit::read_string_or_throw( configStr, val );
+    json_spirit::mObject configJson = val.get_obj();
+    auto genesisStateStr = json_spirit::write_string( configJson[validation::c_accounts], false );
+    m_state.createStateModifyCopy().commitGenesisStateStr( genesisStateStr );
+
     m_state = m_state.createNewCopyWithLocks();
 #endif
 }
@@ -1515,7 +1526,7 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 #endif  // HISTORIC_STATE
 
 dev::h256 Client::genesisStateHash() const {
-    std::string genesisStateStr = m_state.genesisState();
+    std::string genesisStateStr = m_state.genesisStateStr();
 
     const std::vector< uint8_t > usc( genesisStateStr.begin(), genesisStateStr.end() );
     bytesConstRef message( usc.data(), usc.size() );

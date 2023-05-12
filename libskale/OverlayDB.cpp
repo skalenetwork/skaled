@@ -518,7 +518,7 @@ void OverlayDB::insert(
     }
 }
 
-std::string OverlayDB::genesisState() const {
+std::string OverlayDB::genesisStateStr() const {
     if ( m_db_face ) {
         return m_db_face->lookup( skale::slicing::toSlice( "genesisState" ) );
     }
