@@ -283,7 +283,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadFrom( unsigned b
 
                 Json::Value joSignatureResponse;
                 try {
-                    joSignatureResponse = skaleClient.skale_getMessageSignature( block_number );
+                    joSignatureResponse = skaleClient.skale_getSnapshotSignature( block_number );
                 } catch ( jsonrpc::JsonRpcException& ex ) {
                     cerror << "WARNING "
                            << "Error while trying to get snapshot signature from "

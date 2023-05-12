@@ -68,7 +68,7 @@ public:
     std::string skale_shutdownInstance() noexcept( false ) override;
     Json::Value skale_getSnapshot( const Json::Value& request ) override;
     Json::Value skale_downloadSnapshotFragment( const Json::Value& request ) override;
-    Json::Value skale_getMessageSignature( unsigned blockNumber ) override;
+    Json::Value skale_getSnapshotSignature( unsigned blockNumber ) override;
     std::string skale_getLatestSnapshotBlockNumber() override;
     std::string skale_getLatestBlockNumber() override;
     Json::Value skale_getDBUsage() override;
