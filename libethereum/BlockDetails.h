@@ -48,6 +48,8 @@ struct BlockDetails {
           children( _c ),
           blockSizeBytes( _blockBytes ) {}
     BlockDetails( RLP const& _r );
+    BlockDetails( const BlockDetails& other ) = default;
+    BlockDetails& operator=( const BlockDetails& other ) = default;
     bytes rlp() const;
 
     bool isNull() const { return number == c_invalidNumber; }
@@ -73,6 +75,8 @@ struct BlockLogBlooms {
         blooms = _r.toVector< LogBloom >();
         size = _r.data().size();
     }
+    BlockLogBlooms( const BlockLogBlooms& other ) = default;
+    BlockLogBlooms& operator=( const BlockLogBlooms& other ) = default;
     bytes rlp() const {
         bytes r = dev::rlp( blooms );
         size = r.size();
@@ -89,6 +93,8 @@ struct BlocksBlooms {
         blooms = _r.toArray< LogBloom, c_bloomIndexSize >();
         size = _r.data().size();
     }
+    BlocksBlooms( const BlocksBlooms& other ) = default;
+    BlocksBlooms& operator=( const BlocksBlooms& other ) = default;
     bytes rlp() const {
         bytes r = dev::rlp( blooms );
         size = r.size();
@@ -106,6 +112,8 @@ struct BlockReceipts {
             receipts.emplace_back( i.data() );
         size = _r.data().size();
     }
+    BlockReceipts( const BlockReceipts& other ) = default;
+    BlockReceipts& operator=( const BlockReceipts& other ) = default;
     bytes rlp() const {
         RLPStream s( receipts.size() );
         for ( TransactionReceipt const& i : receipts )
@@ -122,6 +130,8 @@ struct BlockHash {
     BlockHash() {}
     BlockHash( h256 const& _h ) : value( _h ) {}
     BlockHash( RLP const& _r ) { value = _r.toHash< h256 >(); }
+    BlockHash( const BlockHash& other ) = default;
+    BlockHash& operator=( const BlockHash& other ) = default;
     bytes rlp() const { return dev::rlp( value ); }
 
     h256 value;
@@ -134,6 +144,8 @@ struct TransactionAddress {
         blockHash = _rlp[0].toHash< h256 >();
         index = _rlp[1].toInt< unsigned >();
     }
+    TransactionAddress( const TransactionAddress& other ) = default;
+    TransactionAddress& operator=( const TransactionAddress& other ) = default;
     bytes rlp() const {
         RLPStream s( 2 );
         s << blockHash << index;

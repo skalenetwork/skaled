@@ -183,11 +183,11 @@ public:
     data_t call( const nlohmann::json& joIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
-        size_t cntSteps = 1000, bool isReturnErrorResponse = false );
+        size_t cntSteps = 1000, [[maybe_unused]] bool isReturnErrorResponse = false );
     data_t call( const std::string& strJsonIn, bool isAutoGenJsonID = true,
         e_data_fetch_strategy edfs = e_data_fetch_strategy::edfs_default,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),
-        size_t cntSteps = 1000, bool isReturnErrorResponse = false );
+        size_t cntSteps = 1000, [[maybe_unused]] bool isReturnErrorResponse = false );
 
 private:
     typedef std::map< std::string, await_t > map_await_t;

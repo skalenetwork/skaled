@@ -46,6 +46,7 @@ public:
     HistoricAccount( u256 _nonce, u256 _balance, Changedness _c = Changed )
         : Account( _nonce, _balance, _c ){};
 
+    HistoricAccount& operator=( const HistoricAccount& other ) = default;
 
     /// Explicit constructor for wierd cases of construction or a contract account.
     HistoricAccount( u256 _nonce, u256 _balance, StorageRoot _storageRoot, h256 _codeHash,

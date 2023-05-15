@@ -29,8 +29,15 @@
 
 #include <test/tools/libtesteth/Options.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
+
+#pragma GCC diagnostic pop
 
 namespace dev {
 namespace test {

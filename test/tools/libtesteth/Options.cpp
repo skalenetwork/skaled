@@ -23,11 +23,19 @@
 #include <libdevcore/DBFactory.h>
 #include <libevm/VMFactory.h>
 #include <libweb3jsonrpc/Debug.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Waddress"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+
 #include <test/tools/fuzzTesting/fuzzHelper.h>
 #include <test/tools/libtesteth/Options.h>
 #include <boost/iostreams/device/null.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/program_options.hpp>
+
+#pragma GCC diagnostic pop
 
 using namespace std;
 using namespace dev::test;

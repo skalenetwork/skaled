@@ -470,8 +470,8 @@ public:
     void open( boost::filesystem::path const& _path, bool _applyPatches, WithExisting _we );
     /// Finalise everything and close the database.
     void close();
-    //    /// compact db before snapshot
-    //    void doLevelDbCompaction() const;
+    /// compact db before snapshot
+    void doLevelDbCompaction() const;
 
 private:
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
@@ -589,7 +589,7 @@ private:
     uint64_t m_maxStorageUsage;
 
     /// The disk DBs. Thread-safe, so no need for locks.
-    //    std::shared_ptr< batched_io::rotating_db_io > m_rotator;       // for compaction
+    std::shared_ptr< batched_io::rotating_db_io > m_rotator;       // for compaction
     std::shared_ptr< db::ManuallyRotatingLevelDB > m_rotating_db;  // rotate()
     std::shared_ptr< batched_io::db_face > m_db;                   // insert()/commit()
     std::unique_ptr< batched_io::db_splitter > m_db_splitter;      // new_interface()

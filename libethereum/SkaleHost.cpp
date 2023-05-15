@@ -250,7 +250,7 @@ void ConsensusExtImpl::terminateApplication() {
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
-    bool _broadcastEnabled )
+    [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
@@ -954,9 +954,9 @@ std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
     return m_client.getIMABLSPublicKey();
 }
 
-uint64_t SkaleHost::submitOracleRequest( const string& _spec, string& _receipt ) {
-    std::string error;
-    return m_consensus->submitOracleRequest( _spec, _receipt, error );
+uint64_t SkaleHost::submitOracleRequest(
+    const string& _spec, string& _receipt, string& _errorMessage ) {
+    return m_consensus->submitOracleRequest( _spec, _receipt, _errorMessage );
 }
 
 uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {
