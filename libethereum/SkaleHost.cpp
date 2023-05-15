@@ -252,7 +252,7 @@ void ConsensusExtImpl::terminateApplication() {
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
-    bool _broadcastEnabled )
+    [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),

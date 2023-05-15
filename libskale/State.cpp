@@ -394,7 +394,7 @@ std::pair< State::AddressMap, h256 > State::addresses(
     }
     addresses.erase( addresses.begin(), addresses.lower_bound( _begin ) );
     if ( addresses.size() > _maxResults ) {
-        assert( numeric_limits< long >::max() >= _maxResults );
+        assert( numeric_limits< long >::max() >= long( _maxResults ) );
         auto next_ptr = std::next( addresses.begin(), static_cast< long >( _maxResults ) );
         next = next_ptr->first;
         addresses.erase( next_ptr, addresses.end() );

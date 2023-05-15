@@ -962,7 +962,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( addBalance )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
     /*
         try {
             auto rawAddress = _in.cropped( 0, 20 ).toBytes();
