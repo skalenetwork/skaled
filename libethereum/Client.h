@@ -542,6 +542,7 @@ protected:
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     void initHashes();
+    void doSnapshotAndComputeHash( unsigned _blockNumber );
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
     // time of last physical snapshot

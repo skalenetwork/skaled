@@ -309,7 +309,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
         LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
                         << chainParams().sChain.snapshotIntervalSec;
-        this->initHashes();
+        if ( number() == 0 )
+            doSnapshotAndComputeHash( 0 );
+        initHashes();
     }
 
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
@@ -1374,6 +1376,18 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
+}
+
+void Client::doSnapshotAndComputeHash( unsigned _blockNumber ) {
+    LOG( m_logger ) << "DOING SNAPSHOT: " << _blockNumber;
+    m_debugTracer.tracepoint( "doing_snapshot" );
+
+    m_snapshotManager->doSnapshot( _blockNumber );
+
+    m_snapshotManager->computeSnapshotHash( _blockNumber );
+    LOG( m_logger ) << "Computed hash for snapshot " << _blockNumber << ": "
+                    << m_snapshotManager->getSnapshotHash( _blockNumber );
+    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 }
 
 void Client::initHashes() {
