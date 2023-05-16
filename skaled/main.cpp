@@ -766,7 +766,6 @@ int main( int argc, char** argv ) try {
 #endif
 
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
-    addClientOption( "sgx-url-no-zmq", "Disable automatic use of ZMQ protocol for SGX\n" );
 
     addClientOption( "skale-network-browser-verbose",
         "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
@@ -1511,10 +1510,6 @@ int main( int argc, char** argv ) try {
         strURL = u.str();
         chainParams.nodeInfo.sgxServerUrl = strURL;
     }
-    bool isDisableZMQ = false;
-    if ( vm.count( "sgx-url-no-zmq" ) ) {
-        isDisableZMQ = true;
-    }
 
     if ( vm.count( "skale-network-browser-verbose" ) ) {
         skale::network::browser::g_bVerboseLogging = true;
@@ -2057,8 +2052,7 @@ int main( int argc, char** argv ) try {
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
         auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
-        auto pSkaleStatsFace =
-            new rpc::SkaleStats( configPath.string(), *g_client, chainParams, isDisableZMQ );
+        auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
         pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
         auto pPersonalFace = bEnabledAPIs_personal ?
                                  new rpc::Personal( keyManager, *accountHolder, *g_client ) :
