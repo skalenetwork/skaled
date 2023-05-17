@@ -311,8 +311,6 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                 db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
         }
         //// HACK END ////
-        std::cout << cc::success( "Snapshot restore success for block " )
-                  << cc::u( to_string( block_number ) ) << std::endl;
 
     } catch ( ... ) {
         std::throw_with_nested(
@@ -400,6 +398,8 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
                 clog( VerbosityInfo, "checkLocalSnapshot" ) << cc::notice(
                     "Will delete all snapshots except" + std::to_string( blockNumber ) );
                 snapshotManager->restoreSnapshot( blockNumber );
+                std::cout << cc::success( "Snapshot restore success for block " )
+                          << cc::u( to_string( blockNumber ) ) << std::endl;
                 return true;
             } else {
                 clog( VerbosityWarning, "checkLocalSnapshot" )
@@ -419,7 +419,7 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     const std::pair< dev::h256, libff::alt_bn128_G1 >& votedHash, unsigned blockNumber,
     bool isRegularSnapshot ) {
     clog( VerbosityInfo, "tryDownloadSnapshot" )
-        << cc::notice( "Will cleanup data dir and snapshots dir" );
+        << cc::notice( "Will cleanup data dir and snapshots dir if needed" );
     if ( isRegularSnapshot )
         snapshotManager->cleanup();
 
@@ -450,8 +450,11 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
 
             if ( calculated_hash == votedHash.first ) {
                 successfullDownload = true;
-                if ( isRegularSnapshot )
+                if ( isRegularSnapshot ) {
                     snapshotManager->restoreSnapshot( blockNumber );
+                    std::cout << cc::success( "Snapshot restore success for block " )
+                              << cc::u( to_string( blockNumber ) ) << std::endl;
+                }
                 return successfullDownload;
             } else {
                 clog( VerbosityWarning, "tryDownloadSnapshot" )
@@ -1765,10 +1768,14 @@ int main( int argc, char** argv ) try {
             sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
-    if ( chainParams.nodeInfo.syncNode && !chainParams.nodeInfo.syncFromCatchup ) {
+    bool downloadGenesisForSyncNode = false;
+    if ( chainParams.nodeInfo.syncNode ) {
         auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
             downloadSnapshotFlag = true;
+            if ( chainParams.nodeInfo.syncFromCatchup ) {
+                downloadGenesisForSyncNode = true;
+            }
         }
     }
 
@@ -1790,13 +1797,26 @@ int main( int argc, char** argv ) try {
             sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
 
         try {
-            downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
-                ipToDownloadSnapshotFrom, true );
-
-            // if we dont have 0 snapshot yet
-            if ( !snapshotManager->isSnapshotHashPresent( 0 ) )
+            if ( !downloadGenesisForSyncNode )
+                downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
+                    ipToDownloadSnapshotFrom, true );
+            else
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, false );
+
+            // if we dont have 0 snapshot yet
+            try {
+                snapshotManager->isSnapshotHashPresent( 0 );
+            } catch ( SnapshotManager::SnapshotAbsent& ex ) {
+                // sleep before send skale_getSnapshot again - will receive error
+                clog( VerbosityInfo, "main" )
+                    << cc::warn( "Will sleep for 60 seconds before downloading 0 snapshot" );
+                sleep( 60 );
+
+                downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
+                    ipToDownloadSnapshotFrom, false );
+            }
+
         } catch ( std::exception& ) {
             std::throw_with_nested( std::runtime_error(
                 cc::error( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );

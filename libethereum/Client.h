@@ -280,7 +280,7 @@ public:
     void setSchainExitTime( uint64_t _timestamp ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
-        if ( _blockNumber > this->last_snapshoted_block_with_hash )
+        if ( _blockNumber > this->last_snapshoted_block_with_hash && _blockNumber != 0 )
             return dev::h256();
 
         try {
