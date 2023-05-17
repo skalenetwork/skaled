@@ -1382,7 +1382,12 @@ void Client::doSnapshotAndComputeHash( unsigned _blockNumber ) {
     LOG( m_logger ) << "DOING SNAPSHOT: " << _blockNumber;
     m_debugTracer.tracepoint( "doing_snapshot" );
 
-    m_snapshotManager->doSnapshot( _blockNumber );
+    try {
+        m_snapshotManager->doSnapshot( _blockNumber );
+    } catch ( SnapshotManager::SnapshotPresent& ex ) {
+        LOG( m_logger ) << "0 block snapshot is already present. Skipping.";
+        return;
+    }
 
     m_snapshotManager->computeSnapshotHash( _blockNumber );
     LOG( m_logger ) << "Computed hash for snapshot " << _blockNumber << ": "

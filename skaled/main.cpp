@@ -511,10 +511,10 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     << cc::warn( "No nodes to download from - will skip " + std::to_string( idx ) );
                 continue;
             }
-            if ( blockNumber == 0 && isRegularSnapshot ) {
-                successfullDownload = true;
-                break;
-            }
+            //            if ( blockNumber == 0 && isRegularSnapshot ) {
+            //                successfullDownload = true;
+            //                break;
+            //            }
 
             successfullDownload =
                 checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
