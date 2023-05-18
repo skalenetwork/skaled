@@ -344,47 +344,6 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
-static volatile bool g_bStopActionsStarted = false;
-static volatile bool g_bStopActionsComplete = false;
-
-static void stat_handle_stop_actions() {
-    if ( g_bStopActionsStarted )
-        return;
-    g_bStopActionsStarted = true;
-    std::thread( [&]() {
-        skale::network::browser::refreshing_stop();
-        /*
-        if ( g_jsonrpcIpcServer.get() ) {
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Will stop RPC server now..." ) + "\n\n" );
-            g_jsonrpcIpcServer->StopListening();
-            g_jsonrpcIpcServer.reset( nullptr );
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Did stopped RPC server" ) + "\n\n" );
-        }
-        */
-        if ( g_client ) {
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Will stop client now..." ) + "\n\n" );
-            g_client->stopWorking();
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Did stopped client" ) + "\n\n" );
-        }
-        g_bStopActionsComplete = true;
-    } ).detach();
-}
-
-static void stat_wait_stop_actions_complete() {
-    if ( g_bStopActionsComplete )
-        return;
-    std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Will wait for stop actions complete..." ) + "\n\n" );
-    while ( !g_bStopActionsComplete )
-        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
-    std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Done waiting for stop actions] complete" ) + "\n\n" );
-}
-
 static void stat_init_common_signal_handling() {
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
         std::string strMessagePrefix = skutils::signal::g_bStop ?
@@ -423,8 +382,6 @@ static void stat_init_common_signal_handling() {
 
             break;
         }  // switch
-
-        stat_handle_stop_actions();
 
         // try to exit nicely - then abort
         if ( !skutils::signal::g_bStop ) {
@@ -2860,7 +2817,7 @@ int main( int argc, char** argv ) try {
     }
 
     skale::network::browser::refreshing_start(
-        configPath.string(), []() -> bool { return g_bStopActionsStarted; } );
+        configPath.string(), []() -> bool { return ExitHandler::shouldExit(); } );
 
     dev::setThreadName( "main" );
     if ( g_client ) {
@@ -2892,9 +2849,6 @@ int main( int argc, char** argv ) try {
     MicroProfileDumpFileImmediately(
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
-
-    stat_handle_stop_actions();
-    stat_wait_stop_actions_complete();
 
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
