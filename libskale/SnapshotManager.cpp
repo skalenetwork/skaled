@@ -633,7 +633,7 @@ void SnapshotManager::computeAllVolumesHash(
         this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
     // if have prices and blocks
-    if ( this->volumes.size() > 3 ) {
+    if ( _blockNumber && this->volumes.size() > 3 ) {
         this->addLastPriceToHash( _blockNumber, ctx );
     }
 }

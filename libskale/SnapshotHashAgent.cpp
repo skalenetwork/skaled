@@ -266,20 +266,6 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
                 SkaleClient skaleClient( *jsonRpcClient );
 
-                // just ask block number in this special case
-                if ( block_number == 0 ) {
-                    unsigned n = skaleClient.skale_getLatestSnapshotBlockNumber();
-                    if ( n == 0 ) {
-                        const std::lock_guard< std::mutex > lock( this->hashes_mutex );
-                        if ( ipToDownloadSnapshotFrom_.empty() )
-                            nodes_to_download_snapshot_from_.push_back( i );
-                        else if ( ipToDownloadSnapshotFrom_ == chain_params_.sChain.nodes[i].ip )
-                            nodes_to_download_snapshot_from_.push_back( i );
-                        delete jsonRpcClient;
-                        return;
-                    }
-                }
-
                 Json::Value joSignatureResponse;
                 try {
                     joSignatureResponse = skaleClient.skale_getSnapshotSignature( block_number );
@@ -376,9 +362,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
         }  // for i
         result = this->nodes_to_download_snapshot_from_.size() > 0;
-    } else if ( block_number == 0 )
-        result = this->nodes_to_download_snapshot_from_.size() * 3 >= 2 * this->n_ + 1;
-    else
+    } else
         try {
             result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {

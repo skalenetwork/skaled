@@ -268,7 +268,7 @@ public:
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
-        if ( _blockNumber > this->getLatestSnapshotBlockNumer() )
+        if ( _blockNumber > this->getLatestSnapshotBlockNumer() && _blockNumber != 0 )
             throw std::invalid_argument( "Too new snapshot requested" );
         boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
         // TODO Make constant 2 configurable
@@ -280,7 +280,7 @@ public:
     void setSchainExitTime( uint64_t _timestamp ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
-        if ( _blockNumber > this->last_snapshoted_block_with_hash )
+        if ( _blockNumber > this->last_snapshoted_block_with_hash && _blockNumber != 0 )
             return dev::h256();
 
         try {
@@ -542,6 +542,7 @@ protected:
 private:
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     void initHashes();
+    void doSnapshotAndComputeHash( unsigned _blockNumber );
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
     // time of last physical snapshot

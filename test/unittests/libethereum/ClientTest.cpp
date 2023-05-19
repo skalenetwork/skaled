@@ -998,6 +998,8 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev:
 
     BOOST_REQUIRE( testClient->getLatestSnapshotBlockNumer() == -1 );
 
+    BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
+
     BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
 
     testClient->importTransactionsAsBlock(
