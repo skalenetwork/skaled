@@ -553,7 +553,7 @@ unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
 static void stat_init_common_signal_handling() {
     skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-        std::string strMessagePrefix = skutils::signal::g_bStop ?
+        std::string strMessagePrefix = ExitHandler::shouldExit() ?
                                            cc::error( "\nStop flag was already raised on. " ) +
                                                cc::fatal( "WILL FORCE TERMINATE." ) +
                                                cc::error( " Caught (second) signal. " ) :
@@ -591,7 +591,7 @@ static void stat_init_common_signal_handling() {
         }  // switch
 
         // try to exit nicely - then abort
-        if ( !skutils::signal::g_bStop ) {
+        if ( !ExitHandler::shouldExit() ) {
             static volatile bool g_bSelfKillStarted = false;
             if ( !g_bSelfKillStarted ) {
                 g_bSelfKillStarted = true;
@@ -653,14 +653,11 @@ static void stat_init_common_signal_handling() {
 
         // nice exit here:
 
-        if ( skutils::signal::g_bStop ) {
+        if ( ExitHandler::shouldExit() ) {
             std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
                            cc::error( "Will force exit now..." ) + "\n\n" );
             _exit( 13 );
         }
-
-        skutils::signal::g_bStop = true;
-        skutils::signal::g_nStopSignal = nSignalNo;
 
         dev::ExitHandler::exitHandler( nSignalNo );
     } );
@@ -1221,7 +1218,6 @@ int main( int argc, char** argv ) try {
 
     std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
         boost::filesystem::path( configPath ).remove_filename() );
-    ExitHandler::statusAndControl = statusAndControl;
     // for now, leave previous values in file (for case of crash)
 
     if ( vm.count( "main-net-url" ) ) {
@@ -2879,6 +2875,15 @@ int main( int argc, char** argv ) try {
         while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
+
+    if ( statusAndControl ) {
+        statusAndControl->setExitState( StatusAndControl::StartAgain,
+            ( ExitHandler::requestedExitCode() != ExitHandler::ec_success ) );
+        statusAndControl->setExitState( StatusAndControl::StartFromSnapshot,
+            ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
+        statusAndControl->setExitState( StatusAndControl::ClearDataDir,
+            ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
+    }  // if
 
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();

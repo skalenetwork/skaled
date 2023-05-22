@@ -34,13 +34,11 @@ char const* Version = skale_get_buildinfo()->project_version;
 bytes const NullBytes;
 std::string const EmptyString;
 
-std::shared_ptr< StatusAndControl > ExitHandler::statusAndControl;
-
 bool ExitHandler::shouldExit() {
-    return skutils::signal::g_bStop;
+    return s_bStop;
 }
 int ExitHandler::getSignal() {
-    return skutils::signal::g_nStopSignal;
+    return s_nStopSignal;
 }
 
 void ExitHandler::exitHandler( int s ) {
@@ -48,27 +46,17 @@ void ExitHandler::exitHandler( int s ) {
 }
 
 void ExitHandler::exitHandler( int s, ExitHandler::exit_code_t ec ) {
-    skutils::signal::g_nStopSignal = s;
+    s_nStopSignal = s;
 
     if ( ec != ec_success ) {
-        g_ec = ec;
+        s_ec = ec;
     }
 
     // indicate failure if signal is not INT or TERM!
-    if ( g_ec == ec_success && s != SIGINT && s != SIGTERM )
-        g_ec = ExitHandler::ec_failure;
+    if ( s_ec == ec_success && s != SIGINT && s != SIGTERM )
+        s_ec = ExitHandler::ec_failure;
 
-    if ( statusAndControl ) {
-        statusAndControl->setExitState( StatusAndControl::StartAgain, ( g_ec != ec_success ) );
-        statusAndControl->setExitState(
-            StatusAndControl::StartFromSnapshot, ( g_ec == ec_state_root_mismatch ) );
-        statusAndControl->setExitState(
-            StatusAndControl::ClearDataDir, ( g_ec == ec_state_root_mismatch ) );
-    }  // if
-
-    skutils::signal::g_bStop = true;
-    // HACK wait for loop in main to send exit call to consensus et al.
-    std::this_thread::sleep_for( chrono::milliseconds( 2000 ) );
+    s_bStop = true;
 }
 
 void InvariantChecker::checkInvariants(
@@ -126,6 +114,8 @@ string inUnits( bigint const& _b, strings const& _units ) {
     return ret.str();
 }
 
-volatile ExitHandler::exit_code_t ExitHandler::g_ec = ExitHandler::ec_success;
+std::atomic< ExitHandler::exit_code_t > ExitHandler::s_ec = ExitHandler::ec_success;
+std::atomic_int ExitHandler::s_nStopSignal{ 0 };
+std::atomic_bool ExitHandler::s_bStop{ false };
 
 }  // namespace dev
