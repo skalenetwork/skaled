@@ -70,7 +70,6 @@
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Skale.h>
-#include <libweb3jsonrpc/SkaleNetworkBrowser.h>
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
@@ -932,13 +931,6 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
 
-    addClientOption( "skale-network-browser-verbose",
-        "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
-    addClientOption( "skale-network-browser-refresh",
-        po::value< size_t >()->value_name( "<seconds>" ),
-        "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain "
-        "descriptions from Skale Manager" );
-
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -1153,9 +1145,7 @@ int main( int argc, char** argv ) try {
     }
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
-              << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent build intent is " )
-              << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::bright( "client " ) << clientVersionColorized() << "\n";
     std::cout.flush();
     version();
 
@@ -1674,14 +1664,6 @@ int main( int argc, char** argv ) try {
         u.set_query();
         strURL = u.str();
         chainParams.nodeInfo.sgxServerUrl = strURL;
-    }
-
-    if ( vm.count( "skale-network-browser-verbose" ) ) {
-        skale::network::browser::g_bVerboseLogging = true;
-    }
-    if ( vm.count( "skale-network-browser-refresh" ) ) {
-        skale::network::browser::g_nRefreshIntervalInSeconds =
-            vm["skale-network-browser-refresh"].as< size_t >();
     }
 
     std::shared_ptr< SharedSpace > sharedSpace;
@@ -2887,9 +2869,6 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    skale::network::browser::refreshing_start(
-        configPath.string(), []() -> bool { return ExitHandler::shouldExit(); } );
-
     dev::setThreadName( "main" );
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
@@ -2900,8 +2879,6 @@ int main( int argc, char** argv ) try {
         while ( !ExitHandler::shouldExit() )
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
-
-    skale::network::browser::refreshing_stop();
 
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
