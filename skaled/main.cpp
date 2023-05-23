@@ -101,8 +101,6 @@
 #include <skutils/url.h>
 #include <skutils/utils.h>
 
-#include "taskmon.h"
-
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -551,118 +549,6 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
-static void stat_init_common_signal_handling() {
-    skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-        std::string strMessagePrefix = ExitHandler::shouldExit() ?
-                                           cc::error( "\nStop flag was already raised on. " ) +
-                                               cc::fatal( "WILL FORCE TERMINATE." ) +
-                                               cc::error( " Caught (second) signal. " ) :
-                                           cc::error( "\nCaught (first) signal. " );
-        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
-                  << "\n\n";
-        std::cerr.flush();
-
-        switch ( nSignalNo ) {
-        case SIGINT:
-        case SIGTERM:
-        case SIGHUP:
-            // exit normally
-            // just fall through
-            break;
-
-        case SIGSTOP:
-        case SIGTSTP:
-        case SIGPIPE:
-            // ignore
-            return;
-            break;
-
-        case SIGQUIT:
-            // exit immediately
-            _exit( ExitHandler::ec_termninated_by_signal );
-            break;
-
-        default:
-            // abort signals
-            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
-            std::cout.flush();
-
-            break;
-        }  // switch
-
-        // try to exit nicely - then abort
-        if ( !ExitHandler::shouldExit() ) {
-            static volatile bool g_bSelfKillStarted = false;
-            if ( !g_bSelfKillStarted ) {
-                g_bSelfKillStarted = true;
-
-                auto start_time = std::chrono::steady_clock::now();
-
-                std::thread( [nSignalNo, start_time]() {
-                    std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
-                                   cc::error( "Will sleep " ) +
-                                   cc::size10( ExitHandler::KILL_TIMEOUT ) +
-                                   cc::error( " seconds before force exit..." ) + "\n\n" );
-                    std::cerr.flush();
-
-                    clog( VerbosityInfo, "exit" ) << "THREADS timer started";
-
-                    // while waiting, every 0.1s check whch threades exited
-                    vector< string > threads;
-                    for ( int i = 0; i < ExitHandler::KILL_TIMEOUT * 10; ++i ) {
-                        auto end_time = std::chrono::steady_clock::now();
-                        float seconds =
-                            std::chrono::duration< float >( end_time - start_time ).count();
-
-                        try {
-                            vector< string > new_threads = taskmon::list_names();
-                            vector< string > threads_diff =
-                                taskmon::lists_diff( threads, new_threads );
-                            threads = new_threads;
-
-                            if ( threads_diff.size() ) {
-                                cerr << seconds << " THREADS " << threads.size() << ":";
-                                for ( const string& t : threads_diff )
-                                    cerr << " " << t;
-                                cerr << endl;
-                            }
-                        } catch ( ... ) {
-                            // swallow it
-                        }
-
-                        std::this_thread::sleep_for( 100ms );
-                    }
-
-                    std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
-                                   cc::error( "Will force exit after sleeping " ) +
-                                   cc::size10( ExitHandler::KILL_TIMEOUT ) +
-                                   cc::error( " second(s)" ) + "\n\n" );
-                    std::cerr.flush();
-
-                    // TODO deduplicate this with main() before return
-                    ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-                    if ( ec == ExitHandler::ec_success ) {
-                        if ( nSignalNo != SIGINT && nSignalNo != SIGTERM )
-                            ec = ExitHandler::ec_failure;
-                    }
-
-                    _exit( ec );
-                } ).detach();
-            }  // if( ! g_bSelfKillStarted )
-        }      // if ( !skutils::signal::g_bStop )
-
-        // nice exit here:
-
-        if ( ExitHandler::shouldExit() ) {
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Will force exit now..." ) + "\n\n" );
-            _exit( 13 );
-        }
-
-        dev::ExitHandler::exitHandler( nSignalNo );
-    } );
-}
-
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -670,7 +556,7 @@ int main( int argc, char** argv ) try {
     BlockHeader::useTimestampHack = false;
     srand( time( nullptr ) );
     setCLocale();
-    stat_init_common_signal_handling();  // ensure initialized
+    skutils::signal::init_common_signal_handling( ExitHandler::exitHandler );
     bool isExposeAllDebugInfo = false;
 
     // Init secp256k1 context by calling one of the functions.
