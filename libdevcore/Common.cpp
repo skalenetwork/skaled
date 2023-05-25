@@ -150,8 +150,6 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
         _exit( 13 );
     }
 
-    dev::ExitHandler::exitHandler( nSignalNo );
-
     s_nStopSignal = nSignalNo;
 
     if ( ec != ec_success ) {
