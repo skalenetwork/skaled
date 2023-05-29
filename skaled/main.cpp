@@ -57,6 +57,7 @@
 #include <libevm/VMFactory.h>
 
 #include <libskale/ConsensusGasPricer.h>
+#include <libskale/SnapshotManager.h>
 #include <libskale/UnsafeRegion.h>
 
 #include <libdevcrypto/LibSnark.h>
@@ -1576,7 +1577,7 @@ int main( int argc, char** argv ) try {
         // auto mostRecentBlocksDBPath = (getDataDir() / ( "blocks_" + chainParams.nodeInfo.id.str()
         // + ".db" )) / "1.db";
 
-        snapshotManager.reset( new SnapshotManager( getDataDir(),
+        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
                 "blocks_" + chainParams.nodeInfo.id.str() + ".db"/*,

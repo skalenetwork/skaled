@@ -168,7 +168,7 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
 
-    auto latest0 = mgr.getLatestSnasphots();
+    auto latest0 = mgr.getLatestSnapshots();
     std::pair< int, int > expected0 { 0, 0 };
     BOOST_REQUIRE( latest0 == expected0 );
 
@@ -183,7 +183,7 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
 
-    auto latest1 = mgr.getLatestSnasphots();
+    auto latest1 = mgr.getLatestSnapshots();
     std::pair< int, int > expected1 { 0, 1 };
     BOOST_REQUIRE( latest1 == expected1 );
 
@@ -215,12 +215,12 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
 
-    auto latest2 = mgr.getLatestSnasphots();
+    auto latest2 = mgr.getLatestSnapshots();
     std::pair< int, int > expected2 { 1, 2 };
     BOOST_REQUIRE( latest2 == expected2 );
 
     mgr.doSnapshot( 3 );
-    auto latest3 = mgr.getLatestSnasphots();
+    auto latest3 = mgr.getLatestSnapshots();
     std::pair< int, int > expected3 { 2, 3 };
     BOOST_REQUIRE( latest3 == expected3 );
 
