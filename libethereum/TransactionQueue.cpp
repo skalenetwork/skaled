@@ -40,11 +40,14 @@ constexpr size_t c_maxVerificationQueueSize = 8192;
 constexpr size_t c_maxDroppedTransactionCount = 1024;
 }  // namespace
 
-TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit )
+TransactionQueue::TransactionQueue( unsigned _limit, unsigned _futureLimit,
+    unsigned _currentLimitBytes, unsigned _futureLimitBytes )
     : m_dropped{ c_maxDroppedTransactionCount },
       m_current( PriorityCompare{ *this } ),
       m_limit( _limit ),
       m_futureLimit( _futureLimit ),
+      m_currentSizeBytesLimit( _currentLimitBytes ),
+      m_futureSizeBytesLimit( _futureLimitBytes ),
       m_aborting( false ) {
     m_readyCondNotifier = this->onReady( [this]() {
         this->m_cond.notify_all();
@@ -131,6 +134,7 @@ ImportResult TransactionQueue::import(
                 //                if( t == fs->second.begin() ){
                 UpgradeGuard ul( l );
                 --m_futureSize;
+                m_futureSizeBytes -= t->second.transaction.rlp().size();
                 auto erasedHash = t->second.transaction.sha3();
                 LOG( m_loggerDetail ) << "Re-inserting future transaction " << erasedHash;
                 m_known.erase( erasedHash );
@@ -242,7 +246,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(
         insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
         LOG( m_loggerDetail ) << "Queued vaguely legit-looking transaction " << _h;
 
-        while ( m_current.size() > m_limit ) {
+        while ( m_current.size() > m_limit || m_currentSizeBytes > m_currentSizeBytesLimit ) {
             LOG( m_loggerDetail ) << "Dropping out of bounds transaction " << _h;
             remove_WITH_LOCK( m_current.rbegin()->transaction.sha3() );
         }
@@ -304,6 +308,7 @@ void TransactionQueue::insertCurrent_WITH_LOCK( std::pair< h256, Transaction > c
     inserted.first->second = handle;
     m_currentByHash[_p.first] = handle;
 #pragma GCC diagnostic pop
+    m_currentSizeBytes += t.rlp().size();
 
     // Move following transactions from future to current
     makeCurrent_WITH_LOCK( t );
@@ -321,6 +326,7 @@ bool TransactionQueue::remove_WITH_LOCK( h256 const& _txHash ) {
     auto it = m_currentByAddressAndNonce.find( from );
     assert( it != m_currentByAddressAndNonce.end() );
     it->second.erase( ( *t->second ).transaction.nonce() );
+    m_currentSizeBytes -= ( *t->second ).transaction.rlp().size();
     m_current.erase( t->second );
     m_currentByHash.erase( t );
     if ( it->second.empty() )
@@ -357,6 +363,8 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
             *( m->second ) );  // set has only const iterators. Since we are moving out of container
                                // that's fine
         m_currentByHash.erase( t.transaction.sha3() );
+        m_currentSizeBytes -= t.transaction.rlp().size();
+        m_futureSizeBytes += t.transaction.rlp().size();
         target.emplace( t.transaction.nonce(), move( t ) );
         m_current.erase( m->second );
         ++m_futureSize;
@@ -365,10 +373,11 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     if ( queue.empty() )
         m_currentByAddressAndNonce.erase( from );
 
-    while ( m_futureSize > m_futureLimit ) {
+    while ( m_futureSize > m_futureLimit || m_futureSizeBytes > m_futureSizeBytesLimit ) {
         // TODO: priority queue for future transactions
         // For now just drop random chain end
         --m_futureSize;
+        m_futureSizeBytes -= m_future.begin()->second.rbegin()->second.transaction.rlp().size();
         auto erasedHash = m_future.begin()->second.rbegin()->second.transaction.sha3();
         LOG( m_loggerDetail ) << "Dropping out of bounds future transaction " << erasedHash;
         m_known.erase( erasedHash );
@@ -402,6 +411,8 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
                 inserted.first->second = handle;
                 m_currentByHash[( *handle ).transaction.sha3()] = handle;
 #pragma GCC diagnostic pop
+                m_futureSizeBytes -= ( *handle ).transaction.rlp().size();
+                m_currentSizeBytes += ( *handle ).transaction.rlp().size();
                 --m_futureSize;
                 ++ft;
                 ++nonce;
