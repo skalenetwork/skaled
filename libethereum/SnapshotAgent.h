@@ -43,9 +43,9 @@ private:
 
     inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
     void doSnapshotAndComputeHash( unsigned _blockNumber );
+    void startHashComputingThread();
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
-    uint64_t block_number_under_hash_computation = -1;
 
     // time of last physical snapshot
     int64_t last_snapshot_creation_time = 0;

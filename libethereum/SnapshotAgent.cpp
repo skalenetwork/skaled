@@ -28,11 +28,8 @@ void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded(
     } else if ( m_snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
         LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
-        if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() ) {
+        if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
             m_snapshotHashComputing->join();
-            this->last_snapshoted_block_with_hash = this->block_number_under_hash_computation;
-            this->block_number_under_hash_computation = -1;
-        }
 
         // TODO Make this number configurable
         // thread can be absent - if hash was already there
@@ -82,40 +79,8 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned block_number, uint64_t _timesta
     if ( ( m_snapshotHashComputing == nullptr || !m_snapshotHashComputing->joinable() ) &&
          latest_snapshots.second &&
          !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) ) {
-        block_number_under_hash_computation = latest_snapshots.second;
-        m_snapshotHashComputing.reset( new std::thread( [this]() {
-            m_debugTracer.tracepoint( "computeSnapshotHash_start" );
-            try {
-                boost::chrono::high_resolution_clock::time_point t1;
-                boost::chrono::high_resolution_clock::time_point t2;
+        startHashComputingThread();
 
-                t1 = boost::chrono::high_resolution_clock::now();
-                this->m_snapshotManager->computeSnapshotHash(
-                    this->block_number_under_hash_computation );
-                t2 = boost::chrono::high_resolution_clock::now();
-                this->snapshot_hash_calculation_time_ms =
-                    boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
-                LOG( m_logger ) << "Computed hash for snapshot "
-                                << this->block_number_under_hash_computation << ": "
-                                << m_snapshotManager->getSnapshotHash(
-                                       this->block_number_under_hash_computation );
-                m_debugTracer.tracepoint( "computeSnapshotHash_end" );
-
-            } catch ( const std::exception& ex ) {
-                cerror << cc::fatal( "CRITICAL" ) << " "
-                       << cc::warn( dev::nested_exception_what( ex ) )
-                       << cc::error( " in computeSnapshotHash(). Exiting..." );
-                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
-            } catch ( ... ) {
-                cerror << cc::fatal( "CRITICAL" )
-                       << cc::error(
-                              " unknown exception in computeSnapshotHash(). "
-                              "Exiting..." );
-                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
-            }
-        } ) );
     }  // if thread
 }
 
@@ -197,6 +162,9 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _currentBlockTim
         last_snapshot_creation_time =
             this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
 
+        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
+            startHashComputingThread();
+
         // one snapshot
     } else if ( latest_snapshots.second ) {
         assert( latest_snapshots.second != 1 );  // 1 can never be snapshotted
@@ -213,6 +181,9 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _currentBlockTim
         last_snapshot_creation_time =
             this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
 
+        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
+            startHashComputingThread();
+
         // no snapshots yet
     } else {
         this->last_snapshoted_block_with_hash = -1;
@@ -227,4 +198,38 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _currentBlockTim
 bool SnapshotAgent::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     return _timestamp / uint64_t( m_snapshotIntervalSec ) >
            this->last_snapshot_creation_time / uint64_t( m_snapshotIntervalSec );
+}
+
+void SnapshotAgent::startHashComputingThread() {
+    auto latest_snapshots = this->m_snapshotManager->getLatestSnapshots();
+
+    m_snapshotHashComputing.reset( new std::thread( [this, latest_snapshots]() {
+        m_debugTracer.tracepoint( "computeSnapshotHash_start" );
+        try {
+            boost::chrono::high_resolution_clock::time_point t1;
+            boost::chrono::high_resolution_clock::time_point t2;
+
+            t1 = boost::chrono::high_resolution_clock::now();
+            this->m_snapshotManager->computeSnapshotHash( latest_snapshots.second );
+            t2 = boost::chrono::high_resolution_clock::now();
+            this->snapshot_hash_calculation_time_ms =
+                boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+            LOG( m_logger ) << "Computed hash for snapshot " << latest_snapshots.second << ": "
+                            << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
+            m_debugTracer.tracepoint( "computeSnapshotHash_end" );
+
+        } catch ( const std::exception& ex ) {
+            cerror << cc::fatal( "CRITICAL" ) << " " << cc::warn( dev::nested_exception_what( ex ) )
+                   << cc::error( " in computeSnapshotHash(). Exiting..." );
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+        } catch ( ... ) {
+            cerror << cc::fatal( "CRITICAL" )
+                   << cc::error(
+                          " unknown exception in computeSnapshotHash(). "
+                          "Exiting..." );
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+        }
+    } ) );
 }

@@ -492,8 +492,6 @@ void SnapshotManager::proceedRegularFile(
 
     std::string relativePath = path.string().substr( path.string().find( "filestorage" ) );
 
-    cerr << path << endl;
-
     std::string fileHashPathStr = path.string() + "._hash";
     if ( !is_checking ) {
         dev::h256 fileHash;
