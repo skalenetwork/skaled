@@ -344,17 +344,21 @@ Json::Value toJson( dev::eth::Transaction const& _t, bytes const& _rlp ) {
 Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
     Json::Value res;
     if ( _t ) {
-        res["hash"] = toJS( _t.sha3() );
-        res["input"] = toJS( _t.data() );
-        res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
+        res["blockHash"] = toJS( _t.blockHash() );
+        res["blockNumber"] = toJS( _t.blockNumber() );
         res["from"] = toJS( _t.safeSender() );
         res["gas"] = toJS( _t.gas() );
         res["gasPrice"] = toJS( _t.gasPrice() );
+        res["hash"] = toJS( _t.sha3() );
+        res["input"] = toJS( _t.data() );
         res["nonce"] = toJS( _t.nonce() );
-        res["value"] = toJS( _t.value() );
-        res["blockHash"] = toJS( _t.blockHash() );
+        res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
         res["transactionIndex"] = toJS( _t.transactionIndex() );
-        res["blockNumber"] = toJS( _t.blockNumber() );
+        res["value"] = toJS( _t.value() );
+        res["v"] = _t.isReplayProtected() ? toJS( 2 * _t.chainId() + 35 + _t.signature().v ) :
+                                            toJS( 27 + _t.signature().v );
+        res["r"] = toJS( _t.signature().r.hex() );
+        res["s"] = toJS( _t.signature().s.hex() );
     }
     return res;
 }
