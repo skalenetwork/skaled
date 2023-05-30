@@ -1631,17 +1631,17 @@ int main( int argc, char** argv ) try {
         }
 
         try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueSizeBytes" ) )
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueLimitBytes" ) )
                 c_transactionQueueSizeBytes =
-                    joConfig["skaleConfig"]["nodeInfo"]["transactionQueueSizeBytes"]
+                    joConfig["skaleConfig"]["nodeInfo"]["transactionQueueLimitBytes"]
                         .get< unsigned >();
         } catch ( ... ) {
         }
 
         try {
-            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueBytes" ) )
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueLimitBytes" ) )
                 c_futureTransactionQueueSizeBytes =
-                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueBytes"]
+                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueLimitBytes"]
                         .get< unsigned >();
         } catch ( ... ) {
         }
