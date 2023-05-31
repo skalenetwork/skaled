@@ -525,6 +525,7 @@ protected:
     /// skale
     std::shared_ptr< SkaleHost > m_skaleHost;
     std::shared_ptr< SnapshotAgent > m_snapshotAgent;
+    bool m_snapshotAgentInited = false;
     const static dev::h256 empty_str_hash;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;

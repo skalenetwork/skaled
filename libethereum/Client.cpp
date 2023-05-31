@@ -309,8 +309,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     AmsterdamFixPatch::isEnabled( *this );
 
     doWork( false );
-
-    m_snapshotAgent->init( number(), m_bc.info().timestamp() );
 }
 
 ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
@@ -519,7 +517,13 @@ size_t Client::importTransactionsAsBlock(
     // HACK here was m_blockImportMutex - but now it is acquired in SkaleHost!!!
     // TODO decouple Client and SkaleHost
 
-    m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( number(), _timestamp );
+    // on schain creation, SnapshotAgent needs timestamp of block 1
+    // so we use this HACK
+    if ( !m_snapshotAgentInited ) {
+        m_snapshotAgent->init( number(), m_bc.info().timestamp() );
+        m_snapshotAgentInited = true;
+    }
+    m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
     // begin, detect partially executed block
     bool bIsPartial = false;

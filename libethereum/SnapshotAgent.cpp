@@ -18,14 +18,67 @@ SnapshotAgent::SnapshotAgent( int64_t _snapshotIntervalSec,
     }
 }
 
-void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded(
-    unsigned block_number, uint64_t _timestamp ) {
-    // init last block creation time with only robust time source - timestamp of 1st block!
-    if ( block_number == 0 ) {
-        last_snapshot_creation_time = _timestamp;
-        LOG( m_logger ) << "Init last snapshot creation time: "
-                        << this->last_snapshot_creation_time;
-    } else if ( m_snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
+void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBlock1 ) {
+    if ( m_snapshotIntervalSec < 0 )
+        return;
+
+    if ( _currentBlockNumber == 0 )
+        doSnapshotAndComputeHash( 0 );
+
+    auto latest_snapshots = this->m_snapshotManager->getLatestSnapshots();
+
+    // if two
+    if ( latest_snapshots.first ) {
+        assert( latest_snapshots.first != 1 );  // 1 can never be snapshotted
+
+        this->last_snapshoted_block_with_hash = latest_snapshots.first;
+
+        // ignore second as it was "in hash computation"
+        // check that both are imported!!
+        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        // assert( h2 != h256() );
+        // last_snapshot_creation_time = blockInfo( h2 ).timestamp();
+
+        last_snapshot_creation_time =
+            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
+
+        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
+            startHashComputingThread();
+
+        // one snapshot
+    } else if ( latest_snapshots.second ) {
+        assert( latest_snapshots.second != 1 );  // 1 can never be snapshotted
+        assert( _timestampOfBlock1 > 0 );        // we created snapshot somehow
+
+        // whether it is local or downloaded - we shall ignore it's hash but use it's time
+        // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
+        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
+        // uint64_t time_of_second = blockInfo( h2 ).timestamp();
+
+        this->last_snapshoted_block_with_hash = -1;
+        // last_snapshot_creation_time = time_of_second;
+
+        last_snapshot_creation_time =
+            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
+
+        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
+            startHashComputingThread();
+
+        // no snapshots yet
+    } else {
+        this->last_snapshoted_block_with_hash = -1;
+        // init last block creation time with only robust time source - timestamp of 1st block!
+        last_snapshot_creation_time = _timestampOfBlock1;
+    }
+
+    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
+                    << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
+
+    LOG( m_logger ) << "Init last snapshot creation time: " << this->last_snapshot_creation_time;
+}
+
+void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded( int64_t _timestamp ) {
+    if ( m_snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
         LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
         if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
@@ -44,7 +97,7 @@ void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded(
     }
 }
 
-void SnapshotAgent::doSnapshotIfNeeded( unsigned block_number, uint64_t _timestamp ) {
+void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _timestamp ) {
     if ( m_snapshotIntervalSec <= 0 )
         return;
 
@@ -54,11 +107,11 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned block_number, uint64_t _timesta
         try {
             boost::chrono::high_resolution_clock::time_point t1;
             boost::chrono::high_resolution_clock::time_point t2;
-            LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
+            LOG( m_logger ) << "DOING SNAPSHOT: " << _currentBlockNumber;
             m_debugTracer.tracepoint( "doing_snapshot" );
 
             t1 = boost::chrono::high_resolution_clock::now();
-            m_snapshotManager->doSnapshot( block_number );
+            m_snapshotManager->doSnapshot( _currentBlockNumber );
             t2 = boost::chrono::high_resolution_clock::now();
             this->snapshot_calculation_time_ms =
                 boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
@@ -121,80 +174,6 @@ uint64_t SnapshotAgent::getBlockTimestampFromSnapshot( unsigned _blockNumber ) c
     return this->m_snapshotManager->getBlockTimestamp( _blockNumber );
 }
 
-void SnapshotAgent::doSnapshotAndComputeHash( unsigned _blockNumber ) {
-    LOG( m_logger ) << "DOING SNAPSHOT: " << _blockNumber;
-    m_debugTracer.tracepoint( "doing_snapshot" );
-
-    try {
-        m_snapshotManager->doSnapshot( _blockNumber );
-    } catch ( SnapshotManager::SnapshotPresent& ex ) {
-        LOG( m_logger ) << "0 block snapshot is already present. Skipping.";
-        return;
-    }
-
-    m_snapshotManager->computeSnapshotHash( _blockNumber );
-    LOG( m_logger ) << "Computed hash for snapshot " << _blockNumber << ": "
-                    << m_snapshotManager->getSnapshotHash( _blockNumber );
-    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
-}
-
-void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _currentBlockTime ) {
-    if ( m_snapshotIntervalSec < 0 )
-        return;
-
-    if ( _currentBlockNumber == 0 )
-        doSnapshotAndComputeHash( 0 );
-
-    auto latest_snapshots = this->m_snapshotManager->getLatestSnapshots();
-
-    // if two
-    if ( latest_snapshots.first ) {
-        assert( latest_snapshots.first != 1 );  // 1 can never be snapshotted
-
-        this->last_snapshoted_block_with_hash = latest_snapshots.first;
-
-        // ignore second as it was "in hash computation"
-        // check that both are imported!!
-        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        // assert( h2 != h256() );
-        // last_snapshot_creation_time = blockInfo( h2 ).timestamp();
-
-        last_snapshot_creation_time =
-            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
-
-        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
-            startHashComputingThread();
-
-        // one snapshot
-    } else if ( latest_snapshots.second ) {
-        assert( latest_snapshots.second != 1 );  // 1 can never be snapshotted
-        assert( _currentBlockTime > 0 );         // we created snapshot somehow
-
-        // whether it is local or downloaded - we shall ignore it's hash but use it's time
-        // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
-        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        // uint64_t time_of_second = blockInfo( h2 ).timestamp();
-
-        this->last_snapshoted_block_with_hash = -1;
-        // last_snapshot_creation_time = time_of_second;
-
-        last_snapshot_creation_time =
-            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second );
-
-        if ( !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) )
-            startHashComputingThread();
-
-        // no snapshots yet
-    } else {
-        this->last_snapshoted_block_with_hash = -1;
-        last_snapshot_creation_time = _currentBlockTime;
-    }
-
-    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
-                    << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
-    LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
-}
-
 bool SnapshotAgent::isTimeToDoSnapshot( uint64_t _timestamp ) const {
     return _timestamp / uint64_t( m_snapshotIntervalSec ) >
            this->last_snapshot_creation_time / uint64_t( m_snapshotIntervalSec );
@@ -232,4 +211,21 @@ void SnapshotAgent::startHashComputingThread() {
             ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
         }
     } ) );
+}
+
+void SnapshotAgent::doSnapshotAndComputeHash( unsigned _blockNumber ) {
+    LOG( m_logger ) << "DOING SNAPSHOT: " << _blockNumber;
+    m_debugTracer.tracepoint( "doing_snapshot" );
+
+    try {
+        m_snapshotManager->doSnapshot( _blockNumber );
+    } catch ( SnapshotManager::SnapshotPresent& ex ) {
+        LOG( m_logger ) << "0 block snapshot is already present. Skipping.";
+        return;
+    }
+
+    m_snapshotManager->computeSnapshotHash( _blockNumber );
+    LOG( m_logger ) << "Computed hash for snapshot " << _blockNumber << ": "
+                    << m_snapshotManager->getSnapshotHash( _blockNumber );
+    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 }

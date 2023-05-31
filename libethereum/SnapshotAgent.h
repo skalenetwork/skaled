@@ -20,10 +20,11 @@ public:
     SnapshotAgent( int64_t _snapshotIntervalSec,
         std::shared_ptr< SnapshotManager > _snapshotManager, SkaleDebugTracer& _debugTracer );
 
-    void init( unsigned _currentBlockNumber, int64_t _currentBlockTime );
+    // timestamp of 1st block is the only robust time source
+    void init( unsigned _currentBlockNumber, int64_t _timestampOfBlock1 );
 
-    void finishHashComputingAndUpdateHashesIfNeeded( unsigned block_number, uint64_t _timestamp );
-    void doSnapshotIfNeeded( unsigned block_number, uint64_t _timestamp );
+    void finishHashComputingAndUpdateHashesIfNeeded( int64_t _timestamp );
+    void doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _timestamp );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber );
 
@@ -38,6 +39,11 @@ public:
     }
 
 private:
+    // time of last physical snapshot
+    int64_t last_snapshot_creation_time = 0;
+    // usually this is snapshot before last!
+    int64_t last_snapshoted_block_with_hash = -1;
+
     int64_t m_snapshotIntervalSec;
     std::shared_ptr< SnapshotManager > m_snapshotManager;
 
@@ -46,11 +52,6 @@ private:
     void startHashComputingThread();
 
     std::unique_ptr< std::thread > m_snapshotHashComputing;
-
-    // time of last physical snapshot
-    int64_t last_snapshot_creation_time = 0;
-    // usually this is snapshot before last!
-    int64_t last_snapshoted_block_with_hash = -1;
 
     uint64_t snapshot_calculation_time_ms;
     uint64_t snapshot_hash_calculation_time_ms;
