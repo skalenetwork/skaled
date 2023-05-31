@@ -458,11 +458,13 @@ void TransactionQueue::clear() {
     WriteGuard l( m_lock );
     m_known.clear();
     m_current.clear();
+    m_currentSizeBytes = 0;
     m_dropped.clear();
     m_currentByAddressAndNonce.clear();
     m_currentByHash.clear();
     m_future.clear();
     m_futureSize = 0;
+    m_futureSizeBytes = 0;
 }
 
 void TransactionQueue::enqueue( RLP const& _data, h512 const& _nodeId ) {
