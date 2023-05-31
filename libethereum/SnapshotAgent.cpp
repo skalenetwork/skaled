@@ -19,7 +19,7 @@ SnapshotAgent::SnapshotAgent( int64_t _snapshotIntervalSec,
 }
 
 void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBlock1 ) {
-    if ( m_snapshotIntervalSec < 0 )
+    if ( m_snapshotIntervalSec <= 0 )
         return;
 
     if ( _currentBlockNumber == 0 )
