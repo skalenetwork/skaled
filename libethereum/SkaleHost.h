@@ -40,6 +40,7 @@
 #include <libskale/SkaleClient.h>
 
 #include <jsonrpccpp/client/client.h>
+#include <boost/chrono.hpp>
 
 #include <atomic>
 #include <map>
@@ -213,4 +214,6 @@ private:
     std::set< dev::h256 > arrived;
 #endif
     std::atomic_int total_sent, total_arrived;
+
+    boost::chrono::high_resolution_clock::time_point latestBlockTime;
 };

@@ -257,7 +257,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
       total_sent( 0 ),
-      total_arrived( 0 ) {
+      total_arrived( 0 ),
+      latestBlockTime( boost::chrono::high_resolution_clock::time_point() ) {
     try {
         m_debugHandler = [this]( const std::string& arg ) -> std::string {
             return DebugTracer_handler( arg, this->m_debugTracer );
@@ -594,6 +595,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
     //
+    boost::chrono::high_resolution_clock::time_point skaledTimeStart;
+    skaledTimeStart = boost::chrono::high_resolution_clock::now();
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
     std::string strPerformanceQueueName_create_block = "bc/create_block";
@@ -747,6 +750,21 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
+    boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
+        boost::chrono::high_resolution_clock::now();
+    clog( VerbosityInfo, "skale-host" )
+        << "SDT: "
+        << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+               skaledTimeFinish - skaledTimeStart )
+               .count();
+    if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
+        clog( VerbosityInfo, "skale-host" )
+            << "BFT: "
+            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                   skaledTimeFinish - latestBlockTime )
+                   .count();
+        latestBlockTime = skaledTimeFinish;
+    }
     LOG( m_debugLogger ) << cc::success( "Successfully imported " ) << n_succeeded
                          << cc::success( " of " ) << out_txns.size()
                          << cc::success( " transactions" ) << std::endl;
