@@ -763,8 +763,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                    skaledTimeFinish - latestBlockTime )
                    .count();
-        latestBlockTime = skaledTimeFinish;
     }
+    latestBlockTime = skaledTimeFinish;
     LOG( m_debugLogger ) << cc::success( "Successfully imported " ) << n_succeeded
                          << cc::success( " of " ) << out_txns.size()
                          << cc::success( " transactions" ) << std::endl;
