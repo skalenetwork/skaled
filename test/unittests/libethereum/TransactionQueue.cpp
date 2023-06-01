@@ -510,6 +510,43 @@ BOOST_AUTO_TEST_CASE( tqLimit ) {
     BOOST_REQUIRE( topTr.size() == 1 );  // 1 imported transaction
 }
 
+BOOST_AUTO_TEST_CASE( tqLimitBytes ) {
+    TransactionQueue tq( 100, 100, 250, 250 );
+
+    unsigned maxTxCount = 250 / TestTransaction::defaultTransaction( 1 ).transaction().rlp().size();
+
+    TestTransaction testTransaction = TestTransaction::defaultTransaction( 2 );
+    ImportResult res = tq.import( testTransaction.transaction(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( res == ImportResult::Success );
+
+    testTransaction = TestTransaction::defaultTransaction( 3 );
+    res = tq.import( testTransaction.transaction(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( res == ImportResult::Success );
+
+    BOOST_REQUIRE( tq.status().current == 0 );
+
+    BOOST_REQUIRE( tq.status().future == maxTxCount );
+
+    testTransaction = TestTransaction::defaultTransaction( 4 );
+    res = tq.import( testTransaction.transaction(), IfDropped::Ignore, true );
+    BOOST_REQUIRE( res == ImportResult::Success );
+
+    BOOST_REQUIRE( tq.status().current == 0 );
+
+    BOOST_REQUIRE( tq.status().future == maxTxCount );
+
+    for ( size_t i = 1; i < 10; i++ ) {
+        if (i == 2 || i == 3)
+            continue;
+        testTransaction = TestTransaction::defaultTransaction( i );
+        res = tq.import( testTransaction.transaction() );
+        BOOST_REQUIRE( res == ImportResult::Success );
+    }
+
+    BOOST_REQUIRE( tq.status().current == maxTxCount );
+    BOOST_REQUIRE( tq.status().future == 0 );
+}
+
 BOOST_AUTO_TEST_CASE( tqEqueue ) {
     TransactionQueue tq;
     TestTransaction testTransaction = TestTransaction::defaultTransaction();

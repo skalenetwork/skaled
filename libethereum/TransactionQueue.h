@@ -52,15 +52,22 @@ namespace eth {
 class TransactionQueue {
 public:
     struct Limits {
-        size_t current;
-        size_t future;
+        size_t currentLimit;
+        size_t futureLimit;
+        size_t currentLimitBytes = 12322916;
+        size_t futureLimitBytes = 24645833;
     };
 
     /// @brief TransactionQueue
     /// @param _limit Maximum number of pending transactions in the queue.
     /// @param _futureLimit Maximum number of future nonce transactions.
-    TransactionQueue( unsigned _limit = 1024, unsigned _futureLimit = 1024 );
-    TransactionQueue( Limits const& _l ) : TransactionQueue( _l.current, _l.future ) {}
+    /// @param _currentLimitBytes Maximum size of pending transactions in the queue in bytes.
+    /// @param _futureLimitBytes Maximum size of future nonce transactions in bytes.
+    TransactionQueue( unsigned _limit = 1024, unsigned _futureLimit = 1024,
+        unsigned _currentLimitBytes = 12322916, unsigned _futureLimitBytes = 24645833 );
+    TransactionQueue( Limits const& _l )
+        : TransactionQueue(
+              _l.currentLimit, _l.futureLimit, _l.currentLimitBytes, _l.futureLimitBytes ) {}
     ~TransactionQueue();
     void HandleDestruction();
     /// Add transaction to the queue to be verified and imported.
@@ -151,12 +158,14 @@ public:
         ReadGuard l( m_lock );
         ret.dropped = m_dropped.size();
         ret.current = m_currentByHash.size();
-        ret.future = m_future.size();
+        ret.future = m_futureSize;
         return ret;
     }
 
     /// @returns the transaction limits on current/future.
-    Limits limits() const { return Limits{ m_limit, m_futureLimit }; }
+    Limits limits() const {
+        return Limits{ m_limit, m_futureLimit, m_currentSizeBytes, m_futureSizeBytes };
+    }
 
     /// @returns the number of tx in future queue.
     size_t futureSize() const { return m_futureSize; }
@@ -322,6 +331,11 @@ private:
     unsigned m_limit;                    ///< Max number of pending transactions
     unsigned m_futureLimit;              ///< Max number of future transactions
     unsigned m_futureSize = 0;           ///< Current number of future transactions
+
+    unsigned m_currentSizeBytesLimit = 0;  // max pending queue size in bytes
+    unsigned m_currentSizeBytes = 0;       // current pending queue size in bytes
+    unsigned m_futureSizeBytesLimit = 0;   // max future queue size in bytes
+    unsigned m_futureSizeBytes = 0;        // current future queue size in bytes
 
     std::condition_variable m_queueReady;  ///< Signaled when m_unverified has a new entry.
     std::vector< std::thread > m_verifiers;
