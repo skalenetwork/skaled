@@ -1413,6 +1413,8 @@ int main( int argc, char** argv ) try {
 
     unsigned c_transactionQueueSize = 100000;
     unsigned c_futureTransactionQueueSize = 16000;
+    unsigned c_transactionQueueSizeBytes = 12322916;
+    unsigned c_futureTransactionQueueSizeBytes = 24645833;
 
     if ( chainConfigParsed ) {
         try {
@@ -1454,6 +1456,22 @@ int main( int argc, char** argv ) try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueSize" ) )
                 c_futureTransactionQueueSize =
                     joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueSize"]
+                        .get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueLimitBytes" ) )
+                c_transactionQueueSizeBytes =
+                    joConfig["skaleConfig"]["nodeInfo"]["transactionQueueLimitBytes"]
+                        .get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueLimitBytes" ) )
+                c_futureTransactionQueueSizeBytes =
+                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueLimitBytes"]
                         .get< unsigned >();
         } catch ( ... ) {
         }
@@ -1734,14 +1752,14 @@ int main( int argc, char** argv ) try {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{
-                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
+                TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{
-                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
+                TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );

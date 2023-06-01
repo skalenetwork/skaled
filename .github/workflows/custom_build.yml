@@ -56,24 +56,6 @@ jobs:
           which gcov-tool
           gcov-tool --version
 
-      - name: Get newest lcov
-        run: |
-          echo "Removing previous lcov version..."
-          sudo apt-get remove lcov || true
-          echo "Installing newest lcov version..."
-          rm -rf newer_lcov || true
-          mkdir newer_lcov
-          cd newer_lcov
-          git clone https://github.com/linux-test-project/lcov --recursive --recurse-submodules
-          cd lcov
-          sudo make install
-          cd ..
-          cd ..
-          echo "Checking installed lcov version..."
-          which lcov
-          lcov --version
-
-
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -149,8 +131,8 @@ jobs:
           echo "Version $VERSION"
           export RELEASE=true
           bash ./scripts/build_and_publish.sh
-          
-      - name: Upload skaled binary as artifact 
+
+      - name: Upload skaled binary as artifact
         uses: actions/upload-artifact@v2
         if: ${{ always() }}
         with:
