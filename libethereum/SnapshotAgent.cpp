@@ -150,7 +150,7 @@ void SnapshotAgent::terminate() {
     if ( m_snapshotHashComputing != nullptr ) {
         try {
             if ( m_snapshotHashComputing->joinable() )
-                m_snapshotHashComputing->join();
+                m_snapshotHashComputing->detach();
         } catch ( ... ) {
         }
     }
