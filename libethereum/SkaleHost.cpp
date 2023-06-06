@@ -804,6 +804,7 @@ void SkaleHost::startWorking() {
             }
             ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_termninated_by_signal );
         }
+
         // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
         uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
         m_consensus->setEmptyBlockIntervalMs( 50 );
@@ -826,7 +827,6 @@ void SkaleHost::startWorking() {
         }
 
         m_consensus->setEmptyBlockIntervalMs( tmp_interval );
-        //        bootstrap_promise.set_value();
     };  // func
 
     m_consensusThread = std::thread( csus_func );
