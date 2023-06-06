@@ -793,23 +793,21 @@ void SkaleHost::startWorking() {
         m_broadcastThread = std::thread( bcast_func );
     }
 
-    try {
-        m_consensus->startAll();
-    } catch ( const std::exception& ) {
-        // cleanup
-        m_exitNeeded = true;
-        if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
-            m_broadcastThread.join();
-        }
-        throw;
-    }
-
-    //    std::promise< void > bootstrap_promise;
-
     auto csus_func = [&]() {
-        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
         try {
-            m_consensus->setEmptyBlockIntervalMs( 50 );
+            m_consensus->startAll();
+        } catch ( const std::exception& ) {
+            // cleanup
+            m_exitNeeded = true;
+            if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
+                m_broadcastThread.join();
+            }
+            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_termninated_by_signal );
+        }
+        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
+        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+        m_consensus->setEmptyBlockIntervalMs( 50 );
+        try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
             clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " started\n";
@@ -831,12 +829,7 @@ void SkaleHost::startWorking() {
         //        bootstrap_promise.set_value();
     };  // func
 
-    // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-    //    uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-    //    m_consensus->setEmptyBlockIntervalMs( 50 );
     m_consensusThread = std::thread( csus_func );
-    //    bootstrap_promise.get_future().wait();
-    //    m_consensus->setEmptyBlockIntervalMs( tmp_interval );
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
