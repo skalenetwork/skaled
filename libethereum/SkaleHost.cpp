@@ -804,10 +804,12 @@ void SkaleHost::startWorking() {
         throw;
     }
 
-    std::promise< void > bootstrap_promise;
+    //    std::promise< void > bootstrap_promise;
 
     auto csus_func = [&]() {
+        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
         try {
+            m_consensus->setEmptyBlockIntervalMs( 50 );
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
             clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " started\n";
@@ -825,15 +827,16 @@ void SkaleHost::startWorking() {
                 << skutils::signal::generate_stack_trace() << "\n";
         }
 
-        bootstrap_promise.set_value();
+        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
+        //        bootstrap_promise.set_value();
     };  // func
 
     // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-    uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-    m_consensus->setEmptyBlockIntervalMs( 50 );
+    //    uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+    //    m_consensus->setEmptyBlockIntervalMs( 50 );
     m_consensusThread = std::thread( csus_func );
-    bootstrap_promise.get_future().wait();
-    m_consensus->setEmptyBlockIntervalMs( tmp_interval );
+    //    bootstrap_promise.get_future().wait();
+    //    m_consensus->setEmptyBlockIntervalMs( tmp_interval );
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
