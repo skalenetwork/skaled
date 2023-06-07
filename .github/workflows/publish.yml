@@ -90,7 +90,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
@@ -101,7 +101,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           mkdir -p build
           cd build
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
@@ -112,18 +112,18 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           cd build
           make skaled -j$(nproc)
-          echo "Ensure release mode skaled does not have any debug markers"
-          strip skaled/skaled
+          #echo "Ensure release mode skaled does not have any debug markers"
+          #strip skaled/skaled
           cd ..
       - name: Configure historic state build
         run: |
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           mkdir -p build-historic
           cd build-historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
@@ -134,11 +134,11 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           cd build-historic
           make skaled -j$(nproc)
-          echo "Ensure release mode skaled does not have any debug markers"
-          strip skaled/skaled
+          #echo "Ensure release mode skaled does not have any debug markers"
+          #strip skaled/skaled
           cd ..
       - name: Build and publish container
         run: |
