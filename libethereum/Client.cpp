@@ -522,7 +522,8 @@ size_t Client::importTransactionsAsBlock(
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     if ( !m_snapshotAgentInited ) {
-        m_snapshotAgent->init( number(), m_bc.info().timestamp() );
+        m_snapshotAgent->init(
+            number(), number() > 0 ? blockInfo( hashFromNumber( 1 ) ).timestamp() : _timestamp );
         m_snapshotAgentInited = true;
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
