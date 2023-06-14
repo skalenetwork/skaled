@@ -393,8 +393,6 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
                 clog( VerbosityInfo, "checkLocalSnapshot" ) << cc::notice(
                     "Will delete all snapshots except" + std::to_string( blockNumber ) );
                 snapshotManager->cleanupButKeepSnapshot( blockNumber );
-                clog( VerbosityInfo, "checkLocalSnapshot" ) << cc::notice(
-                    "Will delete all snapshots except" + std::to_string( blockNumber ) );
                 snapshotManager->restoreSnapshot( blockNumber );
                 std::cout << cc::success( "Snapshot restore success for block " )
                           << cc::u( to_string( blockNumber ) ) << std::endl;
@@ -509,10 +507,6 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     << cc::warn( "No nodes to download from - will skip " + std::to_string( idx ) );
                 continue;
             }
-            //            if ( blockNumber == 0 && isRegularSnapshot ) {
-            //                successfullDownload = true;
-            //                break;
-            //            }
 
             successfullDownload =
                 checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );

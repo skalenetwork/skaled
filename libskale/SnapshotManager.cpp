@@ -274,6 +274,12 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
 void SnapshotManager::cleanupButKeepSnapshot( unsigned _keepSnapshot ) {
     this->cleanupDirectory( snapshots_dir, snapshots_dir / std::to_string( _keepSnapshot ) );
     this->cleanupDirectory( data_dir, snapshots_dir );
+    if ( !fs::exists( diffs_dir ) )
+        try {
+            boost::filesystem::create_directory( diffs_dir );
+        } catch ( const fs::filesystem_error& ex ) {
+            std::throw_with_nested( CannotWrite( ex.path1() ) );
+        }
 }
 
 void SnapshotManager::cleanup() {
@@ -282,7 +288,8 @@ void SnapshotManager::cleanup() {
 
     try {
         boost::filesystem::create_directory( snapshots_dir );
-        boost::filesystem::create_directory( diffs_dir );
+        if ( !fs::exists( diffs_dir ) )
+            boost::filesystem::create_directory( diffs_dir );
     } catch ( const fs::filesystem_error& ex ) {
         std::throw_with_nested( CannotWrite( ex.path1() ) );
     }  // catch
