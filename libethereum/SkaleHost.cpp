@@ -62,8 +62,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 60 * 4;
-
 #ifndef CONSENSUS
 #define CONSENSUS 1
 #endif
@@ -385,12 +383,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     if ( m_exitNeeded )
         return out_vector;
 
-    // HACK this should be field (or better do it another way)
-    static bool first_run = true;
-    if ( first_run ) {
-        m_consensusWorkingMutex.lock();
-        first_run = false;
-    }
     if ( m_exitNeeded )
         return out_vector;
 
@@ -399,12 +391,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     if ( m_exitNeeded )
         return out_vector;
 
-    unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
-
-    if ( m_exitNeeded ) {
-        unlocker.will_exit();
+    if ( m_exitNeeded )
         return out_vector;
-    }
 
     if ( need_restore_emptyBlockInterval ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
@@ -532,10 +520,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         }
     }
 
-    if ( this->m_exitNeeded )
-        unlocker.will_exit();
-
-
     if ( this->emptyBlockIntervalMsForRestore.has_value() )
         need_restore_emptyBlockInterval = true;
 
@@ -584,9 +568,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     m_debugTracer.tracepoint( "send_to_consensus" );
 
-    if ( this->m_exitNeeded )
-        unlocker.will_exit();
-
     return out_vector;
 }
 
@@ -616,6 +597,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         strPerformanceActionName_create_block, jsn_create_block );
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+
+    if ( m_ignoreNewBlocks ) {
+        clog( VerbosityWarning, "skale-host" ) << "WARNING: skaled got new block #" << _blockID
+                                               << " after timestamp-related exit initiated!";
+        return;
+    }
 
     LOG( m_debugLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
@@ -759,6 +746,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
+            m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
             ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
@@ -779,7 +767,6 @@ void SkaleHost::startWorking() {
     // TODO Should we do it at end of this func? (problem: broadcaster receives transaction and
     // recursively calls this func - so working is still false!)
     working = true;
-    m_exitedForcefully = false;
 
     if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
         try {
@@ -840,22 +827,6 @@ void SkaleHost::startWorking() {
 void SkaleHost::stopWorking() {
     if ( !working )
         return;
-
-    bool locked =
-        m_consensusWorkingMutex.try_lock_for( std::chrono::seconds( EXIT_FORCEFULLTY_SECONDS ) );
-    auto lock = locked ? std::make_unique< std::lock_guard< std::timed_mutex > >(
-                             m_consensusWorkingMutex, std::adopt_lock ) :
-                         std::unique_ptr< std::lock_guard< std::timed_mutex > >();
-    ( void ) lock;  // for Codacy
-
-    // if we could not lock from 1st attempt - then exit forcefully!
-    if ( !locked ) {
-        m_exitedForcefully = true;
-        clog( VerbosityWarning, "skale-host" )
-            << cc::fatal( "ATTENTION:" ) << " "
-            << cc::error( "Forcefully shutting down consensus!" );
-    }
-
 
     m_exitNeeded = true;
     pauseConsensus( false );

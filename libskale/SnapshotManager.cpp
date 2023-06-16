@@ -54,8 +54,10 @@ const std::string SnapshotManager::snapshot_hash_file_name = "snapshot_hash.txt"
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager( const fs::path& _dataDir,
-    const std::vector< std::string >& _volumes, const std::string& _diffsDir ) {
+SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chain_params,
+    const fs::path& _dataDir, const std::vector< std::string >& _volumes,
+    const std::string& _diffsDir )
+    : chain_params( _chain_params ) {
     assert( _volumes.size() > 0 );
 
     data_dir = _dataDir;
@@ -342,7 +344,7 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     }      // for
 }
 
-std::pair< int, int > SnapshotManager::getLatestSnasphots() const {
+std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
         // HACK We exclude 0 snapshot forcefully
@@ -699,8 +701,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     }
 }
 
-uint64_t SnapshotManager::getBlockTimestamp(
-    unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const {
+uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
     fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
 
     try {
