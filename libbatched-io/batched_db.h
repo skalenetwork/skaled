@@ -71,7 +71,7 @@ public:
     }
 
     virtual void forEachWithPrefix(
-        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f )  const {
+        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
         m_db->forEachWithPrefix( _prefix, f );
     }
