@@ -46,6 +46,7 @@
 
 #include <libethereum/BlockDetails.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/StorageDestructionPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -509,7 +510,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
 
-                    if ( 2023 ) {
+                    if ( StorageDestructionPatch::isEnabled() ) {
                         clearStorage( address );
                     }
 
