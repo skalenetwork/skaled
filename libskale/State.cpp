@@ -509,7 +509,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
 
-                    if (2023) {
+                    if ( 2023 ) {
                         clearStorage( address );
                     }
 

@@ -199,16 +199,17 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
 }
 
 
-void LevelDB::forEachWithPrefix(std::string& _prefix,  std::function< bool( Slice, Slice ) > f ) const {
+void LevelDB::forEachWithPrefix(
+    std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     cwarn << "Iterating over the entire LevelDB database: " << this->m_path;
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
     auto keepIterating = true;
-    auto prefixSlice = leveldb::Slice(_prefix);
-    for ( itr->Seek(prefixSlice); keepIterating && itr->Valid()
-              && itr->key().starts_with(prefixSlice); itr->Next() ) {
+    auto prefixSlice = leveldb::Slice( _prefix );
+    for ( itr->Seek( prefixSlice );
+          keepIterating && itr->Valid() && itr->key().starts_with( prefixSlice ); itr->Next() ) {
         auto const dbKey = itr->key();
         auto const dbValue = itr->value();
         Slice const key( dbKey.data(), dbKey.size() );
