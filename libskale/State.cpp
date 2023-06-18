@@ -775,8 +775,8 @@ void State::clearStorage( Address const& _contract ) {
 
     // clearStorage is called from functions that already hold a read
     // or write lock over the state Therefore, we can use
-    // storageUnsafe() here
-    for ( auto const& hashPairPair : storageUnsafe( _contract ) ) {
+    // storage_WITHOUT_LOCK() here
+    for ( auto const& hashPairPair : storage_WITHOUT_LOCK( _contract ) ) {
         auto const& key = hashPairPair.second.first;
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );
