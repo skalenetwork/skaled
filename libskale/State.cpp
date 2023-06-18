@@ -658,8 +658,15 @@ void State::kill( Address _addr ) {
     // If the account is not in the db, nothing to kill.
 }
 
+
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    return storage_WITHOUT_LOCK( _contract );
+}
+
+
+std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
+    const Address& _contract ) const {
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion << endl;
@@ -756,13 +763,6 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 }
 
 
-// Clear storage needs to be called when a new contract is
-// created for an address that included a different contract
-// that was destroyed using selfdestruct op code
-// The only way this can happen if one calls
-// CREATE2, self-destruct, and then CREATE2 again, which is
-// extremely rare and a bad security practice
-// Note that in Shanhai fork the selfdestruct op code will be removed
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
 
@@ -773,8 +773,10 @@ void State::clearStorage( Address const& _contract ) {
         return;
     }
 
-    // TODO: This is extremely inefficient
-    for ( auto const& hashPairPair : storage( _contract ) ) {
+    // clearStorage is called from functions that already hold a read
+    // or write lock over the state Therefore, we can use
+    // storageUnsafe() here
+    for ( auto const& hashPairPair : storageUnsafe( _contract ) ) {
         auto const& key = hashPairPair.second.first;
         setStorage( _contract, key, 0 );
         acc->setStorageCache( key, 0 );

@@ -292,6 +292,11 @@ public:
     std::map< dev::h256, std::pair< dev::u256, dev::u256 > > storage(
         dev::Address const& _contract ) const;
 
+    /// Not thread safe version of storage() that does not hold any locks
+    std::map< dev::h256, std::pair< dev::u256, dev::u256 > > storage_WITHOUT_LOCK(
+        dev::Address const& _contract ) const;
+
+
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
     /// @warning The reference to the code is only valid until the access to

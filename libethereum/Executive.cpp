@@ -55,7 +55,8 @@ std::string dumpStackAndMemory( LegacyVM const& _vm ) {
 std::string dumpStorage( ExtVM const& _ext ) {
     ostringstream o;
     o << "    STORAGE\n";
-    for ( auto const& i : _ext.state().storage( _ext.myAddress ) )
+    // this function is called when a lock over the state already is acquired
+    for ( auto const& i : _ext.state().storageUnsafe( _ext.myAddress ) )
         o << showbase << hex << i.second.first << ": " << i.second.second << "\n";
     return o.str();
 }
