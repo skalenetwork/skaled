@@ -331,8 +331,8 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     unordered_map< u256, u256 > storage;
     if ( m_db_face ) {
         // iterate of a keys that start with the given substring
-        string prefix((const char*) _address.data(), _address.size);
-        m_db_face->forEachWithPrefix(prefix, [&storage, &_address]( Slice key, Slice value ) {
+        string prefix( ( const char* ) _address.data(), _address.size );
+        m_db_face->forEachWithPrefix( prefix, [&storage, &_address]( Slice key, Slice value ) {
             if ( key.size() == h160::size + h256::size ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
@@ -345,7 +345,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
                         h256::ConstructFromStringType::FromBinary );
                     storage[memoryAddress] = memoryValue;
                 } else {
-                    cerror << "Address mismatch in:"  << __FUNCTION__;
+                    cerror << "Address mismatch in:" << __FUNCTION__;
                 }
             }
             return true;
