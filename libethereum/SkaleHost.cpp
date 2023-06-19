@@ -817,8 +817,8 @@ void SkaleHost::startWorking() {
 
         // comment out as this hack is in consensus now
         // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-//        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-//        m_consensus->setEmptyBlockIntervalMs( 50 );
+        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+        //        m_consensus->setEmptyBlockIntervalMs( 50 );
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
@@ -838,7 +838,7 @@ void SkaleHost::startWorking() {
         }
 
         // comment out as this hack is in consensus now
-//        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
+        //        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
     };  // func
 
     m_consensusThread = std::thread( csus_func );
