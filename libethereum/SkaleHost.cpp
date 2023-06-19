@@ -739,16 +739,21 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
         boost::chrono::high_resolution_clock::now();
-    clog( VerbosityInfo, "skale-host" )
-        << "SWT: "
-        << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-               skaledTimeFinish - skaledTimeStart )
-               .count();
     if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
         clog( VerbosityInfo, "skale-host" )
-            << "BFT: "
+            << "SWT:"
+            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                   skaledTimeFinish - skaledTimeStart )
+                   .count()
+            << ':' << "BFT:"
             << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                    skaledTimeFinish - latestBlockTime )
+                   .count();
+    } else {
+        clog( VerbosityInfo, "skale-host" )
+            << "SWT:"
+            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                   skaledTimeFinish - skaledTimeStart )
                    .count();
     }
     latestBlockTime = skaledTimeFinish;
