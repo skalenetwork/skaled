@@ -753,7 +753,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
         boost::chrono::high_resolution_clock::now();
     clog( VerbosityInfo, "skale-host" )
-        << "SDT: "
+        << "SWT: "
         << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                skaledTimeFinish - skaledTimeStart )
                .count();
