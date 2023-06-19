@@ -283,7 +283,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
-        mgr.reset( new SnapshotManager( boost::filesystem::path( BTRFS_DIR_PATH ),
+        mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ),
             {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
 
         boost::filesystem::create_directory(
