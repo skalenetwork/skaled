@@ -88,7 +88,6 @@ private:
 
 class SkaleHost {
     friend class ConsensusExtImpl;
-    static const int EXIT_FORCEFULLTY_SECONDS;
 
     struct my_hash {
         size_t operator()( const dev::eth::Transaction& tx ) const { return hash( tx.sha3() ); }
@@ -115,7 +114,6 @@ public:
     void startWorking();
     void stopWorking();
     bool isWorking() const { return this->working; }
-    bool exitedForcefully() const { return m_exitedForcefully; }
 
     void noteNewTransactions();
     void noteNewBlocks();
@@ -151,7 +149,6 @@ public:
 
 private:
     std::atomic_bool working = false;
-    std::atomic_bool m_exitedForcefully = false;
 
     std::unique_ptr< Broadcaster > m_broadcaster;
 
@@ -170,8 +167,6 @@ private:
     // TODO implement more nicely and more fine-grained!
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
                                                  // pendingTransactions() and createBock()
-
-    std::timed_mutex m_consensusWorkingMutex;  // unlocks when it's OK to exit
 
     std::atomic_int m_bcast_counter = 0;
 
@@ -192,7 +187,10 @@ private:
                                 // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
+
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
+    std::atomic_bool m_ignoreNewBlocks = false;  // used when we need to exit at specific block
+
     bool m_broadcastEnabled;
 
     dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };

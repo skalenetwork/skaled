@@ -57,6 +57,7 @@
 #include <libevm/VMFactory.h>
 
 #include <libskale/ConsensusGasPricer.h>
+#include <libskale/SnapshotManager.h>
 #include <libskale/UnsafeRegion.h>
 
 #include <libdevcrypto/LibSnark.h>
@@ -70,7 +71,6 @@
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Personal.h>
 #include <libweb3jsonrpc/Skale.h>
-#include <libweb3jsonrpc/SkaleNetworkBrowser.h>
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
@@ -101,8 +101,6 @@
 #include <skutils/task_performance.h>
 #include <skutils/url.h>
 #include <skutils/utils.h>
-
-#include "taskmon.h"
 
 using namespace std;
 using namespace dev;
@@ -395,8 +393,6 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
                 clog( VerbosityInfo, "checkLocalSnapshot" ) << cc::notice(
                     "Will delete all snapshots except" + std::to_string( blockNumber ) );
                 snapshotManager->cleanupButKeepSnapshot( blockNumber );
-                clog( VerbosityInfo, "checkLocalSnapshot" ) << cc::notice(
-                    "Will delete all snapshots except" + std::to_string( blockNumber ) );
                 snapshotManager->restoreSnapshot( blockNumber );
                 std::cout << cc::success( "Snapshot restore success for block " )
                           << cc::u( to_string( blockNumber ) ) << std::endl;
@@ -511,10 +507,6 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     << cc::warn( "No nodes to download from - will skip " + std::to_string( idx ) );
                 continue;
             }
-            //            if ( blockNumber == 0 && isRegularSnapshot ) {
-            //                successfullDownload = true;
-            //                break;
-            //            }
 
             successfullDownload =
                 checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
@@ -552,164 +544,6 @@ get_machine_ip_addresses_6() {  // first-interface name, second-address
 static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
-static volatile bool g_bStopActionsStarted = false;
-static volatile bool g_bStopActionsComplete = false;
-
-static void stat_handle_stop_actions() {
-    if ( g_bStopActionsStarted )
-        return;
-    g_bStopActionsStarted = true;
-    std::thread( [&]() {
-        skale::network::browser::refreshing_stop();
-        /*
-        if ( g_jsonrpcIpcServer.get() ) {
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Will stop RPC server now..." ) + "\n\n" );
-            g_jsonrpcIpcServer->StopListening();
-            g_jsonrpcIpcServer.reset( nullptr );
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Did stopped RPC server" ) + "\n\n" );
-        }
-        */
-        if ( g_client ) {
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Will stop client now..." ) + "\n\n" );
-            g_client->stopWorking();
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Did stopped client" ) + "\n\n" );
-        }
-        g_bStopActionsComplete = true;
-    } ).detach();
-}
-
-static void stat_wait_stop_actions_complete() {
-    if ( g_bStopActionsComplete )
-        return;
-    std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Will wait for stop actions complete..." ) + "\n\n" );
-    while ( !g_bStopActionsComplete )
-        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
-    std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                   cc::error( "Done waiting for stop actions] complete" ) + "\n\n" );
-}
-
-static void stat_init_common_signal_handling() {
-    skutils::signal::init_common_signal_handling( []( int nSignalNo ) -> void {
-        std::string strMessagePrefix = skutils::signal::g_bStop ?
-                                           cc::error( "\nStop flag was already raised on. " ) +
-                                               cc::fatal( "WILL FORCE TERMINATE." ) +
-                                               cc::error( " Caught (second) signal. " ) :
-                                           cc::error( "\nCaught (first) signal. " );
-        std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
-                  << "\n\n";
-        std::cerr.flush();
-
-        switch ( nSignalNo ) {
-        case SIGINT:
-        case SIGTERM:
-        case SIGHUP:
-            // exit normally
-            // just fall through
-            break;
-
-        case SIGSTOP:
-        case SIGTSTP:
-        case SIGPIPE:
-            // ignore
-            return;
-            break;
-
-        case SIGQUIT:
-            // exit immediately
-            _exit( ExitHandler::ec_termninated_by_signal );
-            break;
-
-        default:
-            // abort signals
-            std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
-            std::cout.flush();
-
-            break;
-        }  // switch
-
-        stat_handle_stop_actions();
-
-        // try to exit nicely - then abort
-        if ( !skutils::signal::g_bStop ) {
-            static volatile bool g_bSelfKillStarted = false;
-            if ( !g_bSelfKillStarted ) {
-                g_bSelfKillStarted = true;
-
-                auto start_time = std::chrono::steady_clock::now();
-
-                std::thread( [nSignalNo, start_time]() {
-                    std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
-                                   cc::error( "Will sleep " ) +
-                                   cc::size10( ExitHandler::KILL_TIMEOUT ) +
-                                   cc::error( " seconds before force exit..." ) + "\n\n" );
-                    std::cerr.flush();
-
-                    clog( VerbosityInfo, "exit" ) << "THREADS timer started";
-
-                    // while waiting, every 0.1s check whch threades exited
-                    vector< string > threads;
-                    for ( int i = 0; i < ExitHandler::KILL_TIMEOUT * 10; ++i ) {
-                        auto end_time = std::chrono::steady_clock::now();
-                        float seconds =
-                            std::chrono::duration< float >( end_time - start_time ).count();
-
-                        try {
-                            vector< string > new_threads = taskmon::list_names();
-                            vector< string > threads_diff =
-                                taskmon::lists_diff( threads, new_threads );
-                            threads = new_threads;
-
-                            if ( threads_diff.size() ) {
-                                cerr << seconds << " THREADS " << threads.size() << ":";
-                                for ( const string& t : threads_diff )
-                                    cerr << " " << t;
-                                cerr << endl;
-                            }
-                        } catch ( ... ) {
-                            // swallow it
-                        }
-
-                        std::this_thread::sleep_for( 100ms );
-                    }
-
-                    std::cerr << ( "\n" + cc::fatal( "SELF-KILL:" ) + " " +
-                                   cc::error( "Will force exit after sleeping " ) +
-                                   cc::size10( ExitHandler::KILL_TIMEOUT ) +
-                                   cc::error( " second(s)" ) + "\n\n" );
-                    std::cerr.flush();
-
-                    // TODO deduplicate this with main() before return
-                    ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
-                    if ( ec == ExitHandler::ec_success ) {
-                        if ( nSignalNo != SIGINT && nSignalNo != SIGTERM )
-                            ec = ExitHandler::ec_failure;
-                    }
-
-                    _exit( ec );
-                } ).detach();
-            }  // if( ! g_bSelfKillStarted )
-        }      // if ( !skutils::signal::g_bStop )
-
-        // nice exit here:
-
-        if ( skutils::signal::g_bStop ) {
-            std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
-                           cc::error( "Will force exit now..." ) + "\n\n" );
-            _exit( 13 );
-        }
-
-        skutils::signal::g_bStop = true;
-        skutils::signal::g_nStopSignal = nSignalNo;
-
-        dev::ExitHandler::exitHandler( nSignalNo );
-    } );
-}
-
 int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
@@ -717,7 +551,7 @@ int main( int argc, char** argv ) try {
     BlockHeader::useTimestampHack = false;
     srand( time( nullptr ) );
     setCLocale();
-    stat_init_common_signal_handling();  // ensure initialized
+    skutils::signal::init_common_signal_handling( ExitHandler::exitHandler );
     bool isExposeAllDebugInfo = false;
 
     // Init secp256k1 context by calling one of the functions.
@@ -975,13 +809,6 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "sgx-url", po::value< string >()->value_name( "<url>" ), "SGX server url" );
 
-    addClientOption( "skale-network-browser-verbose",
-        "Turn on very detailed logging in SKALE NETWORK BROWSER\n" );
-    addClientOption( "skale-network-browser-refresh",
-        po::value< size_t >()->value_name( "<seconds>" ),
-        "Refresh time(in seconds) which SKALE NETWORK BROWSER will re-load all S-Chain "
-        "descriptions from Skale Manager" );
-
     // skale - snapshot download command
     addClientOption( "download-snapshot", po::value< string >()->value_name( "<url>" ),
         "Download snapshot from other skaled node specified by web3/json-rpc url" );
@@ -1196,9 +1023,7 @@ int main( int argc, char** argv ) try {
     }
 
     std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
-              << cc::bright( "client " ) << clientVersionColorized() << "\n"
-              << cc::debug( "Recent build intent is " )
-              << cc::info( "5029, SKALE NETWORK BROWSER improvements" ) << "\n";
+              << cc::bright( "client " ) << clientVersionColorized() << "\n";
     std::cout.flush();
     version();
 
@@ -1274,7 +1099,6 @@ int main( int argc, char** argv ) try {
 
     std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
         boost::filesystem::path( configPath ).remove_filename() );
-    ExitHandler::statusAndControl = statusAndControl;
     // for now, leave previous values in file (for case of crash)
 
     if ( vm.count( "main-net-url" ) ) {
@@ -1583,6 +1407,8 @@ int main( int argc, char** argv ) try {
 
     unsigned c_transactionQueueSize = 100000;
     unsigned c_futureTransactionQueueSize = 16000;
+    unsigned c_transactionQueueSizeBytes = 12322916;
+    unsigned c_futureTransactionQueueSizeBytes = 24645833;
 
     if ( chainConfigParsed ) {
         try {
@@ -1624,6 +1450,22 @@ int main( int argc, char** argv ) try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueSize" ) )
                 c_futureTransactionQueueSize =
                     joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueSize"]
+                        .get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "transactionQueueLimitBytes" ) )
+                c_transactionQueueSizeBytes =
+                    joConfig["skaleConfig"]["nodeInfo"]["transactionQueueLimitBytes"]
+                        .get< unsigned >();
+        } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "futureTransactionQueueLimitBytes" ) )
+                c_futureTransactionQueueSizeBytes =
+                    joConfig["skaleConfig"]["nodeInfo"]["futureTransactionQueueLimitBytes"]
                         .get< unsigned >();
         } catch ( ... ) {
         }
@@ -1719,14 +1561,6 @@ int main( int argc, char** argv ) try {
         chainParams.nodeInfo.sgxServerUrl = strURL;
     }
 
-    if ( vm.count( "skale-network-browser-verbose" ) ) {
-        skale::network::browser::g_bVerboseLogging = true;
-    }
-    if ( vm.count( "skale-network-browser-refresh" ) ) {
-        skale::network::browser::g_nRefreshIntervalInSeconds =
-            vm["skale-network-browser-refresh"].as< size_t >();
-    }
-
     std::shared_ptr< SharedSpace > sharedSpace;
     if ( vm.count( "shared-space-path" ) ) {
         try {
@@ -1755,7 +1589,7 @@ int main( int argc, char** argv ) try {
         // auto mostRecentBlocksDBPath = (getDataDir() / ( "blocks_" + chainParams.nodeInfo.id.str()
         // + ".db" )) / "1.db";
 
-        snapshotManager.reset( new SnapshotManager( getDataDir(),
+        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(),
             { BlockChain::getChainDirName( chainParams ), "filestorage",
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
                 "blocks_" + chainParams.nodeInfo.id.str() + ".db"/*,
@@ -1912,14 +1746,14 @@ int main( int argc, char** argv ) try {
             g_client.reset( new eth::EthashClient( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{
-                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
+                TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
-                TransactionQueue::Limits{
-                    c_transactionQueueSize, c_futureTransactionQueueSize } ) );
+                TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -2930,9 +2764,6 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    skale::network::browser::refreshing_start(
-        configPath.string(), []() -> bool { return g_bStopActionsStarted; } );
-
     dev::setThreadName( "main" );
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
@@ -2944,7 +2775,14 @@ int main( int argc, char** argv ) try {
             this_thread::sleep_for( chrono::milliseconds( 1000 ) );
     }
 
-    skale::network::browser::refreshing_stop();
+    if ( statusAndControl ) {
+        statusAndControl->setExitState( StatusAndControl::StartAgain,
+            ( ExitHandler::requestedExitCode() != ExitHandler::ec_success ) );
+        statusAndControl->setExitState( StatusAndControl::StartFromSnapshot,
+            ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
+        statusAndControl->setExitState( StatusAndControl::ClearDataDir,
+            ( ExitHandler::requestedExitCode() == ExitHandler::ec_state_root_mismatch ) );
+    }  // if
 
     if ( g_jsonrpcIpcServer.get() ) {
         g_jsonrpcIpcServer->StopListening();
@@ -2963,9 +2801,6 @@ int main( int argc, char** argv ) try {
     MicroProfileDumpFileImmediately(
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
-
-    stat_handle_stop_actions();
-    stat_wait_stop_actions_complete();
 
     //    clog( VerbosityDebug, "main" ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();

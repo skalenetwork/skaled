@@ -30,6 +30,7 @@
 #include <test/tools/libtesteth/TestHelper.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <libskale/SnapshotManager.h>
 
 using namespace std;
 using namespace dev;
@@ -261,7 +262,7 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
         std::shared_ptr< SnapshotManager > mgr;
-        mgr.reset( new SnapshotManager( m_tmpDir.path(), { BlockChain::getChainDirName( chainParams ), "vol2", "filestorage"} ) );
+        mgr.reset( new SnapshotManager( chainParams, m_tmpDir.path(), { BlockChain::getChainDirName( chainParams ), "vol2", "filestorage"} ) );
         // boost::filesystem::create_directory(
         //     m_tmpDir.path() / "vol1" / "12041" );
         // boost::filesystem::create_directory(

@@ -43,7 +43,6 @@
 #include <libdevcore/Guards.h>
 #include <libdevcore/Worker.h>
 #include <libethcore/SealEngine.h>
-#include <libskale/SnapshotManager.h>
 #include <libskale/State.h>
 
 #include "Block.h"
@@ -52,6 +51,7 @@
 #include "CommonNet.h"
 #include "InstanceMonitor.h"
 #include "SkaleHost.h"
+#include "SnapshotAgent.h"
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
 
@@ -59,6 +59,7 @@
 #include <skutils/multithreading.h>
 
 class ConsensusHost;
+class SnapshotManager;
 
 namespace dev {
 namespace eth {
@@ -86,7 +87,8 @@ public:
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
-        TransactionQueue::Limits const& _l = TransactionQueue::Limits{ 1024, 1024 } );
+        TransactionQueue::Limits const& _l = TransactionQueue::Limits{
+            1024, 1024, 12322916, 24645833 } );
     /// Destructor.
     virtual ~Client();
 
@@ -268,41 +270,30 @@ public:
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
-        if ( _blockNumber > this->getLatestSnapshotBlockNumer() && _blockNumber != 0 )
-            throw std::invalid_argument( "Too new snapshot requested" );
-        boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
-        // TODO Make constant 2 configurable
-        m_snapshotManager->leaveNLastDiffs( 2 );
-        return path;
+        return m_snapshotAgent->createSnapshotFile( _blockNumber );
     }
 
     // set exiting time for node rotation
     void setSchainExitTime( uint64_t _timestamp ) const;
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
-        if ( _blockNumber > this->last_snapshoted_block_with_hash && _blockNumber != 0 )
-            return dev::h256();
-
-        try {
-            dev::h256 res = this->m_snapshotManager->getSnapshotHash( _blockNumber );
-            return res;
-        } catch ( const SnapshotManager::SnapshotAbsent& ) {
-            return dev::h256();
-        }
-
-        // fall through other exceptions
+        return m_snapshotAgent->getSnapshotHash( _blockNumber );
     }
 
     uint64_t getBlockTimestampFromSnapshot( unsigned _blockNumber ) const {
-        return this->m_snapshotManager->getBlockTimestamp( _blockNumber, chainParams() );
+        return m_snapshotAgent->getBlockTimestampFromSnapshot( _blockNumber );
     }
 
-    int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
+    int64_t getLatestSnapshotBlockNumer() const {
+        return m_snapshotAgent->getLatestSnapshotBlockNumer();
+    }
 
-    uint64_t getSnapshotCalculationTime() const { return this->snapshot_calculation_time_ms; }
+    uint64_t getSnapshotCalculationTime() const {
+        return m_snapshotAgent->getSnapshotCalculationTime();
+    }
 
     uint64_t getSnapshotHashCalculationTime() const {
-        return this->snapshot_hash_calculation_time_ms;
+        return m_snapshotAgent->getSnapshotHashCalculationTime();
     }
 
     std::array< std::string, 4 > getIMABLSPublicKey() const {
@@ -529,31 +520,18 @@ protected:
     Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
     Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
 
-
-    /// skale
-    std::shared_ptr< SkaleHost > m_skaleHost;
-    std::shared_ptr< SnapshotManager > m_snapshotManager;
-    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
-    fs::path m_dbPath;
-
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;
 
-private:
-    inline bool isTimeToDoSnapshot( uint64_t _timestamp ) const;
-    void initHashes();
-    void doSnapshotAndComputeHash( unsigned _blockNumber );
-
-    std::unique_ptr< std::thread > m_snapshotHashComputing;
-    // time of last physical snapshot
-    int64_t last_snapshot_creation_time = 0;
-    // usually this is snapshot before last!
-    int64_t last_snapshoted_block_with_hash = -1;
+    /// skale
+    std::shared_ptr< SkaleHost > m_skaleHost;
+    std::shared_ptr< SnapshotAgent > m_snapshotAgent;
+    bool m_snapshotAgentInited = false;
     const static dev::h256 empty_str_hash;
+    std::shared_ptr< InstanceMonitor > m_instanceMonitor;
+    fs::path m_dbPath;
 
-    uint64_t snapshot_calculation_time_ms;
-    uint64_t snapshot_hash_calculation_time_ms;
-
+private:
     void initIMABLSPublicKey();
     void updateIMABLSPublicKey();
 

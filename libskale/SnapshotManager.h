@@ -22,8 +22,8 @@
  * @date 2019
  */
 
-#ifndef SNAPSHOTAGENT_H
-#define SNAPSHOTAGENT_H
+#ifndef SNAPSHOTMANAGER_H
+#define SNAPSHOTMANAGER_H
 
 #include <libdevcore/FixedHash.h>
 #include <libethereum/BlockChain.h>
@@ -152,8 +152,9 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const boost::filesystem::path& _dataDir,
-        const std::vector< std::string >& _volumes, const std::string& diffs_dir = std::string() );
+    SnapshotManager( const dev::eth::ChainParams& _chain_params,
+        const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes,
+        const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
     boost::filesystem::path makeOrGetDiff( unsigned _toBlock );
@@ -167,12 +168,11 @@ public:
     void leaveNLastDiffs( unsigned n );
 
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
-    std::pair< int, int > getLatestSnasphots() const;
+    std::pair< int, int > getLatestSnapshots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
 
-    uint64_t getBlockTimestamp(
-        unsigned _blockNumber, const dev::eth::ChainParams& chain_params ) const;
+    uint64_t getBlockTimestamp( unsigned _blockNumber ) const;
 
     static boost::filesystem::path findMostRecentBlocksDBPath(
         const boost::filesystem::path& _dirPath );
@@ -185,6 +185,8 @@ private:
 
     static const std::string snapshot_hash_file_name;
     mutable std::mutex hash_file_mutex;
+
+    dev::eth::ChainParams chain_params;
 
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );
@@ -203,4 +205,4 @@ private:
     void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
 };
 
-#endif  // SNAPSHOTAGENT_H
+#endif  // SNAPSHOTMANAGER_H
