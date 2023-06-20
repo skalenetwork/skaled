@@ -115,7 +115,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Release
           cd build
           make skaled -j$(nproc)
-          echo "Ensure release mode skaled does not have any debug markers"
+          #echo "Ensure release mode skaled does not have any debug markers"
           strip skaled/skaled
           cd ..
       - name: Configure historic state build
@@ -137,7 +137,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Release
           cd build-historic
           make skaled -j$(nproc)
-          echo "Ensure release mode skaled does not have any debug markers"
+          #echo "Ensure release mode skaled does not have any debug markers"
           strip skaled/skaled
           cd ..
       - name: Build and publish container

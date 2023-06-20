@@ -1878,6 +1878,7 @@ then
 			fi
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd fmt
+                        git checkout 9158bea1e148c190aa3f9f084b82887ecb29d2f8
 			eval mkdir -p build
 			cd build
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" ..
@@ -2087,9 +2088,9 @@ then
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd folly
 			eval mkdir -p build2
-			cd build2
+                        cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" -DBoost_NO_WARN_NEW_VERSIONS=1 -DBoost_DEBUG=ON \
+                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" -DBoost_NO_WARN_NEW_VERSIONS=1 -DBoost_DEBUG=ON \
 				-DBUILD_SHARED_LIBS=OFF \
 				-DBUILD_TESTS=OFF -DBUILD_BROKEN_TESTS=OFF -DBUILD_HANGING_TESTS=OFF -DBUILD_SLOW_TESTS=OFF \
 				..
