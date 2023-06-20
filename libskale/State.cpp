@@ -46,6 +46,7 @@
 
 #include <libethereum/BlockDetails.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/StorageDestructionPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -508,7 +509,11 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                 if ( !account.isAlive() ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
-                    // TODO: remove account storage
+
+                    if ( StorageDestructionPatch::isEnabled() ) {
+                        clearStorage( address );
+                    }
+
                 } else {
                     RLPStream rlpStream( 4 );
 
@@ -653,8 +658,15 @@ void State::kill( Address _addr ) {
     // If the account is not in the db, nothing to kill.
 }
 
+
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    return storage_WITHOUT_LOCK( _contract );
+}
+
+
+std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
+    const Address& _contract ) const {
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion << endl;
@@ -676,6 +688,9 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
             }
         }
     }
+
+    cdebug << "Self-destruct cleared values:" << storage.size() << endl;
+
     return storage;
 }
 
@@ -728,8 +743,25 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
-    // TODO::review it |^
 }
+
+void State::clearStorageValue(
+    Address const& _contract, u256 const& _key, u256 const& _currentValue ) {
+    m_changeLog.emplace_back( _contract, _key, _currentValue );
+    m_cache[_contract].setStorage( _key, 0 );
+
+    int count;
+
+    if ( _currentValue == 0 ) {
+        count = 0;
+    } else {
+        count = -1;
+    }
+
+    storageUsage[_contract] += count * 32;
+    currentStorageUsed_ += count * 32;
+}
+
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
     if ( Account const* acc = account( _contract ) ) {
@@ -751,15 +783,10 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 }
 
 
-// Clear storage needs to be called when a new contract is
-// created for an address that included a different contract
-// that was destroyed using selfdestruct op code
-// The only way this can happen if one calls
-// CREATE2, self-destruct, and then CREATE2 again, which is
-// extremely rare and a bad security practice
-// Note that in Shanhai fork the selfdestruct op code will be removed
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
+
+    cdebug << "Self-destructing" << _contract;
 
     Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
@@ -768,16 +795,18 @@ void State::clearStorage( Address const& _contract ) {
         return;
     }
 
-    // TODO: This is extremely inefficient
-    for ( auto const& hashPairPair : storage( _contract ) ) {
+    // clearStorage is called from functions that already hold a read
+    // or write lock over the state Therefore, we can use
+    // storage_WITHOUT_LOCK() here
+    for ( auto const& hashPairPair : storage_WITHOUT_LOCK( _contract ) ) {
         auto const& key = hashPairPair.second.first;
-        setStorage( _contract, key, 0 );
+        auto const& value = hashPairPair.second.first;
+        clearStorageValue( _contract, key, value );
         acc->setStorageCache( key, 0 );
     }
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
-    // TODO Do we need to clear storageUsage[_contract] here?
 }
 
 bytes const& State::code( Address const& _addr ) const {

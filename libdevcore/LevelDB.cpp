@@ -198,6 +198,26 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     }
 }
 
+
+void LevelDB::forEachWithPrefix(
+    std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
+    cnote << "Iterating over the LevelDB prefix: " << _prefix;
+    std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
+    if ( itr == nullptr ) {
+        BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
+    }
+    auto keepIterating = true;
+    auto prefixSlice = leveldb::Slice( _prefix );
+    for ( itr->Seek( prefixSlice );
+          keepIterating && itr->Valid() && itr->key().starts_with( prefixSlice ); itr->Next() ) {
+        auto const dbKey = itr->key();
+        auto const dbValue = itr->value();
+        Slice const key( dbKey.data(), dbKey.size() );
+        Slice const value( dbValue.data(), dbValue.size() );
+        keepIterating = f( key, value );
+    }
+}
+
 h256 LevelDB::hashBase() const {
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {

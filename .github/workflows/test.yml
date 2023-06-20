@@ -162,7 +162,7 @@ jobs:
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
-          # we specifically run each test for easier log review
+          # we specifically run each test for easier log review          
           ./testeth -t BlockchainTests -- --express && touch /tmp/BlockchainTestsPassed
           ./testeth -t TransitionTests  -- --express && touch /tmp/TransitionTestsPassed
           ./testeth -t TransactionTests -- --express && touch /tmp/TransactionTestsPassed

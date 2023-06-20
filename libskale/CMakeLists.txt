@@ -18,6 +18,7 @@ set(sources
     AmsterdamFixPatch.cpp
     RevertableFSPatch.cpp
     OverlayFS.cpp
+    StorageDestructionPatch.cpp
 )
 
 set(headers

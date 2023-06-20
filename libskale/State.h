@@ -264,6 +264,10 @@ public:
     void setStorage(
         dev::Address const& _contract, dev::u256 const& _location, dev::u256 const& _value );
 
+    /// Clean storage at position of an account. Used in selfdestruct
+    void clearStorageValue(
+        dev::Address const& _contract, dev::u256 const& _location, dev::u256 const& _currentValue );
+
     /// Get the original value of a storage position of an account (before modifications saved in
     /// account cache).
     /// @returns 0 if no account exists at that address.
@@ -291,6 +295,11 @@ public:
     /// address.
     std::map< dev::h256, std::pair< dev::u256, dev::u256 > > storage(
         dev::Address const& _contract ) const;
+
+    /// Not thread safe version of storage() that does not hold any locks
+    std::map< dev::h256, std::pair< dev::u256, dev::u256 > > storage_WITHOUT_LOCK(
+        dev::Address const& _contract ) const;
+
 
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
@@ -461,7 +470,6 @@ private:
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
-    // HACK
     // TODO Implement DB-registry, remove it!
     std::shared_ptr< dev::db::DBImpl > m_orig_db;
     std::shared_ptr< size_t > m_storedVersion;

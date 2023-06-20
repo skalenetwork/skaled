@@ -52,6 +52,9 @@ public:
 
     void forEach( std::function< bool( Slice, Slice ) > f ) const override;
 
+    void forEachWithPrefix(
+        std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const override;
+
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
