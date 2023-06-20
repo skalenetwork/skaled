@@ -689,7 +689,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
         }
     }
 
-    cdebug << "Self-destruct is clearing values:" << storage.size() << endl;
+    cdebug << "Self-destruct cleared values:" << storage.size() << endl;
 
     return storage;
 }
@@ -786,9 +786,9 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
 
-    cdebug << "Self-destructing"
+    cdebug << "Self-destructing" << _contract;
 
-        Account* acc = account( _contract );
+    Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
 
     if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
