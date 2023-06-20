@@ -8,6 +8,7 @@
 #pragma GCC diagnostic ignored "-Waddress"
 #pragma GCC diagnostic ignored "-Wnonnull-compare"
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wattributes"
 
 #include <folly/Memory.h>
 #include <proxygen/httpserver/RequestHandler.h>

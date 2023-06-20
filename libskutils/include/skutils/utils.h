@@ -580,9 +580,6 @@ extern char getch_no_wait();
 
 namespace signal {
 
-extern std::atomic_int g_nStopSignal;
-extern std::atomic_bool g_bStop;
-
 extern bool get_signal_description( int nSignalNo, std::string& strSignalName,
     std::string& strSignalDescription );  // returns true if signal name is known
 extern std::string signal2str( int nSignalNo, const char* strPrefix = nullptr,
