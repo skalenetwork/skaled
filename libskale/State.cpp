@@ -688,6 +688,9 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
             }
         }
     }
+
+    cdebug << "Self-destruct is clearing values:" << storage.size() << endl;
+
     return storage;
 }
 
@@ -740,8 +743,25 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
-    // TODO::review it |^
 }
+
+void State::clearStorageValue(
+    Address const& _contract, u256 const& _key, u256 const& _currentValue ) {
+    m_changeLog.emplace_back( _contract, _key, _currentValue );
+    m_cache[_contract].setStorage( _key, 0 );
+
+    int count;
+
+    if ( _currentValue == 0 ) {
+        count = 0;
+    } else {
+        count = -1;
+    }
+
+    storageUsage[_contract] += count * 32;
+    currentStorageUsed_ += count * 32;
+}
+
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
     if ( Account const* acc = account( _contract ) ) {
@@ -766,7 +786,9 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
 
-    Account* acc = account( _contract );
+    cdebug << "Self-destructing"
+
+        Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
 
     if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
@@ -778,7 +800,8 @@ void State::clearStorage( Address const& _contract ) {
     // storage_WITHOUT_LOCK() here
     for ( auto const& hashPairPair : storage_WITHOUT_LOCK( _contract ) ) {
         auto const& key = hashPairPair.second.first;
-        setStorage( _contract, key, 0 );
+        auto const& value = hashPairPair.second.first;
+        clearStorageValue( _contract, key, value );
         acc->setStorageCache( key, 0 );
     }
 

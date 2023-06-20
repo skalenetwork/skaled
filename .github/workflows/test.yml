@@ -162,8 +162,7 @@ jobs:
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
-          # we specifically run each test for easier log review
-          ./testeth -t BlockchainTests/bcStateTests  && touch /tmp/StateTestsPassed
+          # we specifically run each test for easier log review          
           ./testeth -t BlockchainTests -- --express && touch /tmp/BlockchainTestsPassed
           ./testeth -t TransitionTests  -- --express && touch /tmp/TransitionTestsPassed
           ./testeth -t TransactionTests -- --express && touch /tmp/TransactionTestsPassed
@@ -214,8 +213,7 @@ jobs:
           # Since a tests failed, we are rerunning the failed test with higher verbosity          
           cd build/test      
           export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
-          ls /tmp/StateTestsPassed || ./testeth -t BlockchainTests/bcStateTests --verbosity 4
+          export NO_ULIMIT_CHECK=1          
           ls /tmp/BlockchainTestsPassed || ./testeth -t BlockchainTests -- --express --verbosity 4
           ls /tmp/TransitionTestsPassed || ./testeth -t TransitionTests -- --express --verbosity 4
           ls /tmp/TransactionTestsPassed || ./testeth -t TransactionTests -- --express --verbosity 4
