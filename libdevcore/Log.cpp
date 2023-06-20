@@ -29,6 +29,9 @@
 
 #include <libdevcore/microprofile.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 #include <boost/core/null_deleter.hpp>
 #include <boost/log/attributes/clock.hpp>
 #include <boost/log/attributes/function.hpp>
@@ -38,6 +41,8 @@
 #include <boost/log/sources/severity_channel_logger.hpp>
 #include <boost/log/support/date_time.hpp>
 #include <boost/log/utility/exception_handler.hpp>
+
+#pragma GCC diagnostic pop
 
 #include <skutils/console_colors.h>
 

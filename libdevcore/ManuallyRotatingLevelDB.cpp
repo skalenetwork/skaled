@@ -67,6 +67,15 @@ void ManuallyRotatingLevelDB::forEach( std::function< bool( Slice, Slice ) > f )
     }
 }
 
+void ManuallyRotatingLevelDB::forEachWithPrefix(
+    std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
+    std::shared_lock< std::shared_mutex > lock( m_mutex );
+    for ( const auto& p : *io_backend ) {
+        p->forEachWithPrefix( _prefix, f );
+    }
+}
+
+
 h256 ManuallyRotatingLevelDB::hashBase() const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
     secp256k1_sha256_t ctx;

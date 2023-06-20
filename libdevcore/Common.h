@@ -54,7 +54,9 @@
 
 #pragma warning( push )
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wpessimizing-move"
 #include <boost/multiprecision/cpp_int.hpp>
 #pragma warning( pop )
 #pragma GCC diagnostic pop
@@ -351,12 +353,12 @@ public:
     static void exitHandler( int s, ExitHandler::exit_code_t ec );
     static bool shouldExit();
     static int getSignal();
-    static exit_code_t requestedExitCode() { return g_ec; }
-
-    static std::shared_ptr< StatusAndControl > statusAndControl;
+    static exit_code_t requestedExitCode() { return s_ec; }
 
 private:
-    static volatile exit_code_t g_ec;
+    static std::atomic< exit_code_t > s_ec;
+    static std::atomic_int s_nStopSignal;
+    static std::atomic_bool s_bStop;
 
     ExitHandler() = delete;
 };

@@ -401,7 +401,6 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             else
                 strPort = "80";
         }
-        int nPort = std::atoi( strPort.c_str() );
         //
         long nEffectiveClientConnectionTimeoutMS =
             ( nClientConnectionTimeoutMS_ > 0 ) ?
@@ -414,6 +413,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
                 u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
 #else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            int nPort = std::atoi( strPort.c_str() );
             ch_.reset( new skutils::http::client(
                 -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, nullptr ) );
 #endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
@@ -424,6 +424,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
                 u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
 #else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+            int nPort = std::atoi( strPort.c_str() );
             ch_.reset( new skutils::http::SSL_client(
                 -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
 #endif  // else from (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
@@ -648,7 +649,8 @@ bool client::stat_auto_gen_json_id( nlohmann::json& jo ) {
 }
 
 data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponse ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps,
+    [[maybe_unused]] bool isReturnErrorResponse ) {
     nlohmann::json jo = joIn;
     if ( isAutoGenJsonID )
         stat_auto_gen_json_id( jo );
@@ -728,7 +730,8 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
     return d;
 }
 data_t client::call( const std::string& strJsonIn, bool isAutoGenJsonID, e_data_fetch_strategy edfs,
-    std::chrono::milliseconds wait_step, size_t cntSteps, bool isReturnErrorResponse ) {
+    std::chrono::milliseconds wait_step, size_t cntSteps,
+    [[maybe_unused]] bool isReturnErrorResponse ) {
     try {
         nlohmann::json jo = nlohmann::json::parse( strJsonIn );
         return call( jo, isAutoGenJsonID, edfs, wait_step, cntSteps, isReturnErrorResponse );

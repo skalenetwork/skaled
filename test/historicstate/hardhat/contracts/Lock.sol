@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-
-
-
-contract Lock is Initializable {
+contract Lock  {
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
@@ -15,7 +11,7 @@ contract Lock is Initializable {
     uint8 public decimals;
     bool private initialized;
 
-    uint constant ARRAY_SIZE = 1000;
+    uint constant ARRAY_SIZE = 10000;
     uint256[ARRAY_SIZE] balance;
     uint256 counter;
     mapping(uint256 => uint256) public writeMap;
@@ -26,12 +22,18 @@ contract Lock is Initializable {
     event Approval(address indexed owner, address indexed spender, uint value);
 
 
-    function transfer(address recipient, uint amount) external returns (bool) {
-        balanceOf[msg.sender] -= amount;
-        balanceOf[recipient] += amount;
-        emit Transfer(msg.sender, recipient, amount);
-        return true;
+    function writeValues() external {
+        for (uint256 i = 0; i < 10000; i++) {
+            // Code to be executed in each iteration
+            balance[i] = i;
+        }
+
     }
+
+    function  die(address payable recipient) external {
+        selfdestruct(recipient);
+    }
+
 
     function approve(address spender, uint amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;

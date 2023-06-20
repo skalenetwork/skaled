@@ -1,7 +1,12 @@
 #ifndef STATUSANDCONTROL_H
 #define STATUSANDCONTROL_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+
 #include <boost/filesystem.hpp>
+
+#pragma GCC diagnostic pop
 
 #include <array>
 #include <iostream>

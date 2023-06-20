@@ -46,6 +46,7 @@
 
 #include <libethereum/BlockDetails.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/StorageDestructionPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -65,6 +66,52 @@ using dev::eth::TransactionReceipt;
 #ifndef ETH_VMTRACE
 #define ETH_VMTRACE 0
 #endif
+
+State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
+    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
+    dev::s256 _contractStorageLimit )
+    : x_db_ptr( make_shared< boost::shared_mutex >() ),
+      m_storedVersion( make_shared< size_t >( 0 ) ),
+      m_currentVersion( *m_storedVersion ),
+      m_accountStartNonce( _accountStartNonce ),
+      m_initial_funds( _initialFunds ),
+      contractStorageLimit_( _contractStorageLimit )
+#ifdef HISTORIC_STATE
+      ,
+      m_historicState( _accountStartNonce,
+          dev::eth::HistoricState::openDB(
+              boost::filesystem::path( std::string( _dbPath.string() )
+                                           .append( "/" )
+                                           .append( dev::eth::HISTORIC_STATE_DIR ) ),
+              _genesis,
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ),
+          dev::eth::HistoricState::openDB(
+              boost::filesystem::path( std::string( _dbPath.string() )
+                                           .append( "/" )
+                                           .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
+              _genesis,
+              _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) )
+#endif
+{
+    m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
+        _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
+
+    auto state = createStateReadOnlyCopy();
+    totalStorageUsed_ = state.storageUsedTotal();
+#ifdef HISTORIC_STATE
+    m_historicState.setRootFromDB();
+#endif
+    m_fs_ptr = state.fs();
+    if ( _bs == BaseState::PreExisting ) {
+        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+    } else if ( _bs == BaseState::Empty ) {
+        // Initialise to the state entailed by the genesis block; this guarantees the trie is built
+        // correctly.
+        m_db_ptr->clearDB();
+    } else {
+        throw std::logic_error( "Not implemented" );
+    }
+}
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
@@ -178,9 +225,9 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
-        std::shared_ptr< db::DatabaseFace > db( new db::DBImpl( state_path ) );
+        m_orig_db.reset( new db::DBImpl( state_path ) );
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
-        bdb->open( db );
+        bdb->open( m_orig_db );
         assert( bdb->is_open() );
         clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( bdb ) );
@@ -213,6 +260,7 @@ State::State( const State& _s )
         std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
+    m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
     m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
@@ -234,6 +282,7 @@ State& State::operator=( const State& _s ) {
         std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
+    m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
     m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
@@ -346,7 +395,7 @@ std::pair< State::AddressMap, h256 > State::addresses(
     }
     addresses.erase( addresses.begin(), addresses.lower_bound( _begin ) );
     if ( addresses.size() > _maxResults ) {
-        assert( numeric_limits< long >::max() >= _maxResults );
+        assert( numeric_limits< long >::max() >= long( _maxResults ) );
         auto next_ptr = std::next( addresses.begin(), static_cast< long >( _maxResults ) );
         next = next_ptr->first;
         addresses.erase( next_ptr, addresses.end() );
@@ -460,7 +509,11 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                 if ( !account.isAlive() ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
-                    // TODO: remove account storage
+
+                    if ( StorageDestructionPatch::isEnabled() ) {
+                        clearStorage( address );
+                    }
+
                 } else {
                     RLPStream rlpStream( 4 );
 
@@ -605,8 +658,15 @@ void State::kill( Address _addr ) {
     // If the account is not in the db, nothing to kill.
 }
 
+
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    return storage_WITHOUT_LOCK( _contract );
+}
+
+
+std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
+    const Address& _contract ) const {
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion << endl;
@@ -628,6 +688,9 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
             }
         }
     }
+
+    cdebug << "Self-destruct cleared values:" << storage.size() << endl;
+
     return storage;
 }
 
@@ -680,8 +743,25 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
-    // TODO::review it |^
 }
+
+void State::clearStorageValue(
+    Address const& _contract, u256 const& _key, u256 const& _currentValue ) {
+    m_changeLog.emplace_back( _contract, _key, _currentValue );
+    m_cache[_contract].setStorage( _key, 0 );
+
+    int count;
+
+    if ( _currentValue == 0 ) {
+        count = 0;
+    } else {
+        count = -1;
+    }
+
+    storageUsage[_contract] += count * 32;
+    currentStorageUsed_ += count * 32;
+}
+
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
     if ( Account const* acc = account( _contract ) ) {
@@ -703,15 +783,10 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 }
 
 
-// Clear storage needs to be called when a new contract is
-// created for an address that included a different contract
-// that was destroyed using selfdestruct op code
-// The only way this can happen if one calls
-// CREATE2, self-destruct, and then CREATE2 again, which is
-// extremely rare and a bad security practice
-// Note that in Shanhai fork the selfdestruct op code will be removed
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
+
+    cdebug << "Self-destructing" << _contract;
 
     Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
@@ -720,16 +795,18 @@ void State::clearStorage( Address const& _contract ) {
         return;
     }
 
-    // TODO: This is extremely inefficient
-    for ( auto const& hashPairPair : storage( _contract ) ) {
+    // clearStorage is called from functions that already hold a read
+    // or write lock over the state Therefore, we can use
+    // storage_WITHOUT_LOCK() here
+    for ( auto const& hashPairPair : storage_WITHOUT_LOCK( _contract ) ) {
         auto const& key = hashPairPair.second.first;
-        setStorage( _contract, key, 0 );
+        auto const& value = hashPairPair.second.first;
+        clearStorageValue( _contract, key, value );
         acc->setStorageCache( key, 0 );
     }
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
-    // TODO Do we need to clear storageUsage[_contract] here?
 }
 
 bytes const& State::code( Address const& _addr ) const {

@@ -121,18 +121,18 @@ async function deployContractsProxy() {
 
     //const lockedAmount = hre.ethers.utils.parseEther("10");
 
-    console.log(`Testing deploy transfer`);
+    console.log(`Contract deploy`);
+
 
     const Lock = await hre.ethers.getContractFactory("Lock");
-    const lock = await hre.upgrades.deployProxy(Lock);
+    const lock = await Lock.deploy();
+
     lockContract = await lock.deployed();
 
     deployBn = await hre.ethers.provider.getBlockNumber();
 
-    console.log(`Lock deployed to ${lockContract.address} at block ${deployBn}`);
+    console.log(`Contract deployed to ${lockContract.address} at block ${deployBn}`);
 
-    previousBlock = await waitUntilNextBlock();
-    previousBlock = await waitUntilNextBlock();
 
 //   b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
   //  owner = await lockContract.owner({blockTag : previousBlock});
@@ -141,21 +141,23 @@ async function deployContractsProxy() {
  //   CHECK(b == INITIAL_MINT)
 
 
-    console.log(`Now testing transfer`);
+    console.log(`Now writing 10,000 values into the state`);
 
-    transferReceipt = await lockContract.transfer("0x690b9a9e9aa1c9db991c7721a92d351db4fac990", 0x02);
+    transferReceipt = await lockContract.writeValues();
     await transferReceipt.wait();
 
     previousBlock =  await waitUntilNextBlock();
 
-    owner = await lockContract.owner({blockTag : previousBlock});
-    console.log(`Contract owner is ${owner}`);
+    console.log(`Now testing self-destruct`);
 
-    b = await lockContract.balanceOf(OWNER_ADDRESS, {blockTag : previousBlock});
+    transferReceipt2 = await lockContract.die("0x690b9a9e9aa1c9db991c7721a92d351db4fac990");
+    await transferReceipt2.wait();
 
-    console.log(`Balance after transfer ${b}`);
+    console.log(`Successfully self destructed`);
 
-    CHECK(b  == INITIAL_MINT - 0x02)
+    previousBlock =  await waitUntilNextBlock();
+
+
     console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
 
 

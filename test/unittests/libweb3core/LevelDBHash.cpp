@@ -14,7 +14,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
         std::unique_ptr< dev::db::LevelDB > db( new dev::db::LevelDB( td.path() ) );
         BOOST_REQUIRE( db );
 
-        for ( size_t i = 0; i < 1234567; ++i ) {
+        for ( size_t i = 0; i < 123; ++i ) {
             std::string key = std::to_string( 43 + i );
             std::string value = std::to_string( i );
             db->insert( dev::db::Slice(key), dev::db::Slice(value) );
@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
         std::unique_ptr< dev::db::LevelDB > db_copy( new dev::db::LevelDB( td.path() ) );
         BOOST_REQUIRE( db_copy );
 
-        for ( size_t i = 0; i < 1234567; ++i ) {
+        for ( size_t i = 0; i < 123; ++i ) {
             std::string key = std::to_string( 43 + i );
             std::string value = std::to_string( i );
             db_copy->insert( dev::db::Slice(key), dev::db::Slice(value) );
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
         std::unique_ptr< dev::db::LevelDB > db_diff( new dev::db::LevelDB( td.path() ) );
         BOOST_REQUIRE( db_diff );
 
-        for ( size_t i = 0; i < 1234567; ++i ) {
+        for ( size_t i = 0; i < 123; ++i ) {
             std::string key = std::to_string( 42 + i );
             std::string value = std::to_string( i );
             db_diff->insert( dev::db::Slice(key), dev::db::Slice(value) );

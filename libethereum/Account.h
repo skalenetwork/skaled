@@ -40,18 +40,19 @@ namespace eth {
 
 class StorageRoot : public h256 {
 public:
+    StorageRoot() = default;
     StorageRoot( const u256& _value ) : h256( _value ) {}
-
     StorageRoot( const StorageRoot& _value ) : h256( _value ){};
+    StorageRoot& operator=( const StorageRoot& other ) = default;
 };
 
 class GlobalRoot : public h256 {
 public:
+    GlobalRoot() = default;
     GlobalRoot( const u256& _value ) : h256( _value ) {}
-
     GlobalRoot( const GlobalRoot& _value ) : h256( _value ){};
+    GlobalRoot& operator=( const GlobalRoot& other ) = default;
 };
-
 
 /**
  * Models the state of a single Ethereum account.
@@ -99,6 +100,8 @@ public:
 
     /// Construct a dead Account.
     Account() {}
+    Account( const Account& other ) = default;
+    Account& operator=( const Account& other ) = default;
 
     /// Construct an alive Account, with given endowment, for either a normal (non-contract) account
     /// or for a contract account in the conception phase, where the code is not yet known.
@@ -121,7 +124,6 @@ public:
           m_storageRoot( _contractRoot ) {
         assert( _contractRoot );
     }
-
 
     /// Kill this account. Useful for the suicide opcode. Following this call, isAlive() returns
     /// false.
@@ -196,7 +198,6 @@ public:
         m_storageRoot = StorageRoot( EmptyTrie );
         changed();
     }
-
 
     /// Set a key/value pair in the account's storage to a value that is already present inside the
     /// database.

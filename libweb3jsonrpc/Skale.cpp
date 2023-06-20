@@ -149,8 +149,6 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     // TODO check
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
-    if ( blockNumber == 0 )
-        throw std::runtime_error( "Snapshot for block 0 is absent" );
 
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 ) {
