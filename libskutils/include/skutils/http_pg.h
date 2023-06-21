@@ -3,6 +3,13 @@
 
 #include <atomic>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Waddress"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wattributes"
+
 #include <folly/Memory.h>
 #include <proxygen/httpserver/RequestHandler.h>
 
@@ -11,6 +18,8 @@
 #include <folly/portability/Unistd.h>
 #include <proxygen/httpserver/HTTPServer.h>
 #include <proxygen/httpserver/RequestHandlerFactory.h>
+
+#pragma GCC diagnostic pop
 
 //#include <nlohmann/json.hpp>
 #include <json.hpp>

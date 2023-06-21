@@ -18,7 +18,8 @@ public:
     virtual std::string lookup( dev::db::Slice _key ) const = 0;
     virtual bool exists( dev::db::Slice _key ) const = 0;
     virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const = 0;
-
+    virtual void forEachWithPrefix(
+        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const = 0;
     virtual ~db_operations_face() = default;
 };
 
@@ -69,6 +70,12 @@ public:
         m_db->forEach( f );
     }
 
+    virtual void forEachWithPrefix(
+        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
+        std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
+        m_db->forEachWithPrefix( _prefix, f );
+    }
+
     virtual ~batched_db();
 
 protected:
@@ -105,6 +112,8 @@ private:
         virtual std::string lookup( dev::db::Slice _key ) const;
         virtual bool exists( dev::db::Slice _key ) const;
         virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const;
+        virtual void forEachWithPrefix(
+            std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const;
 
     protected:
         virtual void recover() { /* nothing */

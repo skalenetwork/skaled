@@ -88,10 +88,20 @@ leveldb::ReadOptions LevelDB::defaultReadOptions() {
 }
 
 leveldb::WriteOptions LevelDB::defaultWriteOptions() {
-    return leveldb::WriteOptions();
+    leveldb::WriteOptions writeOptions = leveldb::WriteOptions();
+    writeOptions.sync = true;
+    return writeOptions;
 }
 
 leveldb::Options LevelDB::defaultDBOptions() {
+    leveldb::Options options;
+    options.create_if_missing = true;
+    options.max_open_files = c_maxOpenLeveldbFiles;
+    options.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
+    return options;
+}
+
+leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
     options.max_open_files = c_maxOpenLeveldbFiles;
@@ -103,13 +113,21 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
+      m_options( std::move( _dbOptions ) ),
       m_path( _path ) {
     auto db = static_cast< leveldb::DB* >( nullptr );
-    auto const status = leveldb::DB::Open( _dbOptions, _path.string(), &db );
+    auto const status = leveldb::DB::Open( m_options, _path.string(), &db );
     checkStatus( status, _path );
 
     assert( db );
     m_db.reset( db );
+}
+
+LevelDB::~LevelDB() {
+    if ( m_db )
+        m_db.reset();
+    if ( m_options.filter_policy )
+        delete m_options.filter_policy;
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
@@ -180,6 +198,26 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     }
 }
 
+
+void LevelDB::forEachWithPrefix(
+    std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
+    cnote << "Iterating over the LevelDB prefix: " << _prefix;
+    std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
+    if ( itr == nullptr ) {
+        BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
+    }
+    auto keepIterating = true;
+    auto prefixSlice = leveldb::Slice( _prefix );
+    for ( itr->Seek( prefixSlice );
+          keepIterating && itr->Valid() && itr->key().starts_with( prefixSlice ); itr->Next() ) {
+        auto const dbKey = itr->key();
+        auto const dbValue = itr->value();
+        Slice const key( dbKey.data(), dbKey.size() );
+        Slice const value( dbValue.data(), dbValue.size() );
+        keepIterating = f( key, value );
+    }
+}
+
 h256 LevelDB::hashBase() const {
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
@@ -227,9 +265,9 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     return hash;
 }
 
-// void LevelDB::doCompaction() const {
-//    m_db->CompactRange( NULL, NULL );
-//}
+void LevelDB::doCompaction() const {
+    m_db->CompactRange( nullptr, nullptr );
+}
 
 }  // namespace db
 }  // namespace dev

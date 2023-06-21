@@ -55,7 +55,6 @@ void initCPUUSage() {
 }
 
 double getCPUUsage() {
-    initCPUUSage();
     struct tms timeSample;
     clock_t now;
     double percent;

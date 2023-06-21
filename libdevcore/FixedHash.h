@@ -72,6 +72,8 @@ public:
     /// Construct an empty hash.
     FixedHash() { m_data.fill( 0 ); }
 
+    FixedHash( const FixedHash< N >& other ) = default;
+
     /// Construct from another hash, filling with zeroes or cropping as necessary.
     template < unsigned M >
     explicit FixedHash( FixedHash< M > const& _h, ConstructFromHashType _t = AlignLeft ) {
@@ -312,6 +314,8 @@ public:
     using ConstructFromStringType = typename FixedHash< T >::ConstructFromStringType;
     using ConstructFromPointerType = typename FixedHash< T >::ConstructFromPointerType;
     SecureFixedHash() = default;
+    SecureFixedHash( const SecureFixedHash< T >& other ) = default;
+
     explicit SecureFixedHash(
         bytes const& _b, ConstructFromHashType _t = FixedHash< T >::FailIfDifferent )
         : FixedHash< T >( _b, _t ) {}
@@ -391,6 +395,7 @@ public:
     using FixedHash< T >::operator>=;
     using FixedHash< T >::operator<=;
     using FixedHash< T >::operator>;
+
 
     // The obvious binary operators.
     SecureFixedHash& operator^=( FixedHash< T > const& _c ) {
