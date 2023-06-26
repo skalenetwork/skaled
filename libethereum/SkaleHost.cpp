@@ -813,6 +813,7 @@ void SkaleHost::startWorking() {
                 m_broadcastThread.join();
             }
             ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_termninated_by_signal );
+            return;
         }
 
         // comment out as this hack is in consensus now
