@@ -1631,9 +1631,11 @@ int main( int argc, char** argv ) try {
             if ( !downloadGenesisForSyncNode )
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, true );
-            else
+            else {
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, false );
+                snapshotManager->restoreSnapshot( 0 );
+            }
 
             // if we dont have 0 snapshot yet
             try {
