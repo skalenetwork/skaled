@@ -503,6 +503,8 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                 voteForSnapshotHash( snapshotHashAgent, blockNumber );
 
             if ( listUrlsToDownload.empty() ) {
+                if ( !isRegularSnapshot )
+                    return;
                 clog( VerbosityWarning, "downloadAndProccessSnapshot" )
                     << cc::warn( "No nodes to download from - will skip " + std::to_string( idx ) );
                 continue;
