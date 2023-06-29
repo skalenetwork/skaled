@@ -503,6 +503,8 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                 voteForSnapshotHash( snapshotHashAgent, blockNumber );
 
             if ( listUrlsToDownload.empty() ) {
+                if ( !isRegularSnapshot )
+                    return;
                 clog( VerbosityWarning, "downloadAndProccessSnapshot" )
                     << cc::warn( "No nodes to download from - will skip " + std::to_string( idx ) );
                 continue;
@@ -1629,9 +1631,11 @@ int main( int argc, char** argv ) try {
             if ( !downloadGenesisForSyncNode )
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, true );
-            else
+            else {
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, false );
+                snapshotManager->restoreSnapshot( 0 );
+            }
 
             // if we dont have 0 snapshot yet
             try {
