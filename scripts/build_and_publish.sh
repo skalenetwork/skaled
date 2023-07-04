@@ -12,6 +12,14 @@ IMAGE_NAME=$REPO_NAME:$VERSION
 # 3.17.0-develop.22 -> 3.17.0-develop
 # 3.17.0-develop.22-hostoric -> 3.17.0-develop
 LABEL="${VERSION%.*}"
+
+# 3.17.0 -> 3.17.0
+# 3.17.0-historic -> 3.17.0
+if [[ "$BRANCH" == "stable" ]]
+then
+    LABEL=${VERSION%-historic}
+fi
+
 LATEST_IMAGE_NAME=$REPO_NAME:$LABEL-latest
 
 if [[ $VERSION == *"historic" ]]
