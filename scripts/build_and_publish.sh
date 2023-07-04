@@ -9,14 +9,8 @@ NAME=schain
 REPO_NAME=skalenetwork/$NAME
 IMAGE_NAME=$REPO_NAME:$VERSION
 
-LABEL="develop"
-if [ $BRANCH = "stable" ]
-then
-    LABEL="stable"
-elif [ $BRANCH = "beta" ]
-then
-    LABEL="beta"
-fi
+LABEL="$BRANCH"
+
 LATEST_IMAGE_NAME=$REPO_NAME:$LABEL-latest
 
 if [[ $VERSION == *"historic" ]]
