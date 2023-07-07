@@ -572,7 +572,7 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
     }
 
 
-    // Step 2. We got cache miss. Do the work and put the result into the cach
+    // Step 2. We got cache miss. Do the work and put the result into the cache
     if ( !client()->isKnownTransaction( h ) ) {
         // transaction is not yet in the blockchain. Put null as receipt
         // into the cache
