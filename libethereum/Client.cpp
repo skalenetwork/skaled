@@ -308,6 +308,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
         initIMABLSPublicKey();
 
+    // init snapshots for not newly created chains
     if ( number() ) {
         m_snapshotAgent->init( number(), blockInfo( hashFromNumber( 1 ) ).timestamp() );
         m_snapshotAgentInited = true;
@@ -529,6 +530,7 @@ size_t Client::importTransactionsAsBlock(
 
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
+    // pass block number 0 as for bigger BN it is initialized in init()
     if ( !m_snapshotAgentInited ) {
         m_snapshotAgent->init( 0, _timestamp );
         m_snapshotAgentInited = true;
