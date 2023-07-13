@@ -1611,11 +1611,11 @@ std::string generate_stack_trace( int nSkip, bool isExtended ) {
                 if ( status == 0 ) {
                     funcname = ret;  // use possibly realloc()-ed string
                     ss << skutils::tools::format(
-                        "  %s : %s+%s\n", walk_sym, funcname, begin_offset );
+                        "  %s : %s+%s [%x]\n", walk_sym, funcname, begin_offset, callstack_data[i] );
                 } else {
                     // demangling failed, output function name as a C function with no arguments
                     ss << skutils::tools::format(
-                        "  %s : %s()+%s\n", walk_sym, begin_name, begin_offset );
+                        "  %s : %s()+%s [%x]\n", walk_sym, begin_name, begin_offset, callstack_data[i] );
                 }
                 free( funcname );
                 bLinePassed = true;
