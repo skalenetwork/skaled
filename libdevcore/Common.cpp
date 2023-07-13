@@ -81,7 +81,7 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
         std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
         std::cout.flush();
 
-        break;
+        _exit( nSignalNo + 128 );
     }  // switch
 
     // try to exit nicely - then abort
