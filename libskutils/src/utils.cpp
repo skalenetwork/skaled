@@ -1586,6 +1586,7 @@ std::string generate_stack_trace( int nSkip, bool isExtended ) {
         bool bLinePassed = false;
         if ( isExtended ) {
             char *begin_name = nullptr, *begin_offset = nullptr, *end_offset = nullptr;
+            char *begin_addr = nullptr, *end_addr = nullptr;
             // find parentheses and +address offset surrounding the mangled name:
             // ./module(function+0x15c) [0x8048a6d]
             for ( char* p = walk_sym; *p; ++p ) {
@@ -1595,13 +1596,22 @@ std::string generate_stack_trace( int nSkip, bool isExtended ) {
                     begin_offset = p;
                 else if ( *p == ')' && begin_offset ) {
                     end_offset = p;
-                    break;
-                }
+                } else if ( *p == '[' )
+                    begin_addr = p + 1;
+                else if ( *p == ']' )
+                    end_addr = p;
             }
             if ( begin_name && begin_offset && end_offset && begin_name < begin_offset ) {
                 *begin_name++ = '\0';
                 *begin_offset++ = '\0';
                 *end_offset = '\0';
+
+                std::string addr;
+                if ( begin_addr && end_addr && end_addr > begin_addr ) {
+                    *end_addr = '\0';
+                    addr = begin_addr;
+                }
+
                 // mangled name is now in [begin_name, begin_offset) and caller offset in
                 // [begin_offset, end_offset). now apply __cxa_demangle():
                 int status = -1;
@@ -1611,11 +1621,11 @@ std::string generate_stack_trace( int nSkip, bool isExtended ) {
                 if ( status == 0 ) {
                     funcname = ret;  // use possibly realloc()-ed string
                     ss << skutils::tools::format(
-                        "  %s : %s+%s [%x]\n", walk_sym, funcname, begin_offset, callstack_data[i] );
+                        "  %s : %s+%s [%s]\n", walk_sym, funcname, begin_offset, addr.c_str() );
                 } else {
                     // demangling failed, output function name as a C function with no arguments
                     ss << skutils::tools::format(
-                        "  %s : %s()+%s [%x]\n", walk_sym, begin_name, begin_offset, callstack_data[i] );
+                        "  %s : %s()+%s [%s]\n", walk_sym, begin_name, begin_offset, addr.c_str() );
                 }
                 free( funcname );
                 bLinePassed = true;
@@ -1630,6 +1640,16 @@ std::string generate_stack_trace( int nSkip, bool isExtended ) {
     return ss.str();
 }
 
+std::string read_maps() {
+    std::ostringstream ss;
+    FILE* fp = fopen( "/proc/self/maps", "rb" );
+    int c;
+    while ( ( c = fgetc( fp ) ) > 0 ) {
+        ss << ( char ) c;
+    }
+    fclose( fp );
+    return ss.str();
+}
 
 };  // namespace signal
 
