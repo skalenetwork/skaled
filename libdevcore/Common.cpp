@@ -80,6 +80,8 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
         // abort signals
         std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
         std::cout.flush();
+        std::cout << skutils::signal::read_maps() << "\n";
+        std::cout.flush();
 
         _exit( nSignalNo + 128 );
     }  // switch

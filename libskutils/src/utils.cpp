@@ -1574,62 +1574,86 @@ bool init_common_signal_handling( fn_signal_handler_t fnSignalHander ) {
 std::string generate_stack_trace( int nSkip, bool isExtended ) {
     if ( nSkip < 0 )
         nSkip = 0;
-    void* callstack_data[256];  // 128
-    const int nCountOfStackFramesRequested = sizeof( callstack_data ) / sizeof( callstack_data[0] );
-    int nStackFramesFrameCount = backtrace( callstack_data, nCountOfStackFramesRequested );
+    void* callstackData[256];  // 128
+    const int nCountOfStackFramesRequested = sizeof( callstackData ) / sizeof( callstackData[0] );
+    int nStackFramesFrameCount = backtrace( callstackData, nCountOfStackFramesRequested );
     if ( nStackFramesFrameCount <= 0 )
         return std::string( "[empty(or corrupt) stack frame]\n" );
-    char** traced_symbols = backtrace_symbols( callstack_data, nStackFramesFrameCount );
+
+    char** tracedSymbols = backtrace_symbols( callstackData, nStackFramesFrameCount );
+    if ( tracedSymbols == nullptr )
+        return "";
+
     std::ostringstream ss;
     for ( int i = nSkip; i < nStackFramesFrameCount; ++i ) {
-        char* walk_sym = traced_symbols[i];
+        char* walkSym = tracedSymbols[i];
         bool bLinePassed = false;
         if ( isExtended ) {
-            char *begin_name = nullptr, *begin_offset = nullptr, *end_offset = nullptr;
+            char *beginName = nullptr, *beginOffset = nullptr, *endOffset = nullptr;
+            char *beginAddr = nullptr, *endAddr = nullptr;
             // find parentheses and +address offset surrounding the mangled name:
             // ./module(function+0x15c) [0x8048a6d]
-            for ( char* p = walk_sym; *p; ++p ) {
+            for ( char* p = walkSym; *p; ++p ) {
                 if ( *p == '(' )
-                    begin_name = p;
+                    beginName = p;
                 else if ( *p == '+' )
-                    begin_offset = p;
-                else if ( *p == ')' && begin_offset ) {
-                    end_offset = p;
-                    break;
-                }
+                    beginOffset = p;
+                else if ( *p == ')' && beginOffset ) {
+                    endOffset = p;
+                } else if ( *p == '[' )
+                    beginAddr = p + 1;
+                else if ( *p == ']' )
+                    endAddr = p;
             }
-            if ( begin_name && begin_offset && end_offset && begin_name < begin_offset ) {
-                *begin_name++ = '\0';
-                *begin_offset++ = '\0';
-                *end_offset = '\0';
+            if ( beginName && beginOffset && endOffset && beginName < beginOffset ) {
+                *beginName++ = '\0';
+                *beginOffset++ = '\0';
+                *endOffset = '\0';
+
+                std::string addr;
+                if ( beginAddr && endAddr && endAddr > beginAddr ) {
+                    *endAddr = '\0';
+                    addr = beginAddr;
+                }
+
                 // mangled name is now in [begin_name, begin_offset) and caller offset in
                 // [begin_offset, end_offset). now apply __cxa_demangle():
                 int status = -1;
-                size_t funcnamesize = 512;  // 256
-                char* funcname = ( char* ) calloc( 1, funcnamesize );
-                char* ret = abi::__cxa_demangle( begin_name, funcname, &funcnamesize, &status );
+                char* funcname = abi::__cxa_demangle( beginName, nullptr, nullptr, &status );
                 if ( status == 0 ) {
-                    funcname = ret;  // use possibly realloc()-ed string
                     ss << skutils::tools::format(
-                        "  %s : %s+%s [%x]\n", walk_sym, funcname, begin_offset, callstack_data[i] );
+                        "  %s : %s+%s [%s]\n", walkSym, funcname, beginOffset, addr.c_str() );
                 } else {
                     // demangling failed, output function name as a C function with no arguments
                     ss << skutils::tools::format(
-                        "  %s : %s()+%s [%x]\n", walk_sym, begin_name, begin_offset, callstack_data[i] );
+                        "  %s : %s()+%s [%s]\n", walkSym, beginName, beginOffset, addr.c_str() );
                 }
                 free( funcname );
                 bLinePassed = true;
             }
         }
         if ( !bLinePassed )
-            ss << walk_sym << "\n";
+            ss << walkSym << "\n";
     }
-    free( traced_symbols );
+    free( tracedSymbols );
     if ( nStackFramesFrameCount == nCountOfStackFramesRequested )
         ss << "[truncated]\n";
     return ss.str();
 }
 
+std::string read_maps() {
+    FILE* fp = fopen( "/proc/self/maps", "rb" );
+    if ( fp == nullptr )
+        return "";
+
+    std::ostringstream ss;
+    int c;
+    while ( ( c = fgetc( fp ) ) > 0 ) {
+        ss << ( char ) c;
+    }
+    fclose( fp );
+    return ss.str();
+}
 
 };  // namespace signal
 
