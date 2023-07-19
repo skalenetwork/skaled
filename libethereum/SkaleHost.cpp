@@ -766,6 +766,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     logState();
 
+    clog( VerbosityDebug, "skale-host" )
+        << "TQBYTES:CTQ:" << m_tq.status().currentBytes << ":FTQ:" << m_tq.status().futureBytes
+        << ":TQSIZE:CTQ:" << m_tq.status().current << ":FTQ:" << m_tq.status().future;
+
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();

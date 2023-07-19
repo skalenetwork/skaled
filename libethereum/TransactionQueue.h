@@ -150,6 +150,8 @@ public:
         size_t future;
         size_t unverified;
         size_t dropped;
+        size_t currentBytes;
+        size_t futureBytes;
     };
     /// @returns the status of the transaction queue.
     Status status() const {
@@ -159,6 +161,8 @@ public:
         ret.dropped = m_dropped.size();
         ret.current = m_currentByHash.size();
         ret.future = m_futureSize;
+        ret.currentBytes = m_currentSizeBytes;
+        ret.futureBytes = m_futureSizeBytes;
         return ret;
     }
 
