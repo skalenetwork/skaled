@@ -49,9 +49,6 @@ set(sources
     SkaleStatsFace.h
     SkaleStatsSite.h
 
-    SkaleNetworkBrowser.h
-    SkaleNetworkBrowser.cpp
-
     rapidjson_handlers.cpp
 )
 
