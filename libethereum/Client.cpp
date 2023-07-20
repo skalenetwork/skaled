@@ -308,6 +308,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
         initIMABLSPublicKey();
 
+    // init snapshots for not newly created chains
+    if ( number() ) {
+        m_snapshotAgent->init( number(), blockInfo( hashFromNumber( 1 ) ).timestamp() );
+        m_snapshotAgentInited = true;
+    }
+
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
 
@@ -524,9 +530,9 @@ size_t Client::importTransactionsAsBlock(
 
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
+    // pass block number 0 as for bigger BN it is initialized in init()
     if ( !m_snapshotAgentInited ) {
-        m_snapshotAgent->init(
-            number(), number() > 0 ? blockInfo( hashFromNumber( 1 ) ).timestamp() : _timestamp );
+        m_snapshotAgent->init( 0, _timestamp );
         m_snapshotAgentInited = true;
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );

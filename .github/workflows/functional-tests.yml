@@ -28,7 +28,7 @@
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
       with:
-        node-version: 14
+        node-version: 16
     - name: Install packages
       run: |
         sudo apt-get update
@@ -37,7 +37,7 @@
         sudo npm install -g yarn
         sudo chown -R runner:runner ~/.config   # HACK
         
-    - uses: docker-practice/actions-setup-docker@0.0.1
+    - uses: docker-practice/actions-setup-docker@v1
 
     - name: Prepare SGX keys/certs
       run: |
