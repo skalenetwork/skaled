@@ -28,7 +28,7 @@
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
       with:
-        node-version: 14
+        node-version: 16
     - name: Install packages
       run: |
         sudo apt-get update
