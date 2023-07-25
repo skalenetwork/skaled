@@ -588,6 +588,7 @@ typedef void ( *fn_signal_handler_t )( int nSignalNo );
 extern bool init_common_signal_handling( fn_signal_handler_t fnSignalHander );
 
 extern std::string generate_stack_trace( int nSkip = 1, bool isExtended = true );
+extern std::string read_maps();
 
 };  // namespace signal
 

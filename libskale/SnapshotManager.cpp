@@ -446,7 +446,7 @@ void SnapshotManager::computeDatabaseHash(
     }
 
     std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
-        dev::db::LevelDB::defaultReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
+        dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
         dev::db::LevelDB::defaultSnapshotDBOptions() ) );
     dev::h256 hash_volume = m_db->hashBase();
     cnote << _dbDir << " hash is: " << hash_volume << std::endl;

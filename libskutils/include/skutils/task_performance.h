@@ -196,7 +196,8 @@ class tracker : public skutils::ref_retain_release,
     typedef std::map< string, queue_ptr > map_type;
     mutable map_type map_;
 
-    atomic_bool isEnabled_ = true;
+    // make sure that performance tracking is disabled by default
+    atomic_bool isEnabled_ = false;
     atomic_index_type safeMaxItemCount_ = 10 * 1000 * 1000;
     atomic_index_type sessionMaxItemCount_ = 0;  // zero means use safeMaxItemCount_
     string strFirstEncounteredStopReason_;
