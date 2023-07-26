@@ -100,9 +100,6 @@ public:
     virtual Json::Value skale_nodesRpcInfo() override;
     virtual Json::Value skale_imaInfo() override;
 
-    virtual Json::Value skale_browseEntireNetwork( const Json::Value& request ) override;
-    virtual Json::Value skale_cachedEntireNetwork( const Json::Value& request ) override;
-
 protected:
     eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
