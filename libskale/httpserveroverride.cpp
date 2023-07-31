@@ -923,7 +923,7 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             size_t nRequestSize = strRequest.size();
             //
             skutils::task::performance::action a(
-                strPerformanceQueueName, strPerformanceActionName, joRequest );
+                strPerformanceQueueName, strPerformanceActionName );
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
                 clog( pSO->methodTraceVerbosity( strMethod ),
                     cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -2452,8 +2452,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             skutils::tools::format( "rpc/%s/%zu", strProtocol.c_str(), nServerIndex );
         std::string strPerformanceActionName = skutils::tools::format(
             "%s task %zu, %s", strProtocol.c_str(), nTaskNumberCall_++, strMethod.c_str() );
-        skutils::task::performance::action a(
-            strPerformanceQueueName, strPerformanceActionName, joRequest );
+        skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );
         //
         skutils::stats::time_tracker::element_ptr_t rttElement;
         rttElement.emplace( "RPC", strProtocol.c_str(), strMethod.c_str(), nServerIndex, ipVer );
