@@ -1600,11 +1600,13 @@ int main( int argc, char** argv ) try {
     }
 
     bool downloadGenesisForSyncNode = false;
-    if ( chainParams.nodeInfo.syncNode ) {
+    if ( chainParams.nodeInfo.syncNode || chainParams.nodeInfo.archiveMode ) {
         auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
-            downloadSnapshotFlag = true;
-            if ( chainParams.nodeInfo.syncFromCatchup ) {
+            if ( !chainParams.nodeInfo.syncFromCatchup ) {
+                downloadSnapshotFlag = true;
+            } else {
+                downloadSnapshotFlag = true;
                 downloadGenesisForSyncNode = true;
             }
         }
@@ -1632,9 +1634,14 @@ int main( int argc, char** argv ) try {
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, true );
             else {
-                downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
-                    ipToDownloadSnapshotFrom, false );
-                snapshotManager->restoreSnapshot( 0 );
+                try {
+                    downloadAndProccessSnapshot( snapshotManager, chainParams,
+                        requireSnapshotMajority, ipToDownloadSnapshotFrom, false );
+                    snapshotManager->restoreSnapshot( 0 );
+                } catch ( SnapshotManager::SnapshotAbsent& ) {
+                    clog( VerbosityWarning, "main" )
+                        << cc::warn( "Snapshot for 0 block is not found" );
+                }
             }
 
             // if we dont have 0 snapshot yet
