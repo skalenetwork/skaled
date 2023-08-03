@@ -1263,7 +1263,7 @@ void BlockChain::garbageCollect( bool _force ) {
 
     m_lastCollection = chrono::system_clock::now();
 
-    {
+    while ( m_lastStats.memTotal() >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
             m_inUse.erase( id );
@@ -1310,6 +1310,7 @@ void BlockChain::garbageCollect( bool _force ) {
         }
         m_cacheUsage.pop_back();
         m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
+        updateStats();
     }
 
 
