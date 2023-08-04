@@ -208,6 +208,24 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
         }
     }
 
+    // HACK For IS-348
+    auto saved_txns = topTransactions;
+    std::stable_sort( topTransactions.begin(), topTransactions.end(),
+        TransactionQueue::PriorityCompare{ *this } );
+    bool found_difference = false;
+    for ( size_t i = 0; i < topTransactions.size(); ++i ) {
+        if ( topTransactions[i].sha3() != saved_txns[i].sha3() )
+            found_difference = true;
+    }
+    if ( found_difference ) {
+        clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
+        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
+        for ( size_t i = 0; i < topTransactions.size(); ++i ) {
+            clog( VerbosityTrace, "skale-host" )
+                << i << " " << saved_txns[i].sha3() << " " << topTransactions[i].sha3();
+        }
+    }
+
     return topTransactions;
 }
 
