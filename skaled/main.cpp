@@ -1600,13 +1600,11 @@ int main( int argc, char** argv ) try {
     }
 
     bool downloadGenesisForSyncNode = false;
-    if ( chainParams.nodeInfo.syncNode || chainParams.nodeInfo.archiveMode ) {
+    if ( chainParams.nodeInfo.syncNode ) {
         auto bc = BlockChain( chainParams, getDataDir() );
         if ( bc.number() == 0 ) {
-            if ( !chainParams.nodeInfo.syncFromCatchup ) {
-                downloadSnapshotFlag = true;
-            } else {
-                downloadSnapshotFlag = true;
+            downloadSnapshotFlag = true;
+            if ( chainParams.nodeInfo.syncFromCatchup ) {
                 downloadGenesisForSyncNode = true;
             }
         }
