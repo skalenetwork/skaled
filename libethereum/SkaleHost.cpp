@@ -847,8 +847,12 @@ void SkaleHost::stopWorking() {
         // requested exit
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
-        clog( VerbosityInfo, "skale-host" )
-            << cc::info( "Exit requested with signal " ) << signal << " and exit code " << exitCode;
+        if ( signal > 0 )
+            clog( VerbosityInfo, "skale-host" ) << cc::info( "Exit requested with signal " )
+                                                << signal << " and exit code " << exitCode;
+        else
+            clog( VerbosityInfo, "skale-host" )
+                << cc::info( "Exit requested internally with exit code " ) << exitCode;
     } else {
         clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
     }
