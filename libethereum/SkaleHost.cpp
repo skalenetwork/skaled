@@ -245,7 +245,7 @@ void ConsensusExtImpl::createBlock(
 }
 
 void ConsensusExtImpl::terminateApplication() {
-    dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
+    dev::ExitHandler::exitHandler( -1, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
@@ -622,8 +622,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
-                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
-                _exit( int( ExitHandler::ec_state_root_mismatch ) );
+                m_ignoreNewBlocks = true;
+                m_consensus->exitGracefully();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
             }
         }
 
@@ -758,7 +759,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             m_instanceMonitor->prepareRotation();
             m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
-            ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
         }
     }
@@ -799,7 +800,7 @@ void SkaleHost::startWorking() {
             if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
                 m_broadcastThread.join();
             }
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_termninated_by_signal );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
 

@@ -2762,7 +2762,7 @@ int main( int argc, char** argv ) try {
             << cc::warn( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
         dev::rpc::Skale::onShutdownInvoke(
-            []() { ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_web3_request ); } );
+            []() { ExitHandler::exitHandler( -1, ExitHandler::ec_web3_request ); } );
         clog( VerbosityWarning, "main" )
             << cc::warn( "Done, programmatic shutdown via Web3 is enabled" );
     } else {
