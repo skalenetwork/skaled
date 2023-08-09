@@ -183,7 +183,7 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
     unsigned _limit, int _maxCategory, int _setCategory ) {
     MICROPROFILE_SCOPEI( "TransactionQueue", "topTransactions_WITH_LOCK_cat", MP_PAPAYAWHIP );
 
-    Transactions topTransactions;
+    Transactions top_transactions;
     std::vector< PriorityQueue::node_type > found;
 
     VerifiedTransaction dummy = VerifiedTransaction( Transaction() );
@@ -192,9 +192,9 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
     PriorityQueue::iterator my_begin = m_current.lower_bound( dummy );
 
     for ( PriorityQueue::iterator transaction_ptr = my_begin;
-          topTransactions.size() < _limit && transaction_ptr != m_current.end();
+          top_transactions.size() < _limit && transaction_ptr != m_current.end();
           ++transaction_ptr ) {
-        topTransactions.push_back( transaction_ptr->transaction );
+        top_transactions.push_back( transaction_ptr->transaction );
         if ( _setCategory >= 0 ) {
             found.push_back( m_current.extract( transaction_ptr ) );
         }
@@ -202,13 +202,32 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
 
     // set all at once
     if ( _setCategory >= 0 ) {
-        for ( PriorityQueue::node_type& queueNode : found ) {
-            queueNode.value().category = _setCategory;
-            m_current.insert( std::move( queueNode ) );
+        for ( PriorityQueue::node_type& queue_node : found ) {
+            queue_node.value().category = _setCategory;
+            m_current.insert( std::move( queue_node ) );
         }
     }
 
-    return topTransactions;
+    // HACK For IS-348
+    auto saved_txns = top_transactions;
+    std::stable_sort( top_transactions.begin(), top_transactions.end(),
+        TransactionQueue::PriorityCompare{ *this } );
+    bool found_difference = false;
+    for ( size_t i = 0; i < top_transactions.size(); ++i ) {
+        if ( top_transactions[i].sha3() != saved_txns[i].sha3() )
+            found_difference = true;
+    }
+    if ( found_difference ) {
+        clog( VerbosityError, "skale-host" ) << "IS-348 bug detected. Wrong transaction order in "
+                                                "block proposal was fixed by workaround :(";
+        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
+        for ( size_t i = 0; i < top_transactions.size(); ++i ) {
+            clog( VerbosityTrace, "skale-host" )
+                << i << " " << saved_txns[i].sha3() << " " << top_transactions[i].sha3();
+        }
+    }
+
+    return top_transactions;
 }
 
 const h256Hash TransactionQueue::knownTransactions() const {
