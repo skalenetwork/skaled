@@ -262,6 +262,10 @@ ChainParams ChainParams::loadConfig(
                 sChainObj.at( "storageDestructionPatchTimestamp" ).get_int64() :
                 0;
 
+        s.powCheckPatchTimestamp = sChainObj.count( "powCheckPatchTimestamp" ) ?
+                                       sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
+                                       0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {

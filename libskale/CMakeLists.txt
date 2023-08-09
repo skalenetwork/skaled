@@ -13,12 +13,13 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     ContractStorageLimitPatch.cpp
-	ContractStorageZeroValuePatch.cpp
-	VerifyDaSigsPatch.cpp
+    ContractStorageZeroValuePatch.cpp
+    VerifyDaSigsPatch.cpp
     AmsterdamFixPatch.cpp
     RevertableFSPatch.cpp
     OverlayFS.cpp
     StorageDestructionPatch.cpp
+    POWCheckPatch.cpp
 )
 
 set(headers
@@ -36,6 +37,7 @@ set(headers
     ContractStorageLimitPatch.h
     AmsterdamFixPatch.h
     RevertableFSPatch.h
+    POWCheckPatch.h
     OverlayFS.h
 )
 
