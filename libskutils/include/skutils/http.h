@@ -729,7 +729,7 @@ inline void stream::write_format( const char* fmt, const Args&... args ) {
 
 struct result_of_http_request {
     bool isBinary_ = false;
-    nlohmann::json joOut_;
+    std::string strOut_;
     std::vector< uint8_t > vecBytes_;
 };  /// struct result_of_http_request
 

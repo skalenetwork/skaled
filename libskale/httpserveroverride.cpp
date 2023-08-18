@@ -951,14 +951,14 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                     handler->HandleRequest( strRequest, strResponse );
                 }
 
-                nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+                // nlohmann::json joResponse = nlohmann::json::parse( strResponse );
                 stats::register_stats_answer(
                     pThis->getRelay().nfoGetSchemeUC().c_str(), "messages", strResponse.size() );
-                stats::register_stats_answer(
-                    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
-                    joRequest, joResponse );
-                stats::register_stats_answer( "RPC", joRequest, joResponse );
-                a.set_json_out( joResponse );
+                // stats::register_stats_answer(
+                //    ( std::string( "RPC/" ) + pThis->getRelay().nfoGetSchemeUC() ).c_str(),
+                //    joRequest, joResponse );
+                // stats::register_stats_answer( "RPC", joRequest, joResponse );
+                // a.set_json_out( joResponse );
                 bPassed = true;
             } catch ( const std::exception& ex ) {
                 rttElement->setError();
@@ -2494,16 +2494,16 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 handler->HandleRequest( strBody.c_str(), strResponse );
             }
             //
-            stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
-            nlohmann::json joResponse = nlohmann::json::parse( strResponse );
-            stats::register_stats_answer( ( "RPC/" + strProtocol ).c_str(), joRequest, joResponse );
-            stats::register_stats_answer( "RPC", joRequest, joResponse );
+            // stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
+            // nlohmann::json joResponse = nlohmann::json::parse( strResponse );
+            // stats::register_stats_answer( ( "RPC/" + strProtocol ).c_str(), joRequest, joResponse
+            // ); stats::register_stats_answer( "RPC", joRequest, joResponse );
             //
             if ( !isBatch ) {
                 rslt.isBinary_ = false;
-                rslt.joOut_ = nlohmann::json::parse( strResponse );
+                rslt.strOut_ = strResponse;
             }
-            a.set_json_out( joResponse );
+            // a.set_json_out( joResponse );
             bPassed = true;
         } catch ( const std::exception& ex ) {
             rttElement->setError();
@@ -2523,7 +2523,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             }
             if ( !isBatch ) {
                 rslt.isBinary_ = false;
-                rslt.joOut_ = joErrorResponce;
+                rslt.strOut_ = joErrorResponce.dump();
             }
             a.set_json_err( joErrorResponce );
         } catch ( ... ) {
@@ -2545,7 +2545,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             }
             if ( !isBatch ) {
                 rslt.isBinary_ = false;
-                rslt.joOut_ = joErrorResponce;
+                rslt.strOut_ = joErrorResponce;
             }
             a.set_json_err( joErrorResponce );
         }
@@ -2558,7 +2558,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             jarrBatchAnswer.push_back( joAnswerPart );
         } else {
             rslt.isBinary_ = false;
-            rslt.joOut_ = nlohmann::json::parse( strResponse );
+            rslt.strOut_ = strResponse;
         }
         if ( !bPassed )
             stats::register_stats_answer( strProtocol.c_str(), "POST", strResponse.size() );
@@ -2570,7 +2570,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
     }  // for( const nlohmann::json & joRequest : jarrRequest )
     if ( isBatch ) {
         rslt.isBinary_ = false;  // batch request can be only text/JSON
-        rslt.joOut_ = jarrBatchAnswer;
+        rslt.strOut_ = jarrBatchAnswer.dump();
     }
     return rslt;
 }
@@ -3908,7 +3908,7 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
     nlohmann::json joResponseObj = nlohmann::json::parse( strResponseCopy );
     nlohmann::json objRequest = nlohmann::json::parse( strRequest );
     if ( handleHttpSpecificRequest( strOrigin, esm, objRequest, joResponseObj ) ) {
-        strResponse = joResponseObj.dump();
+        strResponse = strResponseCopy;
         return true;
     }
     if ( !handleProtocolSpecificRequest( strOrigin, joRequest, joResponse ) ) {

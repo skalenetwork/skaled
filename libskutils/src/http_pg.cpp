@@ -174,23 +174,25 @@ void request_site::onEOM() noexcept {
                         size_t( rslt.vecBytes_.size() ) ) +
                     "\n" );
         else
-            pg_log( strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
+            pg_log(
+                strLogPrefix_ + cc::debug( "got answer JSON " ) + cc::j( rslt.strOut_ ) + "\n" );
     } catch ( const std::exception& ex ) {
         pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strBody_ ) +
                 cc::error( ", error info: " ) + cc::warn( ex.what() ) + "\n" );
         rslt.isBinary_ = false;
-        rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID );
+        rslt.strOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID ).dump();
         pg_log(
-            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
+            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.strOut_ ) + "\n" );
     } catch ( ... ) {
         pg_log( strLogPrefix_ + cc::error( "problem with body " ) + cc::warn( strBody_ ) +
                 cc::error( ", error info: " ) + cc::warn( "unknown exception in HTTP handler" ) +
                 "\n" );
         rslt.isBinary_ = false;
-        rslt.joOut_ = server_side_request_handler::json_from_error_text(
-            "unknown exception in HTTP handler", joID );
+        rslt.strOut_ = server_side_request_handler::json_from_error_text(
+            "unknown exception in HTTP handler", joID )
+                           .dump();
         pg_log(
-            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.joOut_ ) + "\n" );
+            strLogPrefix_ + cc::error( "got error answer JSON " ) + cc::j( rslt.strOut_ ) + "\n" );
     }
     proxygen::ResponseBuilder bldr( downstream_ );
     bldr.status( 200, "OK" );
@@ -201,9 +203,8 @@ void request_site::onEOM() noexcept {
         std::string buffer( rslt.vecBytes_.begin(), rslt.vecBytes_.end() );
         bldr.body( buffer );
     } else {
-        std::string strOut = rslt.joOut_.dump();
-        bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
-        bldr.body( strOut );
+        bldr.header( "content-length", skutils::tools::format( "%zu", rslt.strOut_.size() ) );
+        bldr.body( rslt.strOut_ );
     }
     bldr.sendWithEOM();
 }
