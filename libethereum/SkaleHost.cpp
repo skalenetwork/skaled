@@ -552,6 +552,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
+    sleep( 3 );
     //
     boost::chrono::high_resolution_clock::time_point skaledTimeStart;
     skaledTimeStart = boost::chrono::high_resolution_clock::now();

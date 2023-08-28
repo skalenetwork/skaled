@@ -98,7 +98,7 @@ typedef int socket_t;
 // above: multiplier 10 makes about 1 second(for 100 milliseconds of 2nd timeout), 30 is 30 seconds
 // appripriately
 
-#define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ ( 16 )
+#define __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__ ( 1 )
 
 #define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__ ( 60 * 1000 )
 

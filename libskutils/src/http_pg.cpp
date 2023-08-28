@@ -68,6 +68,10 @@ void request_sink::OnRecordRequestCountIncrement() {
     ++reqCount_;
 }
 
+void request_sink::OnRecordRequestCountDecrement() {
+    --reqCount_;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -121,6 +125,7 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noe
             .header(
                 "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" )
             .send();
+        sink_.OnRecordRequestCountDecrement();
         return;
     }
 }
@@ -204,9 +209,11 @@ void request_site::onEOM() noexcept {
         bldr.body( buffer );
     } else {
         bldr.header( "content-length", skutils::tools::format( "%zu", rslt.strOut_.size() ) );
+        // std::cout << "SIZE: " << rslt.strOut_.size() << std::endl;
         bldr.body( rslt.strOut_ );
     }
     bldr.sendWithEOM();
+    sink_.OnRecordRequestCountDecrement();
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol /*protocol*/ ) noexcept {
@@ -284,6 +291,7 @@ server::~server() {
     pg_log( strLogPrefix_ + cc::debug( "destructor" ) + "\n" );
     stop();
 }
+
 
 bool server::start() {
     stop();
@@ -365,7 +373,14 @@ bool server::start() {
     if ( threads_limit_ > 0 && threads_ > threads_limit_ )
         threads_ = threads_limit_;
 
+    auto conn_filter = [this]( const folly::AsyncTransport* /* sock */,
+                           const folly::SocketAddress* /* address */,
+                           const std::string& /* nextProtocolName */,
+                           SecureTransportType /* secureTransportType */,
+                           const wangle::TransportInfo& /* tinfo */ ) -> void { return; };
+
     proxygen::HTTPServerOptions options;
+    options.newConnectionFilter = conn_filter;
     options.threads = static_cast< size_t >( threads_ );
     options.idleTimeout = std::chrono::milliseconds( skutils::rest::g_nClientConnectionTimeoutMS );
     // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`

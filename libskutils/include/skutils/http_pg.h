@@ -45,6 +45,7 @@ public:
     request_sink();
     virtual ~request_sink();
     virtual void OnRecordRequestCountIncrement();
+    virtual void OnRecordRequestCountDecrement();
     virtual uint64_t getRequestCount();
 };
 

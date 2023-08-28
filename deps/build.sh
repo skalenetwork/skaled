@@ -2293,7 +2293,7 @@ then
 	then
 		env_restore
 		cd "$SOURCES_ROOT"
-		if [ ! -d "proxygen" ];
+		if [ -d "proxygen" ];
 		then
 			if [ ! -f "proxygen-from-git.tar.gz" ];
 			then
@@ -2313,7 +2313,7 @@ then
 			eval mkdir -p build2
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+                -DBUILD_TESTS=OFF -DBUILD_SAMPLES=ON -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
 			cd ..
 		else
 			cd proxygen

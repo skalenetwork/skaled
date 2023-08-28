@@ -685,7 +685,7 @@ skutils::result_of_http_request test_server_proxygen::implHandleHttpRequest(
     test_log_p( cc::ws_tx_inv( "<<< PROXYGEN-TX-POST <<< " ) + cc::u( strOrigin ) + cc::ws_tx( " <<< " ) + cc::j( joIn ) );
     skutils::result_of_http_request rslt;
     rslt.isBinary_ = false;
-    rslt.joOut_ = joIn;
+    rslt.strOut_ = joIn.dump();
     return rslt;
 }
 
