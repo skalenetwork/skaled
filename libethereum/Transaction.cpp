@@ -29,6 +29,8 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFace.h>
+#include <libskale/POWCheckPatch.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -172,7 +174,7 @@ u256 Transaction::getExternalGas() const {
 }
 
 u256 Transaction::gas() const {
-    if ( m_externalGasIsChecked && hasExternalGas() ) {
+    if ( m_externalGasIsChecked && hasExternalGas() && POWCheckPatch::isEnabled() ) {
         return *m_externalGas;
     } else {
         return TransactionBase::gas();

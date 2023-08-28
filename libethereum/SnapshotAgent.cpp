@@ -201,14 +201,14 @@ void SnapshotAgent::startHashComputingThread() {
             cerror << cc::fatal( "CRITICAL" ) << " " << cc::warn( dev::nested_exception_what( ex ) )
                    << cc::error( " in computeSnapshotHash(). Exiting..." );
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );
         } catch ( ... ) {
             cerror << cc::fatal( "CRITICAL" )
                    << cc::error(
                           " unknown exception in computeSnapshotHash(). "
                           "Exiting..." );
             cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );
         }
     } ) );
 }

@@ -52,6 +52,7 @@
 
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/POWCheckPatch.h>
 #include <libskale/RevertableFSPatch.h>
 #include <libskale/State.h>
 #include <libskale/StorageDestructionPatch.h>
@@ -160,6 +161,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
     StorageDestructionPatch::storageDestructionPatchTimestamp =
         chainParams().sChain.storageDestructionPatchTimestamp;
+    POWCheckPatch::powCheckPatchTimestamp = chainParams().sChain.powCheckPatchTimestamp;
 }
 
 Client::~Client() {
@@ -650,6 +652,7 @@ size_t Client::syncTransactions(
     ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
 
     DEV_WRITE_GUARDED( x_working ) {
