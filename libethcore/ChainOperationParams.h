@@ -174,6 +174,7 @@ public:
     time_t contractStorageZeroValuePatchTimestamp = 0;
     time_t verifyDaSigsPatchTimestamp = 0;
     time_t storageDestructionPatchTimestamp = 0;
+    time_t powCheckPatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";

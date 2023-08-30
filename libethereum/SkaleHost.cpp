@@ -245,7 +245,7 @@ void ConsensusExtImpl::createBlock(
 }
 
 void ConsensusExtImpl::terminateApplication() {
-    dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
+    dev::ExitHandler::exitHandler( -1, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
@@ -463,23 +463,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
-    // HACK For IS-348
-    auto saved_txns = txns;
-    std::stable_sort( txns.begin(), txns.end(), TransactionQueue::PriorityCompare{ m_tq } );
-    bool found_difference = false;
-    for ( size_t i = 0; i < txns.size(); ++i ) {
-        if ( txns[i].sha3() != saved_txns[i].sha3() )
-            found_difference = true;
-    }
-    if ( found_difference ) {
-        clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
-        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
-        for ( size_t i = 0; i < txns.size(); ++i ) {
-            clog( VerbosityTrace, "skale-host" )
-                << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
-        }
-    }
-
     // drop by block gas limit
     u256 blockGasLimit = this->m_client.chainParams().gasLimit;
     u256 gasAcc = 0;
@@ -622,8 +605,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
-                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
-                _exit( int( ExitHandler::ec_state_root_mismatch ) );
+                m_ignoreNewBlocks = true;
+                m_consensus->exitGracefully();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
             }
         }
 
@@ -758,7 +742,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             m_instanceMonitor->prepareRotation();
             m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
-            ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
         }
     }
@@ -799,7 +783,7 @@ void SkaleHost::startWorking() {
             if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
                 m_broadcastThread.join();
             }
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_termninated_by_signal );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
 
@@ -846,8 +830,12 @@ void SkaleHost::stopWorking() {
         // requested exit
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
-        clog( VerbosityInfo, "skale-host" )
-            << cc::info( "Exit requested with signal " ) << signal << " and exit code " << exitCode;
+        if ( signal > 0 )
+            clog( VerbosityInfo, "skale-host" ) << cc::info( "Exit requested with signal " )
+                                                << signal << " and exit code " << exitCode;
+        else
+            clog( VerbosityInfo, "skale-host" )
+                << cc::info( "Exit requested internally with exit code " ) << exitCode;
     } else {
         clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
     }

@@ -78,7 +78,8 @@ static std::string const c_genesisConfigString =
          "EIP158ForkBlock": "0x00",
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true
+         "skaleDisableChainIdCheck": true,
+         "externalGasDifficulty": "0x1"
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -110,7 +111,8 @@ static std::string const c_genesisConfigString =
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )"+std::to_string( rand_port ) + R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ],
             "revertableFSPatchTimestamp": 0,
-            "contractStorageZeroValuePatchTimestamp": 0
+            "contractStorageZeroValuePatchTimestamp": 0,
+            "powCheckPatchTimestamp": 1
         }
     },
     "accounts": {
@@ -2260,6 +2262,35 @@ BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
 
     fixture.rpcClient->debug_doBlocksDbCompaction();
 }
+
+BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
+    JsonRpcFixture fixture(c_genesisConfigString, false, false, true, false);
+
+    // mine blocks without transactions
+    dev::eth::simulateMining( *( fixture.client ), 2000000 );
+
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txPOW1;
+    txPOW1["to"] = "0x0000000000000000000000000000000000000033";
+    txPOW1["from"] = senderAddress;
+    txPOW1["gas"] = "100000";
+    txPOW1["gasPrice"] = "0xa449dcaf2bca14e6bd0ac650eed9555008363002b2fc3a4c8422b7a9525a8135"; // gas 200k
+    txPOW1["value"] = 1;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txPOW1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt1 = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt1["status"] == string( "0x1" ) );
+
+    Json::Value txPOW2;
+    txPOW2["to"] = "0x0000000000000000000000000000000000000033";
+    txPOW2["from"] = senderAddress;
+    txPOW2["gas"] = "100000";
+    txPOW2["gasPrice"] = "0xc5002ab03e1e7e196b3d0ffa9801e783fcd48d4c6d972f1389ab63f4e2d0bef0"; // gas 1m
+    txPOW2["value"] = 100;
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ), jsonrpc::JsonRpcException ); // block gas limit reached
+    }
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;

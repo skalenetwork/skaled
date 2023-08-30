@@ -76,7 +76,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
         _exit( ExitHandler::ec_termninated_by_signal );
         break;
 
-    default:
+    case SIGILL:
+    case SIGABRT:
+    case SIGFPE:
+    case SIGSEGV:
         // abort signals
         std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
         std::cout.flush();
@@ -84,6 +87,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
         std::cout.flush();
 
         _exit( nSignalNo + 128 );
+
+    default:
+        // exit normally
+        break;
     }  // switch
 
     // try to exit nicely - then abort

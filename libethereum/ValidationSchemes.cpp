@@ -267,6 +267,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "verifyDaSigsPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "storageDestructionPatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } },
+            { "powCheckPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
