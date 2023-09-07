@@ -1996,10 +1996,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/google/glog.git --recursive
-                cd glog
-                eval git checkout ee6faf13b20de9536f456bd84584f4ab4db1ceb4
-                cd ..
-                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                cd glog
+                                eval git checkout ee6faf13b20de9536f456bd84584f4ab4db1ceb4
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf glog-from-git.tar.gz ./glog
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2010,7 +2010,7 @@ then
 			eval mkdir -p build
 			cd build
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_SHARED_LIBS=OFF -DWITH_UNWIND=OFF \
+                                -DBUILD_SHARED_LIBS=OFF -DWITH_UNWIND=OFF -DWITH_GTEST=OFF \
 				..
 			cd ..
 		else
@@ -2077,11 +2077,11 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/folly.git --recursive
-                cd folly
-                eval git checkout 5c8fc1b622422a1c73f46d6fb51ac1164d8efb0f
-                cd ..
-                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
-				eval tar -czf folly-from-git.tar.gz ./folly
+                                cd folly
+                                eval git checkout 5c8fc1b622422a1c73f46d6fb51ac1164d8efb0f
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -czf folly-from-git.tar.gz ./folly
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -xzf folly-from-git.tar.gz
@@ -2165,10 +2165,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/google/googletest.git --recursive
-                cd googletest
-                eval git checkout 4c5650f68866e3c2e60361d5c4c95c6f335fb64b
-                cd ..
-                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                cd googletest
+                                eval git checkout 4c5650f68866e3c2e60361d5c4c95c6f335fb64b
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf gtest-from-git.tar.gz ./googletest
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2208,10 +2208,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebookincubator/fizz.git --recursive
-                cd fizz
-                eval git checkout 93003f4161f7cebe1c121b3232215db8314c2ce7
-                cd ..
-                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                cd fizz
+                                eval git checkout 93003f4161f7cebe1c121b3232215db8314c2ce7
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf fizz-from-git.tar.gz ./fizz
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
@@ -2253,10 +2253,10 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/wangle.git --recursive
-                cd wangle
-                eval git checkout 7249d3f8d18bcd4bc13649d13654ccb2a771f7b3
-                cd ..
-                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                cd wangle
+                                eval git checkout 7249d3f8d18bcd4bc13649d13654ccb2a771f7b3
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf wangle-from-git.tar.gz ./wangle
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
