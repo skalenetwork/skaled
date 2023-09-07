@@ -132,7 +132,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
             estimateGasStep( upperBound, bk, _from, _dest, _value, gasPrice, _data );
         if ( estimatedStep.first ) {
             auto executionResult = estimatedStep.second;
-            auto gasUsed = executionResult.gasUsed.convert_to< int64_t >();
+            auto gasUsed = std::max( executionResult.gasUsed.convert_to< int64_t >(), lowerBound );
 
             estimatedStep = estimateGasStep( gasUsed, bk, _from, _dest, _value, gasPrice, _data );
             if ( estimatedStep.first ) {
