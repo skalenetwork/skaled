@@ -47,11 +47,18 @@ void ExitHandler::exitHandler( int s ) {
 }
 
 void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
-    std::string strMessagePrefix = ExitHandler::shouldExit() ?
-                                       cc::error( "\nStop flag was already raised on. " ) +
-                                           cc::fatal( "WILL FORCE TERMINATE." ) +
-                                           cc::error( " Caught (second) signal. " ) :
-                                       cc::error( "\nCaught (first) signal. " );
+    std::string strMessagePrefix;
+    if ( nSignalNo > 0 ) {
+        strMessagePrefix = ( ExitHandler::shouldExit() && s_nStopSignal > 0 ) ?
+                               cc::error( "\nStop flag was already raised on. " ) +
+                                   cc::fatal( "WILL FORCE TERMINATE." ) +
+                                   cc::error( " Caught (second) signal. " ) :
+                               cc::error( "\nCaught (first) signal. " );
+    } else {
+        strMessagePrefix = ExitHandler::shouldExit() ?
+                               cc::error( "\nInternal exit initiated. " ) :
+                               cc::error( "\nInternal exit requested while already exiting. " );
+    }
     std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
               << "\n\n";
     std::cerr.flush();
@@ -153,7 +160,8 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
 
     // nice exit here:
 
-    if ( ExitHandler::shouldExit() ) {
+    // TODO deduplicate with first if()
+    if ( ExitHandler::shouldExit() && s_nStopSignal > 0 && nSignalNo > 0 ) {
         std::cerr << ( "\n" + cc::fatal( "SIGNAL-HANDLER:" ) + " " +
                        cc::error( "Will force exit now..." ) + "\n\n" );
         _exit( 13 );
