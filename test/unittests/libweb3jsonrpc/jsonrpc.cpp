@@ -1860,6 +1860,7 @@ contract TestEstimateGas {
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
                        false, &data, fixture.client->chainParams().scheduleForBlockNumber(
                            fixture.client->number() ) ) );
+    BOOST_REQUIRE( dev::jsToU256( estimatedGas ) == 21871 );
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
