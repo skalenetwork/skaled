@@ -25,8 +25,8 @@ target_link_libraries(
         devcore
         Boost::program_options
         skutils
-        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
         pthread
         idn2
         batched-io

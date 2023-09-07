@@ -703,7 +703,7 @@ if [ "$WITH_UNWIND" = "yes" ];
             #eval autoheader
             #eval automake --add-missing
             eval autoreconf -i
-            eval ./configure --disable-shared --prefix="$INSTALL_ROOT"
+            eval ./configure --disable-shared --disable-tests --prefix="$INSTALL_ROOT"
             cd ..
         fi
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
@@ -1113,7 +1113,7 @@ then
 			#		..
 			#cd ../..
 			eval ./autogen.sh
-			eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
+                        eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --disable-samples --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
 			cd ..
 		fi
 		#cd libevent/build
@@ -1142,7 +1142,7 @@ then
 			if [ ! -f "libuv-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-                eval git clone https://github.com/libuv/libuv.git
+                                eval git clone https://github.com/libuv/libuv.git
 				cd libuv
 				eval git checkout v1.x
 				eval git pull
@@ -1191,11 +1191,11 @@ then
 			if [ ! -f "libwebsockets-from-git.tar.gz" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-                eval git clone https://github.com/warmcat/libwebsockets.git
+                                eval git clone https://github.com/warmcat/libwebsockets.git
 				eval cd libwebsockets
-                # eval git checkout v4.1-stable
-                eval git checkout v4.3-stable
-                eval git pull
+                                # eval git checkout v4.1-stable
+                                eval git checkout v4.3-stable
+                                eval git pull
 				cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf libwebsockets-from-git.tar.gz ./libwebsockets
@@ -1391,7 +1391,7 @@ then
 				eval "$WGET" https://boostorg.jfrog.io/artifactory/main/release/1.68.0/source/boost_1_68_0.tar.bz2
 			fi
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-            eval tar -xf boost_1_68_0.tar.bz2
+                        eval tar -xf boost_1_68_0.tar.bz2
 		fi
 		cd boost_1_68_0
 		echo -e "${COLOR_INFO}configuring and building it${COLOR_DOTS}...${COLOR_RESET}"
