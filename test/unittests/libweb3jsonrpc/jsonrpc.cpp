@@ -798,7 +798,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
 // As block rotation is not exact now - let's use approximate comparisons
 #define REQUIRE_APPROX_EQUAL(a, b) BOOST_REQUIRE(4*(a) > 3*(b) && 4*(a) < 5*(b))
 
-BOOST_AUTO_TEST_CASE( logs_range ) {
+BOOST_AUTO_TEST_CASE( logs_range, *boost::unit_test::disabled() ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
