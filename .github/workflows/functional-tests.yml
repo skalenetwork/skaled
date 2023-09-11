@@ -37,8 +37,6 @@
         sudo npm install -g yarn
         sudo chown -R runner:runner ~/.config   # HACK
         
-    - uses: docker-practice/actions-setup-docker@v1
-
     - name: Prepare SGX keys/certs
       run: |
         echo "${{ secrets.sgx_key }}" > sgx_certs/sgx.key
