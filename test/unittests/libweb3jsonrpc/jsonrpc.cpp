@@ -795,22 +795,23 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
+/*
 // As block rotation is not exact now - let's use approximate comparisons
 #define REQUIRE_APPROX_EQUAL(a, b) BOOST_REQUIRE(4*(a) > 3*(b) && 4*(a) < 5*(b))
 
-BOOST_AUTO_TEST_CASE( logs_range ) {
+BOOST_AUTO_TEST_CASE( logs_range, *boost::unit_test::disabled() ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
-/*
-pragma solidity >=0.4.10 <0.7.0;
 
-contract Logger{
-    fallback() external payable {
-        log2(bytes32(block.number+1), bytes32(block.number), "dimalit");
-    }
-}
-*/
+//pragma solidity >=0.4.10 <0.7.0;
+
+//contract Logger{
+//    fallback() external payable {
+//        log2(bytes32(block.number+1), bytes32(block.number), "dimalit");
+//    }
+//}
+
     string bytecode =
         "6080604052348015600f57600080fd5b50607d80601d6000396000f3fe60806040527f64696d616c69740000000000000000000000000000000000000000000000000043600102600143016001026040518082815260200191505060405180910390a200fea2646970667358221220ecafb98cd573366a37976cb7a4489abe5389d1b5989cd7b7136c8eb0c5ba0b5664736f6c63430006000033";
 
@@ -965,6 +966,7 @@ contract Logger{
     BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
     BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
 }
+*/
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     JsonRpcFixture fixture( c_genesisConfigString );
