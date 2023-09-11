@@ -111,20 +111,22 @@ BOOST_AUTO_TEST_CASE( tqPriority ) {
     BOOST_CHECK( ( Transactions{tx2, tx0, tx1, tx3, tx5, tx4} ) == txq.topTransactions( 256 ) );
 
     txq.drop( tx0.sha3() );
-    BOOST_CHECK( ( Transactions{tx2, tx1, tx3, tx5, tx4} ) == txq.topTransactions( 256 ) );
+    // prev BOOST_CHECK( ( Transactions{tx2, tx1, tx3, tx5, tx4} ) == txq.topTransactions( 256 ) );
+    // now tx4 has nonce increase 1, and goes lower then tx5 and tx3
+    BOOST_CHECK( ( Transactions{tx2, tx1, tx4, tx3, tx5} ) == txq.topTransactions( 256 ) );
     txq.drop( tx1.sha3() );
-    BOOST_CHECK( ( Transactions{tx2, tx3, tx5, tx4} ) == txq.topTransactions( 256 ) );
+    BOOST_CHECK( ( Transactions{tx2, tx4, tx3, tx5} ) == txq.topTransactions( 256 ) );
     txq.drop( tx5.sha3() );
-    BOOST_CHECK( ( Transactions{tx2, tx3, tx4} ) == txq.topTransactions( 256 ) );
+    BOOST_CHECK( ( Transactions{tx2, tx4, tx3} ) == txq.topTransactions( 256 ) );
 
     Transaction tx6( 0, gasCostMed, gas, dest, bytes(), 20, sender1 );
     txq.import( tx6 );
-    BOOST_CHECK( ( Transactions{tx2, tx3, tx4, tx6} ) == txq.topTransactions( 256 ) );
+    BOOST_CHECK( ( Transactions{tx2, tx4, tx3, tx6} ) == txq.topTransactions( 256 ) );
 
     Transaction tx7( 0, gasCostHigh, gas, dest, bytes(), 2, sender2 );
     txq.import( tx7 );
     // deterministic signature: hash of tx5 and tx7 will be same
-    BOOST_CHECK( ( Transactions{tx2, tx3, tx4, tx6} ) == txq.topTransactions( 256 ) );
+    BOOST_CHECK( ( Transactions{tx2, tx4, tx3, tx6} ) == txq.topTransactions( 256 ) );
 }
 
 BOOST_AUTO_TEST_CASE( tqNonceChange ) {
@@ -167,7 +169,9 @@ BOOST_AUTO_TEST_CASE( tqNonceChange ) {
         std::cout << tx.from() << " " << tx.nonce() << std::endl;
     }
     // expected BAD result       [tx10], [tx11, tx23], [tx12, tx22], [tx13] !!!
-    BOOST_REQUIRE( ( Transactions{tx10, tx11, tx22, tx23, tx12, tx13 } ) == top6 );
+    // prev without sort BOOST_REQUIRE( ( Transactions{tx10, tx11, tx22, tx23, tx12, tx13 } ) == top6 );
+    // with sort:
+    BOOST_REQUIRE( ( Transactions{tx10, tx22, tx11, tx23, tx12, tx13 } ) == top6 );
 }
 
 BOOST_AUTO_TEST_CASE( tqFuture ) {
