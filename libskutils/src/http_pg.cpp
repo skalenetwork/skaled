@@ -203,6 +203,7 @@ void request_site::onEOM() noexcept {
     } else {
         std::string strOut = rslt.joOut_.dump();
         bldr.header( "content-length", skutils::tools::format( "%zu", strOut.size() ) );
+        bldr.header( "Content-Type", "application/json" );
         bldr.body( strOut );
     }
     bldr.sendWithEOM();
