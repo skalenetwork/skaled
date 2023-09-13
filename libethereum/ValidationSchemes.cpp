@@ -152,6 +152,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "infoWssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
             { "imaMonitoringPort", { { js::int_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "emptyBlockIntervalAfterCatchupMs",
+                { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
@@ -242,6 +244,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "schainOwner", { { js::str_type }, JsonFieldPresence::Optional } },
             { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "emptyBlockIntervalAfterCatchupMs",
+                { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotDownloadTimeout", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotDownloadInactiveTimeout",
@@ -263,6 +267,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "verifyDaSigsPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "storageDestructionPatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } },
+            { "powCheckPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();

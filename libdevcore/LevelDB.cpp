@@ -101,6 +101,12 @@ leveldb::Options LevelDB::defaultDBOptions() {
     return options;
 }
 
+leveldb::ReadOptions LevelDB::defaultSnapshotReadOptions() {
+    leveldb::ReadOptions options;
+    options.fill_cache = false;
+    return options;
+}
+
 leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;

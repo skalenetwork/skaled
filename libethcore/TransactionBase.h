@@ -173,7 +173,7 @@ public:
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
-    u256 gas() const;
+    virtual u256 gas() const;
 
     /// @returns the receiving address of the message-call transaction (undefined for
     /// contract-creation transactions).

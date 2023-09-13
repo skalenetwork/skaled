@@ -1632,9 +1632,14 @@ int main( int argc, char** argv ) try {
                 downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
                     ipToDownloadSnapshotFrom, true );
             else {
-                downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
-                    ipToDownloadSnapshotFrom, false );
-                snapshotManager->restoreSnapshot( 0 );
+                try {
+                    downloadAndProccessSnapshot( snapshotManager, chainParams,
+                        requireSnapshotMajority, ipToDownloadSnapshotFrom, false );
+                    snapshotManager->restoreSnapshot( 0 );
+                } catch ( SnapshotManager::SnapshotAbsent& ) {
+                    clog( VerbosityWarning, "main" )
+                        << cc::warn( "Snapshot for 0 block is not found" );
+                }
             }
 
             // if we dont have 0 snapshot yet
@@ -2757,7 +2762,7 @@ int main( int argc, char** argv ) try {
             << cc::warn( "Enabling programmatic shutdown via Web3..." );
         dev::rpc::Skale::enableWeb3Shutdown( true );
         dev::rpc::Skale::onShutdownInvoke(
-            []() { ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_web3_request ); } );
+            []() { ExitHandler::exitHandler( -1, ExitHandler::ec_web3_request ); } );
         clog( VerbosityWarning, "main" )
             << cc::warn( "Done, programmatic shutdown via Web3 is enabled" );
     } else {

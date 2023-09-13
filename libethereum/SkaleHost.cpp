@@ -245,7 +245,7 @@ void ConsensusExtImpl::createBlock(
 }
 
 void ConsensusExtImpl::terminateApplication() {
-    dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
+    dev::ExitHandler::exitHandler( -1, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
@@ -463,23 +463,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
-    // HACK For IS-348
-    auto saved_txns = txns;
-    std::stable_sort( txns.begin(), txns.end(), TransactionQueue::PriorityCompare{ m_tq } );
-    bool found_difference = false;
-    for ( size_t i = 0; i < txns.size(); ++i ) {
-        if ( txns[i].sha3() != saved_txns[i].sha3() )
-            found_difference = true;
-    }
-    if ( found_difference ) {
-        clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
-        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
-        for ( size_t i = 0; i < txns.size(); ++i ) {
-            clog( VerbosityTrace, "skale-host" )
-                << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
-        }
-    }
-
     // drop by block gas limit
     u256 blockGasLimit = this->m_client.chainParams().gasLimit;
     u256 gasAcc = 0;
@@ -501,13 +484,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         std::string strPerformanceQueueName_drop_bad_transactions = "bc/fetch_transactions";
         std::string strPerformanceActionName_drop_bad_transactions =
             skutils::tools::format( "fetch task %zu", nDropBadTransactionsTaskNumber );
-        skutils::task::performance::json jsn = skutils::task::performance::json::object();
-        skutils::task::performance::json jarrDroppedTransactions =
-            skutils::task::performance::json::array();
-        for ( auto sha : to_delete ) {
-            jarrDroppedTransactions.push_back( toJS( sha ) );
-        }
-        jsn["droppedTransactions"] = jarrDroppedTransactions;
+
         skutils::task::performance::action a_drop_bad_transactions(
             strPerformanceQueueName_drop_bad_transactions,
             strPerformanceActionName_drop_bad_transactions, jsn );
@@ -588,14 +565,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     jsn_create_block["timeStamp"] = toJS( _timeStamp );
     jsn_create_block["gasPrice"] = toJS( _gasPrice );
     jsn_create_block["stateRoot"] = toJS( _stateRoot );
-    skutils::task::performance::json jarrApprovedTransactions =
-        skutils::task::performance::json::array();
-    for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
-        const bytes& data = *it;
-        h256 sha = sha3( data );
-        jarrApprovedTransactions.push_back( toJS( sha ) );
-    }
-    jsn_create_block["approvedTransactions"] = jarrApprovedTransactions;
     skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
         strPerformanceActionName_create_block, jsn_create_block );
 
@@ -636,8 +605,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
-                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
-                _exit( int( ExitHandler::ec_state_root_mismatch ) );
+                m_ignoreNewBlocks = true;
+                m_consensus->exitGracefully();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
             }
         }
 
@@ -723,11 +693,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         std::string strPerformanceQueueName_import_block = "bc/import_block";
         std::string strPerformanceActionName_import_block =
             skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
-        skutils::task::performance::json jsn_import_block =
-            skutils::task::performance::json::object();
-        jsn_import_block["txns"] = jarrProcessedTxns;
-        skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
-            strPerformanceActionName_import_block, jsn_import_block );
+        skutils::task::performance::action a_import_block(
+            strPerformanceQueueName_import_block, strPerformanceActionName_import_block );
         //
         m_debugTracer.tracepoint( "import_block" );
 
@@ -766,12 +733,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     logState();
 
+    clog( VerbosityDebug, "skale-host" )
+        << "TQBYTES:CTQ:" << m_tq.status().currentBytes << ":FTQ:" << m_tq.status().futureBytes
+        << ":TQSIZE:CTQ:" << m_tq.status().current << ":FTQ:" << m_tq.status().future;
+
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
             m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
-            ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
         }
     }
@@ -812,7 +783,7 @@ void SkaleHost::startWorking() {
             if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
                 m_broadcastThread.join();
             }
-            ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_termninated_by_signal );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
 
@@ -859,8 +830,12 @@ void SkaleHost::stopWorking() {
         // requested exit
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
-        clog( VerbosityInfo, "skale-host" )
-            << cc::info( "Exit requested with signal " ) << signal << " and exit code " << exitCode;
+        if ( signal > 0 )
+            clog( VerbosityInfo, "skale-host" ) << cc::info( "Exit requested with signal " )
+                                                << signal << " and exit code " << exitCode;
+        else
+            clog( VerbosityInfo, "skale-host" )
+                << cc::info( "Exit requested internally with exit code " ) << exitCode;
     } else {
         clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
     }
@@ -926,7 +901,6 @@ void SkaleHost::broadcastFunc() {
                             skutils::tools::format( "broadcast %zu", nBroadcastTaskNumber++ );
                         skutils::task::performance::json jsn =
                             skutils::task::performance::json::object();
-                        jsn["rlp"] = rlp;
                         jsn["hash"] = h;
                         skutils::task::performance::action a(
                             strPerformanceQueueName, strPerformanceActionName, jsn );
