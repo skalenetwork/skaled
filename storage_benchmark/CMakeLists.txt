@@ -20,8 +20,8 @@ target_link_libraries(
         historic
         skutils
         devcore
-        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
     )
 
 #target_include_directories(evm_benchmark PRIVATE ../utils)
