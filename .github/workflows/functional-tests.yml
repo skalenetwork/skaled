@@ -25,6 +25,7 @@
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
         submodules: recursive
+        ref: bug/skaled-1550-reenable-cat-cycle-test
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
       with:
