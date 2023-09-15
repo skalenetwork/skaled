@@ -762,17 +762,15 @@ void SkaleHost::startWorking() {
     // recursively calls this func - so working is still false!)
     working = true;
 
-    if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
-        try {
-            m_broadcaster->startService();
-        } catch ( const Broadcaster::StartupException& ) {
-            working = false;
-            std::throw_with_nested( SkaleHost::CreationException() );
-        }
-
-        auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
-        m_broadcastThread = std::thread( bcast_func );
+    try {
+        m_broadcaster->startService();
+    } catch ( const Broadcaster::StartupException& ) {
+        working = false;
+        std::throw_with_nested( SkaleHost::CreationException() );
     }
+
+    auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
+    m_broadcastThread = std::thread( bcast_func );
 
     auto csus_func = [&]() {
         try {
@@ -780,9 +778,7 @@ void SkaleHost::startWorking() {
         } catch ( const std::exception& ) {
             // cleanup
             m_exitNeeded = true;
-            if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
-                m_broadcastThread.join();
-            }
+            m_broadcastThread.join();
             ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
             return;
         }
