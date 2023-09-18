@@ -66,7 +66,7 @@ sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoog
 
 
 
-NB cmake needs to be of version >=3.31, git of version >=2.18
+NB cmake needs to be of version >=3.21, git of version >=2.18
 
 ### (for Ubuntu 20.10 or later) Set  gcc-9 as default compiler
 ```
