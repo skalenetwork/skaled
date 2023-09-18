@@ -82,13 +82,6 @@ gcc --version
 
 ```
 cd deps
-./build.sh
-```
-
-or, if you want to build debug version of skaled
-
-```
-cd deps
 ./build.sh DEBUG=1
 ```
 
@@ -110,8 +103,6 @@ cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
 # Build all default targets using all cores.
 cmake --build build -- -j$(nproc)
 ```
-
-Note: Currently only Debug build is supported.
 
 
 ## Testing
