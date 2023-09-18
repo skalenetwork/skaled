@@ -78,6 +78,14 @@ sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-to
 gcc --version
 ```
 
+# Install latest cmake 
+
+```
+sudo apt-get purge cmake
+sudo snap install cmake --classic
+```
+
+
 ### Build dependencies
 
 ```
