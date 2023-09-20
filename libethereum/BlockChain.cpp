@@ -1264,7 +1264,7 @@ void BlockChain::garbageCollect( bool _force ) {
     m_lastCollection = chrono::system_clock::now();
 
     // We subtract memory that blockhashes occupy because it is treated sepaparately
-    while ( m_lastStats.memTotal() - m_lastStats.memBlockHashes  >= c_maxCacheSize ) {
+    while ( m_lastStats.memTotal() - m_lastStats.memBlockHashes >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
             m_inUse.erase( id );
@@ -1376,7 +1376,9 @@ void BlockChain::doLevelDbCompaction() const {
 }
 
 void BlockChain::checkConsistency() {
-    DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
+    DEV_WRITE_GUARDED( x_details ) {
+        m_details.clear();
+    }
 
     m_blocksDB->forEach( [this]( db::Slice const& _key, db::Slice const& /* _value */ ) {
         if ( _key.size() == 32 ) {
