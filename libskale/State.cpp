@@ -748,6 +748,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
 void State::clearStorageValue(
     Address const& _contract, u256 const& _key, u256 const& _currentValue ) {
     m_changeLog.emplace_back( _contract, _key, _currentValue );
+
     m_cache[_contract].setStorage( _key, 0 );
 
     int count;
@@ -786,7 +787,8 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
 
-    cdebug << "Self-destructing" << _contract;
+    cerr << "Clearing storage for " << _contract << endl;
+
 
     Account* acc = account( _contract );
     dev::s256 accStorageUsed = acc->storageUsed();
@@ -795,6 +797,9 @@ void State::clearStorage( Address const& _contract ) {
         return;
     }
 
+
+    cdebug << "Self-destructing" << _contract;
+
     // clearStorage is called from functions that already hold a read
     // or write lock over the state Therefore, we can use
     // storage_WITHOUT_LOCK() here
@@ -802,8 +807,14 @@ void State::clearStorage( Address const& _contract ) {
         auto const& key = hashPairPair.second.first;
         auto const& value = hashPairPair.second.first;
         clearStorageValue( _contract, key, value );
+        cerr << "CLEARED STORAGE VALUE" << endl;
         acc->setStorageCache( key, 0 );
+        h256 ZERO(0);
+        // clear in database
+        //m_db_ptr->insert(_contract, key, ZERO);
     }
+
+    m_db_ptr->commitStorageValues();
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );

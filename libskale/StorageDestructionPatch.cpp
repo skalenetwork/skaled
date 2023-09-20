@@ -5,7 +5,7 @@ time_t StorageDestructionPatch::lastBlockTimestamp;
 
 bool StorageDestructionPatch::isEnabled() {
     if ( storageDestructionPatchTimestamp == 0 ) {
-        return false;
+        return true;
     }
     return storageDestructionPatchTimestamp <= lastBlockTimestamp;
 }

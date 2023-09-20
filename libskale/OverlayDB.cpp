@@ -145,15 +145,21 @@ void OverlayDB::commitStorageValues() {
     for ( auto const& addressStoragePair : m_storageCache ) {
         h160 const& address = addressStoragePair.first;
         unordered_map< h256, h256 > const& storage = addressStoragePair.second;
+
+        std::cerr << "COMMITTING ADDRESS" << address << std::endl;
+
         for ( auto const& stateAddressValuePair : storage ) {
             h256 const& storageAddress = stateAddressValuePair.first;
             h256 const& value = stateAddressValuePair.second;
+
+            std::cerr << "COMMITTING" << value << std::endl;
 
             static const h256 ZERO_VALUE( 0 );
 
             if ( ContractStorageZeroValuePatch::isEnabled() && value == ZERO_VALUE ) {
                 // if the value is zero, the pair will be deleted in LevelDB
                 // if it exists
+                std::cerr << "KILLING IN DATABASE" << std::endl;
                 m_db_face->kill(
                     skale::slicing::toSlice( getStorageKey( address, storageAddress ) ) );
             } else {

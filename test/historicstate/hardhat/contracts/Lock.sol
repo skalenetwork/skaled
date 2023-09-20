@@ -66,19 +66,13 @@ contract Lock  {
     }
 
 
-
-
-
-    function  initialize() public {
-      require(!initialized, "Contract instance has already been initialized");
-      initialized = true;
+    constructor() public {
 
         name = "Lock";
         symbol = "LOCK";
         decimals = 18;
         owner = msg.sender;
         counter = 1;
-
 
         mint(10000000000000000000000000000000000000000);
 
