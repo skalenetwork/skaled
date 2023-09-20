@@ -1376,9 +1376,7 @@ void BlockChain::doLevelDbCompaction() const {
 }
 
 void BlockChain::checkConsistency() {
-    DEV_WRITE_GUARDED( x_details ) {
-        m_details.clear();
-    }
+    DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
     m_blocksDB->forEach( [this]( db::Slice const& _key, db::Slice const& /* _value */ ) {
         if ( _key.size() == 32 ) {
