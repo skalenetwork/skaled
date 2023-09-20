@@ -1015,7 +1015,14 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
+    boost::chrono::high_resolution_clock::time_point executeTimeStart =
+        boost::chrono::high_resolution_clock::now();
     bool const statusCode = executeTransaction( e, _t, onOp );
+    boost::chrono::high_resolution_clock::time_point executeTimeFinish =
+        boost::chrono::high_resolution_clock::now();
+    executeTime = boost::chrono::duration_cast< boost::chrono::milliseconds >(
+        executeTimeFinish - executeTimeStart )
+                      .count();
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -1056,8 +1063,15 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
+        boost::chrono::high_resolution_clock::time_point commitTimeStart =
+            boost::chrono::high_resolution_clock::now();
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
+        boost::chrono::high_resolution_clock::time_point commitTimeFinish =
+            boost::chrono::high_resolution_clock::now();
+        commitTime = boost::chrono::duration_cast< boost::chrono::milliseconds >(
+            commitTimeFinish - commitTimeStart )
+                         .count();
 
         break;
     }

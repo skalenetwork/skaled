@@ -528,6 +528,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+    clog( Verbosity::VerbosityInfo, "execute" ) << "EWT:" << executeTime;
+    clog( Verbosity::VerbosityInfo, "execute" ) << "COMWT:" << commitTime;
+
+    executeTime = 0;
+    commitTime = 0;
 
 #ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
@@ -839,6 +844,8 @@ ExecutionResult Block::execute(
             throw -1;  // will catch below
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+        commitTime += stateSnapshot.getCommitTime();
+        executeTime += stateSnapshot.getExecuteTime();
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {

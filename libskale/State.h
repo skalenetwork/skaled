@@ -400,6 +400,18 @@ public:
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
 
+    auto getExecuteTime() {
+        auto val = executeTime;
+        executeTime = 0;
+        return val;
+    }
+
+    auto getCommitTime() {
+        auto val = commitTime;
+        commitTime = 0;
+        return val;
+    }
+
 
 private:
     void updateToLatestVersion();
@@ -496,6 +508,9 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+
+    boost::chrono::duration< long, boost::ratio< 1, 1000 > >::rep commitTime = 0;
+    boost::chrono::duration< long, boost::ratio< 1, 1000 > >::rep executeTime = 0;
 
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;

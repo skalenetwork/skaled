@@ -1252,8 +1252,6 @@ uint64_t BlockChain::getTotalCacheMemory() {
 }
 
 void BlockChain::garbageCollect( bool _force ) {
-    boost::chrono::high_resolution_clock::time_point gcTimeStart =
-        boost::chrono::high_resolution_clock::now();
     updateStats();
 
     if ( !_force && chrono::system_clock::now() < m_lastCollection + c_collectionDuration &&
@@ -1265,8 +1263,6 @@ void BlockChain::garbageCollect( bool _force ) {
 
     m_lastCollection = chrono::system_clock::now();
 
-    boost::chrono::high_resolution_clock::time_point gcTimeCycleStart =
-        boost::chrono::high_resolution_clock::now();
     while ( m_lastStats.memTotal() >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
@@ -1316,13 +1312,6 @@ void BlockChain::garbageCollect( bool _force ) {
         m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
         updateStats();
     }
-    boost::chrono::high_resolution_clock::time_point gcTimeCycleFinish =
-        boost::chrono::high_resolution_clock::now();
-    clog( VerbosityInfo, "bc" ) << "GCCT:"
-                                << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                       gcTimeCycleFinish - gcTimeCycleStart )
-                                       .count();
-
 
     {
         WriteGuard l( x_blockHashes );
@@ -1334,12 +1323,6 @@ void BlockChain::garbageCollect( bool _force ) {
             assert( m_blockHashes.size() == 4096 );
         }
     }
-    boost::chrono::high_resolution_clock::time_point gcTimeFinish =
-        boost::chrono::high_resolution_clock::now();
-    clog( VerbosityInfo, "bc" ) << "GCT:"
-                                << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                       gcTimeFinish - gcTimeStart )
-                                       .count();
 }
 
 void BlockChain::clearCaches() {
