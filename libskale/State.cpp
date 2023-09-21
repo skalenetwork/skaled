@@ -812,8 +812,8 @@ void State::clearStorage( Address const& _contract ) {
            at the end of transaction
            see OverlayDB::commitStorageValues()
         */
-        h256 ZERO(0);
-        m_db_ptr->insert(_contract, key, ZERO);
+        h256 ZERO( 0 );
+        m_db_ptr->insert( _contract, key, ZERO );
     }
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
