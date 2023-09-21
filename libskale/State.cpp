@@ -801,8 +801,19 @@ void State::clearStorage( Address const& _contract ) {
     for ( auto const& hashPairPair : storage_WITHOUT_LOCK( _contract ) ) {
         auto const& key = hashPairPair.second.first;
         auto const& value = hashPairPair.second.first;
+        // Set storage to zero in state cache
         clearStorageValue( _contract, key, value );
+        // Set storage to zero i account storage cache
+        // we have lots of caches, some of them may be unndeeded
+        // will analyze this more in future releases
         acc->setStorageCache( key, 0 );
+        /* The corresponding key/value pair needs to be cleared in database
+           Inserting ZERO deletes the key during commit
+           at the end of transaction
+           see OverlayDB::commitStorageValues()
+        */
+        h256 ZERO(0);
+        m_db_ptr->insert(_contract, key, ZERO);
     }
 
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
