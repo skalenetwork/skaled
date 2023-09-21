@@ -271,6 +271,8 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+    commitTime = _s.commitTime;
+    executeTime = _s.executeTime;
 }
 
 State& State::operator=( const State& _s ) {
@@ -293,6 +295,8 @@ State& State::operator=( const State& _s ) {
     m_initial_funds = _s.m_initial_funds;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+    commitTime = _s.commitTime;
+    executeTime = _s.executeTime;
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
