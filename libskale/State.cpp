@@ -803,8 +803,8 @@ void State::clearStorage( Address const& _contract ) {
         auto const& value = hashPairPair.second.first;
         // Set storage to zero in state cache
         clearStorageValue( _contract, key, value );
-        // Set storage to zero i account storage cache
-        // we have lots of caches, some of them may be unndeeded
+        // Set storage to zero in the account storage cache
+        // we have lots of caches, some of them may be unneeded
         // will analyze this more in future releases
         acc->setStorageCache( key, 0 );
         /* The corresponding key/value pair needs to be cleared in database
