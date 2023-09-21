@@ -13,9 +13,11 @@ namespace dev {
 namespace eth {
 class Client;
 
-StandardTrace::DebugOptions debugOptions( Json::Value const& _json );
-}  // namespace eth
+#ifdef HISTORIC_STATE
+AlethStandardTrace::DebugOptions debugOptions( Json::Value const& _json );
+#endif
 
+}  // namespace eth
 namespace rpc {
 class SessionManager;
 

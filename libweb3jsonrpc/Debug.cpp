@@ -1,3 +1,4 @@
+#define HISTORIC_STATE
 #include "Debug.h"
 #include "JsonHelper.h"
 
@@ -11,6 +12,11 @@
 #include <libethereum/Client.h>
 #include <libethereum/Executive.h>
 
+#ifdef HISTORIC_STATE
+#include <libhistoric/AlethExecutive.h>
+#include <libhistoric/AlethStandardTrace.h>
+#endif
+
 using namespace std;
 using namespace dev;
 using namespace dev::rpc;
@@ -20,8 +26,8 @@ using namespace skale;
 Debug::Debug( eth::Client const& _eth, SkaleDebugInterface* _debugInterface, const string& argv )
     : m_eth( _eth ), m_debugInterface( _debugInterface ), argv_options( argv ) {}
 
-StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
-    StandardTrace::DebugOptions op;
+AlethStandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
+    AlethStandardTrace::DebugOptions op;
     if ( !_json.isObject() || _json.empty() )
         return op;
     if ( !_json["disableStorage"].empty() )
@@ -34,6 +40,7 @@ StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
         op.fullStorage = _json["fullStorage"].asBool();
     return op;
 }
+
 
 h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
     if ( isHash< h256 >( _blockNumberOrHash ) )
@@ -67,19 +74,26 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
     //    return state;
 }
 
-Json::Value Debug::traceTransaction(
-    Executive& _e, Transaction const& _t, Json::Value const& _json ) {
-    Json::Value trace;
-    StandardTrace st;
+
+
+Json::Value Debug::traceTransaction(Executive& _e, Transaction const& _t, Json::Value const& _json)
+{
+
+#ifdef HISTORIC_STATE
+    Json::Value traceJson{Json::arrayValue};
+    AlethStandardTrace st{traceJson};
     st.setShowMnemonics();
-    st.setOptions( debugOptions( _json ) );
-    _e.initialize( _t );
-    if ( !_e.execute() )
-        _e.go( st.onOp() );
+    st.setOptions(debugOptions(_json));
+    _e.initialize(_t);
+    if (!_e.execute())
+        _e.go(st.onOp());
     _e.finalize();
-    Json::Reader().parse( st.json(), trace );
-    return trace;
+    return traceJson;
+#else
+    throw logic_error( "This function is only supported on SKALE archive nodes");
+#endif
 }
+
 
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     State s( _block.state() );
@@ -103,19 +117,34 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     return traces;
 }
 
-Json::Value Debug::debug_traceTransaction(
-    string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
+
+Json::Value Debug::debug_traceTransaction(string const&
+#ifdef HISTORIC_STATE
+        _txHash
+#endif
+    , Json::Value const&
+#ifdef HISTORIC_STATE
+        _json
+#endif
+    )
+{
     Json::Value ret;
-    try {
-        throw std::logic_error( "Historical state is not supported in Skale" );
-        //        Executive e(s, block, t.transactionIndex(), m_eth.blockChain());
-        //        e.setResultRecipient(er);
-        //        Json::Value trace = traceTransaction(e, t, _json);
-        //        ret["gas"] = toJS(t.gas());
-        //        ret["return"] = toHexPrefixed(er.output);
-        //        ret["structLogs"] = trace;
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
+    try
+    {
+        LocalisedTransaction t = m_eth.localisedTransaction(h256(_txHash));
+        Block block = m_eth.block(t.blockHash());
+        HistoricState s(HistoricState::Null);
+        eth::ExecutionResult er;
+        AlethExecutive e(s, block, t.transactionIndex(), m_eth.blockChain());
+        e.setResultRecipient(er);
+        Json::Value trace = traceTransaction(e, t, _json);
+        ret["gas"] = toJS(t.gas());
+        ret["return"] = toHexPrefixed(er.output);
+        ret["structLogs"] = trace;
+    }
+    catch(Exception const& _e)
+    {
+        cwarn << diagnostic_information(_e);
     }
     return ret;
 }
