@@ -165,8 +165,8 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
         s_ec = ec;
     }
 
-    // indicate failure if signal is not INT or TERM!
-    if ( s_ec == ec_success && nSignalNo != SIGINT && nSignalNo != SIGTERM )
+    // indicate failure if signal is not INT or TERM or internal (-1)
+    if ( s_ec == ec_success && nSignalNo > 0 && nSignalNo != SIGINT && nSignalNo != SIGTERM )
         s_ec = ExitHandler::ec_failure;
 
     s_bStop = true;
