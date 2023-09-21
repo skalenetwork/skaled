@@ -583,10 +583,32 @@ size_t Client::importTransactionsAsBlock(
     // end, detect partially executed block
     //
     size_t cntSucceeded = 0;
+    boost::chrono::high_resolution_clock::time_point timeStart =
+        boost::chrono::high_resolution_clock::now();
     cntSucceeded = syncTransactions(
         _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
+    boost::chrono::high_resolution_clock::time_point timeFinish =
+        boost::chrono::high_resolution_clock::now();
+    clog( Verbosity::VerbosityInfo, "client" )
+        << "SYWT:"
+        << boost::chrono::duration_cast< boost::chrono::milliseconds >( timeFinish - timeStart )
+               .count();
+
+    timeStart = boost::chrono::high_resolution_clock::now();
     sealUnconditionally( false );
+    timeFinish = boost::chrono::high_resolution_clock::now();
+    clog( Verbosity::VerbosityInfo, "client" )
+        << "SUWT:"
+        << boost::chrono::duration_cast< boost::chrono::milliseconds >( timeFinish - timeStart )
+               .count();
+
+    timeStart = boost::chrono::high_resolution_clock::now();
     importWorkingBlock();
+    timeFinish = boost::chrono::high_resolution_clock::now();
+    clog( Verbosity::VerbosityInfo, "client" )
+        << "IBWT:"
+        << boost::chrono::duration_cast< boost::chrono::milliseconds >( timeFinish - timeStart )
+               .count();
 
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerDetail ) << "Total unsafe time so far = "
