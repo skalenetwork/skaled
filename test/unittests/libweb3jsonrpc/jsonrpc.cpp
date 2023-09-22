@@ -1806,6 +1806,65 @@ contract Logger{
     BOOST_REQUIRE_EQUAL(logs.size(), 24);
 }
 
+BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 10 );
+
+    auto senderAddress = fixture.coinbase.address();
+
+/*
+// SPDX-License-Identifier: None
+pragma solidity ^0.6.0;
+
+contract TestEstimateGas {
+    uint256[256] number;
+    uint256 counter = 0;
+
+    function store(uint256 x) public {
+        number[counter] = x;
+        counter += 1;
+    }
+
+    function clear(uint256 pos) public {
+        number[pos] = 0;
+    }
+}
+*/
+
+    string bytecode = "608060405260006101005534801561001657600080fd5b50610104806100266000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c80636057361d146037578063c0fe1af8146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b810190808035906020019092919050505060b8565b005b806000610100546101008110609e57fe5b018190555060016101006000828254019250508190555050565b60008082610100811060c657fe5b01819055505056fea26469706673582212206c8da972693a5b8c9bf59c197c4a0c554e9f51abd20047572c9c19125b533d2964736f6c634300060c0033";
+
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
+
+    Json::Value txStore1;  // call store(1)
+    txStore1["to"] = contractAddress;
+    txStore1["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    txStore1["from"] = toJS( senderAddress );
+    txStore1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    string txHash = fixture.rpcClient->eth_call( txStore1, "latest" );
+
+    Json::Value estimateGasCall;  // call clear(0)
+    estimateGasCall["to"] = contractAddress;
+    estimateGasCall["data"] = "0xc0fe1af80000000000000000000000000000000000000000000000000000000000000000";
+    estimateGasCall["from"] = toJS( senderAddress );
+    estimateGasCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    string estimatedGas = fixture.rpcClient->eth_estimateGas( estimateGasCall );
+
+    dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
+
+    BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
+                       false, &data, fixture.client->chainParams().scheduleForBlockNumber(
+                           fixture.client->number() ) ) );
+    BOOST_REQUIRE( dev::jsToU256( estimatedGas ) == 21871 );
+}
+
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 10 );
