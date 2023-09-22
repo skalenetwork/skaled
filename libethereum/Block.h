@@ -343,9 +343,6 @@ private:
     Logger m_logger{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerDetailed{ createLogger( VerbosityTrace, "block" ) };
 
-    boost::chrono::duration< long, boost::ratio< 1, 1000 > >::rep commitTime = 0;
-    boost::chrono::duration< long, boost::ratio< 1, 1000 > >::rep executeTime = 0;
-
     Counter< Block > c;
     ;
 

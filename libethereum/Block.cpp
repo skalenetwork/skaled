@@ -454,8 +454,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
         // NB! Not commit! Commit will be after 1st transaction!
         m_state.clearPartialTransactionReceipts();
 
-    boost::chrono::duration< long, boost::ratio< 1, 1000 > >::rep totalExecuteTime = 0;
-
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
@@ -503,15 +501,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            boost::chrono::high_resolution_clock::time_point timeStart =
-                boost::chrono::high_resolution_clock::now();
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
-            boost::chrono::high_resolution_clock::time_point timeFinish =
-                boost::chrono::high_resolution_clock::now();
-            totalExecuteTime += boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                timeFinish - timeStart )
-                                    .count();
             receipts.push_back( m_receipts.back() );
 
             if ( res.excepted == TransactionException::WouldNotBeInBlock )
@@ -536,12 +527,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
-    clog( Verbosity::VerbosityInfo, "execute" ) << "EWT:" << executeTime;
-    clog( Verbosity::VerbosityInfo, "execute" ) << "COMWT:" << commitTime;
-    clog( Verbosity::VerbosityInfo, "execute" ) << "TEWT:" << totalExecuteTime;
-
-    executeTime = 0;
-    commitTime = 0;
 
 #ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
@@ -853,9 +838,6 @@ ExecutionResult Block::execute(
             throw -1;  // will catch below
 
         resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
-        commitTime += stateSnapshot.getCommitTime();
-        executeTime += stateSnapshot.getExecuteTime();
-
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
