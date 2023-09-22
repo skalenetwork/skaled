@@ -95,18 +95,18 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=1
+          ./build.sh PARALLEL_COUNT=$(nproc)
           cd ..
       - name: Configure all
         run: |
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ${{ github.event.inputs.cmake_options }} ..
@@ -116,7 +116,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=Release
           cd build
           make skaled -j$(nproc)
           #echo "Ensure release mode skaled does not have any debug markers"
