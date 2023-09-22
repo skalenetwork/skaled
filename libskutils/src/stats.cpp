@@ -405,7 +405,6 @@ element::element( const char* strSubSystem, const char* strProtocol, const char*
         strProtocol_ = "N/A";
     if ( strMethod_.empty() )
         strMethod_ = g_strMethodNameUnknown;
-    do_register();
 }
 element::~element() {
     stop();
@@ -420,12 +419,13 @@ void element::do_unregister() {
     queue::getQueueForSubsystem( strSubSystem_.c_str() ).do_unregister( rttElement );
 }
 
-void element::stop() const {
+void element::stop() {
     lock_type lock( mtx() );
     if ( isStopped_ )
         return;
     isStopped_ = true;
     tpEnd_ = skutils::stats::clock::now();
+    do_register();
 }
 
 void element::setMethod( const char* strMethod ) const {

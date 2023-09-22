@@ -932,13 +932,8 @@ then
 		cd "$SOURCES_ROOT"
 		if [ ! -d "libiconv-1.15" ];
 		then
-			if [ ! -f "libiconv-1.15.tar.gz" ];
-			then
-				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-				eval "$WGET" --no-check-certificate https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.15.tar.gz
-			fi
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			eval tar -xzf libiconv-1.15.tar.gz
+			eval tar -xzf "$PREDOWNLOADED_ROOT/libiconv-1.15.tar.gz"
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libiconv-1.15
 			eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
