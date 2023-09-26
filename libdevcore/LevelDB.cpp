@@ -70,7 +70,7 @@ public:
 
 private:
     leveldb::WriteBatch m_writeBatch;
-    std::atomic<uint64_t> keysToBeDeletedCount;
+    std::atomic< uint64_t > keysToBeDeletedCount;
 };
 
 void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
@@ -283,8 +283,8 @@ void LevelDB::doCompaction() const {
     m_db->CompactRange( nullptr, nullptr );
 }
 
-std::atomic<uint64_t> LevelDB::g_keysToBeDeletedStats = 0;
-std::atomic<uint64_t> LevelDB::g_keyDeletesStats = 0;
+std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
+std::atomic< uint64_t > LevelDB::g_keyDeletesStats = 0;
 
 uint64_t LevelDB::getKeyDeletesStats() {
     return g_keyDeletesStats;
