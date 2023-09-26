@@ -58,11 +58,15 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 
 ```
 sudo apt update
-sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs 
-sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-9 g++-9 gperf clang-format-11
+sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python python3-pip gawk git vim doxygen 
+sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-9 g++-9 gperf clang-format-11 gnutls-dev
+sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov
 ```
 
-NB cmake needs to be of version >=3.31, git of version >=2.18
+
+
+
+NB cmake needs to be of version >=3.21, git of version >=2.18
 
 ### (for Ubuntu 20.10 or later) Set  gcc-9 as default compiler
 ```
@@ -74,14 +78,15 @@ sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-to
 gcc --version
 ```
 
+# Install latest cmake 
+
+```
+sudo apt-get purge cmake
+sudo snap install cmake --classic
+```
+
+
 ### Build dependencies
-
-```
-cd deps
-./build.sh
-```
-
-or, if you want to build debug version of skaled
 
 ```
 cd deps
@@ -106,8 +111,6 @@ cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug
 # Build all default targets using all cores.
 cmake --build build -- -j$(nproc)
 ```
-
-Note: Currently only Debug build is supported.
 
 
 ## Testing
