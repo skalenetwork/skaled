@@ -43,8 +43,8 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
-#include <libdevcore/system_usage.h>
 #include <libdevcore/LevelDB.h>
+#include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>
