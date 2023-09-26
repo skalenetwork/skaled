@@ -61,6 +61,13 @@ public:
 
     void doCompaction() const;
 
+    // Return the total count of key deletes  since the start
+    static uint64_t getKeyDeletesStats();
+    // count of the keys that were deleted since the start of skaled
+    static std::atomic< uint64_t > g_keyDeletesStats;
+    // count of the keys that are scheduled to be deleted but are not yet deleted
+    static std::atomic< uint64_t > g_keysToBeDeletedStats;
+
 private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;

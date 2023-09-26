@@ -44,6 +44,7 @@
 
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/system_usage.h>
+#include <libdevcore/LevelDB.h>
 
 #ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>
@@ -923,7 +924,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
                  << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
                  << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                 << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":CMM:" << bc().getTotalCacheMemory()
+                 << ":KDS:" << db::LevelDB::getKeyDeletesStats();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
