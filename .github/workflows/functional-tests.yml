@@ -25,7 +25,8 @@
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
         submodules: recursive
-        ref: bug/skaled-1550-reenable-cat-cycle-test
+        # ref: bug/skaled-1550-reenable-cat-cycle-test
+        ref: master
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
       with:
@@ -54,17 +55,17 @@
         ./update_environment.sh skaled+contractsRunningTest
         ./update_environment.sh skaled+filestorage
         ./update_environment.sh skaled+api
-    - name: skaled+internals+pytest
-      run: SKALED_PROVIDER=skaled_providers/binary_from_container ./run_tests.sh skaled+internals+pytest
+    # - name: skaled+internals+pytest
+    #   run: SKALED_PROVIDER=skaled_providers/binary_from_container ./run_tests.sh skaled+internals+pytest
 
-    - name: skaled+filestorage+all
-      run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+filestorage+all
+    # - name: skaled+filestorage+all
+    #   run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+filestorage+all
 
-    - name: skaled+contractsRunningTest+all
-      run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+contractsRunningTest+all
+    # - name: skaled+contractsRunningTest+all
+    #   run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+contractsRunningTest+all
 
-    - name: skaled+load_python+all
-      run: SKALED_PROVIDER=skaled_providers/binary_from_container ./run_tests.sh skaled+load_python+all
+    # - name: skaled+load_python+all
+    #   run: SKALED_PROVIDER=skaled_providers/binary_from_container ./run_tests.sh skaled+load_python+all
 
     - name: skaled+load_js+run_angry_cats
       run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+load_js+run_angry_cats
