@@ -153,6 +153,7 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     init( _forceAction, _networkID );
 
+	// Set timestamps for patches.
     TotalStorageUsedPatch::g_client = this;
     ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
     ContractStorageZeroValuePatch::setTimestamp(
