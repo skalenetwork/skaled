@@ -8,7 +8,15 @@ on:
 defaults:
   run:
     shell: bash
-jobs: 
+jobs:
+  cancel-runs:
+    name: Cancel Previous Runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
   build:
     runs-on: self-hosted
     env:
