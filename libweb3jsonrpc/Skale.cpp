@@ -210,7 +210,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                         m_client.chainParams().sChain.snapshotDownloadTimeout ) {
                 if ( threadExitRequested )
                     break;
-                sleep( 30 );
+                sleep( 10 );
             }
 
             clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
