@@ -170,7 +170,7 @@ void LevelDB::insert( Slice _key, Slice _value ) {
 void LevelDB::kill( Slice _key ) {
     leveldb::Slice const key( _key.data(), _key.size() );
     auto const status = m_db->Delete( m_writeOptions, key );
-    // Add this point the key is not actually deleted. It will be deleted when the batch
+    // At this point the key is not actually deleted. It will be deleted when the batch
     // is committed
     g_keysToBeDeletedStats++;
     checkStatus( status );
