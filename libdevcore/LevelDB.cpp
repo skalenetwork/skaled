@@ -190,8 +190,8 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
             DatabaseError() << errinfo_comment( "Invalid batch type passed to LevelDB::commit" ) );
     }
     auto const status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
-    // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes stats
-    // and set g_keysToBeDeletedStats to zero
+    // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes
+    // stats and set g_keysToBeDeletedStats to zero
     g_keyDeletesStats += g_keysToBeDeletedStats;
     g_keysToBeDeletedStats = 0;
     checkStatus( status );
