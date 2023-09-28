@@ -43,6 +43,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
@@ -152,17 +153,17 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     init( _forceAction, _networkID );
 
+    // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::contractStoragePatchTimestamp =
-        chainParams().sChain.contractStoragePatchTimestamp;
-    ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
-        chainParams().sChain.contractStorageZeroValuePatchTimestamp;
-    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp = chainParams().sChain.verifyDaSigsPatchTimestamp;
-    RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
-    StorageDestructionPatch::storageDestructionPatchTimestamp =
-        chainParams().sChain.storageDestructionPatchTimestamp;
-    POWCheckPatch::powCheckPatchTimestamp = chainParams().sChain.powCheckPatchTimestamp;
+    ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
+    ContractStorageZeroValuePatch::setTimestamp(
+        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
+    VerifyDaSigsPatch::setTimestamp( chainParams().sChain.verifyDaSigsPatchTimestamp );
+    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
+    StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
+    POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
 }
+
 
 Client::~Client() {
     stopWorking();
@@ -924,7 +925,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
                  << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
                  << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                 << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":CMM:" << bc().getTotalCacheMemory()
+                 << ":KDS:" << db::LevelDB::getKeyDeletesStats();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
