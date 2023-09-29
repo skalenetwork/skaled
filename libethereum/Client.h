@@ -121,7 +121,7 @@ public:
         u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
-        bool _generateExecutionTrace,
+        std::shared_ptr<StandardTrace> _tracer,
 #endif
         FudgeFactor _ff = FudgeFactor::Strict ) override;
 

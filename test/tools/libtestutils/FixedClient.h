@@ -30,6 +30,12 @@
 using BlockNumber = unsigned;
 
 namespace dev {
+
+namespace eth {
+   class StandardTrace;
+}
+
+
 namespace test {
 
 /**
@@ -74,7 +80,7 @@ public:
         Address const&, u256, Address, bytes const&, u256, u256,
 #ifdef HISTORIC_STATE
                                   BlockNumber,
-                                  bool,
+                                  std::shared_ptr<dev::eth::StandardTrace>,
 
 #endif
 eth::FudgeFactor ) override {

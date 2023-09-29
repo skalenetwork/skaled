@@ -786,10 +786,15 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
 #ifdef HISTORIC_STATE
 ExecutionResult Block::executeHistoricCall(
-    LastBlockHashesFace const& _lh, Transaction const& _t ) {
+    LastBlockHashesFace const& _lh, Transaction const& _t, std::shared_ptr<StandardTrace> _tracer ) {
     auto p = Permanence::Reverted;
 
     auto onOp = OnOpFunc();
+
+    if (_tracer) {
+        onOp = _tracer->onOp();
+    }
+
 
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );

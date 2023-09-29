@@ -214,9 +214,13 @@ public:
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
+#ifndef HISTORIC_STATE
+#define HISTORIC_STATE
+#endif
 
 #ifdef HISTORIC_STATE
-    ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t );
+    ExecutionResult executeHistoricCall(
+        LastBlockHashesFace const& _lh, Transaction const& _t, std::shared_ptr<StandardTrace> _tracer );
 #endif
 
 

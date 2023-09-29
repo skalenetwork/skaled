@@ -415,7 +415,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
     ExecutionResult er = client()->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
 #ifdef HISTORIC_STATE
         bN,
-        false,
+        nullptr,
 #endif
         FudgeFactor::Lenient );
 

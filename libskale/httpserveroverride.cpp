@@ -3610,7 +3610,7 @@ void SkaleServerOverride::informational_eth_getBalance(
             pClient->call( t.from, t.value, t.to, t.data, t.gas, t.gasPrice,
 #ifdef HISTORIC_STATE
                 bNumber,
-                false,
+                nullptr,
 #endif
                 dev::eth::FudgeFactor::Lenient );
 
