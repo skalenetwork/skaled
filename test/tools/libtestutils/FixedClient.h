@@ -74,6 +74,8 @@ public:
         Address const&, u256, Address, bytes const&, u256, u256,
 #ifdef HISTORIC_STATE
                                   BlockNumber,
+                                  bool,
+
 #endif
 eth::FudgeFactor ) override {
         return {};

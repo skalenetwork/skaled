@@ -4,7 +4,7 @@
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
+    it unde<r the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
@@ -22,6 +22,9 @@
  */
 
 #pragma once
+#ifndef HISTORIC_STATE
+#define HISTORIC_STATE
+#endif
 
 #include <array>
 #include <atomic>
@@ -118,6 +121,7 @@ public:
         u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
+        bool _generateExecutionTrace,
 #endif
         FudgeFactor _ff = FudgeFactor::Strict ) override;
 

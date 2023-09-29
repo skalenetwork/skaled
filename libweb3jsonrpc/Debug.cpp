@@ -149,7 +149,7 @@ Json::Value Debug::debug_traceTransaction( string const&
     }
     try {
         ExecutionResult er = m_eth.call( t.from(), t.value(), t.to(), t.data(), t.gas(),
-            t.gasPrice(), blockNumber, FudgeFactor::Lenient );
+            t.gasPrice(), blockNumber, true, FudgeFactor::Lenient );
         ret["gas"] = toJS( t.gas() );
         ret["return"] = toHexPrefixed( er.output );
         ret["structLogs"] = "";

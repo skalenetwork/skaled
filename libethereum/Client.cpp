@@ -1224,6 +1224,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
     BlockNumber _blockNumber,
+    bool _generateExecutionTrace,
 #endif
     FudgeFactor _ff ) {
     ExecutionResult ret;
