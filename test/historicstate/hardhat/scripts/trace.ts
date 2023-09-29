@@ -14,7 +14,7 @@ function CHECK(result: any): void {
     }
 }
 
-async function getTrace(hash: string): Promise<String> {
+async function getAndPrintTrace(hash: string): Promise<String> {
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
     console.log(trace);
     return trace;
@@ -28,26 +28,20 @@ async function deployWriteAndDestroy(): Promise<void> {
     const lock = await Lock.deploy();
     lockContract = await lock.deployed();
 
-    // Print the transaction hash
-    console.log(lockContract.hash)
 
     const deployBn = await ethers.provider.getBlockNumber();
 
     const hash : string = lockContract.deployTransaction.hash;
-
     console.log(`Contract deployed to ${lockContract.address} at block ${deployBn} tx hash ${hash}`);
 
-    try {
-        const trace = await getTrace(hash)
-        console.log(trace);
-    } catch(e) {
-        console.error(e);
-    }
+    await getAndPrintTrace(hash)
 
     console.log(`Now minting`);
 
     const transferReceipt = await lockContract.mint(1000);
-    await transferReceipt.wait();
+    const result = await transferReceipt.wait();
+
+    await getAndPrintTrace(result.deployTransaction.hash);
 
     console.log(`Now testing self-destruct`);
 
