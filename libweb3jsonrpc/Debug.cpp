@@ -26,7 +26,7 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
-Debug::Debug( eth::Client & _eth, SkaleDebugInterface* _debugInterface, const string& argv )
+Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const string& argv )
     : m_eth( _eth ), m_debugInterface( _debugInterface ), argv_options( argv ) {}
 
 
@@ -147,9 +147,16 @@ Json::Value Debug::debug_traceTransaction( string const&
         throw jsonrpc::JsonRpcException( "Unknown block number" );
         ;
     }
+
+    auto tracer = std::make_shared< StandardTrace >();
+    tracer->setShowMnemonics();
+    tracer->setOptions( debugOptions( _json ) );
+
+
     try {
-        ExecutionResult er = m_eth.call( t.from(), t.value(), t.to(), t.data(), t.gas(),
-            t.gasPrice(), blockNumber, nullptr, FudgeFactor::Lenient );
+        ExecutionResult er = m_eth.call( t.from(), t.value(), t.to(),
+            t.data(), t.gas(),
+            t.gasPrice(), blockNumber, tracer, FudgeFactor::Strict );
         ret["gas"] = toJS( t.gas() );
         ret["return"] = toHexPrefixed( er.output );
         ret["structLogs"] = "";
@@ -170,188 +177,188 @@ Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const&
 // TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByHash(
     string const& /*_blockHash*/, Json::Value const& _json ) {
-        Json::Value ret;
-        Block block = m_eth.latestBlock();
-        ret["structLogs"] = traceBlock( block, _json );
-        return ret;
+    Json::Value ret;
+    Block block = m_eth.latestBlock();
+    ret["structLogs"] = traceBlock( block, _json );
+    return ret;
+}
+
+// TODO Make function without "block" parameter
+Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
+    Json::Value ret;
+    Block block = m_eth.latestBlock();
+    ret["structLogs"] = traceBlock( block, _json );
+    return ret;
+}
+
+Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
+    string const& /*_addressHash*/, int _maxResults ) {
+    Json::Value ret( Json::objectValue );
+
+    if ( _maxResults <= 0 )
+        throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
+
+    try {
+        State const state = stateAt( _blockHashOrNumber, _txIndex );
+
+        throw std::logic_error( "Addresses list is not suppoted in Skale state" );
+        //        auto const addressMap = state.addresses(h256(_addressHash), _maxResults);
+
+        //        Json::Value addressList(Json::objectValue);
+        //        for (auto const& record : addressMap.first)
+        //            addressList[toString(record.first)] = toString(record.second);
+
+        //        ret["addressMap"] = addressList;
+        //        ret["nextKey"] = toString(addressMap.second);
+    } catch ( Exception const& _e ) {
+        cwarn << diagnostic_information( _e );
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
     }
 
-    // TODO Make function without "block" parameter
-    Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
-        Json::Value ret;
-        Block block = m_eth.latestBlock();
-        ret["structLogs"] = traceBlock( block, _json );
-        return ret;
+    return ret;
+}
+
+Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _txIndex,
+    string const& /*_address*/, string const& /*_begin*/, int _maxResults ) {
+    Json::Value ret( Json::objectValue );
+    ret["complete"] = true;
+    ret["storage"] = Json::Value( Json::objectValue );
+
+    if ( _maxResults <= 0 )
+        throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
+
+    try {
+        State const state = stateAt( _blockHashOrNumber, _txIndex );
+
+        throw std::logic_error( "Obtaining of full storage is not suppoted in Skale state" );
+        //        map<h256, pair<u256, u256>> const storage(state.storage(Address(_address)));
+
+        //        // begin is inclusive
+        //        auto itBegin = storage.lower_bound(h256fromHex(_begin));
+        //        for (auto it = itBegin; it != storage.end(); ++it)
+        //        {
+        //            if (ret["storage"].size() == static_cast<unsigned>(_maxResults))
+        //            {
+        //                ret["nextKey"] = toCompactHexPrefixed(it->first, 1);
+        //                break;
+        //            }
+
+        //            Json::Value keyValue(Json::objectValue);
+        //            std::string hashedKey = toCompactHexPrefixed(it->first, 1);
+        //            keyValue["key"] = toCompactHexPrefixed(it->second.first, 1);
+        //            keyValue["value"] = toCompactHexPrefixed(it->second.second, 1);
+
+        //            ret["storage"][hashedKey] = keyValue;
+        //        }
+    } catch ( Exception const& _e ) {
+        cwarn << diagnostic_information( _e );
+        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
     }
 
-    Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
-        string const& /*_addressHash*/, int _maxResults ) {
-        Json::Value ret( Json::objectValue );
+    return ret;
+}
 
-        if ( _maxResults <= 0 )
-            throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
+std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
+    throw std::logic_error( "Preimages do not exist in Skale state" );
+    //    h256 const hashedKey(h256fromHex(_hashedKey));
+    //    bytes const key = m_eth.state().lookupAux(hashedKey);
 
-        try {
-            State const state = stateAt( _blockHashOrNumber, _txIndex );
+    //    return key.empty() ? std::string() : toHexPrefixed(key);
+}
 
-            throw std::logic_error( "Addresses list is not suppoted in Skale state" );
-            //        auto const addressMap = state.addresses(h256(_addressHash), _maxResults);
-
-            //        Json::Value addressList(Json::objectValue);
-            //        for (auto const& record : addressMap.first)
-            //            addressList[toString(record.first)] = toString(record.second);
-
-            //        ret["addressMap"] = addressList;
-            //        ret["nextKey"] = toString(addressMap.second);
-        } catch ( Exception const& _e ) {
-            cwarn << diagnostic_information( _e );
-            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
+    Json::Value ret;
+    try {
+        Block temp = m_eth.latestBlock();
+        TransactionSkeleton ts = toTransactionSkeleton( _call );
+        if ( !ts.from ) {
+            ts.from = Address();
         }
-
-        return ret;
+        u256 nonce = temp.transactionsFrom( ts.from );
+        u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
+        u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
+        temp.mutableState().addBalance( ts.from, gas * gasPrice + ts.value );
+        Transaction transaction( ts.value, gasPrice, gas, ts.to, ts.data, nonce );
+        transaction.forceSender( ts.from );
+        eth::ExecutionResult er;
+        // HACK 0 here is for gasPrice
+        Executive e( temp, m_eth.blockChain().lastBlockHashes(), 0 );
+        e.setResultRecipient( er );
+        Json::Value trace = traceTransaction( e, transaction, _options );
+        ret["gas"] = toJS( transaction.gas() );
+        ret["return"] = toHexPrefixed( er.output );
+        ret["structLogs"] = trace;
+    } catch ( Exception const& _e ) {
+        cwarn << diagnostic_information( _e );
     }
+    return ret;
+}
 
-    Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _txIndex,
-        string const& /*_address*/, string const& /*_begin*/, int _maxResults ) {
-        Json::Value ret( Json::objectValue );
-        ret["complete"] = true;
-        ret["storage"] = Json::Value( Json::objectValue );
+void Debug::debug_pauseBroadcast( bool _pause ) {
+    m_eth.skaleHost()->pauseBroadcast( _pause );
+}
+void Debug::debug_pauseConsensus( bool _pause ) {
+    m_eth.skaleHost()->pauseConsensus( _pause );
+}
+void Debug::debug_forceBlock() {
+    m_eth.skaleHost()->forceEmptyBlock();
+}
 
-        if ( _maxResults <= 0 )
-            throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
-
-        try {
-            State const state = stateAt( _blockHashOrNumber, _txIndex );
-
-            throw std::logic_error( "Obtaining of full storage is not suppoted in Skale state" );
-            //        map<h256, pair<u256, u256>> const storage(state.storage(Address(_address)));
-
-            //        // begin is inclusive
-            //        auto itBegin = storage.lower_bound(h256fromHex(_begin));
-            //        for (auto it = itBegin; it != storage.end(); ++it)
-            //        {
-            //            if (ret["storage"].size() == static_cast<unsigned>(_maxResults))
-            //            {
-            //                ret["nextKey"] = toCompactHexPrefixed(it->first, 1);
-            //                break;
-            //            }
-
-            //            Json::Value keyValue(Json::objectValue);
-            //            std::string hashedKey = toCompactHexPrefixed(it->first, 1);
-            //            keyValue["key"] = toCompactHexPrefixed(it->second.first, 1);
-            //            keyValue["value"] = toCompactHexPrefixed(it->second.second, 1);
-
-            //            ret["storage"][hashedKey] = keyValue;
-            //        }
-        } catch ( Exception const& _e ) {
-            cwarn << diagnostic_information( _e );
-            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-        }
-
-        return ret;
-    }
-
-    std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
-        throw std::logic_error( "Preimages do not exist in Skale state" );
-        //    h256 const hashedKey(h256fromHex(_hashedKey));
-        //    bytes const key = m_eth.state().lookupAux(hashedKey);
-
-        //    return key.empty() ? std::string() : toHexPrefixed(key);
-    }
-
-    Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
-        Json::Value ret;
-        try {
-            Block temp = m_eth.latestBlock();
-            TransactionSkeleton ts = toTransactionSkeleton( _call );
-            if ( !ts.from ) {
-                ts.from = Address();
-            }
-            u256 nonce = temp.transactionsFrom( ts.from );
-            u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
-            u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
-            temp.mutableState().addBalance( ts.from, gas * gasPrice + ts.value );
-            Transaction transaction( ts.value, gasPrice, gas, ts.to, ts.data, nonce );
-            transaction.forceSender( ts.from );
-            eth::ExecutionResult er;
-            // HACK 0 here is for gasPrice
-            Executive e( temp, m_eth.blockChain().lastBlockHashes(), 0 );
-            e.setResultRecipient( er );
-            Json::Value trace = traceTransaction( e, transaction, _options );
-            ret["gas"] = toJS( transaction.gas() );
-            ret["return"] = toHexPrefixed( er.output );
-            ret["structLogs"] = trace;
-        } catch ( Exception const& _e ) {
-            cwarn << diagnostic_information( _e );
-        }
-        return ret;
-    }
-
-    void Debug::debug_pauseBroadcast( bool _pause ) {
-        m_eth.skaleHost()->pauseBroadcast( _pause );
-    }
-    void Debug::debug_pauseConsensus( bool _pause ) {
-        m_eth.skaleHost()->pauseConsensus( _pause );
-    }
-    void Debug::debug_forceBlock() {
-        m_eth.skaleHost()->forceEmptyBlock();
-    }
-
-    void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
-        try {
-            h256 h = jsToFixed< 32 >( _transactionHash );
-            if ( !m_eth.isKnownTransaction( h ) )
-                BOOST_THROW_EXCEPTION(
-                    jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-
-            const Transaction tx = m_eth.transaction( h );
-            m_eth.skaleHost()->forcedBroadcast( tx );
-        } catch ( ... ) {
+void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_eth.isKnownTransaction( h ) )
             BOOST_THROW_EXCEPTION(
                 jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-        }
+
+        const Transaction tx = m_eth.transaction( h );
+        m_eth.skaleHost()->forcedBroadcast( tx );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
+}
 
-    std::string Debug::debug_interfaceCall( const std::string& _arg ) {
-        return m_debugInterface->call( _arg );
-    }
+std::string Debug::debug_interfaceCall( const std::string& _arg ) {
+    return m_debugInterface->call( _arg );
+}
 
-    std::string Debug::debug_getVersion() {
-        return Version;
-    }
+std::string Debug::debug_getVersion() {
+    return Version;
+}
 
-    std::string Debug::debug_getArguments() {
-        return argv_options;
-    }
+std::string Debug::debug_getArguments() {
+    return argv_options;
+}
 
-    std::string Debug::debug_getConfig() {
-        return m_eth.chainParams().getOriginalJson();
-    }
+std::string Debug::debug_getConfig() {
+    return m_eth.chainParams().getOriginalJson();
+}
 
-    std::string Debug::debug_getSchainName() {
-        return m_eth.chainParams().sChain.name;
-    }
+std::string Debug::debug_getSchainName() {
+    return m_eth.chainParams().sChain.name;
+}
 
-    uint64_t Debug::debug_getSnapshotCalculationTime() {
-        return m_eth.getSnapshotCalculationTime();
-    }
+uint64_t Debug::debug_getSnapshotCalculationTime() {
+    return m_eth.getSnapshotCalculationTime();
+}
 
-    uint64_t Debug::debug_getSnapshotHashCalculationTime() {
-        return m_eth.getSnapshotHashCalculationTime();
-    }
+uint64_t Debug::debug_getSnapshotHashCalculationTime() {
+    return m_eth.getSnapshotHashCalculationTime();
+}
 
-    uint64_t Debug::debug_doStateDbCompaction() {
-        auto t1 = boost::chrono::high_resolution_clock::now();
-        m_eth.doStateDbCompaction();
-        auto t2 = boost::chrono::high_resolution_clock::now();
+uint64_t Debug::debug_doStateDbCompaction() {
+    auto t1 = boost::chrono::high_resolution_clock::now();
+    m_eth.doStateDbCompaction();
+    auto t2 = boost::chrono::high_resolution_clock::now();
 
-        return boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
-    }
+    return boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+}
 
-    uint64_t Debug::debug_doBlocksDbCompaction() {
-        auto t1 = boost::chrono::high_resolution_clock::now();
-        m_eth.doBlocksDbCompaction();
-        auto t2 = boost::chrono::high_resolution_clock::now();
+uint64_t Debug::debug_doBlocksDbCompaction() {
+    auto t1 = boost::chrono::high_resolution_clock::now();
+    m_eth.doBlocksDbCompaction();
+    auto t2 = boost::chrono::high_resolution_clock::now();
 
-        return boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
-    }
+    return boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+}
