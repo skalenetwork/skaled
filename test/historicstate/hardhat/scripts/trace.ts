@@ -14,8 +14,8 @@ function CHECK(result: any): void {
     }
 }
 
-function getTrace(hash: string): any {
-    const trace = ethers.provider.send('debug_traceTransaction', [hash, {}]);
+async function getTrace(hash: string): Promise<String> {
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
     console.log(trace);
     return trace;
 }
@@ -33,10 +33,12 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     const deployBn = await ethers.provider.getBlockNumber();
 
-    console.log(`Contract deployed to ${lockContract.address} at block ${deployBn}`);
+    const hash : string = lockContract.deployTransaction.hash;
+
+    console.log(`Contract deployed to ${lockContract.address} at block ${deployBn} tx hash ${hash}`);
 
     try {
-        const trace = getTrace(lockContract.hash)
+        const trace = await getTrace(hash)
         console.log(trace);
     } catch(e) {
         console.error(e);
