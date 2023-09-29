@@ -26,8 +26,12 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
-Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const string& argv )
-    : m_eth( _eth ), m_debugInterface( _debugInterface ), argv_options( argv ) {}
+Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const string& argv,
+    bool _enablePrivilegedApis )
+    : m_eth( _eth ),
+      m_debugInterface( _debugInterface ),
+      argv_options( argv ),
+      enablePrivilegedApis( _enablePrivilegedApis ) {}
 
 
 h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
@@ -154,8 +158,7 @@ Json::Value Debug::debug_traceTransaction( string const&
 
 
     try {
-        ExecutionResult er = m_eth.call( t.from(), t.value(), t.to(),
-            t.data(), t.gas(),
+        ExecutionResult er = m_eth.call( t.from(), t.value(), t.to(), t.data(), t.gas(),
             t.gasPrice(), blockNumber, tracer, FudgeFactor::Strict );
         ret["gas"] = toJS( t.gas() );
         ret["return"] = toHexPrefixed( er.output );

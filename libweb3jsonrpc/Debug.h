@@ -22,7 +22,7 @@ class SessionManager;
 class Debug : public DebugFace {
 public:
     explicit Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface = nullptr,
-        const std::string& argv = std::string() );
+        const std::string& argv = std::string(), bool _enablePrivilegedApis = false);
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{ RPCModule{ "debug", "1.0" } };
@@ -70,6 +70,9 @@ private:
     Json::Value traceTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, Json::Value const& _json );
     Json::Value traceBlock( dev::eth::Block const& _block, Json::Value const& _json );
+
+    bool enablePrivilegedApis;
+
 };
 
 }  // namespace rpc
