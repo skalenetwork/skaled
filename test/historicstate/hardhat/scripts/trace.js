@@ -141,12 +141,10 @@ async function deployContractsProxy() {
  //   CHECK(b == INITIAL_MINT)
 
 
-    console.log(`Now writing 10,000 values into the state`);
+    console.log(`Now minting`);
 
-    transferReceipt = await lockContract.writeValues();
+    transferReceipt = await lockContract.mint(1000);
     await transferReceipt.wait();
-
-    previousBlock =  await waitUntilNextBlock();
 
     console.log(`Now testing self-destruct`);
 
@@ -155,16 +153,8 @@ async function deployContractsProxy() {
 
     console.log(`Successfully self destructed`);
 
-    previousBlock =  await waitUntilNextBlock();
-
 
     console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
-
-
-    const MultiSend = await hre.ethers.getContractFactory("MultiSend");
-    const multiSend = await MultiSend.deploy({value: ethers.utils.parseEther("100000")});
-    multiSendContract = await multiSend.deployed();
-    console.log(`Multisend deployed to ${multiSend.address}`);
 
 
 }
