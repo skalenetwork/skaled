@@ -39,9 +39,8 @@ async function deployWriteAndDestroy(): Promise<void> {
     console.log(`Now minting`);
 
     const transferReceipt = await lockContract.mint(1000);
-    const result = await transferReceipt.wait();
 
-    await getAndPrintTrace(result.deployTransaction.hash);
+    await getAndPrintTrace(transferReceipt.hash);
 
     console.log(`Now testing self-destruct`);
 

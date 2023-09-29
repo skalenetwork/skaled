@@ -53,10 +53,11 @@ contract Lock {
         return true;
     }
 
-    function mint(uint amount) public {
+    function mint(uint amount) public returns (uint256) {
         balanceOf[msg.sender] += amount;
         totalSupply += amount;
         emit Transfer(address(0), msg.sender, amount);
+        return 1;
     }
 
     function burn(uint amount) external {
