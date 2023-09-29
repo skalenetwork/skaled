@@ -159,7 +159,9 @@ Json::Value Debug::debug_traceTransaction( string const&
             t.gasPrice(), blockNumber, tracer, FudgeFactor::Strict );
         ret["gas"] = toJS( t.gas() );
         ret["return"] = toHexPrefixed( er.output );
-        ret["structLogs"] = "";
+        Json::Value trace;
+        Json::Reader().parse( tracer->json(), trace );
+        ret["structLogs"] = trace;
     } catch ( Exception const& _e ) {
         cwarn << diagnostic_information( _e );
     }
