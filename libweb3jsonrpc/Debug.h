@@ -13,9 +13,7 @@ namespace dev {
 namespace eth {
 class Client;
 
-#ifdef HISTORIC_STATE
-AlethStandardTrace::DebugOptions debugOptions( Json::Value const& _json );
-#endif
+StandardTrace::DebugOptions debugOptions( Json::Value const& _json );
 
 }  // namespace eth
 namespace rpc {
@@ -23,7 +21,7 @@ class SessionManager;
 
 class Debug : public DebugFace {
 public:
-    explicit Debug( eth::Client const& _eth, SkaleDebugInterface* _debugInterface = nullptr,
+    explicit Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface = nullptr,
         const std::string& argv = std::string() );
 
     virtual RPCModules implementedModules() const override {
@@ -63,7 +61,7 @@ public:
     virtual uint64_t debug_doBlocksDbCompaction() override;
 
 private:
-    eth::Client const& m_eth;
+    eth::Client& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;
     std::string argv_options;
 
