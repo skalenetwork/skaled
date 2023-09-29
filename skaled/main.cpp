@@ -1768,7 +1768,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t ) ( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
@@ -1980,9 +1980,9 @@ int main( int argc, char** argv ) try {
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
-        auto pDebugFace = bEnabledAPIs_debug ?
-                              new rpc::Debug( *g_client, &debugInterface, argv_string ) :
-                              nullptr;
+        auto pDebugFace =
+            new rpc::Debug( *g_client, &debugInterface, argv_string, bEnabledAPIs_debug );
+
         auto pPerformanceTrackerFace = bEnabledAPIs_performanceTracker ?
                                            new rpc::SkalePerformanceTracker( configPath.string() ) :
                                            nullptr;

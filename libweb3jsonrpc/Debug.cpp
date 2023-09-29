@@ -26,6 +26,18 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
+void Debug::checkPrivilegedAccess() const {
+    if ( enablePrivilegedApis ) {
+        throw jsonrpc::JsonRpcException( "This API call is not enabled" );
+    }
+}
+
+void Debug::checkHistoricStateEnabled() const {
+#ifndef HISTORIC_STATE
+    throw jsonrpc::JsonRpcException( "This API call is available on archive nodes only" );
+#endif
+}
+
 Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const string& argv,
     bool _enablePrivilegedApis )
     : m_eth( _eth ),
@@ -35,6 +47,7 @@ Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const str
 
 
 h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
+    checkPrivilegedAccess();
     if ( isHash< h256 >( _blockNumberOrHash ) )
         return h256( _blockNumberOrHash.substr( _blockNumberOrHash.size() - 64, 64 ) );
     try {
@@ -45,6 +58,7 @@ h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
 }
 
 State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) const {
+    checkPrivilegedAccess();
     if ( _txIndex < 0 )
         throw jsonrpc::JsonRpcException( "Negative index" );
 
@@ -132,12 +146,9 @@ Json::Value Debug::debug_traceTransaction( string const&
 ) {
     Json::Value ret;
 
+    checkHistoricStateEnabled();
 
-#ifndef HISTORIC_STATE
-    throw jsonrpc::JsonRpcException(
-        "debug_traceTransaction API is only supported "
-        "on archive nodes, not or core or sync nodes" );
-#else
+#ifdef HISTORIC_STATE
     LocalisedTransaction t = m_eth.localisedTransaction( h256( _txHash ) );
 
 
@@ -174,6 +185,7 @@ Json::Value Debug::debug_traceTransaction( string const&
 
 
 Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const& _json ) {
+    checkHistoricStateEnabled();
     bytes bytes = fromHex( _blockRLP );
     BlockHeader blockHeader( bytes );
     return debug_traceBlockByHash( blockHeader.hash().hex(), _json );
@@ -182,6 +194,7 @@ Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const&
 // TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByHash(
     string const& /*_blockHash*/, Json::Value const& _json ) {
+    checkHistoricStateEnabled();
     Json::Value ret;
     Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
@@ -191,6 +204,7 @@ Json::Value Debug::debug_traceBlockByHash(
 // TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
     Json::Value ret;
+    checkHistoricStateEnabled();
     Block block = m_eth.latestBlock();
     ret["structLogs"] = traceBlock( block, _json );
     return ret;
@@ -198,6 +212,7 @@ Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value c
 
 Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_addressHash*/, int _maxResults ) {
+    checkPrivilegedAccess();
     Json::Value ret( Json::objectValue );
 
     if ( _maxResults <= 0 )
@@ -225,6 +240,7 @@ Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _
 
 Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_address*/, string const& /*_begin*/, int _maxResults ) {
+    checkPrivilegedAccess();
     Json::Value ret( Json::objectValue );
     ret["complete"] = true;
     ret["storage"] = Json::Value( Json::objectValue );
@@ -264,6 +280,7 @@ Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _
 }
 
 std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
+    checkPrivilegedAccess();
     throw std::logic_error( "Preimages do not exist in Skale state" );
     //    h256 const hashedKey(h256fromHex(_hashedKey));
     //    bytes const key = m_eth.state().lookupAux(hashedKey);
@@ -300,16 +317,20 @@ Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const&
 }
 
 void Debug::debug_pauseBroadcast( bool _pause ) {
+    checkPrivilegedAccess();
     m_eth.skaleHost()->pauseBroadcast( _pause );
 }
 void Debug::debug_pauseConsensus( bool _pause ) {
+    checkPrivilegedAccess();
     m_eth.skaleHost()->pauseConsensus( _pause );
 }
 void Debug::debug_forceBlock() {
+    checkPrivilegedAccess();
     m_eth.skaleHost()->forceEmptyBlock();
 }
 
 void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
+    checkPrivilegedAccess();
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_eth.isKnownTransaction( h ) )
@@ -325,6 +346,7 @@ void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
 }
 
 std::string Debug::debug_interfaceCall( const std::string& _arg ) {
+    checkPrivilegedAccess();
     return m_debugInterface->call( _arg );
 }
 
@@ -333,10 +355,12 @@ std::string Debug::debug_getVersion() {
 }
 
 std::string Debug::debug_getArguments() {
+    checkPrivilegedAccess();
     return argv_options;
 }
 
 std::string Debug::debug_getConfig() {
+    checkPrivilegedAccess();
     return m_eth.chainParams().getOriginalJson();
 }
 
@@ -353,6 +377,7 @@ uint64_t Debug::debug_getSnapshotHashCalculationTime() {
 }
 
 uint64_t Debug::debug_doStateDbCompaction() {
+    checkPrivilegedAccess();
     auto t1 = boost::chrono::high_resolution_clock::now();
     m_eth.doStateDbCompaction();
     auto t2 = boost::chrono::high_resolution_clock::now();
@@ -361,6 +386,7 @@ uint64_t Debug::debug_doStateDbCompaction() {
 }
 
 uint64_t Debug::debug_doBlocksDbCompaction() {
+    checkPrivilegedAccess();
     auto t1 = boost::chrono::high_resolution_clock::now();
     m_eth.doBlocksDbCompaction();
     auto t2 = boost::chrono::high_resolution_clock::now();
