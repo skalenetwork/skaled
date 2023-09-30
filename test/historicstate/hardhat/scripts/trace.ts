@@ -6,6 +6,22 @@ import { ethers } from "hardhat";
 
 let lockContract: any;
 
+async function waitUntilNextBlock() {
+
+    const current = await hre.ethers.provider.getBlockNumber();
+    let newBlock = current;
+    console.log(`BLOCK_NUMBER ${current}`);
+
+    while (newBlock == current) {
+        newBlock = await hre.ethers.provider.getBlockNumber();
+    }
+
+    console.log(`BLOCK_NUMBER ${newBlock}`);
+
+    return current;
+
+}
+
 function CHECK(result: any): void {
     if (!result) {
         const message: string = `Check failed ${result}`
@@ -34,7 +50,12 @@ async function deployWriteAndDestroy(): Promise<void> {
     const hash : string = lockContract.deployTransaction.hash;
     console.log(`Contract deployed to ${lockContract.address} at block ${deployBn} tx hash ${hash}`);
 
+
+    await waitUntilNextBlock()
+
     await getAndPrintTrace(hash)
+
+    /*
 
     console.log(`Now minting`);
 
@@ -50,6 +71,9 @@ async function deployWriteAndDestroy(): Promise<void> {
     console.log(`Successfully self destructed`);
 
     console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
+
+
+     */
 }
 
 async function main(): Promise<void> {
