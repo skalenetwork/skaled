@@ -152,6 +152,7 @@ Json::Value Debug::debug_traceTransaction( string const&
     LocalisedTransaction t = m_eth.localisedTransaction( h256( _txHash ) );
 
 
+
     if ( t.blockHash() == h256( 0 ) ) {
         throw jsonrpc::JsonRpcException( "no committed transaction with this hash" );
     }
@@ -169,8 +170,7 @@ Json::Value Debug::debug_traceTransaction( string const&
 
 
     try {
-        ExecutionResult er = m_eth.call( t.from(), t.value(), t.to(), t.data(), t.gas(),
-            t.gasPrice(), blockNumber, tracer, FudgeFactor::Strict );
+        ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer);
         ret["gas"] = toJS( t.gas() );
         ret["return"] = toHexPrefixed( er.output );
         Json::Value trace;

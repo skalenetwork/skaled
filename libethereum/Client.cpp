@@ -1229,17 +1229,14 @@ h256 Client::importTransaction( Transaction const& _t ) {
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
     u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
-    BlockNumber _blockNumber, std::shared_ptr<StandardTrace> _tracer,
+    BlockNumber _blockNumber,
 #endif
     FudgeFactor _ff ) {
     ExecutionResult ret;
     try {
 #ifdef HISTORIC_STATE
         Block historicBlock = blockByNumber( _blockNumber );
-        // we use historic state if block number is in the past or if tracing is needed
-        // otherwise use regular state for speed
-        if ( _blockNumber < bc().number()) {
-            cerr << __FUNCTION__  << __LINE__ << ":" << _tracer << endl;
+        if ( _blockNumber < bc().number() ) {
             // historic state
             try {
                 u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
@@ -1254,8 +1251,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                         _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
-                ret = historicBlock.executeHistoricCall(
-                    bc().lastBlockHashes(), t, _tracer );
+                ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
                 throw;
@@ -1290,6 +1286,22 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     }
     return ret;
 }
+
+
+#ifdef HISTORIC_STATE
+ExecutionResult Client::trace(
+    Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< StandardTrace > _tracer ) {
+    Block historicBlock = blockByNumber( _blockNumber );
+    try {
+        _t.checkOutExternalGas( ~u256( 0 ) );
+        auto ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer );
+        return ret;
+    } catch ( ... ) {
+        cwarn << boost::current_exception_diagnostic_information();
+        throw;
+    }
+}
+#endif
 
 void Client::initIMABLSPublicKey() {
     if ( number() == 0 ) {

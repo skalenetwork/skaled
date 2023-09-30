@@ -121,9 +121,14 @@ public:
         u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
-        std::shared_ptr<StandardTrace> _tracer,
 #endif
         FudgeFactor _ff = FudgeFactor::Strict ) override;
+
+#ifdef HISTORIC_STATE
+    ExecutionResult trace( Transaction& _t, BlockNumber _blockNumber,
+        std::shared_ptr< StandardTrace > _tracer );
+#endif
+
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;

@@ -38,7 +38,6 @@
 namespace dev {
 namespace eth {
 struct SyncStatus;
-class StandardTrace;
 
 using TransactionHashes = h256s;
 using UncleHashes = h256s;
@@ -91,7 +90,6 @@ public:
         bytes const& _data, u256 _gas, u256 _gasPrice,
 #ifdef HISTORIC_STATE
         BlockNumber _blockNumber,
-        std::shared_ptr<StandardTrace> _tracer,
 #endif
         FudgeFactor _ff = FudgeFactor::Strict ) = 0;
     ExecutionResult call( Secret const& _secret, u256 _value, Address _dest, bytes const& _data,
@@ -103,7 +101,6 @@ public:
         return call( toAddress( _secret ), _value, _dest, _data, _gas, _gasPrice,
 #ifdef HISTORIC_STATE
             _blockNumber,
-            nullptr,
 #endif
             _ff );
     }
