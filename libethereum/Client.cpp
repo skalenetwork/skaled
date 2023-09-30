@@ -1236,7 +1236,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     try {
 #ifdef HISTORIC_STATE
         Block historicBlock = blockByNumber( _blockNumber );
-        if ( _blockNumber < bc().number() ) {
+        // we use historic state if block number is in the past or if tracing is needed
+        // otherwise use regular state for speed
+        if ( _blockNumber < bc().number() || _tracer) {
             // historic state
             try {
                 u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
