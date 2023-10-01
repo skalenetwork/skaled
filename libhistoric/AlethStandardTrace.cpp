@@ -3,7 +3,7 @@
 // Licensed under the GNU General Public License, Version 3.
 
 #include "AlethStandardTrace.h"
-#include "libethereum/ExtVM.h"
+#include "AlethExtVM.h"
 #include "libevm/LegacyVM.h"
 
 namespace dev {
@@ -15,11 +15,10 @@ bool changesStorage( Instruction _inst ) {
 
 }  // namespace
 
-void AlethStandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction inst,
-    bigint newMemSize, bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
-    ( void ) _steps;
+void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint newMemSize,
+    bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
 
-    ExtVM const& ext = dynamic_cast< ExtVM const& >( *voidExt );
+    AlethExtVM const& ext = dynamic_cast< AlethExtVM const& >( *voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
 
     Json::Value r( Json::objectValue );
@@ -32,25 +31,26 @@ void AlethStandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction i
         r["stack"] = stack;
     }
 
+
     bool newContext = false;
     Instruction lastInst = Instruction::STOP;
 
-    if ( m_lastInst.size() == ext.depth ) {
+    if ( m_lastInst.size() == voidExt->depth ) {
         // starting a new context
-        assert( m_lastInst.size() == ext.depth );
+        assert( m_lastInst.size() == voidExt->depth );
         m_lastInst.push_back( inst );
         newContext = true;
-    } else if ( m_lastInst.size() == ext.depth + 2 ) {
+    } else if ( m_lastInst.size() == voidExt->depth + 2 ) {
         m_lastInst.pop_back();
         lastInst = m_lastInst.back();
-    } else if ( m_lastInst.size() == ext.depth + 1 ) {
+    } else if ( m_lastInst.size() == voidExt->depth + 1 ) {
         // continuing in previous context
         lastInst = m_lastInst.back();
         m_lastInst.back() = inst;
     } else {
         cwarn << "GAA!!! Tracing VM and more than one new/deleted stack frame between steps!";
         cwarn << "Attmepting naive recovery...";
-        m_lastInst.resize( ext.depth + 1 );
+        m_lastInst.resize( voidExt->depth + 1 );
     }
 
     if ( vm ) {
@@ -67,6 +67,7 @@ void AlethStandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction i
         r["memSize"] = static_cast< uint64_t >( memory.size() );
     }
 
+
     if ( !m_options.disableStorage &&
          ( m_options.fullStorage || changesStorage( lastInst ) || newContext ) ) {
         Json::Value storage( Json::objectValue );
@@ -76,15 +77,17 @@ void AlethStandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction i
         r["storage"] = storage;
     }
 
+
     r["op"] = static_cast< uint8_t >( inst );
     if ( m_showMnemonics )
         r["opName"] = instructionInfo( inst ).name;
     r["pc"] = PC;
     r["gas"] = toString( gas );
     r["gasCost"] = toString( gasCost );
-    r["depth"] = ext.depth + 1;  // depth in standard trace is 1-based
+    r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
     if ( !!newMemSize )
         r["memexpand"] = toString( newMemSize );
+
 
     if ( m_outValue )
         m_outValue->append( r );
