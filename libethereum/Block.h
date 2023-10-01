@@ -35,6 +35,7 @@
 #include <libethcore/Counter.h>
 #include <libethcore/Exceptions.h>
 #include <libskale/State.h>
+#include <libhistoric/AlethStandardTrace.h>
 
 #include "Account.h"
 #include "GasPricer.h"
@@ -219,8 +220,8 @@ public:
 #endif
 
 #ifdef HISTORIC_STATE
-    ExecutionResult executeHistoricCall(
-        LastBlockHashesFace const& _lh, Transaction const& _t, std::shared_ptr<StandardTrace> _tracer );
+    ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
+        std::shared_ptr< AlethStandardTrace > _tracer );
 #endif
 
 

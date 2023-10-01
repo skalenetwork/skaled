@@ -3,6 +3,7 @@
 #include "DebugFace.h"
 
 #include <libethereum/Executive.h>
+#include <libhistoric/AlethStandardTrace.h>
 
 #include <boost/program_options.hpp>
 
@@ -13,7 +14,7 @@ namespace dev {
 namespace eth {
 class Client;
 
-StandardTrace::DebugOptions debugOptions( Json::Value const& _json );
+AlethStandardTrace::DebugOptions debugOptions( Json::Value const& _json );
 
 }  // namespace eth
 namespace rpc {
@@ -67,8 +68,6 @@ private:
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
     skale::State stateAt( std::string const& _blockHashOrNumber, int _txIndex ) const;
-    Json::Value traceTransaction(
-        dev::eth::Executive& _e, dev::eth::Transaction const& _t, Json::Value const& _json );
     Json::Value traceBlock( dev::eth::Block const& _block, Json::Value const& _json );
 
     bool enablePrivilegedApis;

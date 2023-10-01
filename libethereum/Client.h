@@ -60,6 +60,7 @@
 
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
+#include <libhistoric/AlethStandardTrace.h>
 
 class ConsensusHost;
 class SnapshotManager;
@@ -126,7 +127,7 @@ public:
 
 #ifdef HISTORIC_STATE
     ExecutionResult trace( Transaction& _t, BlockNumber _blockNumber,
-        std::shared_ptr< StandardTrace > _tracer );
+        std::shared_ptr< AlethStandardTrace > _tracer );
 #endif
 
 

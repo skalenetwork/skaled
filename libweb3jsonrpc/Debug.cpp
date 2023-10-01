@@ -80,8 +80,8 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
     //    return state;
 }
 
-StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
-    StandardTrace::DebugOptions op;
+AlethStandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
+    AlethStandardTrace::DebugOptions op;
     if ( !_json.isObject() || _json.empty() )
         return op;
     if ( !_json["disableStorage"].empty() )
@@ -96,19 +96,6 @@ StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
 }
 
 
-Json::Value Debug::traceTransaction(
-    Executive& _e, Transaction const& _t, Json::Value const& _json ) {
-    Json::Value trace;
-    StandardTrace st;
-    st.setShowMnemonics();
-    st.setOptions( debugOptions( _json ) );
-    _e.initialize( _t );
-    if ( !_e.execute() )
-        _e.go( st.onOp() );
-    _e.finalize();
-    Json::Reader().parse( st.json(), trace );
-    return trace;
-}
 
 
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
@@ -116,6 +103,7 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     //    s.setRoot(_block.stateRootBeforeTx(0));
 
     Json::Value traces( Json::arrayValue );
+    /*
     for ( unsigned k = 0; k < _block.pending().size(); k++ ) {
         Transaction t = _block.pending()[k];
 
@@ -130,6 +118,7 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
         e.setResultRecipient( er );
         traces.append( traceTransaction( e, t, _json ) );
     }
+     */
     return traces;
 }
 
@@ -164,7 +153,8 @@ Json::Value Debug::debug_traceTransaction( string const&
         ;
     }
 
-    auto tracer = std::make_shared< StandardTrace >();
+    Json::Value result;
+    auto tracer = std::make_shared< AlethStandardTrace >(result);
     tracer->setShowMnemonics();
     tracer->setOptions( debugOptions( _json ) );
 
@@ -173,9 +163,7 @@ Json::Value Debug::debug_traceTransaction( string const&
         ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer);
         ret["gas"] = toJS( t.gas() );
         ret["return"] = toHexPrefixed( er.output );
-        Json::Value trace;
-        Json::Reader().parse( tracer->json(), trace );
-        ret["structLogs"] = trace;
+        ret["structLogs"] = result;
     } catch ( Exception const& _e ) {
         cwarn << diagnostic_information( _e );
     }
@@ -290,6 +278,7 @@ std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
 
 Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
     Json::Value ret;
+    /*
     try {
         Block temp = m_eth.latestBlock();
         TransactionSkeleton ts = toTransactionSkeleton( _call );
@@ -313,6 +302,7 @@ Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const&
     } catch ( Exception const& _e ) {
         cwarn << diagnostic_information( _e );
     }
+     */
     return ret;
 }
 

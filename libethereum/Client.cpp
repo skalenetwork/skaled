@@ -1290,7 +1290,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 
 #ifdef HISTORIC_STATE
 ExecutionResult Client::trace(
-    Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< StandardTrace > _tracer ) {
+    Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer ) {
     Block historicBlock = blockByNumber( _blockNumber );
     try {
         _t.checkOutExternalGas( ~u256( 0 ) );
