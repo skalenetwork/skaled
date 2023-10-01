@@ -2,7 +2,7 @@ const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 
-import { ethers } from "hardhat";
+import {ethers} from "hardhat";
 
 let lockContract: any;
 
@@ -47,33 +47,36 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     const deployBn = await ethers.provider.getBlockNumber();
 
-    const hash : string = lockContract.deployTransaction.hash;
+    const hash: string = lockContract.deployTransaction.hash;
+    console.log(`Gas limit ${lockContract.deployTransaction.gasLimit}`);
     console.log(`Contract deployed to ${lockContract.address} at block ${deployBn} tx hash ${hash}`);
 
 
-    await waitUntilNextBlock()
+    // await waitUntilNextBlock()
 
     await getAndPrintTrace(hash)
 
-    /*
 
     console.log(`Now minting`);
 
     const transferReceipt = await lockContract.mint(1000);
+    console.log(`Gas limit ${transferReceipt.gasLimit}`);
 
     await getAndPrintTrace(transferReceipt.hash);
 
-    console.log(`Now testing self-destruct`);
+    /*
 
-    const transferReceipt2 = await lockContract.die("0x690b9a9e9aa1c9db991c7721a92d351db4fac990");
-    await transferReceipt2.wait();
+console.log(`Now testing self-destruct`);
 
-    console.log(`Successfully self destructed`);
+const transferReceipt2 = await lockContract.die("0x690b9a9e9aa1c9db991c7721a92d351db4fac990");
+await transferReceipt2.wait();
 
-    console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
+console.log(`Successfully self destructed`);
+
+console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
 
 
-     */
+ */
 }
 
 async function main(): Promise<void> {
