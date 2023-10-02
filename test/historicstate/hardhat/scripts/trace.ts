@@ -4,8 +4,6 @@ const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 
 import {ethers} from "hardhat";
 
-let lockContract: any;
-
 async function waitUntilNextBlock() {
 
     const current = await hre.ethers.provider.getBlockNumber();
@@ -42,12 +40,12 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     const Lock = await ethers.getContractFactory("Lock");
     const lock = await Lock.deploy();
-    lockContract = await lock.deployed();
+    const lockContract = await lock.deployed();
 
 
     const deployBn = await ethers.provider.getBlockNumber();
 
-    const hash: string = lockContract.deployTransaction.hash;
+    const hash = lockContract.deployTransaction.hash;
     console.log(`Gas limit ${lockContract.deployTransaction.gasLimit}`);
     console.log(`Contract deployed to ${lockContract.address} at block ${deployBn} tx hash ${hash}`);
 
