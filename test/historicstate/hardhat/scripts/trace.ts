@@ -30,7 +30,7 @@ function CHECK(result: any): void {
 
 async function getAndPrintTrace(hash: string): Promise<String> {
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
-    console.log(trace);
+    console.log(JSON.stringify(trace, null, 4));
     return trace;
 }
 
@@ -54,6 +54,8 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     await getAndPrintTrace(hash)
 
+    /*
+
 
     console.log(`Now minting`);
 
@@ -62,7 +64,7 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     await getAndPrintTrace(transferReceipt.hash);
 
-    /*
+
 
 console.log(`Now testing self-destruct`);
 

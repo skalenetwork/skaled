@@ -9,13 +9,13 @@
 namespace dev {
 namespace eth {
 namespace {
-bool changesStorage( Instruction _inst ) {
-    return _inst == Instruction::SSTORE;
+bool logStorage( Instruction _inst ) {
+    return _inst == Instruction::SSTORE || _inst == Instruction::SLOAD;
 }
 
 }  // namespace
 
-void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint newMemSize,
+void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint,
     bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
 
     AlethExtVM const& ext = dynamic_cast< AlethExtVM const& >( *voidExt );
@@ -31,18 +31,14 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         r["stack"] = stack;
     }
 
-    Instruction lastInst = Instruction::STOP;
-
     if ( m_lastInst.size() == voidExt->depth ) {
         // starting a new context
         assert( m_lastInst.size() == voidExt->depth );
         m_lastInst.push_back( inst );
     } else if ( m_lastInst.size() == voidExt->depth + 2 ) {
         m_lastInst.pop_back();
-        lastInst = m_lastInst.back();
     } else if ( m_lastInst.size() == voidExt->depth + 1 ) {
         // continuing in previous context
-        lastInst = m_lastInst.back();
         m_lastInst.back() = inst;
     } else {
         cwarn << "Tracing VM and more than one new/deleted stack frame between steps!";
@@ -64,27 +60,26 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         r["memSize"] = static_cast< uint64_t >( memory.size() );
     }
 
+    r["op"] = static_cast< uint8_t >( inst );
+    r["opName"] = instructionInfo( inst ).name;
+    r["pc"] = PC;
+    r["gas"] =  static_cast< uint64_t >(gas) ;
+    r["gasCost"] = static_cast< uint64_t >(gasCost);
+    r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
+    r["refund"] = 0;
+
 
     if ( !m_options.disableStorage) {
-        Json::Value storage( Json::objectValue );
-        if (changesStorage( lastInst ) ) {
+        if (logStorage( inst ) ) {
+            Json::Value storage( Json::objectValue );
             for ( auto const& i : ext.state().storage( ext.myAddress ) )
-                storage[toCompactHexPrefixed( i.second.first, 1 )] =
-                    toCompactHexPrefixed( i.second.second, 1 );
+                storage[toHex( i.second.first)] =
+                    toHex( i.second.second);
+            r["storage"] = storage;
+            std::cerr << r.toStyledString();
         }
-        r["storage"] = storage;
     }
 
-
-    r["op"] = static_cast< uint8_t >( inst );
-    if ( m_showMnemonics )
-        r["opName"] = instructionInfo( inst ).name;
-    r["pc"] = PC;
-    r["gas"] = toString( gas );
-    r["gasCost"] = toString( gasCost );
-    r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
-    if ( !!newMemSize )
-        r["memexpand"] = toString( newMemSize );
 
 
     if ( m_outValue )
