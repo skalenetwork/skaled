@@ -66,10 +66,12 @@ uint64_t request_sink::getRequestCount() {
 
 void request_sink::OnRecordRequestCountIncrement() {
     ++reqCount_;
+    std::cerr << "request_sink: " << reqCount_ << std::endl;
 }
 
 void request_sink::OnRecordRequestCountDecrement() {
     --reqCount_;
+    std::cerr << "request_sink: " << reqCount_ << std::endl;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,9 +85,12 @@ request_site::request_site( request_sink& a_sink, server_side_request_handler* p
                     cc::normal( "/" ) + cc::notice( "site" ) + cc::normal( "/" ) +
                     cc::size10( nInstanceNumber_ ) + " ";
     pg_log( strLogPrefix_ + cc::debug( "constructor" ) + "\n" );
+    std::cerr << "counter = " << g_instance_counter << std::endl;
 }
 
 request_site::~request_site() {
+    --g_instance_counter;
+    std::cerr << "counter = " << g_instance_counter << std::endl;
     pg_log( strLogPrefix_ + cc::debug( "destructor" ) + "\n" );
 }
 
@@ -125,7 +130,6 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > req ) noe
             .header(
                 "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" )
             .send();
-        sink_.OnRecordRequestCountDecrement();
         return;
     }
 }
@@ -213,7 +217,6 @@ void request_site::onEOM() noexcept {
         bldr.body( rslt.strOut_ );
     }
     bldr.sendWithEOM();
-    sink_.OnRecordRequestCountDecrement();
 }
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol /*protocol*/ ) noexcept {
@@ -222,11 +225,13 @@ void request_site::onUpgrade( proxygen::UpgradeProtocol /*protocol*/ ) noexcept 
 }
 
 void request_site::requestComplete() noexcept {
+    sink_.OnRecordRequestCountDecrement();
     pg_log( strLogPrefix_ + cc::debug( "complete notification" ) + "\n" );
     delete this;
 }
 
 void request_site::onError( proxygen::ProxygenError err ) noexcept {
+    sink_.OnRecordRequestCountDecrement();
     pg_log(
         strLogPrefix_ + cc::error( "error notification: " ) + cc::size10( size_t( err ) ) + "\n" );
     delete this;
