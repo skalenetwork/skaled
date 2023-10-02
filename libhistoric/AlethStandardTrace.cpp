@@ -66,7 +66,7 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
     r["gas"] =  static_cast< uint64_t >(gas) ;
     r["gasCost"] = static_cast< uint64_t >(gasCost);
     r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
-    r["refund"] = 0;
+    r["refund"] = ext.sub.refunds;
 
 
     if ( !m_options.disableStorage) {
