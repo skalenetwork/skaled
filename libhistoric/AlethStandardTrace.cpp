@@ -31,15 +31,12 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         r["stack"] = stack;
     }
 
-
-    bool newContext = false;
     Instruction lastInst = Instruction::STOP;
 
     if ( m_lastInst.size() == voidExt->depth ) {
         // starting a new context
         assert( m_lastInst.size() == voidExt->depth );
         m_lastInst.push_back( inst );
-        newContext = true;
     } else if ( m_lastInst.size() == voidExt->depth + 2 ) {
         m_lastInst.pop_back();
         lastInst = m_lastInst.back();
@@ -48,8 +45,8 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         lastInst = m_lastInst.back();
         m_lastInst.back() = inst;
     } else {
-        cwarn << "GAA!!! Tracing VM and more than one new/deleted stack frame between steps!";
-        cwarn << "Attmepting naive recovery...";
+        cwarn << "Tracing VM and more than one new/deleted stack frame between steps!";
+        cwarn << "Attempting naive recovery...";
         m_lastInst.resize( voidExt->depth + 1 );
     }
 
@@ -68,12 +65,13 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
     }
 
 
-    if ( !m_options.disableStorage &&
-         ( m_options.fullStorage || changesStorage( lastInst ) || newContext ) ) {
+    if ( !m_options.disableStorage) {
         Json::Value storage( Json::objectValue );
-        for ( auto const& i : ext.state().storage( ext.myAddress ) )
-            storage[toCompactHexPrefixed( i.second.first, 1 )] =
-                toCompactHexPrefixed( i.second.second, 1 );
+        if (changesStorage( lastInst ) ) {
+            for ( auto const& i : ext.state().storage( ext.myAddress ) )
+                storage[toCompactHexPrefixed( i.second.first, 1 )] =
+                    toCompactHexPrefixed( i.second.second, 1 );
+        }
         r["storage"] = storage;
     }
 
