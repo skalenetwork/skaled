@@ -26,7 +26,6 @@ nvm install 19
 nvm use 19
 npm install --save-dev typescript ts-node @types/node @types/mocha
 npx tsc --init
-npm install hardhat
 npx hardhat run scripts/write_and_selfdestruct.js
 npx hardhat run scripts/trace.js
 ```
