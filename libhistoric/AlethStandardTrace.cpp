@@ -50,7 +50,7 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         bytes const& memory = vm->memory();
 
         Json::Value memJson( Json::arrayValue );
-        if ( !m_options.disableMemory ) {
+        if ( m_options.enableMemory ) {
             for ( unsigned i = 0; i < memory.size(); i += 32 ) {
                 bytesConstRef memRef( memory.data() + i, 32 );
                 memJson.append( toHex( memRef ) );

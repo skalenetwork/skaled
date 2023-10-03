@@ -86,12 +86,12 @@ AlethStandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _jso
         return op;
     if ( !_json["disableStorage"].empty() )
         op.disableStorage = _json["disableStorage"].asBool();
-    if ( !_json["disableMemory"].empty() )
-        op.disableMemory = _json["disableMemory"].asBool();
+    if ( !_json["enableMemory"].empty() )
+        op.enableMemory = _json["enableMemory"].asBool();
     if ( !_json["disableStack"].empty() )
         op.disableStack = _json["disableStack"].asBool();
-    if ( !_json["fullStorage"].empty() )
-        op.fullStorage = _json["fullStorage"].asBool();
+    if ( !_json["enableReturnData"].empty() )
+        op.enableReturnData = _json["enableReturnData"].asBool();
     return op;
 }
 
@@ -156,13 +156,16 @@ Json::Value Debug::debug_traceTransaction( string const&
     Json::Value result;
     auto tracer = std::make_shared< AlethStandardTrace >(result);
     tracer->setShowMnemonics();
-    tracer->setOptions( debugOptions( _json ) );
+    auto options = debugOptions( _json );
+    tracer->setOptions( options );
 
 
     try {
         ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer);
-        ret["gas"] =  (uint64_t ) t.gas() ;
-        ret["return"] = toHex( er.output );
+        ret["gas"] =  (uint64_t ) er.gasUsed;
+        if (options.enableReturnData) {
+            ret["returnValue"] = toHex( er.output );
+        }
         ret["structLogs"] = result;
     } catch ( Exception const& _e ) {
         cwarn << diagnostic_information( _e );

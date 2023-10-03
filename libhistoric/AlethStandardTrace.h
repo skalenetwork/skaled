@@ -22,9 +22,9 @@ class AlethStandardTrace {
 public:
     struct DebugOptions {
         bool disableStorage = false;
-        bool disableMemory = false;
+        bool enableMemory = false;
         bool disableStack = false;
-        bool fullStorage = false;
+        bool enableReturnData = false;
     };
 
     // Output json trace to stream, one line per op
