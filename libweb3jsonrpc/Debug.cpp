@@ -161,8 +161,8 @@ Json::Value Debug::debug_traceTransaction( string const&
 
     try {
         ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer);
-        ret["gas"] = toJS( t.gas() );
-        ret["return"] = toHexPrefixed( er.output );
+        ret["gas"] =  (uint64_t ) t.gas() ;
+        ret["return"] = toHex( er.output );
         ret["structLogs"] = result;
     } catch ( Exception const& _e ) {
         cwarn << diagnostic_information( _e );

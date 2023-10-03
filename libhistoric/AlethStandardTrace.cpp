@@ -73,9 +73,9 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
     if ( !m_options.disableStorage) {
         if (logStorage( inst ) ) {
             Json::Value storage( Json::objectValue );
-            for ( auto const& i : ext.state().storage( ext.myAddress ) )
-                storage[toHex( i.second.first)] =
-                    toHex( i.second.second);
+            for ( auto const& i : ext.m_accessedStateValues )
+                storage[toHex( i.first)] =
+                    toHex( i.second);
             r["storage"] = storage;
             std::cerr << r.toStyledString();
         }

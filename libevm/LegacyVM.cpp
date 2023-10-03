@@ -1495,6 +1495,13 @@ void LegacyVM::interpretCases() {
 
         CASE( SLOAD ) {
             m_runGas = toInt63( m_schedule->sloadGas );
+
+            // if tracing is enabled, store the accessed value
+            // you need at least one element on the stack for SLOAD
+            if (m_onOp && stackSize() > 0) {
+                m_ext->m_accessedStateValues[m_SP[0]] = m_ext->store( m_SP[0] );
+            }
+
             ON_OP();
             updateIOGas();
 
@@ -1503,11 +1510,20 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( SSTORE ) {
-            ON_OP();
+
+            // if tracing is enabled, store the accessed value
+            // you need at least two elements on the stack for SSTORE
+            if (m_onOp && stackSize() > 1) {
+                m_ext->m_accessedStateValues[m_SP[0]] = m_SP[1];
+            }
+
             if ( m_ext->staticCall )
                 throwDisallowedStateChange();
 
             updateSSGas();
+            // ON_OP must be called when m_runGas is already set
+            ON_OP();
+
             updateIOGas();
 
             try {
