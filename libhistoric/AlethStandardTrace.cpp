@@ -81,8 +81,6 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         }
     }
 
-
-
     if ( m_outValue )
         m_outValue->append( r );
     else

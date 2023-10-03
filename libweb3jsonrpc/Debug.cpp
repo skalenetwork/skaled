@@ -14,6 +14,7 @@
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
 #include <libethereum/Executive.h>
+#include <skutils/eth_utils.h>
 
 #ifdef HISTORIC_STATE
 #include <libhistoric/AlethExecutive.h>
@@ -96,8 +97,6 @@ AlethStandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _jso
 }
 
 
-
-
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     State s( _block.state() );
     //    s.setRoot(_block.stateRootBeforeTx(0));
@@ -141,7 +140,6 @@ Json::Value Debug::debug_traceTransaction( string const&
     LocalisedTransaction t = m_eth.localisedTransaction( h256( _txHash ) );
 
 
-
     if ( t.blockHash() == h256( 0 ) ) {
         throw jsonrpc::JsonRpcException( "no committed transaction with this hash" );
     }
@@ -154,21 +152,34 @@ Json::Value Debug::debug_traceTransaction( string const&
     }
 
     Json::Value result;
-    auto tracer = std::make_shared< AlethStandardTrace >(result);
+    auto tracer = std::make_shared< AlethStandardTrace >( result );
     tracer->setShowMnemonics();
     auto options = debugOptions( _json );
     tracer->setOptions( options );
 
 
     try {
-        ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer);
-        ret["gas"] =  (uint64_t ) er.gasUsed;
-        if (options.enableReturnData) {
-            ret["returnValue"] = toHex( er.output );
-        }
+        ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer );
+        ret["gas"] = ( uint64_t ) er.gasUsed;
+
         ret["structLogs"] = result;
+        if ( er.excepted == TransactionException::None ) {
+            ret["failed"] = false;
+            if ( options.enableReturnData ) {
+                ret["returnValue"] = toHex( er.output );
+            }
+        } else {
+            ret["failed"] = true;
+            if ( options.enableReturnData ) {
+                if ( er.excepted == TransactionException::RevertInstruction ) {
+                    ret["returnValue"] = skutils::eth::call_error_message_2_str( er.output );
+                } else {
+                    ret["returnValue"] = "";
+                }
+            }
+        }
     } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
+        throw jsonrpc::JsonRpcException( _e.what() );
     }
     return ret;
 #endif
