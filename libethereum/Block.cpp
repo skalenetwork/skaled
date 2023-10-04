@@ -35,6 +35,7 @@
 #include <libethcore/Exceptions.h>
 #include <libethcore/SealEngine.h>
 #include <libevm/VMFactory.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 #include <boost/filesystem.hpp>
 #include <boost/timer.hpp>
 #include <ctime>
@@ -483,31 +484,38 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
 
-                // Add to the user-originated transactions that we've executed.
-                m_transactions.push_back( tr );
-                m_transactionSet.insert( tr.sha3() );
+                if ( SkipInvalidTransactionsPatch::needToKeepTransaction( tr, true ) ) {
+                    // Add to the user-originated transactions that we've executed.
+                    m_transactions.push_back( tr );
+                    m_transactionSet.insert( tr.sha3() );
 
-                // TODO deduplicate
-                // "bad" transaction receipt for failed transactions
-                TransactionReceipt const null_receipt =
-                    info().number() >= sealEngine()->chainParams().byzantiumForkBlock ?
-                        TransactionReceipt( 0, info().gasUsed(), LogEntries() ) :
-                        TransactionReceipt( EmptyTrie, info().gasUsed(), LogEntries() );
+                    // TODO deduplicate
+                    // "bad" transaction receipt for failed transactions
+                    TransactionReceipt const null_receipt =
+                        info().number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+                            TransactionReceipt( 0, info().gasUsed(), LogEntries() ) :
+                            TransactionReceipt( EmptyTrie, info().gasUsed(), LogEntries() );
 
-                m_receipts.push_back( null_receipt );
-                receipts.push_back( null_receipt );
+                    m_receipts.push_back( null_receipt );
+                    receipts.push_back( null_receipt );
 
-                ++count_bad;
+                    ++count_bad;
+                }
 
                 continue;
             }
 
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
-            receipts.push_back( m_receipts.back() );
 
-            if ( res.excepted == TransactionException::WouldNotBeInBlock )
-                ++count_bad;
+            if ( SkipInvalidTransactionsPatch::needToKeepTransaction(
+                     tr, res.excepted == TransactionException::WouldNotBeInBlock ) ) {
+                receipts.push_back( m_receipts.back() );
+
+                // if added but bad
+                if ( res.excepted == TransactionException::WouldNotBeInBlock )
+                    ++count_bad;
+            }
 
             //
             // Debug only, related SKALE-2814 partial catchup testing
@@ -862,9 +870,12 @@ ExecutionResult Block::execute(
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
-        m_transactions.push_back( _t );
-        m_receipts.push_back( resultReceipt.second );
-        m_transactionSet.insert( _t.sha3() );
+        if ( SkipInvalidTransactionsPatch::needToKeepTransaction(
+                 _t, resultReceipt.first.excepted == TransactionException::WouldNotBeInBlock ) ) {
+            m_transactions.push_back( _t );
+            m_receipts.push_back( resultReceipt.second );
+            m_transactionSet.insert( _t.sha3() );
+        }
     }
     if ( _p == Permanence::Committed || _p == Permanence::Uncommitted ) {
         m_state = stateSnapshot.createStateModifyCopyAndPassLock();
