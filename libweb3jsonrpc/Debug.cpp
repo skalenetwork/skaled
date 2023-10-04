@@ -170,12 +170,12 @@ Json::Value Debug::debug_traceTransaction( string const&
             }
         } else {
             ret["failed"] = true;
-            if ( options.enableReturnData ) {
-                if ( er.excepted == TransactionException::RevertInstruction ) {
-                    ret["returnValue"] = skutils::eth::call_error_message_2_str( er.output );
-                } else {
-                    ret["returnValue"] = "";
-                }
+            if ( er.excepted == TransactionException::RevertInstruction ) {
+                ret["returnValue"] = skutils::eth::call_error_message_2_str( er.output );
+                ret["error"] = skutils::eth::call_error_message_2_str( er.output );
+            } else {
+                ret["returnValue"] = "";
+                ret["error"] = "";
             }
         }
     } catch ( Exception const& _e ) {

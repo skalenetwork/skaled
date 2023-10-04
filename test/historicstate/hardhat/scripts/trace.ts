@@ -54,17 +54,19 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     await getAndPrintTrace(hash)
 
-    /*
+
 
 
     console.log(`Now minting`);
 
-    const transferReceipt = await lockContract.mint(1000);
+    const transferReceipt = await lockContract.mint(1000,  {
+        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+    });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
 
     await getAndPrintTrace(transferReceipt.hash);
 
-
+/*
 
 console.log(`Now testing self-destruct`);
 

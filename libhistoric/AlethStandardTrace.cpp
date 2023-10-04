@@ -5,6 +5,7 @@
 #include "AlethStandardTrace.h"
 #include "AlethExtVM.h"
 #include "libevm/LegacyVM.h"
+#include <skutils/eth_utils.h>
 
 namespace dev {
 namespace eth {
@@ -17,7 +18,6 @@ bool logStorage( Instruction _inst ) {
 
 void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint,
     bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
-
     AlethExtVM const& ext = dynamic_cast< AlethExtVM const& >( *voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
 
@@ -63,22 +63,32 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
     r["op"] = static_cast< uint8_t >( inst );
     r["opName"] = instructionInfo( inst ).name;
     r["pc"] = PC;
-    r["gas"] =  static_cast< uint64_t >(gas) ;
-    r["gasCost"] = static_cast< uint64_t >(gasCost);
+    r["gas"] = static_cast< uint64_t >( gas );
+    r["gasCost"] = static_cast< uint64_t >( gasCost );
     r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
     auto refund = ext.sub.refunds;
-    if ( refund > 0) {
+    if ( refund > 0 ) {
         r["refund"] = ext.sub.refunds;
     }
-    if ( !m_options.disableStorage) {
-        if (logStorage( inst ) ) {
+    if ( !m_options.disableStorage ) {
+        if ( logStorage( inst ) ) {
             Json::Value storage( Json::objectValue );
             for ( auto const& i : ext.m_accessedStateValues )
-                storage[toHex( i.first)] =
-                    toHex( i.second);
+                storage[toHex( i.first )] = toHex( i.second );
             r["storage"] = storage;
-            std::cerr << r.toStyledString();
         }
+    }
+
+
+    if ( inst == Instruction::REVERT ) {
+        // reverted. Set error message
+        bytes const& memory = vm->memory();
+        auto st = vm->stack();
+        // message offset and size are the last two elements
+        uint64_t b = ( uint64_t ) *(st.end() - 1);
+        uint64_t s = ( uint64_t ) *(st.end() - 2);
+        std::vector<uint8_t > errorMessage(memory.begin() + b, memory.begin() + b + s);
+        r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
     }
 
     if ( m_outValue )
