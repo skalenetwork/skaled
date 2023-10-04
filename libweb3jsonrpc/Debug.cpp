@@ -81,20 +81,6 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
     //    return state;
 }
 
-AlethStandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
-    AlethStandardTrace::DebugOptions op;
-    if ( !_json.isObject() || _json.empty() )
-        return op;
-    if ( !_json["disableStorage"].empty() )
-        op.disableStorage = _json["disableStorage"].asBool();
-    if ( !_json["enableMemory"].empty() )
-        op.enableMemory = _json["enableMemory"].asBool();
-    if ( !_json["disableStack"].empty() )
-        op.disableStack = _json["disableStack"].asBool();
-    if ( !_json["enableReturnData"].empty() )
-        op.enableReturnData = _json["enableReturnData"].asBool();
-    return op;
-}
 
 
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
@@ -148,35 +134,27 @@ Json::Value Debug::debug_traceTransaction( string const&
 
     if ( !m_eth.isKnown( blockNumber ) ) {
         throw jsonrpc::JsonRpcException( "Unknown block number" );
-        ;
     }
 
-    Json::Value result;
-    auto tracer = std::make_shared< AlethStandardTrace >( result );
-    tracer->setShowMnemonics();
-    auto options = debugOptions( _json );
-    tracer->setOptions( options );
-
+    auto fromAddress = t.from();
+    auto tracer = std::make_shared< AlethStandardTrace >( fromAddress, _json );
 
     try {
         ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer );
         ret["gas"] = ( uint64_t ) er.gasUsed;
-
-        ret["structLogs"] = result;
-        if ( er.excepted == TransactionException::None ) {
-            ret["failed"] = false;
-            if ( options.enableReturnData ) {
-                ret["returnValue"] = toHex( er.output );
-            }
+        ret["structLogs"] = *tracer->getResult();
+        auto failed = er.excepted == TransactionException::None;
+        ret["failed"] = failed;
+        if ( !failed && tracer->getOptions().enableReturnData ) {
+            ret["returnValue"] = toHex( er.output );
         } else {
-            ret["failed"] = true;
+            string errMessage;
             if ( er.excepted == TransactionException::RevertInstruction ) {
-                ret["returnValue"] = skutils::eth::call_error_message_2_str( er.output );
-                ret["error"] = skutils::eth::call_error_message_2_str( er.output );
-            } else {
-                ret["returnValue"] = "";
-                ret["error"] = "";
+                errMessage = skutils::eth::call_error_message_2_str( er.output );
             }
+            // return message in two fields for compatibility with different tools
+            ret["returnValue"] = errMessage;
+            ret["error"] = errMessage;
         }
     } catch ( Exception const& _e ) {
         throw jsonrpc::JsonRpcException( _e.what() );

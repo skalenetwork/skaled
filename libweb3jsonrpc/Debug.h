@@ -14,8 +14,6 @@ namespace dev {
 namespace eth {
 class Client;
 
-AlethStandardTrace::DebugOptions debugOptions( Json::Value const& _json );
-
 }  // namespace eth
 namespace rpc {
 class SessionManager;
