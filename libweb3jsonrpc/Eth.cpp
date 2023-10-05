@@ -48,6 +48,27 @@ using namespace dev::rpc;
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 
+#ifdef HISTORIC_STATE
+unsigned int findNthValidTransaction(
+    const dev::eth::Interface* client, const h256& bh, unsigned int ti ) {
+    h256s transactions = client->transactionHashes( bh );
+    u256 gasBefore = 0;
+    size_t i;
+    size_t valid_count = 0;
+    for ( i = 0; i < transactions.size(); ++i ) {
+        const h256& th = transactions[i];
+        u256 gasAfter = client->transactionReceipt( th ).cumulativeGasUsed();
+        u256 diff = gasAfter - gasBefore;
+        gasBefore = gasAfter;
+        if ( diff != 0 ) {
+            if ( valid_count == ti )
+                break;
+            ++valid_count;
+        }  // if valid
+    }      // for
+    return i;
+}
+#endif
 
 Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
     : skutils::json_config_file_accessor( configPath ),
@@ -221,7 +242,14 @@ Json::Value Eth::eth_getBlockTransactionCountByHash( string const& _blockHash ) 
         if ( !client()->isKnown( blockHash ) )
             return Json::Value( Json::nullValue );
 
+#ifndef HISTORIC_STATE
         return toJS( client()->transactionCount( blockHash ) );
+#else
+        return toJS( eth_getBlockByHash( _blockHash, false )["transactions"].size() );
+
+    } catch ( const JsonRpcException& ) {
+        throw;
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -233,7 +261,14 @@ Json::Value Eth::eth_getBlockTransactionCountByNumber( string const& _blockNumbe
         if ( !client()->isKnown( blockNumber ) )
             return Json::Value( Json::nullValue );
 
+#ifndef HISTORIC_STATE
         return toJS( client()->transactionCount( jsToBlockNumber( _blockNumber ) ) );
+#else
+        return toJS( eth_getBlockByNumber( _blockNumber, false )["transactions"].size() );
+
+    } catch ( const JsonRpcException& ) {
+        throw;
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -475,13 +510,41 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
-        if ( _includeTransactions )
+        if ( _includeTransactions ) {
+            Transactions transactions = client()->transactions( h );
+
+#ifdef HISTORIC_STATE
+            // remove all transactions that did not consume gas
+            u256 gasBefore = 0;
+            Transactions::iterator newEnd = std::remove_if( transactions.begin(),
+                transactions.end(), [this, &gasBefore]( const Transaction& t ) -> bool {
+                    u256 gasAfter = client()->transactionReceipt( t.sha3() ).cumulativeGasUsed();
+                    u256 diff = gasAfter - gasBefore;
+                    gasBefore = gasAfter;
+                    return ( diff == 0 );
+                } );
+            transactions.erase( newEnd, transactions.end() );
+#endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine() );
-        else
+                client()->uncleHashes( h ), transactions, client()->sealEngine() );
+        } else {
+            h256s transactions = client()->transactionHashes( h );
+
+#ifdef HISTORIC_STATE
+            // remove all transactions that did not consume gas
+            u256 gasBefore = 0;
+            h256s::iterator newEnd = std::remove_if( transactions.begin(), transactions.end(),
+                [this, &gasBefore]( const h256& th ) -> bool {
+                    u256 gasAfter = client()->transactionReceipt( th ).cumulativeGasUsed();
+                    u256 diff = gasAfter - gasBefore;
+                    gasBefore = gasAfter;
+                    return ( diff == 0 );
+                } );
+            transactions.erase( newEnd, transactions.end() );
+#endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactionHashes( h ),
-                client()->sealEngine() );
+                client()->uncleHashes( h ), transactions, client()->sealEngine() );
+        }
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -511,6 +574,13 @@ Json::Value Eth::eth_getTransactionByHash( string const& _transactionHash ) {
         if ( !client()->isKnownTransaction( h ) )
             return Json::Value( Json::nullValue );
 
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = client()->localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return Json::Value( Json::nullValue );
+#endif
+
         return toJson( client()->localisedTransaction( h ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -522,6 +592,11 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
     try {
         h256 bh = jsToFixed< 32 >( _blockHash );
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
+
+#ifdef HISTORIC_STATE
+        // will be transactions.size() if not found
+        ti = findNthValidTransaction( client(), bh, ti );
+#endif
         if ( !client()->isKnownTransaction( bh, ti ) )
             return Json::Value( Json::nullValue );
 
@@ -537,6 +612,12 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
         BlockNumber bn = jsToBlockNumber( _blockNumber );
         h256 bh = client()->hashFromNumber( bn );
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
+
+#ifdef HISTORIC_STATE
+        // will be transactions.size() if not found
+        ti = findNthValidTransaction( client(), bh, ti );
+#endif
+
         if ( !client()->isKnownTransaction( bh, ti ) )
             return Json::Value( Json::nullValue );
 
@@ -582,6 +663,31 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
 
     auto cli = client();
     auto rcp = cli->localisedTransactionReceipt( h );
+
+#ifdef HISTORIC_STATE
+    // skip invalid
+    if ( rcp.gasUsed() == 0 ) {
+        m_receiptsCache.put( cacheKey, nullptr );
+        throw std::invalid_argument( "Not known transaction" );
+    }
+
+    // recompute position:
+    h256s transactions = client()->transactionHashes( rcp.blockHash() );
+    u256 gasBefore = 0;
+    size_t offset =
+        std::count_if( transactions.begin(), transactions.begin() + rcp.transactionIndex(),
+            [this, &gasBefore]( const h256& th ) -> bool {
+                u256 gasAfter = client()->transactionReceipt( th ).cumulativeGasUsed();
+                u256 diff = gasAfter - gasBefore;
+                gasBefore = gasAfter;
+                return ( diff == 0 );
+            } );
+
+    // update position
+    rcp = LocalisedTransactionReceipt( rcp, rcp.hash(), rcp.blockHash(), rcp.blockNumber(),
+        rcp.transactionIndex() - offset, rcp.from(), rcp.to(), rcp.gasUsed(),
+        rcp.contractAddress() );
+#endif
 
     // got a receipt. Put it into the cache before returning
     // so that we have it if anyone asks again
