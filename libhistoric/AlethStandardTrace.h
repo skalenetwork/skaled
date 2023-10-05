@@ -20,18 +20,9 @@ namespace dev {
 namespace eth {
 
 
-
-
-
-
 class AlethStandardTrace {
 public:
-
-    enum class TraceType {
-        DEFAULT_TRACER,
-        PRESTATE_TRACER,
-        CALL_TRACER
-    };
+    enum class TraceType { DEFAULT_TRACER, PRESTATE_TRACER, CALL_TRACER };
 
     struct DebugOptions {
         bool disableStorage = false;
@@ -60,26 +51,26 @@ public:
 
 private:
     std::vector< Instruction > m_lastInst;
-    std::shared_ptr<Json::Value> m_result;
+    std::shared_ptr< Json::Value > m_result;
     Json::FastWriter m_fastWriter;
     Address m_from;
     DebugOptions m_options;
-    std::map<Address,std::map<u256,u256>> touchedStateBefore;
-    std::map<Address,std::map<u256,u256>> touchedStateAfter;
+    std::map< Address, std::map< u256, u256 > > touchedStateBefore;
+    std::map< Address, std::map< u256, u256 > > touchedStateAfter;
 
 
     static bool logStorage( Instruction _inst );
 
 
-    static const std::map<std::string, AlethStandardTrace::TraceType> stringToTracerMap;
+    static const std::map< std::string, AlethStandardTrace::TraceType > stringToTracerMap;
     void doDefaultTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, const dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
+        const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
 
     void doCallTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, const dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
+        const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
 
     void doPrestateTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, const dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
+        const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
 };
 }  // namespace eth
 }  // namespace dev

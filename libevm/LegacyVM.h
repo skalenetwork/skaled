@@ -36,11 +36,22 @@ public:
 #endif
 
     bytes const& memory() const { return m_mem; }
+
     u256s stack() const {
         u256s stack( m_SP, m_stackEnd );
         reverse( stack.begin(), stack.end() );
         return stack;
     };
+
+    size_t stackSize() const { return m_stackEnd - m_SP; }
+
+    u256& getStackElement( uint64_t _index ) const {
+        if ( _index >= stackSize() ) {
+            BOOST_THROW_EXCEPTION(
+                std::runtime_error( std::string( "Out of bound stack access" ) ) );
+        }
+        return m_SP[_index];
+    }
 
 private:
     u256* m_io_gas_p = 0;
@@ -73,7 +84,7 @@ private:
     // space for data stack, grows towards smaller addresses from the end
     u256 m_stack[1024];
     u256* m_stackEnd = &m_stack[1024];
-    size_t stackSize() { return m_stackEnd - m_SP; }
+
 
 #if EIP_615
     // space for return stack

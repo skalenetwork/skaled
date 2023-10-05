@@ -8,6 +8,11 @@
 #include <jsonrpccpp/common/exception.h>
 #include <skutils/eth_utils.h>
 
+// memory tracing in geth is  inefficient ahd hardly used
+// see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
+// therefore we limit the entries to 256
+#define MAX_MEMORY_ENTRIES_RETURNED 256
+
 namespace dev {
 namespace eth {
 
@@ -28,8 +33,13 @@ bool AlethStandardTrace::logStorage( Instruction _inst ) {
 
 void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint,
     bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
-    AlethExtVM const& ext = dynamic_cast< AlethExtVM const& >( *voidExt );
+    // remove const qualifier since we need to set tracing values in AlethExtVM
+    AlethExtVM& ext = ( AlethExtVM& ) ( *voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
+
+    if (!vm) {
+        BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Null _vm in") + __FUNCTION__ ));
+    }
 
     switch ( m_options.tracerType ) {
     case TraceType::DEFAULT_TRACER:
@@ -44,30 +54,26 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
     }
 }
 void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-    const bigint& gas, const ExtVMFace* voidExt, const AlethExtVM& ext, const LegacyVM* vm ) {
+    const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
     Json::Value r( Json::objectValue );
 
-    Json::Value stack( Json::arrayValue );
-    if ( vm && !m_options.disableStack ) {
+
+    // if tracing is enabled, store the accessed value
+    // you need at least one element on the stack for SLOAD and two for SSTORE
+    if ( !m_options.disableStorage && inst == Instruction::SLOAD && vm->stackSize() > 0 ) {
+        ext.m_accessedStateValues[vm->getStackElement( 0 )] = ext.store( vm->getStackElement( 0 ) );
+    }
+
+    if ( !m_options.disableStorage&& inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
+        ext.m_accessedStateValues[vm->getStackElement( 0 )] = vm->getStackElement( 1 );
+    }
+
+    if ( !m_options.disableStack ) {
+        Json::Value stack( Json::arrayValue );
         // Try extracting information about the stack from the VM is supported.
         for ( auto const& i : vm->stack() )
             stack.append( toCompactHexPrefixed( i, 1 ) );
         r["stack"] = stack;
-    }
-
-    if ( m_lastInst.size() == voidExt->depth ) {
-        // starting a new context
-        assert( m_lastInst.size() == voidExt->depth );
-        m_lastInst.push_back( inst );
-    } else if ( m_lastInst.size() == voidExt->depth + 2 ) {
-        m_lastInst.pop_back();
-    } else if ( m_lastInst.size() == voidExt->depth + 1 ) {
-        // continuing in previous context
-        m_lastInst.back() = inst;
-    } else {
-        cwarn << "Tracing VM and more than one new/deleted stack frame between steps!";
-        cwarn << "Attempting naive recovery...";
-        m_lastInst.resize( voidExt->depth + 1 );
     }
 
     if ( vm ) {
@@ -75,7 +81,7 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
 
         Json::Value memJson( Json::arrayValue );
         if ( m_options.enableMemory ) {
-            for ( unsigned i = 0; i < memory.size(); i += 32 ) {
+            for ( unsigned i = 0; (i < memory.size() && i < MAX_MEMORY_ENTRIES_RETURNED); i += 32 ) {
                 bytesConstRef memRef( memory.data() + i, 32 );
                 memJson.append( toHex( memRef ) );
             }
@@ -106,10 +112,9 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
     if ( inst == Instruction::REVERT ) {
         // reverted. Set error message
         bytes const& memory = vm->memory();
-        auto st = vm->stack();
         // message offset and size are the last two elements
-        uint64_t b = ( uint64_t ) * ( st.end() - 1 );
-        uint64_t s = ( uint64_t ) * ( st.end() - 2 );
+        auto b = ( uint64_t ) vm->getStackElement( 0 );
+        auto s = ( uint64_t ) vm->getStackElement( 1 );
         std::vector< uint8_t > errorMessage( memory.begin() + b, memory.begin() + b + s );
         r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
     }
@@ -124,7 +129,7 @@ const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions
 }
 
 void AlethStandardTrace::doCallTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-    const bigint& gas, const ExtVMFace* voidExt, const AlethExtVM& ext, const LegacyVM* vm ) {
+    const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
     Json::Value r( Json::objectValue );
 
     Json::Value stack( Json::arrayValue );
@@ -198,7 +203,7 @@ void AlethStandardTrace::doCallTrace( uint64_t PC, Instruction& inst, const bigi
 }
 
 void AlethStandardTrace::doPrestateTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-    const bigint& gas, const ExtVMFace* voidExt, const AlethExtVM& ext, const LegacyVM* vm ) {
+    const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
     Json::Value r( Json::objectValue );
 
     Json::Value stack( Json::arrayValue );
