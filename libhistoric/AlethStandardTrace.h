@@ -55,6 +55,7 @@ private:
     Json::FastWriter m_fastWriter;
     Address m_from;
     DebugOptions m_options;
+    std::map<Address,std::map<u256,u256>> m_accessedStateValues; ///< accessed values map. Used for tracing
     std::map< Address, std::map< u256, u256 > > touchedStateBefore;
     std::map< Address, std::map< u256, u256 > > touchedStateAfter;
 

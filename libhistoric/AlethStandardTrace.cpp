@@ -37,8 +37,8 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
     AlethExtVM& ext = ( AlethExtVM& ) ( *voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
 
-    if (!vm) {
-        BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Null _vm in") + __FUNCTION__ ));
+    if ( !vm ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
     switch ( m_options.tracerType ) {
@@ -61,11 +61,12 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
     // if tracing is enabled, store the accessed value
     // you need at least one element on the stack for SLOAD and two for SSTORE
     if ( !m_options.disableStorage && inst == Instruction::SLOAD && vm->stackSize() > 0 ) {
-        ext.m_accessedStateValues[vm->getStackElement( 0 )] = ext.store( vm->getStackElement( 0 ) );
+        m_accessedStateValues[ext.myAddress][vm->getStackElement( 0 )] =
+            ext.store( vm->getStackElement( 0 ) );
     }
 
-    if ( !m_options.disableStorage&& inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
-        ext.m_accessedStateValues[vm->getStackElement( 0 )] = vm->getStackElement( 1 );
+    if ( !m_options.disableStorage && inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
+        m_accessedStateValues[ext.myAddress][vm->getStackElement( 0 )] = vm->getStackElement( 1 );
     }
 
     if ( !m_options.disableStack ) {
@@ -81,7 +82,8 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
 
         Json::Value memJson( Json::arrayValue );
         if ( m_options.enableMemory ) {
-            for ( unsigned i = 0; (i < memory.size() && i < MAX_MEMORY_ENTRIES_RETURNED); i += 32 ) {
+            for ( unsigned i = 0; ( i < memory.size() && i < MAX_MEMORY_ENTRIES_RETURNED );
+                  i += 32 ) {
                 bytesConstRef memRef( memory.data() + i, 32 );
                 memJson.append( toHex( memRef ) );
             }
@@ -103,7 +105,7 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
     if ( !m_options.disableStorage ) {
         if ( logStorage( inst ) ) {
             Json::Value storage( Json::objectValue );
-            for ( auto const& i : ext.m_accessedStateValues )
+            for ( auto const& i : m_accessedStateValues[ext.myAddress] )
                 storage[toHex( i.first )] = toHex( i.second );
             r["storage"] = storage;
         }
@@ -182,7 +184,7 @@ void AlethStandardTrace::doCallTrace( uint64_t PC, Instruction& inst, const bigi
     if ( !m_options.disableStorage ) {
         if ( logStorage( inst ) ) {
             Json::Value storage( Json::objectValue );
-            for ( auto const& i : ext.m_accessedStateValues )
+            for ( auto const& i : m_accessedStateValues[ext.myAddress] )
                 storage[toHex( i.first )] = toHex( i.second );
             r["storage"] = storage;
         }
@@ -256,7 +258,7 @@ void AlethStandardTrace::doPrestateTrace( uint64_t PC, Instruction& inst, const 
     if ( !m_options.disableStorage ) {
         if ( logStorage( inst ) ) {
             Json::Value storage( Json::objectValue );
-            for ( auto const& i : ext.m_accessedStateValues )
+            for ( auto const& i : m_accessedStateValues[ext.myAddress] )
                 storage[toHex( i.first )] = toHex( i.second );
             r["storage"] = storage;
         }

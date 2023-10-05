@@ -268,7 +268,6 @@ public:
     unsigned depth = 0;       ///< Depth of the present call.
     bool isCreate = false;    ///< Is this a CREATE call?
     bool staticCall = false;  ///< Throw on state changing.
-    std::map<u256,u256> m_accessedStateValues; ///< accessed values map. Used for tracing
 };
 
 class EvmCHost : public evmc::Host {
