@@ -130,7 +130,7 @@ Json::Value eth::AlethStandardTrace::getJSONResult() const {
 void eth::AlethStandardTrace::generateJSONResult(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
-    jsonResult["structLogs"] = *m_defaultOpTrace;
+    //jsonResult["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted == TransactionException::None;
     jsonResult["failed"] = failed;
     if ( !failed && getOptions().enableReturnData ) {
@@ -144,6 +144,20 @@ void eth::AlethStandardTrace::generateJSONResult(
         jsonResult["returnValue"] = errMessage;
         jsonResult["error"] = errMessage;
     }
+
+
+    Json::Value map;
+    for (auto&& item : this->m_accessedAccounts) {
+        auto address = item.first;
+        Json::Value value;
+        value["balance"] = toCompactHexPrefixed(_stateBefore.balance(address));
+        value["nonce"] = (uint64_t )_stateBefore.getNonce(address);
+        value["code"] = toHexPrefixed(_stateBefore.code(address));
+        jsonResult[toHexPrefixed(address)] = value;
+    }
+
+
+
 }
 const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions() const {
     return m_options;

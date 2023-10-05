@@ -208,6 +208,10 @@ inline std::string toHex( u256 _val) {
     return toHex( toBigEndian( _val) );
 }
 
+inline std::string toHexPrefixed( u256 _val) {
+    return toHexPrefixed( toBigEndian( _val) );
+}
+
 
 // Algorithms for string and string-like collections.
 
