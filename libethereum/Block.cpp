@@ -803,11 +803,25 @@ ExecutionResult Block::executeHistoricCall(
     // transaction as possible.
     uncommitToSeal();
 
-    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, p, onOp );
 
-    return resultReceipt.first;
+
+    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
+
+
+
+    if (_tracer) {
+        HistoricState stateBefore(m_state.mutableHistoricState());
+        auto resultReceipt = m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted,
+            onOp );
+        HistoricState stateAfter(m_state.mutableHistoricState());
+        _tracer->generateJSONResult(resultReceipt.first, stateBefore, stateAfter);
+        return resultReceipt.first;
+    } else {
+        auto resultReceipt =
+            m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t,
+                skale::Permanence::Reverted, onOp );
+        return resultReceipt.first;
+    }
 }
 #endif
 

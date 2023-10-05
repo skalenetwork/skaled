@@ -1295,7 +1295,7 @@ Json::Value Client::trace(
     try {
         _t.checkOutExternalGas( ~u256( 0 ) );
         auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer );
-        return _tracer->generateJSONResult(er);
+        return _tracer->getJSONResult();
     } catch ( ... ) {
         cwarn << boost::current_exception_diagnostic_information();
         throw;

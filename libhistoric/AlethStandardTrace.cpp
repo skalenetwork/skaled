@@ -125,8 +125,12 @@ void AlethStandardTrace::appendDefaultOpTraceToResult( uint64_t PC, Instruction&
     m_defaultOpTrace->append( r );
 }
 
-Json::Value eth::AlethStandardTrace::generateJSONResult( ExecutionResult& _er ) const {
-    Json::Value jsonResult;
+Json::Value eth::AlethStandardTrace::getJSONResult() const {
+    return jsonResult;
+}
+
+void eth::AlethStandardTrace::generateJSONResult( ExecutionResult& _er,
+    HistoricState& _stateBefore, HistoricState& _stateAfter)  {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
     jsonResult["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted == TransactionException::None;
@@ -142,8 +146,6 @@ Json::Value eth::AlethStandardTrace::generateJSONResult( ExecutionResult& _er ) 
         jsonResult["returnValue"] = errMessage;
         jsonResult["error"] = errMessage;
     }
-
-    return jsonResult;
 }
 const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions() const {
     return m_options;

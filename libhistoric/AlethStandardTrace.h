@@ -55,7 +55,12 @@ public:
         };
     }
     const DebugOptions& getOptions() const;
-    Json::Value  generateJSONResult( ExecutionResult& _er ) const;
+
+    void generateJSONResult(
+        ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
+
+    Json::Value getJSONResult() const;
+
 
 private:
     std::vector< Instruction > m_lastInst;
@@ -64,6 +69,8 @@ private:
     Address m_from;
     Address m_to;
     DebugOptions m_options;
+    Json::Value jsonResult;
+
     std::map< Address, std::map< u256, u256 > > m_accessedStateValues;  ///< accessed values map.
                                                                         ///< Used for tracing
     std::map< Address, AccountInfo > m_accessedAccounts;  ///< accessed values map. Used for tracing
