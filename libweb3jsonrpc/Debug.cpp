@@ -82,7 +82,6 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
 }
 
 
-
 Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     State s( _block.state() );
     //    s.setRoot(_block.stateRootBeforeTx(0));
@@ -115,10 +114,9 @@ Json::Value Debug::debug_traceTransaction( string const&
     ,
     Json::Value const&
 #ifdef HISTORIC_STATE
-        _json
+        _jsonTraceConfig
 #endif
 ) {
-    Json::Value ret;
 
     checkHistoricStateEnabled();
 
@@ -136,30 +134,14 @@ Json::Value Debug::debug_traceTransaction( string const&
         throw jsonrpc::JsonRpcException( "Unknown block number" );
     }
 
-    auto fromAddress = t.from();
-    auto tracer = std::make_shared< AlethStandardTrace >( fromAddress, _json );
+
+    auto tracer = std::make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
 
     try {
-        ExecutionResult er = m_eth.trace( t, blockNumber - 1, tracer );
-        ret["gas"] = ( uint64_t ) er.gasUsed;
-        ret["structLogs"] = *tracer->getResult();
-        auto failed = er.excepted == TransactionException::None;
-        ret["failed"] = failed;
-        if ( !failed && tracer->getOptions().enableReturnData ) {
-            ret["returnValue"] = toHex( er.output );
-        } else {
-            string errMessage;
-            if ( er.excepted == TransactionException::RevertInstruction ) {
-                errMessage = skutils::eth::call_error_message_2_str( er.output );
-            }
-            // return message in two fields for compatibility with different tools
-            ret["returnValue"] = errMessage;
-            ret["error"] = errMessage;
-        }
+        return m_eth.trace( t, blockNumber - 1, tracer );
     } catch ( Exception const& _e ) {
         throw jsonrpc::JsonRpcException( _e.what() );
     }
-    return ret;
 #endif
 }
 

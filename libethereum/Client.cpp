@@ -1289,13 +1289,13 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 
 
 #ifdef HISTORIC_STATE
-ExecutionResult Client::trace(
+Json::Value Client::trace(
     Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer ) {
     Block historicBlock = blockByNumber( _blockNumber );
     try {
         _t.checkOutExternalGas( ~u256( 0 ) );
-        auto ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer );
-        return ret;
+        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer );
+        return _tracer->generateJSONResult(er);
     } catch ( ... ) {
         cwarn << boost::current_exception_diagnostic_information();
         throw;

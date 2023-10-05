@@ -22,9 +22,12 @@ const std::map< std::string, AlethStandardTrace::TraceType >
         { "callTracer", AlethStandardTrace::TraceType::CALL_TRACER },
         { "prestateTracer", AlethStandardTrace::TraceType::PRESTATE_TRACER } };
 
-AlethStandardTrace::AlethStandardTrace( Address& _from, Json::Value const& _options )
-    : m_result{ std::make_shared< Json::Value >() }, m_from{ _from } {
+AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _options )
+    : m_defaultOpTrace{ std::make_shared< Json::Value >() }, m_from{ _t.from() }, m_to( _t.to() ) {
     m_options = debugOptions( _options );
+    // mark from and to accounts as accessed
+    m_accessedAccounts[m_from];
+    m_accessedAccounts[m_to];
 }
 bool AlethStandardTrace::logStorage( Instruction _inst ) {
     return _inst == Instruction::SSTORE || _inst == Instruction::SLOAD;
@@ -41,33 +44,34 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bi
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    switch ( m_options.tracerType ) {
-    case TraceType::DEFAULT_TRACER:
-        doDefaultTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
-        break;
-    case TraceType::CALL_TRACER:
-        doCallTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
-        break;
-    case TraceType::PRESTATE_TRACER:
-        doPrestateTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
-        break;
-    }
+    doTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
+
+    if ( m_options.tracerType == TraceType::DEFAULT_TRACER )
+        appendDefaultOpTraceToResult( PC, inst, gasCost, gas, voidExt, ext, vm );
 }
-void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
+void AlethStandardTrace::doTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
     const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
-    Json::Value r( Json::objectValue );
+    // note the account as used
+    m_accessedAccounts[ext.myAddress];
 
 
     // if tracing is enabled, store the accessed value
     // you need at least one element on the stack for SLOAD and two for SSTORE
-    if ( !m_options.disableStorage && inst == Instruction::SLOAD && vm->stackSize() > 0 ) {
+
+    if ( inst == Instruction::SLOAD && vm->stackSize() > 0 ) {
         m_accessedStateValues[ext.myAddress][vm->getStackElement( 0 )] =
             ext.store( vm->getStackElement( 0 ) );
     }
 
-    if ( !m_options.disableStorage && inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
+
+    if ( inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
         m_accessedStateValues[ext.myAddress][vm->getStackElement( 0 )] = vm->getStackElement( 1 );
     }
+}
+void AlethStandardTrace::appendDefaultOpTraceToResult( uint64_t PC, Instruction& inst,
+    const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
+    const LegacyVM* vm ) {
+    Json::Value r( Json::objectValue );
 
     if ( !m_options.disableStack ) {
         Json::Value stack( Json::arrayValue );
@@ -77,20 +81,18 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
         r["stack"] = stack;
     }
 
-    if ( vm ) {
-        bytes const& memory = vm->memory();
 
-        Json::Value memJson( Json::arrayValue );
-        if ( m_options.enableMemory ) {
-            for ( unsigned i = 0; ( i < memory.size() && i < MAX_MEMORY_ENTRIES_RETURNED );
-                  i += 32 ) {
-                bytesConstRef memRef( memory.data() + i, 32 );
-                memJson.append( toHex( memRef ) );
-            }
-            r["memory"] = memJson;
+    bytes const& memory = vm->memory();
+    Json::Value memJson( Json::arrayValue );
+    if ( m_options.enableMemory ) {
+        for ( unsigned i = 0; ( i < memory.size() && i < MAX_MEMORY_ENTRIES_RETURNED ); i += 32 ) {
+            bytesConstRef memRef( memory.data() + i, 32 );
+            memJson.append( toHex( memRef ) );
         }
-        r["memSize"] = static_cast< uint64_t >( memory.size() );
+        r["memory"] = memJson;
     }
+    r["memSize"] = static_cast< uint64_t >( memory.size() );
+
 
     r["op"] = static_cast< uint8_t >( inst );
     r["opName"] = instructionInfo( inst ).name;
@@ -113,7 +115,6 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
 
     if ( inst == Instruction::REVERT ) {
         // reverted. Set error message
-        bytes const& memory = vm->memory();
         // message offset and size are the last two elements
         auto b = ( uint64_t ) vm->getStackElement( 0 );
         auto s = ( uint64_t ) vm->getStackElement( 1 );
@@ -121,162 +122,33 @@ void AlethStandardTrace::doDefaultTrace( uint64_t PC, Instruction& inst, const b
         r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
     }
 
-    m_result->append( r );
+    m_defaultOpTrace->append( r );
 }
-const std::shared_ptr< Json::Value >& eth::AlethStandardTrace::getResult() const {
-    return m_result;
+
+Json::Value eth::AlethStandardTrace::generateJSONResult( ExecutionResult& _er ) const {
+    Json::Value jsonResult;
+    jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
+    jsonResult["structLogs"] = *m_defaultOpTrace;
+    auto failed = _er.excepted == TransactionException::None;
+    jsonResult["failed"] = failed;
+    if ( !failed && getOptions().enableReturnData ) {
+        jsonResult["returnValue"] = toHex( _er.output );
+    } else {
+        std::string errMessage;
+        if ( _er.excepted == TransactionException::RevertInstruction ) {
+            errMessage = skutils::eth::call_error_message_2_str( _er.output );
+        }
+        // return message in two fields for compatibility with different tools
+        jsonResult["returnValue"] = errMessage;
+        jsonResult["error"] = errMessage;
+    }
+
+    return jsonResult;
 }
 const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions() const {
     return m_options;
 }
 
-void AlethStandardTrace::doCallTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-    const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
-    Json::Value r( Json::objectValue );
-
-    Json::Value stack( Json::arrayValue );
-    if ( vm && !m_options.disableStack ) {
-        // Try extracting information about the stack from the VM is supported.
-        for ( auto const& i : vm->stack() )
-            stack.append( toCompactHexPrefixed( i, 1 ) );
-        r["stack"] = stack;
-    }
-
-    if ( m_lastInst.size() == voidExt->depth ) {
-        // starting a new context
-        assert( m_lastInst.size() == voidExt->depth );
-        m_lastInst.push_back( inst );
-    } else if ( m_lastInst.size() == voidExt->depth + 2 ) {
-        m_lastInst.pop_back();
-    } else if ( m_lastInst.size() == voidExt->depth + 1 ) {
-        // continuing in previous context
-        m_lastInst.back() = inst;
-    } else {
-        cwarn << "Tracing VM and more than one new/deleted stack frame between steps!";
-        cwarn << "Attempting naive recovery...";
-        m_lastInst.resize( voidExt->depth + 1 );
-    }
-
-    if ( vm ) {
-        bytes const& memory = vm->memory();
-
-        Json::Value memJson( Json::arrayValue );
-        if ( m_options.enableMemory ) {
-            for ( unsigned i = 0; i < memory.size(); i += 32 ) {
-                bytesConstRef memRef( memory.data() + i, 32 );
-                memJson.append( toHex( memRef ) );
-            }
-            r["memory"] = memJson;
-        }
-        r["memSize"] = static_cast< uint64_t >( memory.size() );
-    }
-
-    r["op"] = static_cast< uint8_t >( inst );
-    r["opName"] = instructionInfo( inst ).name;
-    r["pc"] = PC;
-    r["gas"] = static_cast< uint64_t >( gas );
-    r["gasCost"] = static_cast< uint64_t >( gasCost );
-    r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
-    auto refund = ext.sub.refunds;
-    if ( refund > 0 ) {
-        r["refund"] = ext.sub.refunds;
-    }
-    if ( !m_options.disableStorage ) {
-        if ( logStorage( inst ) ) {
-            Json::Value storage( Json::objectValue );
-            for ( auto const& i : m_accessedStateValues[ext.myAddress] )
-                storage[toHex( i.first )] = toHex( i.second );
-            r["storage"] = storage;
-        }
-    }
-
-    if ( inst == Instruction::REVERT ) {
-        // reverted. Set error message
-        bytes const& memory = vm->memory();
-        auto st = vm->stack();
-        // message offset and size are the last two elements
-        uint64_t b = ( uint64_t ) * ( st.end() - 1 );
-        uint64_t s = ( uint64_t ) * ( st.end() - 2 );
-        std::vector< uint8_t > errorMessage( memory.begin() + b, memory.begin() + b + s );
-        r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
-    }
-
-    m_result->append( r );
-}
-
-void AlethStandardTrace::doPrestateTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-    const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
-    Json::Value r( Json::objectValue );
-
-    Json::Value stack( Json::arrayValue );
-    if ( vm && !m_options.disableStack ) {
-        // Try extracting information about the stack from the VM is supported.
-        for ( auto const& i : vm->stack() )
-            stack.append( toCompactHexPrefixed( i, 1 ) );
-        r["stack"] = stack;
-    }
-
-    if ( m_lastInst.size() == voidExt->depth ) {
-        // starting a new context
-        assert( m_lastInst.size() == voidExt->depth );
-        m_lastInst.push_back( inst );
-    } else if ( m_lastInst.size() == voidExt->depth + 2 ) {
-        m_lastInst.pop_back();
-    } else if ( m_lastInst.size() == voidExt->depth + 1 ) {
-        // continuing in previous context
-        m_lastInst.back() = inst;
-    } else {
-        cwarn << "Tracing VM and more than one new/deleted stack frame between steps!";
-        cwarn << "Attempting naive recovery...";
-        m_lastInst.resize( voidExt->depth + 1 );
-    }
-
-    if ( vm ) {
-        bytes const& memory = vm->memory();
-
-        Json::Value memJson( Json::arrayValue );
-        if ( m_options.enableMemory ) {
-            for ( unsigned i = 0; i < memory.size(); i += 32 ) {
-                bytesConstRef memRef( memory.data() + i, 32 );
-                memJson.append( toHex( memRef ) );
-            }
-            r["memory"] = memJson;
-        }
-        r["memSize"] = static_cast< uint64_t >( memory.size() );
-    }
-
-    r["op"] = static_cast< uint8_t >( inst );
-    r["opName"] = instructionInfo( inst ).name;
-    r["pc"] = PC;
-    r["gas"] = static_cast< uint64_t >( gas );
-    r["gasCost"] = static_cast< uint64_t >( gasCost );
-    r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
-    auto refund = ext.sub.refunds;
-    if ( refund > 0 ) {
-        r["refund"] = ext.sub.refunds;
-    }
-    if ( !m_options.disableStorage ) {
-        if ( logStorage( inst ) ) {
-            Json::Value storage( Json::objectValue );
-            for ( auto const& i : m_accessedStateValues[ext.myAddress] )
-                storage[toHex( i.first )] = toHex( i.second );
-            r["storage"] = storage;
-        }
-    }
-
-    if ( inst == Instruction::REVERT ) {
-        // reverted. Set error message
-        bytes const& memory = vm->memory();
-        auto st = vm->stack();
-        // message offset and size are the last two elements
-        uint64_t b = ( uint64_t ) * ( st.end() - 1 );
-        uint64_t s = ( uint64_t ) * ( st.end() - 2 );
-        std::vector< uint8_t > errorMessage( memory.begin() + b, memory.begin() + b + s );
-        r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
-    }
-
-    m_result->append( r );
-}
 
 AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value const& _json ) {
     AlethStandardTrace::DebugOptions op;

@@ -32,10 +32,18 @@ public:
         TraceType tracerType = TraceType::DEFAULT_TRACER;
     };
 
+
+    class AccountInfo {
+        uint64_t nonce = 0;
+        u256 balance = 0;
+        std::vector< uint8_t > code;
+    };
+
+
     AlethStandardTrace::DebugOptions debugOptions( Json::Value const& _json );
 
     // Append json trace to given (array) value
-    explicit AlethStandardTrace( Address& _from, Json::Value const& _options );
+    explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
 
     void operator()( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
         bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM );
@@ -47,31 +55,29 @@ public:
         };
     }
     const DebugOptions& getOptions() const;
-    const std::shared_ptr< Json::Value >& getResult() const;
+    Json::Value  generateJSONResult( ExecutionResult& _er ) const;
 
 private:
     std::vector< Instruction > m_lastInst;
-    std::shared_ptr< Json::Value > m_result;
+    std::shared_ptr< Json::Value > m_defaultOpTrace;
     Json::FastWriter m_fastWriter;
     Address m_from;
+    Address m_to;
     DebugOptions m_options;
-    std::map<Address,std::map<u256,u256>> m_accessedStateValues; ///< accessed values map. Used for tracing
-    std::map< Address, std::map< u256, u256 > > touchedStateBefore;
-    std::map< Address, std::map< u256, u256 > > touchedStateAfter;
+    std::map< Address, std::map< u256, u256 > > m_accessedStateValues;  ///< accessed values map.
+                                                                        ///< Used for tracing
+    std::map< Address, AccountInfo > m_accessedAccounts;  ///< accessed values map. Used for tracing
 
 
     static bool logStorage( Instruction _inst );
 
 
     static const std::map< std::string, AlethStandardTrace::TraceType > stringToTracerMap;
-    void doDefaultTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
+    void doTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
         const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
 
-    void doCallTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
-
-    void doPrestateTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
+    void appendDefaultOpTraceToResult( uint64_t PC, Instruction& inst, const bigint& gasCost,
+        const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
 };
 }  // namespace eth
 }  // namespace dev
