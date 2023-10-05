@@ -71,7 +71,7 @@ private:
     DebugOptions m_options;
     Json::Value jsonResult;
 
-    std::map< Address, std::map< u256, u256 > > m_accessedStateValues;  ///< accessed values map.
+    std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;  ///< accessed values map.
                                                                         ///< Used for tracing
     std::map< Address, AccountInfo > m_accessedAccounts;  ///< accessed values map. Used for tracing
 
@@ -80,10 +80,11 @@ private:
 
 
     static const std::map< std::string, AlethStandardTrace::TraceType > stringToTracerMap;
-    void doTrace( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, dev::eth::AlethExtVM& ext, const dev::eth::LegacyVM* vm );
+    void recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
+        const ExtVMFace* voidExt, AlethExtVM& ext,
+        const LegacyVM* vm );
 
-    void appendDefaultOpTraceToResult( uint64_t PC, Instruction& inst, const bigint& gasCost,
+    void appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
         const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
 };
 }  // namespace eth

@@ -29,46 +29,44 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
     m_accessedAccounts[m_from];
     m_accessedAccounts[m_to];
 }
-bool AlethStandardTrace::logStorage( Instruction _inst ) {
-    return _inst == Instruction::SSTORE || _inst == Instruction::SLOAD;
-}
 
 
+/*
+ * This function is called on each EVM op
+ */
 void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint,
     bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
     // remove const qualifier since we need to set tracing values in AlethExtVM
     AlethExtVM& ext = ( AlethExtVM& ) ( *voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
-
     if ( !vm ) {
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    doTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
+    recordAccessesToAccountsAndStorageValues( PC, inst, gasCost, gas, voidExt, ext, vm );
 
     if ( m_options.tracerType == TraceType::DEFAULT_TRACER )
-        appendDefaultOpTraceToResult( PC, inst, gasCost, gas, voidExt, ext, vm );
+        appendOpToDefaultOpTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
 }
-void AlethStandardTrace::doTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-    const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm ) {
-    // note the account as used
+void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst,
+    const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
+    const LegacyVM* vm ) {
+    // record the account access
     m_accessedAccounts[ext.myAddress];
 
 
-    // if tracing is enabled, store the accessed value
-    // you need at least one element on the stack for SLOAD and two for SSTORE
+    // record storage accesses
 
     if ( inst == Instruction::SLOAD && vm->stackSize() > 0 ) {
-        m_accessedStateValues[ext.myAddress][vm->getStackElement( 0 )] =
+        m_accessedStorageValues[ext.myAddress][vm->getStackElement( 0 )] =
             ext.store( vm->getStackElement( 0 ) );
     }
 
-
     if ( inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
-        m_accessedStateValues[ext.myAddress][vm->getStackElement( 0 )] = vm->getStackElement( 1 );
+        m_accessedStorageValues[ext.myAddress][vm->getStackElement( 0 )] = vm->getStackElement( 1 );
     }
 }
-void AlethStandardTrace::appendDefaultOpTraceToResult( uint64_t PC, Instruction& inst,
+void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst,
     const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
     const LegacyVM* vm ) {
     Json::Value r( Json::objectValue );
@@ -105,9 +103,9 @@ void AlethStandardTrace::appendDefaultOpTraceToResult( uint64_t PC, Instruction&
         r["refund"] = ext.sub.refunds;
     }
     if ( !m_options.disableStorage ) {
-        if ( logStorage( inst ) ) {
+        if ( inst == Instruction::SSTORE || inst == Instruction::SLOAD ) {
             Json::Value storage( Json::objectValue );
-            for ( auto const& i : m_accessedStateValues[ext.myAddress] )
+            for ( auto const& i : m_accessedStorageValues[ext.myAddress] )
                 storage[toHex( i.first )] = toHex( i.second );
             r["storage"] = storage;
         }
@@ -129,8 +127,8 @@ Json::Value eth::AlethStandardTrace::getJSONResult() const {
     return jsonResult;
 }
 
-void eth::AlethStandardTrace::generateJSONResult( ExecutionResult& _er,
-    HistoricState& _stateBefore, HistoricState& _stateAfter)  {
+void eth::AlethStandardTrace::generateJSONResult(
+    ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
     jsonResult["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted == TransactionException::None;
