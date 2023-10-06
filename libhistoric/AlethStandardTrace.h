@@ -29,6 +29,7 @@ public:
         bool enableMemory = false;
         bool disableStack = false;
         bool enableReturnData = false;
+        bool prestateDebugMode = false;
         TraceType tracerType = TraceType::DEFAULT_TRACER;
     };
 

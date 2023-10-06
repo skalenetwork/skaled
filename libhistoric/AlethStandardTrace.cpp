@@ -200,6 +200,7 @@ AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value c
         op.disableStack = _json["disableStack"].asBool();
     if ( !_json["enableReturnData"].empty() )
         op.enableReturnData = _json["enableReturnData"].asBool();
+
     if ( !_json["tracer"].empty() ) {
         auto tracerStr = _json["tracer"].asString();
 
@@ -209,9 +210,14 @@ AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value c
             BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid tracer type:" + tracerStr ) );
         }
-
-        op.enableReturnData = _json["enableReturnData"].asBool();
     }
+
+    if ( !_json["tracerConfig"].empty() && _json["tracerConfig"].isObject()) {
+        if ( !_json["tracerConfig"]["diffMode"].empty() && _json["tracerConfig"].isBool() ) {
+            op.prestateDebugMode = _json["tracerConfig"]["diffMode"].asBool();
+        }
+    }
+
     return op;
 }
 
