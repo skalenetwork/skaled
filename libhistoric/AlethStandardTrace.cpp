@@ -220,7 +220,7 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPre( Json::Value& _resul
     if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
         for ( auto&& it : m_accessedStorageValues[address] ) {
             if ( _stateBefore.addressInUse( address ) ) {
-                auto originalValue = _stateBefore.storage( address, it.first );
+                auto originalValue = _stateBefore.originalStorageValue( address, it.first );
                 if ( originalValue ) {
                     storagePairs[toHex( it.first )] = toHex( originalValue );
                 }
