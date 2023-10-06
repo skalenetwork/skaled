@@ -556,6 +556,13 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
+#ifdef HISTORIC_STATE
+        h256 bh = client()->hashFromNumber( h );
+        return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
+    } catch ( const JsonRpcException& ) {
+        throw;
+#else
+
         if ( _includeTransactions )
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine() );
@@ -563,6 +570,7 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), client()->transactionHashes( h ),
                 client()->sealEngine() );
+#endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }

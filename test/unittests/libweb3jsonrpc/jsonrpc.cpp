@@ -2865,6 +2865,133 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 //     BOOST_REQUIRE( !mtm );
 // }
 
+// historic node shall ignore invalid transactions in block
+BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
+    dev::eth::simulateMining( *( fixture.client ), 1 ); // 2 Ether
+
+    cout << "Balance: " << fixture.rpcClient->eth_getBalance(fixture.accountHolder->allAccounts()[0].hex(), "latest") << endl;
+
+    // 1 import 1 transaction to increase block number
+    // also send 1 eth to account2
+    // TODO repair mineMoney function! (it asserts)
+    Json::Value txJson;
+    txJson["from"] = fixture.coinbase.address().hex();
+    txJson["gas"] = "200000";
+    txJson["gasPrice"] = "5000000000000";
+    txJson["to"] = fixture.account2.address().hex();
+    txJson["value"] = "1000000000000000000";
+
+    txJson["nonce"] = "0";
+    TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
+    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+    pair< bool, Secret > ar1 = fixture.accountHolder->authenticate( ts1 );
+    Transaction tx1( ts1, ar1.second );
+    fixture.client->importTransaction( tx1 );
+
+    // 1 eth left (returned to author)
+    dev::eth::mineTransaction(*(fixture.client), 1);
+    cout << "Balance2: " << fixture.rpcClient->eth_getBalance(fixture.accountHolder->allAccounts()[0].hex(), "latest") << endl;
+
+    // 2 import 4 transactions with money for 1st, 2nd, and 3rd
+
+    // require full 1 Ether for gas+value
+    txJson["gas"] = "100000";
+    txJson["nonce"] = "1";
+    txJson["value"] = "500000000000000000";// take 0.5 eth out
+    ts1 = toTransactionSkeleton( txJson );
+    ts1 = fixture.client->populateTransactionWithDefaults( ts1 );
+    ar1 = fixture.accountHolder->authenticate( ts1 );
+    tx1 = Transaction( ts1, ar1.second );
+
+    txJson["nonce"] = "2";
+    TransactionSkeleton ts2 = toTransactionSkeleton( txJson );
+    ts2 = fixture.client->populateTransactionWithDefaults( ts2 );
+    pair< bool, Secret > ar2 = fixture.accountHolder->authenticate( ts2 );
+    Transaction tx2( ts2, ar2.second );
+
+    txJson["from"] = fixture.account2.address().hex();
+    txJson["nonce"] = "0";
+    txJson["value"] = "0";
+    txJson["gasPrice"] = "20000000000";
+    txJson["gas"] = "53000";
+    TransactionSkeleton ts3 = toTransactionSkeleton( txJson );
+    ts3 = fixture.client->populateTransactionWithDefaults( ts3 );
+    pair< bool, Secret > ar3 = fixture.accountHolder->authenticate( ts3 );
+    Transaction tx3( ts3, ar3.second );
+
+    txJson["nonce"] = "1";
+    TransactionSkeleton ts4 = toTransactionSkeleton( txJson );
+    ts3 = fixture.client->populateTransactionWithDefaults( ts4 );
+    pair< bool, Secret > ar4 = fixture.accountHolder->authenticate( ts4 );
+    Transaction tx4( ts3, ar3.second );
+
+    h256 h4 = fixture.client->importTransaction( tx4 ); // ok
+    h256 h2 = fixture.client->importTransaction( tx2 ); // invalid
+    h256 h3 = fixture.client->importTransaction( tx3 ); // ok
+    h256 h1 = fixture.client->importTransaction( tx1 ); // ok
+
+    dev::eth::mineTransaction(*(fixture.client), 1);
+    cout << "Balance3: " << fixture.rpcClient->eth_getBalance(fixture.accountHolder->allAccounts()[0].hex(), "latest") << endl;
+
+    (void)h1;
+    (void)h2;
+    (void)h3;
+    (void)h4;
+
+#ifdef HISTORIC_STATE
+    // 3 check that historic node sees only 3 txns
+
+    // 1 Block
+    Json::Value block = fixture.rpcClient->eth_getBlockByNumber("latest", "false");
+
+    BOOST_REQUIRE_EQUAL(block["transactions"].size(), 3);
+    BOOST_REQUIRE_EQUAL(block["transactions"][0]["transactionIndex"], "0x0");
+    BOOST_REQUIRE_EQUAL(block["transactions"][1]["transactionIndex"], "0x1");
+    BOOST_REQUIRE_EQUAL(block["transactions"][2]["transactionIndex"], "0x2");
+
+    // 2 receipts
+    Json::Value r1,r3,r4;
+    BOOST_REQUIRE_NO_THROW(r1 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h1)));
+    BOOST_REQUIRE_THROW   (fixture.rpcClient->eth_getTransactionReceipt(toJS(h2)), jsonrpc::JsonRpcException);
+    BOOST_REQUIRE_NO_THROW(r3 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h3)));
+    BOOST_REQUIRE_NO_THROW(r4 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h4)));
+
+    BOOST_REQUIRE_EQUAL(r1["transactionIndex"], "0x0");
+    BOOST_REQUIRE_EQUAL(r3["transactionIndex"], "0x1");
+    BOOST_REQUIRE_EQUAL(r4["transactionIndex"], "0x2");
+
+    // 3 transaction by index
+    Json::Value t0 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "0");
+    Json::Value t1 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "1");
+    Json::Value t2 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "2");
+
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t0["hash"].asString()), h1);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
+
+    string bh = r1["blockHash"].asString();
+
+    t0 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "0");
+    t1 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "1");
+    t2 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "2");
+
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t0["hash"].asString()), h1);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
+
+    // 4 transaction by hash
+    BOOST_REQUIRE_THROW   (fixture.rpcClient->eth_getTransactionByHash(toJS(h2)), jsonrpc::JsonRpcException);
+
+    // 5 transaction count
+    Json::Value cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber("latest");
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+    cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+#endif
+}
+
+
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
