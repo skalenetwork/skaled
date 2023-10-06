@@ -29,7 +29,7 @@ public:
         bool enableMemory = false;
         bool disableStack = false;
         bool enableReturnData = false;
-        bool prestateDebugMode = false;
+        bool prestateDiffMode = false;
         TraceType tracerType = TraceType::DEFAULT_TRACER;
     };
 
@@ -57,7 +57,7 @@ public:
     }
     const DebugOptions& getOptions() const;
 
-    void generateJSONResult(
+    void completeJSONResult(
         ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
 
     Json::Value getJSONResult() const;
@@ -71,6 +71,9 @@ private:
     Address m_to;
     DebugOptions m_options;
     Json::Value jsonResult;
+    Json::Value preResult;
+    Json::Value postResult;
+
 
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;  ///< accessed values map.
                                                                         ///< Used for tracing
@@ -87,6 +90,13 @@ private:
 
     void appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
         const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
+    void prestateAddAccountToResultPre( const HistoricState& _stateBefore,
+        const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
+    void prestateAddAccountToResultPost( const HistoricState& _stateBefore,
+        const HistoricState& _stateAfter,
+        const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
+    void addDefaulTraceToJSONResult( const ExecutionResult& _er );
+    void addPrestateTraceToJSONResult( const HistoricState& _stateBefore );
 };
 }  // namespace eth
 }  // namespace dev

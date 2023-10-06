@@ -154,11 +154,20 @@ Json::Value eth::AlethStandardTrace::getJSONResult() const {
     return jsonResult;
 }
 
-void eth::AlethStandardTrace::generateJSONResult(
+void eth::AlethStandardTrace::completeJSONResult(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
+    addDefaulTraceToJSONResult( _er );
+    addPrestateTraceToJSONResult( _stateBefore );
+}
+void eth::AlethStandardTrace::addPrestateTraceToJSONResult( const HistoricState& _stateBefore ) {
+    for ( auto&& item : m_accessedAccounts ) {
+        prestateAddAccountToResultPre( _stateBefore, item );
+    }
+}
+void eth::AlethStandardTrace::addDefaulTraceToJSONResult( const ExecutionResult& _er ) {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
     // jsonResult["structLogs"] = *m_defaultOpTrace;
-    auto failed = _er.excepted == TransactionException::None;
+    auto failed = _er.excepted != TransactionException::None;
     jsonResult["failed"] = failed;
     if ( !failed && getOptions().enableReturnData ) {
         jsonResult["returnValue"] = toHex( _er.output );
@@ -171,18 +180,70 @@ void eth::AlethStandardTrace::generateJSONResult(
         jsonResult["returnValue"] = errMessage;
         jsonResult["error"] = errMessage;
     }
+}
+void eth::AlethStandardTrace::prestateAddAccountToResultPre( const HistoricState& _stateBefore,
+    const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
+    auto address = item.first;
+    Json::Value value;
+    if (!_stateBefore.addressInUse(address))
+        return;
+    value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
+    value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
+    value["code"] = toHexPrefixed( _stateBefore.code( address ) );
+
+    if (m_accessedStorageValues.find(address) != m_accessedStorageValues.end()) {
+        Json::Value storagePairs;
+        for (auto&& it : m_accessedStorageValues[address]) {
+            storagePairs[toHex(it.first)] = toHex(it.second);
+        }
+        value["storage"] = storagePairs;
+    }
 
 
-    Json::Value map;
-    for ( auto&& item : this->m_accessedAccounts ) {
-        auto address = item.first;
-        Json::Value value;
-        value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
-        value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
-        value["code"] = toHexPrefixed( _stateBefore.code( address ) );
+    if (m_options.prestateDiffMode ) {
+        preResult[toHexPrefixed( address )] = value;
+    } else {
         jsonResult[toHexPrefixed( address )] = value;
     }
 }
+
+void eth::AlethStandardTrace::prestateAddAccountToResultPost( const HistoricState& _stateBefore,
+    const HistoricState& _stateAfter,
+    const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
+    auto address = item.first;
+    Json::Value value;
+    if (!_stateBefore.addressInUse(address))
+        return;
+    value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
+    value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
+    value["code"] = toHexPrefixed( _stateBefore.code( address ) );
+
+    if (m_accessedStorageValues.find(address) != m_accessedStorageValues.end()) {
+        Json::Value storagePairs;
+        for (auto&& it : m_accessedStorageValues[address]) {
+            storagePairs[toHex(it.first)] = toHex(it.second);
+        }
+        value["storage"] = storagePairs;
+    }
+
+
+    if (m_options.prestateDiffMode ) {
+        preResult[toHexPrefixed( address )] = value;
+    } else {
+        jsonResult[toHexPrefixed( address )] = value;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions() const {
     return m_options;
 }
@@ -214,7 +275,7 @@ AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value c
 
     if ( !_json["tracerConfig"].empty() && _json["tracerConfig"].isObject()) {
         if ( !_json["tracerConfig"]["diffMode"].empty() && _json["tracerConfig"].isBool() ) {
-            op.prestateDebugMode = _json["tracerConfig"]["diffMode"].asBool();
+            op.prestateDiffMode = _json["tracerConfig"]["diffMode"].asBool();
         }
     }
 
