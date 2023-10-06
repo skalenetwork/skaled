@@ -813,7 +813,7 @@ ExecutionResult Block::executeHistoricCall(
         auto resultReceipt = m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted,
             onOp );
         HistoricState stateAfter(m_state.mutableHistoricState());
-        _tracer->completeJSONResult( resultReceipt.first, stateBefore, stateAfter );
+        _tracer->finishTracing( resultReceipt.first, stateBefore, stateAfter );
         return resultReceipt.first;
     } else {
         auto resultReceipt =

@@ -57,7 +57,7 @@ public:
     }
     const DebugOptions& getOptions() const;
 
-    void completeJSONResult(
+    void finishTracing(
         ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
 
     Json::Value getJSONResult() const;
@@ -95,8 +95,8 @@ private:
     void prestateAddAccountToResultPost( const HistoricState& _stateBefore,
         const HistoricState& _stateAfter,
         const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
-    void addDefaulTraceToJSONResult( const ExecutionResult& _er );
-    void addPrestateTraceToJSONResult( const HistoricState& _stateBefore );
+    void generateDefaultTraceJSONResult( const ExecutionResult& _er );
+    void generatePrestateTraceJSONResult( const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 };
 }  // namespace eth
 }  // namespace dev

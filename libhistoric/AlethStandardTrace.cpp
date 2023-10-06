@@ -154,17 +154,32 @@ Json::Value eth::AlethStandardTrace::getJSONResult() const {
     return jsonResult;
 }
 
-void eth::AlethStandardTrace::completeJSONResult(
+void eth::AlethStandardTrace::finishTracing(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
-    addDefaulTraceToJSONResult( _er );
-    addPrestateTraceToJSONResult( _stateBefore );
-}
-void eth::AlethStandardTrace::addPrestateTraceToJSONResult( const HistoricState& _stateBefore ) {
-    for ( auto&& item : m_accessedAccounts ) {
-        prestateAddAccountToResultPre( _stateBefore, item );
+    switch ( m_options.tracerType ) {
+    case TraceType::DEFAULT_TRACER:
+        generateDefaultTraceJSONResult( _er );
+        break;
+    case TraceType::PRESTATE_TRACER:
+        generatePrestateTraceJSONResult( _stateBefore, _stateAfter );
+        break;
+    case TraceType::CALL_TRACER:
+        break;
     }
 }
-void eth::AlethStandardTrace::addDefaulTraceToJSONResult( const ExecutionResult& _er ) {
+void eth::AlethStandardTrace::generatePrestateTraceJSONResult(
+    const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    for ( auto&& item : m_accessedAccounts ) {
+        prestateAddAccountToResultPre( _stateBefore, item );
+        prestateAddAccountToResultPost( _stateBefore, _stateAfter, item );
+    }
+
+    if ( m_options.prestateDiffMode ) {
+        jsonResult["pre"] = preResult;
+        jsonResult["post"] = postResult;
+    }
+}
+void eth::AlethStandardTrace::generateDefaultTraceJSONResult( const ExecutionResult& _er ) {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
     // jsonResult["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
@@ -185,63 +200,93 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPre( const HistoricState
     const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
     auto address = item.first;
     Json::Value value;
-    if (!_stateBefore.addressInUse(address))
+    if ( !_stateBefore.addressInUse( address ) )
         return;
     value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
     value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
-    value["code"] = toHexPrefixed( _stateBefore.code( address ) );
 
-    if (m_accessedStorageValues.find(address) != m_accessedStorageValues.end()) {
+    bytes const& code = _stateBefore.code( address );
+    if ( code != NullBytes ) {
+        value["code"] = toHexPrefixed( code );
+    }
+
+    if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
         Json::Value storagePairs;
-        for (auto&& it : m_accessedStorageValues[address]) {
-            storagePairs[toHex(it.first)] = toHex(it.second);
+        for ( auto&& it : m_accessedStorageValues[address] ) {
+            storagePairs[toHex( it.first )] = toHex( it.second );
         }
         value["storage"] = storagePairs;
     }
 
 
-    if (m_options.prestateDiffMode ) {
+    if ( m_options.prestateDiffMode ) {
         preResult[toHexPrefixed( address )] = value;
     } else {
         jsonResult[toHexPrefixed( address )] = value;
     }
 }
+
 
 void eth::AlethStandardTrace::prestateAddAccountToResultPost( const HistoricState& _stateBefore,
     const HistoricState& _stateAfter,
     const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
     auto address = item.first;
     Json::Value value;
-    if (!_stateBefore.addressInUse(address))
-        return;
-    value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
-    value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
-    value["code"] = toHexPrefixed( _stateBefore.code( address ) );
 
-    if (m_accessedStorageValues.find(address) != m_accessedStorageValues.end()) {
-        Json::Value storagePairs;
-        for (auto&& it : m_accessedStorageValues[address]) {
-            storagePairs[toHex(it.first)] = toHex(it.second);
-        }
-        value["storage"] = storagePairs;
+    // balance diff
+    if ( !_stateAfter.addressInUse( address ) )
+        return;
+    auto balance = _stateAfter.balance( ( address ) );
+    if ( !_stateBefore.addressInUse( address ) || _stateBefore.balance( address ) != balance ) {
+        value["balance"] = toCompactHexPrefixed( balance );
+    }
+
+    // nonce diff
+    if ( !_stateAfter.addressInUse( address ) )
+        return;
+    auto nonce = _stateAfter.getNonce( ( address ) );
+    if ( !_stateBefore.addressInUse( address ) || _stateBefore.getNonce( address ) != nonce ) {
+        value["nonce"] = ( uint64_t ) nonce;
     }
 
 
-    if (m_options.prestateDiffMode ) {
+    // code diff
+    // nonce diff
+    if ( !_stateAfter.addressInUse( address ) )
+        return;
+    bytes const& code = _stateAfter.code( ( address ) );
+
+    if ( !_stateBefore.addressInUse( address ) || _stateBefore.code( address ) != code ) {
+        value["code"] = toHexPrefixed( code );
+    }
+
+
+    if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
+        Json::Value storagePairs;
+        for ( auto&& it : m_accessedStorageValues[address] ) {
+            bool includePair = false;
+            if ( !_stateBefore.addressInUse( address ) ) {
+                includePair = true;
+            } else {
+                includePair = _stateBefore.storage( address, it.first ) != it.second;
+            }
+
+            if ( includePair ) {
+                storagePairs[toHex( it.first )] = toHex( it.second );
+            }
+        }
+
+        if ( storagePairs.size() > 0 )
+            value["storage"] = storagePairs;
+    }
+
+
+    if ( m_options.prestateDiffMode ) {
         preResult[toHexPrefixed( address )] = value;
     } else {
         jsonResult[toHexPrefixed( address )] = value;
     }
 }
-
-
-
-
-
-
-
-
-
 
 
 const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions() const {
@@ -253,8 +298,11 @@ AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value c
     AlethStandardTrace::DebugOptions op;
     if ( !_json.isObject() || _json.empty() )
         return op;
+
+    bool option;
     if ( !_json["disableStorage"].empty() )
         op.disableStorage = _json["disableStorage"].asBool();
+
     if ( !_json["enableMemory"].empty() )
         op.enableMemory = _json["enableMemory"].asBool();
     if ( !_json["disableStack"].empty() )
@@ -273,7 +321,7 @@ AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value c
         }
     }
 
-    if ( !_json["tracerConfig"].empty() && _json["tracerConfig"].isObject()) {
+    if ( !_json["tracerConfig"].empty() && _json["tracerConfig"].isObject() ) {
         if ( !_json["tracerConfig"]["diffMode"].empty() && _json["tracerConfig"].isBool() ) {
             op.prestateDiffMode = _json["tracerConfig"]["diffMode"].asBool();
         }
