@@ -171,7 +171,9 @@ void eth::AlethStandardTrace::generatePrestateTraceJSONResult(
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     for ( auto&& item : m_accessedAccounts ) {
         prestateAddAccountToResultPre( _stateBefore, item );
-        prestateAddAccountToResultPost( _stateBefore, _stateAfter, item );
+        if ( m_options.prestateDiffMode ) {
+            prestateAddAccountToResultPost( _stateBefore, _stateAfter, item );
+        }
     }
 
     if ( m_options.prestateDiffMode ) {
@@ -210,11 +212,19 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPre( const HistoricState
         value["code"] = toHexPrefixed( code );
     }
 
+    Json::Value storagePairs;
     if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
-        Json::Value storagePairs;
         for ( auto&& it : m_accessedStorageValues[address] ) {
-            storagePairs[toHex( it.first )] = toHex( it.second );
+            if ( _stateBefore.addressInUse( address ) ) {
+                auto originalValue = _stateBefore.storage( address, it.first );
+                if ( originalValue ) {
+                    storagePairs[toHex( it.first )] = toHex( originalValue );
+                }
+            }
         }
+    }
+
+    if ( !storagePairs.empty() ) {
         value["storage"] = storagePairs;
     }
 
@@ -281,11 +291,7 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPost( const HistoricStat
     }
 
 
-    if ( m_options.prestateDiffMode ) {
-        preResult[toHexPrefixed( address )] = value;
-    } else {
-        jsonResult[toHexPrefixed( address )] = value;
-    }
+    postResult[toHexPrefixed( address )] = value;
 }
 
 
@@ -296,6 +302,7 @@ const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions
 
 AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value const& _json ) {
     AlethStandardTrace::DebugOptions op;
+
     if ( !_json.isObject() || _json.empty() )
         return op;
 
@@ -322,7 +329,8 @@ AlethStandardTrace::DebugOptions AlethStandardTrace::debugOptions( Json::Value c
     }
 
     if ( !_json["tracerConfig"].empty() && _json["tracerConfig"].isObject() ) {
-        if ( !_json["tracerConfig"]["diffMode"].empty() && _json["tracerConfig"].isBool() ) {
+        if ( !_json["tracerConfig"]["diffMode"].empty() &&
+             _json["tracerConfig"]["diffMode"].isBool() ) {
             op.prestateDiffMode = _json["tracerConfig"]["diffMode"].asBool();
         }
     }
