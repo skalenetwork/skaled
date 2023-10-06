@@ -90,9 +90,9 @@ private:
 
     void appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
         const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
-    void prestateAddAccountToResultPre( const HistoricState& _stateBefore,
+    void prestateAddAccountToResultPre( Json::Value& _result, const HistoricState& _stateBefore,
         const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
-    void prestateAddAccountToResultPost( const HistoricState& _stateBefore,
+    void prestateAddAccountToResultPost( Json::Value& _result, const HistoricState& _stateBefore,
         const HistoricState& _stateAfter,
         const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
     void generateDefaultTraceJSONResult( const ExecutionResult& _er );

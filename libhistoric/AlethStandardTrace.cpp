@@ -170,15 +170,18 @@ void eth::AlethStandardTrace::finishTracing(
 void eth::AlethStandardTrace::generatePrestateTraceJSONResult(
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     for ( auto&& item : m_accessedAccounts ) {
-        prestateAddAccountToResultPre( _stateBefore, item );
+        prestateAddAccountToResultPre(preResult, _stateBefore, item);
         if ( m_options.prestateDiffMode ) {
-            prestateAddAccountToResultPost( _stateBefore, _stateAfter, item );
+            prestateAddAccountToResultPost(postResult,
+                _stateBefore, _stateAfter, item);
         }
     }
 
     if ( m_options.prestateDiffMode ) {
         jsonResult["pre"] = preResult;
         jsonResult["post"] = postResult;
+    } else {
+        jsonResult = preResult;
     }
 }
 void eth::AlethStandardTrace::generateDefaultTraceJSONResult( const ExecutionResult& _er ) {
@@ -198,7 +201,8 @@ void eth::AlethStandardTrace::generateDefaultTraceJSONResult( const ExecutionRes
         jsonResult["error"] = errMessage;
     }
 }
-void eth::AlethStandardTrace::prestateAddAccountToResultPre( const HistoricState& _stateBefore,
+void eth::AlethStandardTrace::prestateAddAccountToResultPre( Json::Value& _result,
+    const HistoricState& _stateBefore,
     const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
     auto address = item.first;
     Json::Value value;
@@ -228,17 +232,13 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPre( const HistoricState
         value["storage"] = storagePairs;
     }
 
+    _result[toHexPrefixed( address )] = value;
 
-    if ( m_options.prestateDiffMode ) {
-        preResult[toHexPrefixed( address )] = value;
-    } else {
-        jsonResult[toHexPrefixed( address )] = value;
-    }
 }
 
 
-void eth::AlethStandardTrace::prestateAddAccountToResultPost( const HistoricState& _stateBefore,
-    const HistoricState& _stateAfter,
+void eth::AlethStandardTrace::prestateAddAccountToResultPost( Json::Value& _result,
+    const HistoricState& _stateBefore, const HistoricState& _stateAfter,
     const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
     auto address = item.first;
     Json::Value value;
@@ -290,8 +290,8 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPost( const HistoricStat
             value["storage"] = storagePairs;
     }
 
+    _result[toHexPrefixed( address )] = value;
 
-    postResult[toHexPrefixed( address )] = value;
 }
 
 
