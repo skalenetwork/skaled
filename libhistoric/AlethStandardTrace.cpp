@@ -57,15 +57,42 @@ void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, 
 
     // record storage accesses
 
-    if ( inst == Instruction::SLOAD && vm->stackSize() > 0 ) {
-        m_accessedStorageValues[ext.myAddress][vm->getStackElement( 0 )] =
-            ext.store( vm->getStackElement( 0 ) );
-    }
-
-    if ( inst == Instruction::SSTORE && vm->stackSize() > 1 ) {
-        m_accessedStorageValues[ext.myAddress][vm->getStackElement( 0 )] = vm->getStackElement( 1 );
+    switch ( inst ) {
+    case Instruction::SLOAD:
+        if ( vm->stackSize() > 0 ) {
+            m_accessedStorageValues[ext.myAddress][vm->getStackElement( 0 )] =
+                ext.store( vm->getStackElement( 0 ) );
+        }
+        break;
+    case Instruction::SSTORE:
+        if ( vm->stackSize() > 1 ) {
+            m_accessedStorageValues[ext.myAddress][vm->getStackElement( 0 )] =
+                vm->getStackElement( 1 );
+        }
+        break;
+    case Instruction::DELEGATECALL:
+    case Instruction::STATICCALL:
+    case Instruction::CALL:
+    case Instruction::CALLCODE:
+        if ( vm->stackSize() > 1 ) {
+            m_accessedAccounts[asAddress( vm->getStackElement( 1 ) )];
+        }
+        break;
+    case Instruction::BALANCE:
+    case Instruction::EXTCODESIZE:
+    case Instruction::EXTCODECOPY:
+    case Instruction::EXTCODEHASH:
+    case Instruction::SUICIDE:
+        if ( vm->stackSize() > 0 ) {
+            m_accessedAccounts[asAddress( vm->getStackElement( 0 ) )];
+        }
+        break;
+    default:
+        break;
     }
 }
+
+
 void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst,
     const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
     const LegacyVM* vm ) {
@@ -130,7 +157,7 @@ Json::Value eth::AlethStandardTrace::getJSONResult() const {
 void eth::AlethStandardTrace::generateJSONResult(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
-    //jsonResult["structLogs"] = *m_defaultOpTrace;
+    // jsonResult["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted == TransactionException::None;
     jsonResult["failed"] = failed;
     if ( !failed && getOptions().enableReturnData ) {
@@ -147,17 +174,14 @@ void eth::AlethStandardTrace::generateJSONResult(
 
 
     Json::Value map;
-    for (auto&& item : this->m_accessedAccounts) {
+    for ( auto&& item : this->m_accessedAccounts ) {
         auto address = item.first;
         Json::Value value;
-        value["balance"] = toCompactHexPrefixed(_stateBefore.balance(address));
-        value["nonce"] = (uint64_t )_stateBefore.getNonce(address);
-        value["code"] = toHexPrefixed(_stateBefore.code(address));
-        jsonResult[toHexPrefixed(address)] = value;
+        value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
+        value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
+        value["code"] = toHexPrefixed( _stateBefore.code( address ) );
+        jsonResult[toHexPrefixed( address )] = value;
     }
-
-
-
 }
 const eth::AlethStandardTrace::DebugOptions& eth::AlethStandardTrace::getOptions() const {
     return m_options;
