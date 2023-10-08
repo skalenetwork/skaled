@@ -169,13 +169,19 @@ void eth::AlethStandardTrace::finishTracing(
 }
 void eth::AlethStandardTrace::generatePrestateTraceJSONResult(
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
-    for ( auto&& item : m_accessedAccounts ) {
-        prestateAddAccountToResultPre(preResult, _stateBefore, item);
+
+
+     Json::Value preResult;
+     Json::Value postResult;
+
+     for ( auto&& item : m_accessedAccounts ) {
         if ( m_options.prestateDiffMode ) {
-            prestateAddAccountToResultPost(postResult,
-                _stateBefore, _stateAfter, item);
+            prestateAddAccountDiffToResultBefore( preResult, _stateBefore, _stateAfter, item );
+            prestateAddAccountDiffToResultBefore( postResult, _stateBefore, _stateAfter, item );
+        } else {
+            prestateAddAccountOriginalValueToResult(jsonResult, _stateBefore, item);
         }
-    }
+    };
 
     if ( m_options.prestateDiffMode ) {
         jsonResult["pre"] = preResult;
@@ -186,7 +192,7 @@ void eth::AlethStandardTrace::generatePrestateTraceJSONResult(
 }
 void eth::AlethStandardTrace::generateDefaultTraceJSONResult( const ExecutionResult& _er ) {
     jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
-    // jsonResult["structLogs"] = *m_defaultOpTrace;
+    jsonResult["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
     jsonResult["failed"] = failed;
     if ( !failed && getOptions().enableReturnData ) {
@@ -201,7 +207,9 @@ void eth::AlethStandardTrace::generateDefaultTraceJSONResult( const ExecutionRes
         jsonResult["error"] = errMessage;
     }
 }
-void eth::AlethStandardTrace::prestateAddAccountToResultPre( Json::Value& _result,
+
+
+void eth::AlethStandardTrace::prestateAddAccountOriginalValueToResult( Json::Value& _result,
     const HistoricState& _stateBefore,
     const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
     auto address = item.first;
@@ -233,39 +241,30 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPre( Json::Value& _resul
     }
 
     _result[toHexPrefixed( address )] = value;
-
 }
 
 
-void eth::AlethStandardTrace::prestateAddAccountToResultPost( Json::Value& _result,
+void eth::AlethStandardTrace::prestateAddAccountDiffToResultAfter( Json::Value& _result,
     const HistoricState& _stateBefore, const HistoricState& _stateAfter,
     const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
     auto address = item.first;
     Json::Value value;
 
-    // balance diff
+
     if ( !_stateAfter.addressInUse( address ) )
         return;
+
     auto balance = _stateAfter.balance( ( address ) );
+    auto nonce = _stateAfter.getNonce( ( address ) );
+    auto code = _stateAfter.code( ( address ) );
+
+
     if ( !_stateBefore.addressInUse( address ) || _stateBefore.balance( address ) != balance ) {
         value["balance"] = toCompactHexPrefixed( balance );
     }
-
-    // nonce diff
-    if ( !_stateAfter.addressInUse( address ) )
-        return;
-    auto nonce = _stateAfter.getNonce( ( address ) );
     if ( !_stateBefore.addressInUse( address ) || _stateBefore.getNonce( address ) != nonce ) {
         value["nonce"] = ( uint64_t ) nonce;
     }
-
-
-    // code diff
-    // nonce diff
-    if ( !_stateAfter.addressInUse( address ) )
-        return;
-    bytes const& code = _stateAfter.code( ( address ) );
-
     if ( !_stateBefore.addressInUse( address ) || _stateBefore.code( address ) != code ) {
         value["code"] = toHexPrefixed( code );
     }
@@ -277,8 +276,10 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPost( Json::Value& _resu
             bool includePair = false;
             if ( !_stateBefore.addressInUse( address ) ) {
                 includePair = true;
+            } else if ( it.second == 0 ) {
+                includePair = false;
             } else {
-                includePair = _stateBefore.storage( address, it.first ) != it.second;
+                includePair = _stateBefore.originalStorageValue( address, it.first ) != it.second;
             }
 
             if ( includePair ) {
@@ -291,7 +292,59 @@ void eth::AlethStandardTrace::prestateAddAccountToResultPost( Json::Value& _resu
     }
 
     _result[toHexPrefixed( address )] = value;
+}
 
+
+void eth::AlethStandardTrace::prestateAddAccountDiffToResultBefore( Json::Value& _result,
+    const HistoricState& _stateBefore, const HistoricState& _stateAfter,
+    const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
+    auto address = item.first;
+    Json::Value value;
+
+    // balance diff
+    if ( !_stateBefore.addressInUse( address ) )
+        return;
+
+    auto balance = _stateBefore.balance( ( address ) );
+    auto code = _stateBefore.code( ( address ) );
+    auto nonce = _stateBefore.getNonce( ( address ) );
+
+
+    if ( !_stateAfter.addressInUse( address ) || _stateAfter.balance( address ) != balance ) {
+        value["balance"] = toCompactHexPrefixed( balance );
+    }
+    if ( !_stateAfter.addressInUse( address ) || _stateAfter.getNonce( address ) != nonce ) {
+        value["nonce"] = ( uint64_t ) nonce;
+    }
+    if ( !_stateAfter.addressInUse( address ) || _stateAfter.code( address ) != code ) {
+        value["code"] = toHexPrefixed( code );
+    }
+
+
+    if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
+        Json::Value storagePairs;
+        for ( auto&& it : m_accessedStorageValues[address] ) {
+            bool includePair = false;
+            if ( !_stateAfter.addressInUse( address ) ) {
+                includePair = true;
+            } else if ( it.second == 0 ) {
+                includePair = false;
+            }
+
+            else {
+                includePair = _stateBefore.originalStorageValue( address, it.first ) != it.second;
+            }
+
+            if ( includePair ) {
+                storagePairs[toHex( it.first )] = toHex( it.second );
+            }
+        }
+
+        if ( storagePairs.size() > 0 )
+            value["storage"] = storagePairs;
+    }
+
+    _result[toHexPrefixed( address )] = value;
 }
 
 

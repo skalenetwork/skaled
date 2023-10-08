@@ -71,12 +71,10 @@ private:
     Address m_to;
     DebugOptions m_options;
     Json::Value jsonResult;
-    Json::Value preResult;
-    Json::Value postResult;
 
 
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;  ///< accessed values map.
-                                                                        ///< Used for tracing
+                                                                          ///< Used for tracing
     std::map< Address, AccountInfo > m_accessedAccounts;  ///< accessed values map. Used for tracing
 
 
@@ -84,19 +82,27 @@ private:
 
 
     static const std::map< std::string, AlethStandardTrace::TraceType > stringToTracerMap;
-    void recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst, const bigint& gasCost, const bigint& gas,
-        const ExtVMFace* voidExt, AlethExtVM& ext,
+    void recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst,
+        const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
         const LegacyVM* vm );
 
     void appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
         const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
-    void prestateAddAccountToResultPre( Json::Value& _result, const HistoricState& _stateBefore,
+
+    void prestateAddAccountOriginalValueToResult( Json::Value& _result, const HistoricState& _stateBefore,
         const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
-    void prestateAddAccountToResultPost( Json::Value& _result, const HistoricState& _stateBefore,
+
+    void prestateAddAccountDiffToResultBefore( Json::Value& _result, const HistoricState& _stateBefore,
+        const HistoricState& _stateAfter,
+        const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
+
+    void prestateAddAccountDiffToResultAfter( Json::Value& _result, const HistoricState& _stateBefore,
         const HistoricState& _stateAfter,
         const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
     void generateDefaultTraceJSONResult( const ExecutionResult& _er );
-    void generatePrestateTraceJSONResult( const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+
+    void generatePrestateTraceJSONResult(
+        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 };
 }  // namespace eth
 }  // namespace dev
