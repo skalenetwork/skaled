@@ -28,6 +28,7 @@ class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
     static void init( const dev::eth::ChainParams& cp ) {
         activationTimestamp = cp.sChain.skipInvalidTransactionsPatchTimestamp;
+        printInfo( __FILE__, activationTimestamp );
     }
     static void setLastBlock( const dev::eth::BlockHeader& bh ) {
         lastBlockTimestamp = bh.timestamp();
