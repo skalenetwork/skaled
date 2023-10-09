@@ -102,5 +102,30 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, Inst
         break;
     }
 }
+
+void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t gasUsed ) {
+    FunctionCall::gasUsed = gasUsed;
+}
+void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& outputData ) {
+    FunctionCall::outputData = outputData;
+}
+
+void AlethBaseTrace::FunctionCall::addNestedCall( std::shared_ptr<FunctionCall>& _nestedCall) {
+    if (!_nestedCall) {
+        BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Null nested call in ") + __FUNCTION__ ));
+    }
+    this->nestedCalls.push_back(_nestedCall);
+}
+void AlethBaseTrace::FunctionCall::setError( const std::string& error ) {
+    FunctionCall::error = error;
+}
+void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& revertReason ) {
+    FunctionCall::revertReason = revertReason;
+}
+AlethBaseTrace::FunctionCall::FunctionCall( Instruction type, const Address& from,
+    const Address& to, uint64_t gas, const std::vector< uint8_t >& inputData, const u256& value )
+    : type( type ), from( from ), to( to ), gas( gas ), inputData( inputData ), value( value ) {}
+
+
 }  // namespace eth
 }  // namespace dev
