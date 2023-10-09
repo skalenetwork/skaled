@@ -26,14 +26,14 @@
 
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
-    static void init( const dev::eth::ChainParams& cp ) {
-        activationTimestamp = cp.sChain.skipInvalidTransactionsPatchTimestamp;
+    static void init( const dev::eth::ChainParams& _cp ) {
+        activationTimestamp = _cp.sChain.skipInvalidTransactionsPatchTimestamp;
         printInfo( __FILE__, activationTimestamp );
     }
-    static void setLastBlock( const dev::eth::BlockHeader& bh ) {
-        lastBlockTimestamp = bh.timestamp();
+    static void setLastBlock( const dev::eth::BlockHeader& _bh ) {
+        lastBlockTimestamp = _bh.timestamp();
     }
-    static bool needToKeepTransaction( bool excepted );
+    static bool needToKeepTransaction( bool _excepted );
 
 private:
     static bool activateTimestampPassed();
