@@ -11,9 +11,8 @@ bool SkipInvalidTransactionsPatch::activateTimestampPassed() {
     return lastBlockTimestamp >= activationTimestamp;
 }
 
-bool SkipInvalidTransactionsPatch::needToKeepTransaction( const Transaction& tr, bool excepted ) {
+bool SkipInvalidTransactionsPatch::needToKeepTransaction( bool excepted ) {
     if ( !activateTimestampPassed() )
         return true;
     return !excepted;
-    ( void ) tr;
 }

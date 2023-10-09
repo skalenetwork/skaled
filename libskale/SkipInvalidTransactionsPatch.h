@@ -32,7 +32,7 @@ public:
     static void setLastBlock( const dev::eth::BlockHeader& bh ) {
         lastBlockTimestamp = bh.timestamp();
     }
-    static bool needToKeepTransaction( const dev::eth::Transaction& tr, bool excepted );
+    static bool needToKeepTransaction( bool excepted );
 
 private:
     static bool activateTimestampPassed();
