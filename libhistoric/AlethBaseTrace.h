@@ -31,12 +31,15 @@ protected:
     class FunctionCall {
     public:
         FunctionCall( Instruction type, const Address& from, const Address& to, uint64_t gas,
-            FunctionCall* parentCall, const std::vector< uint8_t >& inputData, const u256& value );
+            const std::weak_ptr< FunctionCall >& parentCall,
+            const std::vector< uint8_t >& inputData, const u256& value, uint64_t depth );
+        uint64_t getDepth() const;
         void setGasUsed( uint64_t _gasUsed );
         void setOutputData( const std::vector< uint8_t >& _outputData );
         void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall );
         void setError( const std::string& _error );
         void setRevertReason( const std::string& _revertReason );
+        [[nodiscard]] const std::weak_ptr< FunctionCall >& getParentCall() const;
 
 
     private:
@@ -46,12 +49,13 @@ protected:
         uint64_t gas = 0;
         uint64_t gasUsed = 0;
         std::vector< std::shared_ptr< FunctionCall > > nestedCalls;
-        FunctionCall* parentCall = nullptr;
+        std::weak_ptr<FunctionCall> parentCall;
         std::vector< uint8_t > inputData;
         std::vector< uint8_t > outputData;
         std::string error;
         std::string revertReason;
         u256 value;
+        uint64_t depth = 0;
     };
 
     std::shared_ptr< FunctionCall > topFunctionCall;

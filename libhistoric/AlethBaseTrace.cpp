@@ -102,6 +102,44 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     }
 }
 
+
+void AlethBaseTrace::functionCalled( Instruction _type, const Address& _from, const Address& _to,
+    uint64_t _gas, const std::vector< uint8_t >& _inputData, const u256& _value ) {
+    if ( !currentFunctionCall ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( std::string( "Null current function in " ) + __FUNCTION__ ) );
+    }
+
+    auto nestedCall = std::make_shared< FunctionCall >( _type, _from, _to, _gas,
+        currentFunctionCall, _inputData, _value, currentFunctionCall->getDepth() + 1 );
+
+    currentFunctionCall->addNestedCall( nestedCall );
+    currentFunctionCall = nestedCall;
+}
+
+void AlethBaseTrace::functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasUsed,
+    std::string& _error, std::string& _revertReason ) {
+    currentFunctionCall->setOutputData( _outputData );
+    currentFunctionCall->setError( _error );
+    currentFunctionCall->setGasUsed( _gasUsed );
+    currentFunctionCall->setRevertReason( _revertReason );
+
+    if ( currentFunctionCall == topFunctionCall ) {
+        // the top function returned
+        return;
+    }
+
+    auto parentCall = currentFunctionCall->getParentCall().lock();
+
+    if ( !parentCall ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( std::string( "Null parentcall in " ) + __FUNCTION__ ) );
+    }
+
+    currentFunctionCall = parentCall;
+}
+
+
 void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed ) {
     FunctionCall::gasUsed = _gasUsed;
 }
@@ -123,11 +161,25 @@ void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertRe
     FunctionCall::revertReason = _revertReason;
 }
 
+
+const std::weak_ptr< AlethBaseTrace::FunctionCall >& AlethBaseTrace::FunctionCall::getParentCall()
+    const {
+    return parentCall;
+}
+uint64_t AlethBaseTrace::FunctionCall::getDepth() const {
+    return depth;
+}
 AlethBaseTrace::FunctionCall::FunctionCall( Instruction type, const Address& from,
-    const Address& to, uint64_t gas, AlethBaseTrace::FunctionCall* parentCall,
-    const std::vector< uint8_t >& inputData, const u256& value )
-    : type( type ), from( from ), to( to ), gas( gas ), parentCall( parentCall ), inputData( inputData ),
-      value( value ) {}
+    const Address& to, uint64_t gas, const std::weak_ptr< FunctionCall >& parentCall,
+    const std::vector< uint8_t >& inputData, const u256& value, uint64_t depth )
+    : type( type ),
+      from( from ),
+      to( to ),
+      gas( gas ),
+      parentCall( parentCall ),
+      inputData( inputData ),
+      value( value ),
+      depth( depth ) {}
 
 
 }  // namespace eth
