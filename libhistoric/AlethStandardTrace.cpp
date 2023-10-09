@@ -8,10 +8,14 @@
 #include <jsonrpccpp/common/exception.h>
 #include <skutils/eth_utils.h>
 
-// memory tracing in geth is  inefficient ahd hardly used
+
+
+// therefore we limit the  memory and storage entries returned to 1024 to avoid
+// denial of service attack.
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
-// therefore we limit the entries to 256
-#define MAX_MEMORY_ENTRIES_RETURNED 256
+#define MAX_MEMORY_VALUES_RETURNED 1024
+#define MAX_STORAGE_VALUES_RETURNED 1024
+
 
 namespace dev {
 namespace eth {
@@ -110,7 +114,7 @@ void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& ins
     bytes const& memory = vm->memory();
     Json::Value memJson( Json::arrayValue );
     if ( m_options.enableMemory ) {
-        for ( unsigned i = 0; ( i < memory.size() && i < MAX_MEMORY_ENTRIES_RETURNED ); i += 32 ) {
+        for ( unsigned i = 0; ( i < memory.size() && i < MAX_MEMORY_VALUES_RETURNED ); i += 32 ) {
             bytesConstRef memRef( memory.data() + i, 32 );
             memJson.append( toHex( memRef ) );
         }
@@ -151,200 +155,231 @@ void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& ins
 }
 
 Json::Value eth::AlethStandardTrace::getJSONResult() const {
-    return jsonResult;
+    return jsonTrace;
 }
 
-void eth::AlethStandardTrace::finishTracing(
+void eth::AlethStandardTrace::finalizeTrace(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     switch ( m_options.tracerType ) {
     case TraceType::DEFAULT_TRACER:
-        generateDefaultTraceJSONResult( _er );
+        deftraceFinalizeTrace( _er );
         break;
     case TraceType::PRESTATE_TRACER:
-        generatePrestateTraceJSONResult( _stateBefore, _stateAfter );
+        pstraceFinalizeTrace( _stateBefore, _stateAfter );
         break;
     case TraceType::CALL_TRACER:
         break;
     }
 }
-void eth::AlethStandardTrace::generatePrestateTraceJSONResult(
+void eth::AlethStandardTrace::pstraceFinalizeTrace(
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    Json::Value preDiff( Json::objectValue );
+    Json::Value postDiff( Json::objectValue );
 
-
-     Json::Value preResult;
-     Json::Value postResult;
-
-     for ( auto&& item : m_accessedAccounts ) {
+    for ( auto&& item : m_accessedAccounts ) {
         if ( m_options.prestateDiffMode ) {
-            prestateAddAccountDiffToResultBefore( preResult, _stateBefore, _stateAfter, item );
-            prestateAddAccountDiffToResultBefore( postResult, _stateBefore, _stateAfter, item );
+            pstraceAddAccountPreDiffToTrace( preDiff, _stateBefore, _stateAfter, item );
+            pstraceAddAccountPostDiffToTracer( postDiff, _stateBefore, _stateAfter, item );
         } else {
-            prestateAddAccountOriginalValueToResult(jsonResult, _stateBefore, item);
+            pstraceAddAllAccessedAccountPreValuesToTrace( jsonTrace, _stateBefore, item );
         }
     };
 
+    // diff mode set pre and post
     if ( m_options.prestateDiffMode ) {
-        jsonResult["pre"] = preResult;
-        jsonResult["post"] = postResult;
-    } else {
-        jsonResult = preResult;
+        jsonTrace["pre"] = preDiff;
+        jsonTrace["post"] = postDiff;
     }
 }
-void eth::AlethStandardTrace::generateDefaultTraceJSONResult( const ExecutionResult& _er ) {
-    jsonResult["gas"] = ( uint64_t ) _er.gasUsed;
-    jsonResult["structLogs"] = *m_defaultOpTrace;
+void eth::AlethStandardTrace::deftraceFinalizeTrace( const ExecutionResult& _er ) {
+    jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
+    jsonTrace["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
-    jsonResult["failed"] = failed;
+    jsonTrace["failed"] = failed;
     if ( !failed && getOptions().enableReturnData ) {
-        jsonResult["returnValue"] = toHex( _er.output );
+        jsonTrace["returnValue"] = toHex( _er.output );
     } else {
         std::string errMessage;
         if ( _er.excepted == TransactionException::RevertInstruction ) {
             errMessage = skutils::eth::call_error_message_2_str( _er.output );
         }
         // return message in two fields for compatibility with different tools
-        jsonResult["returnValue"] = errMessage;
-        jsonResult["error"] = errMessage;
+        jsonTrace["returnValue"] = errMessage;
+        jsonTrace["error"] = errMessage;
     }
 }
 
 
-void eth::AlethStandardTrace::prestateAddAccountOriginalValueToResult( Json::Value& _result,
+// this function returns original values (pre) to result
+void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace( Json::Value& _trace,
     const HistoricState& _stateBefore,
-    const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
-    auto address = item.first;
-    Json::Value value;
-    if ( !_stateBefore.addressInUse( address ) )
+    const Address& _address ) {
+    Json::Value storagePreValues;
+    // if this _address did not exist, we do not include it in the diff
+    if ( !_stateBefore.addressInUse( _address ) )
         return;
-    value["balance"] = toCompactHexPrefixed( _stateBefore.balance( address ) );
-    value["nonce"] = ( uint64_t ) _stateBefore.getNonce( address );
+    storagePreValues["balance"] = toCompactHexPrefixed( _stateBefore.balance( _address ) );
+    storagePreValues["nonce"] = ( uint64_t ) _stateBefore.getNonce( _address );
 
-    bytes const& code = _stateBefore.code( address );
+    bytes const& code = _stateBefore.code( _address );
     if ( code != NullBytes ) {
-        value["code"] = toHexPrefixed( code );
+        storagePreValues["code"] = toHexPrefixed( code );
     }
 
     Json::Value storagePairs;
-    if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
-        for ( auto&& it : m_accessedStorageValues[address] ) {
-            if ( _stateBefore.addressInUse( address ) ) {
-                auto originalValue = _stateBefore.originalStorageValue( address, it.first );
+    if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
+        for ( auto&& it : m_accessedStorageValues[_address] ) {
+            if ( _stateBefore.addressInUse( _address ) ) {
+                auto& storageAddress = it.first;
+                auto originalValue = _stateBefore.originalStorageValue( _address, storageAddress );
                 if ( originalValue ) {
-                    storagePairs[toHex( it.first )] = toHex( originalValue );
+                    storagePairs[toHex( storageAddress )] = toHex( originalValue );
+                    // return limited number of values to prevent DOS attacks
+                    storageValuesReturnedAll++;
+                    if (storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
+                        break;
                 }
             }
         }
     }
 
     if ( !storagePairs.empty() ) {
-        value["storage"] = storagePairs;
+        storagePreValues["storage"] = storagePairs;
     }
 
-    _result[toHexPrefixed( address )] = value;
+    // if nothing changed we do not add it to the diff
+    if ( !storagePreValues.empty() )
+        _trace[toHexPrefixed( _address )] = storagePreValues;
 }
 
 
-void eth::AlethStandardTrace::prestateAddAccountDiffToResultAfter( Json::Value& _result,
-    const HistoricState& _stateBefore, const HistoricState& _stateAfter,
-    const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
-    auto address = item.first;
-    Json::Value value;
+void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace,
+    const HistoricState& _stateBefore, const HistoricState& _statePost,
+    const Address& _address ) {
+    Json::Value value( Json::objectValue );
 
 
-    if ( !_stateAfter.addressInUse( address ) )
+    // if this address does not exist post-transaction we dot include it in the trace
+    if ( !_statePost.addressInUse( _address ) )
         return;
 
-    auto balance = _stateAfter.balance( ( address ) );
-    auto nonce = _stateAfter.getNonce( ( address ) );
-    auto code = _stateAfter.code( ( address ) );
+    auto balancePost = _statePost.balance( ( _address ) );
+    auto noncePost = _statePost.getNonce( ( _address ) );
+    auto& codePost = _statePost.code( _address ) );
 
 
-    if ( !_stateBefore.addressInUse( address ) || _stateBefore.balance( address ) != balance ) {
-        value["balance"] = toCompactHexPrefixed( balance );
+    // if the new address, ot if the value changed, include in post trace
+    if ( !_stateBefore.addressInUse( _address ) || _stateBefore.balance( _address ) != balancePost ) {
+        value["balancePost"] = toCompactHexPrefixed( balancePost );
     }
-    if ( !_stateBefore.addressInUse( address ) || _stateBefore.getNonce( address ) != nonce ) {
-        value["nonce"] = ( uint64_t ) nonce;
+    if ( !_stateBefore.addressInUse( _address ) || _stateBefore.getNonce( _address ) != noncePost ) {
+        value["noncePost"] = ( uint64_t ) noncePost;
     }
-    if ( !_stateBefore.addressInUse( address ) || _stateBefore.code( address ) != code ) {
-        value["code"] = toHexPrefixed( code );
+    if ( !_stateBefore.addressInUse( _address ) || _stateBefore.code( _address ) != codePost ) {
+        value["codePost"] = toHexPrefixed( codePost );
     }
 
 
-    if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
-        Json::Value storagePairs;
-        for ( auto&& it : m_accessedStorageValues[address] ) {
-            bool includePair = false;
-            if ( !_stateBefore.addressInUse( address ) ) {
+    // post diffs for storage values
+    if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
+        Json::Value storagePairs( Json::objectValue );
+
+        // iterate over all accessed storage values
+        for ( auto&& it : m_accessedStorageValues[_address] ) {
+            auto& storageAddress = it.first;
+            auto& storageValue = it.second;
+
+            bool includePair;
+            if ( !_stateBefore.addressInUse( _address ) ) {
+                // a new storage pair created. Include it in post diff
                 includePair = true;
-            } else if ( it.second == 0 ) {
+            } else if ( storageValue == 0 ) {
+                // the value has been deleted. We do not include it in post diff
                 includePair = false;
             } else {
-                includePair = _stateBefore.originalStorageValue( address, it.first ) != it.second;
+                // see if the storage value has been changed
+                includePair =
+                    _stateBefore.originalStorageValue( _address, storageAddress ) != storageValue;
             }
 
             if ( includePair ) {
-                storagePairs[toHex( it.first )] = toHex( it.second );
+                storagePairs[toHex( storageAddress )] = toHex( storageValue );
+                // return limited number of storage pairs to prevent DOS attacks
+                storageValuesReturnedPost++;
+                if (storageValuesReturnedPost >= MAX_STORAGE_VALUES_RETURNED )
+                    break;
             }
         }
 
-        if ( storagePairs.size() > 0 )
+        if ( !storagePairs.empty() )
             value["storage"] = storagePairs;
     }
 
-    _result[toHexPrefixed( address )] = value;
+    _postDiffTrace[toHexPrefixed( _address )] = value;
 }
 
 
-void eth::AlethStandardTrace::prestateAddAccountDiffToResultBefore( Json::Value& _result,
-    const HistoricState& _stateBefore, const HistoricState& _stateAfter,
-    const std::pair< const Address, AlethStandardTrace::AccountInfo >& item ) {
-    auto address = item.first;
-    Json::Value value;
+void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace,
+    const HistoricState& _statePre, const HistoricState& _statePost,
+    const Address& _address ) {
+
+    Json::Value value( Json::objectValue );
 
     // balance diff
-    if ( !_stateBefore.addressInUse( address ) )
+    if ( !_statePre.addressInUse( _address ) )
         return;
 
-    auto balance = _stateBefore.balance( ( address ) );
-    auto code = _stateBefore.code( ( address ) );
-    auto nonce = _stateBefore.getNonce( ( address ) );
+    auto balance = _statePre.balance( ( _address ) );
+    auto& code = _statePre.code( ( _address ) );
+    auto nonce = _statePre.getNonce( ( _address ) );
 
 
-    if ( !_stateAfter.addressInUse( address ) || _stateAfter.balance( address ) != balance ) {
+    if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
         value["balance"] = toCompactHexPrefixed( balance );
     }
-    if ( !_stateAfter.addressInUse( address ) || _stateAfter.getNonce( address ) != nonce ) {
+    if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
         value["nonce"] = ( uint64_t ) nonce;
     }
-    if ( !_stateAfter.addressInUse( address ) || _stateAfter.code( address ) != code ) {
+    if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
         value["code"] = toHexPrefixed( code );
     }
 
 
-    if ( m_accessedStorageValues.find( address ) != m_accessedStorageValues.end() ) {
+    if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
         Json::Value storagePairs;
-        for ( auto&& it : m_accessedStorageValues[address] ) {
-            bool includePair = false;
-            if ( !_stateAfter.addressInUse( address ) ) {
+
+        for ( auto&& it : m_accessedStorageValues[_address] ) {
+            auto& storageAddress = it.first;
+            auto& storageValuePost = it.second;
+            bool includePair;
+            if ( !_statePost.addressInUse( _address ) ) {
+                // contract has been deleted. Include in diff
                 includePair = true;
             } else if ( it.second == 0 ) {
+                // storage has been deleted. Do not include
                 includePair = false;
-            }
-
-            else {
-                includePair = _stateBefore.originalStorageValue( address, it.first ) != it.second;
+            } else {
+                includePair =
+                    _statePre.originalStorageValue( _address, storageAddress ) != storageValuePost;
             }
 
             if ( includePair ) {
-                storagePairs[toHex( it.first )] = toHex( it.second );
+                storagePairs[toHex( it.first )] =
+                    toHex( _statePre.originalStorageValue( _address, it.first ) );
+                // return limited number of storage pairs to prevent DOS attacks
+                storageValuesReturnedPre++;
+                if (storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
+                    break;
+
             }
         }
 
-        if ( storagePairs.size() > 0 )
+        if ( !storagePairs.empty() )
             value["storage"] = storagePairs;
     }
 
-    _result[toHexPrefixed( address )] = value;
+    if ( !value.empty() )
+        _preDiffTrace[toHexPrefixed( _address )] = value;
 }
 
 

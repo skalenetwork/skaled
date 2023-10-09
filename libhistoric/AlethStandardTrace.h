@@ -33,14 +33,6 @@ public:
         TraceType tracerType = TraceType::DEFAULT_TRACER;
     };
 
-
-    class AccountInfo {
-        uint64_t nonce = 0;
-        u256 balance = 0;
-        std::vector< uint8_t > code;
-    };
-
-
     AlethStandardTrace::DebugOptions debugOptions( Json::Value const& _json );
 
     // Append json trace to given (array) value
@@ -57,7 +49,7 @@ public:
     }
     const DebugOptions& getOptions() const;
 
-    void finishTracing(
+    void finalizeTrace(
         ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
 
     Json::Value getJSONResult() const;
@@ -70,15 +62,17 @@ private:
     Address m_from;
     Address m_to;
     DebugOptions m_options;
-    Json::Value jsonResult;
+    Json::Value jsonTrace;
 
 
-    std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;  ///< accessed values map.
-                                                                          ///< Used for tracing
-    std::map< Address, AccountInfo > m_accessedAccounts;  ///< accessed values map. Used for tracing
-
-
-    static bool logStorage( Instruction _inst );
+    // set of all storage values accessed during execution
+    std::set< Address> m_accessedAccounts;
+    // map of all storage addresses accessed (read or write) during execution
+    // for each storage address the current value if recorded
+    std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
+    uint64_t  storageValuesReturnedPre = 0;
+    uint64_t  storageValuesReturnedPost = 0;
+    uint64_t  storageValuesReturnedAll = 0;
 
 
     static const std::map< std::string, AlethStandardTrace::TraceType > stringToTracerMap;
@@ -89,19 +83,19 @@ private:
     void appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
         const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
 
-    void prestateAddAccountOriginalValueToResult( Json::Value& _result, const HistoricState& _stateBefore,
-        const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
+    void pstraceAddAllAccessedAccountPreValuesToTrace( Json::Value& _trace, const HistoricState& _stateBefore,
+        const Address& _address );
 
-    void prestateAddAccountDiffToResultBefore( Json::Value& _result, const HistoricState& _stateBefore,
-        const HistoricState& _stateAfter,
-        const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
+    void pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace, const HistoricState& _statePre,
+        const HistoricState& _statePost,
+        const Address& _address );
 
-    void prestateAddAccountDiffToResultAfter( Json::Value& _result, const HistoricState& _stateBefore,
-        const HistoricState& _stateAfter,
-        const std::pair< const Address, AlethStandardTrace::AccountInfo >& item );
-    void generateDefaultTraceJSONResult( const ExecutionResult& _er );
+    void pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace, const HistoricState& _stateBefore,
+        const HistoricState& _statePost,
+        const Address& _address );
+    void deftraceFinalizeTrace( const ExecutionResult& _er );
 
-    void generatePrestateTraceJSONResult(
+    void pstraceFinalizeTrace(
         const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 };
 }  // namespace eth
