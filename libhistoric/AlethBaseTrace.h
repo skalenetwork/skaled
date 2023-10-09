@@ -30,44 +30,45 @@ protected:
 
     class FunctionCall {
     public:
-        void setGasUsed( uint64_t gasUsed );
-        void setOutputData( const std::vector< uint8_t >& outputData );
-        void addNestedCall( std::shared_ptr<FunctionCall>& _nestedCall);
+        FunctionCall( Instruction type, const Address& from, const Address& to, uint64_t gas,
+            FunctionCall* parentCall, const std::vector< uint8_t >& inputData, const u256& value );
+        void setGasUsed( uint64_t _gasUsed );
+        void setOutputData( const std::vector< uint8_t >& _outputData );
+        void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall );
+        void setError( const std::string& _error );
+        void setRevertReason( const std::string& _revertReason );
 
 
     private:
         Instruction type;
         Address from;
-
-    public:
-        void setError( const std::string& error );
-        void setRevertReason( const std::string& revertReason );
-
-    private:
         Address to;
-        uint64_t gas;
-        uint64_t gasUsed;
-
-    public:
-        FunctionCall( Instruction type, const Address& from, const Address& to, uint64_t gas,
-            const std::vector< uint8_t >& inputData, const u256& value );
-
-    private:
-        std::vector<std::shared_ptr<FunctionCall>> nestedCalls;
-        std::vector<uint8_t> inputData;
-        std::vector<uint8_t> outputData;
+        uint64_t gas = 0;
+        uint64_t gasUsed = 0;
+        std::vector< std::shared_ptr< FunctionCall > > nestedCalls;
+        FunctionCall* parentCall = nullptr;
+        std::vector< uint8_t > inputData;
+        std::vector< uint8_t > outputData;
         std::string error;
         std::string revertReason;
         u256 value;
     };
 
-    std::shared_ptr<FunctionCall> topFunctionCall;
-    std::shared_ptr<FunctionCall> currentFunctionCall;
+    std::shared_ptr< FunctionCall > topFunctionCall;
+    std::shared_ptr< FunctionCall > currentFunctionCall;
 
 
     AlethBaseTrace( Transaction& _t, Json::Value const& _options );
 
-    const DebugOptions& getOptions() const;
+
+    [[nodiscard]] const DebugOptions& getOptions() const;
+
+    void functionCalled( Instruction _type, const Address& _from, const Address& _to, uint64_t _gas,
+        const std::vector< uint8_t >& _inputData, const u256& _value );
+
+    void functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasUsed,
+        std::string& _error, std::string& _revertReason );
+
 
     void recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst,
         const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,

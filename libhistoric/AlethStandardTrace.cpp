@@ -4,19 +4,11 @@
 
 #include "AlethStandardTrace.h"
 
-
-
-
 namespace dev {
 namespace eth {
 
-
-
-
 AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _options )
     : AlethBaseTrace( _t, _options ), m_defaultOpTrace{ std::make_shared< Json::Value >() } {}
-
-
 
 /*
  * This function is called on each EVM op
@@ -48,7 +40,6 @@ void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& ins
             stack.append( toCompactHexPrefixed( i, 1 ) );
         r["stack"] = stack;
     }
-
 
     bytes const& memory = vm->memory();
     Json::Value memJson( Json::arrayValue );
@@ -320,10 +311,6 @@ void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _pre
     if ( !value.empty() )
         _preDiffTrace[toHexPrefixed( _address )] = value;
 }
-
-
-
-
 
 }  // namespace eth
 }  // namespace dev

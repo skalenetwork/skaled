@@ -61,9 +61,8 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
     m_accessedAccounts.insert( m_to );
 }
 
-void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst,
-    const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
-    const LegacyVM* vm ) {
+void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& inst,
+    const bigint&, const bigint&, const ExtVMFace*, AlethExtVM& ext, const LegacyVM* vm ) {
     // record the account access
     m_accessedAccounts.insert( ext.myAddress );
 
@@ -103,28 +102,32 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, Inst
     }
 }
 
-void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t gasUsed ) {
-    FunctionCall::gasUsed = gasUsed;
+void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed ) {
+    FunctionCall::gasUsed = _gasUsed;
 }
-void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& outputData ) {
-    FunctionCall::outputData = outputData;
+void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& _outputData ) {
+    FunctionCall::outputData = _outputData;
 }
 
-void AlethBaseTrace::FunctionCall::addNestedCall( std::shared_ptr<FunctionCall>& _nestedCall) {
-    if (!_nestedCall) {
-        BOOST_THROW_EXCEPTION(std::runtime_error(std::string("Null nested call in ") + __FUNCTION__ ));
+void AlethBaseTrace::FunctionCall::addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall ) {
+    if ( !_nestedCall ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( std::string( "Null nested call in " ) + __FUNCTION__ ) );
     }
-    this->nestedCalls.push_back(_nestedCall);
+    this->nestedCalls.push_back( _nestedCall );
 }
-void AlethBaseTrace::FunctionCall::setError( const std::string& error ) {
-    FunctionCall::error = error;
+void AlethBaseTrace::FunctionCall::setError( const std::string& _error ) {
+    FunctionCall::error = _error;
 }
-void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& revertReason ) {
-    FunctionCall::revertReason = revertReason;
+void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertReason ) {
+    FunctionCall::revertReason = _revertReason;
 }
+
 AlethBaseTrace::FunctionCall::FunctionCall( Instruction type, const Address& from,
-    const Address& to, uint64_t gas, const std::vector< uint8_t >& inputData, const u256& value )
-    : type( type ), from( from ), to( to ), gas( gas ), inputData( inputData ), value( value ) {}
+    const Address& to, uint64_t gas, AlethBaseTrace::FunctionCall* parentCall,
+    const std::vector< uint8_t >& inputData, const u256& value )
+    : type( type ), from( from ), to( to ), gas( gas ), parentCall( parentCall ), inputData( inputData ),
+      value( value ) {}
 
 
 }  // namespace eth
