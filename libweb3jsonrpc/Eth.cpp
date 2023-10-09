@@ -49,21 +49,23 @@ const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 
 #ifdef HISTORIC_STATE
+// Function to count transactions in block ignoring invalid ones.
+// invalid transactions have gasUsed = gasAfter - gasBefore = 0
 unsigned int findNthValidTransaction(
     const dev::eth::Interface* client, const h256& bh, unsigned int ti ) {
     h256s transactions = client->transactionHashes( bh );
     u256 gasBefore = 0;
     size_t i;
-    size_t valid_count = 0;
+    size_t validCount = 0;
     for ( i = 0; i < transactions.size(); ++i ) {
         const h256& th = transactions[i];
         u256 gasAfter = client->transactionReceipt( th ).cumulativeGasUsed();
         u256 diff = gasAfter - gasBefore;
         gasBefore = gasAfter;
         if ( diff != 0 ) {
-            if ( valid_count == ti )
+            if ( validCount == ti )
                 break;
-            ++valid_count;
+            ++validCount;
         }  // if valid
     }      // for
     return i;
@@ -679,7 +681,7 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
         throw std::invalid_argument( "Not known transaction" );
     }
 
-    // recompute position:
+    // recompute position - count only "valid" transactions that consume non-zero gas
     h256s transactions = client()->transactionHashes( rcp.blockHash() );
     u256 gasBefore = 0;
     size_t offset =
@@ -691,7 +693,7 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
                 return ( diff == 0 );
             } );
 
-    // update position
+    // update position using computed offset
     rcp = LocalisedTransactionReceipt( rcp, rcp.hash(), rcp.blockHash(), rcp.blockNumber(),
         rcp.transactionIndex() - offset, rcp.from(), rcp.to(), rcp.gasUsed(),
         rcp.contractAddress() );
