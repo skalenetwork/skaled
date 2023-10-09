@@ -9,7 +9,6 @@
 #include <skutils/eth_utils.h>
 
 
-
 // therefore we limit the  memory and storage entries returned to 1024 to avoid
 // denial of service attack.
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
@@ -30,8 +29,8 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
     : m_defaultOpTrace{ std::make_shared< Json::Value >() }, m_from{ _t.from() }, m_to( _t.to() ) {
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
-    m_accessedAccounts[m_from];
-    m_accessedAccounts[m_to];
+    m_accessedAccounts.insert(m_from);
+    m_accessedAccounts.insert(m_to);
 }
 
 
@@ -56,11 +55,9 @@ void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, 
     const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
     const LegacyVM* vm ) {
     // record the account access
-    m_accessedAccounts[ext.myAddress];
-
+    m_accessedAccounts.insert(ext.myAddress);
 
     // record storage accesses
-
     switch ( inst ) {
     case Instruction::SLOAD:
         if ( vm->stackSize() > 0 ) {
@@ -79,7 +76,7 @@ void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, 
     case Instruction::CALL:
     case Instruction::CALLCODE:
         if ( vm->stackSize() > 1 ) {
-            m_accessedAccounts[asAddress( vm->getStackElement( 1 ) )];
+            m_accessedAccounts.insert(asAddress( vm->getStackElement( 1 ) ));
         }
         break;
     case Instruction::BALANCE:
@@ -88,14 +85,13 @@ void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t PC, 
     case Instruction::EXTCODEHASH:
     case Instruction::SUICIDE:
         if ( vm->stackSize() > 0 ) {
-            m_accessedAccounts[asAddress( vm->getStackElement( 0 ) )];
+            m_accessedAccounts.insert(asAddress( vm->getStackElement( 0 ) ));
         }
         break;
     default:
         break;
     }
 }
-
 
 void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst,
     const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
@@ -211,9 +207,8 @@ void eth::AlethStandardTrace::deftraceFinalizeTrace( const ExecutionResult& _er 
 
 
 // this function returns original values (pre) to result
-void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace( Json::Value& _trace,
-    const HistoricState& _stateBefore,
-    const Address& _address ) {
+void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace(
+    Json::Value& _trace, const HistoricState& _stateBefore, const Address& _address ) {
     Json::Value storagePreValues;
     // if this _address did not exist, we do not include it in the diff
     if ( !_stateBefore.addressInUse( _address ) )
@@ -236,7 +231,7 @@ void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace( Json
                     storagePairs[toHex( storageAddress )] = toHex( originalValue );
                     // return limited number of values to prevent DOS attacks
                     storageValuesReturnedAll++;
-                    if (storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
+                    if ( storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
                         break;
                 }
             }
@@ -254,8 +249,7 @@ void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace( Json
 
 
 void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace,
-    const HistoricState& _stateBefore, const HistoricState& _statePost,
-    const Address& _address ) {
+    const HistoricState& _stateBefore, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 
 
@@ -263,20 +257,24 @@ void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _p
     if ( !_statePost.addressInUse( _address ) )
         return;
 
-    auto balancePost = _statePost.balance( ( _address ) );
-    auto noncePost = _statePost.getNonce( ( _address ) );
-    auto& codePost = _statePost.code( _address ) );
+    auto balancePost = _statePost.balance( _address );
+    auto noncePost = _statePost.getNonce( _address );
+    auto& codePost = _statePost.code( _address );
 
 
     // if the new address, ot if the value changed, include in post trace
-    if ( !_stateBefore.addressInUse( _address ) || _stateBefore.balance( _address ) != balancePost ) {
-        value["balancePost"] = toCompactHexPrefixed( balancePost );
+    if ( !_stateBefore.addressInUse( _address ) ||
+         _stateBefore.balance( _address ) != balancePost ) {
+        value["balance"] = toCompactHexPrefixed( balancePost );
     }
-    if ( !_stateBefore.addressInUse( _address ) || _stateBefore.getNonce( _address ) != noncePost ) {
-        value["noncePost"] = ( uint64_t ) noncePost;
+    if ( !_stateBefore.addressInUse( _address ) ||
+         _stateBefore.getNonce( _address ) != noncePost ) {
+        value["nonce"] = ( uint64_t ) noncePost;
     }
     if ( !_stateBefore.addressInUse( _address ) || _stateBefore.code( _address ) != codePost ) {
-        value["codePost"] = toHexPrefixed( codePost );
+        if (codePost != NullBytes) {
+            value["code"] = toHexPrefixed( codePost );
+        }
     }
 
 
@@ -306,7 +304,7 @@ void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _p
                 storagePairs[toHex( storageAddress )] = toHex( storageValue );
                 // return limited number of storage pairs to prevent DOS attacks
                 storageValuesReturnedPost++;
-                if (storageValuesReturnedPost >= MAX_STORAGE_VALUES_RETURNED )
+                if ( storageValuesReturnedPost >= MAX_STORAGE_VALUES_RETURNED )
                     break;
             }
         }
@@ -320,18 +318,16 @@ void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _p
 
 
 void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace,
-    const HistoricState& _statePre, const HistoricState& _statePost,
-    const Address& _address ) {
-
+    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 
     // balance diff
     if ( !_statePre.addressInUse( _address ) )
         return;
 
-    auto balance = _statePre.balance( ( _address ) );
-    auto& code = _statePre.code( ( _address ) );
-    auto nonce = _statePre.getNonce( ( _address ) );
+    auto balance = _statePre.balance( _address  );
+    auto& code = _statePre.code(  _address  );
+    auto nonce = _statePre.getNonce(  _address  );
 
 
     if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
@@ -341,9 +337,10 @@ void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _pre
         value["nonce"] = ( uint64_t ) nonce;
     }
     if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
-        value["code"] = toHexPrefixed( code );
+        if (code != NullBytes) {
+            value["code"] = toHexPrefixed( code );
+        }
     }
-
 
     if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
         Json::Value storagePairs;
@@ -368,9 +365,8 @@ void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _pre
                     toHex( _statePre.originalStorageValue( _address, it.first ) );
                 // return limited number of storage pairs to prevent DOS attacks
                 storageValuesReturnedPre++;
-                if (storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
+                if ( storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
                     break;
-
             }
         }
 
