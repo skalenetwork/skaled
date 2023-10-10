@@ -30,7 +30,7 @@ public:
     explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
 
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
-        bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _voidExt );
+        bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
     OnOpFunc onOp() {
         return [=]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,

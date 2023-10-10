@@ -61,7 +61,7 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
 }
 
 void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
-    const bigint& _gasUsed, const bigint& _gasLimit, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm ) {
+    const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm ) {
     // record the account access
 
     STATE_CHECK( _face );
@@ -70,9 +70,26 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     auto currentDepth = _ext.depth;
 
     if (currentDepth == lastDepth + 1) {
+        // we are beginning to execute a new function
         auto data = _ext.data.toVector();
-        functionCalled(lastInstruction, _ext.caller, _ext.myAddress, (uint64_t ) _gasLimit,
+        functionCalled(lastInstruction, _ext.caller, _ext.myAddress, (uint64_t ) _gasRemaining,
           data, _ext.value, 0, 0);
+    } else if (currentDepth == lastDepth - 1) {
+        // we just exited a function
+        auto returnedData = std::vector<uint8_t> ();
+        // the total gas remaining by the function is the gas remaining on function return
+        // if the return happened through selfdestruct we also need to addd
+        // self destruct cost
+        uint64_t gasRemainingOnReturn = lastGasRemaining - lastOpGas;
+        // this is not to double count if we immediately return from the upper function
+        // on out of gas
+        lastOpGas = 0;
+        std::string error;
+        std::string revertReason;
+        functionReturned(returnedData, gasRemainingOnReturn, error, revertReason);
+    } else {
+        // we should not have skipped frames
+        STATE_CHECK(currentDepth == lastDepth);
     }
 
     m_accessedAccounts.insert( _ext.myAddress );
@@ -115,6 +132,8 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     }
     lastDepth = currentDepth;
     lastInstruction = _inst;
+    lastGasRemaining = (uint64_t) _gasRemaining;
+    lastOpGas = (uint64_t ) _lastOpGas;
 }
 
 
@@ -139,11 +158,11 @@ void AlethBaseTrace::functionCalled( Instruction _type, const Address& _from, co
     lastFunctionCall = nestedCall;
 }
 
-void AlethBaseTrace::functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasUsed,
+void AlethBaseTrace::functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasRemaingOnReturn,
     std::string& _error, std::string& _revertReason ) {
     lastFunctionCall->setOutputData( _outputData );
     lastFunctionCall->setError( _error );
-    lastFunctionCall->setGasUsed( _gasUsed );
+    lastFunctionCall->setGasUsed(lastFunctionCall->getFunctionGasLimit() - _gasRemaingOnReturn);
     lastFunctionCall->setRevertReason( _revertReason );
 
     if ( lastFunctionCall == topFunctionCall ) {
@@ -164,6 +183,9 @@ void AlethBaseTrace::functionReturned( std::vector< uint8_t >& _outputData, uint
 
 void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed ) {
     FunctionCall::gasUsed = _gasUsed;
+}
+uint64_t AlethBaseTrace::FunctionCall::getFunctionGasLimit() const {
+    return functionGasLimit;
 }
 void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& _outputData ) {
     FunctionCall::outputData = _outputData;
@@ -194,13 +216,13 @@ int64_t AlethBaseTrace::FunctionCall::getDepth() const {
 
 
 AlethBaseTrace::FunctionCall::FunctionCall( Instruction _type, const Address& _from,
-    const Address& _to, uint64_t _gas, const std::weak_ptr< FunctionCall >& _parentCall,
+    const Address& _to, uint64_t _functionGasLimit, const std::weak_ptr< FunctionCall >& _parentCall,
     const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth, uint64_t _retOffset,
     uint64_t _retSize )
     : type( _type ),
       from( _from ),
       to( _to ),
-      gas( _gas ),
+      functionGasLimit( _functionGasLimit ),
       parentCall( _parentCall ),
       inputData( _inputData ),
       value( _value ),

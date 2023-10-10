@@ -39,7 +39,7 @@ protected:
 
     class FunctionCall {
     public:
-        FunctionCall( Instruction _type, const Address& _from, const Address& _to, uint64_t _gas,
+        FunctionCall( Instruction _type, const Address& _from, const Address& _to, uint64_t _functionGasLimit,
             const std::weak_ptr< FunctionCall >& _parentCall,
             const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
             uint64_t _retOffset, uint64_t _retSize );
@@ -56,7 +56,7 @@ protected:
         Instruction type;
         Address from;
         Address to;
-        uint64_t gas = 0;
+        uint64_t functionGasLimit = 0;
         uint64_t gasUsed = 0;
         std::vector< std::shared_ptr< FunctionCall > > nestedCalls;
         std::weak_ptr< FunctionCall > parentCall;
@@ -69,6 +69,7 @@ protected:
     public:
         const Address& getFrom() const;
         const Address& getTo() const;
+        uint64_t getFunctionGasLimit() const;
 
     private:
         int64_t depth = 0;
@@ -89,12 +90,12 @@ protected:
         const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t _retOffset,
         uint64_t _retSize );
 
-    void functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasUsed,
+    void functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasRemaingOnReturn,
         std::string& _error, std::string& _revertReason );
 
 
     void recordAccessesToAccountsAndStorageValues( uint64_t _pc, Instruction& _inst,
-        const bigint& _gasCost, const bigint& _gas, const ExtVMFace* _voidExt, AlethExtVM& _ext,
+        const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _voidExt, AlethExtVM& _ext,
         const LegacyVM* _vm );
 
     AlethBaseTrace::DebugOptions debugOptions( Json::Value const& _json );
@@ -115,6 +116,8 @@ protected:
     // for each storage address the current value if recorded
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
 
+    uint64_t lastOpGas = 0;
+    uint64_t lastGasRemaining = 0;
     int64_t lastDepth = -1;
     Instruction lastInstruction = Instruction::CALL;
 };
