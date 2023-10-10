@@ -11,6 +11,15 @@
 #define MAX_MEMORY_VALUES_RETURNED 1024
 #define MAX_STORAGE_VALUES_RETURNED 1024
 
+
+#define STATE_CHECK( _EXPRESSION_ )                                             \
+    if ( !( _EXPRESSION_ ) ) {                                                  \
+        auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " + \
+                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );        \
+        throw std::runtime_error( __msg__);                                             \
+    }
+
+
 namespace dev {
 namespace eth {
 
@@ -30,9 +39,10 @@ protected:
 
     class FunctionCall {
     public:
-        FunctionCall( Instruction type, const Address& from, const Address& to, uint64_t gas,
-            const std::weak_ptr< FunctionCall >& parentCall,
-            const std::vector< uint8_t >& inputData, const u256& value, uint64_t depth );
+        FunctionCall( Instruction _type, const Address& _from, const Address& _to, uint64_t _gas,
+            const std::weak_ptr< FunctionCall >& _parentCall,
+            const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t _depth,
+            uint64_t _retOffset, uint64_t _retSize );
         uint64_t getDepth() const;
         void setGasUsed( uint64_t _gasUsed );
         void setOutputData( const std::vector< uint8_t >& _outputData );
@@ -49,13 +59,21 @@ protected:
         uint64_t gas = 0;
         uint64_t gasUsed = 0;
         std::vector< std::shared_ptr< FunctionCall > > nestedCalls;
-        std::weak_ptr<FunctionCall> parentCall;
+        std::weak_ptr< FunctionCall > parentCall;
         std::vector< uint8_t > inputData;
         std::vector< uint8_t > outputData;
         std::string error;
         std::string revertReason;
         u256 value;
+
+    public:
+        const Address& getFrom() const;
+        const Address& getTo() const;
+
+    private:
         uint64_t depth = 0;
+        uint64_t _retOffset = 0;
+        uint64_t _retSize = 0;
     };
 
     std::shared_ptr< FunctionCall > topFunctionCall;
@@ -68,15 +86,16 @@ protected:
     [[nodiscard]] const DebugOptions& getOptions() const;
 
     void functionCalled( Instruction _type, const Address& _from, const Address& _to, uint64_t _gas,
-        const std::vector< uint8_t >& _inputData, const u256& _value );
+        const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t _retOffset,
+        uint64_t _retSize );
 
     void functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasUsed,
         std::string& _error, std::string& _revertReason );
 
 
-    void recordAccessesToAccountsAndStorageValues( uint64_t PC, Instruction& inst,
-        const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
-        const LegacyVM* vm );
+    void recordAccessesToAccountsAndStorageValues( uint64_t _pc, Instruction& _inst,
+        const bigint& _gasCost, const bigint& _gas, const ExtVMFace* _voidExt, AlethExtVM& _ext,
+        const LegacyVM* _vm );
 
     AlethBaseTrace::DebugOptions debugOptions( Json::Value const& _json );
 
@@ -97,4 +116,4 @@ protected:
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
 };
 }  // namespace eth
-}  // namespace dev
+}  // namespace devCHECK_STATE(_face);

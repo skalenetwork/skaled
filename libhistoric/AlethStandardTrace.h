@@ -29,8 +29,8 @@ public:
     // Append json trace to given (array) value
     explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
 
-    void operator()( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
-        bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM );
+    void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
+        bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _voidExt );
 
     OnOpFunc onOp() {
         return [=]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
@@ -54,8 +54,8 @@ private:
     uint64_t  storageValuesReturnedPost = 0;
     uint64_t  storageValuesReturnedAll = 0;
 
-    void appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst, const bigint& gasCost,
-        const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext, const LegacyVM* vm );
+    void appendOpToDefaultOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
+        const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     void pstraceAddAllAccessedAccountPreValuesToTrace( Json::Value& _trace, const HistoricState& _stateBefore,
         const Address& _address );

@@ -13,35 +13,43 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
 /*
  * This function is called on each EVM op
  */
-void AlethStandardTrace::operator()( uint64_t, uint64_t PC, Instruction inst, bigint,
-    bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
+void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
+    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _ext ) {
+
+    STATE_CHECK(_vm)
+    STATE_CHECK(_ext)
+
+
     // remove const qualifier since we need to set tracing values in AlethExtVM
-    AlethExtVM& ext = ( AlethExtVM& ) ( *voidExt );
+    AlethExtVM& ext = ( AlethExtVM& ) ( *_ext );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
     if ( !vm ) {
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    recordAccessesToAccountsAndStorageValues( PC, inst, gasCost, gas, voidExt, ext, vm );
+    recordAccessesToAccountsAndStorageValues( _pc, _inst, _gasCost, _gas, _ext, ext, vm );
 
     if ( m_options.tracerType == TraceType::DEFAULT_TRACER )
-        appendOpToDefaultOpTrace( PC, inst, gasCost, gas, voidExt, ext, vm );
+        appendOpToDefaultOpTrace( _pc, _inst, _gasCost, _gas, _ext, ext, vm );
 }
 
-void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& inst,
-    const bigint& gasCost, const bigint& gas, const ExtVMFace* voidExt, AlethExtVM& ext,
-    const LegacyVM* vm ) {
+void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t _pc, Instruction& _inst,
+    const bigint& _gasCost, const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt,
+    const LegacyVM* _vm ) {
     Json::Value r( Json::objectValue );
+
+    STATE_CHECK(_vm)
+    STATE_CHECK( _ext )
 
     if ( !m_options.disableStack ) {
         Json::Value stack( Json::arrayValue );
         // Try extracting information about the stack from the VM is supported.
-        for ( auto const& i : vm->stack() )
+        for ( auto const& i : _vm->stack() )
             stack.append( toCompactHexPrefixed( i, 1 ) );
         r["stack"] = stack;
     }
 
-    bytes const& memory = vm->memory();
+    bytes const& memory = _vm->memory();
     Json::Value memJson( Json::arrayValue );
     if ( m_options.enableMemory ) {
         for ( unsigned i = 0; ( i < memory.size() && i < MAX_MEMORY_VALUES_RETURNED ); i += 32 ) {
@@ -53,30 +61,30 @@ void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t PC, Instruction& ins
     r["memSize"] = static_cast< uint64_t >( memory.size() );
 
 
-    r["op"] = static_cast< uint8_t >( inst );
-    r["opName"] = instructionInfo( inst ).name;
-    r["pc"] = PC;
-    r["gas"] = static_cast< uint64_t >( gas );
-    r["gasCost"] = static_cast< uint64_t >( gasCost );
-    r["depth"] = voidExt->depth + 1;  // depth in standard trace is 1-based
-    auto refund = ext.sub.refunds;
+    r["op"] = static_cast< uint8_t >( _inst );
+    r["opName"] = instructionInfo( _inst ).name;
+    r["pc"] = _pc;
+    r["_gas"] = static_cast< uint64_t >( _gas );
+    r["_gasCost"] = static_cast< uint64_t >( _gasCost );
+    r["depth"] = _ext->depth + 1;  // depth in standard trace is 1-based
+    auto refund = _alethExt.sub.refunds;
     if ( refund > 0 ) {
-        r["refund"] = ext.sub.refunds;
+        r["refund"] = _alethExt.sub.refunds;
     }
     if ( !m_options.disableStorage ) {
-        if ( inst == Instruction::SSTORE || inst == Instruction::SLOAD ) {
+        if ( _inst == Instruction::SSTORE || _inst == Instruction::SLOAD ) {
             Json::Value storage( Json::objectValue );
-            for ( auto const& i : m_accessedStorageValues[ext.myAddress] )
+            for ( auto const& i : m_accessedStorageValues[_alethExt.myAddress] )
                 storage[toHex( i.first )] = toHex( i.second );
             r["storage"] = storage;
         }
     }
 
-    if ( inst == Instruction::REVERT ) {
+    if ( _inst == Instruction::REVERT ) {
         // reverted. Set error message
         // message offset and size are the last two elements
-        auto b = ( uint64_t ) vm->getStackElement( 0 );
-        auto s = ( uint64_t ) vm->getStackElement( 1 );
+        auto b = ( uint64_t ) _vm->getStackElement( 0 );
+        auto s = ( uint64_t ) _vm->getStackElement( 1 );
         std::vector< uint8_t > errorMessage( memory.begin() + b, memory.begin() + b + s );
         r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
     }
