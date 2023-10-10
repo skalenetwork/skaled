@@ -41,9 +41,9 @@ protected:
     public:
         FunctionCall( Instruction _type, const Address& _from, const Address& _to, uint64_t _gas,
             const std::weak_ptr< FunctionCall >& _parentCall,
-            const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t _depth,
+            const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
             uint64_t _retOffset, uint64_t _retSize );
-        uint64_t getDepth() const;
+        int64_t getDepth() const;
         void setGasUsed( uint64_t _gasUsed );
         void setOutputData( const std::vector< uint8_t >& _outputData );
         void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall );
@@ -71,13 +71,13 @@ protected:
         const Address& getTo() const;
 
     private:
-        uint64_t depth = 0;
+        int64_t depth = 0;
         uint64_t _retOffset = 0;
         uint64_t _retSize = 0;
     };
 
     std::shared_ptr< FunctionCall > topFunctionCall;
-    std::shared_ptr< FunctionCall > currentFunctionCall;
+    std::shared_ptr< FunctionCall > lastFunctionCall;
 
 
     AlethBaseTrace( Transaction& _t, Json::Value const& _options );
@@ -85,7 +85,7 @@ protected:
 
     [[nodiscard]] const DebugOptions& getOptions() const;
 
-    void functionCalled( Instruction _type, const Address& _from, const Address& _to, uint64_t _gas,
+    void functionCalled( Instruction _type, const Address& _from, const Address& _to, uint64_t _gasLimit,
         const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t _retOffset,
         uint64_t _retSize );
 
@@ -114,6 +114,9 @@ protected:
     // map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
+
+    int64_t lastDepth = -1;
+    Instruction lastInstruction = Instruction::CALL;
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);

@@ -61,11 +61,19 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
 }
 
 void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
-    const bigint&, const bigint&, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm ) {
+    const bigint& _gasUsed, const bigint& _gasLimit, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm ) {
     // record the account access
 
     STATE_CHECK( _face );
     STATE_CHECK( _vm );
+
+    auto currentDepth = _ext.depth;
+
+    if (currentDepth == lastDepth + 1) {
+        auto data = _ext.data.toVector();
+        functionCalled(lastInstruction, _ext.caller, _ext.myAddress, (uint64_t ) _gasLimit,
+          data, _ext.value, 0, 0);
+    }
 
     m_accessedAccounts.insert( _ext.myAddress );
 
@@ -85,39 +93,12 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         break;
     case Instruction::CALL:
     case Instruction::CALLCODE:
-        if ( _vm->stackSize() > 6 ) {
-            uint64_t gas = ( uint64_t ) _vm->getStackElement( 0 );
-            auto address = asAddress( _vm->getStackElement( 1 ) );
-            auto& value = _vm->getStackElement( 2 );
-            uint64_t argsOffset = ( uint64_t ) _vm->getStackElement( 3 );
-            uint64_t argsSize = ( uint64_t ) _vm->getStackElement( 4 );
-            uint64_t retOffset = ( uint64_t ) _vm->getStackElement( 5 );
-            uint64_t retSize = ( uint64_t ) _vm->getStackElement( 6 );
-            m_accessedAccounts.insert( address );
-            STATE_CHECK(_vm->memory().size() > argsOffset + argsSize);
-            std::vector< uint8_t > data(_vm->memory().begin() + argsOffset,
-                _vm->memory().end() + argsOffset + argsSize);
-
-            functionCalled( _inst, currentFunctionCall->getTo(), address, gas, data, value,
-                retOffset, retSize );
-        }
-        break;
     case Instruction::DELEGATECALL:
     case Instruction::STATICCALL:
-        if ( _vm->stackSize() > 5 ) {
-            uint64_t gas = ( uint64_t ) _vm->getStackElement( 0 );
-            auto address = asAddress( _vm->getStackElement( 1 ) );
-            uint64_t argsOffset = ( uint64_t ) _vm->getStackElement( 2 );
-            uint64_t argsSize = ( uint64_t ) _vm->getStackElement( 3 );
-            uint64_t retOffset = ( uint64_t ) _vm->getStackElement( 4 );
-            uint64_t retSize = ( uint64_t ) _vm->getStackElement( 5 );
-            m_accessedAccounts.insert( address );
 
-            STATE_CHECK(_vm->memory().size() > argsOffset + argsSize);
-            std::vector< uint8_t > data(_vm->memory().begin() + argsOffset,
-                _vm->memory().end() + argsOffset + argsSize);
-            functionCalled( _inst, currentFunctionCall->getTo(), address, gas, data, 0,
-                retOffset, retSize );
+        if ( _vm->stackSize() > 1 ) {
+            auto address = asAddress( _vm->getStackElement( 1 ) );
+            m_accessedAccounts.insert( address );
         }
         break;
     case Instruction::BALANCE:
@@ -132,45 +113,52 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     default:
         break;
     }
+    lastDepth = currentDepth;
+    lastInstruction = _inst;
 }
 
 
 void AlethBaseTrace::functionCalled( Instruction _type, const Address& _from, const Address& _to,
-    uint64_t _gas, const std::vector< uint8_t >& _inputData, const u256& _value,
+    uint64_t _gasLimit, const std::vector< uint8_t >& _inputData, const u256& _value,
     uint64_t _retOffset, uint64_t _retSize ) {
-    if ( !currentFunctionCall ) {
-        BOOST_THROW_EXCEPTION(
-            std::runtime_error( std::string( "Null current function in " ) + __FUNCTION__ ) );
-    }
 
     auto nestedCall =
-        std::make_shared< FunctionCall >( _type, _from, _to, _gas, currentFunctionCall, _inputData,
-            _value, currentFunctionCall->getDepth() + 1, _retOffset, _retSize );
+        std::make_shared< FunctionCall >( _type, _from, _to, _gasLimit,
+        lastFunctionCall, _inputData,
+            _value, lastDepth + 1, _retOffset, _retSize );
 
-    currentFunctionCall->addNestedCall( nestedCall );
-    currentFunctionCall = nestedCall;
+    if (lastDepth >= 0) {
+        // not the fist call
+        STATE_CHECK( lastFunctionCall );
+        STATE_CHECK( lastFunctionCall->getDepth() == lastDepth)
+        lastFunctionCall->addNestedCall( nestedCall );
+        lastFunctionCall = nestedCall;
+    } else {
+        STATE_CHECK(!lastFunctionCall )
+    }
+    lastFunctionCall = nestedCall;
 }
 
 void AlethBaseTrace::functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasUsed,
     std::string& _error, std::string& _revertReason ) {
-    currentFunctionCall->setOutputData( _outputData );
-    currentFunctionCall->setError( _error );
-    currentFunctionCall->setGasUsed( _gasUsed );
-    currentFunctionCall->setRevertReason( _revertReason );
+    lastFunctionCall->setOutputData( _outputData );
+    lastFunctionCall->setError( _error );
+    lastFunctionCall->setGasUsed( _gasUsed );
+    lastFunctionCall->setRevertReason( _revertReason );
 
-    if ( currentFunctionCall == topFunctionCall ) {
+    if ( lastFunctionCall == topFunctionCall ) {
         // the top function returned
         return;
     }
 
-    auto parentCall = currentFunctionCall->getParentCall().lock();
+    auto parentCall = lastFunctionCall->getParentCall().lock();
 
     if ( !parentCall ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( std::string( "Null parentcall in " ) + __FUNCTION__ ) );
     }
 
-    currentFunctionCall = parentCall;
+    lastFunctionCall = parentCall;
 }
 
 
@@ -200,14 +188,14 @@ const std::weak_ptr< AlethBaseTrace::FunctionCall >& AlethBaseTrace::FunctionCal
     const {
     return parentCall;
 }
-uint64_t AlethBaseTrace::FunctionCall::getDepth() const {
+int64_t AlethBaseTrace::FunctionCall::getDepth() const {
     return depth;
 }
 
 
 AlethBaseTrace::FunctionCall::FunctionCall( Instruction _type, const Address& _from,
     const Address& _to, uint64_t _gas, const std::weak_ptr< FunctionCall >& _parentCall,
-    const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t depth, uint64_t _retOffset,
+    const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth, uint64_t _retOffset,
     uint64_t _retSize )
     : type( _type ),
       from( _from ),
@@ -216,9 +204,11 @@ AlethBaseTrace::FunctionCall::FunctionCall( Instruction _type, const Address& _f
       parentCall( _parentCall ),
       inputData( _inputData ),
       value( _value ),
-      depth( depth ),
+      depth( _depth ),
       _retOffset( _retOffset ),
-      _retSize( _retSize ) {}
+      _retSize( _retSize ) {
+    STATE_CHECK(depth >= 0)
+}
 const Address& AlethBaseTrace::FunctionCall::getFrom() const {
     return from;
 }

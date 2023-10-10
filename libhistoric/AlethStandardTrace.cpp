@@ -14,7 +14,8 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
  * This function is called on each EVM op
  */
 void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
-    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _ext ) {
+    bigint _gasUsed, bigint _gasLimit, VMFace const* _vm, ExtVMFace const* _ext ) {
+
 
     STATE_CHECK(_vm)
     STATE_CHECK(_ext)
@@ -27,10 +28,10 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, 
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    recordAccessesToAccountsAndStorageValues( _pc, _inst, _gasCost, _gas, _ext, ext, vm );
+    recordAccessesToAccountsAndStorageValues( _pc, _inst, _gasUsed, _gasLimit, _ext, ext, vm );
 
     if ( m_options.tracerType == TraceType::DEFAULT_TRACER )
-        appendOpToDefaultOpTrace( _pc, _inst, _gasCost, _gas, _ext, ext, vm );
+        appendOpToDefaultOpTrace( _pc, _inst, _gasUsed, _gasLimit, _ext, ext, vm );
 }
 
 void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t _pc, Instruction& _inst,
