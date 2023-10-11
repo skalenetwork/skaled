@@ -44,6 +44,7 @@ using namespace jsonrpc;
 using namespace dev;
 using namespace eth;
 using namespace dev::rpc;
+using namespace dev::rpc::_detail;
 
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
@@ -70,6 +71,43 @@ unsigned int findNthValidTransaction(
     }      // for
     return i;
 }
+
+// TODO Check LatestBlock number - update!
+void GappedTransactionIndexCache::ensureCached( BlockNumber _bn ) const {
+    if ( _bn != PendingBlock && _bn != LatestBlock && real2gappedCache.count( _bn ) )
+        return;
+
+    // can be empty for absent blocks
+    h256s transactions = client.transactionHashes( _bn );
+
+    real2gappedCache[_bn] = vector< size_t >( transactions.size(), UNDEFINED );
+    gapped2realCache[_bn] = vector< size_t >();
+
+    u256 gasBefore = 0;
+    for ( size_t realIndex = 0; realIndex < transactions.size(); ++realIndex ) {
+        // find transaction gas usage
+        const h256& th = transactions[realIndex];
+        u256 gasAfter = client.transactionReceipt( th ).cumulativeGasUsed();
+        u256 diff = gasAfter - gasBefore;
+        gasBefore = gasAfter;
+
+        // ignore transactions with 0 gas usage
+        if ( diff == 0 )
+            continue;
+
+        // cache it
+        size_t gappedIndex = gapped2realCache[_bn].size();
+        gapped2realCache[_bn].push_back( realIndex );
+        real2gappedCache[_bn][realIndex] = gappedIndex;
+
+    }  // for
+
+    if ( real2gappedCache.size() > cacheSize ) {
+        real2gappedCache.erase( real2gappedCache.begin() );
+        gapped2realCache.erase( gapped2realCache.begin() );
+    }
+}
+
 #endif
 
 Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
@@ -77,7 +115,13 @@ Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolde
       m_eth( _eth ),
       m_ethAccounts( _ethAccounts ),
       m_callCache( MAX_CALL_CACHE_ENTRIES ),
-      m_receiptsCache( MAX_RECEIPT_CACHE_ENTRIES ) {}
+      m_receiptsCache( MAX_RECEIPT_CACHE_ENTRIES )
+#ifdef HISTORIC_STATE
+      ,
+      m_gapCache( std::make_unique< GappedTransactionIndexCache >( 16, *client() ) )
+#endif
+{
+}
 
 bool Eth::isEnabledTransactionSending() const {
     bool isEnabled = true;
@@ -247,10 +291,8 @@ Json::Value Eth::eth_getBlockTransactionCountByHash( string const& _blockHash ) 
 #ifndef HISTORIC_STATE
         return toJS( client()->transactionCount( blockHash ) );
 #else
-        return toJS( eth_getBlockByHash( _blockHash, false )["transactions"].size() );
-
-    } catch ( const JsonRpcException& ) {
-        throw;
+        return toJS(
+            m_gapCache->gappedBlockTransactionCount( client()->numberFromHash( blockHash ) ) );
 #endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -266,10 +308,7 @@ Json::Value Eth::eth_getBlockTransactionCountByNumber( string const& _blockNumbe
 #ifndef HISTORIC_STATE
         return toJS( client()->transactionCount( jsToBlockNumber( _blockNumber ) ) );
 #else
-        return toJS( eth_getBlockByNumber( _blockNumber, false )["transactions"].size() );
-
-    } catch ( const JsonRpcException& ) {
-        throw;
+        return toJS( m_gapCache->gappedBlockTransactionCount( blockNumber ) );
 #endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -516,14 +555,12 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             Transactions transactions = client()->transactions( h );
 
 #ifdef HISTORIC_STATE
-            // remove all transactions that did not consume gas
-            u256 gasBefore = 0;
+            // remove skipped transactions
+            size_t index = 0;
             Transactions::iterator newEnd = std::remove_if( transactions.begin(),
-                transactions.end(), [this, &gasBefore]( const Transaction& t ) -> bool {
-                    u256 gasAfter = client()->transactionReceipt( t.sha3() ).cumulativeGasUsed();
-                    u256 diff = gasAfter - gasBefore;
-                    gasBefore = gasAfter;
-                    return ( diff == 0 );
+                transactions.end(), [this, &index, h]( const Transaction& ) -> bool {
+                    return !m_gapCache->transactionPresent(
+                        client()->numberFromHash( h ), index++ );
                 } );
             transactions.erase( newEnd, transactions.end() );
 #endif
@@ -533,14 +570,12 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             h256s transactions = client()->transactionHashes( h );
 
 #ifdef HISTORIC_STATE
-            // remove all transactions that did not consume gas
-            u256 gasBefore = 0;
-            h256s::iterator newEnd = std::remove_if( transactions.begin(), transactions.end(),
-                [this, &gasBefore]( const h256& th ) -> bool {
-                    u256 gasAfter = client()->transactionReceipt( th ).cumulativeGasUsed();
-                    u256 diff = gasAfter - gasBefore;
-                    gasBefore = gasAfter;
-                    return ( diff == 0 );
+            // remove skipped transactions
+            size_t index = 0;
+            h256s::iterator newEnd = std::remove_if(
+                transactions.begin(), transactions.end(), [this, &index, h]( const h256& ) -> bool {
+                    return !m_gapCache->transactionPresent(
+                        client()->numberFromHash( h ), index++ );
                 } );
             transactions.erase( newEnd, transactions.end() );
 #endif
@@ -560,6 +595,7 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
 
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
+        // TODO Make it work with _blockNumber = pending!! Don't merge without this!
         return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
     } catch ( const JsonRpcException& ) {
         throw;
@@ -604,8 +640,11 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
 
 #ifdef HISTORIC_STATE
-        // will be transactions.size() if not found
-        ti = findNthValidTransaction( client(), bh, ti );
+        try {
+            ti = m_gapCache->realIndexFromGapped( client()->numberFromHash( bh ), ti );
+        } catch ( const out_of_range& ) {  // TODO check exception class
+            return Json::Value( Json::nullValue );
+        }
 #endif
         if ( !client()->isKnownTransaction( bh, ti ) )
             return Json::Value( Json::nullValue );
@@ -624,8 +663,11 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
 
 #ifdef HISTORIC_STATE
-        // will be transactions.size() if not found
-        ti = findNthValidTransaction( client(), bh, ti );
+        try {
+            ti = m_gapCache->realIndexFromGapped( bn, ti );
+        } catch ( const out_of_range& ) {  // TODO check exception class
+            return Json::Value( Json::nullValue );
+        }
 #endif
 
         if ( !client()->isKnownTransaction( bh, ti ) )
@@ -681,22 +723,10 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
         throw std::invalid_argument( "Not known transaction" );
     }
 
-    // recompute position - count only "valid" transactions that consume non-zero gas
-    h256s transactions = client()->transactionHashes( rcp.blockHash() );
-    u256 gasBefore = 0;
-    size_t offset =
-        std::count_if( transactions.begin(), transactions.begin() + rcp.transactionIndex(),
-            [this, &gasBefore]( const h256& th ) -> bool {
-                u256 gasAfter = client()->transactionReceipt( th ).cumulativeGasUsed();
-                u256 diff = gasAfter - gasBefore;
-                gasBefore = gasAfter;
-                return ( diff == 0 );
-            } );
-
-    // update position using computed offset
+    // substitute position, skipping invalid transactions
+    size_t newIndex = m_gapCache->gappedIndexFromReal( rcp.blockNumber(), rcp.transactionIndex() );
     rcp = LocalisedTransactionReceipt( rcp, rcp.hash(), rcp.blockHash(), rcp.blockNumber(),
-        rcp.transactionIndex() - offset, rcp.from(), rcp.to(), rcp.gasUsed(),
-        rcp.contractAddress() );
+        newIndex, rcp.from(), rcp.to(), rcp.gasUsed(), rcp.contractAddress() );
 #endif
 
     // got a receipt. Put it into the cache before returning

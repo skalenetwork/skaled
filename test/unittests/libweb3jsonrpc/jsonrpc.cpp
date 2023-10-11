@@ -3194,4 +3194,69 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE( GappedCacheSuite, JsonRpcFixture )
+
+BOOST_AUTO_TEST_CASE( test_blocks ) {
+    dev::rpc::_detail::GappedTransactionIndexCache cache(10, *client);
+    BOOST_REQUIRE_EQUAL(cache.realBlockTransactionCount(LatestBlock), 0);
+    BOOST_REQUIRE_EQUAL(cache.realBlockTransactionCount(PendingBlock), 0);
+    BOOST_REQUIRE_EQUAL(cache.realBlockTransactionCount(999999999), 0);
+}
+
+BOOST_AUTO_TEST_CASE( test_transactions ) {
+
+    simulateMining(*client, 1, Address("0xf6c2a4ba2350e58a45916a03d0faa70dcc5dcfbf"));
+
+    dev::rpc::_detail::GappedTransactionIndexCache cache(10, *client);
+
+    Transaction invalid(
+        fromHex("0x0011223344556677889900112233445566778899001122334455667788990011223344556677889900112233"
+                "445566778899001122334455667788990011223344556677889900112233445566778899001122334455667788"
+                "990011223344556677889900112233445566778899" ),
+        CheckTransaction::None, true );
+
+    Transaction valid(
+        fromHex( "0xf86c808504a817c80083015f90943d7112ee86223baf0a506b9d2a77595cbbba51d1872386f26fc10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a071882ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
+        CheckTransaction::None );
+    valid.checkOutExternalGas( 1 );
+
+    client->importTransactionsAsBlock(Transactions{invalid, valid}, 1);
+
+    BOOST_REQUIRE_EQUAL(cache.realBlockTransactionCount(LatestBlock), 2);
+    BOOST_REQUIRE_EQUAL(cache.gappedBlockTransactionCount(LatestBlock), 1);
+    BOOST_REQUIRE_EQUAL(cache.realIndexFromGapped(LatestBlock, 0), 1);
+    BOOST_REQUIRE_EQUAL(cache.gappedIndexFromReal(LatestBlock, 1), 0);
+    BOOST_REQUIRE_THROW(cache.gappedIndexFromReal(LatestBlock, 0), std::out_of_range);
+    BOOST_REQUIRE_EQUAL(cache.transactionPresent(LatestBlock, 0), false);
+    BOOST_REQUIRE_EQUAL(cache.transactionPresent(LatestBlock, 1), true);
+}
+
+BOOST_AUTO_TEST_CASE( test_exceptions ) {
+
+    simulateMining(*client, 1, Address("0xf6c2a4ba2350e58a45916a03d0faa70dcc5dcfbf"));
+
+    dev::rpc::_detail::GappedTransactionIndexCache cache(10, *client);
+
+    Transaction invalid(
+        fromHex("0x0011223344556677889900112233445566778899001122334455667788990011223344556677889900112233"
+                "445566778899001122334455667788990011223344556677889900112233445566778899001122334455667788"
+                "990011223344556677889900112233445566778899" ),
+        CheckTransaction::None, true );
+
+    Transaction valid(
+        fromHex( "0xf86c808504a817c80083015f90943d7112ee86223baf0a506b9d2a77595cbbba51d1872386f26fc10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a071882ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
+        CheckTransaction::None );
+    valid.checkOutExternalGas( 1 );
+
+    client->importTransactionsAsBlock(Transactions{invalid, valid}, 1);
+
+    BOOST_REQUIRE_THROW(cache.realIndexFromGapped(LatestBlock, 1), std::out_of_range);
+    BOOST_REQUIRE_THROW(cache.realIndexFromGapped(LatestBlock, 2), std::out_of_range);
+    BOOST_REQUIRE_THROW(cache.gappedIndexFromReal(LatestBlock, 2), std::out_of_range);
+    BOOST_REQUIRE_THROW(cache.gappedIndexFromReal(LatestBlock, 0), std::out_of_range);
+    BOOST_REQUIRE_THROW(cache.transactionPresent(LatestBlock, 2), std::out_of_range);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()
