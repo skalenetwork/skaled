@@ -4,15 +4,17 @@
 namespace dev {
 namespace eth {
 
-const eth::AlethBaseTrace::DebugOptions& eth::AlethBaseTrace::getOptions() const {
+const eth::AlethBaseTrace::DebugOptions& eth::AlethBaseTrace::getOptions() const  {
     return m_options;
 }
 
 
-AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _json ) {
+AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _json )  {
     AlethBaseTrace::DebugOptions op;
 
-    STATE_CHECK( _json.isObject() && !_json.empty() )
+    if (!_json.isObject())
+    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
+        jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid options" ) );
 
     bool option;
     if ( !_json["disableStorage"].empty() )
@@ -52,7 +54,7 @@ const std::map< std::string, AlethBaseTrace::TraceType > AlethBaseTrace::stringT
     { "prestateTracer", AlethBaseTrace::TraceType::PRESTATE_TRACER }
 };
 
-AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
+AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options ) 
     : m_from{ _t.from() }, m_to( _t.to() ) {
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
@@ -64,11 +66,11 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
 
 void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
     const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
-    const LegacyVM* _vm ) {
+    const LegacyVM* _vm )  {
     // record the account access
 
-    STATE_CHECK( _face );
-    STATE_CHECK( _vm );
+    STATE_CHECK( _face )
+    STATE_CHECK( _vm )
 
     auto currentDepth = _ext.depth;
 
@@ -78,11 +80,9 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
     } else if ( currentDepth == lastDepth - 1 ) {
         functionReturned();
-
-
     } else {
         // we should not have skipped frames
-        STATE_CHECK( currentDepth == lastDepth );
+        STATE_CHECK( currentDepth == lastDepth )
     }
 
     m_accessedAccounts.insert( _ext.myAddress );
@@ -147,26 +147,26 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     lastGasRemaining = ( uint64_t ) _gasRemaining;
     lastInstructionGas = ( uint64_t ) _lastOpGas;
 }
-void AlethBaseTrace::extractReturnData( const LegacyVM* _vm ) {
+void AlethBaseTrace::extractReturnData( const LegacyVM* _vm )  {
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            lastReturnData = std::vector< uint8_t >(
-                _vm->memory().begin() + b, _vm->memory().begin() + b + s );
-        };
+            lastReturnData =
+                std::vector< uint8_t >( _vm->memory().begin() + b, _vm->memory().begin() + b + s );
+        }
     }
 }
 
 
 void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-    const std::vector< uint8_t >& _inputData, const u256& _value ) {
+    const std::vector< uint8_t >& _inputData, const u256& _value )  {
     auto nestedCall = std::make_shared< FunctionCall >( lastInstruction, _from, _to, _gasLimit,
         lastFunctionCall, _inputData, _value, lastDepth + 1 );
 
     if ( lastDepth >= 0 ) {
         // not the fist call
-        STATE_CHECK( lastFunctionCall );
+        STATE_CHECK( lastFunctionCall )
         STATE_CHECK( lastFunctionCall->getDepth() == lastDepth )
         lastFunctionCall->addNestedCall( nestedCall );
         lastFunctionCall = nestedCall;
@@ -176,8 +176,8 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
     lastFunctionCall = nestedCall;
 }
 
-void AlethBaseTrace::functionReturned() {
-    STATE_CHECK( lastGasRemaining >= lastInstructionGas );
+void AlethBaseTrace::functionReturned()  {
+    STATE_CHECK( lastGasRemaining >= lastInstructionGas )
 
     uint64_t gasRemainingOnReturn = lastGasRemaining - lastInstructionGas;
 
@@ -208,14 +208,10 @@ void AlethBaseTrace::functionReturned() {
 
     auto parentCall = lastFunctionCall->getParentCall().lock();
 
-    if ( !parentCall ) {
-        BOOST_THROW_EXCEPTION(
-            std::runtime_error( std::string( "Null parentcall in " ) + __FUNCTION__ ) );
-    }
-
+    STATE_CHECK( parentCall )
     lastFunctionCall = parentCall;
 }
-void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
+void AlethBaseTrace::resetLastReturnVariables()  {  // reset variables.
     lastInstruction = Instruction::STOP;
     lastGasRemaining = 0;
     lastInstructionGas = 0;
@@ -225,36 +221,35 @@ void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
 }
 
 
-void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed ) {
+void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed )  {
     FunctionCall::gasUsed = _gasUsed;
 }
-uint64_t AlethBaseTrace::FunctionCall::getFunctionGasLimit() const {
+uint64_t AlethBaseTrace::FunctionCall::getFunctionGasLimit() const  {
     return functionGasLimit;
 }
-void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& _outputData ) {
+void AlethBaseTrace::FunctionCall::setOutputData(
+    const std::vector< uint8_t >& _outputData )  {
     FunctionCall::outputData = _outputData;
 }
 
-void AlethBaseTrace::FunctionCall::addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall ) {
-    if ( !_nestedCall ) {
-        BOOST_THROW_EXCEPTION(
-            std::runtime_error( std::string( "Null nested call in " ) + __FUNCTION__ ) );
-    }
+void AlethBaseTrace::FunctionCall::addNestedCall(
+    std::shared_ptr< FunctionCall >& _nestedCall )  {
+    STATE_CHECK(_nestedCall);
     this->nestedCalls.push_back( _nestedCall );
 }
-void AlethBaseTrace::FunctionCall::setError( const std::string& _error ) {
+void AlethBaseTrace::FunctionCall::setError( const std::string& _error )  {
     completedWithError = true;
     error = _error;
 }
-void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertReason ) {
+void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertReason )  {
     reverted = true;
     revertReason = _revertReason;
 }
 const std::weak_ptr< AlethBaseTrace::FunctionCall >& AlethBaseTrace::FunctionCall::getParentCall()
-    const {
+    const  {
     return parentCall;
 }
-int64_t AlethBaseTrace::FunctionCall::getDepth() const {
+int64_t AlethBaseTrace::FunctionCall::getDepth() const  {
     return depth;
 }
 
@@ -273,17 +268,17 @@ AlethBaseTrace::FunctionCall::FunctionCall( Instruction _type, const Address& _f
       depth( _depth ) {
     STATE_CHECK( depth >= 0 )
 }
-const Address& AlethBaseTrace::FunctionCall::getFrom() const {
+const Address& AlethBaseTrace::FunctionCall::getFrom() const  {
     return from;
 }
-const Address& AlethBaseTrace::FunctionCall::getTo() const {
+const Address& AlethBaseTrace::FunctionCall::getTo() const  {
     return to;
 }
 
-bool AlethBaseTrace::FunctionCall::hasReverted() const {
+bool AlethBaseTrace::FunctionCall::hasReverted() const  {
     return reverted;
 }
-bool AlethBaseTrace::FunctionCall::hasError() const {
+bool AlethBaseTrace::FunctionCall::hasError() const  {
     return completedWithError;
 }
 

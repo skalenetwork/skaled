@@ -24,6 +24,9 @@ namespace dev {
 namespace eth {
 
 
+// It is important that trace functions do not throw exceptions and do not modify state
+// so that they do not interfere with EVM execution
+
 class AlethBaseTrace {
 protected:
     enum class TraceType { DEFAULT_TRACER, PRESTATE_TRACER, CALL_TRACER };
@@ -42,13 +45,19 @@ protected:
         FunctionCall( Instruction _type, const Address& _from, const Address& _to,
             uint64_t _functionGasLimit, const std::weak_ptr< FunctionCall >& _parentCall,
             const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
-        int64_t getDepth() const;
-        void setGasUsed( uint64_t _gasUsed );
-        void setOutputData( const std::vector< uint8_t >& _outputData );
-        void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall );
-        void setError( const std::string& _error );
-        void setRevertReason( const std::string& _revertReason );
-        [[nodiscard]] const std::weak_ptr< FunctionCall >& getParentCall() const;
+        int64_t getDepth() const ;
+        void setGasUsed( uint64_t _gasUsed ) ;
+        void setOutputData( const std::vector< uint8_t >& _outputData ) ;
+        void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall ) ;
+        void setError( const std::string& _error ) ;
+        void setRevertReason( const std::string& _revertReason ) ;
+        [[nodiscard]] const std::weak_ptr< FunctionCall >& getParentCall() const ;
+
+        bool hasReverted() const ;
+        bool hasError() const ;
+        const Address& getFrom() const ;
+        const Address& getTo() const ;
+        uint64_t getFunctionGasLimit() const ;
 
 
     private:
@@ -68,35 +77,33 @@ protected:
         u256 value;
         int64_t depth = 0;
 
-    public:
 
-        bool hasReverted() const;
-        bool hasError() const;
-        const Address& getFrom() const;
-        const Address& getTo() const;
-        uint64_t getFunctionGasLimit() const;
     };
 
     std::shared_ptr< FunctionCall > topFunctionCall;
     std::shared_ptr< FunctionCall > lastFunctionCall;
 
 
-    AlethBaseTrace( Transaction& _t, Json::Value const& _options );
+    AlethBaseTrace( Transaction& _t, Json::Value const& _options ) ;
 
 
-    [[nodiscard]] const DebugOptions& getOptions() const;
+    [[nodiscard]] const DebugOptions& getOptions() const ;
 
     void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-        const std::vector< uint8_t >& _inputData, const u256& _value );
+        const std::vector< uint8_t >& _inputData, const u256& _value ) ;
 
-    void functionReturned();
-
+    void functionReturned() ;
 
     void recordAccessesToAccountsAndStorageValues( uint64_t _pc, Instruction& _inst,
         const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _voidExt, AlethExtVM& _ext,
-        const LegacyVM* _vm );
+        const LegacyVM* _vm ) ;
 
-    AlethBaseTrace::DebugOptions debugOptions( Json::Value const& _json );
+    AlethBaseTrace::DebugOptions debugOptions( Json::Value const& _json ) ;
+
+    void resetLastReturnVariables() ;
+
+    void extractReturnData( const LegacyVM* _vm ) ;
+
 
     std::vector< Instruction > m_lastInst;
     std::shared_ptr< Json::Value > m_defaultOpTrace;
@@ -122,9 +129,6 @@ protected:
     bool lastHasReverted = false;
     bool lastHasError = false;
     std::string lastError;
-
-    void resetLastReturnVariables();
-    void extractReturnData( const LegacyVM* _vm );
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);
