@@ -39,10 +39,9 @@ protected:
 
     class FunctionCall {
     public:
-        FunctionCall( Instruction _type, const Address& _from, const Address& _to, uint64_t _functionGasLimit,
-            const std::weak_ptr< FunctionCall >& _parentCall,
-            const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
-            uint64_t _retOffset, uint64_t _retSize );
+        FunctionCall( Instruction _type, const Address& _from, const Address& _to,
+            uint64_t _functionGasLimit, const std::weak_ptr< FunctionCall >& _parentCall,
+            const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
         int64_t getDepth() const;
         void setGasUsed( uint64_t _gasUsed );
         void setOutputData( const std::vector< uint8_t >& _outputData );
@@ -62,19 +61,20 @@ protected:
         std::weak_ptr< FunctionCall > parentCall;
         std::vector< uint8_t > inputData;
         std::vector< uint8_t > outputData;
+        bool reverted = false;
+        bool completedWithError = false;
         std::string error;
         std::string revertReason;
         u256 value;
+        int64_t depth = 0;
 
     public:
+
+        bool hasReverted() const;
+        bool hasError() const;
         const Address& getFrom() const;
         const Address& getTo() const;
         uint64_t getFunctionGasLimit() const;
-
-    private:
-        int64_t depth = 0;
-        uint64_t _retOffset = 0;
-        uint64_t _retSize = 0;
     };
 
     std::shared_ptr< FunctionCall > topFunctionCall;
@@ -86,12 +86,10 @@ protected:
 
     [[nodiscard]] const DebugOptions& getOptions() const;
 
-    void functionCalled( Instruction _type, const Address& _from, const Address& _to, uint64_t _gasLimit,
-        const std::vector< uint8_t >& _inputData, const u256& _value, uint64_t _retOffset,
-        uint64_t _retSize );
+    void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
+        const std::vector< uint8_t >& _inputData, const u256& _value );
 
-    void functionReturned( std::vector< uint8_t >& _outputData, uint64_t _gasRemaingOnReturn,
-        std::string& _error, std::string& _revertReason );
+    void functionReturned();
 
 
     void recordAccessesToAccountsAndStorageValues( uint64_t _pc, Instruction& _inst,
@@ -116,10 +114,17 @@ protected:
     // for each storage address the current value if recorded
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
 
-    uint64_t lastOpGas = 0;
+    uint64_t lastInstructionGas = 0;
     uint64_t lastGasRemaining = 0;
     int64_t lastDepth = -1;
     Instruction lastInstruction = Instruction::CALL;
+    std::vector<uint8_t> lastReturnData;
+    bool lastHasReverted = false;
+    bool lastHasError = false;
+    std::string lastError;
+
+    void resetLastReturnVariables();
+    void extractReturnData( const LegacyVM* _vm );
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);
