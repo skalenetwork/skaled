@@ -53,7 +53,7 @@ public:
         return m_SP[_index];
     }
 
-    evmc_status_code getAndClearLastCallStatus();
+    evmc_status_code getAndClearLastCallStatus() const;
 
 private:
     u256* m_io_gas_p = 0;
@@ -104,7 +104,7 @@ private:
     uint64_t m_PC = 0;        // program counter
     u256* m_SP = m_stackEnd;  // stack pointer
     u256* m_SPP = m_SP;       // stack pointer prime (next SP)
-    evmc_status_code m_lastCallStatus = EVMC_SUCCESS;
+    mutable evmc_status_code m_lastCallStatus = EVMC_SUCCESS;
 #if EIP_615
 
 private:

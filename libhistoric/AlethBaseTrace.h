@@ -92,7 +92,7 @@ protected:
     void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
         const std::vector< uint8_t >& _inputData, const u256& _value ) ;
 
-    void functionReturned() ;
+    void functionReturned(evmc_status_code _status) ;
 
     void recordAccessesToAccountsAndStorageValues( uint64_t _pc, Instruction& _inst,
         const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _voidExt, AlethExtVM& _ext,

@@ -79,7 +79,8 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         auto data = _ext.data.toVector();
         functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
     } else if ( currentDepth == lastDepth - 1 ) {
-        functionReturned();
+        auto status = _vm->getAndClearLastCallStatus();
+        functionReturned(status);
     } else {
         // we should not have skipped frames
         STATE_CHECK( currentDepth == lastDepth )
@@ -176,7 +177,7 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
     lastFunctionCall = nestedCall;
 }
 
-void AlethBaseTrace::functionReturned()  {
+void AlethBaseTrace::functionReturned(evmc_status_code _status)  {
     STATE_CHECK( lastGasRemaining >= lastInstructionGas )
 
     uint64_t gasRemainingOnReturn = lastGasRemaining - lastInstructionGas;

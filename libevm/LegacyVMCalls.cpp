@@ -265,7 +265,7 @@ bool LegacyVM::caseCallSetup( CallParameters* callParams, bytesRef& o_output ) {
     }
     return false;
 }
-evmc_status_code LegacyVM::getAndClearLastCallStatus()  {
+evmc_status_code LegacyVM::getAndClearLastCallStatus()  const {
     auto ret =  m_lastCallStatus;
     m_lastCallStatus = evmc_status_code::EVMC_SUCCESS;
     return ret;
