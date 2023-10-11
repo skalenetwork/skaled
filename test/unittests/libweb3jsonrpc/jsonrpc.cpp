@@ -3196,6 +3196,8 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( GappedCacheSuite, JsonRpcFixture )
 
+#ifdef HISTORIC_STATE
+
 BOOST_AUTO_TEST_CASE( test_blocks ) {
     dev::rpc::_detail::GappedTransactionIndexCache cache(10, *client);
     BOOST_REQUIRE_EQUAL(cache.realBlockTransactionCount(LatestBlock), 0);
@@ -3256,6 +3258,8 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
     BOOST_REQUIRE_THROW(cache.gappedIndexFromReal(LatestBlock, 0), std::out_of_range);
     BOOST_REQUIRE_THROW(cache.transactionPresent(LatestBlock, 2), std::out_of_range);
 }
+
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 
