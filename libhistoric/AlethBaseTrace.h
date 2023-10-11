@@ -104,6 +104,8 @@ protected:
 
     void extractReturnData( const LegacyVM* _vm ) ;
 
+    std::string evmErrorDescription( evmc_status_code _error );
+
 
     std::vector< Instruction > m_lastInst;
     std::shared_ptr< Json::Value > m_defaultOpTrace;

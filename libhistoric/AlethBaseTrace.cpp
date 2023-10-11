@@ -4,17 +4,17 @@
 namespace dev {
 namespace eth {
 
-const eth::AlethBaseTrace::DebugOptions& eth::AlethBaseTrace::getOptions() const  {
+const eth::AlethBaseTrace::DebugOptions& eth::AlethBaseTrace::getOptions() const {
     return m_options;
 }
 
 
-AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _json )  {
+AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _json ) {
     AlethBaseTrace::DebugOptions op;
 
-    if (!_json.isObject())
-    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-        jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid options" ) );
+    if ( !_json.isObject() )
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid options" ) );
 
     bool option;
     if ( !_json["disableStorage"].empty() )
@@ -54,7 +54,7 @@ const std::map< std::string, AlethBaseTrace::TraceType > AlethBaseTrace::stringT
     { "prestateTracer", AlethBaseTrace::TraceType::PRESTATE_TRACER }
 };
 
-AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options ) 
+AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
     : m_from{ _t.from() }, m_to( _t.to() ) {
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
@@ -66,7 +66,7 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
 
 void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
     const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
-    const LegacyVM* _vm )  {
+    const LegacyVM* _vm ) {
     // record the account access
 
     STATE_CHECK( _face )
@@ -80,7 +80,7 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
     } else if ( currentDepth == lastDepth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
-        functionReturned(status);
+        functionReturned( status );
     } else {
         // we should not have skipped frames
         STATE_CHECK( currentDepth == lastDepth )
@@ -148,7 +148,7 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     lastGasRemaining = ( uint64_t ) _gasRemaining;
     lastInstructionGas = ( uint64_t ) _lastOpGas;
 }
-void AlethBaseTrace::extractReturnData( const LegacyVM* _vm )  {
+void AlethBaseTrace::extractReturnData( const LegacyVM* _vm ) {
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
@@ -161,7 +161,7 @@ void AlethBaseTrace::extractReturnData( const LegacyVM* _vm )  {
 
 
 void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-    const std::vector< uint8_t >& _inputData, const u256& _value )  {
+    const std::vector< uint8_t >& _inputData, const u256& _value ) {
     auto nestedCall = std::make_shared< FunctionCall >( lastInstruction, _from, _to, _gasLimit,
         lastFunctionCall, _inputData, _value, lastDepth + 1 );
 
@@ -177,7 +177,48 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
     lastFunctionCall = nestedCall;
 }
 
-void AlethBaseTrace::functionReturned(evmc_status_code _status)  {
+
+std::string AlethBaseTrace::evmErrorDescription( evmc_status_code _error ) {
+    switch ( _error ) {
+    case EVMC_SUCCESS:
+        return "EVM_SUCCESS";
+    case EVMC_FAILURE:
+        return "EVM_FAILURE";
+    case EVMC_OUT_OF_GAS:
+        return "EVM_OUT_OF_GAS";
+    case EVMC_INVALID_INSTRUCTION:
+        return "EVM_INVALID_INSTRUCTION";
+    case EVMC_UNDEFINED_INSTRUCTION:
+        return "EVM_UNDEFINED_INSTRUCTION";
+    case EVMC_STACK_OVERFLOW:
+        return "EVM_STACK_OVERFLOW";
+    case EVMC_STACK_UNDERFLOW:
+        return "EVM_STACK_UNDERFLOW";
+    case EVMC_BAD_JUMP_DESTINATION:
+        return "EVM_BAD_JUMP_DESTINATION";
+    case EVMC_INVALID_MEMORY_ACCESS:
+        return "EVM_INVALID_MEMORY_ACCESS";
+    case EVMC_CALL_DEPTH_EXCEEDED:
+        return "EVM_CALL_DEPTH_EXCEEDED";
+    case EVMC_STATIC_MODE_VIOLATION:
+        return "EVM_STATIC_MODE_VIOLATION";
+    case EVMC_PRECOMPILE_FAILURE:
+        return "EVM_PRECOMPILE_FAILURE";
+    case EVMC_CONTRACT_VALIDATION_FAILURE:
+        return "EVM_CONTRACT_VALIDATION_FAILURE";
+    case EVMC_ARGUMENT_OUT_OF_RANGE:
+        return "EVM_ARGUMENT_OUT_OF_RANGE";
+    case EVMC_INTERNAL_ERROR:
+        return "EVM_INTERNAL_ERROR";
+    case EVMC_REJECTED:
+        return "EVM_REJECTED";
+    case EVMC_OUT_OF_MEMORY:
+        return "EVM_OUT_OF_MEMORY";
+    default:
+        return "UNKNOWN_ERROR";
+    };
+}
+void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
     STATE_CHECK( lastGasRemaining >= lastInstructionGas )
 
     uint64_t gasRemainingOnReturn = lastGasRemaining - lastInstructionGas;
@@ -190,7 +231,7 @@ void AlethBaseTrace::functionReturned(evmc_status_code _status)  {
     lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        lastFunctionCall->setError( std::to_string(_status) );
+        lastFunctionCall->setError( std::to_string( _status ) );
     }
 
     if ( lastHasReverted ) {
@@ -213,7 +254,7 @@ void AlethBaseTrace::functionReturned(evmc_status_code _status)  {
     STATE_CHECK( parentCall )
     lastFunctionCall = parentCall;
 }
-void AlethBaseTrace::resetLastReturnVariables()  {  // reset variables.
+void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
     lastInstruction = Instruction::STOP;
     lastGasRemaining = 0;
     lastInstructionGas = 0;
@@ -223,35 +264,33 @@ void AlethBaseTrace::resetLastReturnVariables()  {  // reset variables.
 }
 
 
-void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed )  {
+void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed ) {
     FunctionCall::gasUsed = _gasUsed;
 }
-uint64_t AlethBaseTrace::FunctionCall::getFunctionGasLimit() const  {
+uint64_t AlethBaseTrace::FunctionCall::getFunctionGasLimit() const {
     return functionGasLimit;
 }
-void AlethBaseTrace::FunctionCall::setOutputData(
-    const std::vector< uint8_t >& _outputData )  {
+void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& _outputData ) {
     FunctionCall::outputData = _outputData;
 }
 
-void AlethBaseTrace::FunctionCall::addNestedCall(
-    std::shared_ptr< FunctionCall >& _nestedCall )  {
-    STATE_CHECK(_nestedCall);
+void AlethBaseTrace::FunctionCall::addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall ) {
+    STATE_CHECK( _nestedCall );
     this->nestedCalls.push_back( _nestedCall );
 }
-void AlethBaseTrace::FunctionCall::setError( const std::string& _error )  {
+void AlethBaseTrace::FunctionCall::setError( const std::string& _error ) {
     completedWithError = true;
     error = _error;
 }
-void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertReason )  {
+void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertReason ) {
     reverted = true;
     revertReason = _revertReason;
 }
 const std::weak_ptr< AlethBaseTrace::FunctionCall >& AlethBaseTrace::FunctionCall::getParentCall()
-    const  {
+    const {
     return parentCall;
 }
-int64_t AlethBaseTrace::FunctionCall::getDepth() const  {
+int64_t AlethBaseTrace::FunctionCall::getDepth() const {
     return depth;
 }
 
@@ -270,17 +309,17 @@ AlethBaseTrace::FunctionCall::FunctionCall( Instruction _type, const Address& _f
       depth( _depth ) {
     STATE_CHECK( depth >= 0 )
 }
-const Address& AlethBaseTrace::FunctionCall::getFrom() const  {
+const Address& AlethBaseTrace::FunctionCall::getFrom() const {
     return from;
 }
-const Address& AlethBaseTrace::FunctionCall::getTo() const  {
+const Address& AlethBaseTrace::FunctionCall::getTo() const {
     return to;
 }
 
-bool AlethBaseTrace::FunctionCall::hasReverted() const  {
+bool AlethBaseTrace::FunctionCall::hasReverted() const {
     return reverted;
 }
-bool AlethBaseTrace::FunctionCall::hasError() const  {
+bool AlethBaseTrace::FunctionCall::hasError() const {
     return completedWithError;
 }
 
