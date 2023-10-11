@@ -1554,6 +1554,7 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( INVALID ) DEFAULT {
+            ON_OP();
             throwBadInstruction();
         }
     }
