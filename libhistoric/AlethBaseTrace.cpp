@@ -187,11 +187,12 @@ void AlethBaseTrace::functionReturned(evmc_status_code _status)  {
         gasRemainingOnReturn = 0;
     }
 
-    if ( lastHasError ) {
-        lastFunctionCall->setError( lastError );
+    lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
+
+    if ( _status != evmc_status_code::EVMC_SUCCESS ) {
+        lastFunctionCall->setError( std::to_string(_status) );
     }
 
-    lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
     if ( lastHasReverted ) {
         lastFunctionCall->setRevertReason(
             std::string( lastReturnData.begin(), lastReturnData.end() ) );
