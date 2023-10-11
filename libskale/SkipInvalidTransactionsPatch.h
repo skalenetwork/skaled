@@ -3,6 +3,7 @@
 
 #include <libethcore/BlockHeader.h>
 #include <libethereum/ChainParams.h>
+#include <libethereum/Interface.h>
 #include <libethereum/SchainPatch.h>
 #include <libethereum/Transaction.h>
 
@@ -26,19 +27,20 @@
 
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
-    static void init( const dev::eth::ChainParams& _cp ) {
+    static void init( const dev::eth::ChainParams& _cp, const dev::eth::Interface* _client ) {
         activationTimestamp = _cp.sChain.skipInvalidTransactionsPatchTimestamp;
         printInfo( __FILE__, activationTimestamp );
-    }
-    static void setLastBlock( const dev::eth::BlockHeader& _bh ) {
-        lastBlockTimestamp = _bh.timestamp();
+        assert( _client );
+        client = _client;
     }
     static bool needToKeepTransaction( bool _excepted );
+    static bool isActiveInBlock( dev::eth::BlockNumber _bn );
 
 private:
     static bool activateTimestampPassed();
     static time_t activationTimestamp;
     static time_t lastBlockTimestamp;
+    static const dev::eth::Interface* client;
 };
 
 #endif  // SKIPINVALIDTRANSACTIONSPATCH_H
