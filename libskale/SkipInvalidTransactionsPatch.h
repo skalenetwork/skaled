@@ -27,19 +27,19 @@
 
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
-    static void init( const dev::eth::ChainParams& _cp, const dev::eth::Interface* _client ) {
-        activationTimestamp = _cp.sChain.skipInvalidTransactionsPatchTimestamp;
-        printInfo( __FILE__, activationTimestamp );
+    static bool isEnabled();
+
+    static void init( time_t _activationTimestamp, const dev::eth::Interface* _client ) {
+        activationTimestamp = _activationTimestamp;
+        printInfo( __FILE__, _activationTimestamp );
         assert( _client );
         client = _client;
     }
-    static bool needToKeepTransaction( bool _excepted );
+
     static bool isActiveInBlock( dev::eth::BlockNumber _bn );
 
 private:
-    static bool activateTimestampPassed();
     static time_t activationTimestamp;
-    static time_t lastBlockTimestamp;
     static const dev::eth::Interface* client;
 };
 

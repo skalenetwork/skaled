@@ -484,7 +484,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
 
-                if ( SkipInvalidTransactionsPatch::needToKeepTransaction( true ) ) {
+                if ( SkipInvalidTransactionsPatch::isEnabled() ) {
                     // Add to the user-originated transactions that we've executed.
                     m_transactions.push_back( tr );
                     m_transactionSet.insert( tr.sha3() );
@@ -508,8 +508,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
 
-            if ( SkipInvalidTransactionsPatch::needToKeepTransaction(
-                     res.excepted == TransactionException::WouldNotBeInBlock ) ) {
+            if ( !SkipInvalidTransactionsPatch::isEnabled() ||
+                 res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
 
                 // if added but bad
@@ -870,8 +870,8 @@ ExecutionResult Block::execute(
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
-        if ( SkipInvalidTransactionsPatch::needToKeepTransaction(
-                 resultReceipt.first.excepted == TransactionException::WouldNotBeInBlock ) ) {
+        if ( !SkipInvalidTransactionsPatch::isEnabled() ||
+             resultReceipt.first.excepted != TransactionException::WouldNotBeInBlock ) {
             m_transactions.push_back( _t );
             m_receipts.push_back( resultReceipt.second );
             m_transactionSet.insert( _t.sha3() );
