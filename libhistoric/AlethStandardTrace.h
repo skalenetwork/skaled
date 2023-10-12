@@ -21,11 +21,8 @@ namespace dev {
 namespace eth {
 
 
-
-
 class AlethStandardTrace : public AlethBaseTrace {
 public:
-
     // Append json trace to given (array) value
     explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
 
@@ -47,30 +44,36 @@ public:
 
 
 private:
-
     std::shared_ptr< Json::Value > m_defaultOpTrace;
 
-    uint64_t  storageValuesReturnedPre = 0;
-    uint64_t  storageValuesReturnedPost = 0;
-    uint64_t  storageValuesReturnedAll = 0;
+    uint64_t storageValuesReturnedPre = 0;
+    uint64_t storageValuesReturnedPost = 0;
+    uint64_t storageValuesReturnedAll = 0;
 
     void appendOpToDefaultOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
-    void pstraceAddAllAccessedAccountPreValuesToTrace( Json::Value& _trace, const HistoricState& _stateBefore,
+    void pstraceAddAllAccessedAccountPreValuesToTrace(
+        Json::Value& _trace, const HistoricState& _stateBefore, const Address& _address );
+
+    void pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace,
+        const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address );
+
+    void pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace,
+        const HistoricState& _stateBefore, const HistoricState& _statePost,
         const Address& _address );
 
-    void pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace, const HistoricState& _statePre,
-        const HistoricState& _statePost,
-        const Address& _address );
+    void deftraceFinalize( const ExecutionResult& _er, const HistoricState& _stateBefore,
+        const HistoricState& _stateAfter );
 
-    void pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace, const HistoricState& _stateBefore,
-        const HistoricState& _statePost,
-        const Address& _address );
-    void deftraceFinalizeTrace( const ExecutionResult& _er );
+    void pstraceFinalize(
+        ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
-    void pstraceFinalizeTrace(
-        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+    void pstraceDiffFinalize(
+        ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+
+    void calltraceFinalize(
+        ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 };
 }  // namespace eth
 }  // namespace dev

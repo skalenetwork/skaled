@@ -10,6 +10,7 @@
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
 #define MAX_MEMORY_VALUES_RETURNED 1024
 #define MAX_STORAGE_VALUES_RETURNED 1024
+#define MAX_TRACE_DEPTH 256
 
 
 #define STATE_CHECK( _EXPRESSION_ )                                             \
@@ -59,6 +60,8 @@ protected:
         const Address& getTo() const ;
         uint64_t getFunctionGasLimit() const ;
 
+        void printTrace(Json::Value& _jsonTrace, int64_t _depth);
+        void printFunctionExecutionDetail(Json::Value& _jsonTrace);
 
     private:
         Instruction type;

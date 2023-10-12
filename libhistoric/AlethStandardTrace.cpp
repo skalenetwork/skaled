@@ -15,10 +15,8 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
  */
 void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
-
-
-    STATE_CHECK(_vm)
-    STATE_CHECK(_ext)
+    STATE_CHECK( _vm )
+    STATE_CHECK( _ext )
 
 
     // remove const qualifier since we need to set tracing values in AlethExtVM
@@ -39,7 +37,7 @@ void AlethStandardTrace::appendOpToDefaultOpTrace( uint64_t _pc, Instruction& _i
     const LegacyVM* _vm ) {
     Json::Value r( Json::objectValue );
 
-    STATE_CHECK(_vm)
+    STATE_CHECK( _vm )
     STATE_CHECK( _ext )
 
     if ( !m_options.disableStack ) {
@@ -101,36 +99,51 @@ void eth::AlethStandardTrace::finalizeTrace(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     switch ( m_options.tracerType ) {
     case TraceType::DEFAULT_TRACER:
-        deftraceFinalizeTrace( _er );
+        deftraceFinalize( _er, _stateBefore, _stateAfter );
         break;
     case TraceType::PRESTATE_TRACER:
-        pstraceFinalizeTrace( _stateBefore, _stateAfter );
+        if ( m_options.prestateDiffMode ) {
+            pstraceDiffFinalize( _er, _stateBefore, _stateAfter );
+        } else {
+            pstraceFinalize( _er, _stateBefore, _stateAfter );
+        }
         break;
     case TraceType::CALL_TRACER:
+        calltraceFinalize( _er, _stateBefore, _stateAfter );
         break;
     }
 }
-void eth::AlethStandardTrace::pstraceFinalizeTrace(
-    const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+void eth::AlethStandardTrace::pstraceFinalize(
+    ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    for ( auto&& item : m_accessedAccounts ) {
+        pstraceAddAllAccessedAccountPreValuesToTrace( jsonTrace, _stateBefore, item );
+    };
+}
+
+void eth::AlethStandardTrace::pstraceDiffFinalize(
+    ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     Json::Value preDiff( Json::objectValue );
     Json::Value postDiff( Json::objectValue );
 
     for ( auto&& item : m_accessedAccounts ) {
-        if ( m_options.prestateDiffMode ) {
-            pstraceAddAccountPreDiffToTrace( preDiff, _stateBefore, _stateAfter, item );
-            pstraceAddAccountPostDiffToTracer( postDiff, _stateBefore, _stateAfter, item );
-        } else {
-            pstraceAddAllAccessedAccountPreValuesToTrace( jsonTrace, _stateBefore, item );
-        }
+        pstraceAddAccountPreDiffToTrace( preDiff, _stateBefore, _stateAfter, item );
+        pstraceAddAccountPostDiffToTracer( postDiff, _stateBefore, _stateAfter, item );
     };
 
-    // diff mode set pre and post
-    if ( m_options.prestateDiffMode ) {
-        jsonTrace["pre"] = preDiff;
-        jsonTrace["post"] = postDiff;
-    }
+    jsonTrace["pre"] = preDiff;
+    jsonTrace["post"] = postDiff;
 }
-void eth::AlethStandardTrace::deftraceFinalizeTrace( const ExecutionResult& _er ) {
+
+
+void eth::AlethStandardTrace::calltraceFinalize(
+    ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    STATE_CHECK(topFunctionCall);
+    topFunctionCall->printTrace( jsonTrace, 0 );
+}
+
+
+void eth::AlethStandardTrace::deftraceFinalize(
+    const ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
     jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
     jsonTrace["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
@@ -320,6 +333,7 @@ void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _pre
     if ( !value.empty() )
         _preDiffTrace[toHexPrefixed( _address )] = value;
 }
+
 
 }  // namespace eth
 }  // namespace dev

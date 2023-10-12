@@ -29,8 +29,13 @@ function CHECK(result: any): void {
 }
 
 async function getAndPrintTrace(hash: string): Promise<String> {
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"prestateTracer",
-        "tracerConfig": {"diffMode":true}}]);
+//    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"prestateTracer",
+//        "tracerConfig": {"diffMode":true}}]);
+
+        const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"callTracer"}]);
+
+
+
     console.log(JSON.stringify(trace, null, 4));
     return trace;
 }

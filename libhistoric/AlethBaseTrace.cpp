@@ -174,8 +174,48 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
         lastFunctionCall = nestedCall;
     } else {
         STATE_CHECK( !lastFunctionCall )
+        topFunctionCall = nestedCall;
     }
     lastFunctionCall = nestedCall;
+}
+
+
+
+void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
+    STATE_CHECK( lastGasRemaining >= lastInstructionGas )
+
+    uint64_t gasRemainingOnReturn = lastGasRemaining - lastInstructionGas;
+
+    if ( lastInstruction == Instruction::INVALID ) {
+        // invalid instruction consumers all gas
+        gasRemainingOnReturn = 0;
+    }
+
+    lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
+
+    if ( _status != evmc_status_code::EVMC_SUCCESS ) {
+        lastFunctionCall->setError( evmErrorDescription(_status) );
+    }
+
+    if ( lastHasReverted ) {
+        lastFunctionCall->setRevertReason(
+            std::string( lastReturnData.begin(), lastReturnData.end() ) );
+    } else {
+        lastFunctionCall->setOutputData( lastReturnData );
+    }
+
+    resetLastReturnVariables();
+
+
+    if ( lastFunctionCall == topFunctionCall ) {
+        // the top function returned
+        return;
+    }
+
+    auto parentCall = lastFunctionCall->getParentCall().lock();
+
+    STATE_CHECK( parentCall )
+    lastFunctionCall = parentCall;
 }
 
 
@@ -219,42 +259,7 @@ std::string AlethBaseTrace::evmErrorDescription( evmc_status_code _error ) {
         return "UNKNOWN_ERROR";
     };
 }
-void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
-    STATE_CHECK( lastGasRemaining >= lastInstructionGas )
 
-    uint64_t gasRemainingOnReturn = lastGasRemaining - lastInstructionGas;
-
-    if ( lastInstruction == Instruction::INVALID ) {
-        // invalid instruction consumers all gas
-        gasRemainingOnReturn = 0;
-    }
-
-    lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
-
-    if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        lastFunctionCall->setError( evmErrorDescription(_status) );
-    }
-
-    if ( lastHasReverted ) {
-        lastFunctionCall->setRevertReason(
-            std::string( lastReturnData.begin(), lastReturnData.end() ) );
-    } else {
-        lastFunctionCall->setOutputData( lastReturnData );
-    }
-
-    resetLastReturnVariables();
-
-
-    if ( lastFunctionCall == topFunctionCall ) {
-        // the top function returned
-        return;
-    }
-
-    auto parentCall = lastFunctionCall->getParentCall().lock();
-
-    STATE_CHECK( parentCall )
-    lastFunctionCall = parentCall;
-}
 void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
     lastInstruction = Instruction::STOP;
     lastGasRemaining = 0;
@@ -293,6 +298,32 @@ const std::weak_ptr< AlethBaseTrace::FunctionCall >& AlethBaseTrace::FunctionCal
 }
 int64_t AlethBaseTrace::FunctionCall::getDepth() const {
     return depth;
+}
+
+void AlethBaseTrace::FunctionCall::printFunctionExecutionDetail(Json::Value& _jsonTrace) {
+    _jsonTrace["function"] = "haha";
+}
+
+
+void AlethBaseTrace::FunctionCall::printTrace(Json::Value& _jsonTrace, int64_t _depth) {
+    // prevent Denial of service
+    STATE_CHECK( _depth < MAX_TRACE_DEPTH )
+    STATE_CHECK( _depth == this->depth )
+    printFunctionExecutionDetail( _jsonTrace );
+    if (!nestedCalls.empty()) {
+        _jsonTrace["nestedCalls"] =  Json::arrayValue;
+        uint32_t  i = 0;
+        for (auto&& nestedCall : nestedCalls) {
+            _jsonTrace["nestedCalls"].append(Json::objectValue);
+            nestedCall->printTrace(_jsonTrace["nestedCalls"][i], _depth + 1);
+            i++;
+        }
+    }
+
+
+
+
+
 }
 
 
