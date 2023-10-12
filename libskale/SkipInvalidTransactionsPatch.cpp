@@ -19,8 +19,11 @@ bool SkipInvalidTransactionsPatch::needToKeepTransaction( bool _excepted ) {
 
 // TODO better start to apply patches from 1st block after timestamp, not second
 bool SkipInvalidTransactionsPatch::isActiveInBlock( BlockNumber _bn ) {
-    assert( _bn != PendingBlock );
-    assert( _bn != 0 );
+    if ( _bn == 0 )
+        return false;
+
+    if ( _bn == PendingBlock )
+        return activateTimestampPassed();
 
     if ( _bn == LatestBlock )
         _bn = client->number();

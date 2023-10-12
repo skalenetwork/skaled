@@ -31,6 +31,7 @@
 #include <libethashseal/EthashClient.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
 #include <csignal>
@@ -44,12 +45,14 @@ using namespace jsonrpc;
 using namespace dev;
 using namespace eth;
 using namespace dev::rpc;
-using namespace dev::rpc::_detail;
 
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 
 #ifdef HISTORIC_STATE
+
+using namespace dev::rpc::_detail;
+
 // Function to count transactions in block ignoring invalid ones.
 // invalid transactions have gasUsed = gasAfter - gasBefore = 0
 unsigned int findNthValidTransaction(
@@ -288,11 +291,13 @@ Json::Value Eth::eth_getBlockTransactionCountByHash( string const& _blockHash ) 
         if ( !client()->isKnown( blockHash ) )
             return Json::Value( Json::nullValue );
 
-#ifndef HISTORIC_STATE
-        return toJS( client()->transactionCount( blockHash ) );
-#else
-        return toJS(
-            m_gapCache->gappedBlockTransactionCount( client()->numberFromHash( blockHash ) ) );
+#ifdef HISTORIC_STATE
+        BlockNumber bn = client()->numberFromHash( blockHash );
+        if ( !SkipInvalidTransactionsPatch::isActiveInBlock( bn ) )
+#endif
+            return toJS( client()->transactionCount( blockHash ) );
+#ifdef HISTORIC_STATE
+        return toJS( m_gapCache->gappedBlockTransactionCount( bn ) );
 #endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -305,9 +310,12 @@ Json::Value Eth::eth_getBlockTransactionCountByNumber( string const& _blockNumbe
         if ( !client()->isKnown( blockNumber ) )
             return Json::Value( Json::nullValue );
 
-#ifndef HISTORIC_STATE
-        return toJS( client()->transactionCount( jsToBlockNumber( _blockNumber ) ) );
-#else
+#ifdef HISTORIC_STATE
+        BlockNumber bn = jsToBlockNumber( _blockNumber );
+        if ( !SkipInvalidTransactionsPatch::isActiveInBlock( bn ) )
+#endif
+            return toJS( client()->transactionCount( jsToBlockNumber( _blockNumber ) ) );
+#ifdef HISTORIC_STATE
         return toJS( m_gapCache->gappedBlockTransactionCount( blockNumber ) );
 #endif
     } catch ( ... ) {
@@ -555,14 +563,16 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             Transactions transactions = client()->transactions( h );
 
 #ifdef HISTORIC_STATE
-            // remove skipped transactions
-            size_t index = 0;
-            Transactions::iterator newEnd = std::remove_if( transactions.begin(),
-                transactions.end(), [this, &index, h]( const Transaction& ) -> bool {
-                    return !m_gapCache->transactionPresent(
-                        client()->numberFromHash( h ), index++ );
-                } );
-            transactions.erase( newEnd, transactions.end() );
+            BlockNumber bn = client()->numberFromHash( h );
+            if ( SkipInvalidTransactionsPatch::isActiveInBlock( bn ) ) {
+                // remove skipped transactions
+                size_t index = 0;
+                Transactions::iterator newEnd = std::remove_if( transactions.begin(),
+                    transactions.end(), [this, &index, bn]( const Transaction& ) -> bool {
+                        return !m_gapCache->transactionPresent( bn, index++ );
+                    } );
+                transactions.erase( newEnd, transactions.end() );
+            }
 #endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), transactions, client()->sealEngine() );
@@ -570,14 +580,16 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             h256s transactions = client()->transactionHashes( h );
 
 #ifdef HISTORIC_STATE
-            // remove skipped transactions
-            size_t index = 0;
-            h256s::iterator newEnd = std::remove_if(
-                transactions.begin(), transactions.end(), [this, &index, h]( const h256& ) -> bool {
-                    return !m_gapCache->transactionPresent(
-                        client()->numberFromHash( h ), index++ );
-                } );
-            transactions.erase( newEnd, transactions.end() );
+            BlockNumber bn = client()->numberFromHash( h );
+            if ( SkipInvalidTransactionsPatch::isActiveInBlock( bn ) ) {
+                // remove skipped transactions
+                size_t index = 0;
+                h256s::iterator newEnd = std::remove_if( transactions.begin(), transactions.end(),
+                    [this, &index, bn]( const h256& ) -> bool {
+                        return !m_gapCache->transactionPresent( bn, index++ );
+                    } );
+                transactions.erase( newEnd, transactions.end() );
+            }
 #endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), transactions, client()->sealEngine() );
@@ -640,11 +652,13 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
 
 #ifdef HISTORIC_STATE
-        try {
-            ti = m_gapCache->realIndexFromGapped( client()->numberFromHash( bh ), ti );
-        } catch ( const out_of_range& ) {  // TODO check exception class
-            return Json::Value( Json::nullValue );
-        }
+        BlockNumber bn = client()->numberFromHash( bh );
+        if ( SkipInvalidTransactionsPatch::isActiveInBlock( bn ) )
+            try {
+                ti = m_gapCache->realIndexFromGapped( bn, ti );
+            } catch ( const out_of_range& ) {
+                return Json::Value( Json::nullValue );
+            }
 #endif
         if ( !client()->isKnownTransaction( bh, ti ) )
             return Json::Value( Json::nullValue );
@@ -663,11 +677,12 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
 
 #ifdef HISTORIC_STATE
-        try {
-            ti = m_gapCache->realIndexFromGapped( bn, ti );
-        } catch ( const out_of_range& ) {  // TODO check exception class
-            return Json::Value( Json::nullValue );
-        }
+        if ( SkipInvalidTransactionsPatch::isActiveInBlock( bn ) )
+            try {
+                ti = m_gapCache->realIndexFromGapped( bn, ti );
+            } catch ( const out_of_range& ) {
+                return Json::Value( Json::nullValue );
+            }
 #endif
 
         if ( !client()->isKnownTransaction( bh, ti ) )
@@ -717,16 +732,19 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
     auto rcp = cli->localisedTransactionReceipt( h );
 
 #ifdef HISTORIC_STATE
-    // skip invalid
-    if ( rcp.gasUsed() == 0 ) {
-        m_receiptsCache.put( cacheKey, nullptr );
-        throw std::invalid_argument( "Not known transaction" );
-    }
+    if ( SkipInvalidTransactionsPatch::isActiveInBlock( rcp.blockNumber() ) ) {
+        // skip invalid
+        if ( rcp.gasUsed() == 0 ) {
+            m_receiptsCache.put( cacheKey, nullptr );
+            throw std::invalid_argument( "Not known transaction" );
+        }
 
-    // substitute position, skipping invalid transactions
-    size_t newIndex = m_gapCache->gappedIndexFromReal( rcp.blockNumber(), rcp.transactionIndex() );
-    rcp = LocalisedTransactionReceipt( rcp, rcp.hash(), rcp.blockHash(), rcp.blockNumber(),
-        newIndex, rcp.from(), rcp.to(), rcp.gasUsed(), rcp.contractAddress() );
+        // substitute position, skipping invalid transactions
+        size_t newIndex =
+            m_gapCache->gappedIndexFromReal( rcp.blockNumber(), rcp.transactionIndex() );
+        rcp = LocalisedTransactionReceipt( rcp, rcp.hash(), rcp.blockHash(), rcp.blockNumber(),
+            newIndex, rcp.from(), rcp.to(), rcp.gasUsed(), rcp.contractAddress() );
+    }
 #endif
 
     // got a receipt. Put it into the cache before returning
