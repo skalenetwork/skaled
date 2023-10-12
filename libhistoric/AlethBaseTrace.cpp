@@ -121,7 +121,7 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         lastHasReverted = false;
         lastHasError = true;
         lastReturnData = std::vector< uint8_t >();
-        lastError = "INVALID OPCODE";
+        lastError = "EVM_INVALID_OPCODE";
         break;
     case Instruction::RETURN:
         lastHasReverted = false;
@@ -130,6 +130,7 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     case Instruction::REVERT:
         lastHasReverted = true;
         lastHasError = false;
+        lastError = "EVM_REVERT";
         extractReturnData( _vm );
         break;
     case Instruction::SUICIDE:
@@ -231,7 +232,7 @@ void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
     lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        lastFunctionCall->setError( std::to_string( _status ) );
+        lastFunctionCall->setError( evmErrorDescription(_status) );
     }
 
     if ( lastHasReverted ) {
