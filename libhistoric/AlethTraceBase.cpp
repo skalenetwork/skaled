@@ -80,6 +80,7 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
     m_isCreate = _t.isCreation();
+    m_totalGasLimit = (uint64_t ) _t.gas();
 
     // when we start execution a user transaction the top level function can  be a call
     // or a contract create

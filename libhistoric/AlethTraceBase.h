@@ -117,6 +117,8 @@ protected:
 
     bool m_isCreate = false;
 
+    uint64_t m_totalGasLimit = 0;
+
 
     uint64_t m_lastInstructionGas = 0;
     uint64_t m_lastGasRemaining = 0;
