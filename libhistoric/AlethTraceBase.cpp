@@ -1,16 +1,36 @@
+/*
+Copyright (C) 2023-present, SKALE Labs
 
-#include "AlethBaseTrace.h"
+This file is part of skaled.
+
+skaled is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+skaled is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with skaled.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+#include "FunctionCall.h"
+#include "AlethTraceBase.h"
 
 namespace dev {
 namespace eth {
 
-const eth::AlethBaseTrace::DebugOptions& eth::AlethBaseTrace::getOptions() const {
+const eth::AlethTraceBase::DebugOptions& eth::AlethTraceBase::getOptions() const {
     return m_options;
 }
 
 
-AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _json ) {
-    AlethBaseTrace::DebugOptions op;
+AlethTraceBase::DebugOptions AlethTraceBase::debugOptions( Json::Value const& _json ) {
+    AlethTraceBase::DebugOptions op;
 
     if ( !_json.isObject() )
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
@@ -29,8 +49,8 @@ AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _j
     if ( !_json["tracer"].empty() ) {
         auto tracerStr = _json["tracer"].asString();
 
-        if ( stringToTracerMap.count( tracerStr ) ) {
-            op.tracerType = stringToTracerMap.at( tracerStr );
+        if ( s_stringToTracerMap.count( tracerStr ) ) {
+            op.tracerType = s_stringToTracerMap.at( tracerStr );
         } else {
             BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
                 jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid tracer type:" + tracerStr ) );
@@ -47,13 +67,13 @@ AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _j
     return op;
 }
 
-const std::map< std::string, AlethBaseTrace::TraceType > AlethBaseTrace::stringToTracerMap = {
-    { "", AlethBaseTrace::TraceType::DEFAULT_TRACER },
-    { "callTracer", AlethBaseTrace::TraceType::CALL_TRACER },
-    { "prestateTracer", AlethBaseTrace::TraceType::PRESTATE_TRACER }
+const std::map< std::string, AlethTraceBase::TraceType > AlethTraceBase::s_stringToTracerMap = {
+    { "", AlethTraceBase::TraceType::STANDARD_TRACER },
+    { "callTracer", AlethTraceBase::TraceType::CALL_TRACER },
+    { "prestateTracer", AlethTraceBase::TraceType::PRESTATE_TRACER }
 };
 
-AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
+AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     : m_from{ _t.from() }, m_to( _t.to() ) {
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
@@ -70,7 +90,7 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
     }
 }
 
-void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
+void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
     const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
     const LegacyVM* _vm ) {
     // record the account access
@@ -154,7 +174,7 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 }
 
 
-void AlethBaseTrace::extractReturnData( const LegacyVM* _vm ) {
+void AlethTraceBase::extractReturnData( const LegacyVM* _vm ) {
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
@@ -166,7 +186,7 @@ void AlethBaseTrace::extractReturnData( const LegacyVM* _vm ) {
 }
 
 
-void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
+void AlethTraceBase::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
     const std::vector< uint8_t >& _inputData, const u256& _value ) {
     auto nestedCall = std::make_shared< FunctionCall >( m_lastInstruction, _from, _to, _gasLimit,
         lastFunctionCall, _inputData, _value, m_lastDepth + 1 );
@@ -185,7 +205,7 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
 }
 
 
-void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
+void AlethTraceBase::functionReturned( evmc_status_code _status ) {
     STATE_CHECK( m_lastGasRemaining >= m_lastInstructionGas )
 
     uint64_t gasRemainingOnReturn = m_lastGasRemaining - m_lastInstructionGas;
@@ -223,7 +243,7 @@ void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
 }
 
 
-std::string AlethBaseTrace::evmErrorDescription( evmc_status_code _error ) {
+std::string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
     switch ( _error ) {
     case EVMC_SUCCESS:
         return "EVM_SUCCESS";
@@ -264,7 +284,7 @@ std::string AlethBaseTrace::evmErrorDescription( evmc_status_code _error ) {
     };
 }
 
-void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
+void AlethTraceBase::resetLastReturnVariables() {  // reset variables.
     m_lastInstruction = Instruction::STOP;
     m_lastGasRemaining = 0;
     m_lastInstructionGas = 0;
@@ -274,104 +294,21 @@ void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
 }
 
 
-void AlethBaseTrace::FunctionCall::setGasUsed( uint64_t _gasUsed ) {
-    FunctionCall::gasUsed = _gasUsed;
-}
-uint64_t AlethBaseTrace::FunctionCall::getFunctionGasLimit() const {
-    return functionGasLimit;
-}
-void AlethBaseTrace::FunctionCall::setOutputData( const std::vector< uint8_t >& _outputData ) {
-    FunctionCall::outputData = _outputData;
-}
 
-void AlethBaseTrace::FunctionCall::addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall ) {
-    STATE_CHECK( _nestedCall );
-    this->nestedCalls.push_back( _nestedCall );
-}
-void AlethBaseTrace::FunctionCall::setError( const std::string& _error ) {
-    completedWithError = true;
-    error = _error;
-}
-void AlethBaseTrace::FunctionCall::setRevertReason( const std::string& _revertReason ) {
-    reverted = true;
-    revertReason = _revertReason;
-}
-const std::weak_ptr< AlethBaseTrace::FunctionCall >& AlethBaseTrace::FunctionCall::getParentCall()
-    const {
-    return parentCall;
-}
-int64_t AlethBaseTrace::FunctionCall::getDepth() const {
-    return depth;
-}
-
-void AlethBaseTrace::FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
-    _jsonTrace["type"] = instructionInfo( type ).name;
-    _jsonTrace["from"] = toHex( from );
-    if ( type != Instruction::CREATE && type != Instruction::CREATE2 ) {
-        _jsonTrace["to"] = toHex( to );
-    }
-    _jsonTrace["gas"] = toCompactHexPrefixed( functionGasLimit );
-    _jsonTrace["gasUsed"] = toCompactHexPrefixed( gasUsed );
-    if ( !error.empty() ) {
-        _jsonTrace["error"] = error;
-    }
-    if ( !revertReason.empty() ) {
-        _jsonTrace["revertReason"] = revertReason;
-    }
-
-    _jsonTrace["value"] = toCompactHexPrefixed( value );
-}
-
-
-void AlethBaseTrace::FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
-    // prevent Denial of service
-    STATE_CHECK( _depth < MAX_TRACE_DEPTH )
-    STATE_CHECK( _depth == this->depth )
-    printFunctionExecutionDetail( _jsonTrace );
-    if ( !nestedCalls.empty() ) {
-        _jsonTrace["calls"] = Json::arrayValue;
-        uint32_t i = 0;
-        for ( auto&& nestedCall : nestedCalls ) {
-            _jsonTrace["calls"].append( Json::objectValue );
-            nestedCall->printTrace( _jsonTrace["nestedCalls"][i], _depth + 1 );
-            i++;
-        }
-    }
-}
-
-
-AlethBaseTrace::FunctionCall::FunctionCall( Instruction _type, const Address& _from,
-    const Address& _to, uint64_t _functionGasLimit,
-    const std::weak_ptr< FunctionCall >& _parentCall, const std::vector< uint8_t >& _inputData,
-    const u256& _value, int64_t _depth )
-    : type( _type ),
-      from( _from ),
-      to( _to ),
-      functionGasLimit( _functionGasLimit ),
-      parentCall( _parentCall ),
-      inputData( _inputData ),
-      value( _value ),
-      depth( _depth ) {
-    STATE_CHECK( depth >= 0 )
-}
-const Address& AlethBaseTrace::FunctionCall::getFrom() const {
-    return from;
-}
-const Address& AlethBaseTrace::FunctionCall::getTo() const {
-    return to;
-}
-
-bool AlethBaseTrace::FunctionCall::hasReverted() const {
-    return reverted;
-}
-bool AlethBaseTrace::FunctionCall::hasError() const {
-    return completedWithError;
-}
-void AlethBaseTrace::setNoErrors() {
+void AlethTraceBase::setNoErrors() {
     m_lastHasReverted = false;
     m_lastHasError = false;
     m_lastError = "";
     m_lastReturnData = std::vector< uint8_t >();
 }
+
+Json::Value eth::AlethTraceBase::getJSONResult() const {
+    return m_jsonTrace;
+}
+
+
+
+
+
 }  // namespace eth
 }  // namespace dev

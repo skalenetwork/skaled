@@ -1,11 +1,26 @@
-// Aleth: Ethereum C++ client, tools and libraries.
-// Copyright 2014-2019 Aleth Authors.
-// Licensed under the GNU General Public License, Version 3.
+/*
+Copyright (C) 2023-present, SKALE Labs
+
+This file is part of skaled.
+
+skaled is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+skaled is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with skaled.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #pragma once
 
-#include "AlethBaseTrace.h"
 #include "AlethExtVM.h"
+#include "AlethTraceBase.h"
 #include "json/json.h"
 #include "libdevcore/Common.h"
 #include "libevm/Instruction.h"
@@ -21,7 +36,7 @@ namespace dev {
 namespace eth {
 
 
-class AlethStandardTrace : public AlethBaseTrace {
+class AlethStandardTrace : public AlethTraceBase {
 public:
     // Append json trace to given (array) value
     explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
@@ -40,9 +55,6 @@ public:
     void finalizeTrace(
         ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
 
-    Json::Value getJSONResult() const;
-
-
 private:
     std::shared_ptr< Json::Value > m_defaultOpTrace;
 
@@ -50,7 +62,7 @@ private:
     uint64_t storageValuesReturnedPost = 0;
     uint64_t storageValuesReturnedAll = 0;
 
-    void appendOpToDefaultOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
+    void appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     void pstraceAddAllAccessedAccountPreValuesToTrace(
