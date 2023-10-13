@@ -126,14 +126,18 @@ protected:
     // for each storage address the current value if recorded
     std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
 
-    uint64_t lastInstructionGas = 0;
-    uint64_t lastGasRemaining = 0;
-    int64_t lastDepth = -1;
-    Instruction lastInstruction = Instruction::CALL;
-    std::vector<uint8_t> lastReturnData;
-    bool lastHasReverted = false;
-    bool lastHasError = false;
-    std::string lastError;
+    bool m_isCreate = false;
+
+
+    uint64_t m_lastInstructionGas = 0;
+    uint64_t m_lastGasRemaining = 0;
+    int64_t m_lastDepth = -1;
+    Instruction m_lastInstruction;
+    std::vector<uint8_t> m_lastReturnData;
+    bool m_lastHasReverted = false;
+    bool m_lastHasError = false;
+    std::string m_lastError;
+    void setNoErrors();
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);

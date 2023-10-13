@@ -59,8 +59,15 @@ AlethBaseTrace::AlethBaseTrace( Transaction& _t, Json::Value const& _options )
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
+    m_isCreate = _t.isCreation();
 
-    resetLastReturnVariables();
+    // when we start execution a user transaction the top level function can  be a call
+    // or a contract create
+    if (m_isCreate) {
+        m_lastInstruction = Instruction::CREATE;
+    } else {
+        m_lastInstruction = Instruction::CALL;
+    }
 }
 
 void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
@@ -73,16 +80,16 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 
     auto currentDepth = _ext.depth;
 
-    if ( currentDepth == lastDepth + 1 ) {
+    if ( currentDepth == m_lastDepth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
         functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
-    } else if ( currentDepth == lastDepth - 1 ) {
+    } else if ( currentDepth == m_lastDepth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
         functionReturned( status );
     } else {
         // we should not have skipped frames
-        STATE_CHECK( currentDepth == lastDepth )
+        STATE_CHECK( currentDepth == m_lastDepth )
     }
 
     m_accessedAccounts.insert( _ext.myAddress );
@@ -101,6 +108,7 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
                 _vm->getStackElement( 1 );
         }
         break;
+    // NOW HANDLE FUNCTION CALL INSTRUCTIONS
     case Instruction::CALL:
     case Instruction::CALLCODE:
     case Instruction::DELEGATECALL:
@@ -111,49 +119,47 @@ void AlethBaseTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
             m_accessedAccounts.insert( address );
         }
         break;
+    // NOW HANDLE FUNCTION RETURN INSTRUCTIONS: STOP INVALID REVERT AND SUICIDE
     case Instruction::STOP:
-        lastHasReverted = false;
-        lastHasError = false;
-        lastReturnData = std::vector< uint8_t >();
+        setNoErrors();
         break;
     case Instruction::INVALID:
-        lastHasReverted = false;
-        lastHasError = true;
-        lastReturnData = std::vector< uint8_t >();
-        lastError = "EVM_INVALID_OPCODE";
+        setNoErrors();
+        m_lastHasError = true;
+        m_lastError = "EVM_INVALID_OPCODE";
         break;
     case Instruction::RETURN:
-        lastHasReverted = false;
-        lastHasError = false;
+        setNoErrors();
         break;
     case Instruction::REVERT:
-        lastHasReverted = true;
-        lastHasError = false;
-        lastError = "EVM_REVERT";
+        setNoErrors();
+        m_lastHasReverted = true;
+        m_lastHasError = true;
+        m_lastError = "EVM_REVERT";
         extractReturnData( _vm );
         break;
     case Instruction::SUICIDE:
-        lastHasReverted = false;
-        lastHasError = false;
+        setNoErrors();
         if ( _vm->stackSize() > 0 ) {
             m_accessedAccounts.insert( asAddress( _vm->getStackElement( 0 ) ) );
         }
-        lastReturnData = std::vector< uint8_t >();
         break;
     default:
         break;
     }
-    lastDepth = currentDepth;
-    lastInstruction = _inst;
-    lastGasRemaining = ( uint64_t ) _gasRemaining;
-    lastInstructionGas = ( uint64_t ) _lastOpGas;
+    m_lastDepth = currentDepth;
+    m_lastInstruction = _inst;
+    m_lastGasRemaining = ( uint64_t ) _gasRemaining;
+    m_lastInstructionGas = ( uint64_t ) _lastOpGas;
 }
+
+
 void AlethBaseTrace::extractReturnData( const LegacyVM* _vm ) {
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            lastReturnData =
+            m_lastReturnData =
                 std::vector< uint8_t >( _vm->memory().begin() + b, _vm->memory().begin() + b + s );
         }
     }
@@ -162,13 +168,13 @@ void AlethBaseTrace::extractReturnData( const LegacyVM* _vm ) {
 
 void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
     const std::vector< uint8_t >& _inputData, const u256& _value ) {
-    auto nestedCall = std::make_shared< FunctionCall >( lastInstruction, _from, _to, _gasLimit,
-        lastFunctionCall, _inputData, _value, lastDepth + 1 );
+    auto nestedCall = std::make_shared< FunctionCall >( m_lastInstruction, _from, _to, _gasLimit,
+        lastFunctionCall, _inputData, _value, m_lastDepth + 1 );
 
-    if ( lastDepth >= 0 ) {
+    if ( m_lastDepth >= 0 ) {
         // not the fist call
         STATE_CHECK( lastFunctionCall )
-        STATE_CHECK( lastFunctionCall->getDepth() == lastDepth )
+        STATE_CHECK( lastFunctionCall->getDepth() == m_lastDepth )
         lastFunctionCall->addNestedCall( nestedCall );
         lastFunctionCall = nestedCall;
     } else {
@@ -180,11 +186,11 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
 
 
 void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
-    STATE_CHECK( lastGasRemaining >= lastInstructionGas )
+    STATE_CHECK( m_lastGasRemaining >= m_lastInstructionGas )
 
-    uint64_t gasRemainingOnReturn = lastGasRemaining - lastInstructionGas;
+    uint64_t gasRemainingOnReturn = m_lastGasRemaining - m_lastInstructionGas;
 
-    if ( lastInstruction == Instruction::INVALID ) {
+    if ( m_lastInstruction == Instruction::INVALID ) {
         // invalid instruction consumers all gas
         gasRemainingOnReturn = 0;
     }
@@ -195,11 +201,11 @@ void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
         lastFunctionCall->setError( evmErrorDescription( _status ) );
     }
 
-    if ( lastHasReverted ) {
+    if ( m_lastHasReverted ) {
         lastFunctionCall->setRevertReason(
-            std::string( lastReturnData.begin(), lastReturnData.end() ) );
+            std::string( m_lastReturnData.begin(), m_lastReturnData.end() ) );
     } else {
-        lastFunctionCall->setOutputData( lastReturnData );
+        lastFunctionCall->setOutputData( m_lastReturnData );
     }
 
     resetLastReturnVariables();
@@ -259,12 +265,12 @@ std::string AlethBaseTrace::evmErrorDescription( evmc_status_code _error ) {
 }
 
 void AlethBaseTrace::resetLastReturnVariables() {  // reset variables.
-    lastInstruction = Instruction::STOP;
-    lastGasRemaining = 0;
-    lastInstructionGas = 0;
-    lastReturnData = std::vector< uint8_t >();
-    lastHasReverted = false;
-    lastHasError = false;
+    m_lastInstruction = Instruction::STOP;
+    m_lastGasRemaining = 0;
+    m_lastInstructionGas = 0;
+    m_lastReturnData = std::vector< uint8_t >();
+    m_lastHasReverted = false;
+    m_lastHasError = false;
 }
 
 
@@ -299,14 +305,13 @@ int64_t AlethBaseTrace::FunctionCall::getDepth() const {
 }
 
 void AlethBaseTrace::FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
-
-    _jsonTrace["type"] = instructionInfo(type).name;
+    _jsonTrace["type"] = instructionInfo( type ).name;
     _jsonTrace["from"] = toHex( from );
-    if (type != Instruction::CREATE && type != Instruction::CREATE2) {
+    if ( type != Instruction::CREATE && type != Instruction::CREATE2 ) {
         _jsonTrace["to"] = toHex( to );
     }
-    _jsonTrace["gas"] = toCompactHexPrefixed(functionGasLimit);
-    _jsonTrace["gasUsed"] = toCompactHexPrefixed(gasUsed);
+    _jsonTrace["gas"] = toCompactHexPrefixed( functionGasLimit );
+    _jsonTrace["gasUsed"] = toCompactHexPrefixed( gasUsed );
     if ( !error.empty() ) {
         _jsonTrace["error"] = error;
     }
@@ -314,7 +319,7 @@ void AlethBaseTrace::FunctionCall::printFunctionExecutionDetail( Json::Value& _j
         _jsonTrace["revertReason"] = revertReason;
     }
 
-    _jsonTrace["value"] = toCompactHexPrefixed(value);
+    _jsonTrace["value"] = toCompactHexPrefixed( value );
 }
 
 
@@ -362,7 +367,11 @@ bool AlethBaseTrace::FunctionCall::hasReverted() const {
 bool AlethBaseTrace::FunctionCall::hasError() const {
     return completedWithError;
 }
-
-
+void AlethBaseTrace::setNoErrors() {
+    m_lastHasReverted = false;
+    m_lastHasError = false;
+    m_lastError = "";
+    m_lastReturnData = std::vector< uint8_t >();
+}
 }  // namespace eth
 }  // namespace dev
