@@ -163,8 +163,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
     StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
     POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
-    SkipInvalidTransactionsPatch::init(
-        this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp, this );
+    SkipInvalidTransactionsPatch::setTimestamp(
+        this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
 }
 
 
@@ -657,6 +657,7 @@ size_t Client::syncTransactions(
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );

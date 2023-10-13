@@ -7,6 +7,12 @@
 #include <libethereum/SchainPatch.h>
 #include <libethereum/Transaction.h>
 
+namespace dev {
+namespace eth {
+class Client;
+}
+}  // namespace dev
+
 // What this patch does:
 // 1. "Invalid" transactions that came with winning block proposal from consensus
 // are skipped, and not included in block.
@@ -25,22 +31,22 @@
 // 5) eth_getTransactionByBlockHash/NumberAndIndex
 // Transactions are removed from Transaction Queue as usually.
 
+// TODO better start to apply patches from 1st block after timestamp, not second
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
     static bool isEnabled();
 
-    static void init( time_t _activationTimestamp, const dev::eth::Interface* _client ) {
+    static void setTimestamp( time_t _activationTimestamp ) {
         activationTimestamp = _activationTimestamp;
         printInfo( __FILE__, _activationTimestamp );
-        assert( _client );
-        client = _client;
     }
 
-    static bool isActiveInBlock( dev::eth::BlockNumber _bn );
+    static time_t getActivationTimestamp() { return activationTimestamp; }
 
 private:
+    friend class dev::eth::Client;
     static time_t activationTimestamp;
-    static const dev::eth::Interface* client;
+    static time_t lastBlockTimestamp;
 };
 
 #endif  // SKIPINVALIDTRANSACTIONSPATCH_H
