@@ -17,24 +17,26 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "FunctionCall.h"
 #include "AlethStandardTrace.h"
+#include "FunctionCall.h"
 
 namespace dev {
 namespace eth {
 
 
-
-
 void eth::AlethStandardTrace::pstraceFinalize(
-    ExecutionResult& , const HistoricState& _stateBefore, const HistoricState& ) {
-    for ( auto&& item : m_accessedAccounts ) {
-        pstraceAddAllAccessedAccountPreValuesToTrace( m_jsonTrace, _stateBefore, item );
-    };
+    ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    if ( m_options.prestateDiffMode ) {
+        pstraceDiffFinalize( _er, _stateBefore, _stateAfter );
+    } else {
+        for ( auto&& item : m_accessedAccounts ) {
+            pstraceAddAllAccessedAccountPreValuesToTrace( m_jsonTrace, _stateBefore, item );
+        };
+    }
 }
 
 void eth::AlethStandardTrace::pstraceDiffFinalize(
-    ExecutionResult& , const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    ExecutionResult&, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     Json::Value preDiff( Json::objectValue );
     Json::Value postDiff( Json::objectValue );
 

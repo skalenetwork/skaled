@@ -234,12 +234,12 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
     if ( lastFunctionCall == topFunctionCall ) {
         // the top function returned
         return;
+    } else {
+        // move lastFunctionCall to the parent function
+        auto parentCall = lastFunctionCall->getParentCall().lock();
+        STATE_CHECK( parentCall )
+        lastFunctionCall = parentCall;
     }
-
-    auto parentCall = lastFunctionCall->getParentCall().lock();
-
-    STATE_CHECK( parentCall )
-    lastFunctionCall = parentCall;
 }
 
 

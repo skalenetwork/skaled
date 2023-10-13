@@ -115,11 +115,7 @@ void eth::AlethStandardTrace::finalizeTrace(
         deftraceFinalize( _er, _stateBefore, _stateAfter );
         break;
     case TraceType::PRESTATE_TRACER:
-        if ( m_options.prestateDiffMode ) {
-            pstraceDiffFinalize( _er, _stateBefore, _stateAfter );
-        } else {
-            pstraceFinalize( _er, _stateBefore, _stateAfter );
-        }
+        pstraceFinalize( _er, _stateBefore, _stateAfter );
         break;
     case TraceType::CALL_TRACER:
         calltraceFinalize( _er, _stateBefore, _stateAfter );
