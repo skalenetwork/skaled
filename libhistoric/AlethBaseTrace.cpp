@@ -16,7 +16,6 @@ AlethBaseTrace::DebugOptions AlethBaseTrace::debugOptions( Json::Value const& _j
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid options" ) );
 
-    bool option;
     if ( !_json["disableStorage"].empty() )
         op.disableStorage = _json["disableStorage"].asBool();
 
@@ -180,7 +179,6 @@ void AlethBaseTrace::functionCalled( const Address& _from, const Address& _to, u
 }
 
 
-
 void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
     STATE_CHECK( lastGasRemaining >= lastInstructionGas )
 
@@ -194,7 +192,7 @@ void AlethBaseTrace::functionReturned( evmc_status_code _status ) {
     lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        lastFunctionCall->setError( evmErrorDescription(_status) );
+        lastFunctionCall->setError( evmErrorDescription( _status ) );
     }
 
     if ( lastHasReverted ) {
@@ -300,30 +298,40 @@ int64_t AlethBaseTrace::FunctionCall::getDepth() const {
     return depth;
 }
 
-void AlethBaseTrace::FunctionCall::printFunctionExecutionDetail(Json::Value& _jsonTrace) {
-    _jsonTrace["function"] = "haha";
+void AlethBaseTrace::FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
+
+    _jsonTrace["type"] = instructionInfo(type).name;
+    _jsonTrace["from"] = toHex( from );
+    if (type != Instruction::CREATE && type != Instruction::CREATE2) {
+        _jsonTrace["to"] = toHex( to );
+    }
+    _jsonTrace["gas"] = toCompactHexPrefixed(functionGasLimit);
+    _jsonTrace["gasUsed"] = toCompactHexPrefixed(gasUsed);
+    if ( !error.empty() ) {
+        _jsonTrace["error"] = error;
+    }
+    if ( !revertReason.empty() ) {
+        _jsonTrace["revertReason"] = revertReason;
+    }
+
+    _jsonTrace["value"] = toCompactHexPrefixed(value);
 }
 
 
-void AlethBaseTrace::FunctionCall::printTrace(Json::Value& _jsonTrace, int64_t _depth) {
+void AlethBaseTrace::FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
     // prevent Denial of service
     STATE_CHECK( _depth < MAX_TRACE_DEPTH )
     STATE_CHECK( _depth == this->depth )
     printFunctionExecutionDetail( _jsonTrace );
-    if (!nestedCalls.empty()) {
-        _jsonTrace["nestedCalls"] =  Json::arrayValue;
-        uint32_t  i = 0;
-        for (auto&& nestedCall : nestedCalls) {
-            _jsonTrace["nestedCalls"].append(Json::objectValue);
-            nestedCall->printTrace(_jsonTrace["nestedCalls"][i], _depth + 1);
+    if ( !nestedCalls.empty() ) {
+        _jsonTrace["calls"] = Json::arrayValue;
+        uint32_t i = 0;
+        for ( auto&& nestedCall : nestedCalls ) {
+            _jsonTrace["calls"].append( Json::objectValue );
+            nestedCall->printTrace( _jsonTrace["nestedCalls"][i], _depth + 1 );
             i++;
         }
     }
-
-
-
-
-
 }
 
 
