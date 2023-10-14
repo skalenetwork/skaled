@@ -86,7 +86,7 @@ public:
     void printTrace( Json::Value& _jsonTrace, int64_t _depth );
     void printFunctionExecutionDetail( Json::Value& _jsonTrace );
 
-    void addLog( const std::shared_ptr< std::vector< uint8_t > >& _data,
+    void addLogEntry( const std::shared_ptr< std::vector< uint8_t > >& _data,
         const std::shared_ptr< std::vector< u256 > >& _topics );
 
 private:

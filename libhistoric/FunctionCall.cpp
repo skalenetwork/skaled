@@ -121,7 +121,7 @@ bool FunctionCall::hasError() const {
 }
 
 
-void FunctionCall::addLog(const shared_ptr<vector<uint8_t>>& _data,
+void FunctionCall::addLogEntry(const shared_ptr<vector<uint8_t>>& _data,
     const shared_ptr<vector<u256>>& _topics) {
     logRecords.emplace_back(_data, _topics);
 }

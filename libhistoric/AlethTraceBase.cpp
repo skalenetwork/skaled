@@ -105,7 +105,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 
     auto hasReverted = false;
     shared_ptr< vector< uint8_t > > returnData = nullptr;
-    
+
 
     m_accessedAccounts.insert( _ext.myAddress );
 
@@ -167,7 +167,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
             topics->push_back( _vm->getStackElement( 2 + i ) );
         };
         STATE_CHECK( currentlyExecutingFunctionCall )
-        currentlyExecutingFunctionCall->addLog( logData, topics );
+        currentlyExecutingFunctionCall->addLogEntry( logData, topics );
     }
     default:
         break;
