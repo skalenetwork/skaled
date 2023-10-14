@@ -29,7 +29,7 @@ void eth::AlethStandardTrace::calltraceFinalize(
     ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     auto totalGasUsed = (uint64_t) _er.gasUsed;
     STATE_CHECK(topFunctionCall)
-    STATE_CHECK(topFunctionCall == this->lastFunctionCall)
+    STATE_CHECK(topFunctionCall == this->currentlyExecutingFunctionCall )
     topFunctionCall->setGasUsed( totalGasUsed );
     topFunctionCall->printTrace( m_jsonTrace, 0 );
 }

@@ -24,6 +24,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev {
 namespace eth {
 
+using namespace std;
+
 const eth::AlethTraceBase::DebugOptions& eth::AlethTraceBase::getOptions() const {
     return m_options;
 }
@@ -67,7 +69,7 @@ AlethTraceBase::DebugOptions AlethTraceBase::debugOptions( Json::Value const& _j
     return op;
 }
 
-const std::map< std::string, AlethTraceBase::TraceType > AlethTraceBase::s_stringToTracerMap = {
+const map< string, AlethTraceBase::TraceType > AlethTraceBase::s_stringToTracerMap = {
     { "", AlethTraceBase::TraceType::STANDARD_TRACER },
     { "callTracer", AlethTraceBase::TraceType::CALL_TRACER },
     { "prestateTracer", AlethTraceBase::TraceType::PRESTATE_TRACER }
@@ -99,10 +101,9 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     STATE_CHECK( _face )
     STATE_CHECK( _vm )
 
+    processFunctionCallOrReturnIfHappened( _ext, _vm);
+
     auto currentDepth = _ext.depth;
-
-
-    processFunctionCallOrReturnIfHappened( _gasRemaining, _ext, _vm, currentDepth );
 
     m_accessedAccounts.insert( _ext.myAddress );
 
@@ -127,8 +128,8 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     case Instruction::CALLCODE:
     case Instruction::DELEGATECALL:
     case Instruction::STATICCALL:
-
-        if ( _vm->stackSize() > 1 ) {
+        if (_vm->stackSize() > 1) {
+            m_lastFunctionGasLimit = (uint64_t ) _vm->getStackElement(0);
             auto address = asAddress( _vm->getStackElement( 1 ) );
             m_accessedAccounts.insert( address );
         }
@@ -144,14 +145,14 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         break;
     case Instruction::RETURN:
         resetVarsOnFunctionReturn();
-        extractReturnData( _vm );
+        m_lastReturnData = extractMemoryByteArrayFromStackPointer( _vm );
         break;
     case Instruction::REVERT:
         resetVarsOnFunctionReturn();
         m_lastHasReverted = true;
         m_lastHasError = true;
         m_lastError = "EVM_REVERT";
-        extractReturnData( _vm );
+        extractMemoryByteArrayFromStackPointer( _vm );
         break;
     case Instruction::SUICIDE:
         resetVarsOnFunctionReturn();
@@ -163,10 +164,21 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     case Instruction::LOG1:
     case Instruction::LOG2:
     case Instruction::LOG3:
-    case Instruction::LOG4:
+    case Instruction::LOG4: {
         logTopicsCount = ( uint64_t ) _inst - ( uint64_t ) Instruction::LOG0;
         STATE_CHECK( logTopicsCount <= 4 )
-        break;
+        if ( _vm->stackSize() < 2 + logTopicsCount )
+            break;
+        auto logData = extractMemoryByteArrayFromStackPointer( _vm );
+        if ( !logData )
+            break;
+        auto topics = make_shared< vector< u256 > >();
+        for ( uint64_t i = 0; i < logTopicsCount; i++ ) {
+            topics->push_back( _vm->getStackElement( 2 + i ) );
+        };
+        STATE_CHECK( currentlyExecutingFunctionCall )
+        currentlyExecutingFunctionCall->addLog(logData, topics);
+    }
     default:
         break;
     }
@@ -175,12 +187,13 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     m_lastGasRemaining = ( uint64_t ) _gasRemaining;
     m_lastInstructionGas = ( uint64_t ) _lastOpGas;
 }
-void AlethTraceBase::processFunctionCallOrReturnIfHappened( const bigint& _gasRemaining,
-    const AlethExtVM& _ext, const LegacyVM* _vm, unsigned int currentDepth ) {
+void AlethTraceBase::processFunctionCallOrReturnIfHappened(
+    const AlethExtVM& _ext, const LegacyVM* _vm) {
+    auto currentDepth = _ext.depth;
     if ( currentDepth == m_lastDepth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
-        functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
+        functionCalled( _ext.caller, _ext.myAddress, m_lastFunctionGasLimit, data, _ext.value );
     } else if ( currentDepth == m_lastDepth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
         functionReturned( status );
@@ -191,34 +204,35 @@ void AlethTraceBase::processFunctionCallOrReturnIfHappened( const bigint& _gasRe
 }
 
 
-void AlethTraceBase::extractReturnData( const LegacyVM* _vm ) {
+shared_ptr<vector<uint8_t>> AlethTraceBase::extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) {
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            m_lastReturnData = std::make_shared < std::vector< uint8_t >>( _vm->memory().begin() + b,
+            return make_shared < vector< uint8_t >>( _vm->memory().begin() + b,
                                                       _vm->memory().begin() + b + s );
         }
     }
+    return nullptr;
 }
 
 
 void AlethTraceBase::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-    const std::vector< uint8_t >& _inputData, const u256& _value ) {
-    auto nestedCall = std::make_shared< FunctionCall >( m_lastInstruction, _from, _to, _gasLimit,
-        lastFunctionCall, _inputData, _value, m_lastDepth + 1 );
+    const vector< uint8_t >& _inputData, const u256& _value ) {
+    auto nestedCall = make_shared< FunctionCall >( m_lastInstruction, _from, _to, _gasLimit,
+        currentlyExecutingFunctionCall, _inputData, _value, m_lastDepth + 1 );
 
     if ( m_lastDepth >= 0 ) {
         // not the fist call
-        STATE_CHECK( lastFunctionCall )
-        STATE_CHECK( lastFunctionCall->getDepth() == m_lastDepth )
-        lastFunctionCall->addNestedCall( nestedCall );
-        lastFunctionCall = nestedCall;
+        STATE_CHECK( currentlyExecutingFunctionCall )
+        STATE_CHECK( currentlyExecutingFunctionCall->getDepth() == m_lastDepth )
+        currentlyExecutingFunctionCall->addNestedCall( nestedCall );
+        currentlyExecutingFunctionCall = nestedCall;
     } else {
-        STATE_CHECK( !lastFunctionCall )
+        STATE_CHECK( !currentlyExecutingFunctionCall )
         topFunctionCall = nestedCall;
     }
-    lastFunctionCall = nestedCall;
+    currentlyExecutingFunctionCall = nestedCall;
 }
 
 
@@ -232,35 +246,36 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
         gasRemainingOnReturn = 0;
     }
 
-    lastFunctionCall->setGasUsed( lastFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
+    currentlyExecutingFunctionCall->setGasUsed(
+        currentlyExecutingFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        lastFunctionCall->setError( evmErrorDescription( _status ) );
+        currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
     }
 
     if ( m_lastHasReverted ) {
-        lastFunctionCall->setRevertReason(
-            std::string( m_lastReturnData->begin(), m_lastReturnData->end() ) );
+        currentlyExecutingFunctionCall->setRevertReason(
+            string( m_lastReturnData->begin(), m_lastReturnData->end() ) );
     } else {
-        lastFunctionCall->setOutputData( m_lastReturnData );
+        currentlyExecutingFunctionCall->setOutputData( m_lastReturnData );
     }
 
     resetLastReturnVariables();
 
 
-    if ( lastFunctionCall == topFunctionCall ) {
+    if ( currentlyExecutingFunctionCall == topFunctionCall ) {
         // the top function returned
         return;
     } else {
-        // move lastFunctionCall to the parent function
-        auto parentCall = lastFunctionCall->getParentCall().lock();
+        // move currentlyExecutingFunctionCall to the parent function
+        auto parentCall = currentlyExecutingFunctionCall->getParentCall().lock();
         STATE_CHECK( parentCall )
-        lastFunctionCall = parentCall;
+        currentlyExecutingFunctionCall = parentCall;
     }
 }
 
 
-std::string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
+string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
     switch ( _error ) {
     case EVMC_SUCCESS:
         return "EVM_SUCCESS";
@@ -305,6 +320,7 @@ void AlethTraceBase::resetLastReturnVariables() {  // reset variables.
     m_lastInstruction = Instruction::STOP;
     m_lastGasRemaining = 0;
     m_lastInstructionGas = 0;
+    m_lastFunctionGasLimit = 0;
     m_lastReturnData = nullptr;
     m_lastHasReverted = false;
     m_lastHasError = false;

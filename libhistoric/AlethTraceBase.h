@@ -69,9 +69,8 @@ protected:
     };
 
 
-
     std::shared_ptr< FunctionCall > topFunctionCall;
-    std::shared_ptr< FunctionCall > lastFunctionCall;
+    std::shared_ptr< FunctionCall > currentlyExecutingFunctionCall;
 
 
     AlethTraceBase( Transaction& _t, Json::Value const& _options ) ;
@@ -93,7 +92,7 @@ protected:
 
     void resetLastReturnVariables() ;
 
-    void extractReturnData( const LegacyVM* _vm ) ;
+    std::shared_ptr<std::vector<uint8_t>> extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) ;
 
     std::string evmErrorDescription( evmc_status_code _error );
 
@@ -128,9 +127,10 @@ protected:
     bool m_lastHasReverted = false;
     bool m_lastHasError = false;
     std::string m_lastError;
+    uint64_t m_lastFunctionGasLimit = 0;
     void resetVarsOnFunctionReturn();
-    void processFunctionCallOrReturnIfHappened( const bigint& _gasRemaining, const AlethExtVM& _ext,
-        const LegacyVM* _vm, unsigned int currentDepth );
+    void processFunctionCallOrReturnIfHappened(
+        const AlethExtVM& _ext, const LegacyVM* _vm);
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);

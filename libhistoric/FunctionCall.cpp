@@ -120,5 +120,10 @@ bool FunctionCall::hasError() const {
 }
 
 
+void FunctionCall::addLog(const std::shared_ptr<std::vector<uint8_t>>& _data,
+    const std::shared_ptr<std::vector<u256>>& _topics) {
+    logRecords.emplace_back(_data, _topics);
+}
+
 }  // namespace eth
 }  // namespace dev

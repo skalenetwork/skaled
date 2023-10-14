@@ -26,13 +26,22 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include <skutils/eth_utils.h>
 
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 
 
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
+class LogRecord {
+public:
+    LogRecord( const std::shared_ptr< std::vector< uint8_t > >& data,
+        const std::shared_ptr< std::vector< u256 > >& topics )
+        : data( data ), topics( topics ) {}
+
+private:
+    std::shared_ptr< std::vector< uint8_t > > data;
+    std::shared_ptr< std::vector< u256 > > topics;
+};
 
 class FunctionCall {
 public:
@@ -41,11 +50,11 @@ public:
         const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
     int64_t getDepth() const;
     void setGasUsed( uint64_t _gasUsed );
-    void setOutputData( const std::shared_ptr<std::vector< uint8_t >>& _outputData );
+    void setOutputData( const std::shared_ptr< std::vector< uint8_t > >& _outputData );
     void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall );
     void setError( const std::string& _error );
     void setRevertReason( const std::string& _revertReason );
-    [[nodiscard]] const std::weak_ptr< FunctionCall >& getParentCall() const;
+    const std::weak_ptr< FunctionCall >& getParentCall() const;
 
     bool hasReverted() const;
     bool hasError() const;
@@ -56,6 +65,9 @@ public:
     void printTrace( Json::Value& _jsonTrace, int64_t _depth );
     void printFunctionExecutionDetail( Json::Value& _jsonTrace );
 
+    void addLog( const std::shared_ptr< std::vector< uint8_t > >& _data,
+        const std::shared_ptr< std::vector< u256 > >& _topics );
+
 private:
     Instruction type;
     Address from;
@@ -65,15 +77,15 @@ private:
     std::vector< std::shared_ptr< FunctionCall > > nestedCalls;
     std::weak_ptr< FunctionCall > parentCall;
     std::vector< uint8_t > inputData;
-    std::shared_ptr<std::vector< uint8_t >> outputData;
+    std::shared_ptr< std::vector< uint8_t > > outputData;
     bool reverted = false;
     bool completedWithError = false;
     std::string error;
     std::string revertReason;
     u256 value;
     int64_t depth = 0;
+    std::vector< LogRecord > logRecords;
 };
 
 
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth
