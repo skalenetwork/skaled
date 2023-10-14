@@ -135,33 +135,27 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     case Instruction::DELEGATECALL:
     case Instruction::STATICCALL:
         if (_vm->stackSize() > 1) {
-            m_lastFunctionGasLimit = (uint64_t ) _vm->getStackElement(0);
             auto address = asAddress( _vm->getStackElement( 1 ) );
             m_accessedAccounts.insert( address );
         }
         break;
     // NOW HANDLE FUNCTION RETURN INSTRUCTIONS: STOP INVALID REVERT AND SUICIDE
     case Instruction::STOP:
-        resetVarsOnFunctionReturn();
         break;
     case Instruction::INVALID:
-        resetVarsOnFunctionReturn();
         hasError = true;
         errorStr = "EVM_INVALID_OPCODE";
         break;
     case Instruction::RETURN:
-        resetVarsOnFunctionReturn();
         returnData = extractMemoryByteArrayFromStackPointer( _vm );
         break;
     case Instruction::REVERT:
-        resetVarsOnFunctionReturn();
         hasReverted = true;
         hasError = true;
         errorStr = "EVM_REVERT";
         extractMemoryByteArrayFromStackPointer( _vm );
         break;
     case Instruction::SUICIDE:
-        resetVarsOnFunctionReturn();
         if ( _vm->stackSize() > 0 ) {
             m_accessedAccounts.insert( asAddress( _vm->getStackElement( 0 ) ) );
         }
@@ -271,7 +265,7 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
         currentlyExecutingFunctionCall->setOutputData( m_lastReturnData );
     }
 
-    resetLastReturnVariables();
+    resetLastOpVariables();
 
 
     if ( currentlyExecutingFunctionCall == topFunctionCall ) {
@@ -327,23 +321,17 @@ string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
     };
 }
 
-void AlethTraceBase::resetLastReturnVariables() {  // reset variables.
+void AlethTraceBase::resetLastOpVariables() {  // reset variables.
     m_lastInstruction = Instruction::STOP;
     m_lastGasRemaining = 0;
     m_lastInstructionGas = 0;
-    m_lastFunctionGasLimit = 0;
     m_lastReturnData = nullptr;
     m_lastHasReverted = false;
     m_lastHasError = false;
 }
 
 
-void AlethTraceBase::resetVarsOnFunctionReturn() {
-    m_lastHasReverted = false;
-    m_lastHasError = false;
-    m_lastError = "";
-    m_lastReturnData = nullptr;
-}
+
 
 Json::Value eth::AlethTraceBase::getJSONResult() const {
     return m_jsonTrace;

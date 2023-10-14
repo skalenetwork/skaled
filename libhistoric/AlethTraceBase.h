@@ -90,7 +90,7 @@ protected:
 
     AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json ) ;
 
-    void resetLastReturnVariables() ;
+    void resetLastOpVariables() ;
 
     std::shared_ptr<std::vector<uint8_t>> extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) ;
 
@@ -127,8 +127,6 @@ protected:
     bool m_lastHasReverted = false;
     bool m_lastHasError = false;
     std::string m_lastError;
-    uint64_t m_lastFunctionGasLimit = 0;
-    void resetVarsOnFunctionReturn();
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining);
 };
