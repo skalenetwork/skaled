@@ -22,69 +22,67 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "FunctionCall.h"
 #include "AlethStandardTrace.h"
 
-using namespace std;
-
 namespace dev::eth {
 
 
 
 void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
-    FunctionCall::gasUsed = _gasUsed;
+    m_gasUsed = _gasUsed;
 }
 uint64_t FunctionCall::getFunctionGasLimit() const {
-    return functionGasLimit;
+    return m_functionGasLimit;
 }
 void FunctionCall::setOutputData( const shared_ptr<vector< uint8_t >>& _outputData ) {
-    FunctionCall::outputData = _outputData;
+    m_outputData = _outputData;
 }
 
 void FunctionCall::addNestedCall( shared_ptr< FunctionCall >& _nestedCall ) {
     STATE_CHECK( _nestedCall );
-    this->nestedCalls.push_back( _nestedCall );
+    m_nestedCalls.push_back( _nestedCall );
 }
 void FunctionCall::setError( const string& _error ) {
-    completedWithError = true;
-    error = _error;
+    m_completedWithError = true;
+    m_error = _error;
 }
 void FunctionCall::setRevertReason( const string& _revertReason ) {
-    reverted = true;
-    revertReason = _revertReason;
+    m_reverted = true;
+    m_revertReason = _revertReason;
 }
 const weak_ptr< FunctionCall >& FunctionCall::getParentCall() const {
-    return parentCall;
+    return m_parentCall;
 }
 int64_t FunctionCall::getDepth() const {
-    return depth;
+    return m_depth;
 }
 
 void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
-    _jsonTrace["type"] = instructionInfo( type ).name;
-    _jsonTrace["from"] = toHex( from );
-    if ( type != Instruction::CREATE && type != Instruction::CREATE2 ) {
-        _jsonTrace["to"] = toHex( to );
+    _jsonTrace["type"] = instructionInfo( m_type ).name;
+    _jsonTrace["from"] = toHex( m_from );
+    if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
+        _jsonTrace["to"] = toHex( m_to );
     }
-    _jsonTrace["gas"] = toCompactHexPrefixed( functionGasLimit );
-    _jsonTrace["gasUsed"] = toCompactHexPrefixed( gasUsed );
-    if ( !error.empty() ) {
-        _jsonTrace["error"] = error;
+    _jsonTrace["gas"] = toCompactHexPrefixed( m_functionGasLimit );
+    _jsonTrace["gasUsed"] = toCompactHexPrefixed( m_gasUsed );
+    if ( !m_error.empty() ) {
+        _jsonTrace["error"] = m_error;
     }
-    if ( !revertReason.empty() ) {
-        _jsonTrace["revertReason"] = revertReason;
+    if ( !m_revertReason.empty() ) {
+        _jsonTrace["revertReason"] = m_revertReason;
     }
 
-    _jsonTrace["value"] = toCompactHexPrefixed( value );
+    _jsonTrace["value"] = toCompactHexPrefixed( m_value );
 }
 
 
 void FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
     // prevent Denial of service
     STATE_CHECK( _depth < MAX_TRACE_DEPTH )
-    STATE_CHECK( _depth == this->depth )
+    STATE_CHECK( _depth == this->m_depth )
     printFunctionExecutionDetail( _jsonTrace );
-    if ( !nestedCalls.empty() ) {
+    if ( !m_nestedCalls.empty() ) {
         _jsonTrace["calls"] = Json::arrayValue;
         uint32_t i = 0;
-        for ( auto&& nestedCall : nestedCalls ) {
+        for ( auto&& nestedCall : m_nestedCalls ) {
             _jsonTrace["calls"].append( Json::objectValue );
             nestedCall->printTrace( _jsonTrace["nestedCalls"][i], _depth + 1 );
             i++;
@@ -96,44 +94,44 @@ void FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
 FunctionCall::FunctionCall( Instruction _type, const Address& _from, const Address& _to,
     uint64_t _functionGasLimit, const weak_ptr< FunctionCall >& _parentCall,
     const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
-    : type( _type ),
-      from( _from ),
-      to( _to ),
-      functionGasLimit( _functionGasLimit ),
-      parentCall( _parentCall ),
-      inputData( _inputData ),
-      value( _value ),
-      depth( _depth ) {
-    STATE_CHECK( depth >= 0 )
+    : m_type( _type ),
+      m_from( _from ),
+      m_to( _to ),
+      m_functionGasLimit( _functionGasLimit ),
+      m_parentCall( _parentCall ),
+      m_inputData( _inputData ),
+      m_value( _value ),
+      m_depth( _depth ) {
+    STATE_CHECK( m_depth >= 0 )
 }
 const Address& FunctionCall::getFrom() const {
-    return from;
+    return m_from;
 }
 const Address& FunctionCall::getTo() const {
-    return to;
+    return m_to;
 }
 
 bool FunctionCall::hasReverted() const {
-    return reverted;
+    return m_reverted;
 }
 bool FunctionCall::hasError() const {
-    return completedWithError;
+    return m_completedWithError;
 }
 
 
 void FunctionCall::addLogEntry(const shared_ptr<vector<uint8_t>>& _data,
     const shared_ptr<vector<u256>>& _topics) {
-    logRecords.emplace_back(_data, _topics);
+    m_logRecords.emplace_back(_data, _topics);
 }
 
 OpExecutionRecord::OpExecutionRecord( bool _hasReverted,
     shared_ptr< vector< uint8_t > > _returnData, int64_t _depth,
     Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
-    : hasReverted( _hasReverted ),
-      returnData( _returnData ),
-      depth( _depth ),
-      op( _op ),
-      gasRemaining( _gasRemaining ),
-      opGas( _opGas ) {}
+    : m_hasReverted( _hasReverted ),
+      m_returnData( _returnData ),
+      m_depth( _depth ),
+      m_op( _op ),
+      m_gasRemaining( _gasRemaining ),
+      m_opGas( _opGas ) {}
 }  // namespace eth
   // namespace dev
