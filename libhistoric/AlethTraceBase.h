@@ -26,24 +26,26 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include <jsonrpccpp/common/exception.h>
 #include <skutils/eth_utils.h>
 
-// therefore we limit the  memory and storage entries returned to 1024 to avoid
+//  we limit the  memory and storage entries returned to avoid
 // denial of service attack.
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
-#define MAX_MEMORY_VALUES_RETURNED 1024
-#define MAX_STORAGE_VALUES_RETURNED 1024
-#define MAX_TRACE_DEPTH 256
+constexpr uint64_t MAX_MEMORY_VALUES_RETURNED = 1024;
+constexpr uint64_t MAX_STORAGE_VALUES_RETURNED = 1024;
+constexpr uint64_t MAX_TRACE_DEPTH = 256;
 
 
-#define STATE_CHECK( _EXPRESSION_ )                                                  \
-    if ( !( _EXPRESSION_ ) ) {                                                       \
-        auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " + \
-                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );   \
-        throw std::runtime_error( __msg__ );                                         \
+#define STATE_CHECK( _EXPRESSION_ )                                             \
+    if ( !( _EXPRESSION_ ) ) {                                                  \
+        auto __msg__ = string( "State check failed::" ) + #_EXPRESSION_ + " " + \
+                       string( __FILE__ ) + ":" + to_string( __LINE__ );        \
+        throw VMTracingError( __msg__ );                                         \
     }
 
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
+
+using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, std::map,
+    std::vector;
 
 class FunctionCall;
 
@@ -53,7 +55,7 @@ class FunctionCall;
 
 class AlethTraceBase {
 public:
-    Json::Value getJSONResult() const;
+    [[nodiscard]] Json::Value getJSONResult() const;
 
 protected:
     enum class TraceType { STANDARD_TRACER, PRESTATE_TRACER, CALL_TRACER };
@@ -68,8 +70,8 @@ protected:
     };
 
 
-    std::shared_ptr< FunctionCall > topFunctionCall;
-    std::shared_ptr< FunctionCall > currentlyExecutingFunctionCall;
+    shared_ptr< FunctionCall > topFunctionCall;
+    shared_ptr< FunctionCall > currentlyExecutingFunctionCall;
 
 
     AlethTraceBase( Transaction& _t, Json::Value const& _options );
@@ -78,7 +80,7 @@ protected:
     [[nodiscard]] const DebugOptions& getOptions() const;
 
     void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-        const std::vector< uint8_t >& _inputData, const u256& _value );
+        const vector< uint8_t >& _inputData, const u256& _value );
 
     void functionReturned( evmc_status_code _status );
 
@@ -89,28 +91,28 @@ protected:
     AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json );
 
 
-    [[nodiscard]] std::shared_ptr< std::vector< uint8_t > > extractMemoryByteArrayFromStackPointer(
+    [[nodiscard]] shared_ptr< vector< uint8_t > > extractMemoryByteArrayFromStackPointer(
         const LegacyVM* _vm );
 
-    std::string evmErrorDescription( evmc_status_code _error );
+    [[nodiscard]] string evmErrorDescription( evmc_status_code _error );
 
 
-    std::vector< Instruction > m_lastInst;
-    std::shared_ptr< Json::Value > m_defaultOpTrace;
+    vector< Instruction > m_lastInst;
+    shared_ptr< Json::Value > m_defaultOpTrace;
     Json::FastWriter m_fastWriter;
     Address m_from;
     Address m_to;
     DebugOptions m_options;
     Json::Value m_jsonTrace;
 
-    static const std::map< std::string, AlethTraceBase::TraceType > s_stringToTracerMap;
+    static const map< string, AlethTraceBase::TraceType > s_stringToTracerMap;
 
 
     // set of all storage values accessed during execution
-    std::set< Address > m_accessedAccounts;
+    set< Address > m_accessedAccounts;
     // map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
-    std::map< Address, std::map< u256, u256 > > m_accessedStorageValues;
+    map< Address, map< u256, u256 > > m_accessedStorageValues;
 
     bool m_isCreate = false;
 
@@ -122,5 +124,4 @@ protected:
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining );
 };
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth

@@ -21,10 +21,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "AlethTraceBase.h"
 #include "FunctionCall.h"
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 
-using namespace std;
 
 const eth::AlethTraceBase::DebugOptions& eth::AlethTraceBase::getOptions() const {
     return m_options;
@@ -174,22 +172,22 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     }
 
 
-    m_lastOp = OpExecutionRecord( hasReverted, returnData, _ext.depth, _inst,
-        _gasRemaining, _lastOpGas );
+    m_lastOp =
+        OpExecutionRecord( hasReverted, returnData, _ext.depth, _inst, _gasRemaining, _lastOpGas );
 }
 void AlethTraceBase::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
     auto currentDepth = _ext.depth;
-    if ( currentDepth == m_lastOp.depth + 1 ) {
+    if ( currentDepth == m_lastOp.m_depth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
         functionCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
-    } else if ( currentDepth == m_lastOp.depth - 1 ) {
+    } else if ( currentDepth == m_lastOp.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
         functionReturned( status );
     } else {
         // we should not have skipped frames
-        STATE_CHECK( currentDepth == m_lastOp.depth )
+        STATE_CHECK( currentDepth == m_lastOp.m_depth )
     }
 }
 
@@ -210,13 +208,13 @@ shared_ptr< vector< uint8_t > > AlethTraceBase::extractMemoryByteArrayFromStackP
 
 void AlethTraceBase::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
     const vector< uint8_t >& _inputData, const u256& _value ) {
-    auto nestedCall = make_shared< FunctionCall >( m_lastOp.op, _from, _to, _gasLimit,
-        currentlyExecutingFunctionCall, _inputData, _value, m_lastOp.depth + 1 );
+    auto nestedCall = make_shared< FunctionCall >( m_lastOp.m_op, _from, _to, _gasLimit,
+        currentlyExecutingFunctionCall, _inputData, _value, m_lastOp.m_depth + 1 );
 
-    if ( m_lastOp.depth >= 0 ) {
+    if ( m_lastOp.m_depth >= 0 ) {
         // not the fist call
         STATE_CHECK( currentlyExecutingFunctionCall )
-        STATE_CHECK( currentlyExecutingFunctionCall->getDepth() == m_lastOp.depth )
+        STATE_CHECK( currentlyExecutingFunctionCall->getDepth() == m_lastOp.m_depth )
         currentlyExecutingFunctionCall->addNestedCall( nestedCall );
         currentlyExecutingFunctionCall = nestedCall;
     } else {
@@ -228,11 +226,11 @@ void AlethTraceBase::functionCalled( const Address& _from, const Address& _to, u
 
 
 void AlethTraceBase::functionReturned( evmc_status_code _status ) {
-    STATE_CHECK( m_lastOp.gasRemaining >= m_lastOp.opGas )
+    STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
 
-    uint64_t gasRemainingOnReturn = m_lastOp.gasRemaining - m_lastOp.opGas;
+    uint64_t gasRemainingOnReturn = m_lastOp.m_gasRemaining - m_lastOp.m_opGas;
 
-    if ( m_lastOp.op == Instruction::INVALID ) {
+    if ( m_lastOp.m_op == Instruction::INVALID ) {
         // invalid instruction consumers all gas
         gasRemainingOnReturn = 0;
     }
@@ -244,15 +242,19 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
         currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
     }
 
-    if ( m_lastOp.hasReverted ) {
+    if ( m_lastOp.m_hasReverted ) {
         currentlyExecutingFunctionCall->setRevertReason(
-            string( m_lastOp.returnData->begin(), m_lastOp.returnData->end() ) );
+            string( m_lastOp.m_returnData->begin(), m_lastOp.m_returnData->end() ) );
     } else {
-        currentlyExecutingFunctionCall->setOutputData( m_lastOp.returnData );
+        currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
+    }
+
+    if ( m_lastOp.m_returnData ) {
+        currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
     }
 
 
-    //m_lastOp = OpExecutionRecord( false, nullptr, m_lastOp.depth, Instruction::STOP, 0, 0 );
+    // m_lastOp = OpExecutionRecord( false, nullptr, m_lastOp.depth, Instruction::STOP, 0, 0 );
 
     if ( currentlyExecutingFunctionCall == topFunctionCall ) {
         // the top function returned
@@ -311,7 +313,4 @@ string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
 Json::Value eth::AlethTraceBase::getJSONResult() const {
     return m_jsonTrace;
 }
-
-
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth

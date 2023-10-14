@@ -3,6 +3,9 @@ pragma solidity ^0.8.9;
 
 
 contract Lock {
+
+    event LogMint(address indexed minter, uint256 amount, string topic);
+
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
@@ -53,7 +56,10 @@ contract Lock {
         return true;
     }
 
+
+
     function mint(uint amount) public returns (uint256) {
+        emit LogMint(msg.sender, amount, "amount");
         balanceOf[msg.sender] += amount;
         totalSupply += amount;
         emit Transfer(address(0), msg.sender, amount);
@@ -67,7 +73,7 @@ contract Lock {
     }
 
 
-    constructor() public {
+    constructor()  {
         require(!initialized, "Contract instance has already been initialized");
         initialized = true;
 
