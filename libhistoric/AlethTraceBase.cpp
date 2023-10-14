@@ -105,9 +105,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 
     auto hasReverted = false;
     shared_ptr< vector< uint8_t > > returnData = nullptr;
-
-
-    auto currentDepth = _ext.depth;
+    
 
     m_accessedAccounts.insert( _ext.myAddress );
 
@@ -254,7 +252,7 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
     }
 
 
-    m_lastOp = OpExecutionRecord( false, nullptr, m_lastOp.depth, Instruction::STOP, 0, 0 );
+    //m_lastOp = OpExecutionRecord( false, nullptr, m_lastOp.depth, Instruction::STOP, 0, 0 );
 
     if ( currentlyExecutingFunctionCall == topFunctionCall ) {
         // the top function returned

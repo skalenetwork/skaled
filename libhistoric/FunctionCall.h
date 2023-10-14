@@ -39,8 +39,8 @@ public:
         : data( data ), topics( topics ) {}
 
 private:
-    std::shared_ptr< std::vector< uint8_t > > data;
-    std::shared_ptr< std::vector< u256 > > topics;
+    const std::shared_ptr< std::vector< uint8_t > > data;
+    const std::shared_ptr< std::vector< u256 > > topics;
 };
 
 class OpExecutionRecord {
