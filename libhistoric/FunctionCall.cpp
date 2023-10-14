@@ -22,9 +22,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "FunctionCall.h"
 #include "AlethStandardTrace.h"
 
+using namespace std;
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
+
 
 
 void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
@@ -33,23 +34,23 @@ void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
 uint64_t FunctionCall::getFunctionGasLimit() const {
     return functionGasLimit;
 }
-void FunctionCall::setOutputData( const std::shared_ptr<std::vector< uint8_t >>& _outputData ) {
+void FunctionCall::setOutputData( const shared_ptr<vector< uint8_t >>& _outputData ) {
     FunctionCall::outputData = _outputData;
 }
 
-void FunctionCall::addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall ) {
+void FunctionCall::addNestedCall( shared_ptr< FunctionCall >& _nestedCall ) {
     STATE_CHECK( _nestedCall );
     this->nestedCalls.push_back( _nestedCall );
 }
-void FunctionCall::setError( const std::string& _error ) {
+void FunctionCall::setError( const string& _error ) {
     completedWithError = true;
     error = _error;
 }
-void FunctionCall::setRevertReason( const std::string& _revertReason ) {
+void FunctionCall::setRevertReason( const string& _revertReason ) {
     reverted = true;
     revertReason = _revertReason;
 }
-const std::weak_ptr< FunctionCall >& FunctionCall::getParentCall() const {
+const weak_ptr< FunctionCall >& FunctionCall::getParentCall() const {
     return parentCall;
 }
 int64_t FunctionCall::getDepth() const {
@@ -93,8 +94,8 @@ void FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
 
 
 FunctionCall::FunctionCall( Instruction _type, const Address& _from, const Address& _to,
-    uint64_t _functionGasLimit, const std::weak_ptr< FunctionCall >& _parentCall,
-    const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
+    uint64_t _functionGasLimit, const weak_ptr< FunctionCall >& _parentCall,
+    const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
     : type( _type ),
       from( _from ),
       to( _to ),
@@ -120,10 +121,22 @@ bool FunctionCall::hasError() const {
 }
 
 
-void FunctionCall::addLog(const std::shared_ptr<std::vector<uint8_t>>& _data,
-    const std::shared_ptr<std::vector<u256>>& _topics) {
+void FunctionCall::addLog(const shared_ptr<vector<uint8_t>>& _data,
+    const shared_ptr<vector<u256>>& _topics) {
     logRecords.emplace_back(_data, _topics);
 }
 
+OpExecutionRecord::OpExecutionRecord( bool _hasReverted, bool _hasError,
+    string _errorStr,
+    shared_ptr< vector< uint8_t > > _returnData, int64_t _depth,
+    Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
+    : hasReverted( _hasReverted ),
+      hasError( _hasError ),
+      errorStr( _errorStr ),
+      returnData( _returnData ),
+      depth( _depth ),
+      op( _op ),
+      gasRemaining( _gasRemaining ),
+      opGas( _opGas ) {}
 }  // namespace eth
-}  // namespace dev
+  // namespace dev

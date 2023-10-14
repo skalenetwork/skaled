@@ -187,10 +187,13 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     m_lastHasError = hasError;
     m_lastError = errorStr;
     m_lastReturnData = returnData;
-    m_lastDepth = currentDepth;
     m_lastInstruction = _inst;
     m_lastGasRemaining = ( uint64_t ) _gasRemaining;
     m_lastInstructionGas = ( uint64_t ) _lastOpGas;
+
+
+    m_lastDepth = currentDepth;
+
 }
 void AlethTraceBase::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining) {
