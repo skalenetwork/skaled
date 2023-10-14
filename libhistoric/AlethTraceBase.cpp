@@ -76,7 +76,7 @@ const map< string, AlethTraceBase::TraceType > AlethTraceBase::s_stringToTracerM
 AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     : m_from{ _t.from() },
       m_to( _t.to() ),
-      m_lastOp( false, nullptr,
+      m_lastOp( false, vector< uint8_t >(),
           // the top function is executed at depth 0
           // therefore it is called from depth -1
           -1,
@@ -102,15 +102,17 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     processFunctionCallOrReturnIfHappened( _ext, _vm, ( uint64_t ) _gasRemaining );
 
     auto hasReverted = false;
-    shared_ptr< vector< uint8_t > > returnData = nullptr;
+
+    vector< uint8_t > returnData;
 
 
     m_accessedAccounts.insert( _ext.myAddress );
 
     uint64_t logTopicsCount = 0;
 
-    // record storage accesses
+
     switch ( _inst ) {
+        // record storage accesses
     case Instruction::SLOAD:
         if ( _vm->stackSize() > 0 ) {
             m_accessedStorageValues[_ext.myAddress][_vm->getStackElement( 0 )] =
@@ -133,7 +135,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
             m_accessedAccounts.insert( address );
         }
         break;
-    // NOW HANDLE FUNCTION RETURN INSTRUCTIONS: STOP INVALID REVERT AND SUICIDE
+    // NOW HANDLE FUNCTION RETURN INSTRUCTIONS
     case Instruction::STOP:
         break;
     case Instruction::RETURN:
@@ -148,6 +150,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
             m_accessedAccounts.insert( asAddress( _vm->getStackElement( 0 ) ) );
         }
         break;
+        // NOW HANDLE LOGS
     case Instruction::LOG0:
     case Instruction::LOG1:
     case Instruction::LOG2:
@@ -158,14 +161,12 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         if ( _vm->stackSize() < 2 + logTopicsCount )
             break;
         auto logData = extractMemoryByteArrayFromStackPointer( _vm );
-        if ( !logData )
-            break;
-        auto topics = make_shared< vector< u256 > >();
+        vector< u256 > topics;
         for ( uint64_t i = 0; i < logTopicsCount; i++ ) {
-            topics->push_back( _vm->getStackElement( 2 + i ) );
+            topics.push_back( _vm->getStackElement( 2 + i ) );
         };
-        STATE_CHECK( currentlyExecutingFunctionCall )
-        currentlyExecutingFunctionCall->addLogEntry( logData, topics );
+        STATE_CHECK( m_currentlyExecutingFunctionCall )
+        m_currentlyExecutingFunctionCall->addLogEntry( logData, topics );
     }
     default:
         break;
@@ -177,6 +178,8 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 }
 void AlethTraceBase::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
+    STATE_CHECK( _vm )
+
     auto currentDepth = _ext.depth;
     if ( currentDepth == m_lastOp.m_depth + 1 ) {
         // we are beginning to execute a new function
@@ -192,36 +195,36 @@ void AlethTraceBase::processFunctionCallOrReturnIfHappened(
 }
 
 
-shared_ptr< vector< uint8_t > > AlethTraceBase::extractMemoryByteArrayFromStackPointer(
-    const LegacyVM* _vm ) {
+vector< uint8_t > AlethTraceBase::extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) {
+    STATE_CHECK( _vm )
+
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            return make_shared< vector< uint8_t > >(
-                _vm->memory().begin() + b, _vm->memory().begin() + b + s );
+            return vector< uint8_t >( _vm->memory().begin() + b, _vm->memory().begin() + b + s );
         }
     }
-    return nullptr;
+    return vector< uint8_t >();
 }
 
 
 void AlethTraceBase::functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
     const vector< uint8_t >& _inputData, const u256& _value ) {
     auto nestedCall = make_shared< FunctionCall >( m_lastOp.m_op, _from, _to, _gasLimit,
-        currentlyExecutingFunctionCall, _inputData, _value, m_lastOp.m_depth + 1 );
+        m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOp.m_depth + 1 );
 
     if ( m_lastOp.m_depth >= 0 ) {
         // not the fist call
-        STATE_CHECK( currentlyExecutingFunctionCall )
-        STATE_CHECK( currentlyExecutingFunctionCall->getDepth() == m_lastOp.m_depth )
-        currentlyExecutingFunctionCall->addNestedCall( nestedCall );
-        currentlyExecutingFunctionCall = nestedCall;
+        STATE_CHECK( m_currentlyExecutingFunctionCall )
+        STATE_CHECK( m_currentlyExecutingFunctionCall->getDepth() == m_lastOp.m_depth )
+        m_currentlyExecutingFunctionCall->addNestedCall( nestedCall );
+        m_currentlyExecutingFunctionCall = nestedCall;
     } else {
-        STATE_CHECK( !currentlyExecutingFunctionCall )
-        topFunctionCall = nestedCall;
+        STATE_CHECK( !m_currentlyExecutingFunctionCall )
+        m_topFunctionCall = nestedCall;
     }
-    currentlyExecutingFunctionCall = nestedCall;
+    m_currentlyExecutingFunctionCall = nestedCall;
 }
 
 
@@ -235,35 +238,35 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
         gasRemainingOnReturn = 0;
     }
 
-    currentlyExecutingFunctionCall->setGasUsed(
-        currentlyExecutingFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
+    m_currentlyExecutingFunctionCall->setGasUsed(
+        m_currentlyExecutingFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
+        m_currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
     }
 
     if ( m_lastOp.m_hasReverted ) {
-        currentlyExecutingFunctionCall->setRevertReason(
-            string( m_lastOp.m_returnData->begin(), m_lastOp.m_returnData->end() ) );
+        m_currentlyExecutingFunctionCall->setRevertReason(
+            string( m_lastOp.m_returnData.begin(), m_lastOp.m_returnData.end() ) );
     } else {
-        currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
+        m_currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
     }
 
-    if ( m_lastOp.m_returnData ) {
-        currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
+    if ( !m_lastOp.m_returnData.empty() ) {
+        m_currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
     }
 
 
     // m_lastOp = OpExecutionRecord( false, nullptr, m_lastOp.depth, Instruction::STOP, 0, 0 );
 
-    if ( currentlyExecutingFunctionCall == topFunctionCall ) {
+    if ( m_currentlyExecutingFunctionCall == m_topFunctionCall ) {
         // the top function returned
         return;
     } else {
-        // move currentlyExecutingFunctionCall to the parent function
-        auto parentCall = currentlyExecutingFunctionCall->getParentCall().lock();
+        // move m_currentlyExecutingFunctionCall to the parent function
+        auto parentCall = m_currentlyExecutingFunctionCall->getParentCall().lock();
         STATE_CHECK( parentCall )
-        currentlyExecutingFunctionCall = parentCall;
+        m_currentlyExecutingFunctionCall = parentCall;
     }
 }
 

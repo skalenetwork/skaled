@@ -26,7 +26,6 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include <skutils/eth_utils.h>
 
 
-
 namespace dev::eth {
 
 using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, std::map,
@@ -38,29 +37,27 @@ using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, 
 
 class LogRecord {
 public:
-    LogRecord( const shared_ptr< vector< uint8_t > >& data,
-        const shared_ptr< vector< u256 > >& topics )
-        : data( data ), topics( topics ) {}
+    LogRecord( const vector< uint8_t >& _data, const vector< u256 >& _topics )
+        : m_data( _data ), m_topics( _topics ) {}
 
 private:
-    const shared_ptr< vector< uint8_t > > data;
-    const shared_ptr< vector< u256 > > topics;
+    const vector< uint8_t >  m_data;
+    const vector< u256 >  m_topics;
 };
 
 class OpExecutionRecord {
 public:
-
     // this is top level record to enter the transaction
     // the first function is executed at depth 0, as it was called form depth -1
-    explicit OpExecutionRecord( Instruction _op) : OpExecutionRecord(false,
-              nullptr, -1, _op, 0, 0) {};
+    explicit OpExecutionRecord( Instruction _op )
+        : OpExecutionRecord( false, vector< uint8_t >(), -1, _op, 0, 0 ){};
 
-    OpExecutionRecord( bool _hasReverted,
-        shared_ptr< vector<uint8_t> > _returnData, int64_t _depth, Instruction _op,
-        uint64_t _gasRemaining, uint64_t _opGas );
+    OpExecutionRecord( bool _hasReverted, vector< uint8_t > _returnData, int64_t _depth,
+        Instruction _op, uint64_t _gasRemaining, uint64_t _opGas );
 
     bool m_hasReverted;
-    shared_ptr< vector<uint8_t >> m_returnData;
+
+    vector< uint8_t > m_returnData;
     int64_t m_depth;
     Instruction m_op;
     uint64_t m_gasRemaining;
@@ -75,23 +72,22 @@ public:
         const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
     [[nodiscard]] int64_t getDepth() const;
     void setGasUsed( uint64_t _gasUsed );
-    void setOutputData( const shared_ptr< vector< uint8_t > >& _outputData );
+    void setOutputData( vector< uint8_t >& _outputData );
     void addNestedCall( shared_ptr< FunctionCall >& _nestedCall );
     void setError( const string& _error );
     void setRevertReason( const string& _revertReason );
-    [[nodiscard]]  const weak_ptr< FunctionCall >& getParentCall() const;
+    [[nodiscard]] const weak_ptr< FunctionCall >& getParentCall() const;
 
     [[nodiscard]] bool hasReverted() const;
     [[nodiscard]] bool hasError() const;
-    [[nodiscard]] const Address&  getFrom() const;
+    [[nodiscard]] const Address& getFrom() const;
     [[nodiscard]] const Address& getTo() const;
     [[nodiscard]] uint64_t getFunctionGasLimit() const;
 
     void printTrace( Json::Value& _jsonTrace, int64_t _depth );
     void printFunctionExecutionDetail( Json::Value& _jsonTrace );
 
-    void addLogEntry( const shared_ptr< vector< uint8_t > >& _data,
-        const shared_ptr< vector< u256 > >& _topics );
+    void addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics );
 
 private:
     Instruction m_type;
@@ -102,7 +98,7 @@ private:
     vector< shared_ptr< FunctionCall > > m_nestedCalls;
     weak_ptr< FunctionCall > m_parentCall;
     vector< uint8_t > m_inputData;
-    shared_ptr< vector< uint8_t > > m_outputData;
+    vector< uint8_t > m_outputData;
     bool m_reverted = false;
     bool m_completedWithError = false;
     string m_error;

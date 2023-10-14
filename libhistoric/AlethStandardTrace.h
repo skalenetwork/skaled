@@ -56,7 +56,7 @@ public:
         ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
 
 private:
-    std::shared_ptr< Json::Value > m_defaultOpTrace;
+    std::shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
 
     uint64_t storageValuesReturnedPre = 0;
     uint64_t storageValuesReturnedPost = 0;

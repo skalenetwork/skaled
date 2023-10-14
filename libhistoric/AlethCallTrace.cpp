@@ -26,12 +26,12 @@ namespace eth {
 
 
 void eth::AlethStandardTrace::calltraceFinalize(
-    ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    ExecutionResult& _er, const HistoricState& , const HistoricState&  ) {
     auto totalGasUsed = (uint64_t) _er.gasUsed;
-    STATE_CHECK(topFunctionCall)
-    STATE_CHECK(topFunctionCall == this->currentlyExecutingFunctionCall )
-    topFunctionCall->setGasUsed( totalGasUsed );
-    topFunctionCall->printTrace( m_jsonTrace, 0 );
+    STATE_CHECK( m_topFunctionCall )
+    STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
+    m_topFunctionCall->setGasUsed( totalGasUsed );
+    m_topFunctionCall->printTrace( m_jsonTrace, 0 );
 }
 
 

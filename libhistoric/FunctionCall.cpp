@@ -18,12 +18,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-
 #include "FunctionCall.h"
 #include "AlethStandardTrace.h"
 
 namespace dev::eth {
-
 
 
 void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
@@ -32,7 +30,7 @@ void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
 uint64_t FunctionCall::getFunctionGasLimit() const {
     return m_functionGasLimit;
 }
-void FunctionCall::setOutputData( const shared_ptr<vector< uint8_t >>& _outputData ) {
+void FunctionCall::setOutputData( vector< uint8_t >& _outputData ) {
     m_outputData = _outputData;
 }
 
@@ -71,6 +69,14 @@ void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
     }
 
     _jsonTrace["value"] = toCompactHexPrefixed( m_value );
+
+    if ( !m_outputData.empty() ) {
+        _jsonTrace["output"] = toHex( m_outputData );
+    }
+
+    if ( !m_inputData.empty() ) {
+        _jsonTrace["input"] = toHex( m_inputData );
+    }
 }
 
 
@@ -119,19 +125,18 @@ bool FunctionCall::hasError() const {
 }
 
 
-void FunctionCall::addLogEntry(const shared_ptr<vector<uint8_t>>& _data,
-    const shared_ptr<vector<u256>>& _topics) {
-    m_logRecords.emplace_back(_data, _topics);
+void FunctionCall::addLogEntry(
+    const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
+    m_logRecords.emplace_back( _data, _topics );
 }
 
-OpExecutionRecord::OpExecutionRecord( bool _hasReverted,
-    shared_ptr< vector< uint8_t > > _returnData, int64_t _depth,
-    Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
+OpExecutionRecord::OpExecutionRecord( bool _hasReverted, vector< uint8_t > _returnData,
+    int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
     : m_hasReverted( _hasReverted ),
       m_returnData( _returnData ),
       m_depth( _depth ),
       m_op( _op ),
       m_gasRemaining( _gasRemaining ),
       m_opGas( _opGas ) {}
-}  // namespace eth
-  // namespace dev
+}  // namespace dev::eth
+   // namespace dev

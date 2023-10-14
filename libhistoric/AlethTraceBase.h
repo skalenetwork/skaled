@@ -31,7 +31,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
 constexpr uint64_t MAX_MEMORY_VALUES_RETURNED = 1024;
 constexpr uint64_t MAX_STORAGE_VALUES_RETURNED = 1024;
-constexpr uint64_t MAX_TRACE_DEPTH = 256;
+constexpr int64_t MAX_TRACE_DEPTH = 256;
 
 
 #define STATE_CHECK( _EXPRESSION_ )                                             \
@@ -70,8 +70,8 @@ protected:
     };
 
 
-    shared_ptr< FunctionCall > topFunctionCall;
-    shared_ptr< FunctionCall > currentlyExecutingFunctionCall;
+    shared_ptr< FunctionCall > m_topFunctionCall;
+    shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;
 
 
     AlethTraceBase( Transaction& _t, Json::Value const& _options );
@@ -91,14 +91,14 @@ protected:
     AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json );
 
 
-    [[nodiscard]] shared_ptr< vector< uint8_t > > extractMemoryByteArrayFromStackPointer(
+    [[nodiscard]] vector< uint8_t > extractMemoryByteArrayFromStackPointer(
         const LegacyVM* _vm );
 
     [[nodiscard]] string evmErrorDescription( evmc_status_code _error );
 
 
     vector< Instruction > m_lastInst;
-    shared_ptr< Json::Value > m_defaultOpTrace;
+    shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
     Json::FastWriter m_fastWriter;
     Address m_from;
     Address m_to;
