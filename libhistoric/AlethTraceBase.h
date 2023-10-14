@@ -34,11 +34,11 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #define MAX_TRACE_DEPTH 256
 
 
-#define STATE_CHECK( _EXPRESSION_ )                                             \
-    if ( !( _EXPRESSION_ ) ) {                                                  \
+#define STATE_CHECK( _EXPRESSION_ )                                                  \
+    if ( !( _EXPRESSION_ ) ) {                                                       \
         auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " + \
-                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );        \
-        throw std::runtime_error( __msg__);                                             \
+                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );   \
+        throw std::runtime_error( __msg__ );                                         \
     }
 
 
@@ -52,9 +52,7 @@ class FunctionCall;
 // so that they do not interfere with EVM execution
 
 class AlethTraceBase {
-
 public:
-
     Json::Value getJSONResult() const;
 
 protected:
@@ -74,26 +72,25 @@ protected:
     std::shared_ptr< FunctionCall > currentlyExecutingFunctionCall;
 
 
-    AlethTraceBase( Transaction& _t, Json::Value const& _options ) ;
+    AlethTraceBase( Transaction& _t, Json::Value const& _options );
 
 
-
-    [[nodiscard]] const DebugOptions& getOptions() const ;
+    [[nodiscard]] const DebugOptions& getOptions() const;
 
     void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-        const std::vector< uint8_t >& _inputData, const u256& _value ) ;
+        const std::vector< uint8_t >& _inputData, const u256& _value );
 
-    void functionReturned(evmc_status_code _status) ;
+    void functionReturned( evmc_status_code _status );
 
-    void recordAccessesToAccountsAndStorageValues( uint64_t _pc, Instruction& _inst,
-        const bigint& _lastOpGas, const bigint& _gasRemaining, const ExtVMFace* _voidExt, AlethExtVM& _ext,
-        const LegacyVM* _vm ) ;
+    void recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
+        uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
+        const LegacyVM* _vm );
 
-    AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json ) ;
+    AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json );
 
-    void resetLastOpVariables() ;
 
-    std::shared_ptr<std::vector<uint8_t>> extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) ;
+    [[nodiscard]] std::shared_ptr< std::vector< uint8_t > > extractMemoryByteArrayFromStackPointer(
+        const LegacyVM* _vm );
 
     std::string evmErrorDescription( evmc_status_code _error );
 
@@ -123,7 +120,7 @@ protected:
 
 
     void processFunctionCallOrReturnIfHappened(
-        const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining);
+        const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining );
 };
 }  // namespace eth
-}  // namespace devCHECK_STATE(_face);
+}  // namespace dev

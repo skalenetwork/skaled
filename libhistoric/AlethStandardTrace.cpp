@@ -41,7 +41,8 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, 
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    recordAccessesToAccountsAndStorageValues( _pc, _inst, _gasOpGas, _gasRemaining, _ext, ext, vm );
+    recordAccessesToAccountsAndStorageValues( _pc, _inst, (uint64_t) _gasOpGas,
+        (uint64_t ) _gasRemaining, _ext, ext, vm );
 
     if ( m_options.tracerType == TraceType::STANDARD_TRACER )
         appendOpToStandardOpTrace( _pc, _inst, _gasOpGas, _gasRemaining, _ext, ext, vm );

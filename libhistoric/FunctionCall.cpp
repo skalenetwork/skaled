@@ -126,13 +126,10 @@ void FunctionCall::addLog(const shared_ptr<vector<uint8_t>>& _data,
     logRecords.emplace_back(_data, _topics);
 }
 
-OpExecutionRecord::OpExecutionRecord( bool _hasReverted, bool _hasError,
-    string _errorStr,
+OpExecutionRecord::OpExecutionRecord( bool _hasReverted,
     shared_ptr< vector< uint8_t > > _returnData, int64_t _depth,
     Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
     : hasReverted( _hasReverted ),
-      hasError( _hasError ),
-      errorStr( _errorStr ),
       returnData( _returnData ),
       depth( _depth ),
       op( _op ),

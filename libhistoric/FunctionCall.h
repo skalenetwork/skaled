@@ -48,16 +48,14 @@ public:
 
     // this is top level record to enter the transaction
     // the first function is executed at depth 0, as it was called form depth -1
-    explicit OpExecutionRecord( Instruction _op) : OpExecutionRecord(false, false,
-              "", nullptr, -1, _op, 0, 0) {};
+    explicit OpExecutionRecord( Instruction _op) : OpExecutionRecord(false,
+              nullptr, -1, _op, 0, 0) {};
 
-    OpExecutionRecord( bool _hasReverted, bool _hasError, std::string _errorStr,
+    OpExecutionRecord( bool _hasReverted,
         std::shared_ptr< std::vector<uint8_t> > _returnData, int64_t _depth, Instruction _op,
         uint64_t _gasRemaining, uint64_t _opGas );
 
     bool hasReverted;
-    bool hasError;
-    std::string errorStr;
     std::shared_ptr< std::vector<uint8_t >> returnData;
     int64_t depth;
     Instruction op;
