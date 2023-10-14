@@ -18,8 +18,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include "FunctionCall.h"
 #include "AlethTraceBase.h"
+#include "FunctionCall.h"
 
 namespace dev {
 namespace eth {
@@ -80,11 +80,11 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
     m_isCreate = _t.isCreation();
-    m_totalGasLimit = (uint64_t ) _t.gas();
+    m_totalGasLimit = ( uint64_t ) _t.gas();
 
     // when we start execution a user transaction the top level function can  be a call
     // or a contract create
-    if (m_isCreate) {
+    if ( m_isCreate ) {
         m_lastInstruction = Instruction::CREATE;
     } else {
         m_lastInstruction = Instruction::CALL;
@@ -101,19 +101,12 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 
     auto currentDepth = _ext.depth;
 
-    if ( currentDepth == m_lastDepth + 1 ) {
-        // we are beginning to execute a new function
-        auto data = _ext.data.toVector();
-        functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
-    } else if ( currentDepth == m_lastDepth - 1 ) {
-        auto status = _vm->getAndClearLastCallStatus();
-        functionReturned( status );
-    } else {
-        // we should not have skipped frames
-        STATE_CHECK( currentDepth == m_lastDepth )
-    }
+
+    processFunctionCallOrReturnIfHappened( _gasRemaining, _ext, _vm, currentDepth );
 
     m_accessedAccounts.insert( _ext.myAddress );
+
+    uint64_t logTopicsCount = 0;
 
     // record storage accesses
     switch ( _inst ) {
@@ -142,28 +135,37 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         break;
     // NOW HANDLE FUNCTION RETURN INSTRUCTIONS: STOP INVALID REVERT AND SUICIDE
     case Instruction::STOP:
-        setNoErrors();
+        resetVarsOnFunctionReturn();
         break;
     case Instruction::INVALID:
-        setNoErrors();
+        resetVarsOnFunctionReturn();
         m_lastHasError = true;
         m_lastError = "EVM_INVALID_OPCODE";
         break;
     case Instruction::RETURN:
-        setNoErrors();
+        resetVarsOnFunctionReturn();
+        extractReturnData( _vm );
         break;
     case Instruction::REVERT:
-        setNoErrors();
+        resetVarsOnFunctionReturn();
         m_lastHasReverted = true;
         m_lastHasError = true;
         m_lastError = "EVM_REVERT";
         extractReturnData( _vm );
         break;
     case Instruction::SUICIDE:
-        setNoErrors();
+        resetVarsOnFunctionReturn();
         if ( _vm->stackSize() > 0 ) {
             m_accessedAccounts.insert( asAddress( _vm->getStackElement( 0 ) ) );
         }
+        break;
+    case Instruction::LOG0:
+    case Instruction::LOG1:
+    case Instruction::LOG2:
+    case Instruction::LOG3:
+    case Instruction::LOG4:
+        logTopicsCount = ( uint64_t ) _inst - ( uint64_t ) Instruction::LOG0;
+        STATE_CHECK( logTopicsCount <= 4 )
         break;
     default:
         break;
@@ -173,6 +175,20 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     m_lastGasRemaining = ( uint64_t ) _gasRemaining;
     m_lastInstructionGas = ( uint64_t ) _lastOpGas;
 }
+void AlethTraceBase::processFunctionCallOrReturnIfHappened( const bigint& _gasRemaining,
+    const AlethExtVM& _ext, const LegacyVM* _vm, unsigned int currentDepth ) {
+    if ( currentDepth == m_lastDepth + 1 ) {
+        // we are beginning to execute a new function
+        auto data = _ext.data.toVector();
+        functionCalled( _ext.caller, _ext.myAddress, ( uint64_t ) _gasRemaining, data, _ext.value );
+    } else if ( currentDepth == m_lastDepth - 1 ) {
+        auto status = _vm->getAndClearLastCallStatus();
+        functionReturned( status );
+    } else {
+        // we should not have skipped frames
+        STATE_CHECK( currentDepth == m_lastDepth )
+    }
+}
 
 
 void AlethTraceBase::extractReturnData( const LegacyVM* _vm ) {
@@ -180,8 +196,8 @@ void AlethTraceBase::extractReturnData( const LegacyVM* _vm ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            m_lastReturnData =
-                std::vector< uint8_t >( _vm->memory().begin() + b, _vm->memory().begin() + b + s );
+            m_lastReturnData = std::make_shared < std::vector< uint8_t >>( _vm->memory().begin() + b,
+                                                      _vm->memory().begin() + b + s );
         }
     }
 }
@@ -224,7 +240,7 @@ void AlethTraceBase::functionReturned( evmc_status_code _status ) {
 
     if ( m_lastHasReverted ) {
         lastFunctionCall->setRevertReason(
-            std::string( m_lastReturnData.begin(), m_lastReturnData.end() ) );
+            std::string( m_lastReturnData->begin(), m_lastReturnData->end() ) );
     } else {
         lastFunctionCall->setOutputData( m_lastReturnData );
     }
@@ -289,26 +305,22 @@ void AlethTraceBase::resetLastReturnVariables() {  // reset variables.
     m_lastInstruction = Instruction::STOP;
     m_lastGasRemaining = 0;
     m_lastInstructionGas = 0;
-    m_lastReturnData = std::vector< uint8_t >();
+    m_lastReturnData = nullptr;
     m_lastHasReverted = false;
     m_lastHasError = false;
 }
 
 
-
-void AlethTraceBase::setNoErrors() {
+void AlethTraceBase::resetVarsOnFunctionReturn() {
     m_lastHasReverted = false;
     m_lastHasError = false;
     m_lastError = "";
-    m_lastReturnData = std::vector< uint8_t >();
+    m_lastReturnData = nullptr;
 }
 
 Json::Value eth::AlethTraceBase::getJSONResult() const {
     return m_jsonTrace;
 }
-
-
-
 
 
 }  // namespace eth

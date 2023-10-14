@@ -41,7 +41,7 @@ public:
         const std::vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
     int64_t getDepth() const;
     void setGasUsed( uint64_t _gasUsed );
-    void setOutputData( const std::vector< uint8_t >& _outputData );
+    void setOutputData( const std::shared_ptr<std::vector< uint8_t >>& _outputData );
     void addNestedCall( std::shared_ptr< FunctionCall >& _nestedCall );
     void setError( const std::string& _error );
     void setRevertReason( const std::string& _revertReason );
@@ -65,7 +65,7 @@ private:
     std::vector< std::shared_ptr< FunctionCall > > nestedCalls;
     std::weak_ptr< FunctionCall > parentCall;
     std::vector< uint8_t > inputData;
-    std::vector< uint8_t > outputData;
+    std::shared_ptr<std::vector< uint8_t >> outputData;
     bool reverted = false;
     bool completedWithError = false;
     std::string error;

@@ -33,7 +33,7 @@ void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
 uint64_t FunctionCall::getFunctionGasLimit() const {
     return functionGasLimit;
 }
-void FunctionCall::setOutputData( const std::vector< uint8_t >& _outputData ) {
+void FunctionCall::setOutputData( const std::shared_ptr<std::vector< uint8_t >>& _outputData ) {
     FunctionCall::outputData = _outputData;
 }
 

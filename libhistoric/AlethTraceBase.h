@@ -124,11 +124,13 @@ protected:
     uint64_t m_lastGasRemaining = 0;
     int64_t m_lastDepth = -1;
     Instruction m_lastInstruction;
-    std::vector<uint8_t> m_lastReturnData;
+    std::shared_ptr<std::vector<uint8_t>> m_lastReturnData;
     bool m_lastHasReverted = false;
     bool m_lastHasError = false;
     std::string m_lastError;
-    void setNoErrors();
+    void resetVarsOnFunctionReturn();
+    void processFunctionCallOrReturnIfHappened( const bigint& _gasRemaining, const AlethExtVM& _ext,
+        const LegacyVM* _vm, unsigned int currentDepth );
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);
