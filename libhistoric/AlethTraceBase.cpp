@@ -101,7 +101,13 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     STATE_CHECK( _face )
     STATE_CHECK( _vm )
 
-    processFunctionCallOrReturnIfHappened( _ext, _vm);
+    processFunctionCallOrReturnIfHappened( _ext, _vm, (uint64_t )_gasRemaining);
+
+    auto hasReverted = false;
+    auto hasError = false;
+    auto errorStr = "";
+    shared_ptr<vector<uint8_t>> returnData = nullptr;
+
 
     auto currentDepth = _ext.depth;
 
@@ -140,18 +146,18 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
         break;
     case Instruction::INVALID:
         resetVarsOnFunctionReturn();
-        m_lastHasError = true;
-        m_lastError = "EVM_INVALID_OPCODE";
+        hasError = true;
+        errorStr = "EVM_INVALID_OPCODE";
         break;
     case Instruction::RETURN:
         resetVarsOnFunctionReturn();
-        m_lastReturnData = extractMemoryByteArrayFromStackPointer( _vm );
+        returnData = extractMemoryByteArrayFromStackPointer( _vm );
         break;
     case Instruction::REVERT:
         resetVarsOnFunctionReturn();
-        m_lastHasReverted = true;
-        m_lastHasError = true;
-        m_lastError = "EVM_REVERT";
+        hasReverted = true;
+        hasError = true;
+        errorStr = "EVM_REVERT";
         extractMemoryByteArrayFromStackPointer( _vm );
         break;
     case Instruction::SUICIDE:
@@ -182,18 +188,23 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     default:
         break;
     }
+
+    m_lastHasReverted = hasReverted;
+    m_lastHasError = hasError;
+    m_lastError = errorStr;
+    m_lastReturnData = returnData;
     m_lastDepth = currentDepth;
     m_lastInstruction = _inst;
     m_lastGasRemaining = ( uint64_t ) _gasRemaining;
     m_lastInstructionGas = ( uint64_t ) _lastOpGas;
 }
 void AlethTraceBase::processFunctionCallOrReturnIfHappened(
-    const AlethExtVM& _ext, const LegacyVM* _vm) {
+    const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining) {
     auto currentDepth = _ext.depth;
     if ( currentDepth == m_lastDepth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
-        functionCalled( _ext.caller, _ext.myAddress, m_lastFunctionGasLimit, data, _ext.value );
+        functionCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
     } else if ( currentDepth == m_lastDepth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
         functionReturned( status );

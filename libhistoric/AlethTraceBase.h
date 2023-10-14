@@ -130,7 +130,7 @@ protected:
     uint64_t m_lastFunctionGasLimit = 0;
     void resetVarsOnFunctionReturn();
     void processFunctionCallOrReturnIfHappened(
-        const AlethExtVM& _ext, const LegacyVM* _vm);
+        const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining);
 };
 }  // namespace eth
 }  // namespace devCHECK_STATE(_face);
