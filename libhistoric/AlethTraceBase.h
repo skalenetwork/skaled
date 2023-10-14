@@ -21,6 +21,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "AlethExtVM.h"
+#include "FunctionCall.h"
 #include "libevm/LegacyVM.h"
 #include <jsonrpccpp/common/exception.h>
 #include <skutils/eth_utils.h>
@@ -118,15 +119,9 @@ protected:
 
     uint64_t m_totalGasLimit = 0;
 
+    OpExecutionRecord m_lastOp;
 
-    uint64_t m_lastInstructionGas = 0;
-    uint64_t m_lastGasRemaining = 0;
-    int64_t m_lastDepth = -1;
-    Instruction m_lastInstruction;
-    std::shared_ptr<std::vector<uint8_t>> m_lastReturnData;
-    bool m_lastHasReverted = false;
-    bool m_lastHasError = false;
-    std::string m_lastError;
+
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining);
 };
