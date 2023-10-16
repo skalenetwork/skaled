@@ -100,6 +100,11 @@ private:
     vector< uint8_t > m_inputData;
     vector< uint8_t > m_outputData;
     bool m_reverted = false;
+
+public:
+    uint64_t getMFunctionGasLimit() const;
+
+private:
     bool m_completedWithError = false;
     string m_error;
     string m_revertReason;

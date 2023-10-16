@@ -82,7 +82,8 @@ protected:
     void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
         const vector< uint8_t >& _inputData, const u256& _value );
 
-    void functionReturned( evmc_status_code _status, const vector< uint8_t >& _returnData );
+    void functionReturned(
+        evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
 
     void recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
         uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,

@@ -187,7 +187,8 @@ void AlethTraceBase::processFunctionCallOrReturnIfHappened(
         functionCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
     } else if ( currentDepth == m_lastOp.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
-        functionReturned( status, _vm->getMReturnData() );
+        functionReturned( status, _vm->getMReturnData(),
+            m_currentlyExecutingFunctionCall->getFunctionGasLimit() - _gasRemaining );
     } else {
         // we should not have skipped frames
         STATE_CHECK( currentDepth == m_lastOp.m_depth )
@@ -228,7 +229,8 @@ void AlethTraceBase::functionCalled( const Address& _from, const Address& _to, u
 }
 
 
-void AlethTraceBase::functionReturned( evmc_status_code _status, const vector< uint8_t >& _returnData ) {
+void AlethTraceBase::functionReturned(
+    evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
 
     uint64_t gasRemainingOnReturn = m_lastOp.m_gasRemaining - m_lastOp.m_opGas;

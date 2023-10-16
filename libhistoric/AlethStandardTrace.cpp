@@ -41,8 +41,8 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, 
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    recordAccessesToAccountsAndStorageValues( _pc, _inst, (uint64_t) _gasOpGas,
-        (uint64_t ) _gasRemaining, _ext, ext, vm );
+    recordAccessesToAccountsAndStorageValues(
+        _pc, _inst, ( uint64_t ) _gasOpGas, ( uint64_t ) _gasRemaining, _ext, ext, vm );
 
     if ( m_options.tracerType == TraceType::STANDARD_TRACER )
         appendOpToStandardOpTrace( _pc, _inst, _gasOpGas, _gasRemaining, _ext, ext, vm );
@@ -108,9 +108,14 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
 }
 
 
-
 void eth::AlethStandardTrace::finalizeTrace(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
+    auto totalGasUsed = ( uint64_t ) _er.gasUsed;
+    STATE_CHECK( m_topFunctionCall )
+    STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
+    functionReturned( evmc_status_code::EVMC_SUCCESS, _er.output, totalGasUsed );
+
+
     switch ( m_options.tracerType ) {
     case TraceType::STANDARD_TRACER:
         deftraceFinalize( _er, _stateBefore, _stateAfter );
@@ -143,7 +148,6 @@ void eth::AlethStandardTrace::deftraceFinalize(
         m_jsonTrace["error"] = errMessage;
     }
 }
-
 
 
 }  // namespace eth

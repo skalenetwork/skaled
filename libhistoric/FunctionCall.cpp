@@ -55,9 +55,9 @@ int64_t FunctionCall::getDepth() const {
 
 void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
     _jsonTrace["type"] = instructionInfo( m_type ).name;
-    _jsonTrace["from"] = toHex( m_from );
+    _jsonTrace["from"] = toHexPrefixed( m_from );
     if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
-        _jsonTrace["to"] = toHex( m_to );
+        _jsonTrace["to"] = toHexPrefixed( m_to );
     }
     _jsonTrace["gas"] = toCompactHexPrefixed( m_functionGasLimit );
     _jsonTrace["gasUsed"] = toCompactHexPrefixed( m_gasUsed );
@@ -71,11 +71,11 @@ void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
     _jsonTrace["value"] = toCompactHexPrefixed( m_value );
 
     if ( !m_outputData.empty() ) {
-        _jsonTrace["output"] = toHex( m_outputData );
+        _jsonTrace["output"] = toHexPrefixed( m_outputData );
     }
 
     if ( !m_inputData.empty() ) {
-        _jsonTrace["input"] = toHex( m_inputData );
+        _jsonTrace["input"] = toHexPrefixed( m_inputData );
     }
 }
 
@@ -128,6 +128,9 @@ bool FunctionCall::hasError() const {
 void FunctionCall::addLogEntry(
     const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
     m_logRecords.emplace_back( _data, _topics );
+}
+uint64_t FunctionCall::getMFunctionGasLimit() const {
+    return m_functionGasLimit;
 }
 
 OpExecutionRecord::OpExecutionRecord( bool _hasReverted, vector< uint8_t > _returnData,
