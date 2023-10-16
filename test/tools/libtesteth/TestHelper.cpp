@@ -119,7 +119,7 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
         reward += client.sealEngine()->blockReward( blockNumber );
     }
-    state.addBalance( client.author(), reward );
+    state.addBalance( address, reward );
     state.commit();
     const auto balanceAfter = client.balanceAt( address );
     balanceAfter > balanceBefore; // make compiler happy
