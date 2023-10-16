@@ -76,7 +76,7 @@ const map< string, AlethTraceBase::TraceType > AlethTraceBase::s_stringToTracerM
 AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     : m_from{ _t.from() },
       m_to( _t.to() ),
-      m_lastOp( false, vector< uint8_t >(),
+      m_lastOp(
           // the top function is executed at depth 0
           // therefore it is called from depth -1
           -1,
@@ -101,10 +101,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
 
     processFunctionCallOrReturnIfHappened( _ext, _vm, ( uint64_t ) _gasRemaining );
 
-    auto hasReverted = false;
-
     vector< uint8_t > returnData;
-
 
     m_accessedAccounts.insert( _ext.myAddress );
 
@@ -135,16 +132,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
             m_accessedAccounts.insert( address );
         }
         break;
-    // NOW HANDLE FUNCTION RETURN INSTRUCTIONS
-    case Instruction::STOP:
-        break;
-    case Instruction::RETURN:
-        returnData = extractMemoryByteArrayFromStackPointer( _vm );
-        break;
-    case Instruction::REVERT:
-        hasReverted = true;
-        returnData = extractMemoryByteArrayFromStackPointer( _vm );
-        break;
+    // NOW HANDLE SUICIDE
     case Instruction::SUICIDE:
         if ( _vm->stackSize() > 0 ) {
             m_accessedAccounts.insert( asAddress( _vm->getStackElement( 0 ) ) );
@@ -173,8 +161,7 @@ void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruc
     }
 
 
-    m_lastOp =
-        OpExecutionRecord( hasReverted, returnData, _ext.depth, _inst, _gasRemaining, _lastOpGas );
+    m_lastOp = OpExecutionRecord( _ext.depth, _inst, _gasRemaining, _lastOpGas );
 }
 void AlethTraceBase::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
@@ -199,14 +186,16 @@ void AlethTraceBase::processFunctionCallOrReturnIfHappened(
 vector< uint8_t > AlethTraceBase::extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) {
     STATE_CHECK( _vm )
 
+    vector<uint8_t> result {};
+
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            return vector< uint8_t >( _vm->memory().begin() + b, _vm->memory().begin() + b + s );
+            result =  {_vm->memory().begin() + b, _vm->memory().begin() + b + s };
         }
     }
-    return vector< uint8_t >();
+    return result;
 }
 
 
@@ -233,35 +222,18 @@ void AlethTraceBase::functionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
 
-    uint64_t gasRemainingOnReturn = m_lastOp.m_gasRemaining - m_lastOp.m_opGas;
-
-    m_lastOp.m_returnData = _returnData;
-
-    if ( m_lastOp.m_op == Instruction::INVALID ) {
-        // invalid instruction consumers all gas
-        gasRemainingOnReturn = 0;
-    }
-
-    m_currentlyExecutingFunctionCall->setGasUsed(
-        m_currentlyExecutingFunctionCall->getFunctionGasLimit() - gasRemainingOnReturn );
+    m_currentlyExecutingFunctionCall->setGasUsed(_gasUsed);
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
         m_currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
     }
 
-    if ( m_lastOp.m_hasReverted ) {
+    if ( _status == evmc_status_code::EVMC_REVERT ) {
         m_currentlyExecutingFunctionCall->setRevertReason(
-            string( m_lastOp.m_returnData.begin(), m_lastOp.m_returnData.end() ) );
+            string(_returnData.begin(), _returnData.end() ) );
     } else {
-        m_currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
+        m_currentlyExecutingFunctionCall->setOutputData( _returnData );
     }
-
-    if ( !m_lastOp.m_returnData.empty() ) {
-        m_currentlyExecutingFunctionCall->setOutputData( m_lastOp.m_returnData );
-    }
-
-
-    // m_lastOp = OpExecutionRecord( false, nullptr, m_lastOp.depth, Instruction::STOP, 0, 0 );
 
     if ( m_currentlyExecutingFunctionCall == m_topFunctionCall ) {
         // the top function returned
@@ -275,44 +247,45 @@ void AlethTraceBase::functionReturned(
 }
 
 
+// we try to be compatible with geth messages as much as we can
 string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
     switch ( _error ) {
     case EVMC_SUCCESS:
-        return "EVM_SUCCESS";
+        return "success";
     case EVMC_FAILURE:
-        return "EVM_FAILURE";
+        return "evm failure";
     case EVMC_OUT_OF_GAS:
-        return "EVM_OUT_OF_GAS";
+        return "out of gas";
     case EVMC_INVALID_INSTRUCTION:
-        return "EVM_INVALID_INSTRUCTION";
+        return "invalid instruction";
     case EVMC_UNDEFINED_INSTRUCTION:
-        return "EVM_UNDEFINED_INSTRUCTION";
+        return "undefined instruction";
     case EVMC_STACK_OVERFLOW:
-        return "EVM_STACK_OVERFLOW";
+        return "stack overflow";
     case EVMC_STACK_UNDERFLOW:
-        return "EVM_STACK_UNDERFLOW";
+        return "stack underflow";
     case EVMC_BAD_JUMP_DESTINATION:
-        return "EVM_BAD_JUMP_DESTINATION";
+        return "invalid jump";
     case EVMC_INVALID_MEMORY_ACCESS:
-        return "EVM_INVALID_MEMORY_ACCESS";
+        return "invalid memory access";
     case EVMC_CALL_DEPTH_EXCEEDED:
-        return "EVM_CALL_DEPTH_EXCEEDED";
+        return "call depth exceeded";
     case EVMC_STATIC_MODE_VIOLATION:
-        return "EVM_STATIC_MODE_VIOLATION";
+        return "static mode violation";
     case EVMC_PRECOMPILE_FAILURE:
-        return "EVM_PRECOMPILE_FAILURE";
+        return "precompile failure";
     case EVMC_CONTRACT_VALIDATION_FAILURE:
-        return "EVM_CONTRACT_VALIDATION_FAILURE";
+        return "contract validation failure";
     case EVMC_ARGUMENT_OUT_OF_RANGE:
-        return "EVM_ARGUMENT_OUT_OF_RANGE";
+        return "argument out of range";
     case EVMC_INTERNAL_ERROR:
-        return "EVM_INTERNAL_ERROR";
+        return "internal error";
     case EVMC_REJECTED:
-        return "EVM_REJECTED";
+        return "evm rejected";
     case EVMC_OUT_OF_MEMORY:
-        return "EVM_OUT_OF_MEMORY";
+        return "out of memory";
     default:
-        return "UNKNOWN_ERROR";
+        return "unknown error";
     };
 }
 

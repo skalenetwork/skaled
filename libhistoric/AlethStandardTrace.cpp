@@ -111,9 +111,11 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
 void eth::AlethStandardTrace::finalizeTrace(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
+    auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode(_er.excepted);
+
     STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
-    functionReturned( evmc_status_code::EVMC_SUCCESS, _er.output, totalGasUsed );
+    functionReturned( statusCode, _er.output, totalGasUsed );
 
 
     switch ( m_options.tracerType ) {
@@ -121,10 +123,10 @@ void eth::AlethStandardTrace::finalizeTrace(
         deftraceFinalize( _er, _stateBefore, _stateAfter );
         break;
     case TraceType::PRESTATE_TRACER:
-        pstraceFinalize( _er, _stateBefore, _stateAfter );
+        pstracePrint( _er, _stateBefore, _stateAfter );
         break;
     case TraceType::CALL_TRACER:
-        calltraceFinalize( _er, _stateBefore, _stateAfter );
+        calltracePrint( _er, _stateBefore, _stateAfter );
         break;
     }
 }

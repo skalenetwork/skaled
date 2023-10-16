@@ -92,7 +92,7 @@ protected:
     AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json );
 
 
-    [[nodiscard]] vector< uint8_t > extractMemoryByteArrayFromStackPointer(
+    [[nodiscard]] static vector< uint8_t > extractMemoryByteArrayFromStackPointer(
         const LegacyVM* _vm );
 
     [[nodiscard]] string evmErrorDescription( evmc_status_code _error );

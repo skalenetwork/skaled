@@ -24,25 +24,25 @@ namespace dev {
 namespace eth {
 
 
-void eth::AlethStandardTrace::pstraceFinalize(
+void eth::AlethStandardTrace::pstracePrint(
     ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     if ( m_options.prestateDiffMode ) {
-        pstraceDiffFinalize( _er, _stateBefore, _stateAfter );
+        pstraceDiffPrint( _er, _stateBefore, _stateAfter );
     } else {
         for ( auto&& item : m_accessedAccounts ) {
-            pstraceAddAllAccessedAccountPreValuesToTrace( m_jsonTrace, _stateBefore, item );
+            pstracePrintAllAccessedAccountPreValues( m_jsonTrace, _stateBefore, item );
         };
     }
 }
 
-void eth::AlethStandardTrace::pstraceDiffFinalize(
+void eth::AlethStandardTrace::pstraceDiffPrint(
     ExecutionResult&, const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     Json::Value preDiff( Json::objectValue );
     Json::Value postDiff( Json::objectValue );
 
     for ( auto&& item : m_accessedAccounts ) {
-        pstraceAddAccountPreDiffToTrace( preDiff, _stateBefore, _stateAfter, item );
-        pstraceAddAccountPostDiffToTracer( postDiff, _stateBefore, _stateAfter, item );
+        pstracePrintAccountPreDiff( preDiff, _stateBefore, _stateAfter, item );
+        pstracePrintAccountPostDiff( postDiff, _stateBefore, _stateAfter, item );
     };
 
     m_jsonTrace["pre"] = preDiff;
@@ -51,7 +51,7 @@ void eth::AlethStandardTrace::pstraceDiffFinalize(
 
 
 // this function returns original values (pre) to result
-void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace(
+void eth::AlethStandardTrace::pstracePrintAllAccessedAccountPreValues(
     Json::Value& _trace, const HistoricState& _stateBefore, const Address& _address ) {
     Json::Value storagePreValues;
     // if this _address did not exist, we do not include it in the diff
@@ -92,7 +92,7 @@ void eth::AlethStandardTrace::pstraceAddAllAccessedAccountPreValuesToTrace(
 }
 
 
-void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace,
+void eth::AlethStandardTrace::pstracePrintAccountPostDiff( Json::Value& _postDiffTrace,
     const HistoricState& _stateBefore, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 
@@ -161,7 +161,7 @@ void eth::AlethStandardTrace::pstraceAddAccountPostDiffToTracer( Json::Value& _p
 }
 
 
-void eth::AlethStandardTrace::pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace,
+void eth::AlethStandardTrace::pstracePrintAccountPreDiff( Json::Value& _preDiffTrace,
     const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 

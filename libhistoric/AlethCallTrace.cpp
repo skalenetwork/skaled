@@ -25,7 +25,7 @@ namespace dev {
 namespace eth {
 
 
-void eth::AlethStandardTrace::calltraceFinalize(
+void eth::AlethStandardTrace::calltracePrint(
     ExecutionResult& , const HistoricState& , const HistoricState&  ) {
     m_topFunctionCall->printTrace( m_jsonTrace, 0 );
 }

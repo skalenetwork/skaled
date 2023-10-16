@@ -65,27 +65,27 @@ private:
     void appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
-    void pstraceAddAllAccessedAccountPreValuesToTrace(
+    void pstracePrintAllAccessedAccountPreValues(
         Json::Value& _trace, const HistoricState& _stateBefore, const Address& _address );
 
-    void pstraceAddAccountPreDiffToTrace( Json::Value& _preDiffTrace,
+    void pstracePrintAccountPreDiff( Json::Value& _preDiffTrace,
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address );
 
-    void pstraceAddAccountPostDiffToTracer( Json::Value& _postDiffTrace,
+    void pstracePrintAccountPostDiff( Json::Value& _postDiffTrace,
         const HistoricState& _stateBefore, const HistoricState& _statePost,
         const Address& _address );
 
     void deftraceFinalize( const ExecutionResult& _er, const HistoricState& _stateBefore,
         const HistoricState& _stateAfter );
 
-    void pstraceFinalize(
+    void pstracePrint(
         ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
-    void pstraceDiffFinalize(
-        ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+    void pstraceDiffPrint(
+        ExecutionResult&, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
-    void calltraceFinalize(
-        ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+    void calltracePrint(
+        ExecutionResult&, const HistoricState&, const HistoricState& );
 };
 }  // namespace eth
 }  // namespace dev
