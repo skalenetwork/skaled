@@ -53,22 +53,24 @@ class FunctionCall;
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
+enum class TraceType { STANDARD_TRACER, PRESTATE_TRACER, CALL_TRACER };
+
+struct DebugOptions {
+    bool disableStorage = false;
+    bool enableMemory = false;
+    bool disableStack = false;
+    bool enableReturnData = false;
+    bool prestateDiffMode = false;
+    bool onlyTopCall;
+    bool withLog = false;
+    TraceType tracerType = TraceType::STANDARD_TRACER;
+};
+
 class AlethTraceBase {
 public:
     [[nodiscard]] Json::Value getJSONResult() const;
 
 protected:
-    enum class TraceType { STANDARD_TRACER, PRESTATE_TRACER, CALL_TRACER };
-
-    struct DebugOptions {
-        bool disableStorage = false;
-        bool enableMemory = false;
-        bool disableStack = false;
-        bool enableReturnData = false;
-        bool prestateDiffMode = false;
-        TraceType tracerType = TraceType::STANDARD_TRACER;
-    };
-
 
     shared_ptr< FunctionCall > m_topFunctionCall;
     shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;
@@ -89,7 +91,7 @@ protected:
         uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
         const LegacyVM* _vm );
 
-    AlethTraceBase::DebugOptions debugOptions( Json::Value const& _json );
+    DebugOptions debugOptions( Json::Value const& _json );
 
 
     [[nodiscard]] static vector< uint8_t > extractMemoryByteArrayFromStackPointer(
@@ -106,7 +108,7 @@ protected:
     DebugOptions m_options;
     Json::Value m_jsonTrace;
 
-    static const map< string, AlethTraceBase::TraceType > s_stringToTracerMap;
+    static const map< string, TraceType > s_stringToTracerMap;
 
 
     // set of all storage values accessed during execution
@@ -114,10 +116,6 @@ protected:
     // map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
     map< Address, map< u256, u256 > > m_accessedStorageValues;
-
-    bool m_isCreate = false;
-
-    uint64_t m_totalGasLimit = 0;
 
     OpExecutionRecord m_lastOp;
 
