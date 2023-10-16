@@ -52,7 +52,8 @@ int64_t FunctionCall::getDepth() const {
     return m_depth;
 }
 
-void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
+void FunctionCall::printFunctionExecutionDetail(
+    Json::Value& _jsonTrace,   DebugOptions& _debugOptions ) {
     _jsonTrace["type"] = instructionInfo( m_type ).name;
     _jsonTrace["from"] = toHexPrefixed( m_from );
     if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
@@ -77,7 +78,10 @@ void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
         _jsonTrace["input"] = toHexPrefixed( m_inputData );
     }
 
-    if (!m_logRecords.empty()) {
+    if (!_debugOptions.withLog)
+        return;
+
+    if (!m_logRecords.empty() && m_type != Instruction::CREATE && m_type != Instruction::CREATE2) {
         _jsonTrace["logs"] =  Json::arrayValue;
         for (auto&& log : m_logRecords) {
             // no logs in contract creation
@@ -97,17 +101,20 @@ void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
 }
 
 
-void FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
+void FunctionCall::printTrace(
+    Json::Value& _jsonTrace, int64_t _depth,   DebugOptions& _debugOptions ) {
     // prevent Denial of service
     STATE_CHECK( _depth < MAX_TRACE_DEPTH )
-    STATE_CHECK( _depth == this->m_depth )
-    printFunctionExecutionDetail( _jsonTrace );
+    STATE_CHECK( _depth == m_depth )
+    printFunctionExecutionDetail( _jsonTrace, _debugOptions );
     if ( !m_nestedCalls.empty() ) {
         _jsonTrace["calls"] = Json::arrayValue;
         uint32_t i = 0;
+        if (_debugOptions.onlyTopCall)
+            return;
         for ( auto&& nestedCall : m_nestedCalls ) {
             _jsonTrace["calls"].append( Json::objectValue );
-            nestedCall->printTrace( _jsonTrace["calls"][i], _depth + 1 );
+            nestedCall->printTrace( _jsonTrace["calls"][i], _depth + 1, _debugOptions );
             i++;
         }
     }

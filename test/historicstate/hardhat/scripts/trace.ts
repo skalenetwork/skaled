@@ -32,8 +32,8 @@ async function getAndPrintTrace(hash: string): Promise<String> {
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"prestateTracer",
 //        "tracerConfig": {"diffMode":true}}]);
 
-        const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"callTracer"}]);
-
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
+        "tracerConfig": {"withLog":true}}]);
 
 
     console.log(JSON.stringify(trace, null, 4));
@@ -61,30 +61,28 @@ async function deployWriteAndDestroy(): Promise<void> {
     await getAndPrintTrace(hash)
 
 
-
-
     console.log(`Now minting`);
 
-    const transferReceipt = await lockContract.mint(1000,  {
+    const transferReceipt = await lockContract.mint(1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
 
     await getAndPrintTrace(transferReceipt.hash);
 
-/*
+    /*
 
-console.log(`Now testing self-destruct`);
+    console.log(`Now testing self-destruct`);
 
-const transferReceipt2 = await lockContract.die("0x690b9a9e9aa1c9db991c7721a92d351db4fac990");
-await transferReceipt2.wait();
+    const transferReceipt2 = await lockContract.die("0x690b9a9e9aa1c9db991c7721a92d351db4fac990");
+    await transferReceipt2.wait();
 
-console.log(`Successfully self destructed`);
+    console.log(`Successfully self destructed`);
 
-console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
+    console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
 
 
- */
+     */
 }
 
 async function main(): Promise<void> {

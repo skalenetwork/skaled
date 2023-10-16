@@ -24,13 +24,13 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 
-const eth::AlethTraceBase::DebugOptions& eth::AlethTraceBase::getOptions() const {
+const DebugOptions& eth::AlethTraceBase::getOptions() const {
     return m_options;
 }
 
 
-AlethTraceBase::DebugOptions AlethTraceBase::debugOptions( Json::Value const& _json ) {
-    AlethTraceBase::DebugOptions op;
+DebugOptions AlethTraceBase::debugOptions( Json::Value const& _json ) {
+    DebugOptions op;
 
     if ( !_json.isObject() )
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
@@ -62,15 +62,26 @@ AlethTraceBase::DebugOptions AlethTraceBase::debugOptions( Json::Value const& _j
              _json["tracerConfig"]["diffMode"].isBool() ) {
             op.prestateDiffMode = _json["tracerConfig"]["diffMode"].asBool();
         }
+
+        if ( !_json["tracerConfig"]["onlyTopCall"].empty() &&
+             _json["tracerConfig"]["onlyTopCall"].isBool() ) {
+            op.onlyTopCall = _json["tracerConfig"]["onlyTopCall"].asBool();
+        }
+
+        if ( !_json["tracerConfig"]["withLog"].empty() &&
+             _json["tracerConfig"]["withLog"].isBool() ) {
+            op.withLog = _json["tracerConfig"]["withLog"].asBool();
+        }
+
     }
 
     return op;
 }
 
-const map< string, AlethTraceBase::TraceType > AlethTraceBase::s_stringToTracerMap = {
-    { "", AlethTraceBase::TraceType::STANDARD_TRACER },
-    { "callTracer", AlethTraceBase::TraceType::CALL_TRACER },
-    { "prestateTracer", AlethTraceBase::TraceType::PRESTATE_TRACER }
+const map< string, TraceType > AlethTraceBase::s_stringToTracerMap = {
+    { "", TraceType::STANDARD_TRACER },
+    { "callTracer", TraceType::CALL_TRACER },
+    { "prestateTracer", TraceType::PRESTATE_TRACER }
 };
 
 AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
@@ -87,8 +98,6 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
-    m_isCreate = _t.isCreation();
-    m_totalGasLimit = ( uint64_t ) _t.gas();
 }
 
 void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
