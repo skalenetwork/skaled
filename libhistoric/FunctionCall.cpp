@@ -30,7 +30,7 @@ void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
 uint64_t FunctionCall::getFunctionGasLimit() const {
     return m_functionGasLimit;
 }
-void FunctionCall::setOutputData( vector< uint8_t >& _outputData ) {
+void FunctionCall::setOutputData( const vector< uint8_t >& _outputData ) {
     m_outputData = _outputData;
 }
 
@@ -39,7 +39,6 @@ void FunctionCall::addNestedCall( shared_ptr< FunctionCall >& _nestedCall ) {
     m_nestedCalls.push_back( _nestedCall );
 }
 void FunctionCall::setError( const string& _error ) {
-    m_completedWithError = true;
     m_error = _error;
 }
 void FunctionCall::setRevertReason( const string& _revertReason ) {
@@ -77,6 +76,24 @@ void FunctionCall::printFunctionExecutionDetail( Json::Value& _jsonTrace ) {
     if ( !m_inputData.empty() ) {
         _jsonTrace["input"] = toHexPrefixed( m_inputData );
     }
+
+    if (!m_logRecords.empty()) {
+        _jsonTrace["logs"] =  Json::arrayValue;
+        for (auto&& log : m_logRecords) {
+            // no logs in contract creation
+            _jsonTrace["logs"] = Json::arrayValue;
+            if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
+                Json::Value currentLogRecord = Json::objectValue;
+                currentLogRecord["address"] = toHexPrefixed( m_to );
+                currentLogRecord["data"] = toHexPrefixed(log.m_data);
+                currentLogRecord["topics"] =  Json::arrayValue;
+                for (auto&& topic: log.m_topics) {
+                    currentLogRecord["topics"].append( toHexPrefixed( topic ) );
+                }
+                _jsonTrace["logs"].append(currentLogRecord);
+            }
+        }
+    }
 }
 
 
@@ -90,7 +107,7 @@ void FunctionCall::printTrace( Json::Value& _jsonTrace, int64_t _depth ) {
         uint32_t i = 0;
         for ( auto&& nestedCall : m_nestedCalls ) {
             _jsonTrace["calls"].append( Json::objectValue );
-            nestedCall->printTrace( _jsonTrace["nestedCalls"][i], _depth + 1 );
+            nestedCall->printTrace( _jsonTrace["calls"][i], _depth + 1 );
             i++;
         }
     }
@@ -110,36 +127,14 @@ FunctionCall::FunctionCall( Instruction _type, const Address& _from, const Addre
       m_depth( _depth ) {
     STATE_CHECK( m_depth >= 0 )
 }
-const Address& FunctionCall::getFrom() const {
-    return m_from;
-}
-const Address& FunctionCall::getTo() const {
-    return m_to;
-}
-
-bool FunctionCall::hasReverted() const {
-    return m_reverted;
-}
-bool FunctionCall::hasError() const {
-    return m_completedWithError;
-}
 
 
-void FunctionCall::addLogEntry(
-    const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
+void FunctionCall::addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
     m_logRecords.emplace_back( _data, _topics );
 }
-uint64_t FunctionCall::getMFunctionGasLimit() const {
-    return m_functionGasLimit;
-}
 
-OpExecutionRecord::OpExecutionRecord( bool _hasReverted, vector< uint8_t > _returnData,
+OpExecutionRecord::OpExecutionRecord(
     int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
-    : m_hasReverted( _hasReverted ),
-      m_returnData( _returnData ),
-      m_depth( _depth ),
-      m_op( _op ),
-      m_gasRemaining( _gasRemaining ),
-      m_opGas( _opGas ) {}
+    : m_depth( _depth ), m_op( _op ), m_gasRemaining( _gasRemaining ), m_opGas( _opGas ) {}
 }  // namespace dev::eth
    // namespace dev

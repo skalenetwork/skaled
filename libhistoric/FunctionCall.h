@@ -35,29 +35,23 @@ using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, 
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
-class LogRecord {
-public:
+struct LogRecord {
+
     LogRecord( const vector< uint8_t >& _data, const vector< u256 >& _topics )
         : m_data( _data ), m_topics( _topics ) {}
 
-private:
     const vector< uint8_t >  m_data;
     const vector< u256 >  m_topics;
 };
 
-class OpExecutionRecord {
-public:
+struct OpExecutionRecord {
     // this is top level record to enter the transaction
     // the first function is executed at depth 0, as it was called form depth -1
     explicit OpExecutionRecord( Instruction _op )
-        : OpExecutionRecord( false, vector< uint8_t >(), -1, _op, 0, 0 ){};
+        : OpExecutionRecord( -1, _op, 0, 0 ){};
 
-    OpExecutionRecord( bool _hasReverted, vector< uint8_t > _returnData, int64_t _depth,
-        Instruction _op, uint64_t _gasRemaining, uint64_t _opGas );
+    OpExecutionRecord( int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas );
 
-    bool m_hasReverted;
-
-    vector< uint8_t > m_returnData;
     int64_t m_depth;
     Instruction m_op;
     uint64_t m_gasRemaining;
@@ -72,16 +66,12 @@ public:
         const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
     [[nodiscard]] int64_t getDepth() const;
     void setGasUsed( uint64_t _gasUsed );
-    void setOutputData( vector< uint8_t >& _outputData );
+    void setOutputData( const vector< uint8_t >& _outputData );
     void addNestedCall( shared_ptr< FunctionCall >& _nestedCall );
     void setError( const string& _error );
     void setRevertReason( const string& _revertReason );
     [[nodiscard]] const weak_ptr< FunctionCall >& getParentCall() const;
 
-    [[nodiscard]] bool hasReverted() const;
-    [[nodiscard]] bool hasError() const;
-    [[nodiscard]] const Address& getFrom() const;
-    [[nodiscard]] const Address& getTo() const;
     [[nodiscard]] uint64_t getFunctionGasLimit() const;
 
     void printTrace( Json::Value& _jsonTrace, int64_t _depth );
@@ -100,12 +90,6 @@ private:
     vector< uint8_t > m_inputData;
     vector< uint8_t > m_outputData;
     bool m_reverted = false;
-
-public:
-    uint64_t getMFunctionGasLimit() const;
-
-private:
-    bool m_completedWithError = false;
     string m_error;
     string m_revertReason;
     u256 m_value;
