@@ -35,7 +35,7 @@
 #include <libethcore/Counter.h>
 #include <libethcore/Exceptions.h>
 #include <libskale/State.h>
-#include <libhistoric/AlethStandardTrace.h>
+
 
 #include "Account.h"
 #include "GasPricer.h"
@@ -67,6 +67,8 @@ struct PopulationStatistics {
 
 DEV_SIMPLE_EXCEPTION( ChainOperationWithUnknownBlockChain );
 DEV_SIMPLE_EXCEPTION( InvalidOperationOnSealedBlock );
+
+class AlethStandardTrace;
 
 /**
  * @brief Active model of a block within the block chain.

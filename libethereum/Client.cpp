@@ -46,7 +46,10 @@
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
+
+
 #ifdef HISTORIC_STATE
+#include <libhistoric/AlethStandardTrace.h>
 #include <libhistoric/HistoricState.h>
 #endif
 

@@ -3,7 +3,6 @@
 #include "DebugFace.h"
 
 #include <libethereum/Executive.h>
-#include <libhistoric/AlethStandardTrace.h>
 
 #include <boost/program_options.hpp>
 

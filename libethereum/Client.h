@@ -60,7 +60,7 @@
 
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
-#include <libhistoric/AlethStandardTrace.h>
+
 
 class ConsensusHost;
 class SnapshotManager;
@@ -69,6 +69,7 @@ namespace dev {
 namespace eth {
 class Client;
 class DownloadMan;
+class AlethStandardTrace;
 
 enum ClientWorkState { Active = 0, Deleting, Deleted };
 
