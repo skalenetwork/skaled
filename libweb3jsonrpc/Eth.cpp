@@ -58,6 +58,12 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn ) const {
     if ( _bn != PendingBlock && _bn != LatestBlock && real2gappedCache.count( _bn ) )
         return;
 
+    assert( real2gappedCache.size() <= cacheSize );
+    if ( real2gappedCache.size() >= cacheSize ) {
+        real2gappedCache.erase( real2gappedCache.begin() );
+        gapped2realCache.erase( gapped2realCache.begin() );
+    }
+
     // can be empty for absent blocks
     h256s transactions = client.transactionHashes( _bn );
 
@@ -82,11 +88,6 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn ) const {
         real2gappedCache[_bn][realIndex] = gappedIndex;
 
     }  // for
-
-    if ( real2gappedCache.size() > cacheSize ) {
-        real2gappedCache.erase( real2gappedCache.begin() );
-        gapped2realCache.erase( gapped2realCache.begin() );
-    }
 }
 
 bool skippedInvalidTransactionsInBlock( BlockNumber _bn, const Interface& _client ) {
@@ -600,7 +601,6 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
 
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
-        // TODO Make it work with _blockNumber = pending!! Don't merge without this!
         return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
     } catch ( const JsonRpcException& ) {
         throw;
