@@ -550,6 +550,7 @@ int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
+    dev::setThreadName( "main" );
     BlockHeader::useTimestampHack = false;
     srand( time( nullptr ) );
     setCLocale();
@@ -2773,7 +2774,6 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    dev::setThreadName( "main" );
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;
