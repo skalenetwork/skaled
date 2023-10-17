@@ -131,11 +131,10 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     v8::Local<v8::Context> context = v8::Local<v8::Context>::New(isolate, persistent_context);
     context->Enter();
     // Create a string containing the JavaScript source code
-    v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, "'Hello, ' + 'World!'");
-
-    v8::Local<v8::Script> script = v8::Script::Compile(context, source).ToLocalChecked();
+    static v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, "'Hello, ' + 'World!'");
+    static v8::ScriptCompiler::Source script_source(source);
+    v8::Local<v8::Script> script = v8::ScriptCompiler::Compile(context, &script_source).ToLocalChecked();
     v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
-
     v8::String::Utf8Value utf8(isolate, result);
     std::cout << *utf8 << std::endl;
     context->Exit();
