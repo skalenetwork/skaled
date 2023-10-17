@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get -y remove libzmq* || true
           sudo apt-get -y install software-properties-common
-          sudo apt-get -y install gcc-9 g++-9  libv8-dev
+          sudo apt-get -y install gcc-9 g++-9 libnode-dev=10.19.0~dfsg-3ubuntu1.2
 
       - name: Use g++-9 and gcov-9 by default
         run: |
