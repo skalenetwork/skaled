@@ -16,10 +16,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-
-#include "AlethTraceBase.h"
+#include <libplatform/libplatform.h>
+#include <v8.h>
 #include "FunctionCall.h"
+#include "AlethTraceBase.h"
 
 namespace dev::eth {
 
@@ -98,6 +98,47 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
+
+    static v8::Isolate::CreateParams create_params;
+    // use unique pointer so allocator will be deleted after program exit
+    static auto allocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+
+        STATE_CHECK(allocator);
+    // use C++ 11 magic statics to initialize platform object
+    // the lambda code is guaranteed to be called only once in a thread safe way
+    static std::unique_ptr<v8::Platform>  platform =  []() {
+        v8::V8::InitializeICUDefaultLocation("trace");
+        v8::V8::InitializeExternalStartupData("trace    ");
+        auto platform = v8::platform::NewDefaultPlatform();
+        STATE_CHECK(platform);
+        v8::V8::InitializePlatform(platform.get());
+        v8::V8::Initialize();
+        create_params.array_buffer_allocator = allocator.get();
+        return platform;
+    }();
+
+    static v8::Isolate* isolate = v8::Isolate::New(create_params);;
+    STATE_CHECK(isolate);
+    static v8::Isolate::Scope isolate_scope(isolate);  // Enter the isolate
+    static v8::HandleScope handle_scope(isolate);  // Handle to local scope
+    static v8::Persistent<v8::Context> persistent_context(isolate, v8::Context::New(isolate));
+
+    // reset persistent context so to run a new trace
+    //persistent_context.Reset();
+    //isolate->Dispose();
+
+
+    v8::Local<v8::Context> context = v8::Local<v8::Context>::New(isolate, persistent_context);
+    context->Enter();
+    // Create a string containing the JavaScript source code
+    v8::Local<v8::String> source = v8::String::NewFromUtf8(isolate, "'Hello, ' + 'World!'");
+
+    v8::Local<v8::Script> script = v8::Script::Compile(context, source).ToLocalChecked();
+    v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
+
+    v8::String::Utf8Value utf8(isolate, result);
+    std::cout << *utf8 << std::endl;
+    context->Exit();
 }
 
 void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
