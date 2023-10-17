@@ -56,8 +56,8 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                                cc::error( "\nCaught (first) signal. " );
     } else {
         strMessagePrefix = ExitHandler::shouldExit() ?
-                               cc::error( "\nInternal exit initiated. " ) :
-                               cc::error( "\nInternal exit requested while already exiting. " );
+                               cc::error( "\nInternal exit requested while already exiting. " ) :
+                               cc::error( "\nInternal exit initiated. " );
     }
     std::cerr << strMessagePrefix << cc::error( skutils::signal::signal2str( nSignalNo ) )
               << "\n\n";
