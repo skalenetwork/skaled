@@ -141,13 +141,13 @@ void eth::AlethStandardTrace::deftracePrint(
     m_jsonTrace["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
     m_jsonTrace["failed"] = failed;
-    if ( !failed && getOptions().enableReturnData ) {
-        m_jsonTrace["returnValue"] = toHex( _er.output );
-    } else {
-        std::string errMessage;
-        if ( _er.excepted == TransactionException::RevertInstruction ) {
-            errMessage = skutils::eth::call_error_message_2_str( _er.output );
+    if ( !failed)  {
+        if (getOptions().enableReturnData) {
+            m_jsonTrace["returnValue"] = toHex( _er.output );
         }
+    } else {
+        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode(_er.excepted);
+        string errMessage = evmErrorDescription(statusCode);
         // return message in two fields for compatibility with different tools
         m_jsonTrace["returnValue"] = errMessage;
         m_jsonTrace["error"] = errMessage;

@@ -31,6 +31,12 @@ void eth::AlethStandardTrace::replayTracePrint(
     m_jsonTrace["stateDiff"] = Json::Value::null;
     m_jsonTrace["transactionHash"] = toHexPrefixed( m_hash );
     m_jsonTrace["output"] = toHexPrefixed( _er.output );
+    auto failed = _er.excepted != TransactionException::None;
+    if (failed) {
+        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode(_er.excepted);
+        string errMessage = evmErrorDescription(statusCode);
+        m_jsonTrace["error"] = errMessage;
+    }
 }
 
 
