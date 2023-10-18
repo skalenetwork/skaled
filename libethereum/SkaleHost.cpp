@@ -328,8 +328,7 @@ void SkaleHost::logState() {
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     // drop incoming transactions if skaled has an outdated state
-    if ( m_client.bc().info( m_client.bc().currentHash() ).timestamp() +
-             REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
+    if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
          std::time( NULL ) ) {
         return h256();
     }
