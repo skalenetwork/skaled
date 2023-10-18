@@ -330,6 +330,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     // drop incoming transactions if skaled has an outdated state
     if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
          std::time( NULL ) ) {
+        LOG( m_debugLogger ) << "Dropped the transaction received through broadcast";
         return h256();
     }
 
