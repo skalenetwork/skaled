@@ -70,7 +70,11 @@ class AlethTraceBase {
 public:
     [[nodiscard]] Json::Value getJSONResult() const;
 
+
+
 protected:
+
+
 
     shared_ptr< FunctionCall > m_topFunctionCall;
     shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;
@@ -99,6 +103,7 @@ protected:
 
     [[nodiscard]] string evmErrorDescription( evmc_status_code _error );
 
+    [[nodiscard]] string& getTracerSrc( string& _tracerName );
 
     vector< Instruction > m_lastInst;
     shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
