@@ -70,6 +70,7 @@ public:
 
 private:
     leveldb::WriteBatch m_writeBatch;
+    std::atomic< uint64_t > keysToBeDeletedCount;
 };
 
 void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
@@ -78,6 +79,7 @@ void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
 }
 
 void LevelDBWriteBatch::kill( Slice _key ) {
+    LevelDB::g_keysToBeDeletedStats++;
     m_writeBatch.Delete( toLDBSlice( _key ) );
 }
 
@@ -89,7 +91,7 @@ leveldb::ReadOptions LevelDB::defaultReadOptions() {
 
 leveldb::WriteOptions LevelDB::defaultWriteOptions() {
     leveldb::WriteOptions writeOptions = leveldb::WriteOptions();
-    writeOptions.sync = true;
+    //    writeOptions.sync = true;
     return writeOptions;
 }
 
@@ -168,6 +170,9 @@ void LevelDB::insert( Slice _key, Slice _value ) {
 void LevelDB::kill( Slice _key ) {
     leveldb::Slice const key( _key.data(), _key.size() );
     auto const status = m_db->Delete( m_writeOptions, key );
+    // At this point the key is not actually deleted. It will be deleted when the batch
+    // is committed
+    g_keysToBeDeletedStats++;
     checkStatus( status );
 }
 
@@ -185,6 +190,10 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
             DatabaseError() << errinfo_comment( "Invalid batch type passed to LevelDB::commit" ) );
     }
     auto const status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
+    // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes
+    // stats and set g_keysToBeDeletedStats to zero
+    g_keyDeletesStats += g_keysToBeDeletedStats;
+    g_keysToBeDeletedStats = 0;
     checkStatus( status );
 }
 
@@ -273,6 +282,13 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
 
 void LevelDB::doCompaction() const {
     m_db->CompactRange( nullptr, nullptr );
+}
+
+std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
+std::atomic< uint64_t > LevelDB::g_keyDeletesStats = 0;
+
+uint64_t LevelDB::getKeyDeletesStats() {
+    return g_keyDeletesStats;
 }
 
 }  // namespace db

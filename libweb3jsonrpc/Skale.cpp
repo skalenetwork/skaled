@@ -64,12 +64,21 @@ namespace rpc {
 
 std::string exceptionToErrorMessage();
 
-Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
-    : m_client( _client ), m_shared_space( _sharedSpace ) {}
-
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
 Skale::list_fn_on_shutdown_t Skale::g_list_fn_on_shutdown;
+
+Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
+    : m_client( _client ), m_shared_space( _sharedSpace ) {}
+
+Skale::~Skale() {
+    threadExitRequested = true;
+    if ( snapshotDownloadFragmentMonitorThread != nullptr &&
+         snapshotDownloadFragmentMonitorThread->joinable() ) {
+        clog( VerbosityInfo, "Skale" ) << "Joining downloadSnapshotFragmentMonitorThread";
+        snapshotDownloadFragmentMonitorThread->join();
+    }
+}
 
 bool Skale::isWeb3ShutdownEnabled() {
     return g_bShutdownViaWeb3Enabled;
@@ -199,11 +208,13 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                             m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
                     time( NULL ) - currentSnapshotTime <
                         m_client.chainParams().sChain.snapshotDownloadTimeout ) {
-                sleep( 30 );
+                if ( threadExitRequested )
+                    break;
+                sleep( 10 );
             }
 
             clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
-                << "Unlocking shared space as timeout was reached.\n";
+                << "Unlocking shared space.\n";
 
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
