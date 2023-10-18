@@ -287,7 +287,7 @@ Json::Value Eth::eth_getBlockTransactionCountByHash( string const& _blockHash ) 
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = client()->numberFromHash( blockHash );
-        if ( !skippedInvalidTransactionsInBlock( bn, *client() ) )
+        if ( skippedInvalidTransactionsInBlock( bn, *client() ) )
 #endif
             return toJS( client()->transactionCount( blockHash ) );
 #ifdef HISTORIC_STATE
@@ -306,7 +306,7 @@ Json::Value Eth::eth_getBlockTransactionCountByNumber( string const& _blockNumbe
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = jsToBlockNumber( _blockNumber );
-        if ( !skippedInvalidTransactionsInBlock( bn, *client() ) )
+        if ( skippedInvalidTransactionsInBlock( bn, *client() ) )
 #endif
             return toJS( client()->transactionCount( jsToBlockNumber( _blockNumber ) ) );
 #ifdef HISTORIC_STATE
@@ -558,7 +558,7 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
 
 #ifdef HISTORIC_STATE
             BlockNumber bn = client()->numberFromHash( h );
-            if ( skippedInvalidTransactionsInBlock( bn, *client() ) ) {
+            if ( !skippedInvalidTransactionsInBlock( bn, *client() ) ) {
                 // remove skipped transactions
                 size_t index = 0;
                 Transactions::iterator newEnd = std::remove_if( transactions.begin(),
@@ -575,7 +575,7 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
 
 #ifdef HISTORIC_STATE
             BlockNumber bn = client()->numberFromHash( h );
-            if ( skippedInvalidTransactionsInBlock( bn, *client() ) ) {
+            if ( !skippedInvalidTransactionsInBlock( bn, *client() ) ) {
                 // remove skipped transactions
                 size_t index = 0;
                 h256s::iterator newEnd = std::remove_if( transactions.begin(), transactions.end(),
@@ -646,7 +646,7 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = client()->numberFromHash( bh );
-        if ( skippedInvalidTransactionsInBlock( bn, *client() ) )
+        if ( !skippedInvalidTransactionsInBlock( bn, *client() ) )
             try {
                 ti = m_gapCache->realIndexFromGapped( bn, ti );
             } catch ( const out_of_range& ) {
@@ -670,7 +670,7 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
 
 #ifdef HISTORIC_STATE
-        if ( skippedInvalidTransactionsInBlock( bn, *client() ) )
+        if ( !skippedInvalidTransactionsInBlock( bn, *client() ) )
             try {
                 ti = m_gapCache->realIndexFromGapped( bn, ti );
             } catch ( const out_of_range& ) {
@@ -725,7 +725,7 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
     auto rcp = cli->localisedTransactionReceipt( h );
 
 #ifdef HISTORIC_STATE
-    if ( skippedInvalidTransactionsInBlock( rcp.blockNumber(), *client() ) ) {
+    if ( !skippedInvalidTransactionsInBlock( rcp.blockNumber(), *client() ) ) {
         // skip invalid
         if ( rcp.gasUsed() == 0 ) {
             m_receiptsCache.put( cacheKey, nullptr );
