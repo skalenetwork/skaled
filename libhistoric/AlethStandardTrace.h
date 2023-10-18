@@ -75,8 +75,8 @@ private:
         const HistoricState& _stateBefore, const HistoricState& _statePost,
         const Address& _address );
 
-    void deftraceFinalize( const ExecutionResult& _er, const HistoricState& _stateBefore,
-        const HistoricState& _stateAfter );
+    void deftracePrint( const ExecutionResult& _er, const HistoricState&,
+        const HistoricState& );
 
     void pstracePrint(
         ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
@@ -85,6 +85,9 @@ private:
         ExecutionResult&, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
     void calltracePrint(
+        ExecutionResult&, const HistoricState&, const HistoricState& );
+
+    void replayTracePrint(
         ExecutionResult&, const HistoricState&, const HistoricState& );
 };
 }  // namespace eth

@@ -81,7 +81,8 @@ DebugOptions AlethTraceBase::debugOptions( Json::Value const& _json ) {
 const map< string, TraceType > AlethTraceBase::s_stringToTracerMap = {
     { "", TraceType::STANDARD_TRACER },
     { "callTracer", TraceType::CALL_TRACER },
-    { "prestateTracer", TraceType::PRESTATE_TRACER }
+    { "prestateTracer", TraceType::PRESTATE_TRACER },
+    { "replayTracer", TraceType::REPLAY_TRACER }
 };
 
 AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
@@ -94,10 +95,13 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
           // when we start execution a user transaction the top level function can  be a call
           // or a contract create
           _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0 ) {
+    m_hash = _t.sha3();
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
+
+
 }
 
 void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,

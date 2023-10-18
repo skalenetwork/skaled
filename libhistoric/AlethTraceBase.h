@@ -53,7 +53,7 @@ class FunctionCall;
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
-enum class TraceType { STANDARD_TRACER, PRESTATE_TRACER, CALL_TRACER };
+enum class TraceType { STANDARD_TRACER, PRESTATE_TRACER, CALL_TRACER, REPLAY_TRACER };
 
 struct DebugOptions {
     bool disableStorage = false;
@@ -106,7 +106,9 @@ protected:
     Address m_from;
     Address m_to;
     DebugOptions m_options;
+    h256 m_hash;
     Json::Value m_jsonTrace;
+
 
     static const map< string, TraceType > s_stringToTracerMap;
 

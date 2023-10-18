@@ -120,7 +120,7 @@ void eth::AlethStandardTrace::finalizeTrace(
 
     switch ( m_options.tracerType ) {
     case TraceType::STANDARD_TRACER:
-        deftraceFinalize( _er, _stateBefore, _stateAfter );
+        deftracePrint( _er, _stateBefore, _stateAfter );
         break;
     case TraceType::PRESTATE_TRACER:
         pstracePrint( _er, _stateBefore, _stateAfter );
@@ -128,11 +128,14 @@ void eth::AlethStandardTrace::finalizeTrace(
     case TraceType::CALL_TRACER:
         calltracePrint( _er, _stateBefore, _stateAfter );
         break;
+    case TraceType::REPLAY_TRACER:
+        replayTracePrint( _er, _stateBefore, _stateAfter );
+        break;
     }
 }
 
 
-void eth::AlethStandardTrace::deftraceFinalize(
+void eth::AlethStandardTrace::deftracePrint(
     const ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
     m_jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
     m_jsonTrace["structLogs"] = *m_defaultOpTrace;
