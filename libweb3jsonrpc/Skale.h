@@ -57,6 +57,7 @@ class Skale : public dev::rpc::SkaleFace {
 public:
     explicit Skale(
         dev::eth::Client& _client, std::shared_ptr< SharedSpace > _sharedSpace = nullptr );
+    virtual ~Skale();
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{ RPCModule{ "skale", "0.1" } };
@@ -105,6 +106,7 @@ private:
     std::atomic< time_t > currentSnapshotTime = 0;
     std::atomic< time_t > lastSnapshotDownloadFragmentTime = 0;
     std::unique_ptr< std::thread > snapshotDownloadFragmentMonitorThread;
+    std::atomic_bool threadExitRequested = false;
     mutable std::mutex m_snapshot_mutex;
 };
 
