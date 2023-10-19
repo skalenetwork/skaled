@@ -1263,7 +1263,8 @@ void BlockChain::garbageCollect( bool _force ) {
 
     m_lastCollection = chrono::system_clock::now();
 
-    while ( m_lastStats.memTotal() >= c_maxCacheSize ) {
+    // We subtract memory that blockhashes occupy because it is treated sepaparately
+    while ( m_lastStats.memTotal() - m_lastStats.memBlockHashes >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
             m_inUse.erase( id );
@@ -1316,6 +1317,7 @@ void BlockChain::garbageCollect( bool _force ) {
 
     {
         WriteGuard l( x_blockHashes );
+        // This is where block hash memory cleanup is treated
         // allow only 4096 blockhashes in the cache
         if ( m_blockHashes.size() > 4096 ) {
             auto last = m_blockHashes.begin();
