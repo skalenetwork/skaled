@@ -266,11 +266,9 @@ ChainParams ChainParams::loadConfig(
                                        sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
                                        0;
 
-        s.pushZeroPatchTimestamp =
-            sChainObj.count( "pushZeroPatchTimestamp" ) ?
-                sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
-                0;
-
+        s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
+                                       sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
+                                       0;
 
 
         if ( sChainObj.count( "nodeGroups" ) ) {
