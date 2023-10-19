@@ -54,9 +54,17 @@ const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 using namespace dev::rpc::_detail;
 
 // TODO Check LatestBlock number - update!
-void GappedTransactionIndexCache::ensureCached( BlockNumber _bn ) const {
+// Needs external locks to exchange read one to write one
+void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
+    std::shared_lock< std::shared_mutex >& _readLock,
+    std::unique_lock< std::shared_mutex >& _writeLock ) const {
     if ( _bn != PendingBlock && _bn != LatestBlock && real2gappedCache.count( _bn ) )
         return;
+
+    // change read lock for write lock
+    // they both will be destroyed externally
+    _readLock.unlock();
+    _writeLock.lock();
 
     assert( real2gappedCache.size() <= cacheSize );
     if ( real2gappedCache.size() >= cacheSize ) {
