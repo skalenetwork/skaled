@@ -104,6 +104,9 @@ bool hasPotentialInvalidTransactionsInBlock( BlockNumber _bn, const Interface& _
     if ( _bn == 0 )
         return false;
 
+    if ( SkipInvalidTransactionsPatch::getActivationTimestamp() == 0 )
+        return true;
+
     if ( _bn == PendingBlock )
         return !SkipInvalidTransactionsPatch::isEnabled();
 
