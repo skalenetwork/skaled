@@ -54,11 +54,11 @@
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/POWCheckPatch.h>
+#include <libskale/PushZeroPatch.h>
 #include <libskale/RevertableFSPatch.h>
 #include <libskale/State.h>
 #include <libskale/StorageDestructionPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
-#include <libskale/PushZeroPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <libskale/VerifyDaSigsPatch.h>
 #include <skutils/console_colors.h>
