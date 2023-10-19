@@ -61,7 +61,7 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     // await waitUntilNextBlock()
 
-    await getAndPrintTrace(hash)
+    //await getAndPrintTrace(hash)
 
 
     console.log(`Now testing`);

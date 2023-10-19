@@ -58,6 +58,7 @@
 #include <libskale/State.h>
 #include <libskale/StorageDestructionPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
+#include <libskale/PushZeroPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <libskale/VerifyDaSigsPatch.h>
 #include <skutils/console_colors.h>
@@ -162,6 +163,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
     StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
     POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
+    PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
 }
 
 
@@ -654,6 +656,7 @@ size_t Client::syncTransactions(
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
 
     DEV_WRITE_GUARDED( x_working ) {

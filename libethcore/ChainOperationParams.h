@@ -175,6 +175,8 @@ public:
     time_t verifyDaSigsPatchTimestamp = 0;
     time_t storageDestructionPatchTimestamp = 0;
     time_t powCheckPatchTimestamp = 0;
+    time_t pushZeroPatchTimestamp = 0;
+
 
     SChain() {
         name = "TestChain";

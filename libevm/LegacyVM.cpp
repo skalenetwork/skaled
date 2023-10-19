@@ -15,6 +15,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libskale/PushZeroPatch.h"
 #include "LegacyVM.h"
 
 using namespace std;
@@ -1356,14 +1357,17 @@ void LegacyVM::interpretCases() {
         CONTINUE
 
         // EIP-3855. Code PUSH0 is similar to PUSH1 but pushes 0
+        // we need to increment program counter only by one since
+        // the value is not read from program code as in PUSH1
         CASE( PUSH0 ) {
-            //throwBadInstruction();
+            if (!PushZeroPatch::isEnabled()) {
+                throwBadInstruction();
+            }
             ON_OP();
             updateIOGas();
-            ++m_PC;
             m_SPP[0] = 0;
             ++m_PC;
-        }
+        };
         CONTINUE
 
 
