@@ -1355,6 +1355,18 @@ void LegacyVM::interpretCases() {
         }
         CONTINUE
 
+        // EIP-3855. Code PUSH0 is similar to PUSH1 but pushes 0
+        CASE( PUSH0 ) {
+            //throwBadInstruction();
+            ON_OP();
+            updateIOGas();
+            ++m_PC;
+            m_SPP[0] = 0;
+            ++m_PC;
+        }
+        CONTINUE
+
+
         CASE( PUSH1 ) {
             ON_OP();
             updateIOGas();
