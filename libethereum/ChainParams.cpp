@@ -266,6 +266,11 @@ ChainParams ChainParams::loadConfig(
                                        sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
                                        0;
 
+        s.skipInvalidTransactionsPatchTimestamp =
+            sChainObj.count( "skipInvalidTransactionsPatchTimestamp" ) ?
+                sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
+                0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
