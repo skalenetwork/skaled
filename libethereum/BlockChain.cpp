@@ -229,9 +229,9 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
-        auto rotator = std::make_shared< batched_io::rotating_db_io >(
+        m_rotator = std::make_shared< batched_io::rotating_db_io >(
             chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().nodeInfo.archiveMode );
-        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
+        m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( m_rotating_db );
         m_db = db;
@@ -1263,7 +1263,8 @@ void BlockChain::garbageCollect( bool _force ) {
 
     m_lastCollection = chrono::system_clock::now();
 
-    {
+    // We subtract memory that blockhashes occupy because it is treated sepaparately
+    while ( m_lastStats.memTotal() - m_lastStats.memBlockHashes >= c_maxCacheSize ) {
         Guard l( x_cacheUsage );
         for ( CacheID const& id : m_cacheUsage.back() ) {
             m_inUse.erase( id );
@@ -1310,11 +1311,13 @@ void BlockChain::garbageCollect( bool _force ) {
         }
         m_cacheUsage.pop_back();
         m_cacheUsage.push_front( std::unordered_set< CacheID >{} );
+        updateStats();
     }
 
 
     {
         WriteGuard l( x_blockHashes );
+        // This is where block hash memory cleanup is treated
         // allow only 4096 blockhashes in the cache
         if ( m_blockHashes.size() > 4096 ) {
             auto last = m_blockHashes.begin();
@@ -1364,13 +1367,13 @@ void BlockChain::clearCaches() {
     }
 }
 
-// void BlockChain::doLevelDbCompaction() const {
-//    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
-//        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
-//        assert( ldb );
-//        ldb->doCompaction();
-//    }
-//}
+void BlockChain::doLevelDbCompaction() const {
+    for ( auto it = m_rotator->begin(); it != m_rotator->end(); ++it ) {
+        dev::db::LevelDB* ldb = dynamic_cast< dev::db::LevelDB* >( it->get() );
+        assert( ldb );
+        ldb->doCompaction();
+    }
+}
 
 void BlockChain::checkConsistency() {
     DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }

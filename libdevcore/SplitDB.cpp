@@ -100,6 +100,20 @@ void SplitDB::PrefixedDB::forEach( std::function< bool( Slice, Slice ) > f ) con
     } );
 }
 
+
+void SplitDB::PrefixedDB::forEachWithPrefix(
+    std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
+    std::unique_lock< std::shared_mutex > lock( this->backend_mutex );
+    auto prefixedString = std::to_string( this->prefix ) + _prefix;
+    backend->forEachWithPrefix( prefixedString, [&]( Slice _key, Slice _val ) -> bool {
+        if ( _key[0] != this->prefix )
+            return true;
+        Slice key_short = Slice( _key.data() + 1, _key.size() - 1 );
+        return f( key_short, _val );
+    } );
+}
+
+
 h256 SplitDB::PrefixedDB::hashBase() const {
     // HACK TODO implement that it would work with any DatabaseFace*
     const LevelDB* ldb = dynamic_cast< const LevelDB* >( backend.get() );

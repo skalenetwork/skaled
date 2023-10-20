@@ -211,6 +211,11 @@ struct TransactionSkeleton {
     u256 gas = Invalid256;
     u256 gasPrice = Invalid256;
 
+    TransactionSkeleton() = default;
+    TransactionSkeleton( const TransactionSkeleton& other ) = default;
+
+    TransactionSkeleton& operator=( const TransactionSkeleton& other ) = default;
+
     std::string userReadable( bool _toProxy,
         std::function< std::pair< bool, std::string >( TransactionSkeleton const& ) > const&
             _getNatSpec,
@@ -222,7 +227,6 @@ struct TransactionSkeleton {
 public:
     static uint64_t howMany() { return Counter< TransactionSkeleton >::howMany(); }
 };
-
 
 void badBlock( bytesConstRef _header, std::string const& _err );
 inline void badBlock( bytes const& _header, std::string const& _err ) {

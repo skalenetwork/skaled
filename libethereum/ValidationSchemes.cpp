@@ -152,6 +152,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "infoWssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
             { "imaMonitoringPort", { { js::int_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "emptyBlockIntervalAfterCatchupMs",
+                { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
@@ -169,6 +171,10 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "collectionQueueSize", { { js::int_type }, JsonFieldPresence::Optional } },
             { "collectionDuration", { { js::int_type }, JsonFieldPresence::Optional } },
             { "transactionQueueSize", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "futureTransactionQueueSize", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "transactionQueueLimitBytes", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "futureTransactionQueueLimitBytes",
+                { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxOpenLeveldbFiles", { { js::int_type }, JsonFieldPresence::Optional } },
             { "logLevel", { { js::str_type }, JsonFieldPresence::Optional } },
             { "logLevelConfig", { { js::str_type }, JsonFieldPresence::Optional } },
@@ -201,8 +207,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "log-tx-params-limit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "no-ima-signing", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "skale-manager", { { js::obj_type }, JsonFieldPresence::Optional } },
-            { "skale-network-browser-refresh", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "skale-network-browser-verbose", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "imaMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
             { "imaMessageProxySChain", { { js::str_type }, JsonFieldPresence::Optional } },
             { "imaMessageProxyMainNet", { { js::str_type }, JsonFieldPresence::Optional } },
@@ -240,6 +244,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "schainOwner", { { js::str_type }, JsonFieldPresence::Optional } },
             { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "emptyBlockIntervalAfterCatchupMs",
+                { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotDownloadTimeout", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotDownloadInactiveTimeout",
@@ -259,7 +265,12 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "contractStorageZeroValuePatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "verifyDaSigsPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } } );
+            { "storageDestructionPatchTimestamp",
+                { { js::int_type }, JsonFieldPresence::Optional } },
+            { "powCheckPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
+            { "skipInvalidTransactionsPatchTimestamp",
+                { { js::int_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {

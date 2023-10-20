@@ -62,8 +62,6 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-const int SkaleHost::EXIT_FORCEFULLTY_SECONDS = 60 * 4;
-
 #ifndef CONSENSUS
 #define CONSENSUS 1
 #endif
@@ -247,17 +245,18 @@ void ConsensusExtImpl::createBlock(
 }
 
 void ConsensusExtImpl::terminateApplication() {
-    dev::ExitHandler::exitHandler( SIGINT, dev::ExitHandler::ec_consensus_terminate_request );
+    dev::ExitHandler::exitHandler( -1, dev::ExitHandler::ec_consensus_terminate_request );
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
-    bool _broadcastEnabled )
+    [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
       total_sent( 0 ),
-      total_arrived( 0 ) {
+      total_arrived( 0 ),
+      latestBlockTime( boost::chrono::high_resolution_clock::time_point() ) {
     try {
         m_debugHandler = [this]( const std::string& arg ) -> std::string {
             return DebugTracer_handler( arg, this->m_debugTracer );
@@ -385,12 +384,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     if ( m_exitNeeded )
         return out_vector;
 
-    // HACK this should be field (or better do it another way)
-    static bool first_run = true;
-    if ( first_run ) {
-        m_consensusWorkingMutex.lock();
-        first_run = false;
-    }
     if ( m_exitNeeded )
         return out_vector;
 
@@ -399,12 +392,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     if ( m_exitNeeded )
         return out_vector;
 
-    unlock_guard< std::timed_mutex > unlocker( m_consensusWorkingMutex );
-
-    if ( m_exitNeeded ) {
-        unlocker.will_exit();
+    if ( m_exitNeeded )
         return out_vector;
-    }
 
     if ( need_restore_emptyBlockInterval ) {
         this->m_consensus->setEmptyBlockIntervalMs( this->emptyBlockIntervalMsForRestore.value() );
@@ -474,23 +463,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
-    // HACK For IS-348
-    auto saved_txns = txns;
-    std::stable_sort( txns.begin(), txns.end(), TransactionQueue::PriorityCompare{ m_tq } );
-    bool found_difference = false;
-    for ( size_t i = 0; i < txns.size(); ++i ) {
-        if ( txns[i].sha3() != saved_txns[i].sha3() )
-            found_difference = true;
-    }
-    if ( found_difference ) {
-        clog( VerbosityError, "skale-host" ) << "Transaction order disorder detected!!";
-        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
-        for ( size_t i = 0; i < txns.size(); ++i ) {
-            clog( VerbosityTrace, "skale-host" )
-                << i << " " << saved_txns[i].sha3() << " " << txns[i].sha3();
-        }
-    }
-
     // drop by block gas limit
     u256 blockGasLimit = this->m_client.chainParams().gasLimit;
     u256 gasAcc = 0;
@@ -512,13 +484,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         std::string strPerformanceQueueName_drop_bad_transactions = "bc/fetch_transactions";
         std::string strPerformanceActionName_drop_bad_transactions =
             skutils::tools::format( "fetch task %zu", nDropBadTransactionsTaskNumber );
-        skutils::task::performance::json jsn = skutils::task::performance::json::object();
-        skutils::task::performance::json jarrDroppedTransactions =
-            skutils::task::performance::json::array();
-        for ( auto sha : to_delete ) {
-            jarrDroppedTransactions.push_back( toJS( sha ) );
-        }
-        jsn["droppedTransactions"] = jarrDroppedTransactions;
+
         skutils::task::performance::action a_drop_bad_transactions(
             strPerformanceQueueName_drop_bad_transactions,
             strPerformanceActionName_drop_bad_transactions, jsn );
@@ -531,10 +497,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
         }
     }
-
-    if ( this->m_exitNeeded )
-        unlocker.will_exit();
-
 
     if ( this->emptyBlockIntervalMsForRestore.has_value() )
         need_restore_emptyBlockInterval = true;
@@ -584,9 +546,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     m_debugTracer.tracepoint( "send_to_consensus" );
 
-    if ( this->m_exitNeeded )
-        unlocker.will_exit();
-
     return out_vector;
 }
 
@@ -594,6 +553,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
     //
+    boost::chrono::high_resolution_clock::time_point skaledTimeStart;
+    skaledTimeStart = boost::chrono::high_resolution_clock::now();
     static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
     size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
     std::string strPerformanceQueueName_create_block = "bc/create_block";
@@ -604,18 +565,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     jsn_create_block["timeStamp"] = toJS( _timeStamp );
     jsn_create_block["gasPrice"] = toJS( _gasPrice );
     jsn_create_block["stateRoot"] = toJS( _stateRoot );
-    skutils::task::performance::json jarrApprovedTransactions =
-        skutils::task::performance::json::array();
-    for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
-        const bytes& data = *it;
-        h256 sha = sha3( data );
-        jarrApprovedTransactions.push_back( toJS( sha ) );
-    }
-    jsn_create_block["approvedTransactions"] = jarrApprovedTransactions;
     skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
         strPerformanceActionName_create_block, jsn_create_block );
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+
+    if ( m_ignoreNewBlocks ) {
+        clog( VerbosityWarning, "skale-host" ) << "WARNING: skaled got new block #" << _blockID
+                                               << " after timestamp-related exit initiated!";
+        return;
+    }
 
     LOG( m_debugLogger ) << cc::debug( "createBlock " ) << cc::notice( "ID" ) << cc::debug( " = " )
                          << cc::warn( "#" ) << cc::num10( _blockID ) << std::endl;
@@ -646,8 +605,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 << cc::error( " cleanup is recommended, exiting with code " )
                 << cc::num10( int( ExitHandler::ec_state_root_mismatch ) ) << "...";
             if ( AmsterdamFixPatch::stateRootCheckingEnabled( m_client ) ) {
-                ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_state_root_mismatch );
-                _exit( int( ExitHandler::ec_state_root_mismatch ) );
+                m_ignoreNewBlocks = true;
+                m_consensus->exitGracefully();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_state_root_mismatch );
             }
         }
 
@@ -733,11 +693,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         std::string strPerformanceQueueName_import_block = "bc/import_block";
         std::string strPerformanceActionName_import_block =
             skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
-        skutils::task::performance::json jsn_import_block =
-            skutils::task::performance::json::object();
-        jsn_import_block["txns"] = jarrProcessedTxns;
-        skutils::task::performance::action a_import_block( strPerformanceQueueName_import_block,
-            strPerformanceActionName_import_block, jsn_import_block );
+        skutils::task::performance::action a_import_block(
+            strPerformanceQueueName_import_block, strPerformanceActionName_import_block );
         //
         m_debugTracer.tracepoint( "import_block" );
 
@@ -747,6 +704,26 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
+    boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
+        boost::chrono::high_resolution_clock::now();
+    if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
+        clog( VerbosityInfo, "skale-host" )
+            << "SWT:"
+            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                   skaledTimeFinish - skaledTimeStart )
+                   .count()
+            << ':' << "BFT:"
+            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                   skaledTimeFinish - latestBlockTime )
+                   .count();
+    } else {
+        clog( VerbosityInfo, "skale-host" )
+            << "SWT:"
+            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                   skaledTimeFinish - skaledTimeStart )
+                   .count();
+    }
+    latestBlockTime = skaledTimeFinish;
     LOG( m_debugLogger ) << cc::success( "Successfully imported " ) << n_succeeded
                          << cc::success( " of " ) << out_txns.size()
                          << cc::success( " transactions" ) << std::endl;
@@ -756,11 +733,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     logState();
 
+    clog( VerbosityInfo, "skale-host" )
+        << "TQBYTES:CTQ:" << m_tq.status().currentBytes << ":FTQ:" << m_tq.status().futureBytes
+        << ":TQSIZE:CTQ:" << m_tq.status().current << ":FTQ:" << m_tq.status().future;
+
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
+            m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
-            ExitHandler::exitHandler( SIGTERM, ExitHandler::ec_rotation_complete );
+            ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
         }
     }
@@ -779,7 +761,6 @@ void SkaleHost::startWorking() {
     // TODO Should we do it at end of this func? (problem: broadcaster receives transaction and
     // recursively calls this func - so working is still false!)
     working = true;
-    m_exitedForcefully = false;
 
     if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
         try {
@@ -793,20 +774,23 @@ void SkaleHost::startWorking() {
         m_broadcastThread = std::thread( bcast_func );
     }
 
-    try {
-        m_consensus->startAll();
-    } catch ( const std::exception& ) {
-        // cleanup
-        m_exitNeeded = true;
-        if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
-            m_broadcastThread.join();
-        }
-        throw;
-    }
-
-    std::promise< void > bootstrap_promise;
-
     auto csus_func = [&]() {
+        try {
+            m_consensus->startAll();
+        } catch ( const std::exception& ) {
+            // cleanup
+            m_exitNeeded = true;
+            if ( !this->m_client.chainParams().nodeInfo.syncNode ) {
+                m_broadcastThread.join();
+            }
+            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+            return;
+        }
+
+        // comment out as this hack is in consensus now
+        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
+        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+        //        m_consensus->setEmptyBlockIntervalMs( 50 );
         try {
             static const char g_strThreadName[] = "bootStrapAll";
             dev::setThreadName( g_strThreadName );
@@ -825,37 +809,17 @@ void SkaleHost::startWorking() {
                 << skutils::signal::generate_stack_trace() << "\n";
         }
 
-        bootstrap_promise.set_value();
+        // comment out as this hack is in consensus now
+        //        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
     };  // func
 
-    // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-    uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-    m_consensus->setEmptyBlockIntervalMs( 50 );
     m_consensusThread = std::thread( csus_func );
-    bootstrap_promise.get_future().wait();
-    m_consensus->setEmptyBlockIntervalMs( tmp_interval );
 }
 
 // TODO finish all gracefully to allow all undone jobs be finished
 void SkaleHost::stopWorking() {
     if ( !working )
         return;
-
-    bool locked =
-        m_consensusWorkingMutex.try_lock_for( std::chrono::seconds( EXIT_FORCEFULLTY_SECONDS ) );
-    auto lock = locked ? std::make_unique< std::lock_guard< std::timed_mutex > >(
-                             m_consensusWorkingMutex, std::adopt_lock ) :
-                         std::unique_ptr< std::lock_guard< std::timed_mutex > >();
-    ( void ) lock;  // for Codacy
-
-    // if we could not lock from 1st attempt - then exit forcefully!
-    if ( !locked ) {
-        m_exitedForcefully = true;
-        clog( VerbosityWarning, "skale-host" )
-            << cc::fatal( "ATTENTION:" ) << " "
-            << cc::error( "Forcefully shutting down consensus!" );
-    }
-
 
     m_exitNeeded = true;
     pauseConsensus( false );
@@ -866,8 +830,12 @@ void SkaleHost::stopWorking() {
         // requested exit
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
-        clog( VerbosityInfo, "skale-host" )
-            << cc::info( "Exit requested with signal " ) << signal << " and exit code " << exitCode;
+        if ( signal > 0 )
+            clog( VerbosityInfo, "skale-host" ) << cc::info( "Exit requested with signal " )
+                                                << signal << " and exit code " << exitCode;
+        else
+            clog( VerbosityInfo, "skale-host" )
+                << cc::info( "Exit requested internally with exit code " ) << exitCode;
     } else {
         clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
     }
@@ -933,7 +901,6 @@ void SkaleHost::broadcastFunc() {
                             skutils::tools::format( "broadcast %zu", nBroadcastTaskNumber++ );
                         skutils::task::performance::json jsn =
                             skutils::task::performance::json::object();
-                        jsn["rlp"] = rlp;
                         jsn["hash"] = h;
                         skutils::task::performance::action a(
                             strPerformanceQueueName, strPerformanceActionName, jsn );

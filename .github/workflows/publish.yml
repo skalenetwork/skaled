@@ -90,7 +90,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
@@ -101,8 +101,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           mkdir -p build
           cd build
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
@@ -113,11 +112,11 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           cd build
           make skaled -j$(nproc)
-          echo "Ensure release mode skaled does not have any debug markers"
+          #echo "Ensure release mode skaled does not have any debug markers"
+          cp skaled/skaled skaled/skaled-debug
           strip skaled/skaled
           cd ..
       - name: Configure historic state build
@@ -125,8 +124,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           mkdir -p build-historic
           cd build-historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
@@ -137,11 +135,11 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
-          export CODE_COVERAGE=ON
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           cd build-historic
           make skaled -j$(nproc)
-          echo "Ensure release mode skaled does not have any debug markers"
+          #echo "Ensure release mode skaled does not have any debug markers"
+          cp skaled/skaled skaled/skaled-debug
           strip skaled/skaled
           cd ..
       - name: Build and publish container
@@ -177,6 +175,15 @@ jobs:
           asset_path: ./build/skaled/skaled
           asset_name: skaled
           asset_content_type: application/octet-stream
+      - name: Upload debug binary to Release
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled-debug
+          asset_name: skaled-debug
+          asset_content_type: application/octet-stream
       - name: Build and publish historic-state container
         run: |
           cp build-historic/skaled/skaled scripts/skale_build/executable/
@@ -197,3 +204,22 @@ jobs:
           asset_path: ./build-historic/skaled/skaled
           asset_name: skaled-historic
           asset_content_type: application/octet-stream
+      - name: Upload historic-state debug binary to Release
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build-historic/skaled/skaled-debug
+          asset_name: skaled-debug-historic
+          asset_content_type: application/octet-stream
+    outputs:
+      version: ${{ env.VERSION }}
+    
+  functional-tests:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for build
+    needs: [build]
+    with:
+      version: ${{ needs.build.outputs.version }}
+    secrets: inherit

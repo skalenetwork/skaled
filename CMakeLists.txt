@@ -96,8 +96,8 @@ endif()
 option( HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload} )
 
 include( HunterGate )
-HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.76.tar.gz" SHA1 "c7b60993e841850e2c449afd454f5d5aa4ec04e4" LOCAL )
-#HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.214.tar.gz" SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358" LOCAL ) new leveldb
+#HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.76.tar.gz" SHA1 "c7b60993e841850e2c449afd454f5d5aa4ec04e4" LOCAL )
+HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.214.tar.gz" SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358" LOCAL ) #leveldb 1.22
 
 set( CMAKE_CXX_STANDARD 17 )
 

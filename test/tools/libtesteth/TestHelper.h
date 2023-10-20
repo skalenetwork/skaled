@@ -27,6 +27,12 @@
 #include <set>
 #include <thread>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Waddress"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 #include <boost/filesystem.hpp>
 #include <boost/progress.hpp>
 #include <boost/test/unit_test.hpp>
@@ -43,6 +49,8 @@
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <test/tools/libtesteth/TestSuite.h>
 #include <test/tools/libtestutils/Common.h>
+
+#pragma GCC diagnostic pop
 
 namespace skale {
 class State;

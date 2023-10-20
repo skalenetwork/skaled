@@ -41,6 +41,9 @@ public:
     }
 
     virtual void forEach( std::function< bool( Slice, Slice ) > f ) const;
+    virtual void forEachWithPrefix(
+        std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const;
+
     virtual h256 hashBase() const;
 };
 

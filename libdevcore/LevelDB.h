@@ -22,6 +22,7 @@
 #include "db.h"
 
 #include <leveldb/db.h>
+#include <leveldb/filter_policy.h>
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
@@ -32,11 +33,15 @@ public:
     static leveldb::ReadOptions defaultReadOptions();
     static leveldb::WriteOptions defaultWriteOptions();
     static leveldb::Options defaultDBOptions();
+    static leveldb::ReadOptions defaultSnapshotReadOptions();
+    static leveldb::Options defaultSnapshotDBOptions();
 
     explicit LevelDB( boost::filesystem::path const& _path,
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
         leveldb::Options _dbOptions = defaultDBOptions() );
+
+    ~LevelDB();
 
     std::string lookup( Slice _key ) const override;
     bool exists( Slice _key ) const override;
@@ -48,15 +53,26 @@ public:
 
     void forEach( std::function< bool( Slice, Slice ) > f ) const override;
 
+    void forEachWithPrefix(
+        std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const override;
+
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
-    //    void doCompaction() const;
+    void doCompaction() const;
+
+    // Return the total count of key deletes  since the start
+    static uint64_t getKeyDeletesStats();
+    // count of the keys that were deleted since the start of skaled
+    static std::atomic< uint64_t > g_keyDeletesStats;
+    // count of the keys that are scheduled to be deleted but are not yet deleted
+    static std::atomic< uint64_t > g_keysToBeDeletedStats;
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
+    leveldb::Options m_options;
     boost::filesystem::path const m_path;
 };
 

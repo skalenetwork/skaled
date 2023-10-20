@@ -580,9 +580,6 @@ extern char getch_no_wait();
 
 namespace signal {
 
-extern std::atomic_int g_nStopSignal;
-extern std::atomic_bool g_bStop;
-
 extern bool get_signal_description( int nSignalNo, std::string& strSignalName,
     std::string& strSignalDescription );  // returns true if signal name is known
 extern std::string signal2str( int nSignalNo, const char* strPrefix = nullptr,
@@ -591,6 +588,7 @@ typedef void ( *fn_signal_handler_t )( int nSignalNo );
 extern bool init_common_signal_handling( fn_signal_handler_t fnSignalHander );
 
 extern std::string generate_stack_trace( int nSkip = 1, bool isExtended = true );
+extern std::string read_maps();
 
 };  // namespace signal
 

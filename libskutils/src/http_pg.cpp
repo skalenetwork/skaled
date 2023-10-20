@@ -1,13 +1,21 @@
 #include <skutils/http_pg.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Waddress"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 #include <proxygen/httpserver/RequestHandler.h>
 #include <proxygen/httpserver/ResponseBuilder.h>
+
+#include <glog/logging.h>
+
+#pragma GCC diagnostic pop
 
 #include <skutils/console_colors.h>
 #include <skutils/multithreading.h>
 #include <skutils/rest_call.h>
-
-#include <glog/logging.h>
 
 namespace skutils {
 namespace http_pg {

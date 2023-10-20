@@ -26,12 +26,14 @@
 #include "Defaults.h"
 #include "Executive.h"
 #include "SkaleHost.h"
+#include "SnapshotAgent.h"
 #include "SnapshotStorage.h"
 #include "TransactionQueue.h"
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
 
 #include <libskale/AmsterdamFixPatch.h>
+#include <libskale/SnapshotManager.h>
 
 #include <algorithm>
 #include <chrono>
@@ -41,6 +43,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
@@ -50,8 +53,11 @@
 
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/POWCheckPatch.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libskale/State.h>
+#include <libskale/StorageDestructionPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 #include <libskale/UnsafeRegion.h>
 #include <libskale/VerifyDaSigsPatch.h>
@@ -129,7 +135,8 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_preSeal( chainParams().accountStartNonce ),
       m_postSeal( chainParams().accountStartNonce ),
       m_working( chainParams().accountStartNonce ),
-      m_snapshotManager( _snapshotManager ),
+      m_snapshotAgent( make_shared< SnapshotAgent >(
+          _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
       m_dbPath( _dbPath ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
@@ -141,21 +148,25 @@ Client::Client( ChainParams const& _params, int _networkID,
             << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
     } );
 
-
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
         return DebugTracer_handler( arg, this->m_debugTracer );
     };
 
     init( _forceAction, _networkID );
 
+    // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::contractStoragePatchTimestamp =
-        chainParams().sChain.contractStoragePatchTimestamp;
-    ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
-        chainParams().sChain.contractStorageZeroValuePatchTimestamp;
-    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp = chainParams().sChain.verifyDaSigsPatchTimestamp;
-    RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
+    ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
+    ContractStorageZeroValuePatch::setTimestamp(
+        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
+    VerifyDaSigsPatch::setTimestamp( chainParams().sChain.verifyDaSigsPatchTimestamp );
+    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
+    StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
+    POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
+    SkipInvalidTransactionsPatch::setTimestamp(
+        this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
 }
+
 
 Client::~Client() {
     stopWorking();
@@ -174,13 +185,7 @@ void Client::stopWorking() {
     else
         cerror << "Instance of SkaleHost was not properly created.";
 
-    if ( m_snapshotHashComputing != nullptr ) {
-        try {
-            if ( m_snapshotHashComputing->joinable() )
-                m_snapshotHashComputing->join();
-        } catch ( ... ) {
-        }
-    }
+    m_snapshotAgent->terminate();
 
     m_new_block_watch.uninstallAll();
     m_new_pending_transaction_watch.uninstallAll();
@@ -306,17 +311,19 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( chainParams().sChain.snapshotIntervalSec > 0 ) {
-        LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: "
-                        << chainParams().sChain.snapshotIntervalSec;
-        this->initHashes();
-    }
-
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
         initIMABLSPublicKey();
 
+    // init snapshots for not newly created chains
+    if ( number() ) {
+        m_snapshotAgent->init( number(), blockInfo( hashFromNumber( 1 ) ).timestamp() );
+        m_snapshotAgentInited = true;
+    }
+
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
+
+    initCPUUSage();
 
     doWork( false );
 }
@@ -526,44 +533,16 @@ size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     // HACK here was m_blockImportMutex - but now it is acquired in SkaleHost!!!
     // TODO decouple Client and SkaleHost
-    int64_t snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
 
-    // init last block creation time with only robust time source - timestamp of 1st block!
-    if ( number() == 0 ) {
-        last_snapshot_creation_time = _timestamp;
-        LOG( m_logger ) << "Init last snapshot creation time: "
-                        << this->last_snapshot_creation_time;
-    } else if ( snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
-        LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
-
-        if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
-            m_snapshotHashComputing->join();
-
-        // TODO Make this number configurable
-        // thread can be absent - if hash was already there
-        // snapshot can be absent too
-        // but hash cannot be absent
-        auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-        if ( latest_snapshots.second ) {
-            assert( m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) );
-            this->last_snapshoted_block_with_hash = latest_snapshots.second;
-            m_snapshotManager->leaveNLastSnapshots( 2 );
-        }
-
-        // also there might be snapshot on disk
-        // and it's time to make it "last with hash"
-        if ( last_snapshoted_block_with_hash == 0 ) {
-            auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-            if ( latest_snapshots.second ) {
-                uint64_t time_of_second =
-                    blockInfo( this->hashFromNumber( latest_snapshots.second ) ).timestamp();
-                if ( time_of_second == ( ( uint64_t ) last_snapshot_creation_time ) )
-                    this->last_snapshoted_block_with_hash = latest_snapshots.second;
-            }  // if second
-        }      // if == 0
+    // on schain creation, SnapshotAgent needs timestamp of block 1
+    // so we use this HACK
+    // pass block number 0 as for bigger BN it is initialized in init()
+    if ( !m_snapshotAgentInited ) {
+        m_snapshotAgent->init( 0, _timestamp );
+        m_snapshotAgentInited = true;
     }
+    m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
-    //
     // begin, detect partially executed block
     bool bIsPartial = false;
     dev::h256 shaLastTx = m_state.safeLastExecutedTransactionHash();
@@ -642,74 +621,7 @@ size_t Client::importTransactionsAsBlock(
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateIMABLSPublicKey();
 
-    if ( snapshotIntervalSec > 0 ) {
-        unsigned block_number = this->number();
-
-        LOG( m_loggerDetail ) << "Block timestamp: " << _timestamp;
-
-        if ( this->isTimeToDoSnapshot( _timestamp ) ) {
-            try {
-                boost::chrono::high_resolution_clock::time_point t1;
-                boost::chrono::high_resolution_clock::time_point t2;
-                LOG( m_logger ) << "DOING SNAPSHOT: " << block_number;
-                m_debugTracer.tracepoint( "doing_snapshot" );
-
-                t1 = boost::chrono::high_resolution_clock::now();
-                m_snapshotManager->doSnapshot( block_number );
-                t2 = boost::chrono::high_resolution_clock::now();
-                this->snapshot_calculation_time_ms =
-                    boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
-            } catch ( SnapshotManager::SnapshotPresent& ex ) {
-                cerror << "WARNING " << dev::nested_exception_what( ex );
-            }
-
-            this->last_snapshot_creation_time = _timestamp;
-
-            LOG( m_logger ) << "New snapshot creation time: " << this->last_snapshot_creation_time;
-        }
-
-        // snapshots without hash can appear either from start, from downloading or from just
-        // creation
-        auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-
-        // start if thread is free and there is work
-        if ( ( m_snapshotHashComputing == nullptr || !m_snapshotHashComputing->joinable() ) &&
-             latest_snapshots.second &&
-             !m_snapshotManager->isSnapshotHashPresent( latest_snapshots.second ) ) {
-            m_snapshotHashComputing.reset( new std::thread( [this, latest_snapshots]() {
-                m_debugTracer.tracepoint( "computeSnapshotHash_start" );
-                try {
-                    boost::chrono::high_resolution_clock::time_point t1;
-                    boost::chrono::high_resolution_clock::time_point t2;
-
-                    t1 = boost::chrono::high_resolution_clock::now();
-                    this->m_snapshotManager->computeSnapshotHash( latest_snapshots.second );
-                    t2 = boost::chrono::high_resolution_clock::now();
-                    this->snapshot_hash_calculation_time_ms =
-                        boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 )
-                            .count();
-                    LOG( m_logger )
-                        << "Computed hash for snapshot " << latest_snapshots.second << ": "
-                        << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
-                    m_debugTracer.tracepoint( "computeSnapshotHash_end" );
-
-                } catch ( const std::exception& ex ) {
-                    cerror << cc::fatal( "CRITICAL" ) << " "
-                           << cc::warn( dev::nested_exception_what( ex ) )
-                           << cc::error( " in computeSnapshotHash(). Exiting..." );
-                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
-                } catch ( ... ) {
-                    cerror << cc::fatal( "CRITICAL" )
-                           << cc::error(
-                                  " unknown exception in computeSnapshotHash(). "
-                                  "Exiting..." );
-                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
-                    ExitHandler::exitHandler( SIGABRT, ExitHandler::ec_compute_snapshot_error );
-                }
-            } ) );
-        }  // if thread
-    }      // if snapshots enabled
+    m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
     // TEMPRORARY FIX!
     // TODO: REVIEW
@@ -743,7 +655,9 @@ size_t Client::syncTransactions(
     ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
     ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
-
+    StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -857,12 +771,6 @@ void Client::resetState() {
     onTransactionQueueReady();
 }
 
-bool Client::isTimeToDoSnapshot( uint64_t _timestamp ) const {
-    int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
-    return _timestamp / uint64_t( snapshotIntervalSec ) >
-           this->last_snapshot_creation_time / uint64_t( snapshotIntervalSec );
-}
-
 void Client::setSchainExitTime( uint64_t _timestamp ) const {
     m_instanceMonitor->initRotationParams( _timestamp );
 }
@@ -922,9 +830,9 @@ void Client::rejigSealing() {
 
                 // TODO Deduplicate code!
                 dev::h256 stateRootToSet;
-                if ( this->last_snapshoted_block_with_hash > 0 ) {
-                    dev::h256 state_root_hash =
-                        this->m_snapshotManager->getSnapshotHash( last_snapshoted_block_with_hash );
+                if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
+                    dev::h256 state_root_hash = this->m_snapshotAgent->getSnapshotHash(
+                        m_snapshotAgent->getLatestSnapshotBlockNumer() );
                     stateRootToSet = state_root_hash;
                 }
                 // propagate current!
@@ -978,9 +886,9 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         // latest hash is really updated after NEXT snapshot already started hash computation!
         // TODO Deduplicate code!
         dev::h256 stateRootToSet;
-        if ( this->last_snapshoted_block_with_hash > 0 ) {
-            dev::h256 state_root_hash =
-                this->m_snapshotManager->getSnapshotHash( last_snapshoted_block_with_hash );
+        if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
+            dev::h256 state_root_hash = this->m_snapshotAgent->getSnapshotHash(
+                m_snapshotAgent->getLatestSnapshotBlockNumer() );
             stateRootToSet = state_root_hash;
         }
         // propagate current!
@@ -1020,7 +928,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
                  << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
                  << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                 << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":CMM:" << bc().getTotalCacheMemory()
+                 << ":KDS:" << db::LevelDB::getKeyDeletesStats();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();
@@ -1374,59 +1283,6 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         throw;
     }
     return ret;
-}
-
-void Client::initHashes() {
-    int snapshotIntervalSec = chainParams().sChain.snapshotIntervalSec;
-    assert( snapshotIntervalSec > 0 );
-    ( void ) snapshotIntervalSec;
-
-    auto latest_snapshots = this->m_snapshotManager->getLatestSnasphots();
-
-    // if two
-    if ( latest_snapshots.first ) {
-        assert( latest_snapshots.first != 1 );  // 1 can never be snapshotted
-
-        this->last_snapshoted_block_with_hash = latest_snapshots.first;
-
-        // ignore second as it was "in hash computation"
-        // check that both are imported!!
-        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        // assert( h2 != h256() );
-        // last_snapshot_creation_time = blockInfo( h2 ).timestamp();
-
-        last_snapshot_creation_time =
-            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second, chainParams() );
-
-        // one snapshot
-    } else if ( latest_snapshots.second ) {
-        assert( latest_snapshots.second != 1 );  // 1 can never be snapshotted
-        assert( this->number() > 0 );            // we created snapshot somehow
-
-        // whether it is local or downloaded - we shall ignore it's hash but use it's time
-        // see also how last_snapshoted_block_with_hash is updated in importTransactionsAsBlock
-        // h256 h2 = this->hashFromNumber( latest_snapshots.second );
-        // uint64_t time_of_second = blockInfo( h2 ).timestamp();
-
-        this->last_snapshoted_block_with_hash = -1;
-        // last_snapshot_creation_time = time_of_second;
-
-        last_snapshot_creation_time =
-            this->m_snapshotManager->getBlockTimestamp( latest_snapshots.second, chainParams() );
-
-        // no snapshots yet
-    } else {
-        this->last_snapshoted_block_with_hash = -1;
-
-        if ( this->number() >= 1 )
-            last_snapshot_creation_time = blockInfo( this->hashFromNumber( 1 ) ).timestamp();
-        else
-            this->last_snapshot_creation_time = 0;
-    }
-
-    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
-                    << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
-    LOG( m_logger ) << "Fake Last snapshot creation time: " << last_snapshot_creation_time;
 }
 
 void Client::initIMABLSPublicKey() {
