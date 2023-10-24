@@ -761,7 +761,8 @@ static bool isCallToHistoricData( const std::string& callData ) {
 }
 
 static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::string& callData ) {
-    unsigned id = std::stoul( callData.substr( callData.find( '[' ), callData.find( ']' ) + 1 ) );
+    size_t numberLength = callData.find( ']' ) - callData.find( '[' ) - 1;
+    unsigned id = std::stoul( callData.substr( callData.find( '[' ) + 1, numberLength ) );
     std::string fieldName;
     if ( callData.find( "id" ) != std::string::npos ) {
         fieldName = "id";
@@ -780,7 +781,6 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         size_t lengthName;
         std::string rawName;
         convertBytesToString( _in, 0, rawName, lengthName );
-        std::cout << "PATH: " << rawName << '\n';
         if ( !stat_is_accessible_json_path( rawName ) )
             throw std::runtime_error(
                 "Security poicy violation, inaccessible configuration JSON path: " + rawName );
