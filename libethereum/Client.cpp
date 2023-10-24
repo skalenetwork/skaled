@@ -312,7 +312,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         Defaults::setDBPath( m_dbPath );
 
     if ( ChainParams().sChain.nodeGroups.size() > 0 )
-        initIMABLSPublicKey();
+        initHistoricGroupIndex();
 
     // init snapshots for not newly created chains
     if ( number() ) {
@@ -619,7 +619,7 @@ size_t Client::importTransactionsAsBlock(
     }
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
-        updateIMABLSPublicKey();
+        updateHistoricGroupIndex();
 
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
@@ -1285,9 +1285,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     return ret;
 }
 
-void Client::initIMABLSPublicKey() {
+void Client::initHistoricGroupIndex() {
     if ( number() == 0 ) {
-        imaBLSPublicKeyGroupIndex = 0;
+        historicGroupIndex = 0;
         return;
     }
 
@@ -1308,15 +1308,15 @@ void Client::initIMABLSPublicKey() {
             it = prevIt;
     }
 
-    imaBLSPublicKeyGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+    historicGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
 }
 
-void Client::updateIMABLSPublicKey() {
+void Client::updateHistoricGroupIndex() {
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[historicGroupIndex].finishTs;
     if ( blockTimestamp >= currentFinishTs )
-        ++imaBLSPublicKeyGroupIndex;
-    assert( imaBLSPublicKeyGroupIndex < chainParams().sChain.nodeGroups.size() );
+        ++historicGroupIndex;
+    assert( historicGroupIndex < chainParams().sChain.nodeGroups.size() );
 }
 
 // new block watch

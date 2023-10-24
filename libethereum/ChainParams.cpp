@@ -113,13 +113,16 @@ ChainParams ChainParams::loadConfig(
 
         auto nodeName = infoObj.at( "nodeName" ).get_str();
         auto nodeID = infoObj.at( "nodeID" ).get_uint64();
-        std::string owner = infoObj.at( "owner" ).get_str();
         bool syncNode = false;
         bool archiveMode = false;
         bool syncFromCatchup = false;
-        std::string ip, ip6, keyShareName, sgxServerUrl;
+        std::string ip, ip6, keyShareName, sgxServerUrl, owner;
         size_t t = 0;
         uint64_t port = 0, port6 = 0;
+        try {
+            owner = infoObj.at( "owner" ).get_str();
+        } catch ( ... ) {
+        }
         try {
             ip = infoObj.at( "bindIP" ).get_str();
         } catch ( ... ) {
@@ -324,7 +327,11 @@ ChainParams ChainParams::loadConfig(
             node.id = nodeConfObj.at( "nodeID" ).get_uint64();
             node.ip = nodeConfObj.at( "ip" ).get_str();
             node.port = nodeConfObj.at( "basePort" ).get_uint64();
-            node.owner = nodeConfObj.at( "owner" ).get_str();
+            try {
+                node.owner = nodeConfObj.at( "owner" ).get_str();
+            } catch ( ... ) {
+                node.owner = "";
+            }
             try {
                 node.ip6 = nodeConfObj.at( "ip6" ).get_str();
             } catch ( ... ) {

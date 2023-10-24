@@ -756,22 +756,57 @@ static dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
     return uValue;
 }
 
+static bool isCallToHistoricData( const std::string& callData ) {
+    return skutils::tools::wildcmp( "skaleConfig.sChain.nodes.*", callData.c_str() );
+}
+
+static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::string& callData ) {
+    unsigned id = std::stoul( callData.substr( callData.find( '[' ), callData.find( ']' ) + 1 ) );
+    std::string fieldName;
+    if ( callData.find( "id" ) != std::string::npos ) {
+        fieldName = "id";
+    } else if ( callData.find( "schainIndex" ) != std::string::npos ) {
+        fieldName = "schainIndex";
+    } else if ( callData.find( "owner" ) != std::string::npos ) {
+        fieldName = "owner";
+    } else {
+        fieldName = "unknown field";
+    }
+    return { fieldName, id };
+}
+
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
         size_t lengthName;
         std::string rawName;
         convertBytesToString( _in, 0, rawName, lengthName );
+        std::cout << "PATH: " << rawName << '\n';
         if ( !stat_is_accessible_json_path( rawName ) )
             throw std::runtime_error(
                 "Security poicy violation, inaccessible configuration JSON path: " + rawName );
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
-        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-        nlohmann::json joValue =
-            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = skutils::tools::trim_copy(
-            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+
+        std::string strValue;
+        if ( isCallToHistoricData( rawName ) ) {
+            std::string field;
+            unsigned id;
+            std::tie( field, id ) = parseHistoricFieldReuqest( rawName );
+            if ( field == "id" ) {
+                strValue = g_skaleHost->getHistoricNodeId( id );
+            } else if ( field == "schainIndex" ) {
+                strValue = g_skaleHost->getHistoricNodeIndex( id );
+            } else {
+                throw std::runtime_error( "Incorrect config field" );
+            }
+        } else {
+            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+            nlohmann::json joValue =
+                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+            strValue = skutils::tools::trim_copy(
+                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+        }
 
         // dev::u256 uValue( strValue.c_str() );
         dev::u256 uValue = stat_parse_u256_hex_or_dec( strValue );
@@ -807,11 +842,25 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
-        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-        nlohmann::json joValue =
-            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = skutils::tools::trim_copy(
-            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+
+        std::string strValue;
+        if ( isCallToHistoricData( rawName ) ) {
+            std::string field;
+            unsigned id;
+            std::tie( field, id ) = parseHistoricFieldReuqest( rawName );
+            if ( field == "owner" ) {
+                strValue = g_skaleHost->getHistoricNodeOwner( id );
+            } else {
+                throw std::runtime_error( "Incorrect config field" );
+            }
+        } else {
+            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+            nlohmann::json joValue =
+                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+            strValue = skutils::tools::trim_copy(
+                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+        }
+
         dev::u256 uValue( strValue.c_str() );
 
         bytes response = toBigEndian( uValue );

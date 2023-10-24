@@ -214,7 +214,7 @@ public:
         chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
-        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
+        sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", "", {"0", "1", "0", "1"}};
         chainParams.sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 

@@ -297,7 +297,22 @@ public:
     }
 
     std::array< std::string, 4 > getIMABLSPublicKey() const {
-        return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
+        return chainParams().sChain.nodeGroups[historicGroupIndex].blsPublicKey;
+    }
+
+    // get node id for historic node in chain
+    std::string getHistoricNodeId( unsigned _id ) const {
+        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_id].id.str();
+    }
+
+    // get schain index for historic node in chain
+    std::string getHistoricNodeIndex( unsigned _idx ) const {
+        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_idx].schainIndex.str();
+    }
+
+    // get node owner for historic node in chain
+    std::string getHistoricNodeOwner( unsigned _idx ) const {
+        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_idx].owner;
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
@@ -532,10 +547,11 @@ protected:
     fs::path m_dbPath;
 
 private:
-    void initIMABLSPublicKey();
-    void updateIMABLSPublicKey();
+    void initHistoricGroupIndex();
+    void updateHistoricGroupIndex();
 
-    unsigned imaBLSPublicKeyGroupIndex = 0;
+    // which group corresponds to the current block timestamp on this node
+    unsigned historicGroupIndex = 0;
 
 public:
     FILE* performance_fd;
