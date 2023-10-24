@@ -269,50 +269,53 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "powCheckPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "pushZeroPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } } );
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
-            { "skipInvalidTransactionsPatchTimestamp",
-                { { js::int_type }, JsonFieldPresence::Optional } } } );
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
+            {
+        "skipInvalidTransactionsPatchTimestamp", {
+            { js::int_type }, JsonFieldPresence::Optional
+        } }
+} );
 
-    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
-    for ( auto const& obj : nodes ) {
-        const js::mObject node = obj.get_obj();
+js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+for ( auto const& obj : nodes ) {
+    const js::mObject node = obj.get_obj();
 
-        requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
-            { { "nodeName", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "nodeID", { { js::int_type }, JsonFieldPresence::Required } },
-                { "ip", { { js::str_type }, JsonFieldPresence::Required } },
-                { "publicIP", { { js::str_type }, JsonFieldPresence::Optional } },  // TODO not used
-                { "basePort", { { js::int_type }, JsonFieldPresence::Required } },
-                { "ip6", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "basePort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "httpRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "httpRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "httpsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "httpsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "wsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "wsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "wssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "wssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoHttpRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoHttpRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoHttpsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoHttpsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoWsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoWsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoWssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "infoWssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "info-acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
-                { "schainIndex", { { js::int_type }, JsonFieldPresence::Required } },
-                { "publicKey", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "blsPublicKey0", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "blsPublicKey1", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "blsPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
-                { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
-    }
+    requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+        { { "nodeName", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "nodeID", { { js::int_type }, JsonFieldPresence::Required } },
+            { "ip", { { js::str_type }, JsonFieldPresence::Required } },
+            { "publicIP", { { js::str_type }, JsonFieldPresence::Optional } },  // TODO not used
+            { "basePort", { { js::int_type }, JsonFieldPresence::Required } },
+            { "ip6", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "basePort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "httpRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "httpRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "httpsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "httpsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "wsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "wsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "wssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "wssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoHttpRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoHttpRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoHttpsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoHttpsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoWsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoWsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoWssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "infoWssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "info-acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "schainIndex", { { js::int_type }, JsonFieldPresence::Required } },
+            { "publicKey", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "blsPublicKey0", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "blsPublicKey1", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "blsPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
+            { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
+}
 }
 
 void validateAccountMaskObj( js::mObject const& _obj ) {
