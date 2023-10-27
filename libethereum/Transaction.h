@@ -124,6 +124,8 @@ public:
 
     void checkOutExternalGas( u256 const& _difficulty );
 
+    u256 gasToExecute() const;
+
 private:
     bool m_externalGasIsChecked = false;
     std::optional< u256 > m_externalGas;

@@ -93,7 +93,7 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     EnvInfo const env( _latestBlock.info(), bc().lastBlockHashes(), 0, _gas );
     // Make a copy of state!! It will be deleted after step!
     State tempState = _latestBlock.mutableState();
-    tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+    tempState.addBalance( _from, ( u256 )( t.gasToExecute() * t.gasPrice() + t.value() ) );
     ExecutionResult executionResult =
         tempState.execute( env, *bc().sealEngine(), t, Permanence::Reverted ).first;
     if ( executionResult.excepted == TransactionException::OutOfGas ||
