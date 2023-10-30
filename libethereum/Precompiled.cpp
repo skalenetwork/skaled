@@ -790,6 +790,9 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
 
         std::string strValue;
         if ( isCallToHistoricData( rawName ) ) {
+            if ( !g_skaleHost )
+                throw std::runtime_error( "SkaleHost accessor was not initialized" );
+
             std::string field;
             unsigned id;
             std::tie( field, id ) = parseHistoricFieldReuqest( rawName );
@@ -813,7 +816,6 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         // std::cout << "------------ Loaded config var \""
         //          << rawName << "\" value is " << uValue
         //          << "\n";
-
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -845,6 +847,9 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
 
         std::string strValue;
         if ( isCallToHistoricData( rawName ) ) {
+            if ( !g_skaleHost )
+                throw std::runtime_error( "SkaleHost accessor was not initialized" );
+
             std::string field;
             unsigned id;
             std::tie( field, id ) = parseHistoricFieldReuqest( rawName );

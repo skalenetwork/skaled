@@ -24,6 +24,9 @@
 #include <libdevcrypto/Hash.h>
 #include <libethereum/Precompiled.h>
 #include <libethereum/ChainParams.h>
+#include <libethereum/Client.h>
+#include <libethereum/SkaleHost.h>
+#include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 #include <libskale/OverlayFS.h>
@@ -36,6 +39,20 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 namespace ut = boost::unit_test;
+
+std::string numberToHex( size_t inputNumber ) {
+    std::stringstream sstream;
+    sstream << std::hex << inputNumber;
+    std::string hexNumber = sstream.str();
+    hexNumber.insert( hexNumber.begin(), 64 - hexNumber.length(), '0' );
+    return hexNumber;
+}
+
+std::string stringToHex( std::string inputString ) {
+    std::string hexString = toHex( inputString.begin(), inputString.end(), "" );
+    hexString.insert( hexString.begin() + hexString.length(), 64 - hexString.length(), '0' );
+    return hexString;
+}
 
 BOOST_FIXTURE_TEST_SUITE( PrecompiledTests, TestOutputHelperFixture )
 
@@ -1557,18 +1574,182 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
     BOOST_CHECK_EQUAL( static_cast< int >( costIstanbul ), in.size() / 192 * 34000 + 45000 );
 }
 
-std::string numberToHex( size_t inputNumber ) {
-    std::stringstream sstream;
-    sstream << std::hex << inputNumber;
-    std::string hexNumber = sstream.str();
-    hexNumber.insert( hexNumber.begin(), 64 - hexNumber.length(), '0' );
-    return hexNumber;
+static std::string const genesisInfoSkaleConfigTest = std::string() +
+                                                  R"E(
+{
+    "sealEngine": "Ethash",
+    "params": {
+        "accountStartNonce": "0x00",
+        "homesteadForkBlock": "0x00",
+        "EIP150ForkBlock": "0x00",
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "networkID" : "12313219",
+        "chainID": "0x01",
+        "maximumExtraDataSize": "0x20",
+        "tieBreakingGas": false,
+        "minGasLimit": "0x1388",
+        "maxGasLimit": "7fffffffffffffff",
+        "gasLimitBoundDivisor": "0x0400",
+        "minimumDifficulty": "0x020000",
+        "difficultyBoundDivisor": "0x0800",
+        "durationLimit": "0x0d",
+        "blockReward": "0x4563918244F40000"
+    },
+    "genesis": {
+        "nonce": "0x0000000000000042",
+        "difficulty": "0x020000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
+        "gasLimit": "0x47E7C4"
+    },
+   "skaleConfig": {
+    "nodeInfo": {
+      "nodeName": "Node1",
+      "nodeID": 1112,
+      "bindIP": "127.0.0.1",
+      "basePort": 1234,
+      "logLevel": "trace",
+      "logLevelProposal": "trace",
+      "ecdsaKeyName": "NEK:fa112"
+    },
+    "sChain": {
+        "schainName": "TestChain",
+        "schainID": 1,
+        "contractStorageLimit": 32000,
+        "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "1": {
+                "nodes": {
+                    "30": [
+                        0,
+                        30,
+                        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b",
+                        "0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+                    "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+                    "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+                    "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+                }
+            },
+            "0": {
+                "nodes": {
+                    "26": [
+                        3,
+                        26,
+                        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba",
+                        "0x47bbe8db4e347b4e8c937c1c8350e4b7ed30adb3db69bbdb7a38c1f40a1b82fd"
+                    ]
+                },
+                "finish_ts": 4294967290,
+                "bls_public_key": {
+                    "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+                    "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+                    "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+                    "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+                }
+            }
+        },
+        "nodes": [
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1234, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc"}
+        ]
+    }
+  },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": { "precompiled": { "name": "modexp", "startingBlock" : "0x2dc6c0" } },
+        "0000000000000000000000000000000000000006": { "precompiled": { "name": "alt_bn128_G1_add", "startingBlock" : "0x2dc6c0", "linear": { "base": 500, "word": 0 } } },
+        "0000000000000000000000000000000000000007": { "precompiled": { "name": "alt_bn128_G1_mul", "startingBlock" : "0x2dc6c0", "linear": { "base": 40000, "word": 0 } } },
+        "0000000000000000000000000000000000000008": { "precompiled": { "name": "alt_bn128_pairing_product", "startingBlock" : "0x2dc6c0" } },
+        "0xca4409573a5129a72edf85d6c51e26760fc9c903": { "balance": "100000000000000000000000" },
+        "0xD2001300000000000000000000000000000000D2": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c8063815b8ab41460375780638273f754146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050606a565b005b60686081565b005b60005a90505b815a82031015607d576070565b5050565b60005a9050609660028281609157fe5b04606a565b5056fea165627a7a72305820f5fb5a65e97cbda96c32b3a2e1497cd6b7989179b5dc29e9875bcbea5a96c4520029"},
+        "0xD2001300000000000000000000000000000000D4": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"},
+        "0xd40B3c51D0ECED279b1697DbdF45d4D19b872164": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c80636057361d146037578063b05784b8146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050607e565b005b60686088565b6040518082815260200191505060405180910390f35b8060008190555050565b6000805490509056fea2646970667358221220e5ff9593bfa9540a34cad5ecbe137dcafcfe1f93e3c4832610438d6f0ece37db64736f6c63430006060033"},
+        "0xD2001300000000000000000000000000000000D3": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x608060405234801561001057600080fd5b50600436106100365760003560e01c8063ee919d501461003b578063f0fdf83414610069575b600080fd5b6100676004803603602081101561005157600080fd5b81019080803590602001909291905050506100af565b005b6100956004803603602081101561007f57600080fd5b8101908080359060200190929190505050610108565b604051808215151515815260200191505060405180910390f35b600160008083815260200190815260200160002060006101000a81548160ff021916908315150217905550600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea2646970667358221220cf479cb746c4b897c88be4ad8e2612a14e27478f91928c49619c98da374a3bf864736f6c63430006000033"},
+        "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b": { "balance": "0", "nonce": "0", "storage": {"0x101e368776582e57ab3d116ffe2517c0a585cd5b23174b01e275c2d8329c3d83": "0x0000000000000000000000000000000000000000000000000000000000000001"}, "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80634df7e3d014610051578063d82cf7901461006f578063ee919d501461009d578063f0fdf834146100cb575b600080fd5b610059610111565b6040518082815260200191505060405180910390f35b61009b6004803603602081101561008557600080fd5b8101908080359060200190929190505050610117565b005b6100c9600480360360208110156100b357600080fd5b810190808035906020019092919050505061017d565b005b6100f7600480360360208110156100e157600080fd5b81019080803590602001909291905050506101ab565b604051808215151515815260200191505060405180910390f35b60015481565b60008082815260200190815260200160002060009054906101000a900460ff16151560011515141561017a57600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555060018054016001819055505b50565b600160008083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea264697066735822122000af6f9a0d5c9b8b642648557291c9eb0f9732d60094cf75e14bb192abd97bcc64736f6c63430006000033"}
+    }
+}
+)E";
+
+BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
+    ChainParams chainParams;
+    chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
+
+    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "/home/oleh/work/skaled/build/test/libethereum/PrecompiledConfig.h" ) );
+
+    std::unique_ptr<dev::eth::Client> client;
+    dev::WithExisting withExisting = dev::WithExisting::Trust;
+    client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+        shared_ptr< GasPricer >(), nullptr, nullptr, getDataDir(),
+        withExisting, dev::eth::TransactionQueue::Limits{ 1, 1, 1, 1 } ) );
+
+    std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *client, nullptr, nullptr, "", false );
+    dev::eth::g_skaleHost = skaleHost;
+    client->injectSkaleHost( skaleHost );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
+
+    bytes in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 26 );
+
+    in = dev::asBytes( "0000000000000000000000000000000000000000000000000000000000000028skaleConfig.sChain.nodes.[0].schainIndex" );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 3 );
+
+    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( !res.first );
+
+    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( !res.first );
 }
 
-std::string stringToHex( std::string inputString ) {
-    std::string hexString = toHex( inputString.begin(), inputString.end(), "" );
-    hexString.insert( hexString.begin() + hexString.length(), 64 - hexString.length(), '0' );
-    return hexString;
+BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
+    ChainParams chainParams;
+    chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
+
+    bytes in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
+    auto res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( res.second == fromHex("0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc") );
+
+    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( !res.first );
+
+    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( !res.first );
+
+    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( !res.first );
 }
 
 struct FilestorageFixture : public TestOutputHelperFixture {
