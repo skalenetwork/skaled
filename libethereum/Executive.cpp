@@ -180,7 +180,7 @@ Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _ga
       m_systemGasPrice( _gasPrice ) {}
 
 u256 Executive::gasUsed() const {
-    return m_t.gasToExecute() - m_gas;
+    return m_t.gas() - m_gas;
 }
 
 void Executive::accrueSubState( SubState& _parentContext ) {
@@ -220,8 +220,7 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
         }
 
         // Avoid unaffordable transactions.
-        bigint gasCost =
-            static_cast< bigint >( _transaction.gasToExecute() * _transaction.gasPrice() );
+        bigint gasCost = static_cast< bigint >( _transaction.gas() * _transaction.gasPrice() );
         if ( _transaction.hasExternalGas() ) {
             gasCost = 0;
         }
@@ -255,7 +254,7 @@ void Executive::initialize( Transaction const& _transaction ) {
         throw;
     }
 
-    bigint gasCost = ( bigint ) m_t.gasToExecute() * m_t.gasPrice();
+    bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
     m_gasCost = ( u256 ) gasCost;
 }
 
@@ -265,18 +264,18 @@ bool Executive::execute() {
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost )
-                               << " from sender for gas (" << m_t.gasToExecute() << " gas at "
+                               << " from sender for gas (" << m_t.gas() << " gas at "
                                << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 
-    assert( m_t.gasToExecute() >= ( u256 ) m_baseGasRequired );
+    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gasToExecute() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
+            m_t.gas() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
     else
         return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef( &m_t.data() ), m_t.gasToExecute() - ( u256 ) m_baseGasRequired );
+            bytesConstRef( &m_t.data() ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
 bool Executive::call( Address const& _receiveAddress, Address const& _senderAddress,
@@ -554,14 +553,14 @@ bool Executive::finalize() {
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
         int64_t maxRefund =
-            ( static_cast< int64_t >( m_t.gasToExecute() ) - static_cast< int64_t >( m_gas ) ) / 2;
+            ( static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas ) ) / 2;
         m_gas += min( maxRefund, m_ext->sub.refunds );
     }
 
     if ( m_t ) {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
-        u256 feesEarned = ( m_t.gasToExecute() - m_gas ) * m_t.gasPrice();
+        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 

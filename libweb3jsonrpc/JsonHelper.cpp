@@ -94,7 +94,7 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
         res["input"] = toJS( _t.data() );
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
         res["from"] = toJS( _t.safeSender() );
-        res["gas"] = toJS( _t.gasToExecute() );
+        res["gas"] = toJS( _t.gas() );
         res["gasPrice"] = toJS( _t.gasPrice() );
         res["nonce"] = toJS( _t.nonce() );
         res["value"] = toJS( _t.value() );
@@ -318,7 +318,7 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
     if ( _t ) {
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
         res["from"] = toJS( _t.from() );
-        res["gas"] = toJS( _t.gasToExecute() );
+        res["gas"] = toJS( _t.gas() );
         res["gasPrice"] = toJS( _t.gasPrice() );
         res["value"] = toJS( _t.value() );
         res["data"] = toJS( _t.data(), 32 );
@@ -347,7 +347,7 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
         res["blockHash"] = toJS( _t.blockHash() );
         res["blockNumber"] = toJS( _t.blockNumber() );
         res["from"] = toJS( _t.safeSender() );
-        res["gas"] = toJS( _t.gasToExecute() );
+        res["gas"] = toJS( _t.gas() );
         res["gasPrice"] = toJS( _t.gasPrice() );
         res["hash"] = toJS( _t.sha3() );
         res["input"] = toJS( _t.data() );

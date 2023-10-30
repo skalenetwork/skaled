@@ -174,16 +174,8 @@ u256 Transaction::getExternalGas() const {
 }
 
 u256 Transaction::gas() const {
-    if ( m_externalGasIsChecked && hasExternalGas() && POWCheckPatch::isEnabled() ) {
-        return *m_externalGas;
-    } else {
+    if ( !POWCheckPatch::isEnabled() )
         return TransactionBase::gas();
-    }
-}
-
-u256 Transaction::gasToExecute() const {
-    if ( POWCheckPatch::isEnabled() )
-        return gas();
     if ( m_externalGasIsChecked && hasExternalGas() ) {
         return *m_externalGas;
     } else {

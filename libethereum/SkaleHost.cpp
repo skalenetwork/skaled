@@ -468,7 +468,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     u256 gasAcc = 0;
     auto first_to_drop_it = txns.begin();
     for ( ; first_to_drop_it != txns.end(); ++first_to_drop_it ) {
-        gasAcc += first_to_drop_it->gasToExecute();
+        gasAcc += first_to_drop_it->gas();
         if ( gasAcc > blockGasLimit )
             break;
     }  // for

@@ -65,7 +65,7 @@ AlethExecutive::AlethExecutive(
 }
 */
 u256 AlethExecutive::gasUsed() const {
-    return m_t.gasToExecute() - m_gas;
+    return m_t.gas() - m_gas;
 }
 
 void AlethExecutive::accrueSubState( SubState& _parentContext ) {
@@ -103,13 +103,12 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         }
 
         // Avoid unaffordable transactions.
-        bigint gasCost = ( bigint ) m_t.gasToExecute() * m_t.gasPrice();
+        bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
-            LOG( m_execLogger ) << "Not enough cash: Require > " << totalCost << " = "
-                                << m_t.gasToExecute() << " * " << m_t.gasPrice() << " + "
-                                << m_t.value() << " Got" << m_s.balance( m_t.sender() )
-                                << " for sender: " << m_t.sender();
+            LOG( m_execLogger ) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+                                << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
+                                << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
@@ -124,17 +123,16 @@ bool AlethExecutive::execute() {
 
     // Pay...
     LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                           << m_t.gasToExecute() << " gas at " << formatBalance( m_t.gasPrice() )
-                           << ")";
+                           << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 
-    assert( m_t.gasToExecute() >= ( u256 ) m_baseGasRequired );
+    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gasToExecute() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
+            m_t.gas() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
     else
         return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef( &m_t.data() ), m_t.gasToExecute() - ( u256 ) m_baseGasRequired );
+            bytesConstRef( &m_t.data() ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
 bool AlethExecutive::call( Address const& _receiveAddress, Address const& _senderAddress,
@@ -397,14 +395,14 @@ bool AlethExecutive::finalize() {
         // Refunds must be applied before the miner gets the fees.
         assert( m_ext->sub.refunds >= 0 );
         int64_t maxRefund =
-            ( static_cast< int64_t >( m_t.gasToExecute() ) - static_cast< int64_t >( m_gas ) ) / 2;
+            ( static_cast< int64_t >( m_t.gas() ) - static_cast< int64_t >( m_gas ) ) / 2;
         m_gas += min( maxRefund, m_ext->sub.refunds );
     }
 
     if ( m_t ) {
         m_s.addBalance( m_t.sender(), m_gas * m_t.gasPrice() );
 
-        u256 feesEarned = ( m_t.gasToExecute() - m_gas ) * m_t.gasPrice();
+        u256 feesEarned = ( m_t.gas() - m_gas ) * m_t.gasPrice();
         m_s.addBalance( m_envInfo.author(), feesEarned );
     }
 
