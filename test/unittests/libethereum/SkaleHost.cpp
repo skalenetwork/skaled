@@ -753,12 +753,14 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 
-    // step 2: check receipt
+    // step 2: check that receipt "moved" to another block after successfull re-execution of the same transaction
 
     if(!skipInvalidTransactionsFlag){
         LocalisedTransactionReceipt r1 = client->localisedTransactionReceipt(txHash);
         BOOST_REQUIRE_EQUAL(r1.blockNumber(), 1);
         BOOST_REQUIRE_EQUAL(r1.gasUsed(), 0);
+        LocalisedTransaction lt = client->localisedTransaction(txHash);
+        BOOST_REQUIRE_EQUAL(lt.blockNumber(), 1);
     }
 
     // make money
@@ -774,6 +776,8 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     LocalisedTransactionReceipt r2 = client->localisedTransactionReceipt(txHash);
     BOOST_REQUIRE_EQUAL(r2.blockNumber(), 2);
     BOOST_REQUIRE_GE(r2.gasUsed(), 21000);
+    LocalisedTransaction lt = client->localisedTransaction(txHash);
+    BOOST_REQUIRE_EQUAL(lt.blockNumber(), 2);
 }
 
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag

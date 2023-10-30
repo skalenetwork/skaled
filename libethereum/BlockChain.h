@@ -222,7 +222,7 @@ public:
         if ( !tl.first )
             return bytesConstRef();
 
-        // guaranteed to be cached by transactionLocation() call above
+        // in most cases will hit cache because of transactionLocation() call above
         return transactionReceipt( tl.first, tl.second );
     }
 
