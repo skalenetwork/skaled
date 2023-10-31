@@ -49,8 +49,9 @@ std::string numberToHex( size_t inputNumber ) {
 }
 
 std::string stringToHex( std::string inputString ) {
+    size_t strLength = ( ( inputString.size() * 2 + 63 ) / 64 ) * 64;
     std::string hexString = toHex( inputString.begin(), inputString.end(), "" );
-    hexString.insert( hexString.begin() + hexString.length(), 64 - hexString.length(), '0' );
+    hexString.insert( hexString.begin() + hexString.length(), strLength - hexString.length(), '0' );
     return hexString;
 }
 
@@ -1687,7 +1688,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
     ChainParams chainParams;
     chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
 
-    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "/home/oleh/work/skaled/build/test/libethereum/PrecompiledConfig.h" ) );
+    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
     std::unique_ptr<dev::eth::Client> client;
     dev::WithExisting withExisting = dev::WithExisting::Trust;
@@ -1707,18 +1708,18 @@ BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 26 );
 
-    in = dev::asBytes( "0000000000000000000000000000000000000000000000000000000000000028skaleConfig.sChain.nodes.[0].schainIndex" );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 3 );
 
-    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
 
-    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
@@ -1728,25 +1729,37 @@ BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
     ChainParams chainParams;
     chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
 
-    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
+    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
-    bytes in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
+    std::unique_ptr<dev::eth::Client> client;
+    dev::WithExisting withExisting = dev::WithExisting::Trust;
+    client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
+        shared_ptr< GasPricer >(), nullptr, nullptr, getDataDir(),
+        withExisting, dev::eth::TransactionQueue::Limits{ 1, 1, 1, 1 } ) );
+
+    std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *client, nullptr, nullptr, "", false );
+    dev::eth::g_skaleHost = skaleHost;
+    client->injectSkaleHost( skaleHost );
+
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableAddress" );
+
+    bytes in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == fromHex("0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc") );
+    BOOST_REQUIRE( res.second == fromHex("0x47bbe8db4e347b4e8c937c1c8350e4b7ed30adb3db69bbdb7a38c1f40a1b82fd") );
 
-    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
+    in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
 
-    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
 
-    in = fromHex( stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
