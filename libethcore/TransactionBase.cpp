@@ -271,6 +271,15 @@ u256 TransactionBase::gas() const {
 
      *
      * the code has been also simplified since there were redundant checks.
+     * One can check that
+
+     m_externalGasIsChecked && hasExternalGas()
+
+     * is mathematically identical to
+
+     getExternalGas() != 0
+
+     *
      *
      * it is easy to prove that when isPatchEnabled is false the below code
      * is mathematically identical to the code that existed in the 2.1.1 implementation.
