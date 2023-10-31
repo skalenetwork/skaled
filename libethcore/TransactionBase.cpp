@@ -261,6 +261,9 @@ u256 TransactionBase::gasPrice() const {
     return m_gasPrice;
 }
 
+// we start from 2.1.1 stable branch and add changes to address the "virtual" problem
+// since "virtual" can not be dynamically disabled/enabled we remove
+// the gas() function from Transaction and move the logic to TransactionBase
 // this pull request does not include reading isPatchEnabled from the config file
 bool isPatchEnabled = false;
 
