@@ -20,6 +20,7 @@ set(sources
     OverlayFS.cpp
     StorageDestructionPatch.cpp
     POWCheckPatch.cpp
+    PushZeroPatch.cpp
     SkipInvalidTransactionsPatch.cpp
 )
 
