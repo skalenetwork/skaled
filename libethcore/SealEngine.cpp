@@ -119,13 +119,13 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
 
     // Pre calculate the gas needed for execution
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
-         _t.baseGasRequired( schedule ) > _t.gas() )
+         _t.baseGasRequired( schedule ) > _t.gas( true ) )
         BOOST_THROW_EXCEPTION( OutOfGasIntrinsic() << RequirementError(
                                    static_cast< bigint >( _t.baseGasRequired( schedule ) ),
                                    static_cast< bigint >( _t.gas() ) ) );
 
     // Avoid transactions that would take us beyond the block gas limit.
-    if ( _gasUsed + static_cast< bigint >( _t.gas() ) > _header.gasLimit() )
+    if ( _gasUsed + static_cast< bigint >( _t.gas( true ) ) > _header.gasLimit() )
         BOOST_THROW_EXCEPTION( BlockGasLimitReached() << RequirementErrorComment(
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( _t.gas() ),

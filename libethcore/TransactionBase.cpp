@@ -261,7 +261,7 @@ u256 TransactionBase::gasPrice() const {
     return m_gasPrice;
 }
 
-u256 TransactionBase::gas() const {
+u256 TransactionBase::gas( bool /*needToEnablePoWPatch*/ ) const {
     assert( !isInvalid() );
     return m_gas;
 }

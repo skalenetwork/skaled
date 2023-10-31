@@ -118,7 +118,7 @@ public:
 
     u256 getExternalGas() const;
 
-    u256 gas() const;
+    u256 gas( bool needToEnablePoWPatch = false ) const;
 
     u256 gasPrice() const;
 
