@@ -789,6 +789,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
             throw std::runtime_error( "Config accessor was not initialized" );
 
         std::string strValue;
+        // call to skaleConfig.sChain.nodes means call to the historic data
+        // need to proccess it in a different way
         if ( isCallToHistoricData( rawName ) ) {
             if ( !g_skaleHost )
                 throw std::runtime_error( "SkaleHost accessor was not initialized" );
@@ -846,6 +848,8 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
             throw std::runtime_error( "Config accessor was not initialized" );
 
         std::string strValue;
+        // call to skaleConfig.sChain.nodes means call to the historic data
+        // need to proccess it in a different way
         if ( isCallToHistoricData( rawName ) ) {
             if ( !g_skaleHost )
                 throw std::runtime_error( "SkaleHost accessor was not initialized" );

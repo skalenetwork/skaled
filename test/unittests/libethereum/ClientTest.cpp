@@ -902,7 +902,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
             }
         },
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x47bbe8db4e347b4e8c937c1c8350e4b7ed30adb3db69bbdb7a38c1f40a1b82fd"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },

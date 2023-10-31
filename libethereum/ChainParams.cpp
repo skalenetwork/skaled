@@ -116,13 +116,9 @@ ChainParams ChainParams::loadConfig(
         bool syncNode = false;
         bool archiveMode = false;
         bool syncFromCatchup = false;
-        std::string ip, ip6, keyShareName, sgxServerUrl, owner;
+        std::string ip, ip6, keyShareName, sgxServerUrl;
         size_t t = 0;
         uint64_t port = 0, port6 = 0;
-        try {
-            owner = infoObj.at( "owner" ).get_str();
-        } catch ( ... ) {
-        }
         try {
             ip = infoObj.at( "bindIP" ).get_str();
         } catch ( ... ) {
@@ -191,7 +187,7 @@ ChainParams ChainParams::loadConfig(
         }
 
         cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), owner, sgxServerUrl, ecdsaKeyName, keyShareName,
+            static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
             BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
 
         auto sChainObj = skaleObj.at( "sChain" ).get_obj();
@@ -327,11 +323,6 @@ ChainParams ChainParams::loadConfig(
             node.id = nodeConfObj.at( "nodeID" ).get_uint64();
             node.ip = nodeConfObj.at( "ip" ).get_str();
             node.port = nodeConfObj.at( "basePort" ).get_uint64();
-            try {
-                node.owner = nodeConfObj.at( "owner" ).get_str();
-            } catch ( ... ) {
-                node.owner = "";
-            }
             try {
                 node.ip6 = nodeConfObj.at( "ip6" ).get_str();
             } catch ( ... ) {
