@@ -171,13 +171,6 @@ u256 Transaction::getExternalGas() const {
     }
 }
 
-u256 Transaction::gas() const {
-    if ( m_externalGasIsChecked && hasExternalGas() ) {
-        return *m_externalGas;
-    } else {
-        return TransactionBase::gas();
-    }
-}
 
 u256 Transaction::gasPrice() const {
     if ( m_externalGasIsChecked && hasExternalGas() ) {
