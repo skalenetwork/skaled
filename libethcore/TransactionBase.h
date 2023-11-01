@@ -171,6 +171,10 @@ public:
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
     u256 gasPrice() const;
 
+    /// @returns the non-PoW gas
+    u256 nonPowGas() const;
+
+
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
     u256 gas() const;
