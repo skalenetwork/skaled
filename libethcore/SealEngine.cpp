@@ -99,7 +99,7 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
     // verifyTransaction is the only place where TransactionBase is used
     // instead of Transaction. This caused a bug that we address here
     u256 gas;
-    if (POWCheckPatch::isEnabled()) {
+    if ( POWCheckPatch::isEnabled() ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
     } else {
@@ -131,8 +131,7 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
     eth::EVMSchedule const& schedule = evmSchedule( _header.number() );
 
     // Pre calculate the gas needed for execution
-    if ( ( _ir & ImportRequirements::TransactionBasic ) &&
-         _t.baseGasRequired( schedule ) > gas )
+    if ( ( _ir & ImportRequirements::TransactionBasic ) && _t.baseGasRequired( schedule ) > gas )
         BOOST_THROW_EXCEPTION( OutOfGasIntrinsic() << RequirementError(
                                    static_cast< bigint >( _t.baseGasRequired( schedule ) ),
                                    static_cast< bigint >( gas ) ) );

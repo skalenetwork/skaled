@@ -283,15 +283,14 @@ u256 TransactionBase::gas() const {
      * For block gas limit, this function will return the mined gas
      * Note that we still have a problem that "accidentally mined transactions" can fail,
      * but it can be fixed for 2.3
-     * In the future If we want to solve the problem of accidentally mined transaction we can use something like
-     if ( getExternalGas() != 0 && getExternalGas > m_gas) {
-        return getExternalGas();
+     * In the future If we want to solve the problem of accidentally mined transaction we can use
+     something like if ( getExternalGas() != 0 && getExternalGas > m_gas) { return getExternalGas();
      } else {
         return m_gas;
      }
      */
     assert( !isInvalid() );
-    if ( getExternalGas() != 0) {
+    if ( getExternalGas() != 0 ) {
         return getExternalGas();
     } else {
         return m_gas;
