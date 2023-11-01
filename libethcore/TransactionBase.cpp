@@ -261,7 +261,43 @@ u256 TransactionBase::gasPrice() const {
     return m_gasPrice;
 }
 
+// we start from 2.1.1 stable branch and add changes to address the "virtual" problem
+// since "virtual" can not be dynamically disabled/enabled we remove
+// the gas() function from Transaction and move the logic to TransactionBase
+
 u256 TransactionBase::gas() const {
+    /* Note that gas() function has been removed from Transaction.
+     * instead the logic has been moved to the gas() function of TransactionBase
+     * this has been done in order to address the problem of switching "virtual" on/off
+     *
+     * the code has been also simplified since there were redundant checks.
+     * One can check that
+     m_externalGasIsChecked && hasExternalGas()
+     * is mathematically identical to
+     getExternalGas() != 0
+     *
+     *
+     * it is easy to prove that when isPatchEnabled is false the below code
+     * is mathematically identical to the code that existed in the 2.1.1 implementation.
+     * if the patch is enabled the code corresponds to the "virtual" patch
+     * For block gas limit, this function will return the mined gas
+     * Note that we still have a problem that "accidentally mined transactions" can fail,
+     * but it can be fixed for 2.3
+     * In the future If we want to solve the problem of accidentally mined transaction we can use something like
+     if ( getExternalGas() != 0 && getExternalGas > m_gas) {
+        return getExternalGas();
+     } else {
+        return m_gas;
+     }
+     */
     assert( !isInvalid() );
+    if ( getExternalGas() != 0) {
+        return getExternalGas();
+    } else {
+        return m_gas;
+    }
+}
+
+u256 TransactionBase::nonPowGas() const {
     return m_gas;
 }
