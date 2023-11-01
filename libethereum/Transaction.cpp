@@ -173,6 +173,9 @@ u256 Transaction::getExternalGas() const {
     }
 }
 
+// @needToEnablePoWPatch shows where the fucntion is called from
+// if called during the execution step, gas() should return pow gas if there is any
+// if called during the verification step, gas() should return pow gas iff patch is enabled
 u256 Transaction::gas( bool needToEnablePoWPatch ) const {
     bool isPowGasNeeded = !needToEnablePoWPatch || POWCheckPatch::isEnabled();
     if ( m_externalGasIsChecked && hasExternalGas() && isPowGasNeeded ) {
