@@ -21,6 +21,7 @@
  */
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/TransientDirectory.h>
 #include <libdevcrypto/Hash.h>
 #include <libethereum/Precompiled.h>
 #include <libethereum/ChainParams.h>
@@ -1692,8 +1693,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
 
     std::unique_ptr<dev::eth::Client> client;
     dev::WithExisting withExisting = dev::WithExisting::Trust;
+    dev::TransientDirectory m_tmpDir;
+    setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
     client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-        shared_ptr< GasPricer >(), nullptr, nullptr, getDataDir(),
+        shared_ptr< GasPricer >(), nullptr, nullptr, m_tmpDir.path(),
         withExisting, dev::eth::TransactionQueue::Limits{ 1, 1, 1, 1 } ) );
 
     std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *client, nullptr, nullptr, "", false );
@@ -1733,8 +1736,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
 
     std::unique_ptr<dev::eth::Client> client;
     dev::WithExisting withExisting = dev::WithExisting::Trust;
+    dev::TransientDirectory m_tmpDir;
+    setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
     client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-        shared_ptr< GasPricer >(), nullptr, nullptr, getDataDir(),
+        shared_ptr< GasPricer >(), nullptr, nullptr, m_tmpDir.path(),
         withExisting, dev::eth::TransactionQueue::Limits{ 1, 1, 1, 1 } ) );
 
     std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *client, nullptr, nullptr, "", false );
