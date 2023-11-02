@@ -270,11 +270,6 @@ protected:
      * instantiated. Aleth tests and utilities  do instantiate TransactionBase
      *
      * The function always returns zero, which means no PoW.
-     *
-     * One can independently check the above statement by searching code for TransactionBase and
-     * Transaction constructors. The only way where TransactionBase constructor is used in skaled is
-     * when used from Transaction constructors. Therefore, there are no TransactionBase objects in
-     * skaled, only Transaction objects.
      */
     virtual u256 getExternalGas() const { return 0; }
 

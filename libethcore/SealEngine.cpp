@@ -96,8 +96,7 @@ void SealEngineFace::populateFromParent( BlockHeader& _bi, BlockHeader const& _p
 
 void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
     BlockHeader const& _header, u256 const& _gasUsed ) const {
-    // verifyTransaction is the only place where TransactionBase is used
-    // instead of Transaction. This caused a bug that we address here
+    // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
     if ( POWCheckPatch::isEnabled() ) {
         // new behavior is to use pow-enabled gas

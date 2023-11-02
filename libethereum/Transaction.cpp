@@ -165,7 +165,7 @@ bool Transaction::hasExternalGas() const {
 }
 
 u256 Transaction::getExternalGas() const {
-    if ( hasExternalGas() ) {
+    if ( m_externalGasIsChecked && hasExternalGas() ) {
         return *m_externalGas;
     } else {
         return u256( 0 );
