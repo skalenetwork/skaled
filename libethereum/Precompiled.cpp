@@ -36,6 +36,7 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
 #include <libethereum/SkaleHost.h>
+#include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
 
@@ -791,7 +792,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         std::string strValue;
         // call to skaleConfig.sChain.nodes means call to the historic data
         // need to proccess it in a different way
-        if ( isCallToHistoricData( rawName ) ) {
+        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
             if ( !g_skaleHost )
                 throw std::runtime_error( "SkaleHost accessor was not initialized" );
 
@@ -850,7 +851,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
         std::string strValue;
         // call to skaleConfig.sChain.nodes means call to the historic data
         // need to proccess it in a different way
-        if ( isCallToHistoricData( rawName ) ) {
+        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
             if ( !g_skaleHost )
                 throw std::runtime_error( "SkaleHost accessor was not initialized" );
 

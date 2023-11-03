@@ -266,6 +266,11 @@ ChainParams ChainParams::loadConfig(
                                        sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
                                        0;
 
+        s.precompiledConfigPatchTimestamp =
+            sChainObj.count( "precompiledConfigPatchTimestamp" ) ?
+                sChainObj.at( "precompiledConfigPatchTimestamp" ).get_int64() :
+                0;
+
         s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
                                        sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
                                        0;
