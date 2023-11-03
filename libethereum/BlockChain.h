@@ -217,12 +217,13 @@ public:
 
     /// Get the transaction receipt by transaction hash. Thread-safe.
     TransactionReceipt transactionReceipt( h256 const& _transactionHash ) const {
-        TransactionAddress ta =
-            queryExtras< TransactionAddress, ExtraTransactionAddress >( _transactionHash,
-                m_transactionAddresses, x_transactionAddresses, NullTransactionAddress );
-        if ( !ta )
+        std::pair< h256, unsigned > tl = transactionLocation( _transactionHash );
+
+        if ( !tl.first )
             return bytesConstRef();
-        return transactionReceipt( ta.blockHash, ta.index );
+
+        // in most cases will hit cache because of transactionLocation() call above
+        return transactionReceipt( tl.first, tl.second );
     }
 
     /// Get a list of transaction hashes for a given block. Thread-safe.
@@ -311,14 +312,8 @@ public:
             return bytes();
         return transaction( ta.blockHash, ta.index );
     }
-    std::pair< h256, unsigned > transactionLocation( h256 const& _transactionHash ) const {
-        TransactionAddress ta =
-            queryExtras< TransactionAddress, ExtraTransactionAddress >( _transactionHash,
-                m_transactionAddresses, x_transactionAddresses, NullTransactionAddress );
-        if ( !ta )
-            return std::pair< h256, unsigned >( h256(), 0 );
-        return std::make_pair( ta.blockHash, ta.index );
-    }
+
+    std::pair< h256, unsigned > transactionLocation( h256 const& _transactionHash ) const;
 
     /// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if
     /// none given) & index. Thread-safe.
