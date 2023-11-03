@@ -262,6 +262,18 @@ u256 TransactionBase::gasPrice() const {
 }
 
 u256 TransactionBase::gas() const {
+    /* Note that gas() function has been removed from Transaction.
+     * instead the logic has been moved to the gas() function of TransactionBase
+     * this has been done in order to address the problem of switching "virtual" on/off
+     */
     assert( !isInvalid() );
+    if ( getExternalGas() != 0 ) {
+        return getExternalGas();
+    } else {
+        return m_gas;
+    }
+}
+
+u256 TransactionBase::nonPowGas() const {
     return m_gas;
 }
