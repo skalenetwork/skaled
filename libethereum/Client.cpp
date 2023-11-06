@@ -1335,7 +1335,10 @@ void Client::updateHistoricGroupIndex() {
     uint64_t currentFinishTs = chainParams().sChain.nodeGroups[historicGroupIndex].finishTs;
     if ( blockTimestamp >= currentFinishTs )
         ++historicGroupIndex;
-    assert( historicGroupIndex < chainParams().sChain.nodeGroups.size() );
+    if ( historicGroupIndex >= chainParams().sChain.nodeGroups.size() ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
+    }
 }
 
 // new block watch
