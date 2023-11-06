@@ -297,6 +297,12 @@ ChainParams ChainParams::loadConfig(
                     u256 id = groupNodeConfObj.at(1).get_uint64();
                     std::string publicKey = groupNodeConfObj.at(2).get_str();
                     std::string address = groupNodeConfObj.at(3).get_str();
+                    if (publicKey.empty()) {
+                        BOOST_THROW_EXCEPTION(std::runtime_error("Empty public key in config"));
+                    }
+                    if (address.empty()) {
+                        BOOST_THROW_EXCEPTION(std::runtime_error("Empty address in config"));
+                    }
                     groupNodes.push_back( { id, sChainIndex, publicKey, address } );
                 }
                 std::sort( groupNodes.begin(), groupNodes.end(),
