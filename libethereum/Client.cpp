@@ -315,8 +315,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( ChainParams().sChain.nodeGroups.size() > 0 )
+    if ( ChainParams().sChain.nodeGroups.size() > 0 ) {
         initHistoricGroupIndex();
+    } else {
+        LOG( m_logger ) << "Empty node groups in config. "
+            "This is OK in tests but not OK in production";
+    }
 
     // init snapshots for not newly created chains
     if ( number() ) {
