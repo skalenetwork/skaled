@@ -39,6 +39,7 @@
 #include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <mutex>
 
@@ -758,7 +759,8 @@ static dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
 }
 
 static bool isCallToHistoricData( const std::string& callData ) {
-    return skutils::tools::wildcmp( "skaleConfig.sChain.nodes.*", callData.c_str() );
+    // in C++ 20 there is string::starts_with, but we do not use C++ 20 yet
+    boost::algorithm::starts_with(callData, "skaleConfig.sChain.nodes.");
 }
 
 static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::string& callData ) {
