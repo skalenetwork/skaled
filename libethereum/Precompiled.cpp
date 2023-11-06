@@ -679,19 +679,21 @@ static const std::list< std::string > g_listReadableConfigParts{ "sealEngine",
     //"genesis.*"
     //"params.*",
 
-    "skaleConfig.nodeInfo.wallets.ima.commonBLSPublicKey*",
-    "skaleConfig.nodeInfo.wallets.ima.BLSPublicKey*",
+    // skaled-1702
+    // remove these config field from public access for security reasons
+    //    "skaleConfig.nodeInfo.wallets.ima.commonBLSPublicKey*",
+    //    "skaleConfig.nodeInfo.wallets.ima.BLSPublicKey*",
 
-    "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
-    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.*RpcPort*",
-    "skaleConfig.nodeInfo.acceptors", "skaleConfig.nodeInfo.max-connections",
-    "skaleConfig.nodeInfo.max-http-queues", "skaleConfig.nodeInfo.ws-mode",
+    //    "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
+    //    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.*RpcPort*",
+    //    "skaleConfig.nodeInfo.acceptors", "skaleConfig.nodeInfo.max-connections",
+    //    "skaleConfig.nodeInfo.max-http-queues", "skaleConfig.nodeInfo.ws-mode",
 
-    "skaleConfig.contractSettings.*",
+    //    "skaleConfig.contractSettings.*",
 
-    "skaleConfig.sChain.emptyBlockIntervalMs",
+    //    "skaleConfig.sChain.emptyBlockIntervalMs",
 
-    "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
+    //    "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
 
     "skaleConfig.sChain.nodes.*" };
 
