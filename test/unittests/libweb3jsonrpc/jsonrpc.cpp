@@ -515,8 +515,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_netVersion )
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config );
     
-    auto version = jsToU256(fixture.rpcClient->net_version());
-    BOOST_CHECK_EQUAL( version, 65535 );
+    auto version = fixture.rpcClient->net_version();
+    BOOST_CHECK_EQUAL( version, "65535" );
 }
 
 BOOST_AUTO_TEST_CASE( jsonrpc_setMining ) {
