@@ -710,8 +710,11 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "no-snapshot-majority", po::value< string >()->value_name( "<url>" ), "" );
 
-    addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
-        "Idle wait timeout for JSON RPC calls in milliseconds" );
+    addClientOption( "rpc-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
+        "Idle wait timeout for incoming JSON RPC calls in milliseconds" );
+
+    addClientOption( "client-connection-timeout", po::value< long >()->value_name( "<timeout>" ),
+        "Idle wait timeout for outgoing calls in milliseconds" );
 
     std::string strPerformanceWarningDurationOptionDescription =
         "Specifies time margin in floating point format, in seconds, for displaying performance "
@@ -910,8 +913,11 @@ int main( int argc, char** argv ) try {
         return 0;
     }
 
-    if ( vm.count( "network-idle-timeout" ) )
-        skutils::rest::g_nClientConnectionTimeoutMS = vm["network-idle-timeout"].as< long >();
+    if ( vm.count( "rpc-idle-timeout" ) )
+        skutils::rest::g_nRpcIdleTimeoutMS = vm["network-idle-timeout"].as< long >();
+
+    if ( vm.count( "client-connection-timeout" ) )
+        skutils::rest::g_nClientConnectionTimeoutMS = vm["client-connection-timeout"].as< long >();
 
     if ( vm.count( "test-enable-crash-at" ) ) {
         std::string crash_at = vm["test-enable-crash-at"].as< string >();
