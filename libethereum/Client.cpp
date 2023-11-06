@@ -319,7 +319,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         initHistoricGroupIndex();
     } else {
         LOG( m_logger ) << "Empty node groups in config. "
-            "This is OK in tests but not OK in production";
+                           "This is OK in tests but not OK in production";
     }
 
     // init snapshots for not newly created chains
@@ -1095,7 +1095,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
+        DEV_GUARDED( m_blockImportMutex ) {
+            return Block( bc(), hash, readState );
+        }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1109,7 +1111,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
     try {
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), bc().currentHash(), m_state ); }
+        DEV_GUARDED( m_blockImportMutex ) {
+            return Block( bc(), bc().currentHash(), m_state );
+        }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1257,7 +1261,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.checkOutExternalGas( ~u256( 0 ) );
                 if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+                        _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t );
@@ -1281,7 +1285,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance(
+                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
@@ -1309,7 +1314,11 @@ void Client::initHistoricGroupIndex() {
         chainParams().sChain.nodeGroups.end(),
         [&currentBlockTimestamp](
             const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
-    assert( it != chainParams().sChain.nodeGroups.end() );
+
+    if ( it == chainParams().sChain.nodeGroups.end() ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Assertion failed: it == chainParams().sChain.nodeGroups.end()" ) );
+    }
 
     if ( it != chainParams().sChain.nodeGroups.begin() ) {
         auto prevIt = std::prev( it );
