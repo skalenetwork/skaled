@@ -37,6 +37,14 @@ void eth::AlethStandardTrace::replayTracePrint(
         string errMessage = evmErrorDescription(statusCode);
         m_jsonTrace["error"] = errMessage;
     }
+
+    Json::Value functionTraceArray(Json::arrayValue);
+    printParityFunctionTrace(m_topFunctionCall, functionTraceArray);
+    m_jsonTrace["trace"] = functionTraceArray;
+}
+
+void AlethStandardTrace::printParityFunctionTrace(
+    shared_ptr< FunctionCall > _functionCall, Json::Value& _outputArray ) {
 }
 
 

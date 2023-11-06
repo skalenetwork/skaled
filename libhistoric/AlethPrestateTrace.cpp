@@ -223,5 +223,6 @@ void eth::AlethStandardTrace::pstracePrintAccountPreDiff( Json::Value& _preDiffT
 }
 
 
+
 }  // namespace eth
 }  // namespace dev
