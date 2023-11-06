@@ -45,6 +45,22 @@ void eth::AlethStandardTrace::replayTracePrint(
 
 void AlethStandardTrace::printParityFunctionTrace(
     shared_ptr< FunctionCall > _functionCall, Json::Value& _outputArray ) {
+    /*
+    "trace":[{"action":{"from":"0x9d945d909ca91937d19563e30bb4dac12c860189","callType":"call",
+  "gas":"0x1fafcc","input":"0x300001c90b","to":"0x1b02da8cb0d097eb8d57a175b88c7d8b47997506","value":"0x0"},
+  "result":{"gasUsed":"0x26456","output":"0x0005bf"},"subtraces":5,"traceAddress":[],"type":"call"},
+     */
+
+    STATE_CHECK(_functionCall);
+
+    Json::Value functionTrace(Json::objectValue);
+    functionTrace["action"] = Json::nullValue;
+    functionTrace["result"] = Json::nullValue;
+    functionTrace["subtraces"] = Json::nullValue;
+    functionTrace["traceAddress"] = _functionCall->getParityAddress();
+    functionTrace["type"] = _functionCall->getParityTraceType();
+
+    _outputArray.append(functionTrace);
 }
 
 

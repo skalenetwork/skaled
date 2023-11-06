@@ -139,6 +139,12 @@ FunctionCall::FunctionCall( Instruction _type, const Address& _from, const Addre
 void FunctionCall::addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
     m_logRecords.emplace_back( _data, _topics );
 }
+string FunctionCall::getParityTraceType() {
+    return instructionInfo( m_type ).name;
+}
+Json::Value FunctionCall::getParityAddress() {
+    return Json::Value(Json::arrayValue);
+}
 
 OpExecutionRecord::OpExecutionRecord(
     int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
