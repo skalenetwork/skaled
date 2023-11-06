@@ -86,8 +86,10 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
         u256 diff = gasAfter - gasBefore;
         gasBefore = gasAfter;
 
-        // ignore transactions with 0 gas usage
-        if ( diff == 0 )
+        pair< h256, unsigned > loc = client.transactionLocation( th );
+
+        // ignore transactions with 0 gas usage OR different location!
+        if ( diff == 0 || client.numberFromHash( loc.first ) != _bn || loc.second != realIndex )
             continue;
 
         // cache it

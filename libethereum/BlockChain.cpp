@@ -44,6 +44,7 @@
 #include <libethcore/Exceptions.h>
 
 #include <libskale/AmsterdamFixPatch.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 
 #include "Block.h"
@@ -171,6 +172,24 @@ unsigned c_maxCacheSize = 1024 * 1024 * 64;
 
 /// Min size, below which we don't bother flushing it.
 unsigned c_minCacheSize = 1024 * 1024 * 32;
+
+bool hasPotentialInvalidTransactionsInBlock( BlockNumber _bn, const BlockChain& _bc ) {
+    if ( _bn == 0 )
+        return false;
+
+    if ( SkipInvalidTransactionsPatch::getActivationTimestamp() == 0 )
+        return true;
+
+    if ( _bn == PendingBlock )
+        return !SkipInvalidTransactionsPatch::isEnabled();
+
+    if ( _bn == LatestBlock )
+        _bn = _bc.number();
+
+    time_t prev_ts = _bc.info( _bc.numberHash( _bn - 1 ) ).timestamp();
+
+    return prev_ts < SkipInvalidTransactionsPatch::getActivationTimestamp();
+}
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
@@ -332,6 +351,49 @@ void BlockChain::close() {
     clearCaches();
 
     m_lastBlockHashes->clear();
+}
+
+std::pair< h256, unsigned > BlockChain::transactionLocation( h256 const& _transactionHash ) const {
+    // cached transactionAddresses for transactions with gasUsed==0 should be re-queried from DB
+    bool cached = false;
+    {
+        ReadGuard g( x_transactionAddresses );
+        cached = m_transactionAddresses.count( _transactionHash ) > 0;
+    }
+
+    // get transactionAddresses from DB or cache
+    TransactionAddress ta = queryExtras< TransactionAddress, ExtraTransactionAddress >(
+        _transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress );
+
+    if ( !ta )
+        return std::pair< h256, unsigned >( h256(), 0 );
+
+    auto blockNumber = this->number( ta.blockHash );
+
+    if ( !hasPotentialInvalidTransactionsInBlock( blockNumber, *this ) )
+        return std::make_pair( ta.blockHash, ta.index );
+
+    // rest is for blocks with possibility of invalid transactions
+
+    // compute gas used
+    TransactionReceipt receipt = transactionReceipt( ta.blockHash, ta.index );
+    u256 cumulativeGasUsed = receipt.cumulativeGasUsed();
+    u256 prevGasUsed =
+        ta.index == 0 ? 0 : transactionReceipt( ta.blockHash, ta.index - 1 ).cumulativeGasUsed();
+    u256 gasUsed = cumulativeGasUsed - prevGasUsed;
+
+    // re-query receipt from DB if gasUsed==0 (and cache might have wrong value)
+    if ( gasUsed == 0 && cached ) {
+        // remove from cache
+        {
+            WriteGuard g( x_transactionAddresses );
+            m_transactionAddresses.erase( _transactionHash );
+        }
+        // re-read from DB
+        ta = queryExtras< TransactionAddress, ExtraTransactionAddress >( _transactionHash,
+            m_transactionAddresses, x_transactionAddresses, NullTransactionAddress );
+    }
+    return std::make_pair( ta.blockHash, ta.index );
 }
 
 string BlockChain::dumpDatabase() const {
