@@ -296,8 +296,8 @@ ChainParams ChainParams::loadConfig(
                     u256 sChainIndex = groupNodeConfObj[0].get_uint64();
                     u256 id = groupNodeConfObj[1].get_uint64();
                     std::string publicKey = groupNodeConfObj[2].get_str();
-                    std::string owner = groupNodeConfObj[3].get_str();
-                    groupNodes.push_back( { id, sChainIndex, publicKey, owner } );
+                    std::string address = groupNodeConfObj[3].get_str();
+                    groupNodes.push_back( { id, sChainIndex, publicKey, address } );
                 }
                 std::sort( groupNodes.begin(), groupNodes.end(),
                     []( const GroupNode& lhs, const GroupNode& rhs ) {
