@@ -760,7 +760,7 @@ static dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
 
 static bool isCallToHistoricData( const std::string& callData ) {
     // in C++ 20 there is string::starts_with, but we do not use C++ 20 yet
-    boost::algorithm::starts_with(callData, "skaleConfig.sChain.nodes.");
+    return boost::algorithm::starts_with( callData, "skaleConfig.sChain.nodes." );
 }
 
 static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::string& callData ) {
