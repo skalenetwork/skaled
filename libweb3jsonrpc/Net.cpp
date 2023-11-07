@@ -35,7 +35,7 @@ Net::Net( const dev::eth::ChainParams& _chainParams ) : m_chainParams( _chainPar
 // TODO Ask here real values from consensus/broadcast
 
 std::string Net::net_version() {
-    return toJS( m_chainParams.chainID );
+    return toString( m_chainParams.chainID );
 }
 
 std::string Net::net_peerCount() {
