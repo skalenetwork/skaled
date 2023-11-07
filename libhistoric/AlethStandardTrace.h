@@ -89,7 +89,8 @@ private:
 
     void replayTracePrint(
         ExecutionResult&, const HistoricState&, const HistoricState& );
-    void printParityFunctionTrace( shared_ptr< FunctionCall > _function, Json::Value& _outputArray );
+    void printParityFunctionTrace( shared_ptr< FunctionCall > _function, Json::Value& _outputArray,
+        Json::Value _address);
 };
 }  // namespace eth
 }  // namespace dev

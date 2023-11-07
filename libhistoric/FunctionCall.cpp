@@ -142,9 +142,36 @@ void FunctionCall::addLogEntry( const vector< uint8_t >& _data, const vector< u2
 string FunctionCall::getParityTraceType() {
     return instructionInfo( m_type ).name;
 }
-Json::Value FunctionCall::getParityAddress() {
-    return Json::Value(Json::arrayValue);
+void FunctionCall::printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address ) {
+    Json::Value functionTrace(Json::objectValue);
+
+    Json::Value action(Json::objectValue);
+    action["from"] = toHexPrefixed(m_from);
+    action["to"] = toHexPrefixed(m_to);
+    action["gas"] = toHexPrefixed(u256(m_functionGasLimit));
+    action["input"] = toHexPrefixed(u256(m_inputData));
+    action["value"] = toHexPrefixed(m_value);
+    action["callType"] = getParityTraceType();
+    functionTrace["action"] = action;
+
+
+    Json::Value result(Json::objectValue);
+    result["gasUsed"] = toHexPrefixed(u256(m_gasUsed));
+    result["output"] = toHexPrefixed(m_outputData);
+    functionTrace["result"] = result;
+
+    functionTrace["subtraces"] = m_nestedCalls.size();
+    functionTrace["traceAddress"] = _address;
+    functionTrace["type"] = getParityTraceType();
+    _outputArray.append(functionTrace);
+
+    for (uint64_t  i = 0; i < m_nestedCalls.size(); i++) {
+        auto nestedFunctionAddress = _address;
+        nestedFunctionAddress.append(i);
+        printParityFunctionTrace(_outputArray, nestedFunctionAddress);
+    }
 }
+
 
 OpExecutionRecord::OpExecutionRecord(
     int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )

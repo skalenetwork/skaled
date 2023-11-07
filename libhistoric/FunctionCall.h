@@ -83,8 +83,6 @@ public:
 
     void addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics );
 
-    Json::Value getParityAddress();
-
     string getParityTraceType();
 
 private:
@@ -103,6 +101,9 @@ private:
     u256 m_value;
     int64_t m_depth = 0;
     vector< LogRecord > m_logRecords;
+
+    void printParityFunctionTrace(Json::Value& _outputArray, Json::Value _address);
+
 };
 
 
