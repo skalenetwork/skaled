@@ -39,7 +39,9 @@ void eth::AlethStandardTrace::replayTracePrint(
     }
 
     Json::Value functionTraceArray(Json::arrayValue);
-    printParityFunctionTrace(m_topFunctionCall, functionTraceArray);
+    Json::Value emptyAddress(Json::arrayValue);
+
+    m_topFunctionCall->printParityFunctionTrace(functionTraceArray, emptyAddress);
     m_jsonTrace["trace"] = functionTraceArray;
 }
 

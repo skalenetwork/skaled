@@ -85,6 +85,8 @@ public:
 
     string getParityTraceType();
 
+    void printParityFunctionTrace(Json::Value& _outputArray, Json::Value _address);
+
 private:
     Instruction m_type;
     Address m_from;
@@ -101,8 +103,6 @@ private:
     u256 m_value;
     int64_t m_depth = 0;
     vector< LogRecord > m_logRecords;
-
-    void printParityFunctionTrace(Json::Value& _outputArray, Json::Value _address);
 
 };
 
