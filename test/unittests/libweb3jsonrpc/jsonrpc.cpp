@@ -2988,6 +2988,20 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
     cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
     BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+
+    // send it successfully
+
+    // make money
+    dev::eth::simulateMining( *fixture.client, 1);
+
+    h2 = fixture.client->importTransaction( tx2 ); // invalid
+
+    dev::eth::mineTransaction(*(fixture.client), 1);
+
+    // checks:
+    Json::Value r2;
+    BOOST_REQUIRE_NO_THROW(r2 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h2)));
+    BOOST_REQUIRE_EQUAL(r2["blockNumber"], toJS(fixture.client->number()));
 #endif
 }
 

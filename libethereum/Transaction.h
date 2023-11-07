@@ -118,8 +118,6 @@ public:
 
     u256 getExternalGas() const;
 
-    u256 gas() const;
-
     u256 gasPrice() const;
 
     void checkOutExternalGas( u256 const& _difficulty );
