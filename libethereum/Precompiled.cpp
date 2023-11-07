@@ -26,6 +26,7 @@
 #include <cryptopp/files.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
@@ -675,27 +676,7 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-static const std::list< std::string > g_listReadableConfigParts{ "sealEngine",
-    //"genesis.*"
-    //"params.*",
-
-    // skaled-1702
-    // remove these config field from public access for security reasons
-    //    "skaleConfig.nodeInfo.wallets.ima.commonBLSPublicKey*",
-    //    "skaleConfig.nodeInfo.wallets.ima.BLSPublicKey*",
-
-    //    "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
-    //    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.*RpcPort*",
-    //    "skaleConfig.nodeInfo.acceptors", "skaleConfig.nodeInfo.max-connections",
-    //    "skaleConfig.nodeInfo.max-http-queues", "skaleConfig.nodeInfo.ws-mode",
-
-    //    "skaleConfig.contractSettings.*",
-
-    //    "skaleConfig.sChain.emptyBlockIntervalMs",
-
-    //    "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
-
-    "skaleConfig.sChain.nodes.*" };
+static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes." };
 
 static bool stat_is_accessible_json_path( const std::string& strPath ) {
     if ( strPath.empty() )
@@ -704,7 +685,7 @@ static bool stat_is_accessible_json_path( const std::string& strPath ) {
                                              itEnd = g_listReadableConfigParts.cend();
     for ( ; itWalk != itEnd; ++itWalk ) {
         const std::string strWildCard = ( *itWalk );
-        if ( skutils::tools::wildcmp( strWildCard.c_str(), strPath.c_str() ) )
+        if ( boost::algorithm::starts_with( strPath, strWildCard ) )
             return true;
     }
     return false;
@@ -766,14 +747,31 @@ static bool isCallToHistoricData( const std::string& callData ) {
 }
 
 static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::string& callData ) {
-    size_t numberLength = callData.find( ']' ) - callData.find( '[' ) - 1;
-    unsigned id = std::stoul( callData.substr( callData.find( '[' ) + 1, numberLength ) );
+    auto idPosBegin = callData.find( '[' );
+    auto idPosEnd = callData.find( ']' );
+    if ( idPosBegin == std::string::npos || idPosEnd == std::string::npos ||
+         idPosBegin > idPosEnd ) {
+        // means the input is incorrect
+        return { "unknown field", 0 };
+    }
+    if ( callData.substr( 0, idPosBegin ) != "skaleConfig.sChain.nodes." ) {
+        // invalid input
+        return { "unknown field", 0 };
+    }
+    for ( size_t pos = idPosBegin + 1; pos != idPosEnd; ++pos ) {
+        if ( !std::isdigit( callData[pos] ) ) {
+            // invalid input
+            return { "unknown field", 0 };
+        }
+    }
+    size_t numberLength = idPosEnd - idPosBegin - 1;
+    unsigned id = std::stoul( callData.substr( idPosBegin + 1, numberLength ) );
     std::string fieldName;
-    if ( callData.find( "id" ) != std::string::npos ) {
+    if ( boost::algorithm::ends_with( callData.c_str(), "id" ) ) {
         fieldName = "id";
-    } else if ( callData.find( "schainIndex" ) != std::string::npos ) {
+    } else if ( boost::algorithm::ends_with( callData.c_str(), "schainIndex" ) ) {
         fieldName = "schainIndex";
-    } else if ( callData.find( "owner" ) != std::string::npos ) {
+    } else if ( boost::algorithm::ends_with( callData.c_str(), "owner" ) ) {
         fieldName = "owner";
     } else {
         fieldName = "unknown field";
@@ -781,6 +779,21 @@ static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::
     return { fieldName, id };
 }
 
+/*
+ * this precompiled contract is designed to get access to specific integer config values
+ * and works as key / values map
+ * input: bytes - length + path to config variable
+ * output: bytes - config variable value
+ *
+ * example:
+ * to request value for input=skaleConfig.sChain.nodes.[0].id
+ * one should pass the following
+ * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
+ *
+ * variables available through this precompiled contract:
+ * 1. id - node id for INDEX node in schain group for current block number
+ * 2. schainIndex - schain index for INDEX node in schain group for current block number
+ */
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -818,11 +831,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
                 joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
         }
 
-        // dev::u256 uValue( strValue.c_str() );
-        dev::u256 uValue = stat_parse_u256_hex_or_dec( strValue );
-        // std::cout << "------------ Loaded config var \""
-        //          << rawName << "\" value is " << uValue
-        //          << "\n";
+        dev::u256 uValue = jsToInt( strValue );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -840,6 +849,19 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
+/*
+ * this precompiled contract is designed to get access to specific config values that are ETH
+ * addresses and works as key / values map input: bytes - length + path to config variable output:
+ * bytes - config variable value
+ *
+ * example:
+ * to request value for input=skaleConfig.sChain.nodes.[1].owner
+ * one should pass the following
+ * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
+ *
+ * variables available through this precompiled contract:
+ * 1. owner - address for INDEX node in schain group for current block number
+ */
 ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -875,8 +897,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
                 joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
         }
 
-        dev::u256 uValue( strValue.c_str() );
-
+        dev::u256 uValue( strValue );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
