@@ -315,7 +315,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( ChainParams().sChain.nodeGroups.size() > 0 ) {
+    if ( chainParams().sChain.nodeGroups.size() > 0 ) {
         initHistoricGroupIndex();
     } else {
         LOG( m_logger ) << "Empty node groups in config. "

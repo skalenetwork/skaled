@@ -26,12 +26,14 @@
 #include <libethereum/Precompiled.h>
 #include <libethereum/ChainParams.h>
 #include <libethereum/Client.h>
+#include <libethereum/ClientTest.h>
 #include <libethereum/SkaleHost.h>
 #include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 #include <libskale/OverlayFS.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/PrecompiledConfigPatch.h>
 
 #include <secp256k1_sha256.h>
 
@@ -1624,12 +1626,13 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "contractStorageLimit": 32000,
+        "precompiledConfigPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
             "1": {
                 "nodes": {
                     "30": [
-                        0,
+                        13,
                         30,
                         "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b",
                         "0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe"
@@ -1688,20 +1691,28 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
 BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
     ChainParams chainParams;
     chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
+    chainParams.sealEngineName = NoProof::name();
+    chainParams.allowFutureBlocks = true;
 
     dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
     std::unique_ptr<dev::eth::Client> client;
-    dev::WithExisting withExisting = dev::WithExisting::Trust;
     dev::TransientDirectory m_tmpDir;
+    auto monitor = make_shared< InstanceMonitor >("test");
     setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-    client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-        shared_ptr< GasPricer >(), nullptr, nullptr, m_tmpDir.path(),
-        withExisting, dev::eth::TransactionQueue::Limits{ 1, 1, 1, 1 } ) );
+    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
-    std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *client, nullptr, nullptr, "", false );
-    dev::eth::g_skaleHost = skaleHost;
-    client->injectSkaleHost( skaleHost );
+    client->injectSkaleHost();
+    client->startWorking();
+
+    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
+
+    ClientTest* testClient = asClientTest( client.get() );
+
+    testClient->mineBlocks( 1 );
+    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
+    dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
 
@@ -1709,13 +1720,13 @@ BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 26 );
+    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 30 );
 
     in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 3 );
+    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 13 );
 
     in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
@@ -1731,20 +1742,28 @@ BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
 BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
     ChainParams chainParams;
     chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
+    chainParams.sealEngineName = NoProof::name();
+    chainParams.allowFutureBlocks = true;
 
     dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
     std::unique_ptr<dev::eth::Client> client;
-    dev::WithExisting withExisting = dev::WithExisting::Trust;
     dev::TransientDirectory m_tmpDir;
+    auto monitor = make_shared< InstanceMonitor >("test");
     setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-    client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
-        shared_ptr< GasPricer >(), nullptr, nullptr, m_tmpDir.path(),
-        withExisting, dev::eth::TransactionQueue::Limits{ 1, 1, 1, 1 } ) );
+    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
-    std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *client, nullptr, nullptr, "", false );
-    dev::eth::g_skaleHost = skaleHost;
-    client->injectSkaleHost( skaleHost );
+    client->injectSkaleHost();
+    client->startWorking();
+
+    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
+
+    ClientTest* testClient = asClientTest( client.get() );
+
+    testClient->mineBlocks( 1 );
+    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
+    dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableAddress" );
 
@@ -1752,7 +1771,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == fromHex("0x47bbe8db4e347b4e8c937c1c8350e4b7ed30adb3db69bbdb7a38c1f40a1b82fd") );
+    BOOST_REQUIRE( res.second == fromHex("0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe") );
 
     in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
