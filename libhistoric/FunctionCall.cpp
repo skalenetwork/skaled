@@ -18,6 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
+#include <boost/algorithm/string.hpp>
 #include "FunctionCall.h"
 #include "AlethStandardTrace.h"
 
@@ -140,7 +141,7 @@ void FunctionCall::addLogEntry( const vector< uint8_t >& _data, const vector< u2
     m_logRecords.emplace_back( _data, _topics );
 }
 string FunctionCall::getParityTraceType() {
-    return instructionInfo( m_type ).name;
+    return boost::algorithm::to_lower_copy(string(instructionInfo( m_type ).name));
 }
 void FunctionCall::printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address ) {
     Json::Value functionTrace(Json::objectValue);
