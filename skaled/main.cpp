@@ -710,6 +710,9 @@ int main( int argc, char** argv ) try {
 
     addClientOption( "no-snapshot-majority", po::value< string >()->value_name( "<url>" ), "" );
 
+    addClientOption( "network-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
+        "IGNORED. Kept for backward compatibility" );
+
     addClientOption( "rpc-idle-timeout", po::value< long >()->value_name( "<timeout>" ),
         "Idle wait timeout for incoming JSON RPC calls in milliseconds" );
 
