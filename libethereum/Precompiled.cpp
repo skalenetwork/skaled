@@ -40,6 +40,7 @@
 #include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 #include <mutex>
@@ -746,32 +747,18 @@ static bool isCallToHistoricData( const std::string& callData ) {
     return boost::algorithm::starts_with( callData, "skaleConfig.sChain.nodes." );
 }
 
-static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::string& callData ) {
-    auto idPosBegin = callData.find( '[' );
-    auto idPosEnd = callData.find( ']' );
-    if ( idPosBegin == std::string::npos || idPosEnd == std::string::npos ||
-         idPosBegin > idPosEnd ) {
-        // means the input is incorrect
-        return { "unknown field", 0 };
-    }
-    if ( callData.substr( 0, idPosBegin ) != "skaleConfig.sChain.nodes." ) {
-        // invalid input
-        return { "unknown field", 0 };
-    }
-    for ( size_t pos = idPosBegin + 1; pos != idPosEnd; ++pos ) {
-        if ( !std::isdigit( callData[pos] ) ) {
-            // invalid input
-            return { "unknown field", 0 };
-        }
-    }
-    size_t numberLength = idPosEnd - idPosBegin - 1;
-    unsigned id = std::stoul( callData.substr( idPosBegin + 1, numberLength ) );
+static std::pair< std::string, unsigned > parseHistoricFieldReuqest( std::string callData ) {
+    std::vector< std::string > splitted;
+    boost::split( splitted, callData, boost::is_any_of( "." ) );
+    // first 3 elements are skaleConfig, sChain, nodes - it was checked before
+    unsigned id = std::stoul( splitted[3] );
     std::string fieldName;
-    if ( boost::algorithm::ends_with( callData.c_str(), "id" ) ) {
+    boost::trim_if( splitted[4], []( char c ) { return c == '\0'; } );
+    if ( splitted[4] == "id" ) {
         fieldName = "id";
-    } else if ( boost::algorithm::ends_with( callData.c_str(), "schainIndex" ) ) {
+    } else if ( splitted[4] == "schainIndex" ) {
         fieldName = "schainIndex";
-    } else if ( boost::algorithm::ends_with( callData.c_str(), "owner" ) ) {
+    } else if ( splitted[4] == "owner" ) {
         fieldName = "owner";
     } else {
         fieldName = "unknown field";
@@ -785,14 +772,19 @@ static std::pair< std::string, unsigned > parseHistoricFieldReuqest( const std::
  * input: bytes - length + path to config variable
  * output: bytes - config variable value
  *
- * example:
- * to request value for input=skaleConfig.sChain.nodes.[0].id
- * one should pass the following
- * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
- *
  * variables available through this precompiled contract:
  * 1. id - node id for INDEX node in schain group for current block number
  * 2. schainIndex - schain index for INDEX node in schain group for current block number
+ * to access those variables one should use the following scheme:
+ * prefix=skaleConfig.sChain.nodes - to access corresponding structure inside skaled
+ * index - node index user wants to get access to
+ * field - the field user wants to request
+ *
+ * example:
+ * to request the value for 1-st node (1 based) for the node id field the input should be
+ * input=skaleConfig.sChain.nodes.0.id (inside skaled node indexes are 0 based)
+ * so one should pass the following as calldata:
+ * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
  */
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
@@ -854,13 +846,19 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
  * addresses and works as key / values map input: bytes - length + path to config variable output:
  * bytes - config variable value
  *
- * example:
- * to request value for input=skaleConfig.sChain.nodes.[1].owner
- * one should pass the following
- * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
- *
  * variables available through this precompiled contract:
  * 1. owner - address for INDEX node in schain group for current block number
+ * to access those variables one should use the following scheme:
+ * prefix=skaleConfig.sChain.nodes - to access corresponding structure inside skaled
+ * index - node index user wants to get access to
+ * field - the field user wants to request
+ *
+ * example:
+ * to request the value for 2-nd node (1 based) for the owner field the input should be
+ * input=skaleConfig.sChain.nodes.1.owner (inside skaled node indexes are 0 based)
+ * so one should pass the following as calldata
+ * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
+ *
  */
 ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     try {

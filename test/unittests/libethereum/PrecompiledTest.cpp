@@ -1716,24 +1716,24 @@ BOOST_AUTO_TEST_CASE( getConfigVariableUint256 ) {
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
 
-    bytes in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
+    bytes in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.0.id" ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 30 );
 
-    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 13 );
 
-    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
+    in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.0.owner" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
 
-    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.0.unknownField" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
@@ -1767,23 +1767,23 @@ BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableAddress" );
 
-    bytes in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].owner" ) );
+    bytes in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.0.owner" ) );
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == fromHex("0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe") );
 
-    in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.[0].id" ) );
+    in = fromHex( numberToHex( 32 ) + stringToHex( "skaleConfig.sChain.nodes.0.id" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
 
-    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].schainIndex" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
 
-    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.[0].unknownField" ) );
+    in = fromHex( numberToHex( 64 ) + stringToHex( "skaleConfig.sChain.nodes.0.unknownField" ) );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
