@@ -747,21 +747,19 @@ static bool isCallToHistoricData( const std::string& callData ) {
     return boost::algorithm::starts_with( callData, "skaleConfig.sChain.nodes." );
 }
 
-static std::pair< std::string, unsigned > parseHistoricFieldReuqest( std::string callData ) {
+static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string callData ) {
     std::vector< std::string > splitted;
     boost::split( splitted, callData, boost::is_any_of( "." ) );
     // first 3 elements are skaleConfig, sChain, nodes - it was checked before
-    unsigned id = std::stoul( splitted[3] );
+    unsigned id = std::stoul( splitted.at( 3 ) );
     std::string fieldName;
-    boost::trim_if( splitted[4], []( char c ) { return c == '\0'; } );
-    if ( splitted[4] == "id" ) {
-        fieldName = "id";
-    } else if ( splitted[4] == "schainIndex" ) {
-        fieldName = "schainIndex";
-    } else if ( splitted[4] == "owner" ) {
-        fieldName = "owner";
+    boost::trim_if( splitted.at( 4 ), []( char c ) { return c == '\0'; } );
+    std::set< std::string > allowedValues{ "id", "schainIndex", "owner" };
+    fieldName = splitted.at( 4 );
+    if ( allowedValues.count( fieldName ) ) {
+        return { fieldName, id };
     } else {
-        fieldName = "unknown field";
+        BOOST_THROW_EXCEPTION( std::runtime_error( "Unknown field:" + fieldName ) );
     }
     return { fieldName, id };
 }
@@ -807,7 +805,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
 
             std::string field;
             unsigned id;
-            std::tie( field, id ) = parseHistoricFieldReuqest( rawName );
+            std::tie( field, id ) = parseHistoricFieldRequest( rawName );
             if ( field == "id" ) {
                 strValue = g_skaleHost->getHistoricNodeId( id );
             } else if ( field == "schainIndex" ) {
@@ -881,7 +879,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
 
             std::string field;
             unsigned id;
-            std::tie( field, id ) = parseHistoricFieldReuqest( rawName );
+            std::tie( field, id ) = parseHistoricFieldRequest( rawName );
             if ( field == "owner" ) {
                 strValue = g_skaleHost->getHistoricNodeOwner( id );
             } else {
