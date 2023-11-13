@@ -89,6 +89,12 @@ private:
 
     void replayTracePrint(
         ExecutionResult&, const HistoricState&, const HistoricState& );
+
+    void noopTracePrint(
+        ExecutionResult&, const HistoricState&, const HistoricState& );
+
+    void fourByteTracePrint(
+        ExecutionResult&, const HistoricState&, const HistoricState& );
 };
 }  // namespace eth
 }  // namespace dev

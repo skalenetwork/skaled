@@ -131,6 +131,12 @@ void eth::AlethStandardTrace::finalizeTrace(
     case TraceType::REPLAY_TRACER:
         replayTracePrint( _er, _stateBefore, _stateAfter );
         break;
+    case TraceType::FOUR_BYTE_TRACER:
+        fourByteTracePrint( _er, _stateBefore, _stateAfter );
+        break;
+    case TraceType::NOOP_TRACER:
+        noopTracePrint( _er, _stateBefore, _stateAfter );
+        break;
     }
 }
 

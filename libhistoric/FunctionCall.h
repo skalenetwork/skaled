@@ -87,6 +87,8 @@ public:
 
     void printParityFunctionTrace(Json::Value& _outputArray, Json::Value _address);
 
+    void collectFourByteTrace( std::map< string, uint64_t >& _callMap );
+
 private:
     Instruction m_type;
     Address m_from;

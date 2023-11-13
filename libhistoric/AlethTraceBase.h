@@ -38,7 +38,7 @@ constexpr int64_t MAX_TRACE_DEPTH = 256;
     if ( !( _EXPRESSION_ ) ) {                                                  \
         auto __msg__ = string( "State check failed::" ) + #_EXPRESSION_ + " " + \
                        string( __FILE__ ) + ":" + to_string( __LINE__ );        \
-        throw VMTracingError( __msg__ );                                         \
+        throw VMTracingError( __msg__ );                                        \
     }
 
 
@@ -53,7 +53,15 @@ class FunctionCall;
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
-enum class TraceType { STANDARD_TRACER, PRESTATE_TRACER, CALL_TRACER, REPLAY_TRACER };
+enum class TraceType {
+    STANDARD_TRACER,
+    PRESTATE_TRACER,
+    CALL_TRACER,
+    REPLAY_TRACER,
+    FOUR_BYTE_TRACER,
+    NOOP_TRACER,
+
+};
 
 struct DebugOptions {
     bool disableStorage = false;
@@ -71,7 +79,6 @@ public:
     [[nodiscard]] Json::Value getJSONResult() const;
 
 protected:
-
     shared_ptr< FunctionCall > m_topFunctionCall;
     shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;
 

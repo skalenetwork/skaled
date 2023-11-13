@@ -72,17 +72,15 @@ DebugOptions AlethTraceBase::debugOptions( Json::Value const& _json ) {
              _json["tracerConfig"]["withLog"].isBool() ) {
             op.withLog = _json["tracerConfig"]["withLog"].asBool();
         }
-
     }
 
     return op;
 }
 
 const map< string, TraceType > AlethTraceBase::s_stringToTracerMap = {
-    { "", TraceType::STANDARD_TRACER },
-    { "callTracer", TraceType::CALL_TRACER },
-    { "prestateTracer", TraceType::PRESTATE_TRACER },
-    { "replayTracer", TraceType::REPLAY_TRACER }
+    { "", TraceType::STANDARD_TRACER }, { "callTracer", TraceType::CALL_TRACER },
+    { "prestateTracer", TraceType::PRESTATE_TRACER }, { "replayTracer", TraceType::REPLAY_TRACER },
+    { "4byteTracer", TraceType::FOUR_BYTE_TRACER }, { "noopTracer", TraceType::NOOP_TRACER }
 };
 
 AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
@@ -100,8 +98,6 @@ AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
-
-
 }
 
 void AlethTraceBase::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
@@ -199,13 +195,13 @@ void AlethTraceBase::processFunctionCallOrReturnIfHappened(
 vector< uint8_t > AlethTraceBase::extractMemoryByteArrayFromStackPointer( const LegacyVM* _vm ) {
     STATE_CHECK( _vm )
 
-    vector<uint8_t> result {};
+    vector< uint8_t > result{};
 
     if ( _vm->stackSize() > 2 ) {
         auto b = ( uint32_t ) _vm->getStackElement( 0 );
         auto s = ( uint32_t ) _vm->getStackElement( 1 );
         if ( _vm->memory().size() > b + s ) {
-            result =  {_vm->memory().begin() + b, _vm->memory().begin() + b + s };
+            result = { _vm->memory().begin() + b, _vm->memory().begin() + b + s };
         }
     }
     return result;
@@ -235,7 +231,7 @@ void AlethTraceBase::functionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
 
-    m_currentlyExecutingFunctionCall->setGasUsed(_gasUsed);
+    m_currentlyExecutingFunctionCall->setGasUsed( _gasUsed );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
         m_currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
@@ -243,7 +239,7 @@ void AlethTraceBase::functionReturned(
 
     if ( _status == evmc_status_code::EVMC_REVERT ) {
         m_currentlyExecutingFunctionCall->setRevertReason(
-            string(_returnData.begin(), _returnData.end() ) );
+            string( _returnData.begin(), _returnData.end() ) );
     } else {
         m_currentlyExecutingFunctionCall->setOutputData( _returnData );
     }
