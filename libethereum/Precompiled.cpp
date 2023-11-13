@@ -255,6 +255,10 @@ static void convertBytesToString(
         throw std::runtime_error( "Input is too short - invalid input in convertBytesToString()" );
     }
     bigint const sstringLength( parseBigEndianRightPadded( _in, _startPosition, UINT256_SIZE ) );
+    if ( sstringLength < 0 ) {
+        throw std::runtime_error(
+            "Negative string length - invalid input in convertBytesToString()" );
+    }
     _stringLength = sstringLength.convert_to< size_t >();
     if ( _startPosition + UINT256_SIZE + _stringLength > _in.size() ) {
         throw std::runtime_error( "Invalid input in convertBytesToString()" );
