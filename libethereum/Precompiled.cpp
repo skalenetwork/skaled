@@ -251,10 +251,16 @@ static Logger& getLogger( int a_severity = VerbosityTrace ) {
 
 static void convertBytesToString(
     bytesConstRef _in, size_t _startPosition, std::string& _out, size_t& _stringLength ) {
+    if ( _in.size() < UINT256_SIZE ) {
+        throw std::runtime_error( "Input is too short - invalid input in convertBytesToString()" );
+    }
     bigint const sstringLength( parseBigEndianRightPadded( _in, _startPosition, UINT256_SIZE ) );
     _stringLength = sstringLength.convert_to< size_t >();
+    if ( _startPosition + UINT256_SIZE + _stringLength > _in.size() ) {
+        throw std::runtime_error( "Invalid input in convertBytesToString()" );
+    }
     vector_ref< const unsigned char > byteFilename =
-        _in.cropped( _startPosition + 32, _stringLength );
+        _in.cropped( _startPosition + UINT256_SIZE, _stringLength );
     _out = std::string( ( char* ) byteFilename.data(), _stringLength );
 }
 
@@ -753,7 +759,6 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
     // first 3 elements are skaleConfig, sChain, nodes - it was checked before
     unsigned id = std::stoul( splitted.at( 3 ) );
     std::string fieldName;
-    boost::trim_if( splitted.at( 4 ), []( char c ) { return c == '\0'; } );
     std::set< std::string > allowedValues{ "id", "schainIndex", "owner" };
     fieldName = splitted.at( 4 );
     if ( allowedValues.count( fieldName ) ) {
@@ -782,7 +787,7 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
  * to request the value for 1-st node (1 based) for the node id field the input should be
  * input=skaleConfig.sChain.nodes.0.id (inside skaled node indexes are 0 based)
  * so one should pass the following as calldata:
- * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
+ * toBytes( input.length + toBytes(input) )
  */
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
@@ -855,8 +860,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
  * to request the value for 2-nd node (1 based) for the owner field the input should be
  * input=skaleConfig.sChain.nodes.1.owner (inside skaled node indexes are 0 based)
  * so one should pass the following as calldata
- * toBytes( ( ( input.length + 1 ) / 32 ) * 32) + toBytes(input)
- *
+ * toBytes( input.length + toBytes(input) )
  */
 ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     try {
