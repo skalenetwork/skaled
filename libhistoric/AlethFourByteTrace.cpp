@@ -27,7 +27,9 @@ namespace eth {
 
 void eth::AlethStandardTrace::fourByteTracePrint(
     ExecutionResult& , const HistoricState& , const HistoricState&  ) {
+    m_jsonTrace = Json::Value(Json::ValueType::objectValue);
     std::map<string, uint64_t> callMap;
+
     m_topFunctionCall->collectFourByteTrace( callMap);
     {
         for (auto&& key : callMap) {
