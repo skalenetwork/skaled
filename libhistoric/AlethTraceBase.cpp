@@ -300,6 +300,7 @@ string AlethTraceBase::evmErrorDescription( evmc_status_code _error ) {
 
 
 Json::Value eth::AlethTraceBase::getJSONResult() const {
+    STATE_CHECK(!m_jsonTrace.isNull())
     return m_jsonTrace;
 }
 }  // namespace dev::eth

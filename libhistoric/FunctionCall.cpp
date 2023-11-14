@@ -22,6 +22,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "AlethStandardTrace.h"
 #include <boost/algorithm/string.hpp>
 
+// disable recursive warning since we are using recursion
+#pragma clang diagnostic ignored "-Wrecursive-macro"
+
+
 namespace dev::eth {
 
 
@@ -55,6 +59,8 @@ int64_t FunctionCall::getDepth() const {
 
 void FunctionCall::printFunctionExecutionDetail(
     Json::Value& _jsonTrace, DebugOptions& _debugOptions ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+
     _jsonTrace["type"] = instructionInfo( m_type ).name;
     _jsonTrace["from"] = toHexPrefixed( m_from );
     if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
@@ -102,13 +108,15 @@ void FunctionCall::printFunctionExecutionDetail(
     }
 }
 
-
 void FunctionCall::printTrace(
     Json::Value& _jsonTrace, int64_t _depth, DebugOptions& _debugOptions ) {
+    STATE_CHECK( _jsonTrace.isObject() )
     // prevent Denial of service
     STATE_CHECK( _depth < MAX_TRACE_DEPTH )
     STATE_CHECK( _depth == m_depth )
+
     printFunctionExecutionDetail( _jsonTrace, _debugOptions );
+
     if ( !m_nestedCalls.empty() ) {
         _jsonTrace["calls"] = Json::arrayValue;
         uint32_t i = 0;

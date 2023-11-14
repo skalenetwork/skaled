@@ -26,26 +26,25 @@ namespace eth {
 
 
 void eth::AlethStandardTrace::replayTracePrint(
-    ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
-    m_jsonTrace["vmTrace"] = Json::Value::null;
-    m_jsonTrace["stateDiff"] = Json::Value::null;
-    m_jsonTrace["transactionHash"] = toHexPrefixed( m_hash );
-    m_jsonTrace["output"] = toHexPrefixed( _er.output );
+    Json::Value& _jsonTrace, ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+    _jsonTrace["vmTrace"] = Json::Value::null;
+    _jsonTrace["stateDiff"] = Json::Value::null;
+    _jsonTrace["transactionHash"] = toHexPrefixed( m_hash );
+    _jsonTrace["output"] = toHexPrefixed( _er.output );
     auto failed = _er.excepted != TransactionException::None;
-    if (failed) {
-        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode(_er.excepted);
-        string errMessage = evmErrorDescription(statusCode);
-        m_jsonTrace["error"] = errMessage;
+    if ( failed ) {
+        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
+        string errMessage = evmErrorDescription( statusCode );
+        _jsonTrace["error"] = errMessage;
     }
 
-    Json::Value functionTraceArray(Json::arrayValue);
-    Json::Value emptyAddress(Json::arrayValue);
+    Json::Value functionTraceArray( Json::arrayValue );
+    Json::Value emptyAddress( Json::arrayValue );
 
-    m_topFunctionCall->printParityFunctionTrace(functionTraceArray, emptyAddress);
-    m_jsonTrace["trace"] = functionTraceArray;
+    m_topFunctionCall->printParityFunctionTrace( functionTraceArray, emptyAddress );
+    _jsonTrace["trace"] = functionTraceArray;
 }
-
-
 
 
 }  // namespace eth

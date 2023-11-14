@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "FunctionCall.h"
 #include "AlethStandardTrace.h"
+#include "FunctionCall.h"
 
 
 namespace dev {
@@ -26,15 +26,13 @@ namespace eth {
 
 
 void eth::AlethStandardTrace::fourByteTracePrint(
-    ExecutionResult& , const HistoricState& , const HistoricState&  ) {
-    m_jsonTrace = Json::Value(Json::ValueType::objectValue);
-    std::map<string, uint64_t> callMap;
+    Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+    std::map< string, uint64_t > callMap;
 
-    m_topFunctionCall->collectFourByteTrace( callMap);
-    {
-        for (auto&& key : callMap) {
-            m_jsonTrace[key.first] = to_string(key.second);
-        }
+    m_topFunctionCall->collectFourByteTrace( callMap );
+    for ( auto&& key : callMap ) {
+        _jsonTrace[key.first] = to_string( key.second );
     }
 }
 

@@ -111,52 +111,55 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
 void eth::AlethStandardTrace::finalizeTrace(
     ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
-    auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode(_er.excepted);
+    auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
     STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
     functionReturned( statusCode, _er.output, totalGasUsed );
 
 
+    m_jsonTrace = Json::Value( Json::objectValue );
+
     switch ( m_options.tracerType ) {
     case TraceType::STANDARD_TRACER:
-        deftracePrint( _er, _stateBefore, _stateAfter );
+        deftracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::PRESTATE_TRACER:
-        pstracePrint( _er, _stateBefore, _stateAfter );
+        pstracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::CALL_TRACER:
-        calltracePrint( _er, _stateBefore, _stateAfter );
+        calltracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::REPLAY_TRACER:
-        replayTracePrint( _er, _stateBefore, _stateAfter );
+        replayTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::FOUR_BYTE_TRACER:
-        fourByteTracePrint( _er, _stateBefore, _stateAfter );
+        fourByteTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::NOOP_TRACER:
-        noopTracePrint( _er, _stateBefore, _stateAfter );
+        noopTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     }
 }
 
 
-void eth::AlethStandardTrace::deftracePrint(
-    const ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
-    m_jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
-    m_jsonTrace["structLogs"] = *m_defaultOpTrace;
+void eth::AlethStandardTrace::deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er,
+    const HistoricState&, const HistoricState& ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+    _jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
+    _jsonTrace["structLogs"] = *m_defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
-    m_jsonTrace["failed"] = failed;
-    if ( !failed)  {
-        if (getOptions().enableReturnData) {
-            m_jsonTrace["returnValue"] = toHex( _er.output );
+    _jsonTrace["failed"] = failed;
+    if ( !failed ) {
+        if ( getOptions().enableReturnData ) {
+            _jsonTrace["returnValue"] = toHex( _er.output );
         }
     } else {
-        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode(_er.excepted);
-        string errMessage = evmErrorDescription(statusCode);
+        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
+        string errMessage = evmErrorDescription( statusCode );
         // return message in two fields for compatibility with different tools
-        m_jsonTrace["returnValue"] = errMessage;
-        m_jsonTrace["error"] = errMessage;
+        _jsonTrace["returnValue"] = errMessage;
+        _jsonTrace["error"] = errMessage;
     }
 }
 

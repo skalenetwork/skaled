@@ -26,8 +26,8 @@ namespace eth {
 
 
 void eth::AlethStandardTrace::noopTracePrint(
-    ExecutionResult& , const HistoricState& , const HistoricState&  ) {
-    m_jsonTrace = Json::Value(Json::ValueType::objectValue);
+    Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
+    _jsonTrace = Json::Value(Json::ValueType::objectValue);
     // do nothing
 }
 

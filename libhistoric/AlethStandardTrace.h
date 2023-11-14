@@ -66,7 +66,7 @@ private:
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     void pstracePrintAllAccessedAccountPreValues(
-        Json::Value& _trace, const HistoricState& _stateBefore, const Address& _address );
+        Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address );
 
     void pstracePrintAccountPreDiff( Json::Value& _preDiffTrace,
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address );
@@ -75,26 +75,26 @@ private:
         const HistoricState& _stateBefore, const HistoricState& _statePost,
         const Address& _address );
 
-    void deftracePrint( const ExecutionResult& _er, const HistoricState&,
+    void deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er, const HistoricState&,
         const HistoricState& );
 
-    void pstracePrint(
-        ExecutionResult& _er, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+    void pstracePrint( Json::Value& _jsonTrace, ExecutionResult& _er,
+        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
-    void pstraceDiffPrint(
-        ExecutionResult&, const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+    void pstraceDiffPrint( Json::Value& _jsonTrace, ExecutionResult&,
+        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
     void calltracePrint(
-        ExecutionResult&, const HistoricState&, const HistoricState& );
+        Json::Value _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
     void replayTracePrint(
-        ExecutionResult&, const HistoricState&, const HistoricState& );
+        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
     void noopTracePrint(
-        ExecutionResult&, const HistoricState&, const HistoricState& );
+        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
     void fourByteTracePrint(
-        ExecutionResult&, const HistoricState&, const HistoricState& );
+        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 };
 }  // namespace eth
 }  // namespace dev
