@@ -80,8 +80,8 @@ void eth::AlethStandardTrace::pstracePrintAllAccessedAccountPreValues(
                 if ( originalValue ) {
                     storagePairs[toHex( storageAddress )] = toHex( originalValue );
                     // return limited number of values to prevent DOS attacks
-                    storageValuesReturnedAll++;
-                    if ( storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
+                    m_storageValuesReturnedAll++;
+                    if ( m_storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
                         break;
                 }
             }
@@ -153,8 +153,8 @@ void eth::AlethStandardTrace::pstracePrintAccountPostDiff( Json::Value& _postDif
             if ( includePair ) {
                 storagePairs[toHex( storageAddress )] = toHex( storageValue );
                 // return limited number of storage pairs to prevent DOS attacks
-                storageValuesReturnedPost++;
-                if ( storageValuesReturnedPost >= MAX_STORAGE_VALUES_RETURNED )
+                m_storageValuesReturnedPost++;
+                if ( m_storageValuesReturnedPost >= MAX_STORAGE_VALUES_RETURNED )
                     break;
             }
         }
@@ -214,8 +214,8 @@ void eth::AlethStandardTrace::pstracePrintAccountPreDiff( Json::Value& _preDiffT
                 storagePairs[toHex( it.first )] =
                     toHex( _statePre.originalStorageValue( _address, it.first ) );
                 // return limited number of storage pairs to prevent DOS attacks
-                storageValuesReturnedPre++;
-                if ( storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
+                m_storageValuesReturnedPre++;
+                if ( m_storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
                     break;
             }
         }

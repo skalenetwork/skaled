@@ -39,29 +39,9 @@ struct DebugOptions;
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
-struct LogRecord {
+struct LogRecord;
 
-    LogRecord( const vector< uint8_t >& _data, const vector< u256 >& _topics )
-        : m_data( _data ), m_topics( _topics ) {}
-
-    const vector< uint8_t >  m_data;
-    const vector< u256 >  m_topics;
-};
-
-struct OpExecutionRecord {
-    // this is top level record to enter the transaction
-    // the first function is executed at depth 0, as it was called form depth -1
-    explicit OpExecutionRecord( Instruction _op )
-        : OpExecutionRecord( -1, _op, 0, 0 ){};
-
-    OpExecutionRecord( int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas );
-
-    int64_t m_depth;
-    Instruction m_op;
-    uint64_t m_gasRemaining;
-    uint64_t m_opGas;
-};
-
+struct OpExecutionRecord;
 
 class FunctionCall {
 public:

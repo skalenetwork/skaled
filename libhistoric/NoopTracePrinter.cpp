@@ -17,20 +17,17 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "NoopTracePrinter.h"
 #include "FunctionCall.h"
-#include "AlethStandardTrace.h"
+#include "TraceStructuresAndDefs.h"
 
+namespace dev::eth {
 
-namespace dev {
-namespace eth {
-
-
-void eth::AlethStandardTrace::noopTracePrint(
+void NoopTracePrinter::print(
     Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
-    _jsonTrace = Json::Value(Json::ValueType::objectValue);
+    STATE_CHECK(_jsonTrace.isObject());
+    _jsonTrace.clear();
     // do nothing
 }
 
-
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth
