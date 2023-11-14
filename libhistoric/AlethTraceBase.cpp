@@ -80,7 +80,8 @@ DebugOptions AlethTraceBase::debugOptions( Json::Value const& _json ) {
 const map< string, TraceType > AlethTraceBase::s_stringToTracerMap = {
     { "", TraceType::STANDARD_TRACER }, { "callTracer", TraceType::CALL_TRACER },
     { "prestateTracer", TraceType::PRESTATE_TRACER }, { "replayTracer", TraceType::REPLAY_TRACER },
-    { "4byteTracer", TraceType::FOUR_BYTE_TRACER }, { "noopTracer", TraceType::NOOP_TRACER }
+    { "4byteTracer", TraceType::FOUR_BYTE_TRACER }, { "noopTracer", TraceType::NOOP_TRACER },
+    { "allTracer", TraceType::ALL_TRACER }
 };
 
 AlethTraceBase::AlethTraceBase( Transaction& _t, Json::Value const& _options )

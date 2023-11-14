@@ -139,7 +139,38 @@ void eth::AlethStandardTrace::finalizeTrace(
     case TraceType::NOOP_TRACER:
         noopTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
+    case TraceType::ALL_TRACER:
+        allTracesPrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
     }
+}
+
+void eth::AlethStandardTrace::allTracesPrint( Json::Value& _jsonTrace, ExecutionResult& _er,
+    const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+    Json::Value result = Json::Value( Json::ValueType::objectValue );
+
+    deftracePrint( result, _er, _stateBefore, _stateAfter );
+    m_jsonTrace["defaultTrace"] = result;
+
+    result.clear();
+    noopTracePrint( result, _er, _stateBefore, _stateAfter );
+    m_jsonTrace["noopTrace"] = result;
+
+    result.clear();
+    fourByteTracePrint( result, _er, _stateBefore, _stateAfter );
+    m_jsonTrace["4byteTrace"] = result;
+
+    result.clear();
+    pstracePrint( result, _er, _stateBefore, _stateAfter );
+    m_jsonTrace["prestateTrace"] = result;
+
+    result.clear();
+    calltracePrint( result, _er, _stateBefore, _stateAfter );
+    m_jsonTrace["callTrace"] = result;
+
+    result.clear();
+    replayTracePrint( result, _er, _stateBefore, _stateAfter );
+    m_jsonTrace["replayTrace"] = result;
 }
 
 

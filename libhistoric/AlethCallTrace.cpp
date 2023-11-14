@@ -26,7 +26,7 @@ namespace eth {
 
 
 void eth::AlethStandardTrace::calltracePrint(
-    Json::Value _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
+    Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK(_jsonTrace.isObject())
     m_topFunctionCall->printTrace( _jsonTrace, 0, m_options );
 }

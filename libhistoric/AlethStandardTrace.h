@@ -68,8 +68,8 @@ private:
     void pstracePrintAllAccessedAccountPreValues(
         Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address );
 
-    void pstracePrintAccountPreDiff( Json::Value& _preDiffTrace,
-        const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address );
+    void pstracePrintAccountPreDiff( Json::Value& _preDiffTrace, const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address );
 
     void pstracePrintAccountPostDiff( Json::Value& _postDiffTrace,
         const HistoricState& _stateBefore, const HistoricState& _statePost,
@@ -85,7 +85,7 @@ private:
         const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
     void calltracePrint(
-        Json::Value _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
+        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
     void replayTracePrint(
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
@@ -94,6 +94,9 @@ private:
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
     void fourByteTracePrint(
+        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
+
+    void allTracesPrint(
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 };
 }  // namespace eth

@@ -35,7 +35,7 @@ async function getAndPrintTrace(hash: string): Promise<String> {
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
 //        "tracerConfig": {"withLog":true}}]);
 
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "4byteTracer",
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "allTracer",
         "tracerConfig": {"withLog":true}}]);
 
 

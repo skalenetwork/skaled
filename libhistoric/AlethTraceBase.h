@@ -60,6 +60,7 @@ enum class TraceType {
     REPLAY_TRACER,
     FOUR_BYTE_TRACER,
     NOOP_TRACER,
+    ALL_TRACER
 
 };
 
