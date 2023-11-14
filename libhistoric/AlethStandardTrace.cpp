@@ -173,27 +173,5 @@ void eth::AlethStandardTrace::allTracesPrint( Json::Value& _jsonTrace, Execution
     m_jsonTrace["replayTrace"] = result;
 }
 
-
-void eth::AlethStandardTrace::deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er,
-    const HistoricState&, const HistoricState& ) {
-    STATE_CHECK( _jsonTrace.isObject() )
-    _jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
-    _jsonTrace["structLogs"] = *m_defaultOpTrace;
-    auto failed = _er.excepted != TransactionException::None;
-    _jsonTrace["failed"] = failed;
-    if ( !failed ) {
-        if ( getOptions().enableReturnData ) {
-            _jsonTrace["returnValue"] = toHex( _er.output );
-        }
-    } else {
-        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = evmErrorDescription( statusCode );
-        // return message in two fields for compatibility with different tools
-        _jsonTrace["returnValue"] = errMessage;
-        _jsonTrace["error"] = errMessage;
-    }
-}
-
-
 }  // namespace eth
 }  // namespace dev
