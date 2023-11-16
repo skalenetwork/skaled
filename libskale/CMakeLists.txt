@@ -20,6 +20,8 @@ set(sources
     OverlayFS.cpp
     StorageDestructionPatch.cpp
     POWCheckPatch.cpp
+    PushZeroPatch.cpp
+    SkipInvalidTransactionsPatch.cpp
 )
 
 set(headers
@@ -39,6 +41,7 @@ set(headers
     RevertableFSPatch.h
     POWCheckPatch.h
     OverlayFS.h
+    SkipInvalidTransactionsPatch.h
 )
 
 add_library(skale ${sources} ${headers})

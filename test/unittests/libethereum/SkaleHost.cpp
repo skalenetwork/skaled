@@ -14,12 +14,15 @@
 #include <libp2p/Network.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 
 #include <libethcore/SealEngine.h>
 
 #include <libdevcore/TransientDirectory.h>
 
 #include <boost/test/unit_test.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/data/monomorphic.hpp>
 
 #include <memory>
 
@@ -124,6 +127,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
+        // not 0-timestamp genesis - to test patch
+        chainParams.timestamp = 1;
+
         if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;
 
@@ -188,8 +194,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 #define CHECK_BLOCK_BEGIN auto blockBefore = client->number()
 
 #define REQUIRE_BLOCK_INCREASE( increase ) \
-    auto blockAfter = client->number();    \
-    BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase )
+    { auto blockAfter = client->number();    \
+    BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase ); }
 
 #define REQUIRE_BLOCK_SIZE( number, s )                                             \
     {                                                                               \
@@ -208,22 +214,30 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 #define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
 
 #define REQUIRE_NONCE_INCREASE( senderAddress, increase ) \
-    u256 nonceAfter = client->countAt( senderAddress );   \
-    BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase )
+    { u256 nonceAfter = client->countAt( senderAddress );   \
+    BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase ); }
 
 #define CHECK_BALANCE_BEGIN( senderAddress ) u256 balanceBefore = client->balanceAt( senderAddress )
 
 #define REQUIRE_BALANCE_DECREASE( senderAddress, decrease ) \
-    u256 balanceAfter = client->balanceAt( senderAddress ); \
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
+    { u256 balanceAfter = client->balanceAt( senderAddress ); \
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease ); }
 
 #define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease ) \
-    u256 balanceAfter = client->balanceAt( senderAddress );    \
-    BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease )
+    { u256 balanceAfter = client->balanceAt( senderAddress );    \
+    BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease ); }
 
 BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )  //, *boost::unit_test::disabled() )
 
-BOOST_AUTO_TEST_CASE( validTransaction ) {
+auto skipInvalidTransactionsVariants = boost::unit_test::data::make({false, true});
+
+BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -260,14 +274,20 @@ BOOST_AUTO_TEST_CASE( validTransaction ) {
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 }
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED or EXCLUDED during execution (depending on skipInvalidTransactionsFlag)
 // Proposer should be penalized
 // 1 Small amount of random bytes
 // 2 110 random bytes
 // 3 110 bytes of semi-correct RLP
-BOOST_AUTO_TEST_CASE( transactionRlpBad
+BOOST_DATA_TEST_CASE( transactionRlpBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
 
     bytes small_tx1 = bytes();
@@ -290,7 +310,13 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad
         1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 3 );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 0 );
+    }
+    else{
+        REQUIRE_BLOCK_SIZE( 1, 3 );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
@@ -299,31 +325,33 @@ BOOST_AUTO_TEST_CASE( transactionRlpBad
     Transactions txns = client->transactions( 1 );
     //    cerr << toJson( txns );
 
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
-    REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
-    REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
+    if(!skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
+        REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
+        REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
 
-    // check also receipts and locations
-    size_t i = 0;
-    for ( const Transaction& tx : txns ) {
-        Transaction tx2 = client->transaction( tx.sha3() );
-        LocalisedTransaction lt = client->localisedTransaction( tx.sha3() );
-        LocalisedTransactionReceipt lr = client->localisedTransactionReceipt( tx.sha3() );
+        // check also receipts and locations
+        size_t i = 0;
+        for ( const Transaction& tx : txns ) {
+            Transaction tx2 = client->transaction( tx.sha3() );
+            LocalisedTransaction lt = client->localisedTransaction( tx.sha3() );
+            LocalisedTransactionReceipt lr = client->localisedTransactionReceipt( tx.sha3() );
 
-        BOOST_REQUIRE_EQUAL( tx2, tx );
+            BOOST_REQUIRE_EQUAL( tx2, tx );
 
-        BOOST_REQUIRE_EQUAL( lt, tx );
-        BOOST_REQUIRE_EQUAL( lt.blockNumber(), 1 );
-        BOOST_REQUIRE_EQUAL( lt.blockHash(), client->hashFromNumber( 1 ) );
-        BOOST_REQUIRE_EQUAL( lt.transactionIndex(), i );
+            BOOST_REQUIRE_EQUAL( lt, tx );
+            BOOST_REQUIRE_EQUAL( lt.blockNumber(), 1 );
+            BOOST_REQUIRE_EQUAL( lt.blockHash(), client->hashFromNumber( 1 ) );
+            BOOST_REQUIRE_EQUAL( lt.transactionIndex(), i );
 
-        BOOST_REQUIRE_EQUAL( lr.hash(), tx.sha3() );
-        BOOST_REQUIRE_EQUAL( lr.blockNumber(), lt.blockNumber() );
-        BOOST_REQUIRE_EQUAL( lr.blockHash(), lt.blockHash() );
-        BOOST_REQUIRE_EQUAL( lr.transactionIndex(), i );
+            BOOST_REQUIRE_EQUAL( lr.hash(), tx.sha3() );
+            BOOST_REQUIRE_EQUAL( lr.blockNumber(), lt.blockNumber() );
+            BOOST_REQUIRE_EQUAL( lr.blockHash(), lt.blockHash() );
+            BOOST_REQUIRE_EQUAL( lr.transactionIndex(), i );
 
-        ++i;
-    }  // for
+            ++i;
+        }  // for
+    }
 }
 
 class VrsHackedTransaction : public Transaction {
@@ -334,12 +362,18 @@ public:
     }
 };
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // zero signature
-BOOST_AUTO_TEST_CASE( transactionSigZero
+BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -369,21 +403,32 @@ BOOST_AUTO_TEST_CASE( transactionSigZero
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 1 );
 
-    h256 txHash = sha3( stream.out() );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 0 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 1, 1 );
+        h256 txHash = sha3( stream.out() );
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // corrupted signature
-BOOST_AUTO_TEST_CASE( transactionSigBad
+BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -412,21 +457,33 @@ BOOST_AUTO_TEST_CASE( transactionSigBad
         stub->createBlock( ConsensusExtFace::transactions_vector{data}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 1 );
 
-    h256 txHash = sha3( data );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 0 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 1, 1 );
+        h256 txHash = sha3( data );
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // gas < min_gas
-BOOST_AUTO_TEST_CASE( transactionGasIncorrect
+BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -454,8 +511,14 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 1 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 0 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 1, 1 );
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
@@ -465,9 +528,15 @@ BOOST_AUTO_TEST_CASE( transactionGasIncorrect
 // Sender should be charged for gas consumed
 // Proposer should NOT be penalized
 // transaction exceedes it's gas limit
-BOOST_AUTO_TEST_CASE( transactionGasNotEnough
+BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -519,11 +588,16 @@ BOOST_AUTO_TEST_CASE( transactionGasNotEnough
 }
 
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // nonce too big
-BOOST_AUTO_TEST_CASE( transactionNonceBig, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -551,19 +625,31 @@ BOOST_AUTO_TEST_CASE( transactionNonceBig,
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 1 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 0 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 1, 1 );
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // nonce too small
-BOOST_AUTO_TEST_CASE( transactionNonceSmall
+BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       //, *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -605,18 +691,29 @@ BOOST_AUTO_TEST_CASE( transactionNonceSmall
         stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 2, 1 );
-    REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 2, 0 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 2, 1 );
+        REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 }
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // not enough cash
-BOOST_AUTO_TEST_CASE( transactionBalanceBad, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -644,19 +741,57 @@ BOOST_AUTO_TEST_CASE( transactionBalanceBad,
         stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 1 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 0 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 1, 1 );
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+
+    // step 2: check that receipt "moved" to another block after successfull re-execution of the same transaction
+
+    if(!skipInvalidTransactionsFlag){
+        LocalisedTransactionReceipt r1 = client->localisedTransactionReceipt(txHash);
+        BOOST_REQUIRE_EQUAL(r1.blockNumber(), 1);
+        BOOST_REQUIRE_EQUAL(r1.gasUsed(), 0);
+        LocalisedTransaction lt = client->localisedTransaction(txHash);
+        BOOST_REQUIRE_EQUAL(lt.blockNumber(), 1);
+    }
+
+    // make money
+    dev::eth::simulateMining( *client, 1, senderAddress );
+
+    stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 2U );
+
+    REQUIRE_BLOCK_SIZE( 2, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, 1 );
+
+    LocalisedTransactionReceipt r2 = client->localisedTransactionReceipt(txHash);
+    BOOST_REQUIRE_EQUAL(r2.blockNumber(), 2);
+    BOOST_REQUIRE_GE(r2.gasUsed(), 21000);
+    LocalisedTransaction lt = client->localisedTransaction(txHash);
+    BOOST_REQUIRE_EQUAL(lt.blockNumber(), 2);
 }
 
-// Transaction should be IGNORED during execution
+// Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
+BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
                       // , *boost::unit_test::precondition( dev::test::run_not_express )
                       ) {
+
+    if(skipInvalidTransactionsFlag){
+        const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
+    }
+    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
+
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
@@ -696,9 +831,18 @@ BOOST_AUTO_TEST_CASE( transactionGasBlockLimitExceeded
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_SIZE( 1, 2 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash1 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 1, txHash2 );
+
+    if(skipInvalidTransactionsFlag){
+        REQUIRE_BLOCK_SIZE( 1, 1 );
+
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash1 );
+    }
+    else {
+        REQUIRE_BLOCK_SIZE( 1, 2 );
+
+        REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash1 );
+        REQUIRE_BLOCK_TRANSACTION( 1, 1, txHash2 );
+    }
 
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 10000 * dev::eth::szabo );  // only 1st!

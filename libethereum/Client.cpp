@@ -43,6 +43,7 @@
 #include <libdevcore/microprofile.h>
 
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/LevelDB.h>
 #include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
@@ -53,7 +54,9 @@
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/POWCheckPatch.h>
+#include <libskale/PushZeroPatch.h>
 #include <libskale/RevertableFSPatch.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libskale/State.h>
 #include <libskale/StorageDestructionPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
@@ -152,17 +155,20 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     init( _forceAction, _networkID );
 
+    // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::contractStoragePatchTimestamp =
-        chainParams().sChain.contractStoragePatchTimestamp;
-    ContractStorageZeroValuePatch::contractStorageZeroValuePatchTimestamp =
-        chainParams().sChain.contractStorageZeroValuePatchTimestamp;
-    VerifyDaSigsPatch::verifyDaSigsPatchTimestamp = chainParams().sChain.verifyDaSigsPatchTimestamp;
-    RevertableFSPatch::revertableFSPatchTimestamp = chainParams().sChain.revertableFSPatchTimestamp;
-    StorageDestructionPatch::storageDestructionPatchTimestamp =
-        chainParams().sChain.storageDestructionPatchTimestamp;
-    POWCheckPatch::powCheckPatchTimestamp = chainParams().sChain.powCheckPatchTimestamp;
+    ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
+    ContractStorageZeroValuePatch::setTimestamp(
+        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
+    VerifyDaSigsPatch::setTimestamp( chainParams().sChain.verifyDaSigsPatchTimestamp );
+    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
+    StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
+    POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
+    PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
+    SkipInvalidTransactionsPatch::setTimestamp(
+        this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
 }
+
 
 Client::~Client() {
     stopWorking();
@@ -653,7 +659,8 @@ size_t Client::syncTransactions(
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
-
+    PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -924,7 +931,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
                  << ":UTX:" << TransactionQueue::UnverifiedTransaction::howMany()
                  << ":VTX:" << TransactionQueue::VerifiedTransaction::howMany()
-                 << ":CMM:" << bc().getTotalCacheMemory();
+                 << ":CMM:" << bc().getTotalCacheMemory()
+                 << ":KDS:" << db::LevelDB::getKeyDeletesStats();
     if ( number() % 1000 == 0 ) {
         ssBlockStats << ":RAM:" << getRAMUsage();
         ssBlockStats << ":CPU:" << getCPUUsage();

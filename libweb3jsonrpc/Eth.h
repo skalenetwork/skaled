@@ -46,12 +46,86 @@ struct TransactionSkeleton;
 class Interface;
 class LocalisedTransactionReceipt;
 }  // namespace eth
-
 }  // namespace dev
 
 namespace dev {
 
 namespace rpc {
+
+#ifdef HISTORIC_STATE
+namespace _detail {
+// cache for transaction index mapping
+class GappedTransactionIndexCache {
+public:
+    GappedTransactionIndexCache( size_t _cacheSize, const dev::eth::Interface& _client )
+        : client( _client ), cacheSize( _cacheSize ) {
+        assert( _cacheSize > 0 );
+    }
+
+    size_t realBlockTransactionCount( dev::eth::BlockNumber _bn ) const {
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
+
+        return real2gappedCache[_bn].size();
+    }
+    size_t gappedBlockTransactionCount( dev::eth::BlockNumber _bn ) const {
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
+
+        return gapped2realCache[_bn].size();
+    }
+    // can throw
+    size_t realIndexFromGapped( dev::eth::BlockNumber _bn, size_t _gappedIndex ) const {
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
+
+        // throws out_of_range!
+        return gapped2realCache[_bn].at( _gappedIndex );
+    }
+    // can throw
+    size_t gappedIndexFromReal( dev::eth::BlockNumber _bn, size_t _realIndex ) const {
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
+
+        // throws out_of_range!
+        size_t res = real2gappedCache[_bn].at( _realIndex );
+        if ( res == UNDEFINED )
+            throw std::out_of_range( "Transaction at index " + std::to_string( _realIndex ) +
+                                     " in block " + to_string( _bn ) +
+                                     " is invalid and should have been ignored!" );
+        return res;
+    }
+    // can throw
+    // TODO rename to valid
+    bool transactionPresent( dev::eth::BlockNumber _bn, size_t _realIndex ) const {
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
+
+        return real2gappedCache[_bn].at( _realIndex ) != UNDEFINED;
+    }
+
+private:
+    void ensureCached( dev::eth::BlockNumber _bn, std::shared_lock< std::shared_mutex >& _readLock,
+        std::unique_lock< std::shared_mutex >& _writeLock ) const;
+
+private:
+    mutable std::shared_mutex mtx;
+
+    const dev::eth::Interface& client;
+    const size_t cacheSize;
+
+    enum { UNDEFINED = ( size_t ) -1 };
+
+    mutable std::map< dev::eth::BlockNumber, std::vector< size_t > > real2gappedCache;
+    mutable std::map< dev::eth::BlockNumber, std::vector< size_t > > gapped2realCache;
+};
+}  // namespace _detail
+#endif
 
 // Should only be called within a catch block
 std::string exceptionToErrorMessage();
@@ -77,7 +151,7 @@ public:
     virtual bool eth_mining() override;
     virtual std::string eth_gasPrice() override;
     virtual Json::Value eth_accounts() override;
-    virtual std::string eth_blockNumber() override;
+    virtual std::string eth_blockNumber( const Json::Value& request ) override;
     virtual std::string eth_getBalance(
         std::string const& _address, std::string const& _blockNumber ) override;
     virtual std::string eth_getStorageAt( std::string const& _address, std::string const& _position,
@@ -159,6 +233,10 @@ protected:
     // the transaction was not yet ready
     // for which the request has been executed
     cache::lru_cache< string, ptr< dev::eth::LocalisedTransactionReceipt > > m_receiptsCache;
+
+#ifdef HISTORIC_STATE
+    std::unique_ptr< _detail::GappedTransactionIndexCache > m_gapCache;
+#endif
 };
 
 }  // namespace rpc

@@ -26,6 +26,11 @@ private:
     static time_t verifyDaSigsPatchTimestamp;
     static time_t lastBlockTimestamp;
 
+    static void setTimestamp( time_t _timeStamp ) {
+        printInfo( __FILE__, _timeStamp );
+        verifyDaSigsPatchTimestamp = _timeStamp;
+    }
+
 public:
     static time_t getVerifyDaSigsPatchTimestamp();
 };

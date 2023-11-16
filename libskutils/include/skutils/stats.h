@@ -220,7 +220,7 @@ public:
     element( const char* strSubSystem, const char* strProtocol, const char* strMethod,
         int /*nServerIndex*/, int /*ipVer*/ );
     virtual ~element();
-    void stop() const;
+    void stop();
     void setMethod( const char* strMethod ) const;
     void setError() const;
     double getDurationInSeconds() const;
