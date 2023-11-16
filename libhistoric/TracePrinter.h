@@ -19,8 +19,6 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include "TracePrinter.h"
-
 namespace Json {
 class Value;
 }
@@ -29,13 +27,16 @@ namespace dev::eth {
 
 struct ExecutionResult;
 class HistoricState;
+class AlethStandardTrace;
 
-class NoopTracePrinter : public TracePrinter {
+class TracePrinter {
 public:
-    explicit NoopTracePrinter( AlethStandardTrace& standardTrace );
+    explicit TracePrinter( AlethStandardTrace& standardTrace ) : _standardTrace( standardTrace ) {}
 
-public:
-    void print( Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&,
-        const HistoricState& ) override;
+    virtual void print(
+        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) = 0;
+
+private:
+    AlethStandardTrace& _standardTrace;
 };
 }  // namespace dev::eth

@@ -26,6 +26,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFace.h"
 #include "TraceStructuresAndDefs.h"
+#include "NoopTracePrinter.h"
 
 namespace Json {
 class Value;
@@ -137,5 +138,8 @@ private:
     uint64_t m_storageValuesReturnedPre = 0;
     uint64_t m_storageValuesReturnedPost = 0;
     uint64_t m_storageValuesReturnedAll = 0;
+
+    NoopTracePrinter noopTracePrinter;
+
 };
 }  // namespace dev::eth

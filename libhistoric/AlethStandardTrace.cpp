@@ -17,10 +17,10 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <jsonrpccpp/client.h>
-#include "NoopTracePrinter.h"
-#include "FunctionCall.h"
 #include "AlethStandardTrace.h"
+#include "FunctionCall.h"
+#include "NoopTracePrinter.h"
+#include <jsonrpccpp/client.h>
 
 
 namespace dev::eth {
@@ -301,7 +301,8 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
           -1,
           // when we start execution a user transaction the top level function can  be a call
           // or a contract create
-          _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0 ) {
+          _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0 ),
+      noopTracePrinter( *this ) {
     m_hash = _t.sha3();
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
@@ -423,7 +424,7 @@ void eth::AlethStandardTrace::finalizeTrace(
         fourByteTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::NOOP_TRACER:
-        NoopTracePrinter::print( m_jsonTrace, _er, _stateBefore, _stateAfter );
+        noopTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::ALL_TRACER:
         allTracesPrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
@@ -439,7 +440,7 @@ void eth::AlethStandardTrace::allTracesPrint( Json::Value& _jsonTrace, Execution
     m_jsonTrace["defaultTrace"] = result;
 
     result.clear();
-    NoopTracePrinter::print( result, _er, _stateBefore, _stateAfter );
+    noopTracePrinter.print( result, _er, _stateBefore, _stateAfter );
     m_jsonTrace["noopTrace"] = result;
 
     result.clear();
