@@ -20,6 +20,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "AlethStandardTrace.h"
 #include "FunctionCall.h"
 #include "NoopTracePrinter.h"
+#include "FourByteTracePrinter.h"
 #include <jsonrpccpp/client.h>
 
 
@@ -212,6 +213,9 @@ void AlethStandardTrace::functionCalled( const Address& _from, const Address& _t
     }
     m_currentlyExecutingFunctionCall = nestedCall;
 }
+const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const {
+    return m_topFunctionCall;
+}
 
 
 void AlethStandardTrace::functionReturned(
@@ -302,7 +306,7 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
           // when we start execution a user transaction the top level function can  be a call
           // or a contract create
           _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0 ),
-      noopTracePrinter( *this ) {
+      noopTracePrinter( *this ), fourByteTracePrinter(*this) {
     m_hash = _t.sha3();
     m_options = debugOptions( _options );
     // mark from and to accounts as accessed
@@ -421,7 +425,7 @@ void eth::AlethStandardTrace::finalizeTrace(
         replayTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::FOUR_BYTE_TRACER:
-        fourByteTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
+        fourByteTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::NOOP_TRACER:
         noopTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
@@ -444,7 +448,7 @@ void eth::AlethStandardTrace::allTracesPrint( Json::Value& _jsonTrace, Execution
     m_jsonTrace["noopTrace"] = result;
 
     result.clear();
-    fourByteTracePrint( result, _er, _stateBefore, _stateAfter );
+    fourByteTracePrinter.print( result, _er, _stateBefore, _stateAfter );
     m_jsonTrace["4byteTrace"] = result;
 
     result.clear();

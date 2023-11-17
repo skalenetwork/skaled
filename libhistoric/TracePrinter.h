@@ -31,12 +31,13 @@ class AlethStandardTrace;
 
 class TracePrinter {
 public:
-    explicit TracePrinter( AlethStandardTrace& standardTrace ) : _standardTrace( standardTrace ) {}
+    explicit TracePrinter( AlethStandardTrace& _standardTrace )
+        : m_standardTrace( _standardTrace ) {}
 
     virtual void print(
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) = 0;
 
-private:
-    AlethStandardTrace& _standardTrace;
+    AlethStandardTrace& m_standardTrace;
+
 };
 }  // namespace dev::eth

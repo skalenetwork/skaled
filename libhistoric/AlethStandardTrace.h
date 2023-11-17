@@ -59,6 +59,8 @@ public:
 
     [[nodiscard]] Json::Value getJSONResult() const;
 
+    const shared_ptr< FunctionCall >& getTopFunctionCall() const;
+
 private:
     [[nodiscard]] const DebugOptions& getOptions() const;
 
@@ -111,9 +113,6 @@ private:
     void replayTracePrint(
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
-    void fourByteTracePrint(
-        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
-
     void allTracesPrint(
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
@@ -140,6 +139,7 @@ private:
     uint64_t m_storageValuesReturnedAll = 0;
 
     NoopTracePrinter noopTracePrinter;
+    NoopTracePrinter fourByteTracePrinter;
 
 };
 }  // namespace dev::eth
