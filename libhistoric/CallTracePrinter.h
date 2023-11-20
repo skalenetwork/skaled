@@ -17,18 +17,25 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "AlethStandardTrace.h"
-#include "FunctionCall.h"
-#include "TraceStructuresAndDefs.h"
-#include "CallTracePrinter.h"
+#pragma once
+
+#include "TracePrinter.h"
+
+namespace Json {
+class Value;
+}
 
 namespace dev::eth {
 
-void CallTracePrinter::print(
-    Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
-    STATE_CHECK( _jsonTrace.isObject() )
-    m_standardTrace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_standardTrace.getOptions() );
-}
-CallTracePrinter::CallTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace ) {}
+struct ExecutionResult;
+class HistoricState;
+
+class CallTracePrinter : public TracePrinter {
+public:
+    explicit CallTracePrinter( AlethStandardTrace& standardTrace );
+
+public:
+    void print( Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&,
+        const HistoricState& ) override;
+};
 }  // namespace dev::eth

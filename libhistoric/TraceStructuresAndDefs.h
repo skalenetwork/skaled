@@ -43,28 +43,6 @@ namespace dev::eth {
 using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, std::map,
     std::vector;
 
-
-enum struct TraceType {
-    DEFAULT_TRACER,
-    PRESTATE_TRACER,
-    CALL_TRACER,
-    REPLAY_TRACER,
-    FOUR_BYTE_TRACER,
-    NOOP_TRACER,
-    ALL_TRACER
-};
-
-struct DebugOptions {
-    bool disableStorage = false;
-    bool enableMemory = false;
-    bool disableStack = false;
-    bool enableReturnData = false;
-    bool prestateDiffMode = false;
-    bool onlyTopCall = false;
-    bool withLog = false;
-    TraceType tracerType = TraceType::DEFAULT_TRACER;
-};
-
 struct LogRecord {
     LogRecord( const vector< uint8_t >& _data, const vector< u256 >& _topics )
         : m_data( _data ), m_topics( _topics ) {}

@@ -17,35 +17,36 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include "AlethStandardTrace.h"
+#include "PrestateTracePrinter.h"
 #include "FunctionCall.h"
+#include "TraceStructuresAndDefs.h"
 
-namespace dev {
-namespace eth {
+namespace dev::eth {
 
-
-void eth::AlethStandardTrace::pstracePrint( Json::Value& _jsonTrace, ExecutionResult& _er,
+void PrestateTracePrinter::print( Json::Value& _jsonTrace, ExecutionResult& _er,
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
-    STATE_CHECK(_jsonTrace.isObject());
-    if ( m_options.prestateDiffMode ) {
-        pstraceDiffPrint( _jsonTrace, _er, _stateBefore, _stateAfter );
+    STATE_CHECK( _jsonTrace.isObject() );
+    if ( m_standardTrace.getOptions().prestateDiffMode ) {
+        printDiff( _jsonTrace, _er, _stateBefore, _stateAfter );
     } else {
-        for ( auto&& item : m_accessedAccounts ) {
-            pstracePrintAllAccessedAccountPreValues( _jsonTrace, _stateBefore, item );
+        for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
+            printAllAccessedAccountPreValues( _jsonTrace, _stateBefore, item );
         };
     }
 }
 
-void eth::AlethStandardTrace::pstraceDiffPrint( Json::Value& _jsonTrace, ExecutionResult&,
+void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, ExecutionResult&,
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
-    STATE_CHECK(_jsonTrace.isObject())
+    STATE_CHECK( _jsonTrace.isObject() )
 
     Json::Value preDiff( Json::objectValue );
     Json::Value postDiff( Json::objectValue );
 
-    for ( auto&& item : m_accessedAccounts ) {
-        pstracePrintAccountPreDiff( preDiff, _stateBefore, _stateAfter, item );
-        pstracePrintAccountPostDiff( postDiff, _stateBefore, _stateAfter, item );
+    for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
+        printAccountPreDiff( preDiff, _stateBefore, _stateAfter, item );
+        printAccountPostDiff( postDiff, _stateBefore, _stateAfter, item );
     };
 
     _jsonTrace["pre"] = preDiff;
@@ -54,9 +55,9 @@ void eth::AlethStandardTrace::pstraceDiffPrint( Json::Value& _jsonTrace, Executi
 
 
 // this function returns original values (pre) to result
-void eth::AlethStandardTrace::pstracePrintAllAccessedAccountPreValues(
+void PrestateTracePrinter::printAllAccessedAccountPreValues(
     Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address ) {
-    STATE_CHECK( _jsonTrace.isObject())
+    STATE_CHECK( _jsonTrace.isObject() )
 
 
     Json::Value storagePreValues;
@@ -72,8 +73,8 @@ void eth::AlethStandardTrace::pstracePrintAllAccessedAccountPreValues(
     }
 
     Json::Value storagePairs;
-    if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
-        for ( auto&& it : m_accessedStorageValues[_address] ) {
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) != m_standardTrace.getAccessedStorageValues().end() ) {
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at(_address) ) {
             if ( _stateBefore.addressInUse( _address ) ) {
                 auto& storageAddress = it.first;
                 auto originalValue = _stateBefore.originalStorageValue( _address, storageAddress );
@@ -98,7 +99,7 @@ void eth::AlethStandardTrace::pstracePrintAllAccessedAccountPreValues(
 }
 
 
-void eth::AlethStandardTrace::pstracePrintAccountPostDiff( Json::Value& _postDiffTrace,
+void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
     const HistoricState& _stateBefore, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 
@@ -129,11 +130,11 @@ void eth::AlethStandardTrace::pstracePrintAccountPostDiff( Json::Value& _postDif
 
 
     // post diffs for storage values
-    if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) != m_standardTrace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs( Json::objectValue );
 
         // iterate over all accessed storage values
-        for ( auto&& it : m_accessedStorageValues[_address] ) {
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at(_address) ) {
             auto& storageAddress = it.first;
             auto& storageValue = it.second;
 
@@ -166,8 +167,11 @@ void eth::AlethStandardTrace::pstracePrintAccountPostDiff( Json::Value& _postDif
     _postDiffTrace[toHexPrefixed( _address )] = value;
 }
 
+PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
+    : TracePrinter( standardTrace ) {}
 
-void eth::AlethStandardTrace::pstracePrintAccountPreDiff( Json::Value& _preDiffTrace,
+
+void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
     const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 
@@ -192,10 +196,10 @@ void eth::AlethStandardTrace::pstracePrintAccountPreDiff( Json::Value& _preDiffT
         }
     }
 
-    if ( m_accessedStorageValues.find( _address ) != m_accessedStorageValues.end() ) {
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) != m_standardTrace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs;
 
-        for ( auto&& it : m_accessedStorageValues[_address] ) {
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at(_address) ) {
             auto& storageAddress = it.first;
             auto& storageValuePost = it.second;
             bool includePair;
@@ -227,8 +231,4 @@ void eth::AlethStandardTrace::pstracePrintAccountPreDiff( Json::Value& _preDiffT
     if ( !value.empty() )
         _preDiffTrace[toHexPrefixed( _address )] = value;
 }
-
-
-
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth

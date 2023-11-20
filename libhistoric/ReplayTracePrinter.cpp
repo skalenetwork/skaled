@@ -19,16 +19,18 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AlethStandardTrace.h"
 #include "FunctionCall.h"
+#include "TraceStructuresAndDefs.h"
+#include "ReplayTracePrinter.h"
 
 
 namespace dev::eth {
 
-void eth::AlethStandardTrace::replayTracePrint(
+void ReplayTracePrinter::print(
     Json::Value& _jsonTrace, ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     _jsonTrace["vmTrace"] = Json::Value::null;
     _jsonTrace["stateDiff"] = Json::Value::null;
-    _jsonTrace["transactionHash"] = toHexPrefixed( m_hash );
+    _jsonTrace["transactionHash"] = toHexPrefixed( m_standardTrace.getTxHash());
     _jsonTrace["output"] = toHexPrefixed( _er.output );
     auto failed = _er.excepted != TransactionException::None;
     if ( failed ) {
@@ -40,9 +42,11 @@ void eth::AlethStandardTrace::replayTracePrint(
     Json::Value functionTraceArray( Json::arrayValue );
     Json::Value emptyAddress( Json::arrayValue );
 
-    m_topFunctionCall->printParityFunctionTrace( functionTraceArray, emptyAddress );
+    m_standardTrace.getTopFunctionCall()->printParityFunctionTrace( functionTraceArray, emptyAddress );
     _jsonTrace["trace"] = functionTraceArray;
 }
+ReplayTracePrinter::ReplayTracePrinter( AlethStandardTrace& standardTrace )
+    : TracePrinter( standardTrace ) {}
 
 
 }  // namespace dev::eth

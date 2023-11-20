@@ -58,7 +58,7 @@ int64_t FunctionCall::getDepth() const {
 }
 
 void FunctionCall::printFunctionExecutionDetail(
-    Json::Value& _jsonTrace, DebugOptions& _debugOptions ) {
+    Json::Value& _jsonTrace, const TraceOptions& _debugOptions ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
     _jsonTrace["type"] = instructionInfo( m_type ).name;
@@ -109,7 +109,7 @@ void FunctionCall::printFunctionExecutionDetail(
 }
 
 void FunctionCall::printTrace(
-    Json::Value& _jsonTrace, int64_t _depth, DebugOptions& _debugOptions ) {
+    Json::Value& _jsonTrace, int64_t _depth, const TraceOptions& _debugOptions ) {
     STATE_CHECK( _jsonTrace.isObject() )
     // prevent Denial of service
     STATE_CHECK( _depth < MAX_TRACE_DEPTH )

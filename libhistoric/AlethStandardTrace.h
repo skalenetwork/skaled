@@ -18,15 +18,20 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
-#include "json/json.h"
-#include <cstdint>
 #include "AlethExtVM.h"
+#include "CallTracePrinter.h"
+#include "FourByteTracePrinter.h"
+#include "NoopTracePrinter.h"
+#include "ReplayTracePrinter.h"
+#include "PrestateTracePrinter.h"
+#include "TraceOptions.h"
+#include "TraceStructuresAndDefs.h"
+#include "json/json.h"
 #include "libdevcore/Common.h"
 #include "libevm/Instruction.h"
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFace.h"
-#include "TraceStructuresAndDefs.h"
-#include "NoopTracePrinter.h"
+#include <cstdint>
 
 namespace Json {
 class Value;
@@ -47,6 +52,7 @@ public:
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
         bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
+
     OnOpFunc onOp() {
         return [=]( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
                    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
@@ -59,23 +65,26 @@ public:
 
     [[nodiscard]] Json::Value getJSONResult() const;
 
-    const shared_ptr< FunctionCall >& getTopFunctionCall() const;
+    [[nodiscard]] const shared_ptr< FunctionCall >& getTopFunctionCall() const;
+
+    TraceOptions getOptions() const;
+
+    const map< Address, map< u256, u256 > >& getAccessedStorageValues() const;
+    const set< Address >& getAccessedAccounts() const;
 
 private:
-    [[nodiscard]] const DebugOptions& getOptions() const;
+    void recordInstructionExecution( uint64_t _pc, Instruction _inst, bigint _gasOpGas,
+        bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
-    void functionCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
+    void recordFunctionIsCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
         const vector< uint8_t >& _inputData, const u256& _value );
 
-    void functionReturned(
+    void recordFunctionReturned(
         evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
 
     void recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
         uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
         const LegacyVM* _vm );
-
-    DebugOptions debugOptions( Json::Value const& _json );
-
 
     [[nodiscard]] static vector< uint8_t > extractMemoryByteArrayFromStackPointer(
         const LegacyVM* _vm );
@@ -86,30 +95,8 @@ private:
     void appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
-    void pstracePrintAllAccessedAccountPreValues(
-        Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address );
-
-    void pstracePrintAccountPreDiff( Json::Value& _preDiffTrace, const HistoricState& _statePre,
-        const HistoricState& _statePost, const Address& _address );
-
-    void pstracePrintAccountPostDiff( Json::Value& _postDiffTrace,
-        const HistoricState& _stateBefore, const HistoricState& _statePost,
-        const Address& _address );
-
     void deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er, const HistoricState&,
         const HistoricState& );
-
-    void pstracePrint( Json::Value& _jsonTrace, ExecutionResult& _er,
-        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
-
-    void pstraceDiffPrint( Json::Value& _jsonTrace, ExecutionResult&,
-        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
-
-    void calltracePrint(
-        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
-
-    void replayTracePrint(
-        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
 
     void allTracesPrint(
         Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
@@ -121,10 +108,9 @@ private:
     Json::FastWriter m_fastWriter;
     Address m_from;
     Address m_to;
-    DebugOptions m_options;
-    h256 m_hash;
+    TraceOptions m_options;
+    h256 m_txHash;
     Json::Value m_jsonTrace;
-    static const map< string, TraceType > s_stringToTracerMap;
     // set of all storage values accessed during execution
     set< Address > m_accessedAccounts;
     // map of all storage addresses accessed (read or write) during execution
@@ -132,12 +118,14 @@ private:
     map< Address, map< u256, u256 > > m_accessedStorageValues;
     OpExecutionRecord m_lastOp;
 
-    uint64_t m_storageValuesReturnedPre = 0;
-    uint64_t m_storageValuesReturnedPost = 0;
-    uint64_t m_storageValuesReturnedAll = 0;
 
     NoopTracePrinter noopTracePrinter;
-    NoopTracePrinter fourByteTracePrinter;
+    FourByteTracePrinter fourByteTracePrinter;
+    CallTracePrinter callTracePrinter;
+    ReplayTracePrinter replayTracePrinter;
+    PrestateTracePrinter prestateTracePrinter;
 
+public:
+    const h256& getTxHash() const;
 };
 }  // namespace dev::eth

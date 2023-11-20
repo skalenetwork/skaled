@@ -33,7 +33,7 @@ using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, 
     std::vector, std::weak_ptr;
 
 
-struct DebugOptions;
+struct TraceOptions;
 
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
@@ -57,8 +57,8 @@ public:
 
     [[nodiscard]] uint64_t getFunctionGasLimit() const;
 
-    void printTrace( Json::Value& _jsonTrace, int64_t _depth, DebugOptions& _debugOptions );
-    void printFunctionExecutionDetail( Json::Value& _jsonTrace, DebugOptions& _debugOptions );
+    void printTrace( Json::Value& _jsonTrace, int64_t _depth, const TraceOptions& _debugOptions );
+    void printFunctionExecutionDetail( Json::Value& _jsonTrace, const TraceOptions& _debugOptions );
 
     void addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics );
 

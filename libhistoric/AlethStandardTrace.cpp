@@ -19,72 +19,14 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AlethStandardTrace.h"
 #include "FunctionCall.h"
-#include "NoopTracePrinter.h"
-#include "FourByteTracePrinter.h"
+#include "TraceOptions.h"
 #include <jsonrpccpp/client.h>
-
 
 namespace dev::eth {
 
-const DebugOptions& eth::AlethStandardTrace::getOptions() const {
+TraceOptions eth::AlethStandardTrace::getOptions() const {
     return m_options;
 }
-
-
-DebugOptions AlethStandardTrace::debugOptions( Json::Value const& _json ) {
-    DebugOptions op;
-
-    if ( !_json.isObject() )
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-            jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid options" ) );
-
-    if ( !_json["disableStorage"].empty() )
-        op.disableStorage = _json["disableStorage"].asBool();
-
-    if ( !_json["enableMemory"].empty() )
-        op.enableMemory = _json["enableMemory"].asBool();
-    if ( !_json["disableStack"].empty() )
-        op.disableStack = _json["disableStack"].asBool();
-    if ( !_json["enableReturnData"].empty() )
-        op.enableReturnData = _json["enableReturnData"].asBool();
-
-    if ( !_json["tracer"].empty() ) {
-        auto tracerStr = _json["tracer"].asString();
-
-        if ( s_stringToTracerMap.count( tracerStr ) ) {
-            op.tracerType = s_stringToTracerMap.at( tracerStr );
-        } else {
-            BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException(
-                jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS, "Invalid tracer type:" + tracerStr ) );
-        }
-    }
-
-    if ( !_json["tracerConfig"].empty() && _json["tracerConfig"].isObject() ) {
-        if ( !_json["tracerConfig"]["diffMode"].empty() &&
-             _json["tracerConfig"]["diffMode"].isBool() ) {
-            op.prestateDiffMode = _json["tracerConfig"]["diffMode"].asBool();
-        }
-
-        if ( !_json["tracerConfig"]["onlyTopCall"].empty() &&
-             _json["tracerConfig"]["onlyTopCall"].isBool() ) {
-            op.onlyTopCall = _json["tracerConfig"]["onlyTopCall"].asBool();
-        }
-
-        if ( !_json["tracerConfig"]["withLog"].empty() &&
-             _json["tracerConfig"]["withLog"].isBool() ) {
-            op.withLog = _json["tracerConfig"]["withLog"].asBool();
-        }
-    }
-
-    return op;
-}
-
-const map< string, TraceType > AlethStandardTrace::s_stringToTracerMap = {
-    { "", TraceType::DEFAULT_TRACER }, { "callTracer", TraceType::CALL_TRACER },
-    { "prestateTracer", TraceType::PRESTATE_TRACER }, { "replayTracer", TraceType::REPLAY_TRACER },
-    { "4byteTracer", TraceType::FOUR_BYTE_TRACER }, { "noopTracer", TraceType::NOOP_TRACER },
-    { "allTracer", TraceType::ALL_TRACER }
-};
 
 
 void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
@@ -167,10 +109,10 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     if ( currentDepth == m_lastOp.m_depth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
-        functionCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
+        recordFunctionIsCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
     } else if ( currentDepth == m_lastOp.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
-        functionReturned( status, _vm->getMReturnData(),
+        recordFunctionReturned( status, _vm->getMReturnData(),
             m_currentlyExecutingFunctionCall->getFunctionGasLimit() - _gasRemaining );
     } else {
         // we should not have skipped frames
@@ -196,7 +138,7 @@ vector< uint8_t > AlethStandardTrace::extractMemoryByteArrayFromStackPointer(
 }
 
 
-void AlethStandardTrace::functionCalled( const Address& _from, const Address& _to,
+void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Address& _to,
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
     auto nestedCall = make_shared< FunctionCall >( m_lastOp.m_op, _from, _to, _gasLimit,
         m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOp.m_depth + 1 );
@@ -214,16 +156,17 @@ void AlethStandardTrace::functionCalled( const Address& _from, const Address& _t
     m_currentlyExecutingFunctionCall = nestedCall;
 }
 const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const {
+    STATE_CHECK( m_topFunctionCall );
     return m_topFunctionCall;
 }
 
 
-void AlethStandardTrace::functionReturned(
+void AlethStandardTrace::recordFunctionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
-    STATE_CHECK(m_currentlyExecutingFunctionCall)
+    STATE_CHECK( m_currentlyExecutingFunctionCall )
 
-    m_currentlyExecutingFunctionCall->setReturnValues(_status, _returnData, _gasUsed);
+    m_currentlyExecutingFunctionCall->setReturnValues( _status, _returnData, _gasUsed );
 
     if ( m_currentlyExecutingFunctionCall == m_topFunctionCall ) {
         // the top function returned
@@ -252,9 +195,13 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
           // when we start execution a user transaction the top level function can  be a call
           // or a contract create
           _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0 ),
-      noopTracePrinter( *this ), fourByteTracePrinter(*this) {
-    m_hash = _t.sha3();
-    m_options = debugOptions( _options );
+      noopTracePrinter( *this ),
+      fourByteTracePrinter( *this ),
+      callTracePrinter( *this ),
+      replayTracePrinter( *this ),
+      prestateTracePrinter( *this ) {
+    m_txHash = _t.sha3();
+    m_options = TraceOptions::make( _options );
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
@@ -265,6 +212,12 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
  * This function is called on each EVM op
  */
 void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
+    bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
+    recordInstructionExecution( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
+}
+
+// this will be called each time before an instruction is executed by evm
+void AlethStandardTrace::recordInstructionExecution( uint64_t _pc, Instruction _inst,
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
     STATE_CHECK( _vm )
     STATE_CHECK( _ext )
@@ -284,6 +237,7 @@ void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, 
          m_options.tracerType == TraceType::ALL_TRACER )
         appendOpToStandardOpTrace( _pc, _inst, _gasOpGas, _gasRemaining, _ext, ext, vm );
 }
+
 
 void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst,
     const bigint& _gasCost, const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt,
@@ -352,7 +306,7 @@ void eth::AlethStandardTrace::finalizeTrace(
 
     STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
-    functionReturned( statusCode, _er.output, totalGasUsed );
+    recordFunctionReturned( statusCode, _er.output, totalGasUsed );
 
 
     m_jsonTrace = Json::Value( Json::objectValue );
@@ -362,13 +316,13 @@ void eth::AlethStandardTrace::finalizeTrace(
         deftracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::PRESTATE_TRACER:
-        pstracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
+        prestateTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::CALL_TRACER:
-        calltracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
+        callTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::REPLAY_TRACER:
-        replayTracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
+        replayTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
         break;
     case TraceType::FOUR_BYTE_TRACER:
         fourByteTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
@@ -398,15 +352,24 @@ void eth::AlethStandardTrace::allTracesPrint( Json::Value& _jsonTrace, Execution
     m_jsonTrace["4byteTrace"] = result;
 
     result.clear();
-    pstracePrint( result, _er, _stateBefore, _stateAfter );
+    prestateTracePrinter.print( result, _er, _stateBefore, _stateAfter );
     m_jsonTrace["prestateTrace"] = result;
 
     result.clear();
-    calltracePrint( result, _er, _stateBefore, _stateAfter );
+    callTracePrinter.print( result, _er, _stateBefore, _stateAfter );
     m_jsonTrace["callTrace"] = result;
 
     result.clear();
-    replayTracePrint( result, _er, _stateBefore, _stateAfter );
+    replayTracePrinter.print( result, _er, _stateBefore, _stateAfter );
     m_jsonTrace["replayTrace"] = result;
+}
+const h256& AlethStandardTrace::getTxHash() const {
+    return m_txHash;
+}
+const set< Address >& AlethStandardTrace::getAccessedAccounts() const {
+    return m_accessedAccounts;
+}
+const map< Address, map< u256, u256 > >& AlethStandardTrace::getAccessedStorageValues() const {
+    return m_accessedStorageValues;
 }
 }  // namespace dev::eth
