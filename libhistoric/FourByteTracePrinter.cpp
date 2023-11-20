@@ -35,6 +35,8 @@ void FourByteTracePrinter::print(
         _jsonTrace[key.first] = to_string( key.second );
     }
 }
+FourByteTracePrinter::FourByteTracePrinter( AlethStandardTrace& standardTrace )
+    : TracePrinter( standardTrace ) {}
 
 
 }  // namespace dev::eth

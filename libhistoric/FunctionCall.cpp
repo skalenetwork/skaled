@@ -207,6 +207,22 @@ void FunctionCall::collectFourByteTrace( std::map< string, uint64_t >& _callMap 
     }
 }
 
+
+void FunctionCall::setReturnValues(
+    evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
+    setGasUsed( _gasUsed );
+
+    if ( _status != evmc_status_code::EVMC_SUCCESS ) {
+        setError( TracePrinter::evmErrorDescription( _status ) );
+    }
+
+    if ( _status == evmc_status_code::EVMC_REVERT ) {
+        setRevertReason( string( _returnData.begin(), _returnData.end() ) );
+    } else {
+        setOutputData( _returnData );
+    }
+}
+
 OpExecutionRecord::OpExecutionRecord(
     int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
     : m_depth( _depth ), m_op( _op ), m_gasRemaining( _gasRemaining ), m_opGas( _opGas ) {}

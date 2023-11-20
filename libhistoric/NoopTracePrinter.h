@@ -33,8 +33,6 @@ class HistoricState;
 class NoopTracePrinter : public TracePrinter {
 public:
     explicit NoopTracePrinter( AlethStandardTrace& standardTrace );
-
-public:
     void print( Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
 };

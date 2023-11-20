@@ -17,9 +17,11 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "NoopTracePrinter.h"
+
+#include "AlethStandardTrace.h"
 #include "FunctionCall.h"
 #include "TraceStructuresAndDefs.h"
+#include "FourByteTracePrinter.h"
 
 namespace dev::eth {
 

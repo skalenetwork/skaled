@@ -39,5 +39,6 @@ public:
 
     AlethStandardTrace& m_standardTrace;
 
+    static std::string evmErrorDescription( evmc_status_code _error );
 };
 }  // namespace dev::eth

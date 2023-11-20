@@ -80,8 +80,6 @@ private:
     [[nodiscard]] static vector< uint8_t > extractMemoryByteArrayFromStackPointer(
         const LegacyVM* _vm );
 
-    [[nodiscard]] string evmErrorDescription( evmc_status_code _error );
-
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining );
 

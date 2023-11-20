@@ -21,9 +21,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "FunctionCall.h"
 
 
-namespace dev {
-namespace eth {
-
+namespace dev::eth {
 
 void eth::AlethStandardTrace::replayTracePrint(
     Json::Value& _jsonTrace, ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
@@ -35,7 +33,7 @@ void eth::AlethStandardTrace::replayTracePrint(
     auto failed = _er.excepted != TransactionException::None;
     if ( failed ) {
         auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = evmErrorDescription( statusCode );
+        string errMessage = TracePrinter::evmErrorDescription( statusCode );
         _jsonTrace["error"] = errMessage;
     }
 
@@ -47,5 +45,4 @@ void eth::AlethStandardTrace::replayTracePrint(
 }
 
 
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth

@@ -21,9 +21,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "AlethStandardTrace.h"
 
 
-namespace dev {
-namespace eth {
-
+namespace dev::eth {
 
 void eth::AlethStandardTrace::deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er,
     const HistoricState&, const HistoricState& ) {
@@ -39,12 +37,11 @@ void eth::AlethStandardTrace::deftracePrint( Json::Value& _jsonTrace, const Exec
         }
     } else {
         auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = evmErrorDescription( statusCode );
+        string errMessage = TracePrinter::evmErrorDescription( statusCode );
         // return message in two fields for compatibility with different tools
         _jsonTrace["returnValue"] = errMessage;
         _jsonTrace["error"] = errMessage;
     }
 }
 
-}  // namespace eth
-}  // namespace dev
+}

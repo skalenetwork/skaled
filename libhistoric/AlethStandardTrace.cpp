@@ -221,19 +221,9 @@ const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const
 void AlethStandardTrace::functionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
+    STATE_CHECK(m_currentlyExecutingFunctionCall)
 
-    m_currentlyExecutingFunctionCall->setGasUsed( _gasUsed );
-
-    if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        m_currentlyExecutingFunctionCall->setError( evmErrorDescription( _status ) );
-    }
-
-    if ( _status == evmc_status_code::EVMC_REVERT ) {
-        m_currentlyExecutingFunctionCall->setRevertReason(
-            string( _returnData.begin(), _returnData.end() ) );
-    } else {
-        m_currentlyExecutingFunctionCall->setOutputData( _returnData );
-    }
+    m_currentlyExecutingFunctionCall->setReturnValues(_status, _returnData, _gasUsed);
 
     if ( m_currentlyExecutingFunctionCall == m_topFunctionCall ) {
         // the top function returned
@@ -245,50 +235,6 @@ void AlethStandardTrace::functionReturned(
         m_currentlyExecutingFunctionCall = parentCall;
     }
 }
-
-
-// we try to be compatible with geth messages as much as we can
-string AlethStandardTrace::evmErrorDescription( evmc_status_code _error ) {
-    switch ( _error ) {
-    case EVMC_SUCCESS:
-        return "success";
-    case EVMC_FAILURE:
-        return "evm failure";
-    case EVMC_OUT_OF_GAS:
-        return "out of gas";
-    case EVMC_INVALID_INSTRUCTION:
-        return "invalid instruction";
-    case EVMC_UNDEFINED_INSTRUCTION:
-        return "undefined instruction";
-    case EVMC_STACK_OVERFLOW:
-        return "stack overflow";
-    case EVMC_STACK_UNDERFLOW:
-        return "stack underflow";
-    case EVMC_BAD_JUMP_DESTINATION:
-        return "invalid jump";
-    case EVMC_INVALID_MEMORY_ACCESS:
-        return "invalid memory access";
-    case EVMC_CALL_DEPTH_EXCEEDED:
-        return "call depth exceeded";
-    case EVMC_STATIC_MODE_VIOLATION:
-        return "static mode violation";
-    case EVMC_PRECOMPILE_FAILURE:
-        return "precompile failure";
-    case EVMC_CONTRACT_VALIDATION_FAILURE:
-        return "contract validation failure";
-    case EVMC_ARGUMENT_OUT_OF_RANGE:
-        return "argument out of range";
-    case EVMC_INTERNAL_ERROR:
-        return "internal error";
-    case EVMC_REJECTED:
-        return "evm rejected";
-    case EVMC_OUT_OF_MEMORY:
-        return "out of memory";
-    default:
-        return "unknown error";
-    };
-}
-
 
 Json::Value AlethStandardTrace::getJSONResult() const {
     STATE_CHECK( !m_jsonTrace.isNull() )

@@ -27,7 +27,6 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include <skutils/eth_utils.h>
 
 
-
 namespace dev::eth {
 
 using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, std::map,
@@ -58,18 +57,19 @@ public:
 
     [[nodiscard]] uint64_t getFunctionGasLimit() const;
 
-    void printTrace(
-        Json::Value& _jsonTrace, int64_t _depth, DebugOptions& _debugOptions );
-    void printFunctionExecutionDetail(
-        Json::Value& _jsonTrace, DebugOptions& _debugOptions);
+    void printTrace( Json::Value& _jsonTrace, int64_t _depth, DebugOptions& _debugOptions );
+    void printFunctionExecutionDetail( Json::Value& _jsonTrace, DebugOptions& _debugOptions );
 
     void addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics );
 
     string getParityTraceType();
 
-    void printParityFunctionTrace(Json::Value& _outputArray, Json::Value _address);
+    void printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address );
 
     void collectFourByteTrace( std::map< string, uint64_t >& _callMap );
+
+    void setReturnValues(
+        evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
 
 private:
     Instruction m_type;
@@ -87,7 +87,6 @@ private:
     u256 m_value;
     int64_t m_depth = 0;
     vector< LogRecord > m_logRecords;
-
 };
 
 
