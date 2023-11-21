@@ -49,7 +49,9 @@ async function deployWriteAndDestroy(): Promise<void> {
     console.log(`Deploying ...`);
 
     const factory = await ethers.getContractFactory("Tracer");
-    const tracer = await factory.deploy();
+    const tracer = await factory.deploy({
+        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+    });
     const deployedTracer = await tracer.deployed();
 
 
