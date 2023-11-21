@@ -48,16 +48,16 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     console.log(`Deploying ...`);
 
-    const Lock = await ethers.getContractFactory("Lock");
-    const lock = await Lock.deploy();
-    const lockContract = await lock.deployed();
+    const factory = await ethers.getContractFactory("Tracer");
+    const tracer = await factory.deploy();
+    const deployedTracer = await tracer.deployed();
 
 
     const deployBn = await ethers.provider.getBlockNumber();
 
-    const hash = lockContract.deployTransaction.hash;
-    console.log(`Gas limit ${lockContract.deployTransaction.gasLimit}`);
-    console.log(`Contract deployed to ${lockContract.address} at block ${deployBn} tx hash ${hash}`);
+    const hash = deployedTracer.deployTransaction.hash;
+    console.log(`Gas limit ${deployedTracer.deployTransaction.gasLimit}`);
+    console.log(`Contract deployed to ${deployedTracer.address} at block ${deployBn} tx hash ${hash}`);
 
 
     // await waitUntilNextBlock()
@@ -67,7 +67,7 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     console.log(`Now minting`);
 
-    const transferReceipt = await lockContract.mint(1000, {
+    const transferReceipt = await deployedTracer.mint(1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
