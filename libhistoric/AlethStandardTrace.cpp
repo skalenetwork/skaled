@@ -348,7 +348,7 @@ void eth::AlethStandardTrace::printAllTraces( Json::Value& _jsonTrace, Execution
     for ( auto&& entry : m_tracePrinters ) {
         TracePrinter& printer = entry.second;
         printer.print( result, _er, _stateBefore, _stateAfter );
-        m_jsonTrace[printer.getJsonName()];
+        m_jsonTrace[printer.getJsonName()] = result;
         result.clear();
     }
 }
