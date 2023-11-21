@@ -31,14 +31,18 @@ class AlethStandardTrace;
 
 class TracePrinter {
 public:
-    explicit TracePrinter( AlethStandardTrace& _standardTrace )
-        : m_standardTrace( _standardTrace ) {}
 
-    virtual void print(
-        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) = 0;
+    TracePrinter( AlethStandardTrace& mStandardTrace, const std::string jsonName );
 
+    virtual void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
+        const HistoricState& ) = 0;
+
+    const std::string& getJsonName() const;
+
+    static std::string getEvmErrorDescription( evmc_status_code _error );
+
+protected:
     AlethStandardTrace& m_standardTrace;
-
-    static std::string evmErrorDescription( evmc_status_code _error );
+    const std::string m_jsonName;
 };
 }  // namespace dev::eth

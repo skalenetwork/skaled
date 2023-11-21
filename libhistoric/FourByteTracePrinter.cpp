@@ -24,9 +24,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
-
 void FourByteTracePrinter::print(
-    Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& ) {
+    Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     std::map< string, uint64_t > callMap;
 
@@ -36,7 +35,7 @@ void FourByteTracePrinter::print(
     }
 }
 FourByteTracePrinter::FourByteTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace ) {}
+    : TracePrinter( standardTrace, "4byteTrace" ) {}
 
 
 }  // namespace dev::eth

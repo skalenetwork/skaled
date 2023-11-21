@@ -799,7 +799,7 @@ ExecutionResult Block::executeHistoricCall(
     auto onOp = OnOpFunc();
 
     if (_tracer) {
-        onOp = _tracer->onOp();
+        onOp = _tracer->functionToExecuteOnEachOperation();
     }
 
 

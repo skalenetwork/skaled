@@ -17,31 +17,37 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "FunctionCall.h"
+
 #include "AlethStandardTrace.h"
+
+#include "DefaultTracePrinter.h"
+#include "TraceStructuresAndDefs.h"
 
 
 namespace dev::eth {
 
-void eth::AlethStandardTrace::deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er,
+void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
     const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     _jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
-    STATE_CHECK(m_defaultOpTrace);
-    _jsonTrace["structLogs"] = *m_defaultOpTrace;
+    auto defaultOpTrace = m_standardTrace.getDefaultOpTrace();
+    STATE_CHECK( defaultOpTrace );
+    _jsonTrace["structLogs"] = *defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
     _jsonTrace["failed"] = failed;
     if ( !failed ) {
-        if ( getOptions().enableReturnData ) {
+        if ( m_standardTrace.getOptions().enableReturnData ) {
             _jsonTrace["returnValue"] = toHex( _er.output );
         }
     } else {
         auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = TracePrinter::evmErrorDescription( statusCode );
+        string errMessage = getEvmErrorDescription( statusCode );
         // return message in two fields for compatibility with different tools
         _jsonTrace["returnValue"] = errMessage;
         _jsonTrace["error"] = errMessage;
     }
 }
+DefaultTracePrinter::DefaultTracePrinter( AlethStandardTrace& standardTrace )
+    : TracePrinter( standardTrace, "defaultTrace" ) {}
 
-}
+}  // namespace dev::eth

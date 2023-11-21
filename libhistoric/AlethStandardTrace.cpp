@@ -99,24 +99,25 @@ void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Ins
     }
 
 
-    m_lastOp = OpExecutionRecord( _ext.depth, _inst, _gasRemaining, _lastOpGas );
+    m_lastOpRecord = OpExecutionRecord( _ext.depth, _inst, _gasRemaining, _lastOpGas );
 }
 void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
+    STATE_CHECK( !m_isFinalized )
     STATE_CHECK( _vm )
 
     auto currentDepth = _ext.depth;
-    if ( currentDepth == m_lastOp.m_depth + 1 ) {
+    if ( currentDepth == m_lastOpRecord.m_depth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
         recordFunctionIsCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
-    } else if ( currentDepth == m_lastOp.m_depth - 1 ) {
+    } else if ( currentDepth == m_lastOpRecord.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
         recordFunctionReturned( status, _vm->getMReturnData(),
             m_currentlyExecutingFunctionCall->getFunctionGasLimit() - _gasRemaining );
     } else {
         // we should not have skipped frames
-        STATE_CHECK( currentDepth == m_lastOp.m_depth )
+        STATE_CHECK( currentDepth == m_lastOpRecord.m_depth )
     }
 }
 
@@ -140,30 +141,26 @@ vector< uint8_t > AlethStandardTrace::extractMemoryByteArrayFromStackPointer(
 
 void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Address& _to,
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
-    auto nestedCall = make_shared< FunctionCall >( m_lastOp.m_op, _from, _to, _gasLimit,
-        m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOp.m_depth + 1 );
+    STATE_CHECK( !m_isFinalized )
+    auto nestedCall = make_shared< FunctionCall >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
+        m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOpRecord.m_depth + 1 );
 
-    if ( m_lastOp.m_depth >= 0 ) {
+    if ( m_lastOpRecord.m_depth >= 0 ) {
         // not the fist call
         STATE_CHECK( m_currentlyExecutingFunctionCall )
-        STATE_CHECK( m_currentlyExecutingFunctionCall->getDepth() == m_lastOp.m_depth )
+        STATE_CHECK( m_currentlyExecutingFunctionCall->getDepth() == m_lastOpRecord.m_depth )
         m_currentlyExecutingFunctionCall->addNestedCall( nestedCall );
-        m_currentlyExecutingFunctionCall = nestedCall;
     } else {
+        // the top function is called
         STATE_CHECK( !m_currentlyExecutingFunctionCall )
         m_topFunctionCall = nestedCall;
     }
     m_currentlyExecutingFunctionCall = nestedCall;
 }
-const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const {
-    STATE_CHECK( m_topFunctionCall );
-    return m_topFunctionCall;
-}
-
 
 void AlethStandardTrace::recordFunctionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
-    STATE_CHECK( m_lastOp.m_gasRemaining >= m_lastOp.m_opGas )
+    STATE_CHECK( m_lastOpRecord.m_gasRemaining >= m_lastOpRecord.m_opGas )
     STATE_CHECK( m_currentlyExecutingFunctionCall )
 
     m_currentlyExecutingFunctionCall->setReturnValues( _status, _returnData, _gasUsed );
@@ -179,7 +176,17 @@ void AlethStandardTrace::recordFunctionReturned(
     }
 }
 
+
+// the getter functions are called by printer classes after the trace has been generated
+
+const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const {
+    STATE_CHECK( m_isFinalized )
+    STATE_CHECK( m_topFunctionCall );
+    return m_topFunctionCall;
+}
+
 Json::Value AlethStandardTrace::getJSONResult() const {
+    STATE_CHECK( m_isFinalized )
     STATE_CHECK( !m_jsonTrace.isNull() )
     return m_jsonTrace;
 }
@@ -188,18 +195,25 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
     : m_defaultOpTrace{ std::make_shared< Json::Value >() },
       m_from{ _t.from() },
       m_to( _t.to() ),
-      m_lastOp(
+      m_lastOpRecord(
           // the top function is executed at depth 0
           // therefore it is called from depth -1
           -1,
           // when we start execution a user transaction the top level function can  be a call
           // or a contract create
           _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0 ),
-      noopTracePrinter( *this ),
-      fourByteTracePrinter( *this ),
-      callTracePrinter( *this ),
-      replayTracePrinter( *this ),
-      prestateTracePrinter( *this ) {
+      m_noopTracePrinter( *this ),
+      m_fourByteTracePrinter( *this ),
+      m_callTracePrinter( *this ),
+      m_replayTracePrinter( *this ),
+      m_prestateTracePrinter( *this ),
+      m_defaultTracePrinter( *this ),
+      m_tracePrinters{ { TraceType::DEFAULT_TRACER, m_defaultTracePrinter },
+          { TraceType::PRESTATE_TRACER, m_prestateTracePrinter },
+          { TraceType::CALL_TRACER, m_callTracePrinter },
+          { TraceType::REPLAY_TRACER, m_replayTracePrinter },
+          { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
+          { TraceType::NOOP_TRACER, m_noopTracePrinter } } {
     m_txHash = _t.sha3();
     m_options = TraceOptions::make( _options );
     // mark from and to accounts as accessed
@@ -213,6 +227,7 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
  */
 void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
+    STATE_CHECK( !m_isFinalized )
     recordInstructionExecution( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
 }
 
@@ -221,7 +236,7 @@ void AlethStandardTrace::recordInstructionExecution( uint64_t _pc, Instruction _
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
     STATE_CHECK( _vm )
     STATE_CHECK( _ext )
-
+    STATE_CHECK( !m_isFinalized )
 
     // remove const qualifier since we need to set tracing values in AlethExtVM
     AlethExtVM& ext = ( AlethExtVM& ) ( *_ext );
@@ -244,6 +259,7 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
     const LegacyVM* _vm ) {
     Json::Value r( Json::objectValue );
 
+    STATE_CHECK(!m_isFinalized)
     STATE_CHECK( _vm )
     STATE_CHECK( _ext )
 
@@ -304,72 +320,52 @@ void eth::AlethStandardTrace::finalizeTrace(
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
+    STATE_CHECK( !m_isFinalized.exchange( true ) )
+
     STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
     recordFunctionReturned( statusCode, _er.output, totalGasUsed );
 
-
     m_jsonTrace = Json::Value( Json::objectValue );
 
-    switch ( m_options.tracerType ) {
-    case TraceType::DEFAULT_TRACER:
-        deftracePrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
-        break;
-    case TraceType::PRESTATE_TRACER:
-        prestateTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
-        break;
-    case TraceType::CALL_TRACER:
-        callTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
-        break;
-    case TraceType::REPLAY_TRACER:
-        replayTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
-        break;
-    case TraceType::FOUR_BYTE_TRACER:
-        fourByteTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
-        break;
-    case TraceType::NOOP_TRACER:
-        noopTracePrinter.print( m_jsonTrace, _er, _stateBefore, _stateAfter );
-        break;
-    case TraceType::ALL_TRACER:
-        allTracesPrint( m_jsonTrace, _er, _stateBefore, _stateAfter );
+    if ( m_tracePrinters.count( m_options.tracerType ) > 0 ) {
+        m_tracePrinters.at( m_options.tracerType )
+            .print( m_jsonTrace, _er, _stateBefore, _stateAfter );
+    } else if ( m_options.tracerType == TraceType::ALL_TRACER ) {
+        printAllTraces( m_jsonTrace, _er, _stateBefore, _stateAfter );
+    } else {
+        // this should never happen
+        STATE_CHECK( false );
     }
 }
 
-void eth::AlethStandardTrace::allTracesPrint( Json::Value& _jsonTrace, ExecutionResult& _er,
+void eth::AlethStandardTrace::printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     STATE_CHECK( _jsonTrace.isObject() )
+    STATE_CHECK( m_isFinalized )
     Json::Value result = Json::Value( Json::ValueType::objectValue );
 
-    deftracePrint( result, _er, _stateBefore, _stateAfter );
-    m_jsonTrace["defaultTrace"] = result;
-
-    result.clear();
-    noopTracePrinter.print( result, _er, _stateBefore, _stateAfter );
-    m_jsonTrace["noopTrace"] = result;
-
-    result.clear();
-    fourByteTracePrinter.print( result, _er, _stateBefore, _stateAfter );
-    m_jsonTrace["4byteTrace"] = result;
-
-    result.clear();
-    prestateTracePrinter.print( result, _er, _stateBefore, _stateAfter );
-    m_jsonTrace["prestateTrace"] = result;
-
-    result.clear();
-    callTracePrinter.print( result, _er, _stateBefore, _stateAfter );
-    m_jsonTrace["callTrace"] = result;
-
-    result.clear();
-    replayTracePrinter.print( result, _er, _stateBefore, _stateAfter );
-    m_jsonTrace["replayTrace"] = result;
+    for ( auto&& entry : m_tracePrinters ) {
+        TracePrinter& printer = entry.second;
+        printer.print( result, _er, _stateBefore, _stateAfter );
+        m_jsonTrace[printer.getJsonName()];
+        result.clear();
+    }
 }
 const h256& AlethStandardTrace::getTxHash() const {
+    STATE_CHECK( m_isFinalized )
     return m_txHash;
 }
 const set< Address >& AlethStandardTrace::getAccessedAccounts() const {
+    STATE_CHECK( m_isFinalized )
     return m_accessedAccounts;
 }
 const map< Address, map< u256, u256 > >& AlethStandardTrace::getAccessedStorageValues() const {
+    STATE_CHECK( m_isFinalized )
     return m_accessedStorageValues;
+}
+const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
+    STATE_CHECK( m_isFinalized )
+    return m_defaultOpTrace;
 }
 }  // namespace dev::eth

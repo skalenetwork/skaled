@@ -35,7 +35,7 @@ public:
     explicit ReplayTracePrinter( AlethStandardTrace& standardTrace );
 
 public:
-    void print( Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&,
+    void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
 };
 }  // namespace dev::eth

@@ -213,7 +213,7 @@ void FunctionCall::setReturnValues(
     setGasUsed( _gasUsed );
 
     if ( _status != evmc_status_code::EVMC_SUCCESS ) {
-        setError( TracePrinter::evmErrorDescription( _status ) );
+        setError( TracePrinter::getEvmErrorDescription( _status ) );
     }
 
     if ( _status == evmc_status_code::EVMC_REVERT ) {

@@ -24,7 +24,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 // we try to be compatible with geth messages as much as we can
-string TracePrinter::evmErrorDescription( evmc_status_code _error ) {
+string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
     switch ( _error ) {
     case EVMC_SUCCESS:
         return "success";
@@ -63,6 +63,11 @@ string TracePrinter::evmErrorDescription( evmc_status_code _error ) {
     default:
         return "unknown error";
     };
+}
+TracePrinter::TracePrinter( AlethStandardTrace& _standardTrace, const string _jsonName )
+    : m_standardTrace( _standardTrace ), m_jsonName( _jsonName ) {}
+const string& TracePrinter::getJsonName() const {
+    return m_jsonName;
 }
 
 }  // namespace dev::eth

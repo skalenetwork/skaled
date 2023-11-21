@@ -17,21 +17,24 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#pragma once
 
-#include "AlethStandardTrace.h"
-#include "FourByteTracePrinter.h"
-#include "FunctionCall.h"
-#include "TraceStructuresAndDefs.h"
+#include "TracePrinter.h"
+
+namespace Json {
+class Value;
+}
 
 namespace dev::eth {
 
-void NoopTracePrinter::print(
-    Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
-    STATE_CHECK( _jsonTrace.isObject() );
-    _jsonTrace.clear();
-    // do nothing
-}
-NoopTracePrinter::NoopTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace, "noopTrace" ) {}
+struct ExecutionResult;
+class HistoricState;
 
+class DefaultTracePrinter : public TracePrinter {
+
+public:
+    explicit DefaultTracePrinter( AlethStandardTrace& standardTrace );
+    virtual void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
+        const HistoricState& ) override;
+};
 }  // namespace dev::eth

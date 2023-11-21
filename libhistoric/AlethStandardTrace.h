@@ -20,10 +20,11 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include "AlethExtVM.h"
 #include "CallTracePrinter.h"
+#include "DefaultTracePrinter.h"
 #include "FourByteTracePrinter.h"
 #include "NoopTracePrinter.h"
-#include "ReplayTracePrinter.h"
 #include "PrestateTracePrinter.h"
+#include "ReplayTracePrinter.h"
 #include "TraceOptions.h"
 #include "TraceStructuresAndDefs.h"
 #include "json/json.h"
@@ -49,28 +50,29 @@ public:
     // Append json trace to given (array) value
     explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
 
+    // this function will be executed on each EVM instruction
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
         bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
 
-    OnOpFunc onOp() {
+    OnOpFunc functionToExecuteOnEachOperation() {
         return [=]( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
                    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
             ( *this )( _steps, _pc, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM );
         };
     }
 
+    // this function will be called at the end of executions
     void finalizeTrace(
         ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
 
     [[nodiscard]] Json::Value getJSONResult() const;
-
     [[nodiscard]] const shared_ptr< FunctionCall >& getTopFunctionCall() const;
-
-    TraceOptions getOptions() const;
-
-    const map< Address, map< u256, u256 > >& getAccessedStorageValues() const;
-    const set< Address >& getAccessedAccounts() const;
+    [[nodiscard]] TraceOptions getOptions() const;
+    [[nodiscard]] const map< Address, map< u256, u256 > >& getAccessedStorageValues() const;
+    [[nodiscard]] const set< Address >& getAccessedAccounts() const;
+    [[nodiscard]] const h256& getTxHash() const;
+    [[nodiscard]] const shared_ptr< Json::Value >& getDefaultOpTrace() const;
 
 private:
     void recordInstructionExecution( uint64_t _pc, Instruction _inst, bigint _gasOpGas,
@@ -95,11 +97,8 @@ private:
     void appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
-    void deftracePrint( Json::Value& _jsonTrace, const ExecutionResult& _er, const HistoricState&,
-        const HistoricState& );
-
-    void allTracesPrint(
-        Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&, const HistoricState& );
+    void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
+        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
     shared_ptr< FunctionCall > m_topFunctionCall;
     shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;
@@ -116,16 +115,15 @@ private:
     // map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
     map< Address, map< u256, u256 > > m_accessedStorageValues;
-    OpExecutionRecord m_lastOp;
+    OpExecutionRecord m_lastOpRecord;
+    std::atomic< bool > m_isFinalized = false;
+    NoopTracePrinter m_noopTracePrinter;
+    FourByteTracePrinter m_fourByteTracePrinter;
+    CallTracePrinter m_callTracePrinter;
+    ReplayTracePrinter m_replayTracePrinter;
+    PrestateTracePrinter m_prestateTracePrinter;
+    DefaultTracePrinter m_defaultTracePrinter;
 
-
-    NoopTracePrinter noopTracePrinter;
-    FourByteTracePrinter fourByteTracePrinter;
-    CallTracePrinter callTracePrinter;
-    ReplayTracePrinter replayTracePrinter;
-    PrestateTracePrinter prestateTracePrinter;
-
-public:
-    const h256& getTxHash() const;
+    const map< TraceType, TracePrinter& > m_tracePrinters;
 };
 }  // namespace dev::eth

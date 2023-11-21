@@ -32,16 +32,14 @@ class HistoricState;
 
 class PrestateTracePrinter : public TracePrinter {
 public:
-    void print( Json::Value& _jsonTrace, ExecutionResult&, const HistoricState&,
+    void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
 
-private:
-public:
     explicit PrestateTracePrinter( AlethStandardTrace& standardTrace );
 
 private:
-    void printDiff( Json::Value& _jsonTrace, ExecutionResult&, const HistoricState& _stateBefore,
-        const HistoricState& _stateAfter );
+    void printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
+        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
 
     void printAllAccessedAccountPreValues(
         Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address );
@@ -55,6 +53,5 @@ private:
     uint64_t m_storageValuesReturnedPre = 0;
     uint64_t m_storageValuesReturnedPost = 0;
     uint64_t m_storageValuesReturnedAll = 0;
-
 };
 }  // namespace dev::eth

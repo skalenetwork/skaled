@@ -26,7 +26,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 void ReplayTracePrinter::print(
-    Json::Value& _jsonTrace, ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
+    Json::Value& _jsonTrace, const ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     _jsonTrace["vmTrace"] = Json::Value::null;
     _jsonTrace["stateDiff"] = Json::Value::null;
@@ -35,7 +35,7 @@ void ReplayTracePrinter::print(
     auto failed = _er.excepted != TransactionException::None;
     if ( failed ) {
         auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = TracePrinter::evmErrorDescription( statusCode );
+        string errMessage = getEvmErrorDescription( statusCode );
         _jsonTrace["error"] = errMessage;
     }
 
@@ -45,8 +45,12 @@ void ReplayTracePrinter::print(
     m_standardTrace.getTopFunctionCall()->printParityFunctionTrace( functionTraceArray, emptyAddress );
     _jsonTrace["trace"] = functionTraceArray;
 }
+
+
+
+
 ReplayTracePrinter::ReplayTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace ) {}
+    : TracePrinter( standardTrace,  "replayTrace" ) {}
 
 
 }  // namespace dev::eth

@@ -18,14 +18,15 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
+
 #include "AlethStandardTrace.h"
-#include "PrestateTracePrinter.h"
 #include "FunctionCall.h"
 #include "TraceStructuresAndDefs.h"
+#include "PrestateTracePrinter.h"
 
 namespace dev::eth {
 
-void PrestateTracePrinter::print( Json::Value& _jsonTrace, ExecutionResult& _er,
+void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     STATE_CHECK( _jsonTrace.isObject() );
     if ( m_standardTrace.getOptions().prestateDiffMode ) {
@@ -37,7 +38,7 @@ void PrestateTracePrinter::print( Json::Value& _jsonTrace, ExecutionResult& _er,
     }
 }
 
-void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, ExecutionResult&,
+void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
     const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
@@ -73,8 +74,9 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     }
 
     Json::Value storagePairs;
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) != m_standardTrace.getAccessedStorageValues().end() ) {
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at(_address) ) {
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
+         m_standardTrace.getAccessedStorageValues().end() ) {
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
             if ( _stateBefore.addressInUse( _address ) ) {
                 auto& storageAddress = it.first;
                 auto originalValue = _stateBefore.originalStorageValue( _address, storageAddress );
@@ -130,11 +132,12 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
 
     // post diffs for storage values
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) != m_standardTrace.getAccessedStorageValues().end() ) {
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
+         m_standardTrace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs( Json::objectValue );
 
         // iterate over all accessed storage values
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at(_address) ) {
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
             auto& storageAddress = it.first;
             auto& storageValue = it.second;
 
@@ -167,8 +170,9 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
     _postDiffTrace[toHexPrefixed( _address )] = value;
 }
 
+
 PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace ) {}
+    : TracePrinter( standardTrace, "prestateTrace" ) {}
 
 
 void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
@@ -196,10 +200,11 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
         }
     }
 
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) != m_standardTrace.getAccessedStorageValues().end() ) {
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
+         m_standardTrace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs;
 
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at(_address) ) {
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
             auto& storageAddress = it.first;
             auto& storageValuePost = it.second;
             bool includePair;
