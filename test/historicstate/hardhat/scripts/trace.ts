@@ -26,6 +26,25 @@ function CHECK(result: any): void {
         console.log(message);
         throw message;
     }
+
+
+}
+
+async function getAndPrintBlockTrace(): Promise<String> {
+
+    let newBlock: number = await hre.ethers.provider.getBlockNumber();
+
+    let blockStr = "0x" + newBlock.toString(16);
+
+    console.log("Got block number" + blockStr);
+
+    const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {
+        "tracer": "allTracer",
+        "tracerConfig": {"withLog": true}
+    }]);
+
+    console.log(JSON.stringify(trace, null, 4));
+    return trace;
 }
 
 async function getAndPrintTrace(hash: string): Promise<String> {
@@ -35,9 +54,10 @@ async function getAndPrintTrace(hash: string): Promise<String> {
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
 //        "tracerConfig": {"withLog":true}}]);
 
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "allTracer",
-        "tracerConfig": {"withLog":true}}]);
-
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {
+        "tracer": "allTracer",
+        "tracerConfig": {"withLog": true}
+    }]);
 
 
     console.log(JSON.stringify(trace, null, 4));
@@ -64,6 +84,7 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     // await waitUntilNextBlock()
 
+    await getAndPrintBlockTrace();
     await getAndPrintTrace(hash)
 
 
