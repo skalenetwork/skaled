@@ -302,7 +302,7 @@ public:
 
     // get node id for historic node in chain
     std::string getHistoricNodeId( unsigned _id ) const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes[_id].id.str();
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _id ).id.str();
     }
 
     // get schain index for historic node in chain
@@ -315,7 +315,7 @@ public:
 
     // get node owner for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes[_idx].publicKey;
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _idx ).publicKey;
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
