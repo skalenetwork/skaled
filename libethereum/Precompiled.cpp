@@ -687,7 +687,8 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes." };
+static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes.",
+    "skaleConfig.nodeInfo.wallets.ima.n" };
 
 static bool stat_is_accessible_json_path( const std::string& strPath ) {
     if ( strPath.empty() )
@@ -935,7 +936,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
             strValue = skutils::tools::trim_copy(
                 joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
         }
-        bytes response = dev::asBytes( strValue );
+        bytes response = dev::fromHex( strValue );
         return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
