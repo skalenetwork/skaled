@@ -140,7 +140,6 @@ struct GroupNode {
     u256 id;
     u256 schainIndex;
     std::string publicKey;
-    std::string address;
 };
 
 /// skale

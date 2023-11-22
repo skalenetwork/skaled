@@ -958,8 +958,8 @@ std::string SkaleHost::getHistoricNodeIndex( unsigned _index ) const {
     return m_client.getHistoricNodeIndex( _index );
 }
 
-std::string SkaleHost::getHistoricNodeOwner( unsigned _idx ) const {
-    return m_client.getHistoricNodeOwner( _idx );
+std::string SkaleHost::getHistoricNodePublicKey( unsigned _idx ) const {
+    return m_client.getHistoricNodePublicKey( _idx );
 }
 
 uint64_t SkaleHost::submitOracleRequest(

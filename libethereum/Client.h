@@ -311,8 +311,8 @@ public:
     }
 
     // get node owner for historic node in chain
-    std::string getHistoricNodeOwner( unsigned _idx ) const {
-        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_idx].address;
+    std::string getHistoricNodePublicKey( unsigned _idx ) const {
+        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_idx].publicKey;
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }

@@ -132,8 +132,8 @@ public:
     // get schain index for historic node in chain
     std::string getHistoricNodeIndex( unsigned _idx ) const;
 
-    // get node owner for historic node in chain
-    std::string getHistoricNodeOwner( unsigned _idx ) const;
+    // get public key for historic node in chain
+    std::string getHistoricNodePublicKey( unsigned _idx ) const;
 
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );

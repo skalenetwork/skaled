@@ -763,7 +763,7 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
     // first 3 elements are skaleConfig, sChain, nodes - it was checked before
     unsigned id = std::stoul( splitted.at( 3 ) );
     std::string fieldName;
-    std::set< std::string > allowedValues{ "id", "schainIndex", "owner" };
+    std::set< std::string > allowedValues{ "id", "schainIndex", "publicKey" };
     fieldName = splitted.at( 4 );
     if ( allowedValues.count( fieldName ) ) {
         return { fieldName, id };
@@ -848,24 +848,6 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-/*
- * this precompiled contract is designed to get access to specific config values that are ETH
- * addresses and works as key / values map input: bytes - length + path to config variable output:
- * bytes - config variable value
- *
- * variables available through this precompiled contract:
- * 1. owner - address for INDEX node in schain group for current block number
- * to access those variables one should use the following scheme:
- * prefix=skaleConfig.sChain.nodes - to access corresponding structure inside skaled
- * index - node index user wants to get access to
- * field - the field user wants to request
- *
- * example:
- * to request the value for 2-nd node (1 based) for the owner field the input should be
- * input=skaleConfig.sChain.nodes.1.owner (inside skaled node indexes are 0 based)
- * so one should pass the following as calldata
- * toBytes( input.length + toBytes(input) )
- */
 ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -878,28 +860,11 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
 
-        std::string strValue;
-        // call to skaleConfig.sChain.nodes means call to the historic data
-        // need to proccess it in a different way
-        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
-            if ( !g_skaleHost )
-                throw std::runtime_error( "SkaleHost accessor was not initialized" );
-
-            std::string field;
-            unsigned id;
-            std::tie( field, id ) = parseHistoricFieldRequest( rawName );
-            if ( field == "owner" ) {
-                strValue = g_skaleHost->getHistoricNodeOwner( id );
-            } else {
-                throw std::runtime_error( "Incorrect config field" );
-            }
-        } else {
-            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-            nlohmann::json joValue =
-                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-            strValue = skutils::tools::trim_copy(
-                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
-        }
+        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+        nlohmann::json joValue =
+            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+        std::string strValue = skutils::tools::trim_copy(
+            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
 
         dev::u256 uValue( strValue );
         bytes response = toBigEndian( uValue );
@@ -919,6 +884,24 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
+/*
+ * this precompiled contract is designed to get access to specific config values that are
+ * strings and works as key / values map input: bytes - length + path to config variable output:
+ * bytes - config variable value
+ *
+ * variables available through this precompiled contract:
+ * 1. publicKey - ETH public key for INDEX node in schain group for current block number
+ * to access those variables one should use the following scheme:
+ * prefix=skaleConfig.sChain.nodes - to access corresponding structure inside skaled
+ * index - node index user wants to get access to
+ * field - the field user wants to request
+ *
+ * example:
+ * to request the value for 2-nd node (1 based) for the publicKey field the input should be
+ * input=skaleConfig.sChain.nodes.1.publicKey (inside skaled node indexes are 0 based)
+ * so one should pass the following as calldata
+ * toBytes( input.length + toBytes(input) )
+ */
 ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -930,11 +913,29 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
-        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-        nlohmann::json joValue =
-            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
-        bytes response = stat_string_to_bytes_with_length( strValue );
+        std::string strValue;
+        // call to skaleConfig.sChain.nodes means call to the historic data
+        // need to proccess it in a different way
+        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
+            if ( !g_skaleHost )
+                throw std::runtime_error( "SkaleHost accessor was not initialized" );
+
+            std::string field;
+            unsigned id;
+            std::tie( field, id ) = parseHistoricFieldRequest( rawName );
+            if ( field == "publicKey" ) {
+                strValue = g_skaleHost->getHistoricNodePublicKey( id );
+            } else {
+                throw std::runtime_error( "Incorrect config field" );
+            }
+        } else {
+            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+            nlohmann::json joValue =
+                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+            strValue = skutils::tools::trim_copy(
+                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+        }
+        bytes response = dev::asBytes( strValue );
         return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();

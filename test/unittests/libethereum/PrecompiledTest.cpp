@@ -1635,7 +1635,6 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
                         13,
                         30,
                         "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b",
-                        "0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe"
                     ]
                 },
                 "finish_ts": null,
@@ -1652,7 +1651,6 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
                         3,
                         26,
                         "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba",
-                        "0x47bbe8db4e347b4e8c937c1c8350e4b7ed30adb3db69bbdb7a38c1f40a1b82fd"
                     ]
                 },
                 "finish_ts": 4294967290,
@@ -1732,7 +1730,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 13 );
 
-    input = stringToHex( "skaleConfig.sChain.nodes.0.owner" );
+    input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
     in = fromHex( numberToHex( 32 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
@@ -1745,14 +1743,14 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 
-    exec = PrecompiledRegistrar::executor( "getConfigVariableAddress" );
+    exec = PrecompiledRegistrar::executor( "getConfigVariableString" );
 
-    input = stringToHex( "skaleConfig.sChain.nodes.0.owner" );
+    input = stringToHex( "skaleConfig.sChain.nodes.0.publicKey" );
     in = fromHex( numberToHex( 32 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == fromHex("0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe") );
+    BOOST_REQUIRE( res.second == fromHex("0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b") );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.id" );
     input = input.substr(0, 58); // remove 0s in the end
