@@ -63,29 +63,33 @@ public:
     }
 
     size_t realBlockTransactionCount( dev::eth::BlockNumber _bn ) const {
-        lock_guard< std::mutex > lock( mtx );
-        ensureCached( _bn );
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
 
         return real2gappedCache[_bn].size();
     }
     size_t gappedBlockTransactionCount( dev::eth::BlockNumber _bn ) const {
-        lock_guard< std::mutex > lock( mtx );
-        ensureCached( _bn );
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
 
         return gapped2realCache[_bn].size();
     }
     // can throw
     size_t realIndexFromGapped( dev::eth::BlockNumber _bn, size_t _gappedIndex ) const {
-        lock_guard< std::mutex > lock( mtx );
-        ensureCached( _bn );
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
 
         // throws out_of_range!
         return gapped2realCache[_bn].at( _gappedIndex );
     }
     // can throw
     size_t gappedIndexFromReal( dev::eth::BlockNumber _bn, size_t _realIndex ) const {
-        lock_guard< std::mutex > lock( mtx );
-        ensureCached( _bn );
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
 
         // throws out_of_range!
         size_t res = real2gappedCache[_bn].at( _realIndex );
@@ -98,17 +102,19 @@ public:
     // can throw
     // TODO rename to valid
     bool transactionPresent( dev::eth::BlockNumber _bn, size_t _realIndex ) const {
-        lock_guard< std::mutex > lock( mtx );
-        ensureCached( _bn );
+        std::shared_lock< std::shared_mutex > readLock( mtx );
+        std::unique_lock< std::shared_mutex > writeLock( mtx, std::defer_lock );
+        ensureCached( _bn, readLock, writeLock );
 
         return real2gappedCache[_bn].at( _realIndex ) != UNDEFINED;
     }
 
 private:
-    void ensureCached( dev::eth::BlockNumber _bn ) const;
+    void ensureCached( dev::eth::BlockNumber _bn, std::shared_lock< std::shared_mutex >& _readLock,
+        std::unique_lock< std::shared_mutex >& _writeLock ) const;
 
 private:
-    mutable std::mutex mtx;
+    mutable std::shared_mutex mtx;
 
     const dev::eth::Interface& client;
     const size_t cacheSize;
