@@ -888,7 +888,7 @@ void SkaleHost::broadcastFunc() {
                 received = m_received.count( sha );
             }
 
-            if ( received == 0 ) {
+            if ( true || received == 0 ) {
                 try {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
