@@ -297,22 +297,25 @@ public:
     }
 
     std::array< std::string, 4 > getIMABLSPublicKey() const {
-        return chainParams().sChain.nodeGroups[historicGroupIndex].blsPublicKey;
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).blsPublicKey;
     }
 
     // get node id for historic node in chain
     std::string getHistoricNodeId( unsigned _id ) const {
-        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_id].id.str();
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes[_id].id.str();
     }
 
     // get schain index for historic node in chain
     std::string getHistoricNodeIndex( unsigned _idx ) const {
-        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_idx].schainIndex.str();
+        return chainParams()
+            .sChain.nodeGroups.at( historicGroupIndex )
+            .nodes[_idx]
+            .schainIndex.str();
     }
 
     // get node owner for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const {
-        return chainParams().sChain.nodeGroups[historicGroupIndex].nodes[_idx].publicKey;
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes[_idx].publicKey;
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }

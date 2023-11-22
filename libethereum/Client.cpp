@@ -1327,7 +1327,7 @@ void Client::initHistoricGroupIndex() {
 
 void Client::updateHistoricGroupIndex() {
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[historicGroupIndex].finishTs;
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups.at( historicGroupIndex ).finishTs;
     if ( blockTimestamp >= currentFinishTs )
         ++historicGroupIndex;
     if ( historicGroupIndex >= chainParams().sChain.nodeGroups.size() ) {
