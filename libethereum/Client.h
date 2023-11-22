@@ -309,7 +309,7 @@ public:
     std::string getHistoricNodeIndex( unsigned _idx ) const {
         return chainParams()
             .sChain.nodeGroups.at( historicGroupIndex )
-            .nodes[_idx]
+            .nodes.at( _idx )
             .schainIndex.str();
     }
 
