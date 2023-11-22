@@ -38,7 +38,12 @@
       "basePort": 1234,
       "logLevel": "trace",
       "logLevelProposal": "trace",
-      "ecdsaKeyName": "NEK:fa112"
+      "ecdsaKeyName": "NEK:fa112",
+      "wallets": {
+        "ima": {
+            "n": 1
+        }
+      }
     },
     "sChain": {
         "schainName": "TestChain",

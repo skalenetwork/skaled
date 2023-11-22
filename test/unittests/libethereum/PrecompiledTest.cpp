@@ -1620,7 +1620,12 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
       "basePort": 1234,
       "logLevel": "trace",
       "logLevelProposal": "trace",
-      "ecdsaKeyName": "NEK:fa112"
+      "ecdsaKeyName": "NEK:fa112",
+      "wallets": {
+        "ima": {
+            "n": 1
+        }
+      }
     },
     "sChain": {
         "schainName": "TestChain",
@@ -1740,6 +1745,21 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
     input = input.substr(0, 78); // remove 0s in the end
     in = fromHex( numberToHex( 39 ) + input );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( !res.first );
+
+    input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.n" );
+    input = input.substr(0, 68); // remove 0s in the end
+    in = fromHex( numberToHex( 34 ) + input );
+    res = exec( bytesConstRef( in.data(), in.size() ) );
+
+    BOOST_REQUIRE( res.first );
+    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 1 );
+
+    input = stringToHex( "skaleConfig.nodeInfo.wallets.ima.t" );
+    input = input.substr(0, 68); // remove 0s in the end
+    in = fromHex( numberToHex( 34 ) + input );
     res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( !res.first );
