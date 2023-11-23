@@ -266,6 +266,11 @@ ChainParams ChainParams::loadConfig(
                                        sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
                                        0;
 
+        s.precompiledConfigPatchTimestamp =
+            sChainObj.count( "precompiledConfigPatchTimestamp" ) ?
+                sChainObj.at( "precompiledConfigPatchTimestamp" ).get_int64() :
+                0;
+
         s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
                                        sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
                                        0;
@@ -288,9 +293,12 @@ ChainParams ChainParams::loadConfig(
                 auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
                 for ( const auto& groupNodeConf : groupNodesObj ) {
                     auto groupNodeConfObj = groupNodeConf.second.get_array();
-                    u256 sChainIndex = groupNodeConfObj[0].get_uint64();
-                    u256 id = groupNodeConfObj[1].get_uint64();
-                    std::string publicKey = groupNodeConfObj[2].get_str();
+                    u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
+                    u256 id = groupNodeConfObj.at( 1 ).get_uint64();
+                    std::string publicKey = groupNodeConfObj.at( 2 ).get_str();
+                    if ( publicKey.empty() ) {
+                        BOOST_THROW_EXCEPTION( std::runtime_error( "Empty public key in config" ) );
+                    }
                     groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
                 std::sort( groupNodes.begin(), groupNodes.end(),

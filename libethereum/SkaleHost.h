@@ -126,6 +126,15 @@ public:
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     std::array< std::string, 4 > getIMABLSPublicKey() const;
 
+    // get node id for historic node in chain
+    std::string getHistoricNodeId( unsigned _id ) const;
+
+    // get schain index for historic node in chain
+    std::string getHistoricNodeIndex( unsigned _idx ) const;
+
+    // get public key for historic node in chain
+    std::string getHistoricNodePublicKey( unsigned _idx ) const;
+
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
