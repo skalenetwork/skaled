@@ -106,6 +106,24 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
     return traces;
 }
 
+// TODO Make function without "block" parameter
+Json::Value Debug::debug_traceBlockByNumber( const string&
+#ifdef HISTORIC_STATE
+                                                 _blockNumber
+#endif
+    ,
+    Json::Value const&
+#ifdef HISTORIC_STATE
+        _json
+#endif
+    ) {
+    Json::Value ret;
+    checkHistoricStateEnabled();
+    Block block = m_eth.latestBlock();
+    ret["structLogs"] = traceBlock( block, _json );
+    return ret;
+}
+
 
 Json::Value Debug::debug_traceTransaction( string const&
 #ifdef HISTORIC_STATE
@@ -163,14 +181,6 @@ Json::Value Debug::debug_traceBlockByHash(
     return ret;
 }
 
-// TODO Make function without "block" parameter
-Json::Value Debug::debug_traceBlockByNumber( const string&  /*_blockNumber*/, Json::Value const& _json ) {
-    Json::Value ret;
-    checkHistoricStateEnabled();
-    Block block = m_eth.latestBlock();
-    ret["structLogs"] = traceBlock( block, _json );
-    return ret;
-}
 
 Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_addressHash*/, int _maxResults ) {
