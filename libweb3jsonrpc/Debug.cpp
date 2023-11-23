@@ -164,7 +164,7 @@ Json::Value Debug::debug_traceBlockByHash(
 }
 
 // TODO Make function without "block" parameter
-Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
+Json::Value Debug::debug_traceBlockByNumber( const string&  /*_blockNumber*/, Json::Value const& _json ) {
     Json::Value ret;
     checkHistoricStateEnabled();
     Block block = m_eth.latestBlock();

@@ -30,14 +30,9 @@ function CHECK(result: any): void {
 
 }
 
-async function getAndPrintBlockTrace(): Promise<String> {
+async function getAndPrintBlockTrace(blockNumber: number): Promise<String> {
 
-    let newBlock: number = await hre.ethers.provider.getBlockNumber();
-
-    let blockStr = "0x" + newBlock.toString(16);
-
-    console.log("Got block number" + blockStr);
-
+    const blockStr = "0x" + blockNumber.toString(16);
     const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {
         "tracer": "allTracer",
         "tracerConfig": {"withLog": true}
@@ -73,18 +68,16 @@ async function deployWriteAndDestroy(): Promise<void> {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     const deployedTracer = await tracer.deployed();
-
-
-    const deployBn = await ethers.provider.getBlockNumber();
-
+    const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTracer.deployTransaction.hash)
+    const deployBlockNumber : number = deployReceipt.blockNumber;
     const hash = deployedTracer.deployTransaction.hash;
     console.log(`Gas limit ${deployedTracer.deployTransaction.gasLimit}`);
-    console.log(`Contract deployed to ${deployedTracer.address} at block ${deployBn} tx hash ${hash}`);
+    console.log(`Contract deployed to ${deployedTracer.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
 
     // await waitUntilNextBlock()
 
-    await getAndPrintBlockTrace();
+    await getAndPrintBlockTrace(deployBlockNumber);
     await getAndPrintTrace(hash)
 
 

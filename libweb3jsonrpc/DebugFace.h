@@ -32,7 +32,7 @@ public:
             &dev::rpc::DebugFace::debug_preimageI );
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_traceBlockByNumber",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
-                                    jsonrpc::JSON_INTEGER, "param2", jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::JSON_STRING, "param2", jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_traceBlockByNumberI );
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_traceBlockByHash",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
@@ -116,7 +116,7 @@ public:
     }
     inline virtual void debug_traceBlockByNumberI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->debug_traceBlockByNumber( request[0u].asInt(), request[1u] );
+        response = this->debug_traceBlockByNumber( request[0u].asString(), request[1u] );
     }
     inline virtual void debug_traceBlockByHashI(
         const Json::Value& request, Json::Value& response ) {
@@ -186,7 +186,7 @@ public:
     virtual Json::Value debug_storageRangeAt( const std::string& param1, int param2,
         const std::string& param3, const std::string& param4, int param5 ) = 0;
     virtual std::string debug_preimage( const std::string& param1 ) = 0;
-    virtual Json::Value debug_traceBlockByNumber( int param1, const Json::Value& param2 ) = 0;
+    virtual Json::Value debug_traceBlockByNumber( const std::string& param1, const Json::Value& param2 ) = 0;
     virtual Json::Value debug_traceBlockByHash(
         const std::string& param1, const Json::Value& param2 ) = 0;
     virtual Json::Value debug_traceCall( const Json::Value& param1, const Json::Value& param2 ) = 0;
