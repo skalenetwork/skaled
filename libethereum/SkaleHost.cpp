@@ -673,7 +673,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             }
 
             // Deleting transaction from the transaction queue if it was broadcasted from
-            // the sync node 
+            // the sync node
             if ( m_tq.knownTransactions().count( sha ) != 0 ) {
                 if ( m_client.chainParams().nodeInfo.syncNode ) {
                     LOG( m_debugLogger ) << "Dropping txn from sync node " << sha << std::endl;
