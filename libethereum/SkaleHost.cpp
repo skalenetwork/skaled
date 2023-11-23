@@ -649,8 +649,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
             // if already known
             // TODO clear occasionally this cache?!
+            Transaction t;
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
-                Transaction t = m_m_transaction_cache.at( sha.asArray() );
+                t = m_m_transaction_cache.at( sha.asArray() );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
@@ -663,18 +664,25 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
                 // ).detach();
             } else {
-                Transaction t( data, CheckTransaction::Everything, true );
+                t = Transaction( data, CheckTransaction::Everything, true );
                 t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn!";
                 m_debugTracer.tracepoint( "import_consensus_born" );
                 have_consensus_born = true;
             }
+
+            // Deleting transaction from the transaction queue if it was broadcasted from
+            // the sync node 
             if ( m_tq.knownTransactions().count( sha ) != 0 ) {
-                // TODO fix this!!?
-                clog( VerbosityWarning, "skale-host" )
-                    << "Consensus returned 'future'' transaction that we didn't yet send!!";
-                m_debugTracer.tracepoint( "import_future" );
+                if ( m_client.chainParams().nodeInfo.syncNode ) {
+                    LOG( m_debugLogger ) << "Dropping txn from sync node " << sha << std::endl;
+                    m_tq.dropGood( t );
+                } else {
+                    clog( VerbosityWarning, "skale-host" )
+                        << "Consensus returned 'future'' transaction that we didn't yet send!!";
+                    m_debugTracer.tracepoint( "import_future" );
+                }
             }
 
         }  // for
