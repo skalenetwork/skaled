@@ -81,31 +81,6 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
     //    return state;
 }
 
-
-Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
-    State s( _block.state() );
-    //    s.setRoot(_block.stateRootBeforeTx(0));
-
-    Json::Value traces( Json::arrayValue );
-    /*
-    for ( unsigned k = 0; k < _block.pending().size(); k++ ) {
-        Transaction t = _block.pending()[k];
-
-        u256 const gasUsed = k ? _block.receipt( k - 1 ).cumulativeGasUsed() : 0;
-        auto const& bc = m_eth.blockChain();
-        EnvInfo envInfo(
-            _block.info(), m_eth.blockChain().lastBlockHashes(), gasUsed, bc.chainID() );
-        // HACK 0 here is for gasPrice
-        Executive e( s, envInfo, *m_eth.blockChain().sealEngine(), 0 );
-
-        eth::ExecutionResult er;
-        e.setResultRecipient( er );
-        traces.append( traceTransaction( e, t, _json ) );
-    }
-     */
-    return traces;
-}
-
 // TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByNumber( const string&
 #ifdef HISTORIC_STATE
@@ -114,14 +89,26 @@ Json::Value Debug::debug_traceBlockByNumber( const string&
     ,
     Json::Value const&
 #ifdef HISTORIC_STATE
-        _json
+        _jsonTraceConfig
 #endif
     ) {
     Json::Value ret;
     checkHistoricStateEnabled();
-    Block block = m_eth.latestBlock();
-    ret["structLogs"] = traceBlock( block, _json );
-    return ret;
+    auto bN = jsToBlockNumber( _blockNumber );
+
+    if ( bN == LatestBlock || bN == PendingBlock ) {
+        bN = m_eth.number();
+    }
+
+    if ( !m_eth.isKnown( bN ) ) {
+        throw std::logic_error( "Unknown block number:" + _blockNumber );
+    }
+
+    try {
+        return m_eth.traceBlock( bN, _jsonTraceConfig);
+    } catch ( Exception const& _e ) {
+        throw jsonrpc::JsonRpcException( _e.what() );
+    }
 }
 
 
@@ -164,20 +151,11 @@ Json::Value Debug::debug_traceTransaction( string const&
 }
 
 
-Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const& _json ) {
-    checkHistoricStateEnabled();
-    bytes bytes = fromHex( _blockRLP );
-    BlockHeader blockHeader( bytes );
-    return debug_traceBlockByHash( blockHeader.hash().hex(), _json );
-}
-
-// TODO Make function without "block" parameter
 Json::Value Debug::debug_traceBlockByHash(
     string const& /*_blockHash*/, Json::Value const& _json ) {
     checkHistoricStateEnabled();
     Json::Value ret;
     Block block = m_eth.latestBlock();
-    ret["structLogs"] = traceBlock( block, _json );
     return ret;
 }
 

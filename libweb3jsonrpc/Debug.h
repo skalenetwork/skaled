@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DebugFace.h"
+#include "test/tools/libtestutils/FixedClient.h"
 
 #include <libethereum/Executive.h>
 #include <libhistoric/AlethStandardTrace.h>
@@ -40,7 +41,6 @@ public:
     virtual Json::Value debug_storageRangeAt( std::string const& _blockHashOrNumber, int _txIndex,
         std::string const& _address, std::string const& _begin, int _maxResults ) override;
     virtual std::string debug_preimage( std::string const& _hashedKey ) override;
-    virtual Json::Value debug_traceBlock( std::string const& _blockRlp, Json::Value const& _json );
 
     void debug_pauseBroadcast( bool pause ) override;
     void debug_pauseConsensus( bool pause ) override;
@@ -66,7 +66,6 @@ private:
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
     skale::State stateAt( std::string const& _blockHashOrNumber, int _txIndex ) const;
-    Json::Value traceBlock( dev::eth::Block const& _block, Json::Value const& _json );
 
     bool enablePrivilegedApis;
 

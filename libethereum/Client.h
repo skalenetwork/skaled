@@ -58,9 +58,9 @@
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
 
+#include <libhistoric/AlethStandardTrace.h>
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
-#include <libhistoric/AlethStandardTrace.h>
 
 class ConsensusHost;
 class SnapshotManager;
@@ -126,8 +126,9 @@ public:
         FudgeFactor _ff = FudgeFactor::Strict ) override;
 
 #ifdef HISTORIC_STATE
-    Json::Value trace( Transaction& _t, BlockNumber _blockNumber,
-        std::shared_ptr< AlethStandardTrace > _tracer );
+    Json::Value trace(
+        Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer );
+    Json::Value traceBlock(BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
 #endif
 
 

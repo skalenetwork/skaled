@@ -1304,6 +1304,33 @@ Json::Value Client::trace(
         throw;
     }
 }
+
+
+Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
+    Block historicBlock = blockByNumber( _blockNumber );
+
+    Json::Value traces(Json::arrayValue);
+
+    HistoricState s(m_state.mutableHistoricState());
+    //s.setRoot(historicBlock.stateRootBeforeTx(0));
+
+    for (unsigned k = 0; k < historicBlock.pending().size(); k++)
+    {
+        Transaction t = historicBlock.pending()[k];
+
+        u256 const gasUsed = k ? historicBlock.receipt(k - 1).cumulativeGasUsed() : 0;
+        auto const& bc = blockChain();
+        EnvInfo envInfo(historicBlock.info(), bc.lastBlockHashes(), gasUsed, bc.chainID());
+        //Executive executive(s, envInfo, *bc.sealEngine());
+
+        eth::ExecutionResult er;
+        //e.setResultRecipient(er);
+        //traces.append(traceTransaction(e, t, _json));
+    }
+    return traces;
+}
+
+
 #endif
 
 void Client::initIMABLSPublicKey() {
