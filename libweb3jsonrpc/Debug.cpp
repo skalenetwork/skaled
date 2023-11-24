@@ -64,24 +64,9 @@ State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) 
         throw jsonrpc::JsonRpcException( "Negative index" );
 
     throw logic_error( "State at is not supported in Skale state" );
-
-    //    Block block = m_eth.block(blockHash(_blockHashOrNumber));
-    //    auto const txCount = block.pending().size();
-
-    //    State state(State::Null);
-    //    if (static_cast<size_t>(_txIndex) < txCount)
-    //        createIntermediateState(state, block, _txIndex, m_eth.blockChain());
-    //    else if (static_cast<size_t>(_txIndex) == txCount)
-    //        // the final state of block (after applying rewards)
-    //        state = block.state();
-    //    else
-    //        throw jsonrpc::JsonRpcException("Transaction index " + toString(_txIndex) +
-    //                                        " out of range for block " + _blockHashOrNumber);
-
-    //    return state;
 }
 
-// TODO Make function without "block" parameter
+
 Json::Value Debug::debug_traceBlockByNumber( const string&
 #ifdef HISTORIC_STATE
                                                  _blockNumber
@@ -162,80 +147,16 @@ Json::Value Debug::debug_traceBlockByHash(
 
 Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_addressHash*/, int _maxResults ) {
-    checkPrivilegedAccess();
-    Json::Value ret( Json::objectValue );
-
-    if ( _maxResults <= 0 )
-        throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
-
-    try {
-        State const state = stateAt( _blockHashOrNumber, _txIndex );
-
-        throw std::logic_error( "Addresses list is not suppoted in Skale state" );
-        //        auto const addressMap = state.addresses(h256(_addressHash), _maxResults);
-
-        //        Json::Value addressList(Json::objectValue);
-        //        for (auto const& record : addressMap.first)
-        //            addressList[toString(record.first)] = toString(record.second);
-
-        //        ret["addressMap"] = addressList;
-        //        ret["nextKey"] = toString(addressMap.second);
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
-        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-    }
-
-    return ret;
+    throw jsonrpc::JsonRpcException( "This API call is not supported" );
 }
 
 Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _txIndex,
     string const& /*_address*/, string const& /*_begin*/, int _maxResults ) {
-    checkPrivilegedAccess();
-    Json::Value ret( Json::objectValue );
-    ret["complete"] = true;
-    ret["storage"] = Json::Value( Json::objectValue );
-
-    if ( _maxResults <= 0 )
-        throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
-
-    try {
-        State const state = stateAt( _blockHashOrNumber, _txIndex );
-
-        throw std::logic_error( "Obtaining of full storage is not suppoted in Skale state" );
-        //        map<h256, pair<u256, u256>> const storage(state.storage(Address(_address)));
-
-        //        // begin is inclusive
-        //        auto itBegin = storage.lower_bound(h256fromHex(_begin));
-        //        for (auto it = itBegin; it != storage.end(); ++it)
-        //        {
-        //            if (ret["storage"].size() == static_cast<unsigned>(_maxResults))
-        //            {
-        //                ret["nextKey"] = toCompactHexPrefixed(it->first, 1);
-        //                break;
-        //            }
-
-        //            Json::Value keyValue(Json::objectValue);
-        //            std::string hashedKey = toCompactHexPrefixed(it->first, 1);
-        //            keyValue["key"] = toCompactHexPrefixed(it->second.first, 1);
-        //            keyValue["value"] = toCompactHexPrefixed(it->second.second, 1);
-
-        //            ret["storage"][hashedKey] = keyValue;
-        //        }
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
-        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-    }
-
-    return ret;
+    throw jsonrpc::JsonRpcException( "This API call is not supported" );
 }
 
 std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
-    checkPrivilegedAccess();
-    throw std::logic_error( "Preimages do not exist in Skale state" );
-    //    h256 const hashedKey(h256fromHex(_hashedKey));
-    //    bytes const key = m_eth.state().lookupAux(hashedKey);
-
-    //    return key.empty() ? std::string() : toHexPrefixed(key);
+    throw jsonrpc::JsonRpcException( "This API call is not supported" );
 }
 
 Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
