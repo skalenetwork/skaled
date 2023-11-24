@@ -116,15 +116,16 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
          _header.number() < chainParams().experimentalForkBlock && _t.hasZeroSignature() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 
+    // check chain id
     if ( _ir & ImportRequirements::TransactionSignatures ) {
-        if ( _header.number() >= chainParams().EIP158ForkBlock ) {
-            uint64_t chainID = chainParams().chainID;
-            if ( !ChainIdPatch::isEnabled() ) {
-                _t.checkChainId( chainID, chainParams().skaleDisableChainIdCheck );
-            } else {
-                _t.checkChainId( chainID, false );
-            }
-        }  // if
+        uint64_t chainID = chainParams().chainID;
+        if ( !ChainIdPatch::isEnabled() ) {
+            // use old behaviour
+            _t.checkChainId( chainID, chainParams().skaleDisableChainIdCheck );
+        } else {
+            // chain id is mandantory
+            _t.checkChainId( chainID, false );
+        }
     }
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
