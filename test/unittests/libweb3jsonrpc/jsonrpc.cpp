@@ -2496,8 +2496,19 @@ BOOST_AUTO_TEST_CASE( replayProtectedTxns ) {
     txHash = fixture.rpcClient->eth_sendRawTransaction( rawTxnGood );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    Json::Value receiptBad = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE( receiptBad["status"] == string( "0x1" ) );
+    Json::Value receiptGood = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receiptGood["status"] == string( "0x1" ) );
+
+//    Json::Value tx2;
+//    tx2["from"] = senderAddress;
+//    tx2["gas"] = "100000";
+//    tx2["chainId"] = "0xfffe"; <----- wrong id
+//    tx2["gasPrice"] = "20000000000";
+//    tx2["value"] = 1;
+//    tx2["to"] = "0x0000000000000000000000000000000000000033";
+//    txBad["nonce"] = 1;
+    std::string rawTxnWrongId = "0xf868808504a817c800830186a094000000000000000000000000000000000000003301808302001fa0b118db4e840ee077a8e81619fa844477a7913ec0c5871c79607d5315a2be05f6a06039ee9cd524ef6d7665ab6f12497940119accfcf0560fbcbe3570db06c19e00";
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( rawTxnWrongId ), jsonrpc::JsonRpcException ); // Invalid transaction signature.
 }
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
