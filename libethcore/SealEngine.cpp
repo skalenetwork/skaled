@@ -20,6 +20,7 @@
 #include "SealEngine.h"
 #include "TransactionBase.h"
 
+#include <libskale/ChainIdPatch.h>
 #include <libskale/POWCheckPatch.h>
 
 #include "../libdevcore/microprofile.h"
@@ -114,6 +115,17 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
          _header.number() < chainParams().experimentalForkBlock && _t.hasZeroSignature() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
+
+    if ( _ir & ImportRequirements::TransactionSignatures ) {
+        if ( _header.number() >= chainParams().EIP158ForkBlock ) {
+            uint64_t chainID = chainParams().chainID;
+            if ( !ChainIdPatch::isEnabled() ) {
+                _t.checkChainId( chainID, chainParams().skaleDisableChainIdCheck );
+            } else {
+                _t.checkChainId( chainID, false );
+            }
+        }  // if
+    }
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
          _header.number() >= chainParams().experimentalForkBlock && _t.hasZeroSignature() &&

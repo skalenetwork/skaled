@@ -280,6 +280,10 @@ ChainParams ChainParams::loadConfig(
                 sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
                 0;
 
+        s.chainIdPatchTimestamp = sChainObj.count( "chainIdPatchTimestamp" ) ?
+                                      sChainObj.at( "chainIdPatchTimestamp" ).get_int64() :
+                                      0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {

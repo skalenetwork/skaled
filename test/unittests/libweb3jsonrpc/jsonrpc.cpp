@@ -2447,6 +2447,59 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     }
 }
 
+BOOST_AUTO_TEST_CASE( replayProtectedTxns ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535^M
+    ret["params"]["chainID"] = "0xffff";
+    ret["skaleConfig"]["sChain"]["chainIdPatchTimestamp"] = 1;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 2000000 );
+
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txSample;
+    txSample["from"] = senderAddress;
+    txSample["gas"] = "100000";
+    txSample["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txSample["value"] = 1;
+    txSample["to"] = "0x0000000000000000000000000000000000000033";
+
+    auto txHash = fixture.rpcClient->eth_sendTransaction( txSample );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+//    Json::Value txBad;
+//    txBad["from"] = senderAddress;
+//    txBad["gas"] = "100000";
+//    txBad["gasPrice"] = "20000000000";
+//    txBad["value"] = 1;
+//    txBad["to"] = "0x0000000000000000000000000000000000000033";
+//    txBad["nonce"] = 1;
+    std::string rawTxnBad = "0xf865808504a817c800830186a094000000000000000000000000000000000000003301801ca030165119b46b09456b698e08da853d985825e275dbbfd709e3d9a3516adc3d8ea0593e6a550ffcf831a2fc1dff2c69e253360f789f6f7cab0007ec2e0b5b7f8606";
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( rawTxnBad ), jsonrpc::JsonRpcException ); // Invalid transaction format.
+
+//    Json::Value tx2;
+//    tx2["from"] = senderAddress;
+//    tx2["gas"] = "100000";
+//    tx2["chainId"] = "0xffff";
+//    tx2["gasPrice"] = "20000000000";
+//    tx2["value"] = 1;
+//    tx2["to"] = "0x0000000000000000000000000000000000000033";
+//    txBad["nonce"] = 1;
+    std::string rawTxnGood = "0xf868808504a817c800830186a0940000000000000000000000000000000000000033018083020021a0104c3fdbe965ca95f0b69d6ed4e375d5d71404cf322d090c4fa5e2fb3d3f9a41a04f6aa417f904e23ad8ab7cd89d4474295bdaf58f4456e3b84da70acfdb9b2f59";
+    txHash = fixture.rpcClient->eth_sendRawTransaction( rawTxnGood );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receiptBad = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receiptBad["status"] == string( "0x1" ) );
+}
+
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
     string etherbase = fixture.rpcClient->eth_coinbase();
