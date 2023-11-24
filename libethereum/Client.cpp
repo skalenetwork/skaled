@@ -1315,17 +1315,20 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
     auto hash = ClientBase::hashFromNumber( _blockNumber );
     Transactions transactions = this->transactions( hash );
 
+
+
     for (unsigned k = 0; k < transactions.size(); k++)
     {
+        Json::Value transactionLog(Json::objectValue);
+        auto hashString = toHexPrefixed(hash);
+        transactionLog["txHash"] = hashString;
         Transaction t = transactions.at(k);
         t.checkOutExternalGas( chainParams().externalGasDifficulty );
-
         auto tracer = std::make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
-
         auto er = previousBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, k );
         auto result =  tracer->getJSONResult();
-
-        traces.append(result);
+        transactionLog["result"] = result;
+        traces.append(transactionLog);
     }
     return traces;
 }
