@@ -55,6 +55,8 @@ public:
 
     evmc_status_code getAndClearLastCallStatus() const;
 
+    const bytes& getReturnData() const;
+
 private:
     u256* m_io_gas_p = 0;
     uint64_t m_io_gas = 0;
@@ -82,11 +84,6 @@ private:
 
     /// RETURNDATA buffer for memory returned from direct subcalls.
     bytes m_returnData;
-
-public:
-    const bytes& getMReturnData() const;
-
-private:
     // space for data stack, grows towards smaller addresses from the end
     u256 m_stack[1024];
     u256* m_stackEnd = &m_stack[1024];

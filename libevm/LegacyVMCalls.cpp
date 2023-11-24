@@ -271,6 +271,6 @@ evmc_status_code LegacyVM::getAndClearLastCallStatus()  const {
     return ret;
 
 }
-const bytes& LegacyVM::getMReturnData() const {
+const bytes& LegacyVM::getReturnData() const {
     return m_returnData;
 }

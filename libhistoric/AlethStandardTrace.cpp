@@ -113,7 +113,7 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
         recordFunctionIsCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
     } else if ( currentDepth == m_lastOpRecord.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
-        recordFunctionReturned( status, _vm->getMReturnData(),
+        recordFunctionReturned( status, _vm->getReturnData(),
             m_currentlyExecutingFunctionCall->getFunctionGasLimit() - _gasRemaining );
     } else {
         // we should not have skipped frames
