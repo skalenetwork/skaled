@@ -793,12 +793,11 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
 
 #ifdef HISTORIC_STATE
-ExecutionResult Block::executeHistoricCall(
-    LastBlockHashesFace const& _lh, Transaction const& _t, std::shared_ptr<AlethStandardTrace> _tracer ) {
-
+ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
+    std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex ) {
     auto onOp = OnOpFunc();
 
-    if (_tracer) {
+    if ( _tracer ) {
         onOp = _tracer->functionToExecuteOnEachOperation();
     }
 
@@ -810,23 +809,21 @@ ExecutionResult Block::executeHistoricCall(
     // transaction as possible.
     uncommitToSeal();
 
+    u256 const gasUsed =
+        _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
 
+    EnvInfo const envInfo{ info(), _lh, gasUsed, m_sealEngine->chainParams().chainID };
 
-    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
-
-
-
-    if (_tracer) {
-        HistoricState stateBefore(m_state.mutableHistoricState());
-        auto resultReceipt = m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted,
-            onOp );
-        HistoricState stateAfter(m_state.mutableHistoricState());
+    if ( _tracer ) {
+        HistoricState stateBefore( m_state.mutableHistoricState() );
+        auto resultReceipt = m_state.mutableHistoricState().execute(
+            envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
+        HistoricState stateAfter( m_state.mutableHistoricState() );
         _tracer->finalizeTrace( resultReceipt.first, stateBefore, stateAfter );
         return resultReceipt.first;
     } else {
-        auto resultReceipt =
-            m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t,
-                skale::Permanence::Reverted, onOp );
+        auto resultReceipt = m_state.mutableHistoricState().execute(
+            envInfo, *m_sealEngine, _t, skale::Permanence::Reverted, onOp );
         return resultReceipt.first;
     }
 }

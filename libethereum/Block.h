@@ -221,7 +221,7 @@ public:
 
 #ifdef HISTORIC_STATE
     ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
-        std::shared_ptr< AlethStandardTrace > _tracer );
+        std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex );
 #endif
 
 

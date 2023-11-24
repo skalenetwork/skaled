@@ -1254,7 +1254,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                         _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
-                ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr );
+                ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
                 throw;
@@ -1297,7 +1297,7 @@ Json::Value Client::trace(
     Block historicBlock = blockByNumber( _blockNumber );
     try {
         _t.checkOutExternalGas( ~u256( 0 ) );
-        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer );
+        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer, 0 );
         return _tracer->getJSONResult();
     } catch ( ... ) {
         cwarn << boost::current_exception_diagnostic_information();
@@ -1305,31 +1305,27 @@ Json::Value Client::trace(
     }
 }
 
-
 Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
     Block historicBlock = blockByNumber( _blockNumber );
 
     Json::Value traces(Json::arrayValue);
 
-    HistoricState s(m_state.mutableHistoricState());
-    //s.setRoot(historicBlock.stateRootBeforeTx(0));
+    dev::eth::HistoricState&  state = historicBlock.mutableState().mutableHistoricState();
 
     for (unsigned k = 0; k < historicBlock.pending().size(); k++)
     {
         Transaction t = historicBlock.pending()[k];
+        t.checkOutExternalGas( chainParams().externalGasDifficulty );
 
-        u256 const gasUsed = k ? historicBlock.receipt(k - 1).cumulativeGasUsed() : 0;
-        auto const& bc = blockChain();
-        EnvInfo envInfo(historicBlock.info(), bc.lastBlockHashes(), gasUsed, bc.chainID());
-        //Executive executive(s, envInfo, *bc.sealEngine());
+        auto tracer = std::make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
 
-        eth::ExecutionResult er;
-        //e.setResultRecipient(er);
-        //traces.append(traceTransaction(e, t, _json));
+        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, k );
+        auto result =  tracer->getJSONResult();
+
+        traces.append(result);
     }
     return traces;
 }
-
 
 #endif
 
