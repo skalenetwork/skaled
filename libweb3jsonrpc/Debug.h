@@ -65,7 +65,7 @@ private:
     std::string argv_options;
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
-    skale::State stateAt( std::string const& _blockHashOrNumber, int _txIndex ) const;
+
 
     bool enablePrivilegedApis;
 
