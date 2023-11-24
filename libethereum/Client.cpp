@@ -1306,6 +1306,8 @@ Json::Value Client::trace(
 }
 
 Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
+
+    Block previousBlock = blockByNumber( _blockNumber - 1);
     Block historicBlock = blockByNumber( _blockNumber );
 
     Json::Value traces(Json::arrayValue);
@@ -1320,7 +1322,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
         auto tracer = std::make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
 
-        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, k );
+        auto er = previousBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, k );
         auto result =  tracer->getJSONResult();
 
         traces.append(result);
