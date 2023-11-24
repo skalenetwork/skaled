@@ -88,7 +88,8 @@ async function deployWriteAndDestroy(): Promise<void> {
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
 
-    await getAndPrintTrace(transferReceipt.hash);
+    await getAndPrintBlockTrace(transferReceipt.blockNumber);
+    //await getAndPrintTrace(transferReceipt.hash);
 
     /*
 
