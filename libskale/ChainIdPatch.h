@@ -13,8 +13,8 @@ class Client;
 
 /*
  * Context: txns should be replay protected
- * Solution: we fixed the bug and added new config field introudceChangesTimestamp
- * Purpose: avoid incorrect txn behaviour
+ * Solution: we fixed the bug and added new config field introduceChangesTimestamp
+ * Purpose: improve security
  * Version introduced:
  */
 class ChainIdPatch : public SchainPatch {
