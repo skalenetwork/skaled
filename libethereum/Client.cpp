@@ -1310,11 +1310,12 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
     Json::Value traces(Json::arrayValue);
 
-    dev::eth::HistoricState&  state = historicBlock.mutableState().mutableHistoricState();
+    auto hash = ClientBase::hashFromNumber( _blockNumber );
+    Transactions transactions = this->transactions( hash );
 
-    for (unsigned k = 0; k < historicBlock.pending().size(); k++)
+    for (unsigned k = 0; k < transactions.size(); k++)
     {
-        Transaction t = historicBlock.pending()[k];
+        Transaction t = transactions.at(k);
         t.checkOutExternalGas( chainParams().externalGasDifficulty );
 
         auto tracer = std::make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
