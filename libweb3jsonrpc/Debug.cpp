@@ -27,7 +27,7 @@ using namespace dev::eth;
 using namespace skale;
 
 void Debug::checkPrivilegedAccess() const {
-    if ( enablePrivilegedApis ) {
+    if ( m_enablePrivilegedApis ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not enabled" ) );
     }
 }
@@ -43,8 +43,9 @@ Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const str
     bool _enablePrivilegedApis )
     : m_eth( _eth ),
       m_debugInterface( _debugInterface ),
-      argv_options( argv ),
-      enablePrivilegedApis( _enablePrivilegedApis ) {}
+      m_argvOptions( argv ),
+      m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE ),
+      m_enablePrivilegedApis( _enablePrivilegedApis ) {}
 
 
 h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
@@ -159,8 +160,7 @@ Json::Value Debug::debug_accountRangeAt( string const&, int, string const&, int 
     BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
 }
 
-Json::Value Debug::debug_storageRangeAt(
-    string const& , int , string const&, string const&, int ) {
+Json::Value Debug::debug_storageRangeAt( string const&, int, string const&, string const&, int ) {
     BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
 }
 
@@ -168,7 +168,7 @@ string Debug::debug_preimage( string const& ) {
     BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
 }
 
-Json::Value Debug::debug_traceCall( Json::Value const&, Json::Value const&  ) {
+Json::Value Debug::debug_traceCall( Json::Value const&, Json::Value const& ) {
     Json::Value ret;
     /*
     try {
@@ -238,7 +238,7 @@ string Debug::debug_getVersion() {
 
 string Debug::debug_getArguments() {
     checkPrivilegedAccess();
-    return argv_options;
+    return m_argvOptions;
 }
 
 string Debug::debug_getConfig() {

@@ -5,7 +5,7 @@
 
 #include <libethereum/Executive.h>
 #include <libhistoric/AlethStandardTrace.h>
-
+#include <libconsensus/thirdparty/lru_ordered_memory_constrained_cache.hpp>
 #include <boost/program_options.hpp>
 
 class SkaleHost;
@@ -18,6 +18,9 @@ class Client;
 }  // namespace eth
 namespace rpc {
 class SessionManager;
+
+constexpr size_t MAX_BLOCK_TRACES_CACHE_SIZE = 64 * 1024 * 1024;
+constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
 
 class Debug : public DebugFace {
 public:
@@ -62,12 +65,12 @@ public:
 private:
     eth::Client& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;
-    std::string argv_options;
+    std::string m_argvOptions;
+    cache::lru_ordered_memory_constrained_cache<std::string, Json::Value> m_blockTraceCache;
+    bool m_enablePrivilegedApis;
+
 
     h256 blockHash( std::string const& _blockHashOrNumber ) const;
-
-
-    bool enablePrivilegedApis;
 
     void checkPrivilegedAccess() const;
 
