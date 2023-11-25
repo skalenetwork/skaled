@@ -48,6 +48,8 @@
 
 #ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>
+#include <libhistoric/TraceOptions.h>
+#include <libhistoric/AlethStandardTrace.h>
 #endif
 
 
@@ -1315,17 +1317,17 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
     auto hash = ClientBase::hashFromNumber( _blockNumber );
     Transactions transactions = this->transactions( hash );
 
-
+    auto traceOptions = TraceOptions::make(_jsonTraceConfig);
 
     for (unsigned k = 0; k < transactions.size(); k++)
     {
         Json::Value transactionLog(Json::objectValue);
         auto hashString = toHexPrefixed(hash);
         transactionLog["txHash"] = hashString;
-        Transaction t = transactions.at(k);
-        t.checkOutExternalGas( chainParams().externalGasDifficulty );
-        auto tracer = std::make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
-        auto er = previousBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, k );
+        Transaction tx = transactions.at(k);
+        tx.checkOutExternalGas( chainParams().externalGasDifficulty );
+        auto tracer = std::make_shared< AlethStandardTrace >( tx, traceOptions );
+        auto executionResult = previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
         auto result =  tracer->getJSONResult();
         transactionLog["result"] = result;
         traces.append(transactionLog);

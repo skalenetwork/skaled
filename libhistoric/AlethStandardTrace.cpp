@@ -191,10 +191,12 @@ Json::Value AlethStandardTrace::getJSONResult() const {
     return m_jsonTrace;
 }
 
-AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _options )
+AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _options )
     : m_defaultOpTrace{ std::make_shared< Json::Value >() },
       m_from{ _t.from() },
       m_to( _t.to() ),
+      m_options(_options),
+      m_txHash(_t.sha3()),
       m_lastOpRecord(
           // the top function is executed at depth 0
           // therefore it is called from depth -1
@@ -214,8 +216,6 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, Json::Value const& _opt
           { TraceType::REPLAY_TRACER, m_replayTracePrinter },
           { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
           { TraceType::NOOP_TRACER, m_noopTracePrinter } } {
-    m_txHash = _t.sha3();
-    m_options = TraceOptions::make( _options );
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );

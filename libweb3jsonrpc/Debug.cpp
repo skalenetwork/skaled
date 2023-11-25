@@ -144,8 +144,9 @@ Json::Value Debug::debug_traceTransaction( string const&
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown block number" ) );
     }
 
+    auto traceOptions = TraceOptions::make(_jsonTraceConfig);
 
-    auto tracer = make_shared< AlethStandardTrace >( t, _jsonTraceConfig );
+    auto tracer = make_shared< AlethStandardTrace >( t, traceOptions );
 
     try {
         return m_eth.trace( t, blockNumber - 1, tracer );

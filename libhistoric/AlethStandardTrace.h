@@ -48,7 +48,7 @@ class FunctionCall;
 class AlethStandardTrace {
 public:
     // Append json trace to given (array) value
-    explicit AlethStandardTrace( Transaction& _t, Json::Value const& _options );
+    explicit AlethStandardTrace( Transaction& _t, const TraceOptions& _options );
 
     // this function will be executed on each EVM instruction
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
