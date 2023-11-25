@@ -5,8 +5,8 @@
 
 #include <libethereum/Executive.h>
 #include <libhistoric/AlethStandardTrace.h>
-#include <libconsensus/thirdparty/lru_ordered_memory_constrained_cache.hpp>
 #include <boost/program_options.hpp>
+#include <libconsensus/thirdparty/lru_ordered_memory_constrained_cache.hpp>
 
 class SkaleHost;
 class SkaleDebugInterface;
@@ -35,8 +35,8 @@ public:
         std::string const& _addressHash, int _maxResults ) override;
     virtual Json::Value debug_traceTransaction(
         std::string const& _txHash, Json::Value const& _json ) override;
-    virtual Json::Value debug_traceCall(
-        Json::Value const& _call, Json::Value const& _options ) override;
+    virtual Json::Value debug_traceCall( Json::Value const& _call, std::string const& _blockNumber,
+        Json::Value const& _options ) override;
     virtual Json::Value debug_traceBlockByNumber(
         std::string const& _blockNumber, Json::Value const& _json ) override;
     virtual Json::Value debug_traceBlockByHash(
@@ -66,7 +66,7 @@ private:
     eth::Client& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;
     std::string m_argvOptions;
-    cache::lru_ordered_memory_constrained_cache<std::string, Json::Value> m_blockTraceCache;
+    cache::lru_ordered_memory_constrained_cache< std::string, Json::Value > m_blockTraceCache;
     bool m_enablePrivilegedApis;
 
 

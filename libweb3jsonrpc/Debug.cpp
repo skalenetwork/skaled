@@ -169,7 +169,8 @@ string Debug::debug_preimage( string const& ) {
     BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
 }
 
-Json::Value Debug::debug_traceCall( Json::Value const&, Json::Value const& ) {
+Json::Value Debug::debug_traceCall(
+    Json::Value const& _call, std::string const& _blockNumber, Json::Value const& _options ) {
     Json::Value ret;
     /*
     try {
