@@ -40,6 +40,20 @@ public:
     bool prestateDiffMode = false;
     bool onlyTopCall = false;
     bool withLog = false;
+
+    std::string toString() {
+        std::stringstream s;
+        s << disableStorage;
+        s << enableMemory;
+        s << disableStack;
+        s << enableReturnData;
+        s << prestateDiffMode;
+        s << onlyTopCall;
+        s << withLog;
+        return s.str();
+    }
+
+
     TraceType tracerType = TraceType::DEFAULT_TRACER;
 
     static const std::map< std::string, TraceType > s_stringToTracerMap;

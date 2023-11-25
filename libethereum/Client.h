@@ -40,6 +40,7 @@
 #include <time.h>
 
 #include <boost/filesystem/path.hpp>
+#include <libconsensus/thirdparty/lru_ordered_memory_constrained_cache.hpp>
 
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
@@ -78,6 +79,10 @@ struct ActivityReport {
 };
 
 std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
+
+
+constexpr size_t MAX_BLOCK_TRACES_CACHE_SIZE = 64 * 1024 * 1024;
+constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -541,6 +546,7 @@ protected:
     const static dev::h256 empty_str_hash;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
+    cache::lru_ordered_memory_constrained_cache<std::string, Json::Value> m_blockTraceCache;
 
 private:
     void initIMABLSPublicKey();

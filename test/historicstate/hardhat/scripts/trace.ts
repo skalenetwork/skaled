@@ -78,7 +78,8 @@ async function deployWriteAndDestroy(): Promise<void> {
     // await waitUntilNextBlock()
 
     await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash)
+    await getAndPrintBlockTrace(deployBlockNumber);
+    //await getAndPrintTrace(hash)
 
 
     console.log(`Now minting`);
@@ -88,6 +89,7 @@ async function deployWriteAndDestroy(): Promise<void> {
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
 
+    await getAndPrintBlockTrace(transferReceipt.blockNumber);
     await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //await getAndPrintTrace(transferReceipt.hash);
 

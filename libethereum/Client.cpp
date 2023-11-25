@@ -140,7 +140,8 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ) {
+      m_dbPath( _dbPath ),
+      m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -1319,6 +1320,14 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
     auto traceOptions = TraceOptions::make(_jsonTraceConfig);
 
+    // cache results for better peformance
+    string key = to_string(_blockNumber) + traceOptions.toString();
+
+    auto cachedResult = m_blockTraceCache.getIfExists(key);
+    if (cachedResult.has_value()) {
+        return std::any_cast<Json::Value>(cachedResult);
+    }
+
     for (unsigned k = 0; k < transactions.size(); k++)
     {
         Json::Value transactionLog(Json::objectValue);
@@ -1332,6 +1341,10 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         transactionLog["result"] = result;
         traces.append(transactionLog);
     }
+
+    auto tracesSize = traces.toStyledString().size();
+    m_blockTraceCache.put(key,traces, tracesSize);
+
     return traces;
 }
 
