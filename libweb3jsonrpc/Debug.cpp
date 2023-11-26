@@ -119,7 +119,7 @@ Json::Value Debug::debug_traceBlockByHash( string const&
 
 Json::Value Debug::debug_traceTransaction( string const&
 #ifdef HISTORIC_STATE
-                                               _txHash
+                                               _txHashStr
 #endif
     ,
     Json::Value const&
@@ -129,9 +129,10 @@ Json::Value Debug::debug_traceTransaction( string const&
 ) {
 
     checkHistoricStateEnabled();
-
 #ifdef HISTORIC_STATE
-    LocalisedTransaction localisedTransaction = m_eth.localisedTransaction( h256( _txHash ) );
+    auto txHash = h256( _txHashStr );
+
+    LocalisedTransaction localisedTransaction = m_eth.localisedTransaction( txHash );
 
     if ( localisedTransaction.blockHash() == h256( 0 ) ) {
         BOOST_THROW_EXCEPTION(
@@ -148,7 +149,33 @@ Json::Value Debug::debug_traceTransaction( string const&
     auto tracer = make_shared< AlethStandardTrace >( localisedTransaction, traceOptions );
 
     try {
-        return m_eth.traceCall( localisedTransaction, blockNumber - 1, tracer );
+        Json::Value tracedBlock;
+        tracedBlock = m_eth.traceBlock( blockNumber, _jsonTraceConfig );
+        STATE_CHECK( tracedBlock.isArray() )
+        STATE_CHECK( !tracedBlock.empty() )
+
+
+        string lowerCaseTxStr = _txHashStr;
+        for (auto& c : lowerCaseTxStr) {
+            c = std::tolower(static_cast<unsigned char>(c));
+        }
+
+
+
+        for (Json::Value::ArrayIndex i = 0; i < tracedBlock.size(); i++) {
+            Json::Value& transactionTrace = tracedBlock[i];
+            STATE_CHECK(transactionTrace.isObject());
+            STATE_CHECK(transactionTrace.isMember("txHash"));
+            if (transactionTrace["txHash"] == lowerCaseTxStr ) {
+                STATE_CHECK(transactionTrace.isMember("result"));
+                return transactionTrace["result"];
+            } else {
+                cerr << transactionTrace["txHash"] << ":" + lowerCaseTxStr << endl;
+            }
+        }
+
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "No transaction in block" ) );
+
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
