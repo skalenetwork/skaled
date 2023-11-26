@@ -1332,9 +1332,9 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
     for ( unsigned k = 0; k < transactions.size(); k++ ) {
         Json::Value transactionLog( Json::objectValue );
-        auto hashString = toHexPrefixed( hash );
-        transactionLog["txHash"] = hashString;
         Transaction tx = transactions.at( k );
+        auto hashString = toHexPrefixed( tx.sha3() );
+        transactionLog["txHash"] = hashString;
         tx.checkOutExternalGas( chainParams().externalGasDifficulty );
         auto tracer = std::make_shared< AlethStandardTrace >( tx, traceOptions );
         auto executionResult =

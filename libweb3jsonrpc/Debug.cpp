@@ -169,8 +169,6 @@ Json::Value Debug::debug_traceTransaction( string const&
             if (transactionTrace["txHash"] == lowerCaseTxStr ) {
                 STATE_CHECK(transactionTrace.isMember("result"));
                 return transactionTrace["result"];
-            } else {
-                cerr << transactionTrace["txHash"] << ":" + lowerCaseTxStr << endl;
             }
         }
 

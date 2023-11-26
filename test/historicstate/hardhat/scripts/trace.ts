@@ -79,7 +79,7 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     await getAndPrintBlockTrace(deployBlockNumber);
     await getAndPrintBlockTrace(deployBlockNumber);
-    //await getAndPrintTrace(hash)
+    await getAndPrintTrace(hash)
 
 
     console.log(`Now minting`);
@@ -91,7 +91,7 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     await getAndPrintBlockTrace(transferReceipt.blockNumber);
     await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    //await getAndPrintTrace(transferReceipt.hash);
+    await getAndPrintTrace(transferReceipt.hash);
 
     /*
 
