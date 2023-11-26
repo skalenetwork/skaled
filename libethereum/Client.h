@@ -131,7 +131,7 @@ public:
         FudgeFactor _ff = FudgeFactor::Strict ) override;
 
 #ifdef HISTORIC_STATE
-    Json::Value trace(
+    Json::Value traceCall(
         Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer );
     Json::Value traceBlock(BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
 #endif

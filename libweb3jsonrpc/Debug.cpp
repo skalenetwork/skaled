@@ -131,28 +131,83 @@ Json::Value Debug::debug_traceTransaction( string const&
     checkHistoricStateEnabled();
 
 #ifdef HISTORIC_STATE
-    LocalisedTransaction t = m_eth.localisedTransaction( h256( _txHash ) );
+    LocalisedTransaction localisedTransaction = m_eth.localisedTransaction( h256( _txHash ) );
 
-    if ( t.blockHash() == h256( 0 ) ) {
+    if ( localisedTransaction.blockHash() == h256( 0 ) ) {
         BOOST_THROW_EXCEPTION(
             jsonrpc::JsonRpcException( "no committed transaction with this hash" ) );
     }
 
-    auto blockNumber = t.blockNumber();
+    auto blockNumber = localisedTransaction.blockNumber();
 
     if ( !m_eth.isKnown( blockNumber ) ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown block number" ) );
     }
 
-    auto traceOptions = TraceOptions::make(_jsonTraceConfig);
-
-    auto tracer = make_shared< AlethStandardTrace >( t, traceOptions );
+    auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+    auto tracer = make_shared< AlethStandardTrace >( localisedTransaction, traceOptions );
 
     try {
-        return m_eth.trace( t, blockNumber - 1, tracer );
+        return m_eth.traceCall( localisedTransaction, blockNumber - 1, tracer );
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
+#endif
+}
+
+Json::Value Debug::debug_traceCall( Json::Value const&
+#ifdef HISTORIC_STATE
+                                        _call
+#endif
+    ,
+    std::string const&
+#ifdef HISTORIC_STATE
+        _blockNumber
+#endif
+    ,
+    Json::Value const&
+#ifdef HISTORIC_STATE
+        _jsonTraceConfig
+#endif
+) {
+
+    Json::Value ret;
+    checkHistoricStateEnabled();
+
+#ifdef HISTORIC_STATE
+
+    try {
+        auto bN = jsToBlockNumber( _blockNumber );
+
+        if ( bN == LatestBlock || bN == PendingBlock ) {
+            bN = m_eth.number();
+        }
+
+        if ( !m_eth.isKnown( bN ) ) {
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( "Unknown block number:" + _blockNumber ) );
+        }
+
+        TransactionSkeleton ts = toTransactionSkeleton( _call );
+
+        if ( !ts.from ) {
+            ts.from = Address();
+        }
+
+        u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
+        u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
+
+        Transaction t( ts.value, gasPrice, gas, ts.to, ts.data, ts.nonce );
+        t.forceSender( ts.from );
+        t.forceChainId( m_eth.chainParams().chainID );
+
+        auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+        auto tracer = make_shared< AlethStandardTrace >( t, traceOptions );
+        return m_eth.traceCall( t, bN, tracer );
+    } catch ( Exception const& _e ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
+    }
+
 #endif
 }
 
@@ -169,36 +224,6 @@ string Debug::debug_preimage( string const& ) {
     BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
 }
 
-Json::Value Debug::debug_traceCall(
-    Json::Value const& _call, std::string const& _blockNumber, Json::Value const& _options ) {
-    Json::Value ret;
-    /*
-    try {
-        Block temp = m_eth.latestBlock();
-        TransactionSkeleton ts = toTransactionSkeleton( _call );
-        if ( !ts.from ) {
-            ts.from = Address();
-        }
-        u256 nonce = temp.transactionsFrom( ts.from );
-        u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
-        u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
-        temp.mutableState().addBalance( ts.from, gas * gasPrice + ts.value );
-        Transaction transaction( ts.value, gasPrice, gas, ts.to, ts.data, nonce );
-        transaction.forceSender( ts.from );
-        eth::ExecutionResult er;
-        // HACK 0 here is for gasPrice
-        Executive e( temp, m_eth.blockChain().lastBlockHashes(), 0 );
-        e.setResultRecipient( er );
-        Json::Value trace = traceTransaction( e, transaction, _options );
-        ret["gas"] = toJS( transaction.gas() );
-        ret["return"] = toHexPrefixed( er.output );
-        ret["structLogs"] = trace;
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
-    }
-     */
-    return ret;
-}
 
 void Debug::debug_pauseBroadcast( bool _pause ) {
     checkPrivilegedAccess();
