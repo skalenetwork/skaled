@@ -67,7 +67,7 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     _writeLock.lock();
 
     if ( real2gappedCache.size() > cacheSize ) {
-        throw std::runtime_error("real2gappedCache.size() > cacheSize");
+        throw std::runtime_error( "real2gappedCache.size() > cacheSize" );
     }
 
     if ( real2gappedCache.size() >= cacheSize ) {

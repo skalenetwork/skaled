@@ -190,8 +190,8 @@ public:
         const std::string& param1, const Json::Value& param2 ) = 0;
     virtual Json::Value debug_traceBlockByHash(
         const std::string& param1, const Json::Value& param2 ) = 0;
-    virtual Json::Value debug_traceCall( Json::Value const& _call,
-        std::string const& _blockNumber, Json::Value const& _options ) = 0;
+    virtual Json::Value debug_traceCall( Json::Value const& _call, std::string const& _blockNumber,
+        Json::Value const& _options ) = 0;
     virtual void debug_pauseBroadcast( bool pause ) = 0;
     virtual void debug_pauseConsensus( bool pause ) = 0;
     virtual void debug_forceBlock() = 0;

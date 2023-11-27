@@ -156,18 +156,17 @@ Json::Value Debug::debug_traceTransaction( string const&
 
 
         string lowerCaseTxStr = _txHashStr;
-        for (auto& c : lowerCaseTxStr) {
-            c = std::tolower(static_cast<unsigned char>(c));
+        for ( auto& c : lowerCaseTxStr ) {
+            c = std::tolower( static_cast< unsigned char >( c ) );
         }
 
 
-
-        for (Json::Value::ArrayIndex i = 0; i < tracedBlock.size(); i++) {
+        for ( Json::Value::ArrayIndex i = 0; i < tracedBlock.size(); i++ ) {
             Json::Value& transactionTrace = tracedBlock[i];
-            STATE_CHECK(transactionTrace.isObject());
-            STATE_CHECK(transactionTrace.isMember("txHash"));
-            if (transactionTrace["txHash"] == lowerCaseTxStr ) {
-                STATE_CHECK(transactionTrace.isMember("result"));
+            STATE_CHECK( transactionTrace.isObject() );
+            STATE_CHECK( transactionTrace.isMember( "txHash" ) );
+            if ( transactionTrace["txHash"] == lowerCaseTxStr ) {
+                STATE_CHECK( transactionTrace.isMember( "result" ) );
                 return transactionTrace["result"];
             }
         }
