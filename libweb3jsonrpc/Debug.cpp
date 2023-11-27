@@ -1,6 +1,3 @@
-#ifndef HISTORIC_STATE
-#define HISTORIC_STATE
-#endif
 
 #include "Debug.h"
 #include "JsonHelper.h"
@@ -71,6 +68,7 @@ Json::Value Debug::debug_traceBlockByNumber( const string&
 ) {
     Json::Value ret;
     checkHistoricStateEnabled();
+#ifdef HISTORIC_STATE
     auto bN = jsToBlockNumber( _blockNumber );
 
     if ( bN == LatestBlock || bN == PendingBlock ) {
@@ -87,6 +85,9 @@ Json::Value Debug::debug_traceBlockByNumber( const string&
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
+#else
+    return Json::Value();
+#endif
 }
 
 Json::Value Debug::debug_traceBlockByHash( string const&
@@ -101,6 +102,7 @@ Json::Value Debug::debug_traceBlockByHash( string const&
 ) {
     checkHistoricStateEnabled();
 
+#ifdef HISTORIC_STATE
     h256 h = jsToFixed< 32 >( _blockHash );
 
     if ( !m_eth.isKnown( h ) ) {
@@ -114,6 +116,9 @@ Json::Value Debug::debug_traceBlockByHash( string const&
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
+#else
+    return Json::Value();
+#endif
 }
 
 
@@ -176,6 +181,8 @@ Json::Value Debug::debug_traceTransaction( string const&
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
+#else
+    return Json::Value();
 #endif
 }
 
@@ -232,6 +239,8 @@ Json::Value Debug::debug_traceCall( Json::Value const&
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
 
+#else
+    return Json::Value();
 #endif
 }
 

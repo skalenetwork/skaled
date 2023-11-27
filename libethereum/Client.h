@@ -22,9 +22,6 @@
  */
 
 #pragma once
-#ifndef HISTORIC_STATE
-#define HISTORIC_STATE
-#endif
 
 #include <array>
 #include <atomic>
