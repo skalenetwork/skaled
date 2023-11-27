@@ -801,7 +801,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     size_t startNonce = m_client.countAt( DEBUGkeyPair.address() ).convert_to< size_t >();
     size_t chainId = m_client.chainParams().chainID;
     auto f = std::async( [this, startNonce, chainId]() {
-        DEBUGprepareTransactions( 1000, startNonce, chainId, m_tq );
+        DEBUGprepareTransactions( 250, startNonce, chainId, m_tq );
     } );
     DEBUGtxFuture = std::move( f );
 } catch ( const std::exception& ex ) {
@@ -828,8 +828,8 @@ void SkaleHost::startWorking() {
             std::throw_with_nested( SkaleHost::CreationException() );
         }
 
-        auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
-        m_broadcastThread = std::thread( bcast_func );
+        // auto bcast_func = std::bind( &SkaleHost::broadcastFunc, this );
+        // m_broadcastThread = std::thread( bcast_func );
     }
 
     auto csus_func = [&]() {
