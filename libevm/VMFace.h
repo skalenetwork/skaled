@@ -43,12 +43,10 @@ ETH_SIMPLE_EXCEPTION_VM( InvalidContractDeployer );
 /// differently than defined consensus exceptions.
 struct InternalVMError : Exception {};
 
-struct VMTracingError: Exception {
+struct VMTracingError : Exception {
     std::string message;
     explicit VMTracingError( const std::string& message ) : message( message ) {}
-    const char* what() const noexcept override {
-        return message.c_str();
-    }
+    const char* what() const noexcept override { return message.c_str(); }
 };
 
 /// Error info for EVMC status code.
