@@ -374,6 +374,55 @@ public:
     void will_exit() { m_will_exit = true; }
 };
 
+// 0xf15f970E370486d5137461c5936dC6019898e6C8
+dev::KeyPair DEBUGkeyPair(
+    Secret( "1eb95b71d59a08d111c29e54ff65c6be98ac58fc89868a80c0c427bdb5140375" ) );
+std::optional< std::future< void > > DEBUGtxFuture;
+
+class DEBUGTransaction : public Transaction {
+public:
+    void setChainId( size_t id ) {
+        uint8_t v = this->m_vrs->v;
+        this->m_vrs->v = uint8_t{ v + ( u256{ id } * 2 + 35 ) };
+        this->m_chainId = id;
+    }
+    DEBUGTransaction( TransactionSkeleton const& _ts, Secret const& _s ) : Transaction( _ts, _s ) {}
+};
+
+// 12782
+// real v = v - ( u256{ *m_chainId } * 2 + 35 )
+// chainId = ( v - 35 ) / 2
+Transactions DEBUGgenerateTransactions( size_t _txCount, size_t _startNonce, size_t _chainId ) {
+    KeyPair& sender = DEBUGkeyPair;
+    Transactions res;
+    size_t nonce = _startNonce;
+    for ( size_t i = 0; i < _txCount; ++i ) {
+        TransactionSkeleton ts;
+        ts.from = sender.address();
+        ts.to = ts.from;
+        ts.nonce = nonce++;
+        ts.gas = 21000;
+        ts.gasPrice = 300000;
+        DEBUGTransaction tx( ts, sender.secret() );
+        tx.setChainId( _chainId );
+        res.push_back( tx );
+    }  // for
+    return res;
+}
+
+void DEBUGprepareTransactions(
+    size_t _txCount, size_t _startNonce, size_t _chainId, TransactionQueue& _tq ) {
+    // gemerate
+    Transactions txns = DEBUGgenerateTransactions( _txCount, _startNonce, _chainId );
+
+    // put to queue and simulate broadcast
+    for ( size_t i = 0; i < _txCount; ++i ) {
+        txns[i].checkOutExternalGas( 1 );
+        _tq.import( txns[i] );
+        _tq.topTransactionsSync( 1, 0, 1 );
+    }  // for
+}
+
 ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     size_t _limit, u256& _stateRoot ) {
     assert( _limit > 0 );
@@ -420,11 +469,14 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     skutils::task::performance::action a_fetch_transactions(
         strPerformanceQueueName_fetch_transactions, strPerformanceActionName_fetch_transactions,
         jsn );
+
+    if ( DEBUGtxFuture.has_value() )
+        DEBUGtxFuture->wait();
+
     //
     m_debugTracer.tracepoint( "fetch_transactions" );
 
     int counter = 0;
-
     Transactions txns = m_tq.topTransactionsSync(
         _limit, [this, &to_delete, &counter]( const Transaction& tx ) -> bool {
             if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
@@ -452,7 +504,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
             return true;
         } );
-
 
     //
     a_fetch_transactions.finish();
@@ -746,6 +797,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             clog( VerbosityInfo, "skale-host" ) << "Rotation is completed. Instance is exiting";
         }
     }
+
+    size_t startNonce = m_client.countAt( DEBUGkeyPair.address() ).convert_to< size_t >();
+    size_t chainId = m_client.chainParams().chainID;
+    auto f = std::async( [this, startNonce, chainId]() {
+        DEBUGprepareTransactions( 1000, startNonce, chainId, m_tq );
+    } );
+    DEBUGtxFuture = std::move( f );
 } catch ( const std::exception& ex ) {
     cerror << "CRITICAL " << ex.what() << " (in createBlock)";
     cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
