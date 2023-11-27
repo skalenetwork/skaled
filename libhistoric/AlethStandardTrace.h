@@ -64,7 +64,7 @@ public:
 
     // this function will be called at the end of executions
     void finalizeTrace(
-        ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter );
+        ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
     [[nodiscard]] Json::Value getJSONResult() const;
     [[nodiscard]] const shared_ptr< FunctionCall >& getTopFunctionCall() const;
@@ -98,7 +98,7 @@ private:
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
-        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+        const HistoricState& _statePre, const HistoricState& _statePost );
 
     shared_ptr< FunctionCall > m_topFunctionCall;
     shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;

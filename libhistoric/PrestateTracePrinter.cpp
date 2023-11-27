@@ -27,27 +27,27 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
-    const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() );
     if ( m_standardTrace.getOptions().prestateDiffMode ) {
-        printDiff( _jsonTrace, _er, _stateBefore, _stateAfter );
+        printDiff( _jsonTrace, _er, _statePre, _statePost );
     } else {
         for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
-            printAllAccessedAccountPreValues( _jsonTrace, _stateBefore, item );
+            printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
         };
     }
 }
 
 void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
-    const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
     Json::Value preDiff( Json::objectValue );
     Json::Value postDiff( Json::objectValue );
 
     for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
-        printAccountPreDiff( preDiff, _stateBefore, _stateAfter, item );
-        printAccountPostDiff( postDiff, _stateBefore, _stateAfter, item );
+        printAccountPreDiff( preDiff, _statePre, _statePost, item );
+        printAccountPostDiff( postDiff, _statePre, _statePost, item );
     };
 
     _jsonTrace["pre"] = preDiff;
@@ -57,18 +57,18 @@ void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionRe
 
 // this function returns original values (pre) to result
 void PrestateTracePrinter::printAllAccessedAccountPreValues(
-    Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address ) {
+    Json::Value& _jsonTrace, const HistoricState& _statePre, const Address& _address ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
 
     Json::Value storagePreValues;
     // if this _address did not exist, we do not include it in the diff
-    if ( !_stateBefore.addressInUse( _address ) )
+    if ( !_statePre.addressInUse( _address ) )
         return;
-    storagePreValues["balance"] = toCompactHexPrefixed( _stateBefore.balance( _address ) );
-    storagePreValues["nonce"] = ( uint64_t ) _stateBefore.getNonce( _address );
+    storagePreValues["balance"] = toCompactHexPrefixed( _statePre.balance( _address ) );
+    storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
 
-    bytes const& code = _stateBefore.code( _address );
+    bytes const& code = _statePre.code( _address );
     if ( code != NullBytes ) {
         storagePreValues["code"] = toHexPrefixed( code );
     }
@@ -77,9 +77,9 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
          m_standardTrace.getAccessedStorageValues().end() ) {
         for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
-            if ( _stateBefore.addressInUse( _address ) ) {
+            if ( _statePre.addressInUse( _address ) ) {
                 auto& storageAddress = it.first;
-                auto originalValue = _stateBefore.originalStorageValue( _address, storageAddress );
+                auto originalValue = _statePre.originalStorageValue( _address, storageAddress );
                 if ( originalValue ) {
                     storagePairs[toHex( storageAddress )] = toHex( originalValue );
                     // return limited number of values to prevent DOS attacks
@@ -102,7 +102,7 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
 
 
 void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
-    const HistoricState& _stateBefore, const HistoricState& _statePost, const Address& _address ) {
+    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
     Json::Value value( Json::objectValue );
 
 
@@ -116,15 +116,15 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
 
     // if the new address, ot if the value changed, include in post trace
-    if ( !_stateBefore.addressInUse( _address ) ||
-         _stateBefore.balance( _address ) != balancePost ) {
+    if ( !_statePre.addressInUse( _address ) ||
+         _statePre.balance( _address ) != balancePost ) {
         value["balance"] = toCompactHexPrefixed( balancePost );
     }
-    if ( !_stateBefore.addressInUse( _address ) ||
-         _stateBefore.getNonce( _address ) != noncePost ) {
+    if ( !_statePre.addressInUse( _address ) ||
+         _statePre.getNonce( _address ) != noncePost ) {
         value["nonce"] = ( uint64_t ) noncePost;
     }
-    if ( !_stateBefore.addressInUse( _address ) || _stateBefore.code( _address ) != codePost ) {
+    if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {
         if ( codePost != NullBytes ) {
             value["code"] = toHexPrefixed( codePost );
         }
@@ -142,7 +142,7 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
             auto& storageValue = it.second;
 
             bool includePair;
-            if ( !_stateBefore.addressInUse( _address ) ) {
+            if ( !_statePre.addressInUse( _address ) ) {
                 // a new storage pair created. Include it in post diff
                 includePair = true;
             } else if ( storageValue == 0 ) {
@@ -151,7 +151,7 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
             } else {
                 // see if the storage value has been changed
                 includePair =
-                    _stateBefore.originalStorageValue( _address, storageAddress ) != storageValue;
+                    _statePre.originalStorageValue( _address, storageAddress ) != storageValue;
             }
 
             if ( includePair ) {

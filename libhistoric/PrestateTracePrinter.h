@@ -39,15 +39,15 @@ public:
 
 private:
     void printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
-        const HistoricState& _stateBefore, const HistoricState& _stateAfter );
+        const HistoricState& _statePre, const HistoricState& _statePost );
 
     void printAllAccessedAccountPreValues(
-        Json::Value& _jsonTrace, const HistoricState& _stateBefore, const Address& _address );
+        Json::Value& _jsonTrace, const HistoricState& _statePre, const Address& _address );
 
     void printAccountPreDiff( Json::Value& _preDiffTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
 
-    void printAccountPostDiff( Json::Value& _postDiffTrace, const HistoricState& _stateBefore,
+    void printAccountPostDiff( Json::Value& _postDiffTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
 
     uint64_t m_storageValuesReturnedPre = 0;

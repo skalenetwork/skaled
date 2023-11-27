@@ -316,7 +316,7 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
 
 
 void eth::AlethStandardTrace::finalizeTrace(
-    ExecutionResult& _er, HistoricState& _stateBefore, HistoricState& _stateAfter ) {
+    ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
@@ -330,9 +330,9 @@ void eth::AlethStandardTrace::finalizeTrace(
 
     if ( m_tracePrinters.count( m_options.tracerType ) > 0 ) {
         m_tracePrinters.at( m_options.tracerType )
-            .print( m_jsonTrace, _er, _stateBefore, _stateAfter );
+            .print( m_jsonTrace, _er, _statePre, _statePost );
     } else if ( m_options.tracerType == TraceType::ALL_TRACER ) {
-        printAllTraces( m_jsonTrace, _er, _stateBefore, _stateAfter );
+        printAllTraces( m_jsonTrace, _er, _statePre, _statePost );
     } else {
         // this should never happen
         STATE_CHECK( false );
@@ -340,14 +340,14 @@ void eth::AlethStandardTrace::finalizeTrace(
 }
 
 void eth::AlethStandardTrace::printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
-    const HistoricState& _stateBefore, const HistoricState& _stateAfter ) {
+    const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() )
     STATE_CHECK( m_isFinalized )
     Json::Value result = Json::Value( Json::ValueType::objectValue );
 
     for ( auto&& entry : m_tracePrinters ) {
         TracePrinter& printer = entry.second;
-        printer.print( result, _er, _stateBefore, _stateAfter );
+        printer.print( result, _er, _statePre, _statePost );
         m_jsonTrace[printer.getJsonName()] = result;
         result.clear();
     }
