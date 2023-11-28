@@ -53,10 +53,8 @@ public:
     // Append json trace to given (array) value
     explicit AlethStandardTrace( Transaction& _t, const TraceOptions& _options );
 
-
-
     // this function is executed on each operation
-    OnOpFunc functionToExecuteOnEachOperation() {
+    [[nodiscard]] OnOpFunc functionToExecuteOnEachOperation() {
         return [=]( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
                    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
             ( *this )( _steps, _pc, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM );
@@ -64,8 +62,7 @@ public:
     }
 
     // this function will be called at the end of executions
-    void finalizeTrace(
-        ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
+    void finalizeTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
     [[nodiscard]] Json::Value getJSONResult() const;
     [[nodiscard]] const shared_ptr< FunctionCall >& getTopFunctionCall() const;
@@ -75,33 +72,51 @@ public:
     [[nodiscard]] const h256& getTxHash() const;
     [[nodiscard]] const shared_ptr< Json::Value >& getDefaultOpTrace() const;
 
+
+    void setCurrentlyExecutingFunctionCall(
+        const shared_ptr< FunctionCall >& _currentlyExecutingFunctionCall );
+
+    [[nodiscard]] const shared_ptr< FunctionCall >& getCurrentlyExecutingFunctionCall() const;
+    void setTopFunctionCall( const shared_ptr< FunctionCall >& _topFunctionCall );
+
+
 private:
-    // this function will be executed on each EVM instruction
+    // this operator will be executed by skaled on each EVM instruction
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
         bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
-    void recordInstructionExecution( uint64_t _pc, Instruction _inst, bigint _gasOpGas,
+    // called to record execution of each instruction
+    void recordInstructionIsExecuted( uint64_t _pc, Instruction _inst, bigint _gasOpGas,
         bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
+    // called to record function execution when a function of this or other contract is called
     void recordFunctionIsCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
         const vector< uint8_t >& _inputData, const u256& _value );
 
+    // called when a function returns
     void recordFunctionReturned(
         evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
 
-    void recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
+    // analyze instruction and record function calls, returns and storage value
+    // accesses
+    void analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
         uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
         const LegacyVM* _vm );
 
-    [[nodiscard]] static vector< uint8_t > extractMemoryByteArrayFromStackPointer(
+    // get the currently executing smartcontract memory from EVM
+    [[nodiscard]] static vector< uint8_t > extractSmartContractMemoryByteArrayFromStackPointer(
         const LegacyVM* _vm );
 
+
+    // this is called when the function call depth of the current instruction is different from the
+    // previous instruction. This happens when a function is called or returned.
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining );
 
     void appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
+    // print all supported traces. This can be used for QA
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
 

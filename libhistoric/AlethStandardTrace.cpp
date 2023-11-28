@@ -29,15 +29,17 @@ TraceOptions eth::AlethStandardTrace::getOptions() const {
 }
 
 
-void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Instruction& _inst,
+void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
     uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
     const LegacyVM* _vm ) {
-    // record the account access
-
     STATE_CHECK( _face )
     STATE_CHECK( _vm )
 
+    // check if instruction depth changed. This means a function has been called or has returned
     processFunctionCallOrReturnIfHappened( _ext, _vm, ( uint64_t ) _gasRemaining );
+
+    // main analysis switc
+    // analyze and record acceses to storage and accounts. as well as return data and logs
 
     vector< uint8_t > returnData;
 
@@ -86,13 +88,12 @@ void AlethStandardTrace::recordAccessesToAccountsAndStorageValues( uint64_t, Ins
         STATE_CHECK( logTopicsCount <= 4 )
         if ( _vm->stackSize() < 2 + logTopicsCount )
             break;
-        auto logData = extractMemoryByteArrayFromStackPointer( _vm );
+        auto logData = extractSmartContractMemoryByteArrayFromStackPointer( _vm );
         vector< u256 > topics;
         for ( uint64_t i = 0; i < logTopicsCount; i++ ) {
             topics.push_back( _vm->getStackElement( 2 + i ) );
         };
-        STATE_CHECK( m_currentlyExecutingFunctionCall )
-        m_currentlyExecutingFunctionCall->addLogEntry( logData, topics );
+        getCurrentlyExecutingFunctionCall()->addLogEntry( logData, topics );
     }
     default:
         break;
@@ -107,6 +108,9 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     STATE_CHECK( _vm )
 
     auto currentDepth = _ext.depth;
+
+    // check if instruction depth changed. This means a function has been called or has returned
+
     if ( currentDepth == m_lastOpRecord.m_depth + 1 ) {
         // we are beginning to execute a new function
         auto data = _ext.data.toVector();
@@ -114,15 +118,15 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     } else if ( currentDepth == m_lastOpRecord.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
         recordFunctionReturned( status, _vm->getReturnData(),
-            m_currentlyExecutingFunctionCall->getFunctionGasLimit() - _gasRemaining );
+            getCurrentlyExecutingFunctionCall()->getFunctionGasLimit() - _gasRemaining );
     } else {
-        // we should not have skipped frames
+        // depth did not increase or decrease by one, therefore it should be the same
         STATE_CHECK( currentDepth == m_lastOpRecord.m_depth )
     }
 }
 
 
-vector< uint8_t > AlethStandardTrace::extractMemoryByteArrayFromStackPointer(
+vector< uint8_t > AlethStandardTrace::extractSmartContractMemoryByteArrayFromStackPointer(
     const LegacyVM* _vm ) {
     STATE_CHECK( _vm )
 
@@ -142,20 +146,31 @@ vector< uint8_t > AlethStandardTrace::extractMemoryByteArrayFromStackPointer(
 void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Address& _to,
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
     STATE_CHECK( !m_isFinalized )
-    auto nestedCall = make_shared< FunctionCall >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
+
+    auto functionCall = make_shared< FunctionCall >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
         m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOpRecord.m_depth + 1 );
 
     if ( m_lastOpRecord.m_depth >= 0 ) {
-        // not the fist call
-        STATE_CHECK( m_currentlyExecutingFunctionCall )
-        STATE_CHECK( m_currentlyExecutingFunctionCall->getDepth() == m_lastOpRecord.m_depth )
-        m_currentlyExecutingFunctionCall->addNestedCall( nestedCall );
+        // we are not in the top smartcontract call
+        // add this call to the as a nested call to the currently
+        // executing function call
+        STATE_CHECK( getCurrentlyExecutingFunctionCall()->getDepth() == m_lastOpRecord.m_depth )
+        getCurrentlyExecutingFunctionCall()->addNestedCall( functionCall );
     } else {
         // the top function is called
+        // this happens at the beginning of the execution. When this happens, we init
+        // m_lastOpRecord.m_depth to -1
+        STATE_CHECK( m_lastOpRecord.m_depth == -1 )
         STATE_CHECK( !m_currentlyExecutingFunctionCall )
-        m_topFunctionCall = nestedCall;
+        // at init, m_topFuntionCall is null, set it now.
+        setTopFunctionCall( functionCall );
     }
-    m_currentlyExecutingFunctionCall = nestedCall;
+    // set the currently executing call to the funtionCall we just created
+    setCurrentlyExecutingFunctionCall( functionCall );
+}
+void AlethStandardTrace::setTopFunctionCall( const shared_ptr< FunctionCall >& _topFunctionCall ) {
+    STATE_CHECK( _topFunctionCall )
+    m_topFunctionCall = _topFunctionCall;
 }
 
 void AlethStandardTrace::recordFunctionReturned(
@@ -163,16 +178,17 @@ void AlethStandardTrace::recordFunctionReturned(
     STATE_CHECK( m_lastOpRecord.m_gasRemaining >= m_lastOpRecord.m_opGas )
     STATE_CHECK( m_currentlyExecutingFunctionCall )
 
-    m_currentlyExecutingFunctionCall->setReturnValues( _status, _returnData, _gasUsed );
+    // record return values
+    getCurrentlyExecutingFunctionCall()->setReturnValues( _status, _returnData, _gasUsed );
 
     if ( m_currentlyExecutingFunctionCall == m_topFunctionCall ) {
-        // the top function returned
+        // the top function returned. This is the end of the execution.
         return;
     } else {
         // move m_currentlyExecutingFunctionCall to the parent function
-        auto parentCall = m_currentlyExecutingFunctionCall->getParentCall().lock();
-        STATE_CHECK( parentCall )
-        m_currentlyExecutingFunctionCall = parentCall;
+        // we are using a weak pointer here to avoid circular references in shared pointers
+        auto parentCall = getCurrentlyExecutingFunctionCall()->getParentCall().lock();
+        setCurrentlyExecutingFunctionCall( parentCall );
     }
 }
 
@@ -185,6 +201,7 @@ const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const
     return m_topFunctionCall;
 }
 
+// get the printed result. This happens at the end of the execution
 Json::Value AlethStandardTrace::getJSONResult() const {
     STATE_CHECK( m_isFinalized )
     STATE_CHECK( !m_jsonTrace.isNull() )
@@ -195,8 +212,8 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _op
     : m_defaultOpTrace{ std::make_shared< Json::Value >() },
       m_from{ _t.from() },
       m_to( _t.to() ),
-      m_options(_options),
-      m_txHash(_t.sha3()),
+      m_options( _options ),
+      m_txHash( _t.sha3() ),
       m_lastOpRecord(
           // the top function is executed at depth 0
           // therefore it is called from depth -1
@@ -223,43 +240,43 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _op
 
 
 /*
- * This function is called on each EVM op
+ * This function is called by EVM on each instruction
  */
 void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
     STATE_CHECK( !m_isFinalized )
-    recordInstructionExecution( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
+    recordInstructionIsExecuted( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
 }
 
 // this will be called each time before an instruction is executed by evm
-void AlethStandardTrace::recordInstructionExecution( uint64_t _pc, Instruction _inst,
-    bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
+void AlethStandardTrace::recordInstructionIsExecuted( uint64_t _pc, Instruction _inst,
+    bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt ) {
     STATE_CHECK( _vm )
-    STATE_CHECK( _ext )
+    STATE_CHECK( _voidExt )
     STATE_CHECK( !m_isFinalized )
 
     // remove const qualifier since we need to set tracing values in AlethExtVM
-    AlethExtVM& ext = ( AlethExtVM& ) ( *_ext );
+    AlethExtVM& ext = ( AlethExtVM& ) ( *_voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
     if ( !vm ) {
         BOOST_THROW_EXCEPTION( std::runtime_error( std::string( "Null _vm in" ) + __FUNCTION__ ) );
     }
 
-    recordAccessesToAccountsAndStorageValues(
-        _pc, _inst, ( uint64_t ) _gasOpGas, ( uint64_t ) _gasRemaining, _ext, ext, vm );
+    analyzeInstructionAndRecordNeededInformation(
+        _pc, _inst, ( uint64_t ) _gasOpGas, ( uint64_t ) _gasRemaining, _voidExt, ext, vm );
 
     if ( m_options.tracerType == TraceType::DEFAULT_TRACER ||
          m_options.tracerType == TraceType::ALL_TRACER )
-        appendOpToStandardOpTrace( _pc, _inst, _gasOpGas, _gasRemaining, _ext, ext, vm );
+        appendOpToStandardOpTrace( _pc, _inst, _gasOpGas, _gasRemaining, _voidExt, ext, vm );
 }
 
-
+// append instruction record to the default trace log that logs every instruction
 void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst,
     const bigint& _gasCost, const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt,
     const LegacyVM* _vm ) {
     Json::Value r( Json::objectValue );
 
-    STATE_CHECK(!m_isFinalized)
+    STATE_CHECK( !m_isFinalized )
     STATE_CHECK( _vm )
     STATE_CHECK( _ext )
 
@@ -314,12 +331,14 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
     m_defaultOpTrace->append( r );
 }
 
-
+// execution completed.  Now use the tracer that the user requested
+// to print the resulting trace
 void eth::AlethStandardTrace::finalizeTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
+    // we are done. Set the trace to finalized.
     STATE_CHECK( !m_isFinalized.exchange( true ) )
 
     STATE_CHECK( m_topFunctionCall )
@@ -329,8 +348,7 @@ void eth::AlethStandardTrace::finalizeTrace(
     m_jsonTrace = Json::Value( Json::objectValue );
 
     if ( m_tracePrinters.count( m_options.tracerType ) > 0 ) {
-        m_tracePrinters.at( m_options.tracerType )
-            .print( m_jsonTrace, _er, _statePre, _statePost );
+        m_tracePrinters.at( m_options.tracerType ).print( m_jsonTrace, _er, _statePre, _statePost );
     } else if ( m_options.tracerType == TraceType::ALL_TRACER ) {
         printAllTraces( m_jsonTrace, _er, _statePre, _statePost );
     } else {
@@ -339,6 +357,7 @@ void eth::AlethStandardTrace::finalizeTrace(
     }
 }
 
+// print all supported traces. This is useful for testing.
 void eth::AlethStandardTrace::printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
     const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() )
@@ -367,5 +386,14 @@ const map< Address, map< u256, u256 > >& AlethStandardTrace::getAccessedStorageV
 const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
     STATE_CHECK( m_isFinalized )
     return m_defaultOpTrace;
+}
+const shared_ptr< FunctionCall >& AlethStandardTrace::getCurrentlyExecutingFunctionCall() const {
+    STATE_CHECK( m_currentlyExecutingFunctionCall )
+    return m_currentlyExecutingFunctionCall;
+}
+void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
+    const shared_ptr< FunctionCall >& _currentlyExecutingFunctionCall ) {
+    STATE_CHECK( _currentlyExecutingFunctionCall )
+    m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
 }
 }  // namespace dev::eth
