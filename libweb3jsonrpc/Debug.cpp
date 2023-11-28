@@ -293,6 +293,7 @@ string Debug::debug_interfaceCall( const string& _arg ) {
 }
 
 string Debug::debug_getVersion() {
+    checkPrivilegedAccess();
     return Version;
 }
 
@@ -307,10 +308,12 @@ string Debug::debug_getConfig() {
 }
 
 string Debug::debug_getSchainName() {
+    checkPrivilegedAccess();
     return m_eth.chainParams().sChain.name;
 }
 
 uint64_t Debug::debug_getSnapshotCalculationTime() {
+    checkPrivilegedAccess();
     return m_eth.getSnapshotCalculationTime();
 }
 
