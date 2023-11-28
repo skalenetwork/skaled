@@ -379,18 +379,8 @@ dev::KeyPair DEBUGkeyPair(
     Secret( "1eb95b71d59a08d111c29e54ff65c6be98ac58fc89868a80c0c427bdb5140375" ) );
 std::optional< std::future< void > > DEBUGtxFuture;
 
-class DEBUGTransaction : public Transaction {
-public:
-    void setChainId( size_t id ) {
-        uint8_t v = this->m_vrs->v;
-        this->m_vrs->v = uint8_t{ v + ( u256{ id } * 2 + 35 ) };
-        this->m_chainId = id;
-    }
-    DEBUGTransaction( TransactionSkeleton const& _ts, Secret const& _s ) : Transaction( _ts, _s ) {}
-};
-
-// 12782
-// real v = v - ( u256{ *m_chainId } * 2 + 35 )
+// max tx in block to fit gas 12782
+// txns in reality contain v=0|1, offset = 3*chainId+35 of 27 is added upon serialization
 // chainId = ( v - 35 ) / 2
 Transactions DEBUGgenerateTransactions( size_t _txCount, size_t _startNonce, size_t _chainId ) {
     KeyPair& sender = DEBUGkeyPair;
@@ -403,8 +393,8 @@ Transactions DEBUGgenerateTransactions( size_t _txCount, size_t _startNonce, siz
         ts.nonce = nonce++;
         ts.gas = 21000;
         ts.gasPrice = 300000;
-        DEBUGTransaction tx( ts, sender.secret() );
-        tx.setChainId( _chainId );
+        Transaction tx( ts, sender.secret() );
+        tx.forceChainId( _chainId );
         res.push_back( tx );
     }  // for
     return res;
