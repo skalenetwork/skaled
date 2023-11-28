@@ -45,16 +45,17 @@ namespace dev::eth {
 
 class FunctionCall;
 
+// This class collects information during EVM execution.  The oollected information
+// is then used by trace printers to print the trace requested by the user
+
 class AlethStandardTrace {
 public:
     // Append json trace to given (array) value
     explicit AlethStandardTrace( Transaction& _t, const TraceOptions& _options );
 
-    // this function will be executed on each EVM instruction
-    void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
-        bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 
 
+    // this function is executed on each operation
     OnOpFunc functionToExecuteOnEachOperation() {
         return [=]( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
                    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
@@ -75,6 +76,10 @@ public:
     [[nodiscard]] const shared_ptr< Json::Value >& getDefaultOpTrace() const;
 
 private:
+    // this function will be executed on each EVM instruction
+    void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
+        bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
+
     void recordInstructionExecution( uint64_t _pc, Instruction _inst, bigint _gasOpGas,
         bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
 

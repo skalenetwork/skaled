@@ -25,6 +25,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
+// print replay trace as implemented by parity
 void ReplayTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
@@ -49,8 +50,8 @@ void ReplayTracePrinter::print(
 
 
 
-ReplayTracePrinter::ReplayTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace,  "replayTrace" ) {}
+ReplayTracePrinter::ReplayTracePrinter( AlethStandardTrace& _standardTrace )
+    : TracePrinter( _standardTrace,  "replayTrace" ) {}
 
 
 }  // namespace dev::eth

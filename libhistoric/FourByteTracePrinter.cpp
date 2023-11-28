@@ -24,6 +24,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
+// fourbyte trace printer as implemented by geth
 void FourByteTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )

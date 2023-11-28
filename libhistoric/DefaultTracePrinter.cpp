@@ -26,6 +26,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
+// default tracer as implemented by geth. Runs when no specific tracer is specified
 void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
     const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )

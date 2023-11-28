@@ -24,11 +24,12 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
+// call tracer as implemented by geth
 void CallTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     m_standardTrace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_standardTrace.getOptions() );
 }
-CallTracePrinter::CallTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace, "callTrace" ) {}
+CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )
+    : TracePrinter( _standardTrace, "callTrace" ) {}
 }  // namespace dev::eth

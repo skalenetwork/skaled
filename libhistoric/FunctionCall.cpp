@@ -26,8 +26,9 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #pragma clang diagnostic ignored "-Wrecursive-macro"
 
 
-namespace dev::eth {
+// this class collect information about functions called during execution
 
+namespace dev::eth {
 
 void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
     m_gasUsed = _gasUsed;
