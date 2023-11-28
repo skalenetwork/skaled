@@ -41,7 +41,7 @@ public:
     bool onlyTopCall = false;
     bool withLog = false;
 
-    std::string toString() {
+    [[nodiscard]] std::string toString() {
         std::stringstream s;
         s << disableStorage;
         s << enableMemory;
@@ -57,7 +57,7 @@ public:
     TraceType tracerType = TraceType::DEFAULT_TRACER;
 
     static const std::map< std::string, TraceType > s_stringToTracerMap;
-    static TraceOptions make( Json::Value const& _json );
+    [[nodiscard]] static TraceOptions make( Json::Value const& _json );
 };
 
 }  // namespace dev::eth

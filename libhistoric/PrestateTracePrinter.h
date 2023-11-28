@@ -31,6 +31,7 @@ struct ExecutionResult;
 class HistoricState;
 
 class PrestateTracePrinter : public TracePrinter {
+
 public:
     void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;

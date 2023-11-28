@@ -34,7 +34,6 @@ class CallTracePrinter : public TracePrinter {
 public:
     explicit CallTracePrinter( AlethStandardTrace& standardTrace );
 
-
     void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
 };

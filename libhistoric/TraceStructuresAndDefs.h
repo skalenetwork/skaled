@@ -25,6 +25,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 //  we limit the  memory and storage entries returned to avoid
 // denial of service attack.
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
+
 constexpr uint64_t MAX_MEMORY_VALUES_RETURNED = 1024;
 constexpr uint64_t MAX_STORAGE_VALUES_RETURNED = 1024;
 constexpr int64_t MAX_TRACE_DEPTH = 256;

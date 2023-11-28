@@ -37,7 +37,7 @@ public:
     virtual void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) = 0;
 
-    const std::string& getJsonName() const;
+    [[nodiscard]] const std::string& getJsonName() const;
 
     static std::string getEvmErrorDescription( evmc_status_code _error );
 

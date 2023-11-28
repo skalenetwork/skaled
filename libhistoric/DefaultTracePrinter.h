@@ -34,6 +34,7 @@ class DefaultTracePrinter : public TracePrinter {
 
 public:
     explicit DefaultTracePrinter( AlethStandardTrace& standardTrace );
+
     virtual void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
 };

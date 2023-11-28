@@ -35,8 +35,9 @@
 #include <libethcore/Counter.h>
 #include <libethcore/Exceptions.h>
 #include <libskale/State.h>
+#ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
-
+#endif
 #include "Account.h"
 #include "GasPricer.h"
 #include "Transaction.h"

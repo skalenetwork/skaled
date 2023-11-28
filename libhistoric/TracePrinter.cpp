@@ -66,6 +66,7 @@ string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
 }
 TracePrinter::TracePrinter( AlethStandardTrace& _standardTrace, const string _jsonName )
     : m_standardTrace( _standardTrace ), m_jsonName( _jsonName ) {}
+
 const string& TracePrinter::getJsonName() const {
     return m_jsonName;
 }
