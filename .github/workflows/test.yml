@@ -34,17 +34,17 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - name: Use Node.js 19
+        uses: actions/setup-node@v1
+        with:
+          node-version: 19
       - name: run hardhat
         working-directory: ./test/historicstate/hardhat
-        run: |
-          wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash &&
-          echo 'export NVM_DIR="$HOME/.nvm"' >> $GITHUB_ENV &&
-          echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> $GITHUB_ENV &&
-          echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> $GITHUB_ENV &&          
-          nvm install 19 &&
-          nvm use 19 &&
+        run: |          
           npm install --save-dev typescript ts-node @types/node @types/mocha &&
-          npx tsc --init &&          
+          npx tsc --init &&
+          npx hardhat check &&      
           npx hardhat run scripts/trace.js
 
       - name: Cache apt packages
