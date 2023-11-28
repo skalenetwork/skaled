@@ -66,7 +66,7 @@ uint64_t LegacyVM::decodeJumpvDest( const _byte_* const _code, uint64_t& _pc, _b
 }
 
 
-// g
+//
 // for tracing, checking, metering, measuring ...
 //
 void LegacyVM::onOperation() {

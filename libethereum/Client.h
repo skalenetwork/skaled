@@ -4,7 +4,7 @@
     This file is part of cpp-ethereum.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
-    it unde<r the terms of the GNU General Public License as published by
+    it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
@@ -78,8 +78,10 @@ struct ActivityReport {
 std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
 
 
+#ifdef HISTORIC_STATE
 constexpr size_t MAX_BLOCK_TRACES_CACHE_SIZE = 64 * 1024 * 1024;
 constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
+#endif
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -130,7 +132,7 @@ public:
 #ifdef HISTORIC_STATE
     Json::Value traceCall(
         Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer );
-    Json::Value traceBlock(BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
+    Json::Value traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
 #endif
 
 
@@ -543,7 +545,9 @@ protected:
     const static dev::h256 empty_str_hash;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
-    cache::lru_ordered_memory_constrained_cache<std::string, Json::Value> m_blockTraceCache;
+#ifdef HISTORIC_STATE
+    cache::lru_ordered_memory_constrained_cache< std::string, Json::Value > m_blockTraceCache;
+#endif
 
 private:
     void initIMABLSPublicKey();

@@ -45,6 +45,9 @@ public:
 
     size_t stackSize() const { return m_stackEnd - m_SP; }
 
+#ifdef HISTORIC_STATE
+    // these calls are used by tracing
+
     u256& getStackElement( uint64_t _index ) const {
         if ( _index >= stackSize() ) {
             BOOST_THROW_EXCEPTION(
@@ -54,8 +57,11 @@ public:
     }
 
     evmc_status_code getAndClearLastCallStatus() const;
-
     const bytes& getReturnData() const;
+
+#endif
+
+
 
 private:
     u256* m_io_gas_p = 0;
@@ -105,7 +111,10 @@ private:
     uint64_t m_PC = 0;        // program counter
     u256* m_SP = m_stackEnd;  // stack pointer
     u256* m_SPP = m_SP;       // stack pointer prime (next SP)
+#ifdef HISTORIC_STATE
+    // this is used by tracing
     mutable evmc_status_code m_lastCallStatus = EVMC_SUCCESS;
+#endif
 #if EIP_615
 
 private:

@@ -140,8 +140,12 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ),
-      m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE ) {
+      m_dbPath( _dbPath )
+#ifdef HISTORIC_STATE
+      ,
+      m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE )
+#endif
+{
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
