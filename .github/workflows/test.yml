@@ -42,10 +42,9 @@ jobs:
       - name: run hardhat
         run: |
           cd  test/historicstate/hardhat &&
-          npm install --save-dev typescript ts-node @types/node @types/mocha &&
-          npx tsc --init &&
+          npm install --save-dev typescript ts-node @types/node @types/mocha &&          
           npx hardhat check &&          
-          npx hardhat run ./scripts/trace.js
+          npx hardhat run ./scripts/trace.ts
 
       - name: Cache apt packages
         uses: actions/cache@v2
