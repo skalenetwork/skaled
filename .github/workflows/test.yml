@@ -35,16 +35,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
       - uses: actions/checkout@v2
-      - name: Use Node.js 19
-        uses: actions/setup-node@v1
-        with:
-          node-version: 19
-      - name: run hardhat
-        working-directory: test/historicstate/hardhat
-        run: |          
-          npm install --save-dev typescript ts-node @types/node @types/mocha &&          
-          npx hardhat check &&          
-          npx hardhat run ./scripts/trace.ts
 
       - name: Cache apt packages
         uses: actions/cache@v2
@@ -161,6 +151,46 @@ jobs:
       - name: Print ccache stats for deps
         run: |
           ccache --show-stats
+      - name: Configure all as historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          mkdir -p build
+          cd build
+          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
+          cd ..
+      - name: Build all historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
+          make testeth -j$(nproc)          
+          cd ..
+      - name: Print ccache stats after full historic build
+        run : |
+          ccache --show-stats
+      - name: Use Node.js 19
+        uses: actions/setup-node@v1
+        with:
+          node-version: 19
+      - name: run historic tests
+        working-directory: test/historicstate/hardhat
+        run: |
+          ../../../build/skaled  ../configs/basic_config.json  &
+          SKALED_PID=$! &&                  
+          npm install --save-dev typescript ts-node @types/node @types/mocha &&          
+          npx hardhat check &&          
+          npx hardhat run ./scripts/trace.ts
+          kill $SKALED_PID
       - name: Build all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
@@ -294,30 +324,5 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.info
     
-      - name: Configure all as historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
-          mkdir -p build
-          cd build
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
-          cd ..
-      - name: Build all historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
-          cd build
-          make testeth -j$(nproc)          
-          cd ..
-      - name: Print ccache stats after full historic build
-        run : |
-          ccache --show-stats
+
+          
