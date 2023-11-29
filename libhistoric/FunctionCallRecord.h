@@ -42,19 +42,19 @@ struct LogRecord;
 
 struct OpExecutionRecord;
 
-class FunctionCall {
+class FunctionCallRecord {
 public:
-    FunctionCall( Instruction _type, const Address& _from, const Address& _to,
-        uint64_t _functionGasLimit, const weak_ptr< FunctionCall >& _parentCall,
+    FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
+        uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
         const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
     [[nodiscard]] int64_t getDepth() const;
-    [[nodiscard]] const weak_ptr< FunctionCall >& getParentCall() const;
+    [[nodiscard]] const weak_ptr< FunctionCallRecord >& getParentCall() const;
     [[nodiscard]] uint64_t getFunctionGasLimit() const;
     [[nodiscard]] string getParityTraceType();
 
     void setGasUsed( uint64_t _gasUsed );
     void setOutputData( const vector< uint8_t >& _outputData );
-    void addNestedCall( shared_ptr< FunctionCall >& _nestedCall );
+    void addNestedCall( shared_ptr< FunctionCallRecord >& _nestedCall );
     void setError( const string& _error );
     void setRevertReason( const string& _revertReason );
     void printTrace( Json::Value& _jsonTrace, int64_t _depth, const TraceOptions& _debugOptions );
@@ -71,8 +71,8 @@ private:
     Address m_to;
     uint64_t m_functionGasLimit = 0;
     uint64_t m_gasUsed = 0;
-    vector< shared_ptr< FunctionCall > > m_nestedCalls;
-    weak_ptr< FunctionCall > m_parentCall;
+    vector< shared_ptr< FunctionCallRecord > > m_nestedCalls;
+    weak_ptr< FunctionCallRecord > m_parentCall;
     vector< uint8_t > m_inputData;
     vector< uint8_t > m_outputData;
     bool m_reverted = false;

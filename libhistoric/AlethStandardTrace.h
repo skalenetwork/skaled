@@ -43,7 +43,7 @@ namespace dev::eth {
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
-class FunctionCall;
+class FunctionCallRecord;
 
 // This class collects information during EVM execution.  The oollected information
 // is then used by trace printers to print the trace requested by the user
@@ -65,7 +65,7 @@ public:
     void finalizeTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
     [[nodiscard]] Json::Value getJSONResult() const;
-    [[nodiscard]] const shared_ptr< FunctionCall >& getTopFunctionCall() const;
+    [[nodiscard]] const shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
     [[nodiscard]] TraceOptions getOptions() const;
     [[nodiscard]] const map< Address, map< u256, u256 > >& getAccessedStorageValues() const;
     [[nodiscard]] const set< Address >& getAccessedAccounts() const;
@@ -74,10 +74,10 @@ public:
 
 
     void setCurrentlyExecutingFunctionCall(
-        const shared_ptr< FunctionCall >& _currentlyExecutingFunctionCall );
+        const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
 
-    [[nodiscard]] const shared_ptr< FunctionCall >& getCurrentlyExecutingFunctionCall() const;
-    void setTopFunctionCall( const shared_ptr< FunctionCall >& _topFunctionCall );
+    [[nodiscard]] const shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall() const;
+    void setTopFunctionCall( const shared_ptr< FunctionCallRecord >& _topFunctionCall );
 
 
 private:
@@ -120,8 +120,8 @@ private:
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
 
-    shared_ptr< FunctionCall > m_topFunctionCall;
-    shared_ptr< FunctionCall > m_currentlyExecutingFunctionCall;
+    shared_ptr< FunctionCallRecord > m_topFunctionCall;
+    shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
     vector< Instruction > m_lastInst;
     shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
     Json::FastWriter m_fastWriter;

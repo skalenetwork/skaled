@@ -18,7 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include "FunctionCall.h"
+#include "FunctionCallRecord.h"
 #include "AlethStandardTrace.h"
 #include <boost/algorithm/string.hpp>
 
@@ -30,35 +30,35 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
-void FunctionCall::setGasUsed( uint64_t _gasUsed ) {
+void FunctionCallRecord::setGasUsed( uint64_t _gasUsed ) {
     m_gasUsed = _gasUsed;
 }
-uint64_t FunctionCall::getFunctionGasLimit() const {
+uint64_t FunctionCallRecord::getFunctionGasLimit() const {
     return m_functionGasLimit;
 }
-void FunctionCall::setOutputData( const vector< uint8_t >& _outputData ) {
+void FunctionCallRecord::setOutputData( const vector< uint8_t >& _outputData ) {
     m_outputData = _outputData;
 }
 
-void FunctionCall::addNestedCall( shared_ptr< FunctionCall >& _nestedCall ) {
+void FunctionCallRecord::addNestedCall( shared_ptr< FunctionCallRecord >& _nestedCall ) {
     STATE_CHECK( _nestedCall );
     m_nestedCalls.push_back( _nestedCall );
 }
-void FunctionCall::setError( const string& _error ) {
+void FunctionCallRecord::setError( const string& _error ) {
     m_error = _error;
 }
-void FunctionCall::setRevertReason( const string& _revertReason ) {
+void FunctionCallRecord::setRevertReason( const string& _revertReason ) {
     m_reverted = true;
     m_revertReason = _revertReason;
 }
-const weak_ptr< FunctionCall >& FunctionCall::getParentCall() const {
+const weak_ptr< FunctionCallRecord >& FunctionCallRecord::getParentCall() const {
     return m_parentCall;
 }
-int64_t FunctionCall::getDepth() const {
+int64_t FunctionCallRecord::getDepth() const {
     return m_depth;
 }
 
-void FunctionCall::printFunctionExecutionDetail(
+void FunctionCallRecord::printFunctionExecutionDetail(
     Json::Value& _jsonTrace, const TraceOptions& _debugOptions ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
@@ -109,7 +109,7 @@ void FunctionCall::printFunctionExecutionDetail(
     }
 }
 
-void FunctionCall::printTrace(
+void FunctionCallRecord::printTrace(
     Json::Value& _jsonTrace, int64_t _depth, const TraceOptions& _debugOptions ) {
     STATE_CHECK( _jsonTrace.isObject() )
     // prevent Denial of service
@@ -132,8 +132,8 @@ void FunctionCall::printTrace(
 }
 
 
-FunctionCall::FunctionCall( Instruction _type, const Address& _from, const Address& _to,
-    uint64_t _functionGasLimit, const weak_ptr< FunctionCall >& _parentCall,
+FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
+    uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
     const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
     : m_type( _type ),
       m_from( _from ),
@@ -147,13 +147,13 @@ FunctionCall::FunctionCall( Instruction _type, const Address& _from, const Addre
 }
 
 
-void FunctionCall::addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
+void FunctionCallRecord::addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
     m_logRecords.emplace_back( _data, _topics );
 }
-string FunctionCall::getParityTraceType() {
+string FunctionCallRecord::getParityTraceType() {
     return boost::algorithm::to_lower_copy( string( instructionInfo( m_type ).name ) );
 }
-void FunctionCall::printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address ) {
+void FunctionCallRecord::printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address ) {
     Json::Value functionTrace( Json::objectValue );
 
     Json::Value action( Json::objectValue );
@@ -186,7 +186,7 @@ void FunctionCall::printParityFunctionTrace( Json::Value& _outputArray, Json::Va
 }
 
 
-void FunctionCall::collectFourByteTrace( std::map< string, uint64_t >& _callMap ) {
+void FunctionCallRecord::collectFourByteTrace( std::map< string, uint64_t >& _callMap ) {
     Json::Value functionTrace( Json::objectValue );
 
     constexpr int FOUR_BYTES = 4;
@@ -209,7 +209,7 @@ void FunctionCall::collectFourByteTrace( std::map< string, uint64_t >& _callMap 
 }
 
 
-void FunctionCall::setReturnValues(
+void FunctionCallRecord::setReturnValues(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     setGasUsed( _gasUsed );
 

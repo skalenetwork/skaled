@@ -18,7 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AlethStandardTrace.h"
-#include "FunctionCall.h"
+#include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"
 #include "ReplayTracePrinter.h"
 

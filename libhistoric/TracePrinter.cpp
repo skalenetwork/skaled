@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "FunctionCall.h"
+#include "FunctionCallRecord.h"
 #include "NoopTracePrinter.h"
 #include "TraceStructuresAndDefs.h"
 

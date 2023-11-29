@@ -20,7 +20,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AlethStandardTrace.h"
 #include "FourByteTracePrinter.h"
-#include "FunctionCall.h"
+#include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"
 
 namespace dev::eth {

@@ -18,7 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "AlethStandardTrace.h"
-#include "FunctionCall.h"
+#include "FunctionCallRecord.h"
 #include "TraceOptions.h"
 #include <jsonrpccpp/client.h>
 
@@ -38,35 +38,38 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     // check if instruction depth changed. This means a function has been called or has returned
     processFunctionCallOrReturnIfHappened( _ext, _vm, ( uint64_t ) _gasRemaining );
 
-    // main analysis switc
-    // analyze and record acceses to storage and accounts. as well as return data and logs
-
-    vector< uint8_t > returnData;
 
     m_accessedAccounts.insert( _ext.myAddress );
 
+
+    // main analysis switch
+    // analyze and record acceses to storage and accounts. as well as return data and logs
+    vector< uint8_t > returnData;
     uint64_t logTopicsCount = 0;
-
-
     switch ( _inst ) {
         // record storage accesses
     case Instruction::SLOAD:
+        // SLOAD - record storage access
+        // the stackSize() check prevents malicios code crashing the tracer
+        // by issuing SLOAD with nothing on the stack
         if ( _vm->stackSize() > 0 ) {
             m_accessedStorageValues[_ext.myAddress][_vm->getStackElement( 0 )] =
                 _ext.store( _vm->getStackElement( 0 ) );
         }
         break;
     case Instruction::SSTORE:
+        // STORAGE - record storage access
         if ( _vm->stackSize() > 1 ) {
             m_accessedStorageValues[_ext.myAddress][_vm->getStackElement( 0 )] =
                 _vm->getStackElement( 1 );
         }
         break;
-    // NOW HANDLE FUNCTION CALL INSTRUCTIONS
+    // NOW HANDLE CONTRACT FUNCTION CALL INSTRUCTIONS
     case Instruction::CALL:
     case Instruction::CALLCODE:
     case Instruction::DELEGATECALL:
     case Instruction::STATICCALL:
+        // record the contract that is called
         if ( _vm->stackSize() > 1 ) {
             auto address = asAddress( _vm->getStackElement( 1 ) );
             m_accessedAccounts.insert( address );
@@ -86,7 +89,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     case Instruction::LOG4: {
         logTopicsCount = ( uint64_t ) _inst - ( uint64_t ) Instruction::LOG0;
         STATE_CHECK( logTopicsCount <= 4 )
-        if ( _vm->stackSize() < 2 + logTopicsCount )
+        if ( _vm->stackSize() < 2 + logTopicsCount ) // incorrectly issued log instruction
             break;
         auto logData = extractSmartContractMemoryByteArrayFromStackPointer( _vm );
         vector< u256 > topics;
@@ -98,8 +101,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     default:
         break;
     }
-
-
+    // record the instruction
     m_lastOpRecord = OpExecutionRecord( _ext.depth, _inst, _gasRemaining, _lastOpGas );
 }
 void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
@@ -147,7 +149,7 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
     STATE_CHECK( !m_isFinalized )
 
-    auto functionCall = make_shared< FunctionCall >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
+    auto functionCall = make_shared< FunctionCallRecord >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
         m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOpRecord.m_depth + 1 );
 
     if ( m_lastOpRecord.m_depth >= 0 ) {
@@ -168,7 +170,7 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
     // set the currently executing call to the funtionCall we just created
     setCurrentlyExecutingFunctionCall( functionCall );
 }
-void AlethStandardTrace::setTopFunctionCall( const shared_ptr< FunctionCall >& _topFunctionCall ) {
+void AlethStandardTrace::setTopFunctionCall( const shared_ptr< FunctionCallRecord >& _topFunctionCall ) {
     STATE_CHECK( _topFunctionCall )
     m_topFunctionCall = _topFunctionCall;
 }
@@ -195,7 +197,7 @@ void AlethStandardTrace::recordFunctionReturned(
 
 // the getter functions are called by printer classes after the trace has been generated
 
-const shared_ptr< FunctionCall >& AlethStandardTrace::getTopFunctionCall() const {
+const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getTopFunctionCall() const {
     STATE_CHECK( m_isFinalized )
     STATE_CHECK( m_topFunctionCall );
     return m_topFunctionCall;
@@ -227,7 +229,8 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _op
       m_replayTracePrinter( *this ),
       m_prestateTracePrinter( *this ),
       m_defaultTracePrinter( *this ),
-      m_tracePrinters{ { TraceType::DEFAULT_TRACER, m_defaultTracePrinter },
+      m_tracePrinters{
+          { TraceType::DEFAULT_TRACER, m_defaultTracePrinter },
           { TraceType::PRESTATE_TRACER, m_prestateTracePrinter },
           { TraceType::CALL_TRACER, m_callTracePrinter },
           { TraceType::REPLAY_TRACER, m_replayTracePrinter },
@@ -343,10 +346,13 @@ void eth::AlethStandardTrace::finalizeTrace(
 
     STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
+
+    // record return of the top function.
     recordFunctionReturned( statusCode, _er.output, totalGasUsed );
 
     m_jsonTrace = Json::Value( Json::objectValue );
 
+    // now run the trace that the user wants based on options provided
     if ( m_tracePrinters.count( m_options.tracerType ) > 0 ) {
         m_tracePrinters.at( m_options.tracerType ).print( m_jsonTrace, _er, _statePre, _statePost );
     } else if ( m_options.tracerType == TraceType::ALL_TRACER ) {
@@ -387,12 +393,12 @@ const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
     STATE_CHECK( m_isFinalized )
     return m_defaultOpTrace;
 }
-const shared_ptr< FunctionCall >& AlethStandardTrace::getCurrentlyExecutingFunctionCall() const {
+const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getCurrentlyExecutingFunctionCall() const {
     STATE_CHECK( m_currentlyExecutingFunctionCall )
     return m_currentlyExecutingFunctionCall;
 }
 void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
-    const shared_ptr< FunctionCall >& _currentlyExecutingFunctionCall ) {
+    const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall ) {
     STATE_CHECK( _currentlyExecutingFunctionCall )
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
 }
