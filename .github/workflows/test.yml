@@ -201,7 +201,7 @@ jobs:
           export CMAKE_BUILD_TYPE=Debug &&
           export CODE_COVERAGE=ON &&
           cd build &&
-          make testeth -j$(nproc) &
+          make testeth -j$(nproc) &&
           make skaled -j$(nproc) &&
           cd ..
       - name: Print ccache stats after full build
