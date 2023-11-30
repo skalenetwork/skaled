@@ -2452,7 +2452,7 @@ BOOST_AUTO_TEST_CASE( replayProtectedTxns ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
 
-    // Set chainID = 65535^M
+    // Set chainID = 65535
     ret["params"]["chainID"] = "0xffff";
     ret["skaleConfig"]["sChain"]["chainIdPatchTimestamp"] = 1;
 
