@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HISTORIC_STATE
+
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"
@@ -33,3 +35,5 @@ void CallTracePrinter::print(
 CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )
     : TracePrinter( _standardTrace, "callTrace" ) {}
 }  // namespace dev::eth
+
+#endif

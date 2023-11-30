@@ -18,6 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
+#ifdef HISTORIC_STATE
 
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
@@ -237,3 +238,5 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
         _preDiffTrace[toHexPrefixed( _address )] = value;
 }
 }  // namespace dev::eth
+
+#endif

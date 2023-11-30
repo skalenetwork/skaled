@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HISTORIC_STATE
+
 #include "FunctionCallRecord.h"
 #include "NoopTracePrinter.h"
 #include "TraceStructuresAndDefs.h"
@@ -72,3 +74,5 @@ const string& TracePrinter::getJsonName() const {
 }
 
 }  // namespace dev::eth
+
+#endif

@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HISTORIC_STATE
 
 #include "AlethStandardTrace.h"
 #include "FourByteTracePrinter.h"
@@ -35,3 +36,5 @@ NoopTracePrinter::NoopTracePrinter( AlethStandardTrace& standardTrace )
     : TracePrinter( standardTrace, "noopTrace" ) {}
 
 }  // namespace dev::eth
+
+#endif

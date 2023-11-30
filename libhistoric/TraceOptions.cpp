@@ -18,6 +18,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
+#ifdef HISTORIC_STATE
+
 #include "boost/throw_exception.hpp"
 #include <jsonrpccpp/client.h>
 #include "TraceOptions.h"
@@ -84,4 +86,4 @@ TraceOptions TraceOptions::make( Json::Value const& _json )  {
 
 }
 
-
+#endif

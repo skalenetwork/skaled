@@ -17,6 +17,8 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HISTORIC_STATE
+
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
 #include "TraceOptions.h"
@@ -403,3 +405,5 @@ void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
 }
 }  // namespace dev::eth
+
+#endif

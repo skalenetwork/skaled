@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HISTORIC_STATE
 
 #include "FunctionCallRecord.h"
 #include "AlethStandardTrace.h"
@@ -229,3 +230,5 @@ OpExecutionRecord::OpExecutionRecord(
     : m_depth( _depth ), m_op( _op ), m_gasRemaining( _gasRemaining ), m_opGas( _opGas ) {}
 }  // namespace dev::eth
    // namespace dev
+
+#endif
