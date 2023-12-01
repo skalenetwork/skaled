@@ -24,6 +24,7 @@
       with:
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
+        ref: v3.18.0
         submodules: recursive
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
@@ -65,8 +66,8 @@
     - name: skaled+load_python+all
       run: SKALED_PROVIDER=skaled_providers/binary_from_container ./run_tests.sh skaled+load_python+all
 
-    # - name: skaled+load_js+run_angry_cats
-    #   run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+load_js+run_angry_cats
+    - name: skaled+load_js+run_angry_cats
+      run: SKALED_PROVIDER=skaled_providers/endpoint_by_container ./run_tests.sh skaled+load_js+run_angry_cats
 
     - name: skaled+internals+test_snapshot_api
       run: SKALED_PROVIDER=skaled_providers/binary_from_container ./run_tests.sh skaled+internals+test_snapshot_api

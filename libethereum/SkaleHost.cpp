@@ -950,6 +950,18 @@ std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
     return m_client.getIMABLSPublicKey();
 }
 
+std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {
+    return m_client.getHistoricNodeId( _id );
+}
+
+std::string SkaleHost::getHistoricNodeIndex( unsigned _index ) const {
+    return m_client.getHistoricNodeIndex( _index );
+}
+
+std::string SkaleHost::getHistoricNodePublicKey( unsigned _idx ) const {
+    return m_client.getHistoricNodePublicKey( _idx );
+}
+
 uint64_t SkaleHost::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     return m_consensus->submitOracleRequest( _spec, _receipt, _errorMessage );
