@@ -189,7 +189,10 @@ Json::Value Eth::eth_accounts() {
     return toJson( m_ethAccounts.allAccounts() );
 }
 
-string Eth::eth_blockNumber() {
+string Eth::eth_blockNumber( const Json::Value& request ) {
+    if ( !request.empty() ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
     return toJS( client()->number() );
 }
 

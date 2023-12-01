@@ -268,8 +268,12 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "storageDestructionPatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "powCheckPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "pushZeroPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
             { "skipInvalidTransactionsPatchTimestamp",
+                { { js::int_type }, JsonFieldPresence::Optional } },
+            { "precompiledConfigPatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
