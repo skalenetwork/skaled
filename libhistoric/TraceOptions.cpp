@@ -20,9 +20,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef HISTORIC_STATE
 
-#include "TraceOptions.h"
+
 #include "boost/throw_exception.hpp"
 #include <jsonrpccpp/client.h>
+#include "TraceOptions.h"
 
 using namespace std;
 
