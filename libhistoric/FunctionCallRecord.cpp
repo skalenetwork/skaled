@@ -148,13 +148,15 @@ FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from,
 }
 
 
-void FunctionCallRecord::addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
+void FunctionCallRecord::addLogEntry(
+    const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
     m_logRecords.emplace_back( _data, _topics );
 }
 string FunctionCallRecord::getParityTraceType() {
     return boost::algorithm::to_lower_copy( string( instructionInfo( m_type ).name ) );
 }
-void FunctionCallRecord::printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address ) {
+void FunctionCallRecord::printParityFunctionTrace(
+    Json::Value& _outputArray, Json::Value _address ) {
     Json::Value functionTrace( Json::objectValue );
 
     Json::Value action( Json::objectValue );

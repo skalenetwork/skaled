@@ -31,7 +31,6 @@ struct ExecutionResult;
 class HistoricState;
 
 class DefaultTracePrinter : public TracePrinter {
-
 public:
     explicit DefaultTracePrinter( AlethStandardTrace& standardTrace );
 
