@@ -274,6 +274,8 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                 throw std::runtime_error( strErrorDescription );
             }
         } catch ( ... ) {
+            // remove partially downloaded snapshot
+            boost::filesystem::remove( saveTo );
             std::throw_with_nested(
                 std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
         }
