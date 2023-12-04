@@ -19,21 +19,21 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef HISTORIC_STATE
 
+#include "ReplayTracePrinter.h"
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"
-#include "ReplayTracePrinter.h"
 
 
 namespace dev::eth {
 
 // print replay trace as implemented by parity
-void ReplayTracePrinter::print(
-    Json::Value& _jsonTrace, const ExecutionResult& _er, const HistoricState&, const HistoricState& ) {
+void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
+    const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     _jsonTrace["vmTrace"] = Json::Value::null;
     _jsonTrace["stateDiff"] = Json::Value::null;
-    _jsonTrace["transactionHash"] = toHexPrefixed( m_standardTrace.getTxHash());
+    _jsonTrace["transactionHash"] = toHexPrefixed( m_standardTrace.getTxHash() );
     _jsonTrace["output"] = toHexPrefixed( _er.output );
     auto failed = _er.excepted != TransactionException::None;
     if ( failed ) {
@@ -45,15 +45,14 @@ void ReplayTracePrinter::print(
     Json::Value functionTraceArray( Json::arrayValue );
     Json::Value emptyAddress( Json::arrayValue );
 
-    m_standardTrace.getTopFunctionCall()->printParityFunctionTrace( functionTraceArray, emptyAddress );
+    m_standardTrace.getTopFunctionCall()->printParityFunctionTrace(
+        functionTraceArray, emptyAddress );
     _jsonTrace["trace"] = functionTraceArray;
 }
 
 
-
-
 ReplayTracePrinter::ReplayTracePrinter( AlethStandardTrace& _standardTrace )
-    : TracePrinter( _standardTrace,  "replayTrace" ) {}
+    : TracePrinter( _standardTrace, "replayTrace" ) {}
 
 }  // namespace dev::eth
 

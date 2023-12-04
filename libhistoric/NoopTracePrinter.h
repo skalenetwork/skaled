@@ -31,7 +31,6 @@ struct ExecutionResult;
 class HistoricState;
 
 class NoopTracePrinter : public TracePrinter {
-
 public:
     explicit NoopTracePrinter( AlethStandardTrace& standardTrace );
 

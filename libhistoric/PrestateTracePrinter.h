@@ -31,7 +31,6 @@ struct ExecutionResult;
 class HistoricState;
 
 class PrestateTracePrinter : public TracePrinter {
-
 public:
     void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
@@ -39,8 +38,8 @@ public:
     explicit PrestateTracePrinter( AlethStandardTrace& standardTrace );
 
 private:
-    void printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
-        const HistoricState& _statePre, const HistoricState& _statePost );
+    void printDiff( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
+        const HistoricState& _statePost );
 
     void printAllAccessedAccountPreValues(
         Json::Value& _jsonTrace, const HistoricState& _statePre, const Address& _address );

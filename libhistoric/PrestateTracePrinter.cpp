@@ -20,10 +20,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef HISTORIC_STATE
 
+#include "PrestateTracePrinter.h"
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"
-#include "PrestateTracePrinter.h"
 
 namespace dev::eth {
 
@@ -117,12 +117,10 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
 
     // if the new address, ot if the value changed, include in post trace
-    if ( !_statePre.addressInUse( _address ) ||
-         _statePre.balance( _address ) != balancePost ) {
+    if ( !_statePre.addressInUse( _address ) || _statePre.balance( _address ) != balancePost ) {
         value["balance"] = toCompactHexPrefixed( balancePost );
     }
-    if ( !_statePre.addressInUse( _address ) ||
-         _statePre.getNonce( _address ) != noncePost ) {
+    if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
         value["nonce"] = ( uint64_t ) noncePost;
     }
     if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {

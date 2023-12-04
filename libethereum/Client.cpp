@@ -1092,9 +1092,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) {
-            return Block( bc(), hash, readState );
-        }
+        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1108,9 +1106,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
     try {
-        DEV_GUARDED( m_blockImportMutex ) {
-            return Block( bc(), bc().currentHash(), m_state );
-        }
+        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), bc().currentHash(), m_state ); }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1258,7 +1254,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.checkOutExternalGas( ~u256( 0 ) );
                 if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
@@ -1282,8 +1278,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance(
-                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
@@ -1306,7 +1301,7 @@ Json::Value Client::traceCall(
         _t.setNonce( historicBlock.mutableState().mutableHistoricState().getNonce( _t.from() ) );
         _t.checkOutExternalGas( ~u256( 0 ) );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _t.from(), ( u256 ) ( _t.gas() * _t.gasPrice() + _t.value() ) );
+            _t.from(), ( u256 )( _t.gas() * _t.gasPrice() + _t.value() ) );
         auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer, 0 );
         return _tracer->getJSONResult();
     } catch ( ... ) {

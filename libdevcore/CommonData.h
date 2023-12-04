@@ -204,12 +204,12 @@ inline std::string toCompactHexPrefixed( u256 _val, unsigned _min = 0 ) {
 }
 
 
-inline std::string toHex( u256 _val) {
-    return toHex( toBigEndian( _val) );
+inline std::string toHex( u256 _val ) {
+    return toHex( toBigEndian( _val ) );
 }
 
-inline std::string toHexPrefixed( u256 _val) {
-    return toHexPrefixed( toBigEndian( _val) );
+inline std::string toHexPrefixed( u256 _val ) {
+    return toHexPrefixed( toBigEndian( _val ) );
 }
 
 

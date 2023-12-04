@@ -20,9 +20,9 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifdef HISTORIC_STATE
 
+#include "TraceOptions.h"
 #include "boost/throw_exception.hpp"
 #include <jsonrpccpp/client.h>
-#include "TraceOptions.h"
 
 using namespace std;
 
@@ -35,7 +35,7 @@ const map< string, TraceType > TraceOptions::s_stringToTracerMap = {
     { "allTracer", TraceType::ALL_TRACER }
 };
 
-TraceOptions TraceOptions::make( Json::Value const& _json )  {
+TraceOptions TraceOptions::make( Json::Value const& _json ) {
     TraceOptions op;
 
     if ( !_json.isObject() )
@@ -84,6 +84,6 @@ TraceOptions TraceOptions::make( Json::Value const& _json )  {
 }
 
 
-}
+}  // namespace dev::eth
 
 #endif
