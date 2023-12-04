@@ -62,7 +62,6 @@ public:
 #endif
 
 
-
 private:
     u256* m_io_gas_p = 0;
     uint64_t m_io_gas = 0;

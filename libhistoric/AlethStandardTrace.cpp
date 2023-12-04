@@ -91,7 +91,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     case Instruction::LOG4: {
         logTopicsCount = ( uint64_t ) _inst - ( uint64_t ) Instruction::LOG0;
         STATE_CHECK( logTopicsCount <= 4 )
-        if ( _vm->stackSize() < 2 + logTopicsCount ) // incorrectly issued log instruction
+        if ( _vm->stackSize() < 2 + logTopicsCount )  // incorrectly issued log instruction
             break;
         auto logData = extractSmartContractMemoryByteArrayFromStackPointer( _vm );
         vector< u256 > topics;
@@ -151,8 +151,9 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
     STATE_CHECK( !m_isFinalized )
 
-    auto functionCall = make_shared< FunctionCallRecord >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
-        m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOpRecord.m_depth + 1 );
+    auto functionCall =
+        make_shared< FunctionCallRecord >( m_lastOpRecord.m_op, _from, _to, _gasLimit,
+            m_currentlyExecutingFunctionCall, _inputData, _value, m_lastOpRecord.m_depth + 1 );
 
     if ( m_lastOpRecord.m_depth >= 0 ) {
         // we are not in the top smartcontract call
@@ -172,7 +173,8 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
     // set the currently executing call to the funtionCall we just created
     setCurrentlyExecutingFunctionCall( functionCall );
 }
-void AlethStandardTrace::setTopFunctionCall( const shared_ptr< FunctionCallRecord >& _topFunctionCall ) {
+void AlethStandardTrace::setTopFunctionCall(
+    const shared_ptr< FunctionCallRecord >& _topFunctionCall ) {
     STATE_CHECK( _topFunctionCall )
     m_topFunctionCall = _topFunctionCall;
 }
@@ -231,8 +233,7 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _op
       m_replayTracePrinter( *this ),
       m_prestateTracePrinter( *this ),
       m_defaultTracePrinter( *this ),
-      m_tracePrinters{
-          { TraceType::DEFAULT_TRACER, m_defaultTracePrinter },
+      m_tracePrinters{ { TraceType::DEFAULT_TRACER, m_defaultTracePrinter },
           { TraceType::PRESTATE_TRACER, m_prestateTracePrinter },
           { TraceType::CALL_TRACER, m_callTracePrinter },
           { TraceType::REPLAY_TRACER, m_replayTracePrinter },
@@ -395,7 +396,8 @@ const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
     STATE_CHECK( m_isFinalized )
     return m_defaultOpTrace;
 }
-const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getCurrentlyExecutingFunctionCall() const {
+const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getCurrentlyExecutingFunctionCall()
+    const {
     STATE_CHECK( m_currentlyExecutingFunctionCall )
     return m_currentlyExecutingFunctionCall;
 }
