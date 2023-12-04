@@ -24,7 +24,7 @@ using namespace dev::eth;
 using namespace skale;
 
 void Debug::checkPrivilegedAccess() const {
-    if ( m_enablePrivilegedApis ) {
+    if ( !m_enablePrivilegedApis ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not enabled" ) );
     }
 }
@@ -80,13 +80,18 @@ Json::Value Debug::debug_traceBlockByNumber( const string&
             jsonrpc::JsonRpcException( "Unknown block number:" + _blockNumber ) );
     }
 
+    if ( bN == 0 ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+    }
+
     try {
         return m_eth.traceBlock( bN, _jsonTraceConfig );
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
 #else
-    return Json::Value();
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
 #endif
 }
 
@@ -111,13 +116,18 @@ Json::Value Debug::debug_traceBlockByHash( string const&
 
     BlockNumber bN = m_eth.numberFromHash( h );
 
+    if ( bN == 0 ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+    }
+
     try {
         return m_eth.traceBlock( bN, _jsonTraceConfig );
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
 #else
-    return Json::Value();
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
 #endif
 }
 
@@ -148,6 +158,10 @@ Json::Value Debug::debug_traceTransaction( string const&
 
     if ( !m_eth.isKnown( blockNumber ) ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown block number" ) );
+    }
+
+    if ( blockNumber == 0 ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
     }
 
     auto traceOptions = TraceOptions::make( _jsonTraceConfig );
@@ -182,7 +196,8 @@ Json::Value Debug::debug_traceTransaction( string const&
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }
 #else
-    return Json::Value();
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
 #endif
 }
 
@@ -219,6 +234,11 @@ Json::Value Debug::debug_traceCall( Json::Value const&
                 jsonrpc::JsonRpcException( "Unknown block number:" + _blockNumber ) );
         }
 
+        if ( bN == 0 ) {
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+        }
+
         TransactionSkeleton ts = toTransactionSkeleton( _call );
 
         if ( !ts.from ) {
@@ -240,7 +260,8 @@ Json::Value Debug::debug_traceCall( Json::Value const&
     }
 
 #else
-    return Json::Value();
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
 #endif
 }
 
