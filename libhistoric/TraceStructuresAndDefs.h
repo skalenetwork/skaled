@@ -37,7 +37,7 @@ constexpr std::int64_t MAX_TRACE_DEPTH = 256;
     if ( !( _EXPRESSION_ ) ) {                                                       \
         auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " + \
                        std::string( __FILE__ ) + ":" + to_string( __LINE__ );        \
-        throw VMTracingError( __msg__ );                                             \
+        throw dev::eth::VMTracingError( __msg__ );                                             \
     }
 
 
