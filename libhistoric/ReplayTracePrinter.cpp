@@ -20,10 +20,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef HISTORIC_STATE
 
 
+#include "ReplayTracePrinter.h"
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"
-#include "ReplayTracePrinter.h"
 
 namespace dev::eth {
 

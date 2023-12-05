@@ -33,6 +33,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include "libevm/LegacyVM.h"
 #include "libevm/VMFace.h"
 #include <cstdint>
+#include <memory>
 
 namespace Json {
 class Value;
@@ -65,19 +66,21 @@ public:
     void finalizeTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
     [[nodiscard]] Json::Value getJSONResult() const;
-    [[nodiscard]] const shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
+    [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
     [[nodiscard]] TraceOptions getOptions() const;
-    [[nodiscard]] const map< Address, map< u256, u256 > >& getAccessedStorageValues() const;
-    [[nodiscard]] const set< Address >& getAccessedAccounts() const;
+    [[nodiscard]] const std::map< Address, std::map< u256, u256 > >& getAccessedStorageValues()
+        const;
+    [[nodiscard]] const std::set< Address >& getAccessedAccounts() const;
     [[nodiscard]] const h256& getTxHash() const;
-    [[nodiscard]] const shared_ptr< Json::Value >& getDefaultOpTrace() const;
+    [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
 
 
     void setCurrentlyExecutingFunctionCall(
-        const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
+        const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
 
-    [[nodiscard]] const shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall() const;
-    void setTopFunctionCall( const shared_ptr< FunctionCallRecord >& _topFunctionCall );
+    [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
+        const;
+    void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
 
 
 private:
@@ -91,39 +94,39 @@ private:
 
     // called to record function execution when a function of this or other contract is called
     void recordFunctionIsCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-        const vector< uint8_t >& _inputData, const u256& _value );
+        const std::vector< std::uint8_t >& _inputData, const u256& _value );
 
     // called when a function returns
-    void recordFunctionReturned(
-        evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
+    void recordFunctionReturned( evmc_status_code _status,
+        const std::vector< std::uint8_t >& _returnData, uint64_t _gasUsed );
 
     // analyze instruction and record function calls, returns and storage value
     // accesses
     void analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
-        uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
-        const LegacyVM* _vm );
+        std::uint64_t _lastOpGas, std::uint64_t _gasRemaining, const ExtVMFace* _face,
+        AlethExtVM& _ext, const LegacyVM* _vm );
 
     // get the currently executing smartcontract memory from EVM
-    [[nodiscard]] static vector< uint8_t > extractSmartContractMemoryByteArrayFromStackPointer(
-        const LegacyVM* _vm );
+    [[nodiscard]] static std::vector< std::uint8_t >
+    extractSmartContractMemoryByteArrayFromStackPointer( const LegacyVM* _vm );
 
 
     // this is called when the function call depth of the current instruction is different from the
     // previous instruction. This happens when a function is called or returned.
     void processFunctionCallOrReturnIfHappened(
-        const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining );
+        const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
 
-    void appendOpToStandardOpTrace( uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
+    void appendOpToStandardOpTrace( std::uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     // print all supported traces. This can be used for QA
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
 
-    shared_ptr< FunctionCallRecord > m_topFunctionCall;
-    shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
-    vector< Instruction > m_lastInst;
-    shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
+    std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
+    std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
+    std::vector< Instruction > m_lastInst;
+    std::shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
     Json::FastWriter m_fastWriter;
     Address m_from;
     Address m_to;
@@ -131,10 +134,10 @@ private:
     h256 m_txHash;
     Json::Value m_jsonTrace;
     // set of all storage values accessed during execution
-    set< Address > m_accessedAccounts;
-    // map of all storage addresses accessed (read or write) during execution
+    std::set< Address > m_accessedAccounts;
+    // std::map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
-    map< Address, map< u256, u256 > > m_accessedStorageValues;
+    std::map< Address, std::map< dev::u256, dev::u256 > > m_accessedStorageValues;
     OpExecutionRecord m_lastOpRecord;
     std::atomic< bool > m_isFinalized = false;
     NoopTracePrinter m_noopTracePrinter;
@@ -144,6 +147,6 @@ private:
     PrestateTracePrinter m_prestateTracePrinter;
     DefaultTracePrinter m_defaultTracePrinter;
 
-    const map< TraceType, TracePrinter& > m_tracePrinters;
+    const std::map< TraceType, TracePrinter& > m_tracePrinters;
 };
 }  // namespace dev::eth

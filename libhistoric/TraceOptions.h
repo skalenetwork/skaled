@@ -19,6 +19,11 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include <jsonrpccpp/client.h>
+#include <map>
+#include <sstream>
+#include <string>
+
 namespace dev::eth {
 
 enum class TraceType {

@@ -19,6 +19,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "TraceStructuresAndDefs.h"
+#include "evmc/evmc.h"
+#include <string>
+
 namespace Json {
 class Value;
 }

@@ -20,22 +20,24 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+#include "libdevcore/Common.h"
 #include "libevm/Instruction.h"
+
 
 //  we limit the  memory and storage entries returned to avoid
 // denial of service attack.
 // see here https://banteg.mirror.xyz/3dbuIlaHh30IPITWzfT1MFfSg6fxSssMqJ7TcjaWecM
 
-constexpr uint64_t MAX_MEMORY_VALUES_RETURNED = 1024;
-constexpr uint64_t MAX_STORAGE_VALUES_RETURNED = 1024;
-constexpr int64_t MAX_TRACE_DEPTH = 256;
+constexpr std::uint64_t MAX_MEMORY_VALUES_RETURNED = 1024;
+constexpr std::uint64_t MAX_STORAGE_VALUES_RETURNED = 1024;
+constexpr std::int64_t MAX_TRACE_DEPTH = 256;
 
 
-#define STATE_CHECK( _EXPRESSION_ )                                             \
-    if ( !( _EXPRESSION_ ) ) {                                                  \
-        auto __msg__ = string( "State check failed::" ) + #_EXPRESSION_ + " " + \
-                       string( __FILE__ ) + ":" + to_string( __LINE__ );        \
-        throw VMTracingError( __msg__ );                                        \
+#define STATE_CHECK( _EXPRESSION_ )                                                  \
+    if ( !( _EXPRESSION_ ) ) {                                                       \
+        auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " + \
+                       std::string( __FILE__ ) + ":" + to_string( __LINE__ );        \
+        throw VMTracingError( __msg__ );                                             \
     }
 
 
@@ -45,11 +47,11 @@ using std::string, std::shared_ptr, std::make_shared, std::to_string, std::set, 
     std::vector;
 
 struct LogRecord {
-    LogRecord( const vector< uint8_t >& _data, const vector< u256 >& _topics )
+    LogRecord( const std::vector< std::uint8_t >& _data, const std::vector< dev::u256 >& _topics )
         : m_data( _data ), m_topics( _topics ) {}
 
-    const vector< uint8_t > m_data;
-    const vector< u256 > m_topics;
+    const std::vector< std::uint8_t > m_data;
+    const std::vector< dev::u256 > m_topics;
 };
 
 struct OpExecutionRecord {
@@ -57,12 +59,13 @@ struct OpExecutionRecord {
     // the first function is executed at depth 0, as it was called form depth -1
     explicit OpExecutionRecord( Instruction _op ) : OpExecutionRecord( -1, _op, 0, 0 ){};
 
-    OpExecutionRecord( int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas );
+    OpExecutionRecord(
+        std::int64_t _depth, Instruction _op, std::uint64_t _gasRemaining, std::uint64_t _opGas );
 
-    int64_t m_depth;
+    std::int64_t m_depth;
     Instruction m_op;
-    uint64_t m_gasRemaining;
-    uint64_t m_opGas;
+    std::uint64_t m_gasRemaining;
+    std::uint64_t m_opGas;
 };
 
 }  // namespace dev::eth
