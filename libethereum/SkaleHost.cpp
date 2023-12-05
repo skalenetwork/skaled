@@ -945,6 +945,8 @@ u256 SkaleHost::getBlockRandom() const {
 dev::eth::SyncStatus SkaleHost::syncStatus() const {
     auto syncInfo = m_consensus->getSyncInfo();
     dev::eth::SyncStatus syncStatus;
+    // SKALE: catchup downloads blocks with transactions, then the node executes them
+    // we don't download state changes separately
     syncStatus.state = syncInfo.isSyncing ? dev::eth::SyncState::Blocks : dev::eth::SyncState::Idle;
     syncStatus.startBlockNumber = syncInfo.startingBlock;
     syncStatus.currentBlockNumber = syncInfo.currentBlock;

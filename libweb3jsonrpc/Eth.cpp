@@ -892,6 +892,7 @@ Json::Value Eth::eth_getWork() {
 }
 
 Json::Value Eth::eth_syncing() {
+    // ask consensus whether the node is in catchup mode
     dev::eth::SyncStatus sync = client()->syncStatus();
     if ( !sync.majorSyncing )
         return Json::Value( false );
