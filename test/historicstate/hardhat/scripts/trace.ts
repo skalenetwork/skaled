@@ -33,10 +33,7 @@ function CHECK(result: any): void {
 async function getAndPrintBlockTrace(blockNumber: number): Promise<String> {
 
     const blockStr = "0x" + blockNumber.toString(16);
-    const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {
-        "tracer": "allTracer",
-        "tracerConfig": {"withLog": true}
-    }]);
+    const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
 
     console.log(JSON.stringify(trace, null, 4));
     return trace;
@@ -49,10 +46,7 @@ async function getAndPrintTrace(hash: string): Promise<String> {
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
 //        "tracerConfig": {"withLog":true}}]);
 
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {
-        "tracer": "allTracer",
-        "tracerConfig": {"withLog": true}
-    }]);
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
 
     console.log(JSON.stringify(trace, null, 4));
@@ -77,21 +71,22 @@ async function deployWriteAndDestroy(): Promise<void> {
 
     // await waitUntilNextBlock()
 
-    await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintBlockTrace(deployBlockNumber);
+    //await getAndPrintBlockTrace(deployBlockNumber);
+    //await getAndPrintBlockTrace(deployBlockNumber);
     await getAndPrintTrace(hash)
 
 
-    console.log(`Now minting`);
+    /* console.log(`Now minting`);
 
     const transferReceipt = await deployedTracer.mint(1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
-
-    await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    await getAndPrintTrace(transferReceipt.hash);
+*/
+    //await getAndPrintBlockTrace(transferReceipt.blockNumber);
+    //await getAndPrintBlockTrace(transferReceipt.blockNumber);
+  //
+    //  await getAndPrintTrace(transferReceipt.hash);
 
     /*
 

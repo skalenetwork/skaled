@@ -17,6 +17,13 @@ module.exports = {
       accounts: [INSECURE_PRIVATE_KEY],
       chainId: 74565,
       gas: 0x10000000
+    },
+    geth: {
+      url: `http://10.3.155.145:1919`,
+      accounts: [INSECURE_PRIVATE_KEY],
+      chainId: 151,
+      gas: 0x10000000
     }
+
   }
 };

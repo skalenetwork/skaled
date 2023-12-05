@@ -299,14 +299,11 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
         }
         r["memory"] = memJson;
     }
-    r["memSize"] = static_cast< uint64_t >( memory.size() );
 
-
-    r["op"] = static_cast< uint8_t >( _inst );
-    r["opName"] = instructionInfo( _inst ).name;
-    r["pc"] = _pc;
-    r["_gas"] = static_cast< uint64_t >( _gas );
-    r["_gasCost"] = static_cast< uint64_t >( _gasCost );
+    r["op"] = instructionInfo( _inst ).name;
+    r["pc"] = _pc;  
+    r["gas"] = static_cast< uint64_t >( _gas );
+    r["gasCost"] = static_cast< uint64_t >( _gasCost );
     r["depth"] = _ext->depth + 1;  // depth in standard trace is 1-based
     auto refund = _alethExt.sub.refunds;
     if ( refund > 0 ) {
