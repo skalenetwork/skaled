@@ -19,8 +19,6 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #ifdef HISTORIC_STATE
-
-
 #include "AlethStandardTrace.h"
 #include "FunctionCallRecord.h"
 #include "TraceStructuresAndDefs.h"

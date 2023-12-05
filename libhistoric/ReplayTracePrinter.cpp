@@ -50,7 +50,6 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     _jsonTrace["trace"] = functionTraceArray;
 }
 
-
 ReplayTracePrinter::ReplayTracePrinter( AlethStandardTrace& _standardTrace )
     : TracePrinter( _standardTrace, "replayTrace" ) {}
 

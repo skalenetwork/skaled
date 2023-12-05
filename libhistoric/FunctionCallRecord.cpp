@@ -34,9 +34,11 @@ namespace dev::eth {
 void FunctionCallRecord::setGasUsed( uint64_t _gasUsed ) {
     m_gasUsed = _gasUsed;
 }
+
 uint64_t FunctionCallRecord::getFunctionGasLimit() const {
     return m_functionGasLimit;
 }
+
 void FunctionCallRecord::setOutputData( const vector< uint8_t >& _outputData ) {
     m_outputData = _outputData;
 }
@@ -45,9 +47,11 @@ void FunctionCallRecord::addNestedCall( shared_ptr< FunctionCallRecord >& _neste
     STATE_CHECK( _nestedCall );
     m_nestedCalls.push_back( _nestedCall );
 }
+
 void FunctionCallRecord::setError( const string& _error ) {
     m_error = _error;
 }
+
 void FunctionCallRecord::setRevertReason( const string& _revertReason ) {
     m_reverted = true;
     m_revertReason = _revertReason;
@@ -55,6 +59,7 @@ void FunctionCallRecord::setRevertReason( const string& _revertReason ) {
 const weak_ptr< FunctionCallRecord >& FunctionCallRecord::getParentCall() const {
     return m_parentCall;
 }
+
 int64_t FunctionCallRecord::getDepth() const {
     return m_depth;
 }
@@ -132,7 +137,6 @@ void FunctionCallRecord::printTrace(
     }
 }
 
-
 FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
     uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
     const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
@@ -152,9 +156,11 @@ void FunctionCallRecord::addLogEntry(
     const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
     m_logRecords.emplace_back( _data, _topics );
 }
+
 string FunctionCallRecord::getParityTraceType() {
     return boost::algorithm::to_lower_copy( string( instructionInfo( m_type ).name ) );
 }
+
 void FunctionCallRecord::printParityFunctionTrace(
     Json::Value& _outputArray, Json::Value _address ) {
     Json::Value functionTrace( Json::objectValue );
@@ -187,7 +193,6 @@ void FunctionCallRecord::printParityFunctionTrace(
         nestedCall->printParityFunctionTrace( _outputArray, nestedFunctionAddress );
     }
 }
-
 
 void FunctionCallRecord::collectFourByteTrace( std::map< string, uint64_t >& _callMap ) {
     Json::Value functionTrace( Json::objectValue );

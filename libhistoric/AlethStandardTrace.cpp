@@ -30,7 +30,6 @@ TraceOptions eth::AlethStandardTrace::getOptions() const {
     return m_options;
 }
 
-
 void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
     uint64_t _lastOpGas, uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext,
     const LegacyVM* _vm ) {
@@ -129,7 +128,6 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     }
 }
 
-
 vector< uint8_t > AlethStandardTrace::extractSmartContractMemoryByteArrayFromStackPointer(
     const LegacyVM* _vm ) {
     STATE_CHECK( _vm )
@@ -173,6 +171,7 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
     // set the currently executing call to the funtionCall we just created
     setCurrentlyExecutingFunctionCall( functionCall );
 }
+
 void AlethStandardTrace::setTopFunctionCall(
     const shared_ptr< FunctionCallRecord >& _topFunctionCall ) {
     STATE_CHECK( _topFunctionCall )
@@ -198,9 +197,7 @@ void AlethStandardTrace::recordFunctionReturned(
     }
 }
 
-
 // the getter functions are called by printer classes after the trace has been generated
-
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getTopFunctionCall() const {
     STATE_CHECK( m_isFinalized )
     STATE_CHECK( m_topFunctionCall );
@@ -243,7 +240,6 @@ AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _op
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
 }
-
 
 /*
  * This function is called by EVM on each instruction
@@ -380,27 +376,33 @@ void eth::AlethStandardTrace::printAllTraces( Json::Value& _jsonTrace, Execution
         result.clear();
     }
 }
+
 const h256& AlethStandardTrace::getTxHash() const {
     STATE_CHECK( m_isFinalized )
     return m_txHash;
 }
+
 const set< Address >& AlethStandardTrace::getAccessedAccounts() const {
     STATE_CHECK( m_isFinalized )
     return m_accessedAccounts;
 }
+
 const map< Address, map< u256, u256 > >& AlethStandardTrace::getAccessedStorageValues() const {
     STATE_CHECK( m_isFinalized )
     return m_accessedStorageValues;
 }
+
 const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
     STATE_CHECK( m_isFinalized )
     return m_defaultOpTrace;
 }
+
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getCurrentlyExecutingFunctionCall()
     const {
     STATE_CHECK( m_currentlyExecutingFunctionCall )
     return m_currentlyExecutingFunctionCall;
 }
+
 void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall ) {
     STATE_CHECK( _currentlyExecutingFunctionCall )

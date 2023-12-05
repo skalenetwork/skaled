@@ -33,6 +33,7 @@ void CallTracePrinter::print(
     STATE_CHECK( _jsonTrace.isObject() )
     m_standardTrace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_standardTrace.getOptions() );
 }
+
 CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )
     : TracePrinter( _standardTrace, "callTrace" ) {}
 }  // namespace dev::eth

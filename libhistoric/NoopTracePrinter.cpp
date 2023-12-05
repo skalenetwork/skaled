@@ -32,6 +32,7 @@ void NoopTracePrinter::print(
     _jsonTrace.clear();
     // do nothing
 }
+
 NoopTracePrinter::NoopTracePrinter( AlethStandardTrace& standardTrace )
     : TracePrinter( standardTrace, "noopTrace" ) {}
 

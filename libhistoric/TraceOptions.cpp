@@ -83,8 +83,6 @@ TraceOptions TraceOptions::make( Json::Value const& _json ) {
 
     return op;
 }
-
-
 }  // namespace dev::eth
 
 #endif
