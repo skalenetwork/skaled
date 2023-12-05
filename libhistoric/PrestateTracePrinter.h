@@ -20,6 +20,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "TracePrinter.h"
+#include "libdevcore/Address.h"
 
 namespace Json {
 class Value;
