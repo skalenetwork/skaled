@@ -1128,10 +1128,7 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
-    // TODO implement this when syncing will be needed
-    SyncStatus s;
-    s.startBlockNumber = s.currentBlockNumber = s.highestBlockNumber = 0;
-    return s;
+    return m_skaleHost->syncStatus();
 }
 
 TransactionSkeleton Client::populateTransactionWithDefaults( TransactionSkeleton const& _t ) const {

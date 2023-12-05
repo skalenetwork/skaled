@@ -893,7 +893,7 @@ Json::Value Eth::eth_getWork() {
 
 Json::Value Eth::eth_syncing() {
     dev::eth::SyncStatus sync = client()->syncStatus();
-    if ( sync.state == SyncState::Idle || !sync.majorSyncing )
+    if ( !sync.majorSyncing )
         return Json::Value( false );
 
     Json::Value info( Json::objectValue );

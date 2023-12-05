@@ -942,6 +942,17 @@ u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
 
+dev::eth::SyncStatus SkaleHost::syncStatus() const {
+    auto syncInfo = m_consensus->getSyncInfo();
+    dev::eth::SyncStatus syncStatus;
+    syncStatus.state = syncInfo.isSyncing ? dev::eth::SyncState::Blocks : dev::eth::SyncState::Idle;
+    syncStatus.startBlockNumber = syncInfo.startingBlock;
+    syncStatus.currentBlockNumber = syncInfo.currentBlock;
+    syncStatus.highestBlockNumber = syncInfo.highestBlock;
+    syncStatus.majorSyncing = syncInfo.isSyncing;
+    return syncStatus;
+}
+
 std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
 }
