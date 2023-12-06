@@ -339,7 +339,11 @@ static std::string const c_configString = R"(
         "allowFutureBlocks": true,
         "homesteadForkBlock": "0x00",
         "EIP150ForkBlock": "0x00",
-        "EIP158ForkBlock": "0x00"
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00"
     },
     "genesis": {
         "nonce": "0x0000000000000042",
@@ -375,6 +379,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "byzantiumForkBlock": "0x00",
         "constantinopleForkBlock": "0x00",
         "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00",
         "networkID" : "12313219",
         "chainID": "0x01",
         "maximumExtraDataSize": "0x20",
@@ -439,6 +444,25 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
 
 BOOST_AUTO_TEST_SUITE( EstimateGas )
 
+BOOST_AUTO_TEST_CASE( transactionWithData ) {
+    TestClientFixture fixture( c_genesisInfoSkaleTest );
+    ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+    dev::eth::simulateMining( *( fixture.ethereum() ), 10 );
+
+    Address addr( "0xca4409573a5129a72edf85d6c51e26760fc9c903" );
+
+    bytes data =
+        jsToBytes( "0x11223344556600770000" );
+
+    u256 estimate = testClient
+                        ->estimateGas( addr, 0, addr, data, 10000000, 1000000,
+                            GasEstimationCallback() )
+                        .first;
+
+    BOOST_CHECK_EQUAL( estimate, u256( 21000+7*16+3*4 ) );
+}
+
 BOOST_AUTO_TEST_CASE( constantConsumption ) {
     TestClientFixture fixture( c_genesisInfoSkaleTest );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
@@ -475,7 +499,8 @@ BOOST_AUTO_TEST_CASE( constantConsumption ) {
                             GasEstimationCallback() )
                         .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 71800 ) );
+    // 71488 checked in reall call under Istanbul fork
+    BOOST_CHECK_EQUAL( estimate, u256( 71488 ) );
 }
 
 BOOST_AUTO_TEST_CASE( linearConsumption ) {
@@ -513,7 +538,7 @@ BOOST_AUTO_TEST_CASE( linearConsumption ) {
                             GasEstimationCallback() )
                         .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 2367016 ) );
+    BOOST_CHECK_EQUAL( estimate, u256( 2366934 ) );
 }
 
 BOOST_AUTO_TEST_CASE( exceedsGasLimit ) {
@@ -589,7 +614,7 @@ BOOST_AUTO_TEST_CASE( runsInterference ) {
                             GasEstimationCallback() )
                         .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 41684 ) );
+    BOOST_CHECK_EQUAL( estimate, u256( 41424 ) );
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
@@ -810,7 +835,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithReverts ) {
                            GasEstimationCallback() )
             .first;
 
-    BOOST_CHECK_EQUAL( estimate, u256( 121944 ) );
+    BOOST_CHECK_EQUAL( estimate, u256( 121632 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -829,6 +854,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
         "byzantiumForkBlock": "0x00",
         "constantinopleForkBlock": "0x00",
         "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00",
         "networkID" : "12313219",
         "chainID": "0x01",
         "maximumExtraDataSize": "0x20",
@@ -953,7 +979,11 @@ static std::string const c_skaleConfigString = R"E(
         "allowFutureBlocks": true,
         "homesteadForkBlock": "0x00",
         "EIP150ForkBlock": "0x00",
-        "EIP158ForkBlock": "0x00"
+        "EIP158ForkBlock": "0x00",
+        "byzantiumForkBlock": "0x00",
+        "constantinopleForkBlock": "0x00",
+        "constantinopleFixForkBlock": "0x00",
+        "istanbulForkBlock": "0x00"
     },
     "genesis": {
         "nonce": "0x0000000000000042",

@@ -212,7 +212,8 @@ public:
                                     jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_syncingI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_estimateGas", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, "param2",
+                                    jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_estimateGasI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_chainId", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),

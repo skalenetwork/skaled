@@ -78,6 +78,7 @@ static std::string const c_genesisConfigString =
          "EIP158ForkBlock": "0x00",
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
+         "istanbulForkBlock": "0x00",
          "skaleDisableChainIdCheck": true,
          "externalGasDifficulty": "0x1"
     },
@@ -280,6 +281,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.byzantiumForkBlock = 0;
             chainParams.EIP158ForkBlock = 0;
             chainParams.constantinopleForkBlock = 0;
+            chainParams.istanbulForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
@@ -1246,7 +1248,7 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
     testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
     response = fixture.rpcClient->eth_estimateGas( testPositive );
-    BOOST_CHECK( response == "0x1dc58" );
+    BOOST_CHECK_EQUAL( response, "0x1db20" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -1536,6 +1538,46 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
 }
 
+BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value transact;
+    transact["from"] = toJS( senderAddress );
+    transact["to"] = toJS( senderAddress );
+    // 1k
+    ostringstream ss("0x");
+    for(int i=0; i<1024/16; ++i)
+        ss << "112233445566778899aabbccddeeff11";
+    transact["data"] = ss.str();
+
+    string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+    u256 gasEstimate = jsToU256(gasEstimateStr);
+
+    BOOST_REQUIRE_EQUAL(gasEstimate, u256(21000+1024*16));
+
+    u256 powGasPrice = 0;
+    do {
+        const u256 GAS_PER_HASH = 1;
+        u256 candidate = h256::random();
+        h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
+        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        if ( externalGas >= gasEstimate && externalGas < gasEstimate + gasEstimate/10 ) {
+            powGasPrice = candidate;
+        }
+    } while ( !powGasPrice );
+    // Account balance is too low will mean that PoW didn't work out
+    transact["gasPrice"] = toJS( powGasPrice );
+
+    string txHash = fixture.rpcClient->eth_sendTransaction( transact );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL(receipt["status"], "0x1");
+}
+
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -1579,22 +1621,26 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     string balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 
+    Json::Value transact;
+    transact["from"] = toJS( address2 );
+    transact["to"] = contractAddress;
+    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+
+    string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+    u256 gasEstimate = jsToU256(gasEstimateStr);
+
     u256 powGasPrice = 0;
     do {
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( address2 ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
         u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= 21000 + 21000 ) {
+        if ( externalGas >= gasEstimate && externalGas < gasEstimate + gasEstimate/10 ) {
             powGasPrice = candidate;
         }
     } while ( !powGasPrice );
-
-    Json::Value transact;
-    transact["from"] = toJS( address2 );
-    transact["to"] = contractAddress;
     transact["gasPrice"] = toJS( powGasPrice );
-    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+
     fixture.rpcClient->eth_sendTransaction( transact );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -1848,7 +1894,8 @@ contract TestEstimateGas {
     txStore1["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
     txStore1["from"] = toJS( senderAddress );
     txStore1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    string txHash = fixture.rpcClient->eth_call( txStore1, "latest" );
+    fixture.rpcClient->eth_sendTransaction( txStore1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value estimateGasCall;  // call clear(0)
     estimateGasCall["to"] = contractAddress;
@@ -1858,11 +1905,25 @@ contract TestEstimateGas {
     string estimatedGas = fixture.rpcClient->eth_estimateGas( estimateGasCall );
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
-
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
                        false, &data, fixture.client->chainParams().scheduleForBlockNumber(
                            fixture.client->number() ) ) );
-    BOOST_REQUIRE( dev::jsToU256( estimatedGas ) == 21871 );
+
+    // try to send with this gas
+    estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );
+    string clearHash = fixture.rpcClient->eth_sendTransaction( estimateGasCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
+    BOOST_REQUIRE_EQUAL(clearReceipt["status"], "0x1");
+    BOOST_REQUIRE_LT(jsToInt(clearReceipt["gasUsed"].asString()), 21000);
+
+    // try to lower gas
+    estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) - 1 );
+    clearHash = fixture.rpcClient->eth_sendTransaction( estimateGasCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
+    BOOST_REQUIRE_EQUAL(clearReceipt["status"], "0x0");
+    BOOST_REQUIRE_GT(jsToInt(clearReceipt["gasUsed"].asString()), 21000);
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {

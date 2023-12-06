@@ -1189,7 +1189,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
 
-    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
+    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
 
     // throws in case of error
     State state;
@@ -1279,7 +1279,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().chainID );
-        t.checkOutExternalGas( ~u256( 0 ) );
+        t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
