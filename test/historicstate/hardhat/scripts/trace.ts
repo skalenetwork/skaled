@@ -1,12 +1,13 @@
 import {ethers} from "hardhat";
 import { readFile } from 'fs';
+import {writeFileSync} from "fs";
 import { diff } from 'deep-diff';
 import { expect } from "chai";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
-
+const SKALED_TRACE_FILE_NAME :string = "/tmp/skaled.trace.json"
 
 async function waitUntilNextBlock() {
 
@@ -52,12 +53,14 @@ async function getAndPrintTrace(hash: string): Promise<String> {
 
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
+    const result = JSON.stringify(trace, null, 4);
+    console.log(result);
+    writeFileSync(SKALED_TRACE_FILE_NAME, result);
 
-    console.log(JSON.stringify(trace, null, 4));
     return trace;
 }
 
-async function deployWriteAndDestroy(): Promise<void> {
+async function deployAndMint(): Promise<void> {
 
     console.log(`Deploying ...`);
 
@@ -131,8 +134,11 @@ async function checkDiffs(_skaleTrace: any, _gethTrace: any): Promise<void> {
 }
 
 async function main(): Promise<void> {
+
+    await deployAndMint();
+
     let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
-    let actualResult = await readJSONFile("/tmp/x1")
+    let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
     const differences = diff(expectedResult, actualResult);
 
     console.log('Differences:', differences);
@@ -145,9 +151,6 @@ async function main(): Promise<void> {
 
     await expect(differences).to.be.undefined
 
-    console.log('Differences:', differences);
-
-    await deployWriteAndDestroy();
 
 }
 

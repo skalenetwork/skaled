@@ -308,7 +308,15 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
         r["memory"] = memJson;
     }
 
-    r["op"] = instructionInfo( _inst ).name;
+    string instructionStr( instructionInfo( _inst ).name );
+
+    if ( instructionStr == "JUMPCI" ) {
+        instructionStr = "JUMPI";
+    } else if ( instructionStr == "JUMPC" ) {
+        instructionStr = "JUMP";
+    }
+
+    r["op"] = instructionStr;
     r["pc"] = _pc;
     r["gas"] = static_cast< uint64_t >( _gas );
     r["gasCost"] = static_cast< uint64_t >( _gasCost );
