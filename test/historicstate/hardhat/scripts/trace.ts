@@ -126,6 +126,10 @@ function readJSONFile<T>(fileName: string): Promise<T> {
     });
 }
 
+async function checkDiffs(_skaleTrace: any, _gethTrace: any): Promise<void> {
+
+}
+
 async function main(): Promise<void> {
     let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
     let actualResult = await readJSONFile("/tmp/x1")
@@ -139,8 +143,7 @@ async function main(): Promise<void> {
         console.log('No differences found');
     }
 
-    await expect(differences).to.not.be.undefined
-
+    await expect(differences).to.be.undefined
 
     console.log('Differences:', differences);
 
