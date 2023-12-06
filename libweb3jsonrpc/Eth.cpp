@@ -896,7 +896,7 @@ Json::Value Eth::eth_syncing() {
         auto client = client();
         if ( !client )
             BOOST_THROW_EXCEPTION( std::runtime_error( "Client was not initialized" ) );
-        
+
         // ask consensus whether the node is in catchup mode
         dev::eth::SyncStatus sync = client->syncStatus();
         if ( !sync.majorSyncing )
