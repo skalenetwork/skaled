@@ -943,6 +943,8 @@ u256 SkaleHost::getBlockRandom() const {
 }
 
 dev::eth::SyncStatus SkaleHost::syncStatus() const {
+    if ( !m_consensus )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "Consensus was not initialized" ) );
     auto syncInfo = m_consensus->getSyncInfo();
     dev::eth::SyncStatus syncStatus;
     // SKALE: catchup downloads blocks with transactions, then the node executes them

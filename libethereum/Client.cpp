@@ -1128,6 +1128,8 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
+    if ( !m_skaleHost )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "SkaleHost was not initialized" ) );
     return m_skaleHost->syncStatus();
 }
 
