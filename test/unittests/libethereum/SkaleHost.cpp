@@ -89,13 +89,18 @@ public:
     }
 
     uint64_t checkOracleResult( const string&
-           /*_receipt*/, string& /*_result */) {
+           /*_receipt*/, string& /*_result */) override {
         return 0;
     }
 
-    map< string, uint64_t > getConsensusDbUsage() const {
+    map< string, uint64_t > getConsensusDbUsage() const override {
         return map< string, uint64_t >();
     };
+
+    virtual ConsensusInterface::SyncInfo getSyncInfo() override {
+        return ConsensusInterface::SyncInfo{};
+    };
+
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
