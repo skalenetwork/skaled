@@ -893,10 +893,12 @@ Json::Value Eth::eth_getWork() {
 
 Json::Value Eth::eth_syncing() {
     try {
-        // ask consensus whether the node is in catchup mode
-        if ( !client() )
+        auto client = client();
+        if ( !client )
             BOOST_THROW_EXCEPTION( std::runtime_error( "Client was not initialized" ) );
-        dev::eth::SyncStatus sync = client()->syncStatus();
+        
+        // ask consensus whether the node is in catchup mode
+        dev::eth::SyncStatus sync = client->syncStatus();
         if ( !sync.majorSyncing )
             return Json::Value( false );
 
