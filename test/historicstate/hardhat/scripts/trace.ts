@@ -1,8 +1,12 @@
+import {ethers} from "hardhat";
+import { readFile } from 'fs';
+import { diff } from 'deep-diff';
+import { expect } from "chai";
+
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 
-import {ethers} from "hardhat";
 
 async function waitUntilNextBlock() {
 
@@ -103,9 +107,47 @@ async function deployWriteAndDestroy(): Promise<void> {
      */
 }
 
-async function main(): Promise<void> {
-    await deployWriteAndDestroy();
+
+
+function readJSONFile<T>(fileName: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+        readFile(fileName, 'utf8', (err, data) => {
+            if (err) {
+                reject(`An error occurred while reading the file: ${err.message}`);
+                return;
+            }
+            try {
+                const obj: T = JSON.parse(data);
+                resolve(obj);
+            } catch (parseError) {
+                reject(`Error parsing JSON: ${parseError.message}`);
+            }
+        });
+    });
 }
+
+async function main(): Promise<void> {
+    let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
+    let actualResult = await readJSONFile("/tmp/x1")
+    const differences = diff(expectedResult, actualResult);
+
+    console.log('Differences:', differences);
+
+    if (differences) {
+        console.log('Differences:', differences);
+    } else {
+        console.log('No differences found');
+    }
+
+    await expect(differences).to.not.be.undefined
+
+
+    console.log('Differences:', differences);
+
+    await deployWriteAndDestroy();
+
+}
+
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
