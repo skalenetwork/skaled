@@ -218,6 +218,7 @@ public:
                                     jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_chainIdI );
     }
+
     inline virtual void eth_protocolVersionI( const Json::Value& request, Json::Value& response ) {
         ( void ) request;
         response = this->eth_protocolVersion();
