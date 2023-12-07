@@ -27,12 +27,12 @@ uint64_t LegacyVM::memNeed( u256 const& _offset, u256 const& _size ) {
 
 template < class S >
 S divWorkaround( S const& _a, S const& _b ) {
-    return ( S )( s512( _a ) / s512( _b ) );
+    return ( S ) ( s512( _a ) / s512( _b ) );
 }
 
 template < class S >
 S modWorkaround( S const& _a, S const& _b ) {
-    return ( S )( s512( _a ) % s512( _b ) );
+    return ( S ) ( s512( _a ) % s512( _b ) );
 }
 
 
@@ -357,7 +357,7 @@ void LegacyVM::interpretCases() {
             ON_OP();
             updateIOGas();
 
-            m_mem[( unsigned ) m_SP[0]] = ( _byte_ )( m_SP[1] & 0xff );
+            m_mem[( unsigned ) m_SP[0]] = ( _byte_ ) ( m_SP[1] & 0xff );
         }
         NEXT
 
@@ -375,11 +375,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG0 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log(
@@ -388,11 +390,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG1 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2] },
@@ -401,11 +405,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG2 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2], m_SP[3] },
@@ -414,11 +420,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG3 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2], m_SP[3], m_SP[4] },
@@ -427,11 +435,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG4 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2], m_SP[3], m_SP[4], m_SP[5] },
@@ -1086,7 +1096,9 @@ void LegacyVM::interpretCases() {
         CASE( XPUT )
         CASE( XGET )
         CASE( XSWIZZLE )
-        CASE( XSHUFFLE ) { throwBadInstruction(); }
+        CASE( XSHUFFLE ) {
+            throwBadInstruction();
+        }
         CONTINUE
 #endif
 
