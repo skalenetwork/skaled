@@ -893,7 +893,7 @@ Json::Value Eth::eth_getWork() {
 
 Json::Value Eth::eth_syncing() {
     try {
-        auto client = client();
+        auto client = this->client();
         if ( !client )
             BOOST_THROW_EXCEPTION( std::runtime_error( "Client was not initialized" ) );
 
