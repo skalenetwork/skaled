@@ -1224,9 +1224,9 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( CODECOPY ) {
-            ON_OP();
             m_copyMemSize = toInt63( m_SP[2] );
             updateMem( memNeed( m_SP[0], m_SP[2] ) );
+            ON_OP();
             updateIOGas();
 
             copyDataToMemory( &m_ext->code, m_SP );
