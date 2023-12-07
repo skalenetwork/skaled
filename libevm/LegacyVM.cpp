@@ -265,9 +265,9 @@ void LegacyVM::interpretCases() {
         BREAK
 
         CASE( RETURN ) {
-            ON_OP();
             m_copyMemSize = 0;
             updateMem( memNeed( m_SP[0], m_SP[1] ) );
+            ON_OP();
             updateIOGas();
 
             uint64_t b = ( uint64_t ) m_SP[0];
@@ -279,25 +279,29 @@ void LegacyVM::interpretCases() {
 
         CASE( REVERT ) {
             // Pre-byzantium
-            if ( !m_schedule->haveRevert )
+            if ( !m_schedule->haveRevert ) {
+                ON_OP();
                 throwBadInstruction();
+            }
 
-            ON_OP();
+
             m_copyMemSize = 0;
             updateMem( memNeed( m_SP[0], m_SP[1] ) );
+            ON_OP();
             updateIOGas();
 
             uint64_t b = ( uint64_t ) m_SP[0];
             uint64_t s = ( uint64_t ) m_SP[1];
-            owning_bytes_ref output{ move( m_mem ), b, s };
-            throwRevertInstruction( move( output ) );
+            owning_bytes_ref output{ std::move( m_mem ), b, s };
+            throwRevertInstruction( std::move( output ) );
         }
         BREAK;
 
         CASE( SUICIDE ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             // Self-destructs only have gas cost starting with EIP 150
             m_runGas = toInt63( m_schedule->suicideGas );
@@ -311,7 +315,7 @@ void LegacyVM::interpretCases() {
                 if ( !m_ext->exists( dest ) )
                     m_runGas += m_schedule->callNewAccountGas;
             }
-
+            ON_OP();
             updateIOGas();
             m_ext->suicide( dest );
             m_bounce = 0;
@@ -331,8 +335,8 @@ void LegacyVM::interpretCases() {
         //
 
         CASE( MLOAD ) {
-            ON_OP();
             updateMem( toInt63( m_SP[0] ) + 32 );
+            ON_OP();
             updateIOGas();
 
             m_SPP[0] = ( u256 ) * ( h256 const* ) ( m_mem.data() + ( unsigned ) m_SP[0] );
@@ -340,8 +344,8 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( MSTORE ) {
-            ON_OP();
             updateMem( toInt63( m_SP[0] ) + 32 );
+            ON_OP();
             updateIOGas();
 
             *( h256* ) &m_mem[( unsigned ) m_SP[0]] = ( h256 ) m_SP[1];
@@ -349,8 +353,8 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( MSTORE8 ) {
-            ON_OP();
             updateMem( toInt63( m_SP[0] ) + 1 );
+            ON_OP();
             updateIOGas();
 
             m_mem[( unsigned ) m_SP[0]] = ( _byte_ )( m_SP[1] & 0xff );
@@ -358,10 +362,10 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( SHA3 ) {
-            ON_OP();
             m_runGas = toInt63(
                 m_schedule->sha3Gas + ( u512( m_SP[1] ) + 31 ) / 32 * m_schedule->sha3WordGas );
             updateMem( memNeed( m_SP[0], m_SP[1] ) );
+            ON_OP();
             updateIOGas();
 
             uint64_t inOff = ( uint64_t ) m_SP[0];
