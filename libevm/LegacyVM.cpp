@@ -1512,8 +1512,10 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( SSTORE ) {
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             updateSSGas();
             // ON_OP must be called when m_runGas is already set

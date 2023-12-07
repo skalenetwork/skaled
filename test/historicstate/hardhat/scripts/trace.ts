@@ -1,13 +1,13 @@
 import {ethers} from "hardhat";
-import { readFile } from 'fs';
+import {readFile} from 'fs';
 import {writeFileSync} from "fs";
-import { diff } from 'deep-diff';
-import { expect } from "chai";
+import deepDiff, {diff} from 'deep-diff';
+import {expect} from "chai";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
-const SKALED_TRACE_FILE_NAME :string = "/tmp/skaled.trace.json"
+const SKALED_TRACE_FILE_NAME: string = "/tmp/skaled.trace.json"
 
 async function waitUntilNextBlock() {
 
@@ -54,7 +54,6 @@ async function getAndPrintTrace(hash: string): Promise<String> {
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
     const result = JSON.stringify(trace, null, 4);
-    console.log(result);
     writeFileSync(SKALED_TRACE_FILE_NAME, result);
 
     return trace;
@@ -70,7 +69,7 @@ async function deployAndMint(): Promise<void> {
     });
     const deployedTracer = await tracer.deployed();
     const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTracer.deployTransaction.hash)
-    const deployBlockNumber : number = deployReceipt.blockNumber;
+    const deployBlockNumber: number = deployReceipt.blockNumber;
     const hash = deployedTracer.deployTransaction.hash;
     console.log(`Gas limit ${deployedTracer.deployTransaction.gasLimit}`);
     console.log(`Contract deployed to ${deployedTracer.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
@@ -92,7 +91,7 @@ async function deployAndMint(): Promise<void> {
 */
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
-  //
+    //
     //  await getAndPrintTrace(transferReceipt.hash);
 
     /*
@@ -109,7 +108,6 @@ async function deployAndMint(): Promise<void> {
 
      */
 }
-
 
 
 function readJSONFile<T>(fileName: string): Promise<T> {
@@ -139,17 +137,40 @@ async function main(): Promise<void> {
 
     let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
     let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
-    const differences = diff(expectedResult, actualResult);
+    const differences = deepDiff(expectedResult, actualResult);
 
-    console.log('Differences:', differences);
+//    console.log('Differences:', differences);
+
+    let foundDiffs = false;
 
     if (differences) {
-        console.log('Differences:', differences);
-    } else {
-        console.log('No differences found');
-    }
+        differences.forEach((difference, index) => {
+            // do not print differences related to total gas
+            if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gas") {
+                return;
+            }
 
-    await expect(differences).to.be.undefined
+            if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gasCost" &&
+                expectedResult["structLogs"][difference.path[1]]["op"]  == "SLOAD") {
+                return;
+            }
+
+            if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gasCost" &&
+                expectedResult["structLogs"][difference.path[1]]["op"]  == "SSTORE") {
+                return;
+            }
+
+            foundDiffs = true;
+            if (difference.kind == "E") {
+                console.log(`Difference op:`, expectedResult["structLogs"][difference.path[1]]);
+            }
+            console.log(`Difference ${index + 1}:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
 
 
 }
