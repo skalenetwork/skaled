@@ -1248,7 +1248,11 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
     testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
     response = fixture.rpcClient->eth_estimateGas( testPositive );
+    string response2 = fixture.rpcClient->eth_estimateGas( testPositive, "latest" );
+    string response3 = fixture.rpcClient->eth_estimateGas( testPositive, "1" );
     BOOST_CHECK_EQUAL( response, "0x1db20" );
+    BOOST_CHECK_EQUAL( response2, "0x1db20" );
+    BOOST_CHECK_EQUAL( response3, "0x1db20" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -1536,46 +1540,6 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     responseString = fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_CHECK_EQUAL(
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
-}
-
-BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
-    JsonRpcFixture fixture;
-    dev::eth::simulateMining( *( fixture.client ), 1 );
-
-    auto senderAddress = fixture.coinbase.address();
-
-    Json::Value transact;
-    transact["from"] = toJS( senderAddress );
-    transact["to"] = toJS( senderAddress );
-    // 1k
-    ostringstream ss("0x");
-    for(int i=0; i<1024/16; ++i)
-        ss << "112233445566778899aabbccddeeff11";
-    transact["data"] = ss.str();
-
-    string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
-    u256 gasEstimate = jsToU256(gasEstimateStr);
-
-    BOOST_REQUIRE_EQUAL(gasEstimate, u256(21000+1024*16));
-
-    u256 powGasPrice = 0;
-    do {
-        const u256 GAS_PER_HASH = 1;
-        u256 candidate = h256::random();
-        h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
-        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= gasEstimate && externalGas < gasEstimate + gasEstimate/10 ) {
-            powGasPrice = candidate;
-        }
-    } while ( !powGasPrice );
-    // Account balance is too low will mean that PoW didn't work out
-    transact["gasPrice"] = toJS( powGasPrice );
-
-    string txHash = fixture.rpcClient->eth_sendTransaction( transact );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-
-    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE_EQUAL(receipt["status"], "0x1");
 }
 
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {

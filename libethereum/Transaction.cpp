@@ -180,18 +180,17 @@ u256 Transaction::gasPrice() const {
     }
 }
 
-void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn ) {
-    u256 const& difficulty = _cp.externalGasDifficulty;
-    assert( difficulty > 0 );
+void Transaction::checkOutExternalGas( u256 const& _difficulty ) {
+    assert( _difficulty > 0 );
     if ( !m_externalGasIsChecked && !isInvalid() ) {
         h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
         if ( !hash ) {
             hash = h256( 1 );
         }
-        u256 externalGas = ~u256( 0 ) / u256( hash ) / difficulty;
+        u256 externalGas = ~u256( 0 ) / u256( hash ) / _difficulty;
         if ( externalGas > 0 )
             ctrace << "Mined gas: " << externalGas << endl;
-        if ( externalGas >= baseGasRequired( _cp.scheduleForBlockNumber( _bn ) ) ) {
+        if ( externalGas >= baseGasRequired( ConstantinopleSchedule ) ) {
             m_externalGas = externalGas;
         }
         m_externalGasIsChecked = true;
