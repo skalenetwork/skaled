@@ -1131,10 +1131,9 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
-    // TODO implement this when syncing will be needed
-    SyncStatus s;
-    s.startBlockNumber = s.currentBlockNumber = s.highestBlockNumber = 0;
-    return s;
+    if ( !m_skaleHost )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "SkaleHost was not initialized" ) );
+    return m_skaleHost->syncStatus();
 }
 
 TransactionSkeleton Client::populateTransactionWithDefaults( TransactionSkeleton const& _t ) const {
