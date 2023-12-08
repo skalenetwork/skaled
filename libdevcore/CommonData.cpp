@@ -24,7 +24,6 @@
 #include "CommonData.h"
 #include "Exceptions.h"
 
-#include <arpa/inet.h>
 #include <random>
 
 using namespace std;
