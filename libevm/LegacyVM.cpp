@@ -27,12 +27,12 @@ uint64_t LegacyVM::memNeed( u256 const& _offset, u256 const& _size ) {
 
 template < class S >
 S divWorkaround( S const& _a, S const& _b ) {
-    return ( S )( s512( _a ) / s512( _b ) );
+    return ( S ) ( s512( _a ) / s512( _b ) );
 }
 
 template < class S >
 S modWorkaround( S const& _a, S const& _b ) {
-    return ( S )( s512( _a ) % s512( _b ) );
+    return ( S ) ( s512( _a ) % s512( _b ) );
 }
 
 
@@ -265,9 +265,9 @@ void LegacyVM::interpretCases() {
         BREAK
 
         CASE( RETURN ) {
-            ON_OP();
             m_copyMemSize = 0;
             updateMem( memNeed( m_SP[0], m_SP[1] ) );
+            ON_OP();
             updateIOGas();
 
             uint64_t b = ( uint64_t ) m_SP[0];
@@ -279,25 +279,29 @@ void LegacyVM::interpretCases() {
 
         CASE( REVERT ) {
             // Pre-byzantium
-            if ( !m_schedule->haveRevert )
+            if ( !m_schedule->haveRevert ) {
+                ON_OP();
                 throwBadInstruction();
+            }
 
-            ON_OP();
+
             m_copyMemSize = 0;
             updateMem( memNeed( m_SP[0], m_SP[1] ) );
+            ON_OP();
             updateIOGas();
 
             uint64_t b = ( uint64_t ) m_SP[0];
             uint64_t s = ( uint64_t ) m_SP[1];
-            owning_bytes_ref output{ move( m_mem ), b, s };
-            throwRevertInstruction( move( output ) );
+            owning_bytes_ref output{ std::move( m_mem ), b, s };
+            throwRevertInstruction( std::move( output ) );
         }
         BREAK;
 
         CASE( SUICIDE ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             // Self-destructs only have gas cost starting with EIP 150
             m_runGas = toInt63( m_schedule->suicideGas );
@@ -311,7 +315,7 @@ void LegacyVM::interpretCases() {
                 if ( !m_ext->exists( dest ) )
                     m_runGas += m_schedule->callNewAccountGas;
             }
-
+            ON_OP();
             updateIOGas();
             m_ext->suicide( dest );
             m_bounce = 0;
@@ -331,8 +335,8 @@ void LegacyVM::interpretCases() {
         //
 
         CASE( MLOAD ) {
-            ON_OP();
             updateMem( toInt63( m_SP[0] ) + 32 );
+            ON_OP();
             updateIOGas();
 
             m_SPP[0] = ( u256 ) * ( h256 const* ) ( m_mem.data() + ( unsigned ) m_SP[0] );
@@ -340,8 +344,8 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( MSTORE ) {
-            ON_OP();
             updateMem( toInt63( m_SP[0] ) + 32 );
+            ON_OP();
             updateIOGas();
 
             *( h256* ) &m_mem[( unsigned ) m_SP[0]] = ( h256 ) m_SP[1];
@@ -349,19 +353,19 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( MSTORE8 ) {
-            ON_OP();
             updateMem( toInt63( m_SP[0] ) + 1 );
+            ON_OP();
             updateIOGas();
 
-            m_mem[( unsigned ) m_SP[0]] = ( _byte_ )( m_SP[1] & 0xff );
+            m_mem[( unsigned ) m_SP[0]] = ( _byte_ ) ( m_SP[1] & 0xff );
         }
         NEXT
 
         CASE( SHA3 ) {
-            ON_OP();
             m_runGas = toInt63(
                 m_schedule->sha3Gas + ( u512( m_SP[1] ) + 31 ) / 32 * m_schedule->sha3WordGas );
             updateMem( memNeed( m_SP[0], m_SP[1] ) );
+            ON_OP();
             updateIOGas();
 
             uint64_t inOff = ( uint64_t ) m_SP[0];
@@ -371,11 +375,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG0 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log(
@@ -384,11 +390,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG1 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2] },
@@ -397,11 +405,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG2 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2], m_SP[3] },
@@ -410,11 +420,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG3 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2], m_SP[3], m_SP[4] },
@@ -423,11 +435,13 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( LOG4 ) {
-            ON_OP();
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             logGasMem();
+            ON_OP();
             updateIOGas();
 
             m_ext->log( { m_SP[2], m_SP[3], m_SP[4], m_SP[5] },
@@ -602,8 +616,10 @@ void LegacyVM::interpretCases() {
 
         CASE( SHL ) {
             // Pre-constantinople
-            if ( !m_schedule->haveBitwiseShifting )
+            if ( !m_schedule->haveBitwiseShifting ) {
+                ON_OP();
                 throwBadInstruction();
+            }
 
             ON_OP();
             updateIOGas();
@@ -617,8 +633,10 @@ void LegacyVM::interpretCases() {
 
         CASE( SHR ) {
             // Pre-constantinople
-            if ( !m_schedule->haveBitwiseShifting )
+            if ( !m_schedule->haveBitwiseShifting ) {
+                ON_OP();
                 throwBadInstruction();
+            }
 
             ON_OP();
             updateIOGas();
@@ -632,16 +650,15 @@ void LegacyVM::interpretCases() {
 
         CASE( SAR ) {
             // Pre-constantinople
-            if ( !m_schedule->haveBitwiseShifting )
+            if ( !m_schedule->haveBitwiseShifting ) {
+                ON_OP();
                 throwBadInstruction();
-
+            }
             ON_OP();
             updateIOGas();
-
             static u256 const hibit = u256( 1 ) << 255;
             static u256 const allbits =
                 u256( "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" );
-
             u256 shiftee = m_SP[1];
             if ( m_SP[0] >= 256 ) {
                 if ( shiftee & hibit )
@@ -660,7 +677,6 @@ void LegacyVM::interpretCases() {
         CASE( ADDMOD ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_SP[2] ? u256( ( u512( m_SP[0] ) + u512( m_SP[1] ) ) % m_SP[2] ) : 0;
         }
         NEXT
@@ -668,7 +684,6 @@ void LegacyVM::interpretCases() {
         CASE( MULMOD ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_SP[2] ? u256( ( u512( m_SP[0] ) * u512( m_SP[1] ) ) % m_SP[2] ) : 0;
         }
         NEXT
@@ -676,7 +691,6 @@ void LegacyVM::interpretCases() {
         CASE( SIGNEXTEND ) {
             ON_OP();
             updateIOGas();
-
             if ( m_SP[0] < 31 ) {
                 unsigned testBit = static_cast< unsigned >( m_SP[0] ) * 8 + 7;
                 u256& number = m_SP[1];
@@ -766,6 +780,7 @@ void LegacyVM::interpretCases() {
 #else
         CASE( JUMPTO ) CASE( JUMPIF ) CASE( JUMPV ) CASE( JUMPSUB ) CASE( JUMPSUBV )
             CASE( RETURNSUB ) CASE( BEGINSUB ) CASE( BEGINDATA ) CASE( GETLOCAL ) CASE( PUTLOCAL ) {
+            ON_OP();
             throwBadInstruction();
         }
         CONTINUE
@@ -1082,14 +1097,15 @@ void LegacyVM::interpretCases() {
         CASE( XPUT )
         CASE( XGET )
         CASE( XSWIZZLE )
-        CASE( XSHUFFLE ) { throwBadInstruction(); }
+        CASE( XSHUFFLE ) {
+            throwBadInstruction();
+        }
         CONTINUE
 #endif
 
         CASE( ADDRESS ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = fromAddress( m_ext->myAddress );
         }
         NEXT
@@ -1097,7 +1113,6 @@ void LegacyVM::interpretCases() {
         CASE( ORIGIN ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = fromAddress( m_ext->origin );
         }
         NEXT
@@ -1106,7 +1121,6 @@ void LegacyVM::interpretCases() {
             m_runGas = toInt63( m_schedule->balanceGas );
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_ext->balance( asAddress( m_SP[0] ) );
         }
         NEXT
@@ -1115,7 +1129,6 @@ void LegacyVM::interpretCases() {
         CASE( CALLER ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = fromAddress( m_ext->caller );
         }
         NEXT
@@ -1123,7 +1136,6 @@ void LegacyVM::interpretCases() {
         CASE( CALLVALUE ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_ext->value;
         }
         NEXT
@@ -1132,7 +1144,6 @@ void LegacyVM::interpretCases() {
         CASE( CALLDATALOAD ) {
             ON_OP();
             updateIOGas();
-
             if ( u512( m_SP[0] ) + 31 < m_ext->data.size() )
                 m_SP[0] = ( u256 ) * ( h256 const* ) ( m_ext->data.data() + ( size_t ) m_SP[0] );
             else if ( m_SP[0] >= m_ext->data.size() )
@@ -1152,18 +1163,17 @@ void LegacyVM::interpretCases() {
         CASE( CALLDATASIZE ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_ext->data.size();
         }
         NEXT
 
         CASE( RETURNDATASIZE ) {
-            if ( !m_schedule->haveReturnData )
+            if ( !m_schedule->haveReturnData ) {
+                ON_OP();
                 throwBadInstruction();
-
+            }
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_returnData.size();
         }
         NEXT
@@ -1171,7 +1181,6 @@ void LegacyVM::interpretCases() {
         CASE( CODESIZE ) {
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_ext->code.size();
         }
         NEXT
@@ -1180,31 +1189,31 @@ void LegacyVM::interpretCases() {
             m_runGas = toInt63( m_schedule->extcodesizeGas );
             ON_OP();
             updateIOGas();
-
             m_SPP[0] = m_ext->codeSizeAt( asAddress( m_SP[0] ) );
         }
         NEXT
 
         CASE( CALLDATACOPY ) {
-            ON_OP();
             m_copyMemSize = toInt63( m_SP[2] );
             updateMem( memNeed( m_SP[0], m_SP[2] ) );
+            ON_OP();
             updateIOGas();
-
             copyDataToMemory( m_ext->data, m_SP );
         }
         NEXT
 
         CASE( RETURNDATACOPY ) {
-            ON_OP();
-            if ( !m_schedule->haveReturnData )
+            if ( !m_schedule->haveReturnData ) {
+                ON_OP();
                 throwBadInstruction();
+            }
             bigint const endOfAccess = bigint( m_SP[1] ) + bigint( m_SP[2] );
             if ( m_returnData.size() < endOfAccess )
                 throwBufferOverrun( endOfAccess );
 
             m_copyMemSize = toInt63( m_SP[2] );
             updateMem( memNeed( m_SP[0], m_SP[2] ) );
+            ON_OP();
             updateIOGas();
 
             copyDataToMemory( &m_returnData, m_SP );
@@ -1212,32 +1221,31 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( EXTCODEHASH ) {
-            ON_OP();
-            if ( !m_schedule->haveExtcodehash )
+            if ( !m_schedule->haveExtcodehash ) {
+                ON_OP();
                 throwBadInstruction();
-
+            }
             m_runGas = toInt63( m_schedule->extcodehashGas );
+            ON_OP();
             updateIOGas();
-
             m_SPP[0] = u256{ m_ext->codeHashAt( asAddress( m_SP[0] ) ) };
         }
         NEXT
 
         CASE( CODECOPY ) {
-            ON_OP();
             m_copyMemSize = toInt63( m_SP[2] );
             updateMem( memNeed( m_SP[0], m_SP[2] ) );
+            ON_OP();
             updateIOGas();
-
             copyDataToMemory( &m_ext->code, m_SP );
         }
         NEXT
 
         CASE( EXTCODECOPY ) {
-            ON_OP();
             m_runGas = toInt63( m_schedule->extcodecopyGas );
             m_copyMemSize = toInt63( m_SP[3] );
             updateMem( memNeed( m_SP[1], m_SP[3] ) );
+            ON_OP();
             updateIOGas();
 
             Address a = asAddress( m_SP[0] );
@@ -1255,8 +1263,8 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( BLOCKHASH ) {
-            ON_OP();
             m_runGas = toInt63( m_schedule->blockhashGas );
+            ON_OP();
             updateIOGas();
 
             m_SPP[0] = ( u256 ) m_ext->blockHash( m_SP[0] );
@@ -1504,8 +1512,10 @@ void LegacyVM::interpretCases() {
         NEXT
 
         CASE( SSTORE ) {
-            if ( m_ext->staticCall )
+            if ( m_ext->staticCall ) {
+                ON_OP();
                 throwDisallowedStateChange();
+            }
 
             updateSSGas();
             // ON_OP must be called when m_runGas is already set
