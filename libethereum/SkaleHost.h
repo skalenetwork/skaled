@@ -51,6 +51,7 @@
 
 namespace dev {
 namespace eth {
+struct SyncStatus;
 class Client;
 class TransactionQueue;
 class BlockHeader;
@@ -123,6 +124,7 @@ public:
 
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
+    dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     std::array< std::string, 4 > getIMABLSPublicKey() const;
 
