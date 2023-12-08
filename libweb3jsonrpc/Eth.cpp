@@ -892,15 +892,24 @@ Json::Value Eth::eth_getWork() {
 }
 
 Json::Value Eth::eth_syncing() {
-    dev::eth::SyncStatus sync = client()->syncStatus();
-    if ( sync.state == SyncState::Idle || !sync.majorSyncing )
-        return Json::Value( false );
+    try {
+        auto client = this->client();
+        if ( !client )
+            BOOST_THROW_EXCEPTION( std::runtime_error( "Client was not initialized" ) );
 
-    Json::Value info( Json::objectValue );
-    info["startingBlock"] = sync.startBlockNumber;
-    info["highestBlock"] = sync.highestBlockNumber;
-    info["currentBlock"] = sync.currentBlockNumber;
-    return info;
+        // ask consensus whether the node is in catchup mode
+        dev::eth::SyncStatus sync = client->syncStatus();
+        if ( !sync.majorSyncing )
+            return Json::Value( false );
+
+        Json::Value info( Json::objectValue );
+        info["startingBlock"] = sync.startBlockNumber;
+        info["highestBlock"] = sync.highestBlockNumber;
+        info["currentBlock"] = sync.currentBlockNumber;
+        return info;
+    } catch ( const Exception& e ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( e.what() ) );
+    }
 }
 
 string Eth::eth_chainId() {
