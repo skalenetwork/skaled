@@ -118,7 +118,6 @@ std::string dev::toString( string32 const& _s ) {
 }
 
 std::string dev::customErrorMessageToString( const bytes& _b ) {
-    std::cout << toHex( _b ) << '\n';
     return toHexPrefixed( _b );
 }
 
