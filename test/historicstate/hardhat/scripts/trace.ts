@@ -131,15 +131,8 @@ async function checkDiffs(_skaleTrace: any, _gethTrace: any): Promise<void> {
 
 }
 
-async function main(): Promise<void> {
-
-    await deployAndMint();
-
-    let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
-    let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
-    const differences = deepDiff(expectedResult, actualResult);
-
-//    console.log('Differences:', differences);
+async function checkForDiffs(_expectedResult: any, _actualResult: any) {
+    const differences = deepDiff(_expectedResult, _actualResult);
 
     let foundDiffs = false;
 
@@ -151,18 +144,18 @@ async function main(): Promise<void> {
             }
 
             if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gasCost" &&
-                expectedResult["structLogs"][difference.path[1]]["op"]  == "SLOAD") {
+                _expectedResult["structLogs"][difference.path[1]]["op"] == "SLOAD") {
                 return;
             }
 
             if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gasCost" &&
-                expectedResult["structLogs"][difference.path[1]]["op"]  == "SSTORE") {
+                _expectedResult["structLogs"][difference.path[1]]["op"] == "SSTORE") {
                 return;
             }
 
             foundDiffs = true;
             if (difference.kind == "E") {
-                console.log(`Difference op:`, expectedResult["structLogs"][difference.path[1]]);
+                console.log(`Difference op:`, _expectedResult["structLogs"][difference.path[1]]);
             }
             console.log(`Difference ${index + 1}:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
@@ -171,7 +164,15 @@ async function main(): Promise<void> {
     ;
 
     await expect(foundDiffs).to.be.eq(false)
+}
 
+async function main(): Promise<void> {
+
+    await deployAndMint();
+
+    let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
+    let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
+    checkForDiffs(expectedResult, actualResult)
 
 }
 

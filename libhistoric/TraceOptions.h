@@ -41,7 +41,8 @@ public:
     bool disableStorage = false;
     bool enableMemory = false;
     bool disableStack = false;
-    bool enableReturnData = false;
+    // geth enables return data by default
+    bool enableReturnData = true;
     bool prestateDiffMode = false;
     bool onlyTopCall = false;
     bool withLog = false;
