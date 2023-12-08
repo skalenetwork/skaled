@@ -11,7 +11,7 @@ def run_geth_container():
         "docker", "run", "-d", "--name", "ethereum-node",
         "-p", "8545:8545", "-p", "30303:30303",
         "ethereum/client-go", "--dev", "--http",
-        "--http.addr", "0.0.0.0", "--http.corsdomain", "*",
+        "--http.addr", "0.0.0.0", "--http.corsdomain", "*", "--allow-insecure-unlock"
         "--http.api", "personal,eth,net,web3,debug"
     ])
 
