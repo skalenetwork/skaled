@@ -1030,11 +1030,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
-        //        if ( res.output.size() == 4 ) {
-        //            strRevertReason = dev::toHex( res.output );
-        //        } else {
-        //            strRevertReason = skutils::eth::call_error_message_2_str( res.output );
-        //        }
         strRevertReason = dev::errorMessageToString( res.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
