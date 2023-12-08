@@ -17,25 +17,25 @@ def run_geth_container():
 
 def add_ether_to_account(address, amount):
     # Connect to the Geth node
-    web3 = Web3(HTTPProvider("http://localhost:8545"))
+    w3 = Web3(HTTPProvider("http://localhost:8545"))
 
     # Check if the connection is successful
-    if not web3.isConnected():
+    if not w3.is_connected():
         print("Failed to connect to the Ethereum node.")
         return
 
     # Unlock the default account (coinbase)
-    coinbase = web3.eth.coinbase
-    web3.geth.personal.unlockAccount(coinbase, '', 0)
+    coinbase = w3.eth.coinbase
+    w3.geth.personal.unlock_account(coinbase, '', 0)
 
     # Convert Ether to Wei
-    value = web3.toWei(amount, 'ether')
+    value = w3.toWei(amount, 'ether')
 
     # Create and send the transaction
-    tx_hash = web3.eth.sendTransaction({'from': coinbase, 'to': address, 'value': value})
+    tx_hash = w3.eth.sendTransaction({'from': coinbase, 'to': address, 'value': value})
 
     # Wait for the transaction to be mined
-    web3.eth.waitForTransactionReceipt(tx_hash)
+    w3.eth.waitForTransactionReceipt(tx_hash)
 
     print(f"Successfully sent {amount} ETH to {address}")
 
