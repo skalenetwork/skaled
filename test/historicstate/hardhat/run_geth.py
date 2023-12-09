@@ -2,16 +2,40 @@ import subprocess
 import time
 from web3 import Web3, HTTPProvider
 
+
+def is_container_running(container_name):
+    try:
+        result = subprocess.run(["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True)
+
+        if result.returncode != 0:
+            print(f"Error: {result.stderr.strip()}")
+            return False
+
+        return result.stdout.strip() == 'true'
+
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+        return False
+
 def run_geth_container():
     # Pull the Docker image
     subprocess.run(["docker", "pull", "ethereum/client-go"])
 
+    is_running : bool = is_container_running("geth")
+
+    if (is_running):
+        return
+
+
     # Run the Geth container in detached mode
     subprocess.run([
-        "docker", "run", "-d", "--name", "ethereum-node",
+        "docker", "run", "-d", "--name", "geth",
         "-p", "8545:8545", "-p", "30303:30303",
         "ethereum/client-go", "--dev", "--http",
-        "--http.addr", "0.0.0.0", "--http.corsdomain", "*", "--allow-insecure-unlock"
+        "--http.addr", "0.0.0.0", "--http.corsdomain", "*", "--allow-insecure-unlock",
         "--http.api", "personal,eth,net,web3,debug"
     ])
 
@@ -29,13 +53,13 @@ def add_ether_to_account(address, amount):
     w3.geth.personal.unlock_account(coinbase, '', 0)
 
     # Convert Ether to Wei
-    value = w3.toWei(amount, 'ether')
+    value = w3.to_wei(amount, 'ether')
 
     # Create and send the transaction
-    tx_hash = w3.eth.sendTransaction({'from': coinbase, 'to': address, 'value': value})
+    tx_hash = w3.eth.send_transaction({'from': coinbase, 'to': address, 'value': value})
 
     # Wait for the transaction to be mined
-    w3.eth.waitForTransactionReceipt(tx_hash)
+    w3.eth.wait_for_transaction_receipt(tx_hash)
 
     print(f"Successfully sent {amount} ETH to {address}")
 
