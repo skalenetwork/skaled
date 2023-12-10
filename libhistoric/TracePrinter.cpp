@@ -63,7 +63,7 @@ string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
     case EVMC_OUT_OF_MEMORY:
         return "out of memory";
     default:
-        return "unknown error";
+        return "";
     };
 }
 
