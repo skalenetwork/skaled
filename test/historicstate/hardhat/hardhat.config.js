@@ -19,9 +19,9 @@ module.exports = {
       gas: 0x10000000
     },
     geth: {
-      url: `http://10.3.155.145:1919`,
+      url: `http://localhost:8545`,
       accounts: [INSECURE_PRIVATE_KEY],
-      chainId: 151,
+      chainId: 1337,
       gas: 0x10000000
     }
 
