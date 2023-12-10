@@ -316,7 +316,7 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
     } else if ( instructionStr == "JUMPC" ) {
         instructionStr = "JUMP";
     } else if (instructionStr == "SHA3")  {
-        instructionStr = "KECCACK256";
+        instructionStr = "KECCAK256";
     }
 
 
