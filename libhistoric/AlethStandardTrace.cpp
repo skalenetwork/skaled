@@ -339,15 +339,6 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
         }
     }
 
-    if ( _inst == Instruction::REVERT ) {
-        // reverted. Set error message
-        // message offset and size are the last two elements
-        auto b = ( uint64_t ) _vm->getStackElement( 0 );
-        auto s = ( uint64_t ) _vm->getStackElement( 1 );
-        std::vector< uint8_t > errorMessage( memory.begin() + b, memory.begin() + b + s );
-        r["error"] = skutils::eth::call_error_message_2_str( errorMessage );
-    }
-
     m_defaultOpTrace->append( r );
 }
 

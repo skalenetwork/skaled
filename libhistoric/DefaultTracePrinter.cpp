@@ -44,9 +44,7 @@ void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult&
     } else {
         auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
         string errMessage = getEvmErrorDescription( statusCode );
-        // return message in two fields for compatibility with different tools
         _jsonTrace["returnValue"] = errMessage;
-        _jsonTrace["error"] = errMessage;
     }
 }
 DefaultTracePrinter::DefaultTracePrinter( AlethStandardTrace& standardTrace )
