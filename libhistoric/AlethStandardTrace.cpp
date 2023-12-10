@@ -310,11 +310,16 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
 
     string instructionStr( instructionInfo( _inst ).name );
 
+    // make strings compatible to geth trace
     if ( instructionStr == "JUMPCI" ) {
         instructionStr = "JUMPI";
     } else if ( instructionStr == "JUMPC" ) {
         instructionStr = "JUMP";
+    } else if (instructionStr == "SHA3")  {
+        instructionStr = "KECCACK256";
     }
+
+
 
     r["op"] = instructionStr;
     r["pc"] = _pc;

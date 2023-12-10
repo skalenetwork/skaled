@@ -189,12 +189,14 @@ async function main(): Promise<void> {
     checkGasCalculations(actualResult)
     checkForDiffs(expectedResult, actualResult)
 
+    await callTestContractMint(deployedContract);
+
     let expectedResultMint = await readJSONFile("scripts/tracer_contract_geth_mint_trace.json")
     let actualResultMint = await readJSONFile(SKALED_TRACE_FILE_NAME)
-    checkGasCalculations(actualResult)
-    checkForDiffs(expectedResult, actualResultMint)
+    checkGasCalculations(actualResultMint)
+    checkForDiffs(expectedResultMint, actualResultMint)
 
-    await callTestContractMint(deployedContract);
+
 }
 
 
