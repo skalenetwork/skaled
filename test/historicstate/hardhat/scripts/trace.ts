@@ -60,54 +60,46 @@ async function getAndPrintTrace(hash: string): Promise<String> {
     return trace;
 }
 
-async function deployAndMint(): Promise<void> {
+async function deployTestContract(): Promise<object> {
 
     console.log(`Deploying ...`);
 
     const factory = await ethers.getContractFactory("Tracer");
-    const tracer = await factory.deploy({
+    const testContractName = await factory.deploy({
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
-    const deployedTracer = await tracer.deployed();
-    const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTracer.deployTransaction.hash)
+    const deployedTestContract = await testContractName.deployed();
+    const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTestContract.deployTransaction.hash)
     const deployBlockNumber: number = deployReceipt.blockNumber;
-    const hash = deployedTracer.deployTransaction.hash;
-    console.log(`Gas limit ${deployedTracer.deployTransaction.gasLimit}`);
-    console.log(`Contract deployed to ${deployedTracer.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
-
+    const hash = deployedTestContract.deployTransaction.hash;
+    console.log(`Gas limit ${deployedTestContract.deployTransaction.gasLimit}`);
+    console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
     // await waitUntilNextBlock()
 
     //await getAndPrintBlockTrace(deployBlockNumber);
     //await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash)
+    await getAndPrintTrace(hash);
 
+    return deployedTestContract;
 
-    /* console.log(`Now minting`);
+}
 
-    const transferReceipt = await deployedTracer.mint(1000, {
+async function callTestContractMint(deployedContract:any): Promise<void> {
+
+    console.log(`Minting ...`);
+
+    const transferReceipt = await deployedContract.mint(1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
-*/
+
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //
-    //  await getAndPrintTrace(transferReceipt.hash);
 
-    /*
+    await getAndPrintTrace(transferReceipt.hash);
 
-    console.log(`Now testing self-destruct`);
-
-    const transferReceipt2 = await lockContract.die("0x690b9a9e9aa1c9db991c7721a92d351db4fac990");
-    await transferReceipt2.wait();
-
-    console.log(`Successfully self destructed`);
-
-    console.log(`PASSED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`);
-
-
-     */
 }
 
 
@@ -121,46 +113,43 @@ function readJSONFile<T>(fileName: string): Promise<T> {
             try {
                 const obj: T = JSON.parse(data);
                 resolve(obj);
-            } catch (parseError) {
+            } catch (parseError : any) {
                 reject(`Error parsing JSON: ${parseError.message}`);
             }
         });
     });
 }
 
-async function checkDiffs(_skaleTrace: any, _gethTrace: any): Promise<void> {
-
-}
 
 async function checkForDiffs(_expectedResult: any, _actualResult: any) {
-    const differences = deepDiff(_expectedResult, _actualResult);
+    const differences = deepDiff(_expectedResult, _actualResult)!;
 
     let foundDiffs = false;
 
     if (differences) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas
-            if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gas") {
+            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gas") {
                 return;
             }
 
-            if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gasCost" &&
-                _expectedResult["structLogs"][difference.path[1]]["op"] == "SLOAD") {
+            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost" &&
+                _expectedResult["structLogs"][difference.path![1]]["op"] == "SLOAD") {
                 return;
             }
 
-            if (difference.kind == "E" && difference.path.length == 3 && difference.path[2] == "gasCost" &&
-                _expectedResult["structLogs"][difference.path[1]]["op"] == "SSTORE") {
+            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost" &&
+                _expectedResult["structLogs"][difference.path![1]]["op"] == "SSTORE") {
                 return;
             }
 
-            if (difference.kind == "E" && difference.path.length == 1 && difference.path[0] == "gas") {
+            if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "gas") {
                 return;
             }
 
             foundDiffs = true;
             if (difference.kind == "E") {
-                console.log(`Difference op:`, _expectedResult["structLogs"][difference.path[1]]);
+                console.log(`Difference op:`, _expectedResult["structLogs"][difference.path![1]]);
             }
             console.log(`Difference ${index + 1}:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
@@ -175,15 +164,15 @@ async function checkForDiffs(_expectedResult: any, _actualResult: any) {
 async function checkGasCalculations(_actualResult: any) : Promise<void> {
     let structLogs: object[] = _actualResult.structLogs;
     expect(structLogs.length > 0)
-    let gasRemaining: bigint = structLogs[0]["gas"]
-    let gasCost = structLogs[0]["gasCost"]
+    let gasRemaining: bigint = structLogs[0].gas
+    let gasCost = structLogs[0].gasCost
     let totalGasUsedInOps: bigint = gasCost;
 
     for (let index = 1; index < structLogs.length; index++) {
-        let newGasRemaining: bigint = structLogs[index]["gas"]
+        let newGasRemaining: bigint = structLogs[index].gas
         expect(gasRemaining - newGasRemaining).eq(gasCost);
         gasRemaining = newGasRemaining;
-        gasCost = structLogs[index]["gasCost"]
+        gasCost = structLogs[index].gasCost
         totalGasUsedInOps += gasCost;
     }
 
@@ -193,14 +182,19 @@ async function checkGasCalculations(_actualResult: any) : Promise<void> {
 
 async function main(): Promise<void> {
 
-    await deployAndMint();
+    let deployedContract = await deployTestContract();
 
     let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
     let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
-
     checkGasCalculations(actualResult)
     checkForDiffs(expectedResult, actualResult)
 
+    let expectedResultMint = await readJSONFile("scripts/tracer_contract_geth_mint_trace.json")
+    let actualResultMint = await readJSONFile(SKALED_TRACE_FILE_NAME)
+    checkGasCalculations(actualResult)
+    checkForDiffs(expectedResult, actualResultMint)
+
+    await callTestContractMint(deployedContract);
 }
 
 
