@@ -128,10 +128,15 @@ async function checkForDiffs(_expectedResult: any, _actualResult: any) {
 
     if (differences) {
         differences.forEach((difference, index) => {
-            // do not print differences related to total gas
+            // do not print differences related to total gas in the account
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gas") {
                 return;
             }
+
+            if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "gas") {
+                return;
+            }
+
 
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
                 let op = _expectedResult["structLogs"][difference.path![1]]["op"];
@@ -141,9 +146,6 @@ async function checkForDiffs(_expectedResult: any, _actualResult: any) {
             }
 
 
-            if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "gas") {
-                return;
-            }
 
             foundDiffs = true;
             if (difference.kind == "E") {
