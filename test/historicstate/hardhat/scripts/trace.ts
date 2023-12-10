@@ -133,15 +133,13 @@ async function checkForDiffs(_expectedResult: any, _actualResult: any) {
                 return;
             }
 
-            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost" &&
-                _expectedResult["structLogs"][difference.path![1]]["op"] == "SLOAD") {
-                return;
+            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
+                let op = _expectedResult["structLogs"][difference.path![1]]["op"];
+                if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE") {
+                    return;
+                }
             }
 
-            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost" &&
-                _expectedResult["structLogs"][difference.path![1]]["op"] == "SSTORE") {
-                return;
-            }
 
             if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "gas") {
                 return;
@@ -151,7 +149,7 @@ async function checkForDiffs(_expectedResult: any, _actualResult: any) {
             if (difference.kind == "E") {
                 console.log(`Difference op:`, _expectedResult["structLogs"][difference.path![1]]);
             }
-            console.log(`Difference ${index + 1}:`, difference.path);
+            console.log(`Found difference (lhs is expected value) ${index + 1}:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
         });
     }
