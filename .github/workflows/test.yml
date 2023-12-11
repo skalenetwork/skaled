@@ -34,6 +34,7 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
+
       - name: Cache apt packages
         uses: actions/cache@v2
         with:
@@ -117,12 +118,11 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
       - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
         run: |
-          ccache --max-size=15G
+          ccache --max-size=30G
           ccache -z
           ccache --show-stats
       - name: Build dependencies
-        run: |
-          
+        run: |          
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
@@ -134,6 +134,50 @@ jobs:
           rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
+      - name: Print ccache stats for deps
+        run: |
+          ccache --show-stats
+      - name: Configure all as historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH" &&
+          export CC=gcc-9 &&
+          export CXX=g++-9 &&
+          export TARGET=all &&
+          export CMAKE_BUILD_TYPE=Debug &&
+          export CODE_COVERAGE=ON &&
+          mkdir -p build &&
+          cd build &&
+          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
+          cd ..
+      - name: Build all historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          export CODE_COVERAGE=ON
+          cd build
+          make skaled testeth -j$(nproc)                              
+          cd ..
+      - name: Print ccache stats after full historic build
+        run : |
+          ccache --show-stats
+      - name: Use Node.js 19
+        uses: actions/setup-node@v1
+        with:
+          node-version: 19
+      - name: run historic tests        
+        run: |
+          build/skaled/skaled --config test/historicstate/configs/basic_config.json& 
+          SKALED_PID=$! &&                  
+          cd test/historicstate/hardhat/ &&
+          npm install --save-dev typescript ts-node @types/node @types/mocha &&          
+          npx hardhat check &&
+          sleep 60 &&
+          npx hardhat run scripts/trace.ts --network skaled &&
+          kill $SKALED_PID
       - name: Configure all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
@@ -147,19 +191,16 @@ jobs:
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
           cd ..
-      - name: Print ccache stats for deps
-        run: |
-          ccache --show-stats
       - name: Build all
         run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
-          cd build
-          make testeth -j$(nproc)
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH" &&
+          export CC=gcc-9 &&
+          export CXX=g++-9 &&
+          export TARGET=all &&
+          export CMAKE_BUILD_TYPE=Debug &&
+          export CODE_COVERAGE=ON &&
+          cd build &&
+          make skaled testeth -j$(nproc) &&          
           cd ..
       - name: Print ccache stats after full build
         run : |
@@ -283,30 +324,5 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.info
     
-      - name: Configure all as historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
-          mkdir -p build
-          cd build
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
-          cd ..
-      - name: Build all historic
-        run: |
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
-          export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
-          cd build
-          make testeth -j$(nproc)          
-          cd ..
-      - name: Print ccache stats after full historic build
-        run : |
-          ccache --show-stats
+
+          

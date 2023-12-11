@@ -77,8 +77,11 @@ void go( unsigned _depth, AlethExecutive& _e, OnOpFunc const& _onOp ) {
         _e.go( _onOp );
 }
 
-evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex ) noexcept {
-    switch ( ex ) {
+}  // anonymous namespace
+
+
+evmc_status_code AlethExtVM::transactionExceptionToEvmcStatusCode( TransactionException _ex ) {
+    switch ( _ex ) {
     case TransactionException::None:
         return EVMC_SUCCESS;
 
@@ -104,8 +107,6 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
         return EVMC_FAILURE;
     }
 }
-
-}  // anonymous namespace
 
 
 CallResult AlethExtVM::call( CallParameters& _p ) {

@@ -1284,7 +1284,7 @@ std::string WebThreeStubClient::debug_preimage( const std::string& param1 ) {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value WebThreeStubClient::debug_traceBlockByNumber( int param1, const Json::Value& param2 ) {
+Json::Value WebThreeStubClient::debug_traceBlockByNumber( const std::string& param1, const Json::Value& param2 ) {
     Json::Value p;
     p.append( param1 );
     p.append( param2 );

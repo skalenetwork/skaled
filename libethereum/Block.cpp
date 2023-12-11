@@ -793,11 +793,14 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
 
 #ifdef HISTORIC_STATE
-ExecutionResult Block::executeHistoricCall(
-    LastBlockHashesFace const& _lh, Transaction const& _t ) {
-    auto p = Permanence::Reverted;
-
+ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
+    std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex ) {
     auto onOp = OnOpFunc();
+
+    if ( _tracer ) {
+        onOp = _tracer->functionToExecuteOnEachOperation();
+    }
+
 
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -806,11 +809,23 @@ ExecutionResult Block::executeHistoricCall(
     // transaction as possible.
     uncommitToSeal();
 
-    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, p, onOp );
+    u256 const gasUsed =
+        _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
 
-    return resultReceipt.first;
+    EnvInfo const envInfo{ info(), _lh, gasUsed, m_sealEngine->chainParams().chainID };
+
+    if ( _tracer ) {
+        HistoricState stateBefore( m_state.mutableHistoricState() );
+        auto resultReceipt = m_state.mutableHistoricState().execute(
+            envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
+        HistoricState stateAfter( m_state.mutableHistoricState() );
+        _tracer->finalizeTrace( resultReceipt.first, stateBefore, stateAfter );
+        return resultReceipt.first;
+    } else {
+        auto resultReceipt = m_state.mutableHistoricState().execute(
+            envInfo, *m_sealEngine, _t, skale::Permanence::Reverted, onOp );
+        return resultReceipt.first;
+    }
 }
 #endif
 

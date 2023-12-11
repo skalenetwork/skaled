@@ -356,6 +356,13 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
                    << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
             revert();
             throw;
+#ifdef HISTORIC_STATE
+        } catch ( VMTracingError const& _e ) {
+            cwarn << "Tracing error: " << *boost::get_error_info< errinfo_evmcStatusCode >( _e )
+                  << ")";
+            revert();
+            throw;
+#endif
         } catch ( Exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.

@@ -47,7 +47,9 @@
 #include <libdevcore/system_usage.h>
 
 #ifdef HISTORIC_STATE
+#include <libhistoric/AlethStandardTrace.h>
 #include <libhistoric/HistoricState.h>
+#include <libhistoric/TraceOptions.h>
 #endif
 
 
@@ -138,7 +140,12 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ) {
+      m_dbPath( _dbPath )
+#ifdef HISTORIC_STATE
+      ,
+      m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE )
+#endif
+{
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -1250,7 +1257,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                         _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 }
 
-                ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t );
+                ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
                 throw;
@@ -1284,6 +1291,65 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     }
     return ret;
 }
+
+
+#ifdef HISTORIC_STATE
+Json::Value Client::traceCall(
+    Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer ) {
+    Block historicBlock = blockByNumber( _blockNumber );
+    try {
+        _t.setNonce( historicBlock.mutableState().mutableHistoricState().getNonce( _t.from() ) );
+        _t.checkOutExternalGas( ~u256( 0 ) );
+        historicBlock.mutableState().mutableHistoricState().addBalance(
+            _t.from(), ( u256 )( _t.gas() * _t.gasPrice() + _t.value() ) );
+        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer, 0 );
+        return _tracer->getJSONResult();
+    } catch ( ... ) {
+        cwarn << boost::current_exception_diagnostic_information();
+        throw;
+    }
+}
+
+Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
+    Block previousBlock = blockByNumber( _blockNumber - 1 );
+    Block historicBlock = blockByNumber( _blockNumber );
+
+    Json::Value traces( Json::arrayValue );
+
+    auto hash = ClientBase::hashFromNumber( _blockNumber );
+    Transactions transactions = this->transactions( hash );
+
+    auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+
+    // cache results for better peformance
+    string key = to_string( _blockNumber ) + traceOptions.toString();
+
+    auto cachedResult = m_blockTraceCache.getIfExists( key );
+    if ( cachedResult.has_value() ) {
+        return std::any_cast< Json::Value >( cachedResult );
+    }
+
+    for ( unsigned k = 0; k < transactions.size(); k++ ) {
+        Json::Value transactionLog( Json::objectValue );
+        Transaction tx = transactions.at( k );
+        auto hashString = toHexPrefixed( tx.sha3() );
+        transactionLog["txHash"] = hashString;
+        tx.checkOutExternalGas( chainParams().externalGasDifficulty );
+        auto tracer = std::make_shared< AlethStandardTrace >( tx, traceOptions );
+        auto executionResult =
+            previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
+        auto result = tracer->getJSONResult();
+        transactionLog["result"] = result;
+        traces.append( transactionLog );
+    }
+
+    auto tracesSize = traces.toStyledString().size();
+    m_blockTraceCache.put( key, traces, tracesSize );
+
+    return traces;
+}
+
+#endif
 
 void Client::initIMABLSPublicKey() {
     if ( number() == 0 ) {

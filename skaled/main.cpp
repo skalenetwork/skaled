@@ -1980,9 +1980,19 @@ int main( int argc, char** argv ) try {
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
+#ifdef HISTORIC_STATE
+        // debug interface is always enabled in historic state, but
+        // non-tracing calls are only available if bEnabledAPIs_debug is true
+        auto pDebugFace =
+            new rpc::Debug( *g_client, &debugInterface, argv_string, bEnabledAPIs_debug );
+#else
+        // debug interface is enabled on core node if bEnabledAPIs_debug is true
         auto pDebugFace = bEnabledAPIs_debug ?
                               new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                               nullptr;
+#endif
+
+
         auto pPerformanceTrackerFace = bEnabledAPIs_performanceTracker ?
                                            new rpc::SkalePerformanceTracker( configPath.string() ) :
                                            nullptr;
