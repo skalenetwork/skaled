@@ -8,8 +8,8 @@ import {int} from "hardhat/internal/core/params/argumentTypes";
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
-const SKALED_TRACE_FILE_NAME: string = "/tmp/skaled.trace.json"
-
+const SKALED_TRACER_DEPLOY_FILE_NAME: string = "/tmp/tracer.deploy.skaled.trace.json"
+const SKALED_TRACER_MINT_FILE_NAME: string = "/tmp/tracer.deploy.skaled.trace.json"
 async function waitUntilNextBlock() {
 
     const current = await hre.ethers.provider.getBlockNumber();
@@ -45,7 +45,7 @@ async function getAndPrintBlockTrace(blockNumber: number): Promise<String> {
     return trace;
 }
 
-async function getAndPrintTrace(hash: string): Promise<String> {
+async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<String> {
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"prestateTracer",
 //        "tracerConfig": {"diffMode":true}}]);
 
@@ -55,7 +55,7 @@ async function getAndPrintTrace(hash: string): Promise<String> {
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
     const result = JSON.stringify(trace, null, 4);
-    writeFileSync(SKALED_TRACE_FILE_NAME, result);
+    writeFileSync(_skaleFileName, result);
 
     return trace;
 }
@@ -79,7 +79,7 @@ async function deployTestContract(): Promise<object> {
 
     //await getAndPrintBlockTrace(deployBlockNumber);
     //await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash);
+    await getAndPrintTrace(hash, SKALED_TRACER_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
@@ -98,12 +98,12 @@ async function callTestContractMint(deployedContract: any): Promise<void> {
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //
 
-    await getAndPrintTrace(transferReceipt.hash);
+    await getAndPrintTrace(transferReceipt.hash, SKALED_TRACER_DEPLOY_FILE_NAME);
 
 }
 
 
-function readJSONFile<T>(fileName: string): Promise<T> {
+function readJSONFile(fileName: string): Promise<object> {
     return new Promise((resolve, reject) => {
         readFile(fileName, 'utf8', (err, data) => {
             if (err) {
@@ -111,7 +111,7 @@ function readJSONFile<T>(fileName: string): Promise<T> {
                 return;
             }
             try {
-                const obj: T = JSON.parse(data);
+                const obj: object = JSON.parse(data);
                 resolve(obj);
             } catch (parseError: any) {
                 reject(`Error parsing JSON: ${parseError.message}`);
@@ -123,10 +123,10 @@ function readJSONFile<T>(fileName: string): Promise<T> {
 
 async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
 
-    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let expectedResult  = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
 
-    checkGasCalculations(actualResult);
+    verifyGasCalculations(actualResult);
 
     const differences = deepDiff(expectedResult, actualResult)!;
 
@@ -145,7 +145,7 @@ async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: s
 
 
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
-                let op = expectedResult["structLogs"][difference.path![1]]["op"];
+                let op = expectedResult.structLogs[difference.path![1]]["op"];
                 if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE") {
                     return;
                 }
@@ -166,7 +166,7 @@ async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: s
 }
 
 
-async function checkGasCalculations(_actualResult: any): Promise<void> {
+async function verifyGasCalculations(_actualResult: any): Promise<void> {
     let structLogs: object[] = _actualResult.structLogs;
     expect(structLogs.length > 0)
     let gasRemaining: bigint = structLogs[0].gas
@@ -190,12 +190,12 @@ async function main(): Promise<void> {
     let deployedContract = await deployTestContract();
 
     await verifyTransactionTraceAgainstGethTrace("scripts/tracer_contract_geth_deploy_trace.json",
-        SKALED_TRACE_FILE_NAME)
+        SKALED_TRACER_DEPLOY_FILE_NAME)
 
     await callTestContractMint(deployedContract);
 
     await verifyTransactionTraceAgainstGethTrace("scripts/tracer_contract_geth_mint_trace.json",
-        SKALED_TRACE_FILE_NAME)
+        SKALED_TRACER_MINT_FILE_NAME)
 
 }
 
