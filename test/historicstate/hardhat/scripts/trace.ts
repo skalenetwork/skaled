@@ -121,7 +121,10 @@ function readJSONFile<T>(fileName: string): Promise<T> {
 }
 
 
-async function checkForDiffs(_expectedResult: any, _actualResult: any) {
+async function verifyTransactionTraceAgainstGethTrace(_expectedResult: any, _actualResult: any) {
+
+    checkGasCalculations(_actualResult);
+
     const differences = deepDiff(_expectedResult, _actualResult)!;
 
     let foundDiffs = false;
@@ -180,22 +183,21 @@ async function checkGasCalculations(_actualResult: any) : Promise<void> {
 }
 
 
+
 async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
     let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
     let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
-    checkGasCalculations(actualResult)
-    checkForDiffs(expectedResult, actualResult)
+
+    verifyTransactionTraceAgainstGethTrace(expectedResult, actualResult)
 
     await callTestContractMint(deployedContract);
 
     let expectedResultMint = await readJSONFile("scripts/tracer_contract_geth_mint_trace.json")
     let actualResultMint = await readJSONFile(SKALED_TRACE_FILE_NAME)
-    checkGasCalculations(actualResultMint)
-    checkForDiffs(expectedResultMint, actualResultMint)
-
+    verifyTransactionTraceAgainstGethTrace(expectedResultMint, actualResultMint)
 
 }
 
