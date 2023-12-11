@@ -1,37 +1,41 @@
+# Run skaled for tests 
+
+```
+build/skaled/skaled --config test/historicstate/configs/basic_config.json
+```
+
+# Run local geth for tests 
+
+First install web3
+
+```
+pip3 install web3
+```
+
+Then run geth container 
+
+```
+cd test/historicstate/hardhat
+python3 run_geth.py
+```
+
+
 # Install hardhat and run tests
 
-Install nvm first
-
 ```shell
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
-source ~/.bashrc
-```
-If you use Bash Shell
-
-```shell
-source ~/.bashrc
-```
-If you use fish shell
-
-```shell
-curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher                                                                                                                           
-fisher install jorgebucaran/nvm.fish   
+sudo apt install nodejs
+npm install
 ```
 
-
-Now you can use NVM to run tests
-
-```shell
-nvm install 19
-nvm use 19
-npm install --save-dev typescript ts-node @types/node @types/mocha
-npx tsc --init
-npx hardhat run scripts/write_and_selfdestruct.js
-npx hardhat run scripts/trace.js
-```
-
-# Build tracely
+Now run test against skaled
 
 ```shell
-go build
+npx hardhat run scripts/trace.js --network skaled
 ```
+
+To run the same test against geth
+
+```shell
+npx hardhat run scripts/trace.js --network geth
+```
+

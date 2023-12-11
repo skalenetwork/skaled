@@ -8,8 +8,14 @@ import {int} from "hardhat/internal/core/params/argumentTypes";
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
-const SKALED_TRACER_DEPLOY_FILE_NAME: string = "/tmp/tracer.deploy.skaled.trace.json"
-const SKALED_TRACER_MINT_FILE_NAME: string = "/tmp/tracer.deploy.skaled.trace.json"
+const TEST_CONTRACT_NAME = "Tracer"
+const RUN_FUNCTION_NAME = "mint"
+
+const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.skaled.trace.json"
+const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/"+ TEST_CONTRACT_NAME+ "." + RUN_FUNCTION_NAME + ".skaled.trace.json"
+const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + ".deploy.geth.trace.json"
+const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/"+ TEST_CONTRACT_NAME+ "." + RUN_FUNCTION_NAME + ".geth.trace.json"
+
 async function waitUntilNextBlock() {
 
     const current = await hre.ethers.provider.getBlockNumber();
@@ -64,7 +70,7 @@ async function deployTestContract(): Promise<object> {
 
     console.log(`Deploying ...`);
 
-    const factory = await ethers.getContractFactory("Tracer");
+    const factory = await ethers.getContractFactory(TEST_CONTRACT_NAME);
     const testContractName = await factory.deploy({
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
@@ -79,17 +85,17 @@ async function deployTestContract(): Promise<object> {
 
     //await getAndPrintBlockTrace(deployBlockNumber);
     //await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash, SKALED_TRACER_DEPLOY_FILE_NAME);
+    await getAndPrintTrace(hash, SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
 }
 
-async function callTestContractMint(deployedContract: any): Promise<void> {
+async function callTestContractRun(deployedContract: any): Promise<void> {
 
     console.log(`Minting ...`);
 
-    const transferReceipt = await deployedContract.mint(1000, {
+    const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     console.log(`Gas limit ${transferReceipt.gasLimit}`);
@@ -98,7 +104,7 @@ async function callTestContractMint(deployedContract: any): Promise<void> {
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //
 
-    await getAndPrintTrace(transferReceipt.hash, SKALED_TRACER_DEPLOY_FILE_NAME);
+    await getAndPrintTrace(transferReceipt.hash, SKALED_TEST_CONTRACT_RUN_FILE_NAME);
 
 }
 
@@ -189,13 +195,13 @@ async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
-    await verifyTransactionTraceAgainstGethTrace("scripts/tracer_contract_geth_deploy_trace.json",
-        SKALED_TRACER_DEPLOY_FILE_NAME)
+    await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME,
+        SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME)
 
-    await callTestContractMint(deployedContract);
+    await callTestContractRun(deployedContract);
 
-    await verifyTransactionTraceAgainstGethTrace("scripts/tracer_contract_geth_mint_trace.json",
-        SKALED_TRACER_MINT_FILE_NAME)
+    await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
+        SKALED_TEST_CONTRACT_RUN_FILE_NAME)
 
 }
 
