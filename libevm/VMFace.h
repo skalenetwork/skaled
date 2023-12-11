@@ -43,6 +43,14 @@ ETH_SIMPLE_EXCEPTION_VM( InvalidContractDeployer );
 /// differently than defined consensus exceptions.
 struct InternalVMError : Exception {};
 
+#ifdef HISTORIC_STATE
+struct VMTracingError : Exception {
+    std::string message;
+    explicit VMTracingError( const std::string& message ) : message( message ) {}
+    const char* what() const noexcept override { return message.c_str(); }
+};
+#endif
+
 /// Error info for EVMC status code.
 using errinfo_evmcStatusCode = boost::error_info< struct tag_evmcStatusCode, evmc_status_code >;
 

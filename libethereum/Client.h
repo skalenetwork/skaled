@@ -37,6 +37,7 @@
 #include <time.h>
 
 #include <boost/filesystem/path.hpp>
+#include <libconsensus/thirdparty/lru_ordered_memory_constrained_cache.hpp>
 
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
@@ -55,6 +56,7 @@
 #include "StateImporter.h"
 #include "ThreadSafeQueue.h"
 
+#include <libhistoric/AlethStandardTrace.h>
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
 
@@ -74,6 +76,12 @@ struct ActivityReport {
 };
 
 std::ostream& operator<<( std::ostream& _out, ActivityReport const& _r );
+
+
+#ifdef HISTORIC_STATE
+constexpr size_t MAX_BLOCK_TRACES_CACHE_SIZE = 64 * 1024 * 1024;
+constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
+#endif
 
 /**
  * @brief Main API hub for interfacing with Ethereum.
@@ -120,6 +128,13 @@ public:
         BlockNumber _blockNumber,
 #endif
         FudgeFactor _ff = FudgeFactor::Strict ) override;
+
+#ifdef HISTORIC_STATE
+    Json::Value traceCall(
+        Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer );
+    Json::Value traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
+#endif
+
 
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
@@ -530,6 +545,9 @@ protected:
     const static dev::h256 empty_str_hash;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
+#ifdef HISTORIC_STATE
+    cache::lru_ordered_memory_constrained_cache< std::string, Json::Value > m_blockTraceCache;
+#endif
 
 private:
     void initIMABLSPublicKey();

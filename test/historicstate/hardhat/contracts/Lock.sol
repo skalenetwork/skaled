@@ -2,7 +2,10 @@
 pragma solidity ^0.8.9;
 
 
-contract Lock  {
+contract Lock {
+
+    event LogMint(address indexed minter, uint256 amount, string topic);
+
     uint public totalSupply;
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
@@ -30,7 +33,7 @@ contract Lock  {
 
     }
 
-    function  die(address payable recipient) external {
+    function die(address payable recipient) external {
         selfdestruct(recipient);
     }
 
@@ -46,17 +49,21 @@ contract Lock  {
         address recipient,
         uint amount
     ) external returns (bool) {
-      //  allowance[sender][msg.sender] -= amount;
-      //  balanceOf[sender] -= amount;
-     //   balanceOf[recipient] += amount;
-      //  emit Transfer(sender, recipient, amount);
+        allowance[sender][msg.sender] -= amount;
+        balanceOf[sender] -= amount;
+        balanceOf[recipient] += amount;
+        emit Transfer(sender, recipient, amount);
         return true;
     }
 
-    function mint(uint amount) public {
+
+
+    function mint(uint amount) public returns (uint256) {
+        emit LogMint(msg.sender, amount, "amount");
         balanceOf[msg.sender] += amount;
         totalSupply += amount;
         emit Transfer(address(0), msg.sender, amount);
+        return 1;
     }
 
     function burn(uint amount) external {
@@ -66,26 +73,17 @@ contract Lock  {
     }
 
 
-
-
-
-    function  initialize() public {
-      require(!initialized, "Contract instance has already been initialized");
-      initialized = true;
+    constructor()  {
+        require(!initialized, "Contract instance has already been initialized");
+        initialized = true;
 
         name = "Lock";
         symbol = "LOCK";
         decimals = 18;
         owner = msg.sender;
         counter = 1;
-
-
         mint(10000000000000000000000000000000000000000);
-
-
     }
-
-
 
 
 

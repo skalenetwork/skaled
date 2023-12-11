@@ -1,5 +1,9 @@
 {
   "devDependencies": {
-    "hardhat": "^2.12.2"
+    "@types/mocha": "^10.0.2",
+    "@types/node": "^20.8.0",
+    "hardhat": "^2.12.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
   }
 }

@@ -1,13 +1,41 @@
-# Sample Hardhat Project
+# Run skaled for tests 
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+```
+build/skaled/skaled --config test/historicstate/configs/basic_config.json
+```
 
-Try running some of the following tasks:
+# Run local geth for tests 
+
+First install web3
+
+```
+pip3 install web3
+```
+
+Then run geth container 
+
+```
+cd test/historicstate/hardhat
+python3 run_geth.py
+```
+
+
+# Install hardhat and run tests
 
 ```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
+sudo apt install nodejs
+npm install
 ```
+
+Now run test against skaled
+
+```shell
+npx hardhat run scripts/trace.js --network skaled
+```
+
+To run the same test against geth
+
+```shell
+npx hardhat run scripts/trace.js --network geth
+```
+

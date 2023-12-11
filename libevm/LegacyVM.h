@@ -36,11 +36,31 @@ public:
 #endif
 
     bytes const& memory() const { return m_mem; }
+
     u256s stack() const {
         u256s stack( m_SP, m_stackEnd );
         reverse( stack.begin(), stack.end() );
         return stack;
     };
+
+    size_t stackSize() const { return m_stackEnd - m_SP; }
+
+#ifdef HISTORIC_STATE
+    // these calls are used by tracing
+
+    u256& getStackElement( uint64_t _index ) const {
+        if ( _index >= stackSize() ) {
+            BOOST_THROW_EXCEPTION(
+                std::runtime_error( std::string( "Out of bound stack access" ) ) );
+        }
+        return m_SP[_index];
+    }
+
+    evmc_status_code getAndClearLastCallStatus() const;
+    const bytes& getReturnData() const;
+
+#endif
+
 
 private:
     u256* m_io_gas_p = 0;
@@ -69,11 +89,10 @@ private:
 
     /// RETURNDATA buffer for memory returned from direct subcalls.
     bytes m_returnData;
-
     // space for data stack, grows towards smaller addresses from the end
     u256 m_stack[1024];
     u256* m_stackEnd = &m_stack[1024];
-    size_t stackSize() { return m_stackEnd - m_SP; }
+
 
 #if EIP_615
     // space for return stack
@@ -91,7 +110,13 @@ private:
     uint64_t m_PC = 0;        // program counter
     u256* m_SP = m_stackEnd;  // stack pointer
     u256* m_SPP = m_SP;       // stack pointer prime (next SP)
+#ifdef HISTORIC_STATE
+    // this is used by tracing
+    mutable evmc_status_code m_lastCallStatus = EVMC_SUCCESS;
+#endif
 #if EIP_615
+
+private:
     uint64_t* m_RP = m_return - 1;  // return pointer
 #endif
 

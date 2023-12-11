@@ -148,6 +148,7 @@ void LegacyVM::caseCreate() {
 
         CreateResult result = m_ext->create( endowment, gas, initCode, m_OP, salt, m_onOp );
         m_SPP[0] = ( u160 ) result.address;  // Convert address to integer.
+
         m_returnData = result.output.toBytes();
 
         *m_io_gas_p -= ( createGas - gas );
@@ -181,6 +182,10 @@ void LegacyVM::caseCall() {
         m_returnData = result.output.toBytes();
 
         m_SPP[0] = result.status == EVMC_SUCCESS ? 1 : 0;
+#ifdef HISTORIC_STATE
+        // this is used by tracing
+        m_lastCallStatus = result.status;
+#endif
     } else
         m_SPP[0] = 0;
     m_io_gas += uint64_t( callParams->gas );
@@ -263,3 +268,17 @@ bool LegacyVM::caseCallSetup( CallParameters* callParams, bytesRef& o_output ) {
     }
     return false;
 }
+
+#ifdef HISTORIC_STATE
+evmc_status_code LegacyVM::getAndClearLastCallStatus() const {
+    auto ret = m_lastCallStatus;
+    m_lastCallStatus = evmc_status_code::EVMC_SUCCESS;
+    return ret;
+}
+
+
+const bytes& LegacyVM::getReturnData() const {
+    return m_returnData;
+}
+
+#endif

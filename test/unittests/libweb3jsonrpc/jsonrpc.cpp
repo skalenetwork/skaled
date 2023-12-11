@@ -40,7 +40,7 @@
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
-// SKALE #include <libweb3jsonrpc/Net.h>
+#include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <test/tools/libtesteth/TestHelper.h>
@@ -329,7 +329,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         else
             client->setAuthor( chainParams.sChain.blockAuthor );
 
-        using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
+        using FullServer = ModularServer< rpc::EthFace, rpc::NetFace, rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
@@ -343,7 +343,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
+        rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
             new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
@@ -501,6 +501,23 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 //    rpcClient->admin_net_stop(adminSession);
 //    BOOST_CHECK_EQUAL(web3->isNetworkStarted(), false);
 //}
+
+BOOST_AUTO_TEST_CASE( jsonrpc_netVersion )
+{
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535
+    ret["params"]["chainID"] = "0xffff"; 
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    
+    auto version = fixture.rpcClient->net_version();
+    BOOST_CHECK_EQUAL( version, "65535" );
+}
 
 BOOST_AUTO_TEST_CASE( jsonrpc_setMining ) {
     JsonRpcFixture fixture;

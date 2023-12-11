@@ -203,6 +203,16 @@ inline std::string toCompactHexPrefixed( u256 _val, unsigned _min = 0 ) {
     return toHexPrefixed( toCompactBigEndian( _val, _min ) );
 }
 
+
+inline std::string toHex( u256 _val ) {
+    return toHex( toBigEndian( _val ) );
+}
+
+inline std::string toHexPrefixed( u256 _val ) {
+    return toHexPrefixed( toBigEndian( _val ) );
+}
+
+
 // Algorithms for string and string-like collections.
 
 /// Escapes a string into the C-string representation.
