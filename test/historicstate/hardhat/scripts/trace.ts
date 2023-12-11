@@ -85,7 +85,7 @@ async function deployTestContract(): Promise<object> {
 
 }
 
-async function callTestContractMint(deployedContract:any): Promise<void> {
+async function callTestContractMint(deployedContract: any): Promise<void> {
 
     console.log(`Minting ...`);
 
@@ -113,7 +113,7 @@ function readJSONFile<T>(fileName: string): Promise<T> {
             try {
                 const obj: T = JSON.parse(data);
                 resolve(obj);
-            } catch (parseError : any) {
+            } catch (parseError: any) {
                 reject(`Error parsing JSON: ${parseError.message}`);
             }
         });
@@ -121,11 +121,14 @@ function readJSONFile<T>(fileName: string): Promise<T> {
 }
 
 
-async function verifyTransactionTraceAgainstGethTrace(_expectedResult: any, _actualResult: any) {
+async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
 
-    checkGasCalculations(_actualResult);
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
 
-    const differences = deepDiff(_expectedResult, _actualResult)!;
+    checkGasCalculations(actualResult);
+
+    const differences = deepDiff(expectedResult, actualResult)!;
 
     let foundDiffs = false;
 
@@ -142,17 +145,16 @@ async function verifyTransactionTraceAgainstGethTrace(_expectedResult: any, _act
 
 
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
-                let op = _expectedResult["structLogs"][difference.path![1]]["op"];
+                let op = expectedResult["structLogs"][difference.path![1]]["op"];
                 if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE") {
                     return;
                 }
             }
 
 
-
             foundDiffs = true;
             if (difference.kind == "E") {
-                console.log(`Difference op:`, _expectedResult["structLogs"][difference.path![1]]);
+                console.log(`Difference op:`, expectedResult["structLogs"][difference.path![1]]);
             }
             console.log(`Found difference (lhs is expected value) ${index + 1}:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
@@ -164,7 +166,7 @@ async function verifyTransactionTraceAgainstGethTrace(_expectedResult: any, _act
 }
 
 
-async function checkGasCalculations(_actualResult: any) : Promise<void> {
+async function checkGasCalculations(_actualResult: any): Promise<void> {
     let structLogs: object[] = _actualResult.structLogs;
     expect(structLogs.length > 0)
     let gasRemaining: bigint = structLogs[0].gas
@@ -183,21 +185,17 @@ async function checkGasCalculations(_actualResult: any) : Promise<void> {
 }
 
 
-
 async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
-    let expectedResult = await readJSONFile("scripts/tracer_contract_geth_trace.json")
-    let actualResult = await readJSONFile(SKALED_TRACE_FILE_NAME)
-
-    verifyTransactionTraceAgainstGethTrace(expectedResult, actualResult)
+    await verifyTransactionTraceAgainstGethTrace("scripts/tracer_contract_geth_deploy_trace.json",
+        SKALED_TRACE_FILE_NAME)
 
     await callTestContractMint(deployedContract);
 
-    let expectedResultMint = await readJSONFile("scripts/tracer_contract_geth_mint_trace.json")
-    let actualResultMint = await readJSONFile(SKALED_TRACE_FILE_NAME)
-    verifyTransactionTraceAgainstGethTrace(expectedResultMint, actualResultMint)
+    await verifyTransactionTraceAgainstGethTrace("scripts/tracer_contract_geth_mint_trace.json",
+        SKALED_TRACE_FILE_NAME)
 
 }
 
