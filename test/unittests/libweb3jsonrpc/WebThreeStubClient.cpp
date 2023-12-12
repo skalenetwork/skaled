@@ -399,8 +399,7 @@ std::string WebThreeStubClient::eth_sendTransaction( const Json::Value& param1 )
 std::string WebThreeStubClient::eth_estimateGas( const Json::Value& param1, const std::string& param2 ) {
     Json::Value p;
     p.append( param1 );
-    if(!param2.empty())
-        p.append( param2 );
+    p.append( param2 );
     Json::Value result = this->CallMethod( "eth_estimateGas", p );
     if ( result.isString() )
         return result.asString();

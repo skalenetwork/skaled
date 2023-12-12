@@ -225,7 +225,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             continue;
 
         for ( auto& tr : m_transactions ) {
-            tr.transaction.checkOutExternalGas( 100 );
+//            tr.transaction.checkOutExternalGas( 100 );
             Options const& opt = Options::get();
             if ( opt.trDataIndex != -1 && opt.trDataIndex != tr.dataInd )
                 continue;

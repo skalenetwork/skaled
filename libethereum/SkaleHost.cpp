@@ -665,7 +665,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // ).detach();
             } else {
                 Transaction t( data, CheckTransaction::Everything, true );
-                t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
+                t.checkOutExternalGas( m_client.chainParams(), m_client.number() );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn!";
                 m_debugTracer.tracepoint( "import_consensus_born" );

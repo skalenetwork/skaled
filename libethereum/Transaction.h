@@ -29,6 +29,8 @@
 #include <libethcore/Common.h>
 #include <libethcore/TransactionBase.h>
 
+#include "ChainParams.h"
+
 namespace dev {
 namespace eth {
 
@@ -120,7 +122,12 @@ public:
 
     u256 gasPrice() const;
 
-    void checkOutExternalGas( u256 const& _difficulty );
+    void checkOutExternalGas( const ChainParams& _cp, uint64_t _bn );
+
+    void ignoreExternalGas() {
+        m_externalGasIsChecked = true;
+        m_externalGas = 0;
+    }
 
 private:
     bool m_externalGasIsChecked = false;
