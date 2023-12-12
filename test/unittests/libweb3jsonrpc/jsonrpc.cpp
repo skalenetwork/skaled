@@ -1265,7 +1265,11 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
     testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
     response = fixture.rpcClient->eth_estimateGas( testPositive );
+    string response2 = fixture.rpcClient->eth_estimateGas( testPositive, "latest" );
+    string response3 = fixture.rpcClient->eth_estimateGas( testPositive, "1" );
     BOOST_CHECK_EQUAL( response, "0x1db20" );
+    BOOST_CHECK_EQUAL( response2, "0x1db20" );
+    BOOST_CHECK_EQUAL( response3, "0x1db20" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
