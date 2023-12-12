@@ -52,7 +52,8 @@ class FunctionCallRecord;
 class AlethStandardTrace {
 public:
     // Append json trace to given (array) value
-    explicit AlethStandardTrace( Transaction& _t, const TraceOptions& _options );
+    explicit AlethStandardTrace(
+        Transaction& _t, const TraceOptions& _options, bool _isCall = false );
 
     // this function is executed on each operation
     [[nodiscard]] OnOpFunc functionToExecuteOnEachOperation() {

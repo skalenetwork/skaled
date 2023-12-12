@@ -211,12 +211,15 @@ Json::Value AlethStandardTrace::getJSONResult() const {
     return m_jsonTrace;
 }
 
-AlethStandardTrace::AlethStandardTrace( Transaction& _t, const TraceOptions& _options )
+AlethStandardTrace::AlethStandardTrace(
+    Transaction& _t, const TraceOptions& _options, bool _isCall )
     : m_defaultOpTrace{ std::make_shared< Json::Value >() },
       m_from{ _t.from() },
       m_to( _t.to() ),
       m_options( _options ),
-      m_txHash( _t.sha3() ),
+      // if it is a call trace, the transaction does not have signature
+      // therefore, its hash should not include signature
+      m_txHash( _t.sha3(_isCall? dev::eth::WithoutSignature: dev::eth::WithSignature) ),
       m_lastOpRecord(
           // the top function is executed at depth 0
           // therefore it is called from depth -1

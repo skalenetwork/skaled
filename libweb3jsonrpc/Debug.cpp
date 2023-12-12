@@ -251,9 +251,8 @@ Json::Value Debug::debug_traceCall( Json::Value const&
         Transaction t( ts.value, gasPrice, gas, ts.to, ts.data, ts.nonce );
         t.forceSender( ts.from );
         t.forceChainId( m_eth.chainParams().chainID );
-
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
-        auto tracer = make_shared< AlethStandardTrace >( t, traceOptions );
+        auto tracer = make_shared< AlethStandardTrace >( t, traceOptions, true );
         return m_eth.traceCall( t, bN, tracer );
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
