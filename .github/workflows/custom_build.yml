@@ -130,7 +130,7 @@ jobs:
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd build
-          make snapshot_hash_computation_benchmark -j$(nproc)
+          make snapshot_benchmark -j$(nproc)
           #echo "Ensure release mode skaled does not have any debug markers"
           #strip skaled/skaled
           cd ..
