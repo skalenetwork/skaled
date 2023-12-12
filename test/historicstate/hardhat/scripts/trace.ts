@@ -75,6 +75,7 @@ async function deployTestContract(): Promise<object> {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
     const deployedTestContract = await testContractName.deployed();
+
     const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTestContract.deployTransaction.hash)
     const deployBlockNumber: number = deployReceipt.blockNumber;
     const hash = deployedTestContract.deployTransaction.hash;
@@ -107,6 +108,28 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
     await getAndPrintTrace(transferReceipt.hash, SKALED_TEST_CONTRACT_RUN_FILE_NAME);
 
 }
+
+async function callDebugTraceCall(deployedContract: any): Promise<void> {
+
+
+    // Example usage
+    const transaction = {
+        from: OWNER_ADDRESS,
+        to: deployedContract.address,
+        data: '0x0'   // Replace with the encoded contract method call
+    };
+
+
+    console.log(`Calling debug trace call ...`);
+    console.log(transaction);
+
+
+    const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", {}]);
+
+    console.log(trace);
+
+}
+
 
 
 function readJSONFile(fileName: string): Promise<object> {
@@ -202,6 +225,10 @@ async function main(): Promise<void> {
 
     await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
         SKALED_TEST_CONTRACT_RUN_FILE_NAME)
+
+    await callDebugTraceCall(deployedContract);
+
+
 
 }
 
