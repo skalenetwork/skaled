@@ -1411,11 +1411,30 @@ const dev::h256 Client::empty_str_hash =
 
 #ifdef HISTORIC_STATE
 u256 Client::historicStateBalanceAt( Address _a, BlockNumber _block ) const {
+    boost::chrono::high_resolution_clock::time_point t1;
+    boost::chrono::high_resolution_clock::time_point t2;
+
+    t1 = boost::chrono::high_resolution_clock::now();
     auto block = blockByNumber( _block );
+    t2 = boost::chrono::high_resolution_clock::now();
+    auto blockByNumberTimeMs =
+        boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+    std::cout << "BLOCK BY NUMBER MS: " << blockByNumberTimeMs << '\n';
 
+    t1 = boost::chrono::high_resolution_clock::now();
     auto aState = block.mutableState().mutableHistoricState();
+    t2 = boost::chrono::high_resolution_clock::now();
+    auto mutableHistoricStateMs =
+        boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+    std::cout << "MUTABLE HISTORIC STATE MS: " << mutableHistoricStateMs << '\n';
 
-    return aState.balance( _a );
+    t1 = boost::chrono::high_resolution_clock::now();
+    auto retVal = aState.balance( _a );
+    t2 = boost::chrono::high_resolution_clock::now();
+    auto balanceMs = boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
+    std::cout << "BALANCE MS: " << balanceMs << '\n';
+
+    return retVal;
 }
 
 u256 Client::historicStateCountAt( Address _a, BlockNumber _block ) const {
