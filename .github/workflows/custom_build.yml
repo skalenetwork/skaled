@@ -111,7 +111,7 @@ jobs:
           cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ${{ github.event.inputs.cmake_options }} ..
           cd ..
-      - name: Build all
+      - name: Build skaled
         run: |
           export CC=gcc-9
           export CXX=g++-9
@@ -123,7 +123,19 @@ jobs:
           #strip skaled/skaled
           cd ..
 
-      - name: Build and publish container
+      - name: Build snapshot benchmark
+        run: |
+          export CC=gcc-9
+          export CXX=g++-9
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          cd build
+          make snapshot_hash_computation_benchmark -j$(nproc)
+          #echo "Ensure release mode skaled does not have any debug markers"
+          #strip skaled/skaled
+          cd ..
+
+      - name: Build and publish skaled container
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${{ github.event.inputs.branch_name }}
@@ -138,3 +150,10 @@ jobs:
         with:
           name: skaled
           path: ./build/skaled/skaled
+
+      - name: Upload snapshot_benchmark binary as artifact
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }}
+        with:
+          name: snapshot_benchmark
+          path: ./build/snapshot_hash_calculation_benchmark/snapshot_benchmark

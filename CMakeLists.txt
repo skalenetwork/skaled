@@ -228,6 +228,7 @@ endif()
 
 add_subdirectory( skaled )
 add_subdirectory( skaled_ssl_test )
+add_subdirectory( snapshot_hash_calculation_benchmark )
 
 if( TOOLS )
     add_subdirectory( skale-key )
