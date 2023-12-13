@@ -144,16 +144,18 @@ jobs:
           export RELEASE=true
           bash ./scripts/build_and_publish.sh
 
+      - name: Build and publish snapshot_benchmark container
+        run: |
+          cp build/skaled/skaled scripts/skale_build/executable/
+          export BRANCH=${{ github.event.inputs.branch_name }}
+          export VERSION=${{ github.event.inputs.image_version }}
+          echo "Version $VERSION"
+          export RELEASE=true
+          bash ./scripts/build_and_publish_snapshot_benchmark.sh
+
       - name: Upload skaled binary as artifact
         uses: actions/upload-artifact@v2
         if: ${{ always() }}
         with:
           name: skaled
           path: ./build/skaled/skaled
-
-      - name: Upload snapshot_benchmark binary as artifact
-        uses: actions/upload-artifact@v2
-        if: ${{ always() }}
-        with:
-          name: snapshot_benchmark
-          path: ./build/snapshot_hash_calculation_benchmark/snapshot_benchmark
