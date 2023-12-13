@@ -124,21 +124,20 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     const currentBlock = await hre.ethers.provider.getBlockNumber();
 
-    const returnData =await ethers.provider.call({
+    const transaction = {
+        from: OWNER_ADDRESS,
         to: deployedContract.address,
         data: deployedContract.interface.encodeFunctionData("getBalance", [])
-    }, currentBlock - 1);
+    };
+
+    const returnData = await ethers.provider.call(transaction, currentBlock - 1);
 
      const result = deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
      console.log("Success:" + result);
 
     // Example usage
-    const transaction = {
-        from: OWNER_ADDRESS,
-        to: deployedContract.address,
-        data: '0x0'   // Replace with the encoded contract method call
-    };
+
 
 
     console.log(`Calling debug trace call ...`);
