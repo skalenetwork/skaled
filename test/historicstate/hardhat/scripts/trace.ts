@@ -138,8 +138,6 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     // Example usage
 
-
-
     console.log(`Calling debug trace call ...`);
     console.log(transaction);
 

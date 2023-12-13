@@ -1294,21 +1294,43 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 
 
 #ifdef HISTORIC_STATE
-Json::Value Client::traceCall(
-    Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer ) {
-    Block historicBlock = blockByNumber( _blockNumber );
+
+Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
+    u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
     try {
-        _t.setNonce( historicBlock.mutableState().mutableHistoricState().getNonce( _t.from() ) );
-        _t.checkOutExternalGas( ~u256( 0 ) );
-        historicBlock.mutableState().mutableHistoricState().addBalance(
-            _t.from(), ( u256 )( _t.gas() * _t.gasPrice() + _t.value() ) );
-        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer, 0 );
-        return _tracer->getJSONResult();
+        Block historicBlock = blockByNumber( _blockNumber );
+        auto nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
+        // if the user did not specify transaction gas limit, we give transaction block gas
+        // limit of gas
+        auto gasLimit = _gas == Invalid256 ? _gas : gasLimitRemaining();
+        Transaction t = createTransactionForCallOrTraceCall(
+            _from, _value, _to, _data, gasLimit, _gasPrice, nonce );
+        auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+        auto tracer = make_shared< AlethStandardTrace >( t, traceOptions, true );
+        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, 0 );
+        return tracer->getJSONResult();
     } catch ( ... ) {
         cwarn << boost::current_exception_diagnostic_information();
         throw;
     }
 }
+
+
+Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, const u256& _value,
+    const Address& _to, const bytes& _data, const u256& _gasLimit, const u256& _gasPrice,
+    const u256& nonce ) const {
+    auto gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
+    Transaction t( _value, gasPrice, _gasLimit, _to, _data, nonce );
+    // if call or trace request did not specify from address, zero address is used
+    auto from = _from ? _from : ZeroAddress;
+    t.forceSender( from );
+    t.forceChainId( chainParams().chainID );
+    // call and traceCall do not use PoW
+    t.checkOutExternalGas( ~u256( 0 ) );
+    return t;
+}
+
+
 
 Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
     Block previousBlock = blockByNumber( _blockNumber - 1 );
