@@ -19,6 +19,6 @@ target_link_libraries(
         skutils
         skale
         devcore
-        # "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
-        # "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+        "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
+        "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
     )
