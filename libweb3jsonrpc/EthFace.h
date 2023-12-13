@@ -212,7 +212,7 @@ public:
                                     jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_syncingI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_estimateGas", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_estimateGasI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_chainId", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
@@ -419,6 +419,9 @@ public:
         response = this->eth_syncing();
     }
     inline virtual void eth_estimateGasI( const Json::Value& request, Json::Value& response ) {
+        if ( !request.isArray() || request.empty() )
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
         response = this->eth_estimateGas( request[0u] );
     }
     inline virtual void eth_chainIdI( const Json::Value& request, Json::Value& response ) {
