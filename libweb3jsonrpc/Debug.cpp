@@ -358,3 +358,7 @@ uint64_t Debug::debug_doBlocksDbCompaction() {
 
     return boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
 }
+
+Json::Value Debug::debug_getFutureTransactions() {
+    return toJson( m_eth.DEBUG_getFutureTransactions() );
+}
