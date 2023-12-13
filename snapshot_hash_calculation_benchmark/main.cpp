@@ -24,11 +24,11 @@ int main() {
     std::cout << "SLEEPING FOR 60 seconds\n";
     sleep(60);
 
-    snapshotManager->doSnapshot( blockNumber, false, false );
+    snapshotManager->doSnapshot( blockNumber );
 
     std::cout << "SNAPSHOT IS READY, CALCULATING ITS HASH NOW\n";
 
-    snapshotManager->computeSnapshotHash( blockNumber );
+    snapshotManager->computeSnapshotHash( blockNumber, false, false );
     
     std::cout << "SNAPSHOT HASH IS READY, EXITING\n";
 
