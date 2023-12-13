@@ -647,7 +647,7 @@ void SnapshotManager::computeAllVolumesHash(
     }
 }
 
-void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {
+void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking, bool saveOnDisk ) {
     if ( this->isSnapshotHashPresent( _blockNumber ) ) {
         return;
     }
@@ -688,16 +688,20 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     dev::h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
 
-    string hash_file = ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
+    if ( saveOnDisk ) {
+        string hash_file = ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
                        this->snapshot_hash_file_name;
 
-    try {
-        std::lock_guard< std::mutex > lock( hash_file_mutex );
-        std::ofstream out( hash_file );
-        out.clear();
-        out << hash;
-    } catch ( const std::exception& ex ) {
-        std::throw_with_nested( SnapshotManager::CannotCreate( hash_file ) );
+        try {
+            std::lock_guard< std::mutex > lock( hash_file_mutex );
+            std::ofstream out( hash_file );
+            out.clear();
+            out << hash;
+        } catch ( const std::exception& ex ) {
+            std::throw_with_nested( SnapshotManager::CannotCreate( hash_file ) );
+        }
+    } else {
+        std::cout << "HASH: " << hash << '\n';
     }
 }
 

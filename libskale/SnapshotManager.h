@@ -170,7 +170,7 @@ public:
     dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     std::pair< int, int > getLatestSnapshots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
-    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
+    void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false, bool saveOnDisk = true );
 
     uint64_t getBlockTimestamp( unsigned _blockNumber ) const;
 
