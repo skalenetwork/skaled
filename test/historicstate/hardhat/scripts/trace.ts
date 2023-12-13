@@ -1,6 +1,7 @@
 import {ethers} from "hardhat";
 import {readFile} from 'fs';
 import {writeFileSync} from "fs";
+import {existsSync} from "fs";
 import deepDiff, {diff} from 'deep-diff';
 import {expect} from "chai";
 import {int} from "hardhat/internal/core/params/argumentTypes";
@@ -15,6 +16,11 @@ const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NA
 const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/"+ TEST_CONTRACT_NAME+ "." + RUN_FUNCTION_NAME + ".skaled.trace.json"
 const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + ".deploy.geth.trace.json"
 const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/"+ TEST_CONTRACT_NAME+ "." + RUN_FUNCTION_NAME + ".geth.trace.json"
+
+expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
+expect(existsSync(GETH_TEST_CONTRACT_RUN_FILE_NAME));
+
+
 
 async function waitUntilNextBlock() {
 
@@ -111,6 +117,21 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
 
 async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
+    // first call function using eth_call
+
+    console.log("Calling blockNumber() using eth_call ...")
+
+
+    const currentBlock = await hre.ethers.provider.getBlockNumber();
+
+    const returnData =await ethers.provider.call({
+        to: deployedContract.address,
+        data: deployedContract.interface.encodeFunctionData("blockNumber", [])
+    }, currentBlock - 1);
+
+     const result = deployedContract.interface.decodeFunctionResult("blockNumber", returnData);
+
+     console.log("Success:" + result);
 
     // Example usage
     const transaction = {
