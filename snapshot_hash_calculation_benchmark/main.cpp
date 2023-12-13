@@ -4,10 +4,27 @@
 #include <iostream>
 #include <unistd.h>
 
-int main() {
+int main(int argc, char *argv[]) {
     std::string dataDir, configPath;
     unsigned blockNumber;
-    std::cin >> dataDir >> configPath >> blockNumber;
+
+    int opt;
+
+    while ((opt = getopt(argc, argv, "d:c:b:")) != -1) {
+        switch (opt) {
+            case 'b':
+            blockNumber = std::stoul(optarg);
+            break;
+            case 'c':
+            configPath = optarg;
+            break;
+            case 'd':
+            dataDir = optarg;
+            break;
+            case '?': // fprintf(stderr, "unknown flag\n");
+            exit(1);
+        }
+    }
 
     std::string configJSON = dev::contentsString( configPath );
 
@@ -28,7 +45,7 @@ int main() {
 
     std::cout << "SNAPSHOT IS READY, CALCULATING ITS HASH NOW\n";
 
-    snapshotManager->computeSnapshotHash( blockNumber, false, false );
+    snapshotManager->computeSnapshotHash( blockNumber );
     
     std::cout << "SNAPSHOT HASH IS READY, EXITING\n";
 
