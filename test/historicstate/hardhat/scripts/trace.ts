@@ -126,10 +126,10 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     const returnData =await ethers.provider.call({
         to: deployedContract.address,
-        data: deployedContract.interface.encodeFunctionData("blockNumber", [])
+        data: deployedContract.interface.encodeFunctionData("getBalance", [])
     }, currentBlock - 1);
 
-     const result = deployedContract.interface.decodeFunctionResult("blockNumber", returnData);
+     const result = deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
      console.log("Success:" + result);
 

@@ -86,7 +86,7 @@ contract Tracer {
         return expectedHash;
     }
 
-    function blockNumber() external view returns (uint256) {
-        return block.number;
+    function getBalance() external view returns (uint256) {
+        return balance;
     }
 }
