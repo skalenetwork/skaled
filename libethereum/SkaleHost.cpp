@@ -668,7 +668,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // it was broadcasted from the sync node
             if ( m_tq.knownTransactions().count( sha ) != 0 ) {
                 if ( m_client.chainParams().nodeInfo.syncNode ) {
-                    LOG( m_debugLogger ) << "Dropping txn from sync node " << sha;
+                    LOG( m_traceLogger ) 
+                        << "Dropping broadcasted txn from sync node " << sha;
                     m_tq.dropGood( t );
                 } else {
                     LOG( m_traceLogger )
@@ -764,6 +765,9 @@ void SkaleHost::startWorking() {
     } catch ( const Broadcaster::StartupException& ) {
         working = false;
         std::throw_with_nested( SkaleHost::CreationException() );
+    } catch ( ... ) {
+        working = false;
+        std::throw_with_nested( std::runtime_error( "Error in starting broadcaster service" ) );
     }
 
     auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
@@ -772,7 +776,7 @@ void SkaleHost::startWorking() {
     auto consensusFunction = [&]() {
         try {
             m_consensus->startAll();
-        } catch ( const std::exception& ) {
+        } catch ( ... ) {
             // cleanup
             m_exitNeeded = true;
             m_broadcastThread.join();
