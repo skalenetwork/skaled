@@ -116,3 +116,38 @@ std::string dev::toString( string32 const& _s ) {
         ret.push_back( _s[i] );
     return ret;
 }
+
+std::string dev::customErrorMessageToString( const bytes& _b ) {
+    return toHexPrefixed( _b );
+}
+
+std::string dev::revertMessageToString( const bytes& b ) {
+    //     first 4 bytes are function selector (revert - 0x08c379a0)
+    //     then goes offset - 32 bytes
+    //     then goes string length - 32 bytes
+    //     then goes string data
+    u256 offset = 4 + 32 + fromBigEndian< u256 >( bytes( b.begin() + 4, b.begin() + 32 + 4 ) );
+    // offset for any revert message should be 4 + 32 + 32 = 68
+    if ( offset != 68 ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Unexpected offset length in revertMessageToString" ) );
+    }
+    u256 length = fromBigEndian< u256 >(
+        bytes( b.begin() + 4 + 32, b.begin() + offset.convert_to< unsigned >() ) );
+    if ( offset + length > b.size() ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Unexpected length in revertMessageToString: 4 + offset + length > b.size()" ) );
+    }
+    return asString( bytes( b.begin() + offset.convert_to< unsigned >(),
+        b.begin() + offset.convert_to< unsigned >() + length.convert_to< unsigned >() ) );
+}
+
+std::string dev::errorMessageToString( const bytes& b ) {
+    if ( b.empty() ) {
+        return "";
+    }
+    // check if the message is a revert message
+    if ( b.size() > 4 + 32 + 32 && b[0] == 0x08 && b[1] == 0xc3 && b[2] == 0x79 && b[3] == 0xa0 )
+        return revertMessageToString( b );
+    return customErrorMessageToString( b );
+}

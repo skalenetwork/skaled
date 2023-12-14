@@ -513,7 +513,7 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 
     std::string strRevertReason;
     if ( er.excepted == dev::eth::TransactionException::RevertInstruction ) {
-        strRevertReason = skutils::eth::call_error_message_2_str( er.output );
+        strRevertReason = dev::errorMessageToString( er.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strTx = t.toString();
