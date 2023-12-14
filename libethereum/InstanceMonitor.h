@@ -36,23 +36,18 @@ class InstanceMonitor {
 public:
     explicit InstanceMonitor( const boost::filesystem::path& _rotationInfoFileDirPath,
         std::shared_ptr< StatusAndControl > _statusAndControl = nullptr )
-        : m_finishTimestamp( 0 ),
-          m_rotationInfoFilePath( _rotationInfoFileDirPath / rotation_info_file_name ),
+        : m_rotationInfoFilePath( _rotationInfoFileDirPath / rotation_info_file_name ),
           m_statusAndControl( _statusAndControl ) {
-        restoreRotationParams();
         reportExitTimeReached( false );
     }
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
     bool isTimeToRotate( uint64_t _finishTimestamp );
+    uint64_t getRotationTimestamp();
 
 protected:
-    void restoreRotationParams();
-    [[nodiscard]] uint64_t finishTimestamp() const { return m_finishTimestamp; }
-
     [[nodiscard]] fs::path rotationInfoFilePath() const { return m_rotationInfoFilePath; }
 
-    uint64_t m_finishTimestamp;
     const fs::path m_rotationInfoFilePath;
     std::shared_ptr< StatusAndControl > m_statusAndControl;
 

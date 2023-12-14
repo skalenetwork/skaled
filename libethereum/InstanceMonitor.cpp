@@ -46,23 +46,20 @@ void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
     std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
     rotationInfoFile << rotationJson;
 
-    m_finishTimestamp = _finishTimestamp;
-    LOG( m_logger ) << "Set rotation time to " << m_finishTimestamp;
+    LOG( m_logger ) << "Set rotation time to " << _finishTimestamp;
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _finishTimestamp ) {
     if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;
     }
-    return m_finishTimestamp <= _finishTimestamp;
+    return getRotationTimestamp() <= _finishTimestamp;
 }
 
-void InstanceMonitor::restoreRotationParams() {
-    if ( fs::exists( m_rotationInfoFilePath ) ) {
-        std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
-        auto rotationJson = nlohmann::json::parse( rotationInfoFile );
-        m_finishTimestamp = rotationJson["timestamp"].get< uint64_t >();
-    }
+uint64_t InstanceMonitor::getRotationTimestamp() {
+    std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
+    auto rotationJson = nlohmann::json::parse( rotationInfoFile );
+    return rotationJson["timestamp"].get< uint64_t >();
 }
 
 void InstanceMonitor::reportExitTimeReached( bool _reached ) {

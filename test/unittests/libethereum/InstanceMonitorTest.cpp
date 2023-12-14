@@ -17,10 +17,6 @@ class InstanceMonitorMock: public InstanceMonitor {
 public:
     explicit InstanceMonitorMock(fs::path const &rotationFlagFilePath, std::shared_ptr<StatusAndControl> statusAndControl) : InstanceMonitor(rotationFlagFilePath, statusAndControl) {};
 
-    uint64_t getFinishTimestamp() {
-        return this->finishTimestamp();
-    };
-
     fs::path getRotationInfoFilePath() {
         return this->rotationInfoFilePath();
     }
@@ -70,7 +66,7 @@ BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
     uint64_t ts = 100;
     BOOST_REQUIRE( !fs::exists(instanceMonitor->getRotationInfoFilePath() ) );
     instanceMonitor->initRotationParams(ts);
-    BOOST_CHECK_EQUAL(instanceMonitor->getFinishTimestamp(), ts);
+    BOOST_CHECK_EQUAL(instanceMonitor->getRotationTimestamp(), ts);
 
     BOOST_REQUIRE( fs::exists(instanceMonitor->getRotationInfoFilePath() ) );
 
@@ -98,6 +94,9 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 
     instanceMonitor->initRotationParams(50);
     BOOST_REQUIRE( instanceMonitor->isTimeToRotate( currentTime ) );
+
+    currentTime = 49;
+    BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
 }
 
 BOOST_AUTO_TEST_CASE( test_rotation ) {
