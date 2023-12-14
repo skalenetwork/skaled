@@ -146,7 +146,7 @@ jobs:
 
       - name: Build and publish snapshot_benchmark container
         run: |
-          cp build/skaled/skaled scripts/skale_build/executable/
+          cp build/snapshot_hash_calculation_benchmark/snapshot_benchmark scripts/snapshot_benchmark_build/executable/
           export BRANCH=${{ github.event.inputs.branch_name }}
           export VERSION=${{ github.event.inputs.image_version }}
           echo "Version $VERSION"
