@@ -318,17 +318,17 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         client->setAuthor( coinbase.address() );
 
         // wait for 1st block - because it's always empty
-        std::promise< void > block_promise;
+        std::promise< void > blockPromise;
         auto importHandler = client->setOnBlockImport(
-            [&block_promise]( BlockHeader const& ) {
-                    block_promise.set_value();
+            [&blockPromise]( BlockHeader const& ) {
+                    blockPromise.set_value();
         } );
 
         client->injectSkaleHost();
         client->startWorking();
 
         if ( !_isSyncNode )
-            block_promise.get_future().wait();
+            blockPromise.get_future().wait();
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
