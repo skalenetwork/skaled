@@ -51,6 +51,7 @@
 #endif
 
 
+#include <libskale/ChainIdPatch.h>
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/POWCheckPatch.h>
@@ -169,6 +170,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     SkipInvalidTransactionsPatch::setTimestamp(
         this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
     PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
+    ChainIdPatch::setTimestamp( chainParams().sChain.chainIdPatchTimestamp );
 }
 
 
@@ -668,6 +670,7 @@ size_t Client::syncTransactions(
     PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
     PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    ChainIdPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );

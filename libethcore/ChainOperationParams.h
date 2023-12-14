@@ -178,6 +178,7 @@ public:
     time_t precompiledConfigPatchTimestamp = 0;
     time_t pushZeroPatchTimestamp = 0;
     time_t skipInvalidTransactionsPatchTimestamp = 0;
+    time_t chainIdPatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";
