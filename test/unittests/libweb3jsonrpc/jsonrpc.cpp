@@ -749,7 +749,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
 BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
     // Enable sync mode
-    JsonRpcFixture fixture( c_genesisConfigString, true, true, true, false );
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, true, false, true );
     Address senderAddress = fixture.coinbase.address();
     fixture.client->setAuthor( senderAddress );
 
