@@ -668,8 +668,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // it was broadcasted from the sync node
             if ( m_tq.knownTransactions().count( sha ) != 0 ) {
                 if ( m_client.chainParams().nodeInfo.syncNode ) {
-                    LOG( m_traceLogger ) 
-                        << "Dropping broadcasted txn from sync node " << sha;
+                    LOG( m_traceLogger ) << "Dropping broadcasted txn from sync node " << sha;
                     m_tq.dropGood( t );
                 } else {
                     LOG( m_traceLogger )
