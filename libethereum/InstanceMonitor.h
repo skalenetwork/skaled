@@ -43,9 +43,9 @@ public:
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
     bool isTimeToRotate( uint64_t _finishTimestamp );
-    uint64_t getRotationTimestamp();
 
 protected:
+    [[nodiscard]] uint64_t rotationTimestamp() const;
     [[nodiscard]] fs::path rotationInfoFilePath() const { return m_rotationInfoFilePath; }
 
     const fs::path m_rotationInfoFilePath;

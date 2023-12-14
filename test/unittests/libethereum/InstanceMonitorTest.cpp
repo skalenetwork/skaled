@@ -28,6 +28,10 @@ public:
     void removeFlagFileTest(){
         this->reportExitTimeReached( false );
     }
+
+    uint64_t getRotationTimestamp() const {
+        return this->rotationTimestamp();
+    }
 };
 
 class InstanceMonitorTestFixture : public TestOutputHelperFixture {

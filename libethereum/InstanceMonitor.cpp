@@ -53,10 +53,10 @@ bool InstanceMonitor::isTimeToRotate( uint64_t _finishTimestamp ) {
     if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;
     }
-    return getRotationTimestamp() <= _finishTimestamp;
+    return rotationTimestamp() <= _finishTimestamp;
 }
 
-uint64_t InstanceMonitor::getRotationTimestamp() {
+uint64_t InstanceMonitor::rotationTimestamp() const {
     std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
     auto rotationJson = nlohmann::json::parse( rotationInfoFile );
     return rotationJson["timestamp"].get< uint64_t >();
