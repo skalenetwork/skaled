@@ -240,6 +240,7 @@ Json::Value Debug::debug_traceCall( Json::Value const&
         }
 
         TransactionSkeleton ts = toTransactionSkeleton( _call );
+        
         return m_eth.traceCall(
             ts.from, ts.value, ts.to, ts.data, ts.gas, ts.gasPrice, bN, _jsonTraceConfig );
     } catch ( Exception const& _e ) {

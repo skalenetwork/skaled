@@ -116,7 +116,7 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
 }
 
 async function callDebugTraceCall(deployedContract: any): Promise<void> {
-
+  
     // first call function using eth_call
 
     console.log("Calling blockNumber() using eth_call ...")
