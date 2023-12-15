@@ -9,17 +9,20 @@ import {int} from "hardhat/internal/core/params/argumentTypes";
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
-const TEST_CONTRACT_NAME = "Tracer"
-const RUN_FUNCTION_NAME = "mint"
+const TEST_CONTRACT_NAME = "Tracer";
+const RUN_FUNCTION_NAME = "mint";
+const CALL_FUNCTION_NAME = "blockNumber";
 
-const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.skaled.trace.json"
-const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/"+ TEST_CONTRACT_NAME+ "." + RUN_FUNCTION_NAME + ".skaled.trace.json"
-const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + ".deploy.geth.trace.json"
-const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/"+ TEST_CONTRACT_NAME+ "." + RUN_FUNCTION_NAME + ".geth.trace.json"
+const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.skaled.trace.json";
+const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".skaled.trace.json";
+const SKALED_TEST_CONTRACT_CALL_FILE_NAME = "/tmp/" + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".skaled.trace.json";
+const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + ".deploy.geth.trace.json";
+const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".geth.trace.json";
+const GETH_TEST_CONTRACT_CALL_FILE_NAME = "scripts/" + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".geth.trace.json";
+
 
 expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
 expect(existsSync(GETH_TEST_CONTRACT_RUN_FILE_NAME));
-
 
 
 async function waitUntilNextBlock() {
@@ -116,7 +119,7 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
 }
 
 async function callDebugTraceCall(deployedContract: any): Promise<void> {
-  
+
     // first call function using eth_call
 
     console.log("Calling blockNumber() using eth_call ...")
@@ -132,9 +135,9 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     const returnData = await ethers.provider.call(transaction, currentBlock - 1);
 
-     const result = deployedContract.interface.decodeFunctionResult("getBalance", returnData);
+    const result = deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
-     console.log("Success:" + result);
+    console.log("Success:" + result);
 
     // Example usage
 
@@ -146,8 +149,11 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     console.log(trace);
 
-}
+    const traceResult = JSON.stringify(trace, null, 4);
 
+    writeFileSync(SKALED_TEST_CONTRACT_CALL_FILE_NAME, traceResult);
+
+}
 
 
 function readJSONFile(fileName: string): Promise<object> {
@@ -170,7 +176,7 @@ function readJSONFile(fileName: string): Promise<object> {
 
 async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
 
-    let expectedResult  = await readJSONFile(_expectedResultFileName)
+    let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
 
     verifyGasCalculations(actualResult);
@@ -246,6 +252,8 @@ async function main(): Promise<void> {
 
     await callDebugTraceCall(deployedContract);
 
+    await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALL_FILE_NAME,
+        SKALED_TEST_CONTRACT_CALL_FILE_NAME)
 
 
 }
