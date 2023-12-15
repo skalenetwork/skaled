@@ -53,6 +53,7 @@
 
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/CorrectForkInPowPatch.h>
 #include <libskale/POWCheckPatch.h>
 #include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/PushZeroPatch.h>
@@ -169,6 +170,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     SkipInvalidTransactionsPatch::setTimestamp(
         this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
     PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
+    CorrectForkInPowPatch::setTimestamp( chainParams().sChain.correctForkInPowPatchTimestamp );
 }
 
 
