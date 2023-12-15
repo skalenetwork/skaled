@@ -360,5 +360,12 @@ uint64_t Debug::debug_doBlocksDbCompaction() {
 }
 
 Json::Value Debug::debug_getFutureTransactions() {
-    return toJson( m_eth.DEBUG_getFutureTransactions() );
+    try {
+        checkPrivilegedAccess();
+        return toJson( m_eth.debugGetFutureTransactions() );
+    } catch ( std::exception const& _e ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown error" ) );
+    }  // catch
 }
