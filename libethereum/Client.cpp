@@ -1237,7 +1237,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
 
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
-    u256 _gas, u256 _gasPrice,
+    u256 _gasLimit, u256 _gasPrice,
 #ifdef HISTORIC_STATE
     BlockNumber _blockNumber,
 #endif
@@ -1250,9 +1250,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             // historic state
             try {
                 u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
-                u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
+                // if the user did not specify transaction gas limit, we give transaction block gas
+                // limit of gas
+                u256 gasLimit = _gasLimit == Invalid256 ? historicBlock.gasLimit() : _gasLimit;
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-                Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
+                Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
                 t.checkOutExternalGas( ~u256( 0 ) );
@@ -1270,9 +1272,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         // TODO there can be race conditions between prev and next line!
         State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
-        u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
+        // if the user did not specify transaction gas limit, we give transaction block gas
+        // limit of gas
+        u256 gasLimit = _gasLimit == Invalid256 ? temp.gasLimit() : _gasLimit;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-        Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
+        Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().chainID );
         t.checkOutExternalGas( ~u256( 0 ) );
@@ -1296,13 +1300,14 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 #ifdef HISTORIC_STATE
 
 Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
-    u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
+    u256 _gasLimit, u256 _gasPrice, BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
     try {
         Block historicBlock = blockByNumber( _blockNumber );
         auto nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
         // if the user did not specify transaction gas limit, we give transaction block gas
         // limit of gas
-        auto gasLimit = _gas == Invalid256 ? _gas : gasLimitRemaining();
+        auto gasLimit = _gasLimit == Invalid256 ? historicBlock.gasLimit() : _gasLimit;
+
         Transaction t = createTransactionForCallOrTraceCall(
             _from, _value, _to, _data, gasLimit, _gasPrice, nonce );
         historicBlock.mutableState().addBalance(
@@ -1320,10 +1325,10 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
 
 Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, const u256& _value,
     const Address& _to, const bytes& _data, const u256& _gasLimit, const u256& _gasPrice,
-    const u256& nonce ) const {
+    const u256& _nonce ) const {
     auto gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-    Transaction t( _value, gasPrice, _gasLimit, _to, _data, nonce );
-    // if call or trace request did not specify from address, zero address is used
+    Transaction t( _value, gasPrice, _gasLimit, _to, _data, _nonce );
+    // if call or trace call request did not specify from address, zero address is used
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
     t.forceChainId( chainParams().chainID );
