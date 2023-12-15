@@ -85,4 +85,8 @@ contract Tracer {
         bytes32 expectedHash = keccak256(bytes(input));
         return expectedHash;
     }
+
+    function getBalance() external view returns (uint256) {
+        return balance;
+    }
 }

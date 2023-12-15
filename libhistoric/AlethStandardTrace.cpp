@@ -219,7 +219,7 @@ AlethStandardTrace::AlethStandardTrace(
       m_options( _options ),
       // if it is a call trace, the transaction does not have signature
       // therefore, its hash should not include signature
-      m_txHash( _t.sha3(_isCall? dev::eth::WithoutSignature: dev::eth::WithSignature) ),
+      m_txHash( _t.sha3( _isCall ? dev::eth::WithoutSignature : dev::eth::WithSignature ) ),
       m_lastOpRecord(
           // the top function is executed at depth 0
           // therefore it is called from depth -1
