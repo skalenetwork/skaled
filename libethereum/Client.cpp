@@ -1258,6 +1258,12 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
                 t.checkOutExternalGas( ~u256( 0 ) );
+                // if we are in a call, we add to the balance of the account
+                // value needed for the call to guaranteed pass
+                // geth does a similar thing, we need to check whether it is fully compatible with
+                // geth
+                historicBlock.mutableState().mutableHistoricState().addBalance(
+                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1300,7 +1306,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 #ifdef HISTORIC_STATE
 
 Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
-    u256 _gasLimit, u256 _gasPrice, BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
+    u256 _gasLimit, u256 _gasPrice, BlockNumber _blockNumber,
+    Json::Value const& _jsonTraceConfig ) {
     try {
         Block historicBlock = blockByNumber( _blockNumber );
         auto nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
@@ -1310,7 +1317,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
 
         Transaction t = createTransactionForCallOrTraceCall(
             _from, _value, _to, _data, gasLimit, _gasPrice, nonce );
-        historicBlock.mutableState().addBalance(
+        historicBlock.mutableState().mutableHistoricState().addBalance(
             _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer = make_shared< AlethStandardTrace >( t, traceOptions, true );

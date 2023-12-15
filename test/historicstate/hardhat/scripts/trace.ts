@@ -11,7 +11,7 @@ const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
 const RUN_FUNCTION_NAME = "mint";
-const CALL_FUNCTION_NAME = "blockNumber";
+const CALL_FUNCTION_NAME = "getBalance";
 
 const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.skaled.trace.json";
 const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".skaled.trace.json";
@@ -23,6 +23,7 @@ const GETH_TEST_CONTRACT_CALL_FILE_NAME = "scripts/" + TEST_CONTRACT_NAME + "." 
 
 expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
 expect(existsSync(GETH_TEST_CONTRACT_RUN_FILE_NAME));
+expect(existsSync(GETH_TEST_CONTRACT_CALL_FILE_NAME));
 
 
 async function waitUntilNextBlock() {
@@ -122,7 +123,7 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     // first call function using eth_call
 
-    console.log("Calling blockNumber() using eth_call ...")
+    console.log("Calling getBalance() using eth_call ...")
 
 
     const currentBlock = await hre.ethers.provider.getBlockNumber();
@@ -142,12 +143,8 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
     // Example usage
 
     console.log(`Calling debug trace call ...`);
-    console.log(transaction);
-
 
     const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", {}]);
-
-    console.log(trace);
 
     const traceResult = JSON.stringify(trace, null, 4);
 
