@@ -35,7 +35,7 @@ void FourByteTracePrinter::print(
 
     m_standardTrace.getTopFunctionCall()->collectFourByteTrace( callMap );
     for ( auto&& key : callMap ) {
-        _jsonTrace[key.first] = to_string( key.second );
+        _jsonTrace[key.first] = key.second;
     }
 }
 

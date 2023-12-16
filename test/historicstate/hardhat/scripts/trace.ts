@@ -19,6 +19,8 @@ const GETH_TRACES_DIR = "scripts/geth_traces/"
 let DEFAULT_TRACER = "defaultTracer";
 let CALL_TRACER =  "callTracer";
 let PRESTATE_TRACER = "prestateTracer";
+let FOUR_BYTE_TRACER = "4byteTracer";
+
 
 async function getTraceJsonOptions(_tracer : string):Promise<object> {
     if (_tracer == DEFAULT_TRACER) {
@@ -32,7 +34,8 @@ const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTrac
 const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
-const TEST_CONTRACT_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".4byteTracer.json";
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
     try {
@@ -295,6 +298,37 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
     await expect(foundDiffs).to.be.eq(false)
 }
 
+async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+            // do not print differences related to total gas in the account
+
+            foundDiffs = true;
+
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+        });
+    }
+
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+
+
+
 
 async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
@@ -368,9 +402,15 @@ async function main(): Promise<void> {
 
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
 
-    await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_PRESTATETRACER_FILE_NAME);
 
-    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_PRESTATETRACER_FILE_NAME)
+    await callDebugTraceCall(deployedContract, FOUR_BYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
+
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
+
+
+    await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
+
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
 
 }
 
