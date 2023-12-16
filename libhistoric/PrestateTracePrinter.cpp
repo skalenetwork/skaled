@@ -65,7 +65,7 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     // if this _address did not exist, we do not include it in the diff
     if ( !_statePre.addressInUse( _address ) )
         return;
-    storagePreValues["balance"] = toCompactHexPrefixed( _statePre.balance( _address ) );
+    storagePreValues["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( _address ) );
     storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
 
     bytes const& code = _statePre.code( _address );
@@ -117,7 +117,7 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
     // if the new address, ot if the value changed, include in post trace
     if ( !_statePre.addressInUse( _address ) || _statePre.balance( _address ) != balancePost ) {
-        value["balance"] = toCompactHexPrefixed( balancePost );
+        value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
     }
     if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
         value["nonce"] = ( uint64_t ) noncePost;
