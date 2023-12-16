@@ -289,14 +289,8 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
         Json::Value stack( Json::arrayValue );
         // Try extracting information about the stack from the VM is supported.
         for ( auto const& i : _vm->stack() ) {
-            auto stackStr = toCompactHex( i );
-            // now make it compatible with the way geth prints string
-            if ( stackStr.empty() ) {
-                stackStr = "0";
-            } else if ( stackStr.front() == '0' ) {
-                stackStr = stackStr.substr( 1 );
-            }
-            stack.append( "0x" + stackStr );
+            string stackStr = toGethCompatibleCompactHexPrefixed(i);
+            stack.append( stackStr );
         }
         r["stack"] = stack;
     }
@@ -343,6 +337,17 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
 
     m_defaultOpTrace->append( r );
 }
+
+    string AlethStandardTrace::toGethCompatibleCompactHexPrefixed(const u256 &_value) {
+        auto hexStr = toCompactHex(_value );
+        // now make it compatible with the way geth prints string
+        if ( hexStr.empty() ) {
+            hexStr = "0";
+        } else if (hexStr.front() == '0' ) {
+            hexStr = hexStr.substr(1 );
+        }
+        return "0x" + hexStr;
+    }
 
 // execution completed.  Now use the tracer that the user requested
 // to print the resulting trace

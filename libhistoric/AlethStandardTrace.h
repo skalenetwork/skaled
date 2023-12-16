@@ -83,6 +83,7 @@ public:
         const;
     void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
 
+    static string toGethCompatibleCompactHexPrefixed(const u256 &_value);
 
 private:
     // this operator will be executed by skaled on each EVM instruction
@@ -149,5 +150,7 @@ private:
     DefaultTracePrinter m_defaultTracePrinter;
 
     const std::map< TraceType, TracePrinter& > m_tracePrinters;
+
+
 };
 }  // namespace dev::eth

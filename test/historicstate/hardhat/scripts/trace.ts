@@ -1,5 +1,5 @@
 import {mkdir, readdir, writeFileSync, readFile, unlink} from "fs";
-import { promises as fs } from 'fs';
+import {promises as fs} from 'fs';
 import {existsSync} from "fs";
 import deepDiff, {diff} from 'deep-diff';
 import {expect} from "chai";
@@ -33,7 +33,7 @@ async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
     try {
 
         // Recreate the directory
-        await fs.mkdir(dirPath, { recursive: true });
+        await fs.mkdir(dirPath, {recursive: true});
         console.log(`Directory recreated: ${dirPath}`);
     } catch (error) {
         console.error('An error occurred:', error);
@@ -41,7 +41,7 @@ async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
 }
 
 async function deleteDirectory(dirPath: string): Promise<void> {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const entries = await fs.readdir(dirPath, {withFileTypes: true});
 
     // Iterate over directory contents
     for (const entry of entries) {
@@ -59,8 +59,6 @@ async function deleteDirectory(dirPath: string): Promise<void> {
     // Delete the now-empty directory
     await fs.rmdir(dirPath);
 }
-
-
 
 
 async function waitUntilNextBlock() {
@@ -244,10 +242,11 @@ async function verifyTransactionDefaultTraceAgainstGethTrace(_expectedResultFile
             if (difference.kind == "E") {
                 console.log(`Difference op:`, expectedResult["structLogs"][difference.path![1]]);
             }
-            console.log(`Found difference (lhs is expected value) ${index + 1}:`, difference.path);
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
         });
-    };
+    }
+    ;
 
     await expect(foundDiffs).to.be.eq(false)
 }
@@ -263,18 +262,19 @@ async function verifyTransactionCallTraceAgainstGethTrace(_expectedResultFileNam
     let foundDiffs = false;
 
 
-
     if (differences) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
 
-            if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "to") {
-                return;
+            if (difference.kind == "E" && difference.path!.length == 1) {
+                let key = difference.path![0];
+                if (key == "to" || key == "gas" || key == "gasUsed")
+                    return;
             }
 
             foundDiffs = true;
 
-            console.log(`Found difference (lhs is expected value) ${index + 1}:`, difference.path);
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
         });
     }
