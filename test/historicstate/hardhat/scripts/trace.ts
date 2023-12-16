@@ -1,8 +1,9 @@
-import {readFile} from 'fs';
-import {writeFileSync} from "fs";
+import {mkdir, readdir, writeFileSync, readFile, unlink} from "fs";
+import { promises as fs } from 'fs';
 import {existsSync} from "fs";
 import deepDiff, {diff} from 'deep-diff';
 import {expect} from "chai";
+import * as path from 'path';
 import {int} from "hardhat/internal/core/params/argumentTypes";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
@@ -12,16 +13,53 @@ const TEST_CONTRACT_NAME = "Tracer";
 const RUN_FUNCTION_NAME = "mint";
 const CALL_FUNCTION_NAME = "getBalance";
 
-const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
-const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/geth_traces/" + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
-const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/geth_traces/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const GETH_TEST_CONTRACT_CALL_FILE_NAME = "scripts/geth_traces/" + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
+const SKALE_TRACES_DIR = "/tmp/skale_traces/"
+const GETH_TRACES_DIR = "scripts/geth_traces/"
+
+const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = SKALE_TRACES_DIR + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = SKALE_TRACES_DIR + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = GETH_TRACES_DIR + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const GETH_TEST_CONTRACT_CALL_FILE_NAME = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 
 
-expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
-expect(existsSync(GETH_TEST_CONTRACT_RUN_FILE_NAME));
-expect(existsSync(GETH_TEST_CONTRACT_CALL_FILE_NAME));
+async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
+    try {
+        // Remove the directory and its contents
+        await deleteDirectory(dirPath);
+    } catch (error) {
+    }
+    try {
+
+        // Recreate the directory
+        await fs.mkdir(dirPath, { recursive: true });
+        console.log(`Directory recreated: ${dirPath}`);
+    } catch (error) {
+        console.error('An error occurred:', error);
+    }
+}
+
+async function deleteDirectory(dirPath: string): Promise<void> {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+    // Iterate over directory contents
+    for (const entry of entries) {
+        const entryPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+            // Recursive call for nested directories
+            await deleteDirectory(entryPath);
+        } else {
+            // Delete file
+            await fs.unlink(entryPath);
+        }
+    }
+
+    // Delete the now-empty directory
+    await fs.rmdir(dirPath);
+}
+
+
 
 
 async function waitUntilNextBlock() {
@@ -235,6 +273,12 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
 
 async function main(): Promise<void> {
 
+    expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
+    expect(existsSync(GETH_TEST_CONTRACT_RUN_FILE_NAME));
+    expect(existsSync(GETH_TEST_CONTRACT_CALL_FILE_NAME));
+
+    await deleteAndRecreateDirectory('/tmp/skale_traces');
+
     let deployedContract = await deployTestContract();
 
     await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME,
@@ -245,14 +289,14 @@ async function main(): Promise<void> {
     await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
         SKALED_TEST_CONTRACT_RUN_FILE_NAME)
 
-    const SKALED_TEST_CONTRACT_CALL_FILE_NAME = "/tmp/" + TEST_CONTRACT_NAME + "."
+    const SKALED_TEST_CONTRACT_CALL_FILE_NAME = "/tmp/skale_traces/" + TEST_CONTRACT_NAME + "."
         + CALL_FUNCTION_NAME + ".defaultTracer.json";
     await callDebugTraceCall(deployedContract, {}, SKALED_TEST_CONTRACT_CALL_FILE_NAME);
 
     await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALL_FILE_NAME,
         SKALED_TEST_CONTRACT_CALL_FILE_NAME)
 
-    const SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME = "/tmp/" + TEST_CONTRACT_NAME + "."
+    const SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME = "/tmp/skale_traces/" + TEST_CONTRACT_NAME + "."
         + CALL_FUNCTION_NAME + ".callTracer.json";
 
     await callDebugTraceCall(deployedContract, {"tracer": "callTracer"}, SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME);
