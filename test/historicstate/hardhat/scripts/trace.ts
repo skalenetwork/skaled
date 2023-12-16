@@ -1,4 +1,3 @@
-import {ethers} from "hardhat";
 import {readFile} from 'fs';
 import {writeFileSync} from "fs";
 import {existsSync} from "fs";
@@ -13,12 +12,11 @@ const TEST_CONTRACT_NAME = "Tracer";
 const RUN_FUNCTION_NAME = "mint";
 const CALL_FUNCTION_NAME = "getBalance";
 
-const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.skaled.trace.json";
-const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".skaled.trace.json";
-const SKALED_TEST_CONTRACT_CALL_FILE_NAME = "/tmp/" + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".skaled.trace.json";
-const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + ".deploy.geth.trace.json";
-const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".geth.trace.json";
-const GETH_TEST_CONTRACT_CALL_FILE_NAME = "scripts/" + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".geth.trace.json";
+const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = "/tmp/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = "scripts/geth_traces/" + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = "scripts/geth_traces/" + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const GETH_TEST_CONTRACT_CALL_FILE_NAME = "scripts/geth_traces/" + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 
 
 expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
@@ -119,7 +117,7 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
 
 }
 
-async function callDebugTraceCall(deployedContract: any): Promise<void> {
+async function callDebugTraceCall(_deployedContract: any, _tracer: any, _traceFileName: string): Promise<void> {
 
     // first call function using eth_call
 
@@ -130,13 +128,13 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     const transaction = {
         from: OWNER_ADDRESS,
-        to: deployedContract.address,
-        data: deployedContract.interface.encodeFunctionData("getBalance", [])
+        to: _deployedContract.address,
+        data: _deployedContract.interface.encodeFunctionData("getBalance", [])
     };
 
     const returnData = await ethers.provider.call(transaction, currentBlock - 1);
 
-    const result = deployedContract.interface.decodeFunctionResult("getBalance", returnData);
+    const result = _deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
     console.log("Success:" + result);
 
@@ -144,11 +142,11 @@ async function callDebugTraceCall(deployedContract: any): Promise<void> {
 
     console.log(`Calling debug trace call ...`);
 
-    const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", {}]);
+    const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", _tracer]);
 
     const traceResult = JSON.stringify(trace, null, 4);
 
-    writeFileSync(SKALED_TEST_CONTRACT_CALL_FILE_NAME, traceResult);
+    writeFileSync(_traceFileName, traceResult);
 
 }
 
@@ -247,10 +245,17 @@ async function main(): Promise<void> {
     await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
         SKALED_TEST_CONTRACT_RUN_FILE_NAME)
 
-    await callDebugTraceCall(deployedContract);
+    const SKALED_TEST_CONTRACT_CALL_FILE_NAME = "/tmp/" + TEST_CONTRACT_NAME + "."
+        + CALL_FUNCTION_NAME + ".defaultTracer.json";
+    await callDebugTraceCall(deployedContract, {}, SKALED_TEST_CONTRACT_CALL_FILE_NAME);
 
     await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALL_FILE_NAME,
         SKALED_TEST_CONTRACT_CALL_FILE_NAME)
+
+    const SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME = "/tmp/" + TEST_CONTRACT_NAME + "."
+        + CALL_FUNCTION_NAME + ".callTracer.json";
+
+    await callDebugTraceCall(deployedContract, {"tracer": "callTracer"}, SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME);
 
 
 }
