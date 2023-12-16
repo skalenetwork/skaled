@@ -16,13 +16,11 @@ const CALL_FUNCTION_NAME = "getBalance";
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
 const GETH_TRACES_DIR = "scripts/geth_traces/"
 
-const SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME: string = SKALE_TRACES_DIR + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
-const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = SKALE_TRACES_DIR + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = GETH_TRACES_DIR + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
-const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const GETH_TEST_CONTRACT_CALL_FILE_NAME = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
-const GETH_TEST_CONTRACT_CALLTRACER_FILE_NAME = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 
+const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_CALL_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_CALL_TRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
     try {
@@ -106,7 +104,7 @@ async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<S
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
     const result = JSON.stringify(trace, null, 4);
-    writeFileSync(_skaleFileName, result);
+    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
 
     return trace;
 }
@@ -131,7 +129,7 @@ async function deployTestContract(): Promise<object> {
 
     //await getAndPrintBlockTrace(deployBlockNumber);
     //await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash, SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME);
+    await getAndPrintTrace(hash, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
@@ -139,7 +137,7 @@ async function deployTestContract(): Promise<object> {
 
 async function callTestContractRun(deployedContract: any): Promise<void> {
 
-    console.log(`Minting ...`);
+    console.log(`Running transaction ...`);
 
     const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
@@ -150,7 +148,7 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //
 
-    await getAndPrintTrace(transferReceipt.hash, SKALED_TEST_CONTRACT_RUN_FILE_NAME);
+    await getAndPrintTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
 
 }
 
@@ -183,7 +181,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: any, _traceFi
 
     const traceResult = JSON.stringify(trace, null, 4);
 
-    writeFileSync(_traceFileName, traceResult);
+    writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
 
 }
 
@@ -206,7 +204,10 @@ function readJSONFile(fileName: string): Promise<object> {
 }
 
 
-async function verifyTransactionDefaultTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
+async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
 
     let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
@@ -252,7 +253,10 @@ async function verifyTransactionDefaultTraceAgainstGethTrace(_expectedResultFile
 }
 
 
-async function verifyTransactionCallTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
+async function verifyCallTraceAgainstGethTrace(_fileName: string) {
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
 
     let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
@@ -305,37 +309,30 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
 
 async function main(): Promise<void> {
 
-    expect(existsSync(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME));
-    expect(existsSync(GETH_TEST_CONTRACT_RUN_FILE_NAME));
-    expect(existsSync(GETH_TEST_CONTRACT_CALL_FILE_NAME));
 
-    await deleteAndRecreateDirectory('/tmp/skale_traces');
+    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_DEPLOY_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_RUN_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_CALL_FILE_NAME));
+
+    await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
 
     let deployedContract = await deployTestContract();
 
-    await verifyTransactionDefaultTraceAgainstGethTrace(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME,
-        SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME)
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
 
     await callTestContractRun(deployedContract);
 
-    await verifyTransactionDefaultTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
-        SKALED_TEST_CONTRACT_RUN_FILE_NAME)
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
 
-    const SKALED_TEST_CONTRACT_CALL_FILE_NAME = SKALE_TRACES_DIR + TEST_CONTRACT_NAME + "."
-        + CALL_FUNCTION_NAME + ".defaultTracer.json";
+    await callDebugTraceCall(deployedContract, {}, TEST_CONTRACT_CALL_FILE_NAME);
 
-    await callDebugTraceCall(deployedContract, {}, SKALED_TEST_CONTRACT_CALL_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_FILE_NAME)
 
-    await verifyTransactionDefaultTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALL_FILE_NAME,
-        SKALED_TEST_CONTRACT_CALL_FILE_NAME)
+    await callDebugTraceCall(deployedContract, {"tracer": "callTracer"}, TEST_CONTRACT_CALL_TRACER_FILE_NAME);
 
-    const SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME = "/tmp/skale_traces/" + TEST_CONTRACT_NAME + "."
-        + CALL_FUNCTION_NAME + ".callTracer.json";
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_TRACER_FILE_NAME)
 
-    await callDebugTraceCall(deployedContract, {"tracer": "callTracer"}, SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME);
-
-    await verifyTransactionCallTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALLTRACER_FILE_NAME,
-        SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME)
+    await callDebugTraceCall(deployedContract, {"tracer": "prestateTracer"}, TEST_CONTRACT_CALL_TRACER_FILE_NAME);
 
 }
 
