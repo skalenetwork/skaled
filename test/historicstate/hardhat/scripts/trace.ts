@@ -21,6 +21,7 @@ const SKALED_TEST_CONTRACT_RUN_FILE_NAME: string = SKALE_TRACES_DIR + TEST_CONTR
 const GETH_TEST_CONTRACT_DEPLOY_FILE_NAME: string = GETH_TRACES_DIR + TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
 const GETH_TEST_CONTRACT_RUN_FILE_NAME: string = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
 const GETH_TEST_CONTRACT_CALL_FILE_NAME = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
+const GETH_TEST_CONTRACT_CALLTRACER_FILE_NAME = GETH_TRACES_DIR + TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
@@ -207,7 +208,7 @@ function readJSONFile(fileName: string): Promise<object> {
 }
 
 
-async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
+async function verifyTransactionDefaultTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
 
     let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
@@ -217,6 +218,7 @@ async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: s
     const differences = deepDiff(expectedResult, actualResult)!;
 
     let foundDiffs = false;
+
 
     if (differences) {
         differences.forEach((difference, index) => {
@@ -245,8 +247,38 @@ async function verifyTransactionTraceAgainstGethTrace(_expectedResultFileName: s
             console.log(`Found difference (lhs is expected value) ${index + 1}:`, difference.path);
             console.log(`Difference ${index + 1}:`, difference);
         });
+    };
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+
+async function verifyTransactionCallTraceAgainstGethTrace(_expectedResultFileName: string, _actualResultFileName: string) {
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+            // do not print differences related to total gas in the account
+
+            if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "to") {
+                return;
+            }
+
+            foundDiffs = true;
+
+            console.log(`Found difference (lhs is expected value) ${index + 1}:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+        });
     }
-    ;
+
 
     await expect(foundDiffs).to.be.eq(false)
 }
@@ -281,19 +313,20 @@ async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
-    await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME,
+    await verifyTransactionDefaultTraceAgainstGethTrace(GETH_TEST_CONTRACT_DEPLOY_FILE_NAME,
         SKALED_TEST_CONTRACT_DEPLOY_FILE_NAME)
 
     await callTestContractRun(deployedContract);
 
-    await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
+    await verifyTransactionDefaultTraceAgainstGethTrace(GETH_TEST_CONTRACT_RUN_FILE_NAME,
         SKALED_TEST_CONTRACT_RUN_FILE_NAME)
 
-    const SKALED_TEST_CONTRACT_CALL_FILE_NAME = "/tmp/skale_traces/" + TEST_CONTRACT_NAME + "."
+    const SKALED_TEST_CONTRACT_CALL_FILE_NAME = SKALE_TRACES_DIR + TEST_CONTRACT_NAME + "."
         + CALL_FUNCTION_NAME + ".defaultTracer.json";
+
     await callDebugTraceCall(deployedContract, {}, SKALED_TEST_CONTRACT_CALL_FILE_NAME);
 
-    await verifyTransactionTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALL_FILE_NAME,
+    await verifyTransactionDefaultTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALL_FILE_NAME,
         SKALED_TEST_CONTRACT_CALL_FILE_NAME)
 
     const SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME = "/tmp/skale_traces/" + TEST_CONTRACT_NAME + "."
@@ -301,6 +334,8 @@ async function main(): Promise<void> {
 
     await callDebugTraceCall(deployedContract, {"tracer": "callTracer"}, SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME);
 
+    await verifyTransactionCallTraceAgainstGethTrace(GETH_TEST_CONTRACT_CALLTRACER_FILE_NAME,
+        SKALED_TEST_CONTRACT_CALLTRACER_FILE_NAME)
 
 }
 
