@@ -296,6 +296,37 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 }
 
 
+async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+            // do not print differences related to total gas in the account
+
+            foundDiffs = true;
+
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+        });
+    }
+
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+
+
+
 async function verifyGasCalculations(_actualResult: any): Promise<void> {
     let structLogs: object[] = _actualResult.structLogs;
     expect(structLogs.length > 0)
