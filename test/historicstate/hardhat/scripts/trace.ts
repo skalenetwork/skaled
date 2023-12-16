@@ -183,7 +183,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
     console.log("Calling debug_traceCall to generate and verify " + _traceFileName);
 
-    let traceOptions = getTraceJsonOptions(_tracer);
+    let traceOptions = await getTraceJsonOptions(_tracer);
 
     const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", traceOptions]);
 
@@ -338,6 +338,8 @@ async function main(): Promise<void> {
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
 
     await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_PRESTATETRACER_FILE_NAME);
+
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_PRESTATETRACER_FILE_NAME)
 
 }
 
