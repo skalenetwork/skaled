@@ -16,11 +16,23 @@ const CALL_FUNCTION_NAME = "getBalance";
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
 const GETH_TRACES_DIR = "scripts/geth_traces/"
 
+let DEFAULT_TRACER = "defaultTracer";
+let CALL_TRACER =  "callTracer";
+let PRESTATE_TRACER = "prestateTracer";
+
+async function getTraceJsonOptions(_tracer : string):Promise<object> {
+    if (_tracer == DEFAULT_TRACER) {
+        return {};
+    }
+
+    return {"tracer" : _tracer}
+}
 
 const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
 const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const TEST_CONTRACT_CALL_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
-const TEST_CONTRACT_CALL_TRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
     try {
@@ -101,6 +113,8 @@ async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<S
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
 //        "tracerConfig": {"withLog":true}}]);
 
+    console.log("Calling debug_traceTransaction to generate " + _skaleFileName );
+
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
     const result = JSON.stringify(trace, null, 4);
@@ -111,7 +125,7 @@ async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<S
 
 async function deployTestContract(): Promise<object> {
 
-    console.log(`Deploying ...`);
+    console.log(`Deploying ` + TEST_CONTRACT_NAME);
 
     const factory = await ethers.getContractFactory(TEST_CONTRACT_NAME);
     const testContractName = await factory.deploy({
@@ -122,7 +136,6 @@ async function deployTestContract(): Promise<object> {
     const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTestContract.deployTransaction.hash)
     const deployBlockNumber: number = deployReceipt.blockNumber;
     const hash = deployedTestContract.deployTransaction.hash;
-    console.log(`Gas limit ${deployedTestContract.deployTransaction.gasLimit}`);
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
     // await waitUntilNextBlock()
@@ -137,12 +150,10 @@ async function deployTestContract(): Promise<object> {
 
 async function callTestContractRun(deployedContract: any): Promise<void> {
 
-    console.log(`Running transaction ...`);
 
     const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
     });
-    console.log(`Gas limit ${transferReceipt.gasLimit}`);
 
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
@@ -152,12 +163,9 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
 
 }
 
-async function callDebugTraceCall(_deployedContract: any, _tracer: any, _traceFileName: string): Promise<void> {
+async function callDebugTraceCall(_deployedContract: any, _tracer: string, _traceFileName: string): Promise<void> {
 
     // first call function using eth_call
-
-    console.log("Calling getBalance() using eth_call ...")
-
 
     const currentBlock = await hre.ethers.provider.getBlockNumber();
 
@@ -171,13 +179,13 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: any, _traceFi
 
     const result = _deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
-    console.log("Success:" + result);
-
     // Example usage
 
-    console.log(`Calling debug trace call ...`);
+    console.log("Calling debug_traceCall to generate and verify " + _traceFileName);
 
-    const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", _tracer]);
+    let traceOptions = getTraceJsonOptions(_tracer);
+
+    const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", traceOptions]);
 
     const traceResult = JSON.stringify(trace, null, 4);
 
@@ -302,17 +310,14 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
         gasCost = structLogs[index].gasCost
         totalGasUsedInOps += gasCost;
     }
-
-    console.log("Total gas used in ops ", totalGasUsedInOps)
 }
 
 
 async function main(): Promise<void> {
 
-
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_DEPLOY_FILE_NAME));
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_RUN_FILE_NAME));
-    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_CALL_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME));
 
     await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
 
@@ -324,15 +329,15 @@ async function main(): Promise<void> {
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
 
-    await callDebugTraceCall(deployedContract, {}, TEST_CONTRACT_CALL_FILE_NAME);
+    await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
 
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_FILE_NAME)
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME)
 
-    await callDebugTraceCall(deployedContract, {"tracer": "callTracer"}, TEST_CONTRACT_CALL_TRACER_FILE_NAME);
+    await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
 
-    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_TRACER_FILE_NAME)
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
 
-    await callDebugTraceCall(deployedContract, {"tracer": "prestateTracer"}, TEST_CONTRACT_CALL_TRACER_FILE_NAME);
+    await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_PRESTATETRACER_FILE_NAME);
 
 }
 
