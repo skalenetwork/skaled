@@ -590,7 +590,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << stCurrent.hex();
 
         // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot &&
+             !this->m_client.chainParams().nodeInfo.syncNode ) {
             LOG( m_errorLogger ) << "FATAL STATE ROOT MISMATCH ERROR: current state root "
                                  << dev::h256::Arith( stCurrent ).str()
                                  << " is not equal to arrived state root " << _stateRoot.str()
@@ -664,17 +665,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 haveConsensusBorn = true;
             }
 
-            // Deleting transaction from the transaction queue if
-            // it was broadcasted from the sync node
             if ( m_tq.knownTransactions().count( sha ) != 0 ) {
-                if ( m_client.chainParams().nodeInfo.syncNode ) {
-                    LOG( m_traceLogger ) << "Dropping broadcasted txn from sync node " << sha;
-                    m_tq.dropGood( t );
-                } else {
-                    LOG( m_traceLogger )
-                        << "Consensus returned future transaction that we didn't yet send";
-                    m_debugTracer.tracepoint( "import_future" );
-                }
+                LOG( m_traceLogger )
+                    << "Consensus returned future transaction that we didn't yet send";
+                m_debugTracer.tracepoint( "import_future" );
             }
 
         }  // for
