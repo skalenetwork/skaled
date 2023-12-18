@@ -10,13 +10,13 @@ std::chrono::high_resolution_clock::duration UnsafeRegion::total_time;
 
 void UnsafeRegion::sync_with_file() {
     assert( is_initialized() );
-    if ( counter == 1 ) {
-        std::ofstream out( path.string() );
-        assert( out.is_open() );
-    } else if ( counter == 0 ) {
-        boost::system::error_code ec;
-        boost::filesystem::remove( path, ec );
-    }
+    // if ( counter == 1 ) {
+    //     std::ofstream out( path.string() );
+    //     assert( out.is_open() );
+    // } else if ( counter == 0 ) {
+    //     boost::system::error_code ec;
+    //     boost::filesystem::remove( path, ec );
+    // }
 }
 
 void UnsafeRegion::start() {
