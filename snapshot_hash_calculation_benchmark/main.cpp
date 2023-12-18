@@ -45,9 +45,9 @@ int main(int argc, char *argv[]) {
     std::cout << "SLEEPING FOR 60 seconds\n";
     sleep(60);
 
-    snapshotManager->doSnapshot( blockNumber );
+    // snapshotManager->doSnapshot( blockNumber );
 
-    std::cout << "SNAPSHOT IS READY, CALCULATING ITS HASH NOW\n";
+    // std::cout << "SNAPSHOT IS READY, CALCULATING ITS HASH NOW\n";
 
     snapshotManager->computeSnapshotHash( blockNumber );
     
