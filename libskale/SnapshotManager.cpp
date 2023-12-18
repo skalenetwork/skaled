@@ -701,7 +701,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
             std::throw_with_nested( SnapshotManager::CannotCreate( hash_file ) );
         }
     } else {
-        std::cout << "HASH: " << hash << '\n';
+        std::cout << "HASH: " << hash << std::endl;
     }
 }
 
