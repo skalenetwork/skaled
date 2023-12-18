@@ -42,14 +42,14 @@ int main(int argc, char *argv[]) {
                 "prices_" + chainParams.nodeInfo.id.str() + ".db",
                 "blocks_" + chainParams.nodeInfo.id.str() + ".db" }, "" ) );
 
-    std::cout << "SLEEPING FOR 60 seconds\n";
+    std::cout << "SLEEPING FOR 60 seconds" << std::endl;
     sleep(60);
 
     // snapshotManager->doSnapshot( blockNumber );
 
     // std::cout << "SNAPSHOT IS READY, CALCULATING ITS HASH NOW\n";
 
-    snapshotManager->computeSnapshotHash( blockNumber );
+    snapshotManager->computeSnapshotHash( blockNumber, false, false );
     
     std::cout << "SNAPSHOT HASH IS READY, EXITING\n";
 
