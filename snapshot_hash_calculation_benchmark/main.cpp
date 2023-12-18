@@ -1,5 +1,7 @@
 #include <libdevcore/CommonIO.h>
+#include <libdevcore/FileSystem.h>
 #include <libskale/SnapshotManager.h>
+#include <libskale/UnsafeRegion.h>
 
 #include <iostream>
 #include <unistd.h>
@@ -30,6 +32,8 @@ int main(int argc, char *argv[]) {
 
     dev::eth::ChainParams chainParams;
     chainParams.loadConfig( configJSON, configPath );
+
+    UnsafeRegion::init( dev::getDataDir() );
 
     std::shared_ptr< SnapshotManager > snapshotManager;
 
