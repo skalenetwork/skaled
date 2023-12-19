@@ -82,7 +82,7 @@ Json::Value Debug::debug_traceBlockByNumber( const string&
 
     if ( bN == 0 ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
-}
+    }
 
     try {
         return m_eth.traceBlock( bN, _jsonTraceConfig );
@@ -118,7 +118,7 @@ Json::Value Debug::debug_traceBlockByHash( string const&
 
     if ( bN == 0 ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
-}
+    }
 
     try {
         return m_eth.traceBlock( bN, _jsonTraceConfig );
@@ -152,17 +152,17 @@ Json::Value Debug::debug_traceTransaction( string const&
     if ( localisedTransaction.blockHash() == h256( 0 ) ) {
         BOOST_THROW_EXCEPTION(
             jsonrpc::JsonRpcException( "no committed transaction with this hash" ) );
-}
+    }
 
     auto blockNumber = localisedTransaction.blockNumber();
 
     if ( !m_eth.isKnown( blockNumber ) ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown block number" ) );
-}
+    }
 
     if ( blockNumber == 0 ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
-}
+    }
 
     auto traceOptions = TraceOptions::make( _jsonTraceConfig );
     auto tracer = make_shared< AlethStandardTrace >( localisedTransaction, traceOptions );
@@ -177,7 +177,7 @@ Json::Value Debug::debug_traceTransaction( string const&
         string lowerCaseTxStr = _txHashStr;
         for ( auto& c : lowerCaseTxStr ) {
             c = std::tolower( static_cast< unsigned char >( c ) );
-    }
+        }
 
 
         for ( Json::Value::ArrayIndex i = 0; i < tracedBlock.size(); i++ ) {
@@ -188,7 +188,7 @@ Json::Value Debug::debug_traceTransaction( string const&
                 STATE_CHECK( transactionTrace.isMember( "result" ) );
                 return transactionTrace["result"];
             }
-}
+        }
 
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "No transaction in block" ) );
 
@@ -227,17 +227,17 @@ Json::Value Debug::debug_traceCall( Json::Value const&
 
         if ( bN == LatestBlock || bN == PendingBlock ) {
             bN = m_eth.number();
-    }
+        }
 
         if ( !m_eth.isKnown( bN ) ) {
             BOOST_THROW_EXCEPTION(
                 jsonrpc::JsonRpcException( "Unknown block number:" + _blockNumber ) );
-}
+        }
 
         if ( bN == 0 ) {
             BOOST_THROW_EXCEPTION(
                 jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
-}
+        }
 
         TransactionSkeleton ts = toTransactionSkeleton( _call );
 
