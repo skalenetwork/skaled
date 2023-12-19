@@ -198,7 +198,9 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn ) {
             scheduleForUse = _cp.scheduleForBlockNumber( _bn );
 
         // !! never call checkOutExternalGas with non-last block!
-        assert( _bn == CorrectForkInPowPatch::getLastBlockNumber() );
+        if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() )
+            BOOST_THROW_EXCEPTION( std::runtime_error(
+                "Internal error: checkOutExternalGas() has invalid block number" ) );
 
         if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;

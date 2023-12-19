@@ -602,6 +602,10 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
+    // this needs to be updated as soon as possible, as it's used in new transactions validation
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerDetail ) << "Total unsafe time so far = "
                               << std::chrono::duration_cast< std::chrono::seconds >(
@@ -1193,8 +1197,6 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
 
-    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
-
     // throws in case of error
     State state;
     u256 gasBidPrice;
@@ -1202,6 +1204,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
     DEV_GUARDED( m_blockImportMutex ) {
         state = this->state().createStateReadOnlyCopy();
         gasBidPrice = this->gasBidPrice();
+
+        // We need to check external gas under mutex to be sure about current block bumber
+        // correctness
+        const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
     }
 
     Executive::verifyTransaction( _t,
