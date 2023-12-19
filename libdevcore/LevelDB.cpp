@@ -112,7 +112,8 @@ leveldb::ReadOptions LevelDB::defaultSnapshotReadOptions() {
 leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenLeveldbFiles;
+    //    options.max_open_files = c_maxOpenLeveldbFiles;
+    options.max_open_files = 25;
     return options;
 }
 
