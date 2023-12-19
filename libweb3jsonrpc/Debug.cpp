@@ -316,5 +316,8 @@ uint64_t Debug::debug_doBlocksDbCompaction() {
 }
 
 Json::Value Debug::debug_getFutureTransactions() {
-    return toJson( m_eth.DEBUG_getFutureTransactions() );
+    auto res = toJson( m_eth.DEBUG_getFutureTransactions() );
+    for ( auto& t : res )
+        t.removeMember( "data" );
+    return res;
 }
