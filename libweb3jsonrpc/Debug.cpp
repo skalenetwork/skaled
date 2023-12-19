@@ -362,7 +362,7 @@ uint64_t Debug::debug_doBlocksDbCompaction() {
 Json::Value Debug::debug_getFutureTransactions() {
     try {
         checkPrivilegedAccess();
-        auto res = toJson( m_eth.DEBUG_getFutureTransactions() );
+        auto res = toJson( m_eth.debugGetFutureTransactions() );
         for ( auto& t : res )
             t.removeMember( "data" );
         return res;
