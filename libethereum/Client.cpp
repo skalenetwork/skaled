@@ -670,6 +670,9 @@ size_t Client::syncTransactions(
     PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
     PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );

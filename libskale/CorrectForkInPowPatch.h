@@ -5,6 +5,12 @@
 
 #include <time.h>
 
+namespace dev {
+namespace eth {
+class Client;
+}
+}  // namespace dev
+
 /*
  * Context: use current, and not Constantinople,  fork in Transaction::checkOutExternalGas()
  */
@@ -17,9 +23,13 @@ public:
         activationTimestamp = _timeStamp;
     }
 
+    static unsigned getLastBlockNumber() { return lastBlockNumber; }
+
 private:
+    friend class dev::eth::Client;
     static time_t activationTimestamp;
     static time_t lastBlockTimestamp;
+    static unsigned lastBlockNumber;
 };
 
 #endif  // CORRECTFORKINPOWPATCH_H

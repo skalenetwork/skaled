@@ -29,6 +29,7 @@
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFace.h>
+#include <libskale/CorrectForkInPowPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -191,9 +192,17 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn ) {
         u256 externalGas = ~u256( 0 ) / u256( hash ) / difficulty;
         if ( externalGas > 0 )
             ctrace << "Mined gas: " << externalGas << endl;
-        if ( externalGas >= baseGasRequired( _cp.scheduleForBlockNumber( _bn ) ) ) {
+
+        EVMSchedule scheduleForUse = ConstantinopleSchedule;
+        if ( CorrectForkInPowPatch::isEnabled() )
+            scheduleForUse = _cp.scheduleForBlockNumber( _bn );
+
+        // !! never call checkOutExternalGas with non-last block!
+        assert( _bn == CorrectForkInPowPatch::getLastBlockNumber() );
+
+        if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;
-        }
+
         m_externalGasIsChecked = true;
     }
 }
