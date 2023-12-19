@@ -42,7 +42,7 @@ public:
     }
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
-    bool isTimeToRotate( uint64_t _finishTimestamp );
+    bool isTimeToRotate( uint64_t _blockTimestamp ) const;
 
 protected:
     [[nodiscard]] uint64_t rotationTimestamp() const;
@@ -56,5 +56,5 @@ protected:
     void reportExitTimeReached( bool _reached );
 
 private:
-    dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
+    mutable dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
 };

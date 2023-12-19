@@ -49,17 +49,19 @@ void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
     LOG( m_logger ) << "Set rotation time to " << _finishTimestamp;
 }
 
-bool InstanceMonitor::isTimeToRotate( uint64_t _finishTimestamp ) {
+bool InstanceMonitor::isTimeToRotate( uint64_t _blockTimestamp ) const {
     if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;
     }
-    return rotationTimestamp() <= _finishTimestamp;
+    return rotationTimestamp() <= _blockTimestamp;
 }
 
 uint64_t InstanceMonitor::rotationTimestamp() const {
     std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
     auto rotationJson = nlohmann::json::parse( rotationInfoFile );
-    return rotationJson["timestamp"].get< uint64_t >();
+    auto timestamp = rotationJson["timestamp"].get< uint64_t >();
+    LOG( m_logger ) << "Rotation scheduled for " << timestamp;
+    return timestamp;
 }
 
 void InstanceMonitor::reportExitTimeReached( bool _reached ) {
