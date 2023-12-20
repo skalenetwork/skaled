@@ -7,6 +7,7 @@ import * as path from 'path';
 import {int, string} from "hardhat/internal/core/params/argumentTypes";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
+const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
 const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
@@ -203,7 +204,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
     const currentBlock = await hre.ethers.provider.getBlockNumber();
 
     const transaction = {
-        from: OWNER_ADDRESS,
+        from: CALL_ADDRESS,
         to: _deployedContract.address,
         data: _deployedContract.interface.encodeFunctionData("getBalance", [])
     };
@@ -212,7 +213,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
     const result = _deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
-    // Example usage
+    // Example usageac
 
     console.log("Calling debug_traceCall to generate and verify " + _traceFileName);
 
@@ -225,6 +226,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
     writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
 
     let deployedContractAddressLowerCase  = _deployedContract.address.toString().toLowerCase();
+
     await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName ,
         deployedContractAddressLowerCase, TEST_CONTRACT_NAME + ".address");
 
