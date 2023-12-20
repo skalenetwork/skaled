@@ -246,7 +246,7 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false, int _emptyBlockIntervalMs = -1 ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -287,6 +287,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
             chainParams.sChain.contractStoragePatchTimestamp = 1;
+            powPatchActivationTimestamp = time(nullptr) + 10;
+            chainParams.sChain.correctForkInPowPatchTimestamp = powPatchActivationTimestamp;       // 10 guessed seconds
+            chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -412,6 +415,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
     SkaleServerOverride* skale_server_connector;
+    time_t powPatchActivationTimestamp;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
@@ -1560,7 +1564,8 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
 }
 
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
-    JsonRpcFixture fixture;
+    // 1s empty block interval
+    JsonRpcFixture fixture( "", true, true, false, false, 1000 );
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     auto senderAddress = fixture.coinbase.address();
@@ -1592,7 +1597,26 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     // Account balance is too low will mean that PoW didn't work out
     transact["gasPrice"] = toJS( powGasPrice );
 
-    string txHash = fixture.rpcClient->eth_sendTransaction( transact );
+    // wait for patch turning on and see how it happens
+    string txHash;
+    BlockHeader badInfo, goodInfo;
+    for(;;) {
+        try {
+            txHash = fixture.rpcClient->eth_sendTransaction( transact );
+            goodInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
+            break;
+        } catch(const std::exception& ex) {
+            // error should be "balance is too low"
+            assert(string(ex.what()).find("balance is too low") != string::npos);
+            badInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
+            dev::eth::mineTransaction( *( fixture.client ), 1 ); // empty block
+        } // catch
+    }
+
+    BOOST_REQUIRE_LT(badInfo.timestamp(), fixture.powPatchActivationTimestamp);
+    BOOST_REQUIRE_GE(goodInfo.timestamp(), fixture.powPatchActivationTimestamp);
+    BOOST_REQUIRE_EQUAL(badInfo.number()+1, goodInfo.number());
+
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
