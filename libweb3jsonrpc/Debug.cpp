@@ -164,8 +164,6 @@ Json::Value Debug::debug_traceTransaction( string const&
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
     }
 
-    auto traceOptions = TraceOptions::make( _jsonTraceConfig );
-    auto tracer = make_shared< AlethStandardTrace >( localisedTransaction, traceOptions );
 
     try {
         Json::Value tracedBlock;

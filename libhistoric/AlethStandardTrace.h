@@ -52,8 +52,8 @@ class FunctionCallRecord;
 class AlethStandardTrace {
 public:
     // Append json trace to given (array) value
-    explicit AlethStandardTrace(
-        Transaction& _t, const TraceOptions& _options, bool _isCall = false );
+    explicit AlethStandardTrace( Transaction& _t, const Address& _blockAuthor,
+        const TraceOptions& _options, bool _isCall = false );
 
     // this function is executed on each operation
     [[nodiscard]] OnOpFunc functionToExecuteOnEachOperation() {
@@ -118,12 +118,19 @@ private:
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
 
+public:
+    const Address& getBlockAuthor() const;
+    const u256& getMinerPayment() const;
+
+private:
     void appendOpToStandardOpTrace( std::uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     // print all supported traces. This can be used for QA
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
+
+    void recordMinerPayment(u256 _minerGasPayment);
 
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
@@ -151,6 +158,8 @@ private:
 
     const std::map< TraceType, TracePrinter& > m_tracePrinters;
 
+    const Address m_blockAuthor;
+    u256 m_minerPayment;
 
 };
 }  // namespace dev::eth

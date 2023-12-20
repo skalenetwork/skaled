@@ -1315,7 +1315,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         historicBlock.mutableState().mutableHistoricState().addBalance(
             _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
-        auto tracer = make_shared< AlethStandardTrace >( t, traceOptions, true );
+        auto tracer = make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );
         auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, 0 );
         return tracer->getJSONResult();
     } catch ( ... ) {
@@ -1365,7 +1365,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         auto hashString = toHexPrefixed( tx.sha3() );
         transactionLog["txHash"] = hashString;
         tx.checkOutExternalGas( chainParams().externalGasDifficulty );
-        auto tracer = std::make_shared< AlethStandardTrace >( tx, traceOptions );
+        auto tracer = std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
         auto executionResult =
             previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
         auto result = tracer->getJSONResult();

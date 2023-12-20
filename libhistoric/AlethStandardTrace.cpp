@@ -212,7 +212,7 @@ Json::Value AlethStandardTrace::getJSONResult() const {
 }
 
 AlethStandardTrace::AlethStandardTrace(
-    Transaction& _t, const TraceOptions& _options, bool _isCall )
+    Transaction& _t, const Address& _blockAuthor, const TraceOptions& _options, bool _isCall )
     : m_defaultOpTrace{ std::make_shared< Json::Value >() },
       m_from{ _t.from() },
       m_to( _t.to() ),
@@ -238,7 +238,8 @@ AlethStandardTrace::AlethStandardTrace(
           { TraceType::CALL_TRACER, m_callTracePrinter },
           { TraceType::REPLAY_TRACER, m_replayTracePrinter },
           { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
-          { TraceType::NOOP_TRACER, m_noopTracePrinter } } {
+          { TraceType::NOOP_TRACER, m_noopTracePrinter } },
+      m_blockAuthor( _blockAuthor ) {
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
@@ -247,9 +248,12 @@ AlethStandardTrace::AlethStandardTrace(
 /*
  * This function is called by EVM on each instruction
  */
-void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
+void AlethStandardTrace::operator()( uint64_t _counter, uint64_t _pc, Instruction _inst, bigint,
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
     STATE_CHECK( !m_isFinalized )
+    if (_counter) {
+        recordMinerPayment(u256(_gasOpGas));
+    }
     recordInstructionIsExecuted( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
 }
 
@@ -289,7 +293,7 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
         Json::Value stack( Json::arrayValue );
         // Try extracting information about the stack from the VM is supported.
         for ( auto const& i : _vm->stack() ) {
-            string stackStr = toGethCompatibleCompactHexPrefixed(i);
+            string stackStr = toGethCompatibleCompactHexPrefixed( i );
             stack.append( stackStr );
         }
         r["stack"] = stack;
@@ -338,16 +342,16 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
     m_defaultOpTrace->append( r );
 }
 
-    string AlethStandardTrace::toGethCompatibleCompactHexPrefixed(const u256 &_value) {
-        auto hexStr = toCompactHex(_value );
-        // now make it compatible with the way geth prints string
-        if ( hexStr.empty() ) {
-            hexStr = "0";
-        } else if (hexStr.front() == '0' ) {
-            hexStr = hexStr.substr(1 );
-        }
-        return "0x" + hexStr;
+string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _value ) {
+    auto hexStr = toCompactHex( _value );
+    // now make it compatible with the way geth prints string
+    if ( hexStr.empty() ) {
+        hexStr = "0";
+    } else if ( hexStr.front() == '0' ) {
+        hexStr = hexStr.substr( 1 );
     }
+    return "0x" + hexStr;
+}
 
 // execution completed.  Now use the tracer that the user requested
 // to print the resulting trace
@@ -423,6 +427,18 @@ void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall ) {
     STATE_CHECK( _currentlyExecutingFunctionCall )
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
+}
+const Address& AlethStandardTrace::getBlockAuthor() const {
+    return m_blockAuthor;
+}
+const u256& AlethStandardTrace::getMinerPayment() const {
+    return m_minerPayment;
+}
+void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
+    this->m_minerPayment = _minerGasPayment;
+    // add miner to the list of accessed accounts, since the miner is paid
+    // transaction fee
+    this->m_accessedAccounts.insert(m_blockAuthor);
 }
 }  // namespace dev::eth
 
