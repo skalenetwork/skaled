@@ -3340,7 +3340,7 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
     Transaction valid(
         fromHex( "0xf86c808504a817c80083015f90943d7112ee86223baf0a506b9d2a77595cbbba51d1872386f26fc10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a071882ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
-    valid.checkOutExternalGas( 1 );
+    valid.ignoreExternalGas();
 
     client->importTransactionsAsBlock(Transactions{invalid, valid}, 1);
 
@@ -3368,7 +3368,7 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
     Transaction valid(
         fromHex( "0xf86c808504a817c80083015f90943d7112ee86223baf0a506b9d2a77595cbbba51d1872386f26fc10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a071882ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
-    valid.checkOutExternalGas( 1 );
+    valid.ignoreExternalGas();
 
     client->importTransactionsAsBlock(Transactions{invalid, valid}, 1);
 

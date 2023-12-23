@@ -1264,7 +1264,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
                 t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
-                t.checkOutExternalGas( ~u256( 0 ) );
+                t.ignoreExternalGas();
                 if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
                         _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
