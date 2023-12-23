@@ -9,6 +9,10 @@ namespace dev {
 namespace eth {
 class Client;
 }
+namespace test {
+class TestBlockChain;
+class TestOutputHelperFixture;
+}  // namespace test
 }  // namespace dev
 
 /*
@@ -27,6 +31,8 @@ public:
 
 private:
     friend class dev::eth::Client;
+    friend class dev::test::TestBlockChain;
+    friend class dev::test::TestOutputHelperFixture;
     static time_t activationTimestamp;
     static time_t lastBlockTimestamp;
     static unsigned lastBlockNumber;
