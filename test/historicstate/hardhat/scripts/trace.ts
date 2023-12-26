@@ -32,7 +32,7 @@ async function getTraceJsonOptions(_tracer: string): Promise<object> {
     }
 
     if (_tracer == PRESTATEDIFF_TRACER) {
-        return {"tracer": PRESTATE_TRACER};
+        return {"tracer": PRESTATE_TRACER, "tracerConfig": {diffMode: true}};
     }
 
     return {"tracer": _tracer}
