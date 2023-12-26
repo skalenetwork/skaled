@@ -127,6 +127,9 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
         STATE_CHECK( currentDepth == m_lastOpRecord.m_depth )
     }
 }
+const Address& AlethStandardTrace::getFrom() const {
+    return m_from;
+}
 
 vector< uint8_t > AlethStandardTrace::extractSmartContractMemoryByteArrayFromStackPointer(
     const LegacyVM* _vm ) {

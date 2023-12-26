@@ -68,13 +68,13 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
 
     auto balance = _statePre.balance( _address );
 
-    if (m_standardTrace.isCall()) {
+    if (m_standardTrace.isCall() && _address == m_standardTrace.getFrom()) {
         // take into account that for calls balance is modified in the state before execution
         balance = m_standardTrace.getOriginalFromBalance();
     }
 
     storagePreValues["balance"] =
-        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( _address ) );
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
     storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
 
     bytes const& code = _statePre.code( _address );

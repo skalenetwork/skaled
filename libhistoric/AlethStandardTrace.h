@@ -93,6 +93,7 @@ public:
 
 
     static string toGethCompatibleCompactHexPrefixed( const u256& _value );
+    const Address& getFrom() const;
 
 private:
     // this operator will be executed by skaled on each EVM instruction
