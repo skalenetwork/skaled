@@ -65,7 +65,8 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     // if this _address did not exist, we do not include it in the diff
     if ( !_statePre.addressInUse( _address ) )
         return;
-    storagePreValues["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( _address ) );
+    storagePreValues["balance"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( _address ) );
     storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
 
     bytes const& code = _statePre.code( _address );
@@ -74,29 +75,28 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     }
 
     Json::Value storagePairs;
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
-         m_standardTrace.getAccessedStorageValues().end() ) {
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
-            if ( _statePre.addressInUse( _address ) ) {
-                auto& storageAddress = it.first;
-                auto originalValue = _statePre.originalStorageValue( _address, storageAddress );
-                if ( originalValue ) {
-                    storagePairs[toHex( storageAddress )] = toHex( originalValue );
-                    // return limited number of values to prevent DOS attacks
-                    m_storageValuesReturnedAll++;
-                    if ( m_storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
-                        break;
-                }
-            }
+
+    auto& accessedStoragedValues = m_standardTrace.getAccessedStorageValues();
+
+    // now print all storage values that were accessed (written or read) during the transaction
+    if ( accessedStoragedValues.count( _address )) {
+        for ( auto&& storageAddressValuePair : accessedStoragedValues.at( _address ) ) {
+            auto& storageAddress = storageAddressValuePair.first;
+            auto originalValue = _statePre.originalStorageValue( _address, storageAddress );
+            storagePairs[toHexPrefixed( storageAddress )] = toHexPrefixed( originalValue );
+            // return limited number of values to prevent DOS attacks
+            m_storageValuesReturnedAll++;
+            if ( m_storageValuesReturnedAll >= MAX_STORAGE_VALUES_RETURNED )
+                break;
         }
     }
 
-    if ( !storagePairs.empty() ) {
+    if ( storagePairs ) {
         storagePreValues["storage"] = storagePairs;
     }
 
     // if nothing changed we do not add it to the diff
-    if ( !storagePreValues.empty() )
+    if ( storagePreValues )
         _jsonTrace[toHexPrefixed( _address )] = storagePreValues;
 }
 
