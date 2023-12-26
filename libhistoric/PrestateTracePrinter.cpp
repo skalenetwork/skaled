@@ -35,18 +35,6 @@ void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult
         for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
             printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
         };
-
-
-        auto minerAddress = m_standardTrace.getBlockAuthor();
-
-        if ( m_standardTrace.getAccessedAccounts().count( minerAddress ) == 0 ) {
-            // to be compatible with geth always print miner balance
-            // miner balance is not in the list of accessed accounts, print it anyway
-            Json::Value minerValue;
-            minerValue["balance"] =
-                AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( minerAddress ) );
-            _jsonTrace[toHexPrefixed( minerAddress )] = minerValue;
-        }
     }
 }
 
@@ -120,6 +108,75 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     // if nothing changed we do not add it to the diff
     if ( accountPreValues )
         _jsonTrace[toHexPrefixed( _address )] = accountPreValues;
+}
+
+void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
+    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
+    Json::Value value( Json::objectValue );
+
+    // balance diff
+    if ( !_statePre.addressInUse( _address ) )
+        return;
+
+    auto balance = _statePre.balance( _address );
+    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+        // take into account that for calls balance is modified in the state before execution
+        balance = m_standardTrace.getOriginalFromBalance();
+    }
+    auto& code = _statePre.code( _address );
+    auto nonce = _statePre.getNonce( _address );
+
+    if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
+        if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+            // geth does not print post balance for from account in calls
+        } else {
+            value["balance"] = toCompactHexPrefixed( balance );
+        }
+    }
+    if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
+        value["nonce"] = ( uint64_t ) nonce;
+    }
+    if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
+        if ( code != NullBytes ) {
+            value["code"] = toHexPrefixed( code );
+        }
+    }
+
+    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
+         m_standardTrace.getAccessedStorageValues().end() ) {
+        Json::Value storagePairs;
+
+        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
+            auto& storageAddress = it.first;
+            auto& storageValuePost = it.second;
+            bool includePair;
+            if ( !_statePost.addressInUse( _address ) ) {
+                // contract has been deleted. Include in diff
+                includePair = true;
+            } else if ( it.second == 0 ) {
+                // storage has been deleted. Do not include
+                includePair = false;
+            } else {
+                includePair =
+                    _statePre.originalStorageValue( _address, storageAddress ) != storageValuePost;
+            }
+
+            if ( includePair ) {
+                storagePairs[toHex( it.first )] =
+                    toHex( _statePre.originalStorageValue( _address, it.first ) );
+                // return limited number of storage pairs to prevent DOS attacks
+                m_storageValuesReturnedPre++;
+                if ( m_storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
+                    break;
+            }
+        }
+
+        if ( !storagePairs.empty() )
+            value["storage"] = storagePairs;
+    }
+
+    if ( !value.empty() )
+        _preDiffTrace[toHexPrefixed( _address )] = value;
 }
 
 
@@ -196,67 +253,7 @@ PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
     : TracePrinter( standardTrace, "prestateTrace" ) {}
 
 
-void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
-    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
-    Json::Value value( Json::objectValue );
 
-    // balance diff
-    if ( !_statePre.addressInUse( _address ) )
-        return;
-
-    auto balance = _statePre.balance( _address );
-    auto& code = _statePre.code( _address );
-    auto nonce = _statePre.getNonce( _address );
-
-
-    if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
-        value["balance"] = toCompactHexPrefixed( balance );
-    }
-    if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
-        value["nonce"] = ( uint64_t ) nonce;
-    }
-    if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
-        if ( code != NullBytes ) {
-            value["code"] = toHexPrefixed( code );
-        }
-    }
-
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
-         m_standardTrace.getAccessedStorageValues().end() ) {
-        Json::Value storagePairs;
-
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
-            auto& storageAddress = it.first;
-            auto& storageValuePost = it.second;
-            bool includePair;
-            if ( !_statePost.addressInUse( _address ) ) {
-                // contract has been deleted. Include in diff
-                includePair = true;
-            } else if ( it.second == 0 ) {
-                // storage has been deleted. Do not include
-                includePair = false;
-            } else {
-                includePair =
-                    _statePre.originalStorageValue( _address, storageAddress ) != storageValuePost;
-            }
-
-            if ( includePair ) {
-                storagePairs[toHex( it.first )] =
-                    toHex( _statePre.originalStorageValue( _address, it.first ) );
-                // return limited number of storage pairs to prevent DOS attacks
-                m_storageValuesReturnedPre++;
-                if ( m_storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
-                    break;
-            }
-        }
-
-        if ( !storagePairs.empty() )
-            value["storage"] = storagePairs;
-    }
-
-    if ( !value.empty() )
-        _preDiffTrace[toHexPrefixed( _address )] = value;
-}
 }  // namespace dev::eth
 
 #endif

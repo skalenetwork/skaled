@@ -400,12 +400,12 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
     if (differences) {
         differences.forEach((difference, index) => {
-            // do not print differences related to total gas in the account
-
-            if (difference.kind == "D" && difference.path!.length == 2) {
+            // there is a bug in geth where it prints
+            // balance of zero address (coinbase) in calls
+            // even though it has not been accessed
+            if (difference.kind == "D" && difference.path!.length == 1) {
                 let address = difference.path![0];
-                let key = difference.path![1];
-                if (address == ZERO_ADDRESS && key == "balance")
+                if (address == ZERO_ADDRESS)
                     return;
             }
 
@@ -437,13 +437,6 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
 
     if (differences) {
         differences.forEach((difference, index) => {
-            // do not print differences related to total gas in the account
-
-            if (difference.path!.length == 3) {
-                if (difference.path![1] == "CALL.address") {
-                    return;
-                }
-            }
 
             foundDiffs = true;
 
