@@ -223,9 +223,13 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
     writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
 
     let deployedContractAddressLowerCase  = _deployedContract.address.toString().toLowerCase();
+    let callAddressLowerCase  = CALL_ADDRESS.toLowerCase();
 
     await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName ,
         deployedContractAddressLowerCase, TEST_CONTRACT_NAME + ".address");
+
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName ,
+        callAddressLowerCase, "CALL.address");
 
     let ownerAddressLowerCase  = OWNER_ADDRESS.toLowerCase();
 
@@ -401,6 +405,15 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                 let address = difference.path![0];
                 let key = difference.path![1];
                 if (address == ZERO_ADDRESS && key == "balance")
+                    return;
+
+                if (address == "CALL.address" && key == "balance")
+                    return;
+            }
+
+            if (difference.kind == "D" && difference.path!.length == 1) {
+                let address = difference.path![0];
+                if (address == ZERO_ADDRESS)
                     return;
             }
 
