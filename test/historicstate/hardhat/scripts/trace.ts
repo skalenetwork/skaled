@@ -219,7 +219,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
     // Example usageac
 
-    console.log("Calling debug_traceCall to generate and verify " + _traceFileName);
+    console.log("Calling debug_traceCall to generate  " + _traceFileName);
 
     let traceOptions = await getTraceJsonOptions(_tracer);
 
@@ -266,6 +266,8 @@ async function readJSONFile(fileName: string): Promise<object> {
 
 
 async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " +  _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -316,6 +318,8 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
+    console.log("Verifying " +  _fileName);
+
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
 
@@ -350,6 +354,8 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
+    console.log("Verifying " +  _fileName);
+
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
 
@@ -378,6 +384,8 @@ async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
 
 async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " +  _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -413,6 +421,8 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 }
 
 async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " +  _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -476,25 +486,21 @@ async function main(): Promise<void> {
     await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
 
     let deployedContract = await deployTestContract();
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
+
 
     await callTestContractRun(deployedContract);
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
-
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME)
-
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
-    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
-
-
     await callDebugTraceCall(deployedContract, FOUR_BYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
-    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
-
     await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
-    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
-
     await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
+
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME)
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
 
 }
