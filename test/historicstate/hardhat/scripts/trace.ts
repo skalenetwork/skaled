@@ -8,7 +8,8 @@ import {int, string} from "hardhat/internal/core/params/argumentTypes";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
-const ZERO_ADDRESS: string = "0xO000000000000000000000000000000000000000";
+
+const ZERO_ADDRESS: string = '0x0000000000000000000000000000000000000000';
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
 const RUN_FUNCTION_NAME = "mint";
@@ -91,12 +92,8 @@ async function replaceStringInFile(_filePath, _str1, _str2) {
 
     let data = fs.readFileSync(_filePath, 'utf8');
 
-    console.log("Replacing ...");
-
     // Replace the string
     const transformedFile = data.replace(new RegExp(_str1, 'g'), _str2);
-
-    console.log("Replaced ...");
 
         // Write the file
     fs.writeFileSync(_filePath, transformedFile, 'utf8');
@@ -306,49 +303,6 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 }
 
 
-async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
-
-    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
-    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
-
-    let expectedResult = await readJSONFile(_expectedResultFileName)
-    let actualResult = await readJSONFile(_actualResultFileName)
-
-    const differences = deepDiff(expectedResult, actualResult)!;
-
-    let foundDiffs = false;
-
-
-    if (differences) {
-        differences.forEach((difference, index) => {
-            // do not print differences related to total gas in the account
-
-            if (difference.kind == "E" && difference.path!.length == 1) {
-                let key = difference.path![0];
-                if (key == "to" || key == "gas" || key == "gasUsed")
-                    return;
-            }
-
-            if (difference.kind == "E" && difference.path!.length == 2) {
-                let address = difference.path![0];
-                let key = difference.path![1];
-                if (address == ZERO_ADDRESS || key == "balance")
-                    return;
-            }
-
-
-            foundDiffs = true;
-
-            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
-            console.log(`Difference ${index + 1}:`, difference);
-        });
-    }
-
-
-    await expect(foundDiffs).to.be.eq(false)
-}
-
-
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
@@ -442,6 +396,14 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                 if ( difference.path![0] == "OWNER.address" || difference.path![1] == "nonce")
                     return;
             }
+
+            if (difference.kind == "E" && difference.path!.length == 2) {
+                let address = difference.path![0];
+                let key = difference.path![1];
+                if (address == ZERO_ADDRESS && key == "balance")
+                    return;
+            }
+
 
 
             foundDiffs = true;
