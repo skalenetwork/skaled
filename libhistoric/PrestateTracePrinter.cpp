@@ -79,7 +79,7 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     auto& accessedStoragedValues = m_standardTrace.getAccessedStorageValues();
 
     // now print all storage values that were accessed (written or read) during the transaction
-    if ( accessedStoragedValues.count( _address )) {
+    if ( accessedStoragedValues.count( _address ) ) {
         for ( auto&& storageAddressValuePair : accessedStoragedValues.at( _address ) ) {
             auto& storageAddress = storageAddressValuePair.first;
             auto originalValue = _statePre.originalStorageValue( _address, storageAddress );
@@ -165,7 +165,8 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
             value["storage"] = storagePairs;
     }
 
-    _postDiffTrace[toHexPrefixed( _address )] = value;
+    if ( !value.empty() )
+        _postDiffTrace[toHexPrefixed( _address )] = value;
 }
 
 
