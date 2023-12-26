@@ -122,18 +122,18 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
     if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
         // take into account that for calls balance is modified in the state before execution
         balance = m_standardTrace.getOriginalFromBalance();
+        value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
+    } else if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
+        value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
     }
+
     auto& code = _statePre.code( _address );
     auto nonce = _statePre.getNonce( _address );
 
-    if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
-        if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
-            // geth does not print post balance for from account in calls
-        } else {
-            value["balance"] = toCompactHexPrefixed( balance );
-        }
-    }
-    if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
+    // geth does not print from nonce in calls
+    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+        // take into account that for calls balance is modified in the state before execution
+    } else if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
         value["nonce"] = ( uint64_t ) nonce;
     }
     if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
@@ -195,7 +195,9 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
 
     // if the new address, ot if the value changed, include in post trace
-    if ( !_statePre.addressInUse( _address ) || _statePre.balance( _address ) != balancePost ) {
+    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+        // geth does not postbalance of from address in calls
+    } else if ( !_statePre.addressInUse( _address ) || _statePre.balance( _address ) != balancePost ) {
         value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
     }
     if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
@@ -206,7 +208,6 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
             value["code"] = toHexPrefixed( codePost );
         }
     }
-
 
     // post diffs for storage values
     if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
