@@ -71,11 +71,13 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     if (m_standardTrace.isCall() && _address == m_standardTrace.getFrom()) {
         // take into account that for calls balance is modified in the state before execution
         balance = m_standardTrace.getOriginalFromBalance();
+    } else {
+        // geth does not print nonce for from address in debug_traceCall;
+        storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
     }
 
     storagePreValues["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
-    storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
 
     bytes const& code = _statePre.code( _address );
     if ( code != NullBytes ) {
