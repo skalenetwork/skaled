@@ -29,13 +29,33 @@ namespace dev::eth {
 void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
     const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() );
-    if ( m_standardTrace.getOptions().prestateDiffMode ) {
+    if ( m_trace.getOptions().prestateDiffMode ) {
         printDiff( _jsonTrace, _er, _statePre, _statePost );
     } else {
-        for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
-            printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
-        };
+        printPre( _jsonTrace, _statePre );
     }
+}
+void PrestateTracePrinter::printPre( Json::Value& _jsonTrace, const HistoricState& _statePre ) {
+    for ( auto&& item : m_trace.getAccessedAccounts() ) {
+        printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
+    };
+
+
+    if ( !m_trace.isCall() )
+        return;
+
+    // when in call trace geth always prints the balance of block miner balance
+
+    auto minerAddress = m_trace.getBlockAuthor();
+    auto minerBalance = _statePre.balance( minerAddress );
+
+    if ( minerAddress == m_trace.getFrom() ) {
+        // take into account that for calls balance is modified in the state before execution
+        minerBalance = m_trace.getOriginalFromBalance();
+    }
+
+    _jsonTrace[toHexPrefixed( minerAddress )]["balance"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalance );
 }
 
 
@@ -46,7 +66,7 @@ void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionRe
     Json::Value preDiff( Json::objectValue );
     Json::Value postDiff( Json::objectValue );
 
-    for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
+    for ( auto&& item : m_trace.getAccessedAccounts() ) {
         printAccountPreDiff( preDiff, _statePre, _statePost, item );
         printAccountPostDiff( postDiff, _statePre, _statePost, item );
     };
@@ -69,9 +89,9 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
 
     auto balance = _statePre.balance( _address );
 
-    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+    if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
         // take into account that for calls balance is modified in the state before execution
-        balance = m_standardTrace.getOriginalFromBalance();
+        balance = m_trace.getOriginalFromBalance();
     } else {
         // geth does not print nonce for from address in debug_traceCall;
         accountPreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
@@ -86,7 +106,7 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
 
     Json::Value storagePairs;
 
-    auto& accessedStoragedValues = m_standardTrace.getAccessedStorageValues();
+    auto& accessedStoragedValues = m_trace.getAccessedStorageValues();
 
     // now print all storage values that were accessed (written or read) during the transaction
     if ( accessedStoragedValues.count( _address ) ) {
@@ -119,11 +139,12 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
         return;
 
     auto balance = _statePre.balance( _address );
-    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+    if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
         // take into account that for calls balance is modified in the state before execution
-        balance = m_standardTrace.getOriginalFromBalance();
+        balance = m_trace.getOriginalFromBalance();
         value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
-    } else if ( !_statePost.addressInUse( _address ) || _statePost.balance( _address ) != balance ) {
+    } else if ( !_statePost.addressInUse( _address ) ||
+                _statePost.balance( _address ) != balance ) {
         value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
     }
 
@@ -131,7 +152,7 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
     auto nonce = _statePre.getNonce( _address );
 
     // geth does not print from nonce in calls
-    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+    if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
         // take into account that for calls balance is modified in the state before execution
     } else if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
         value["nonce"] = ( uint64_t ) nonce;
@@ -142,11 +163,11 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
         }
     }
 
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
-         m_standardTrace.getAccessedStorageValues().end() ) {
+    if ( m_trace.getAccessedStorageValues().find( _address ) !=
+         m_trace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs;
 
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
+        for ( auto&& it : m_trace.getAccessedStorageValues().at( _address ) ) {
             auto& storageAddress = it.first;
             auto& storageValuePost = it.second;
             bool includePair;
@@ -195,9 +216,10 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
 
     // if the new address, ot if the value changed, include in post trace
-    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
+    if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
         // geth does not postbalance of from address in calls
-    } else if ( !_statePre.addressInUse( _address ) || _statePre.balance( _address ) != balancePost ) {
+    } else if ( !_statePre.addressInUse( _address ) ||
+                _statePre.balance( _address ) != balancePost ) {
         value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
     }
     if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
@@ -210,12 +232,12 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
     }
 
     // post diffs for storage values
-    if ( m_standardTrace.getAccessedStorageValues().find( _address ) !=
-         m_standardTrace.getAccessedStorageValues().end() ) {
+    if ( m_trace.getAccessedStorageValues().find( _address ) !=
+         m_trace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs( Json::objectValue );
 
         // iterate over all accessed storage values
-        for ( auto&& it : m_standardTrace.getAccessedStorageValues().at( _address ) ) {
+        for ( auto&& it : m_trace.getAccessedStorageValues().at( _address ) ) {
             auto& storageAddress = it.first;
             auto& storageValue = it.second;
 
@@ -252,7 +274,6 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
 PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
     : TracePrinter( standardTrace, "prestateTrace" ) {}
-
 
 
 }  // namespace dev::eth

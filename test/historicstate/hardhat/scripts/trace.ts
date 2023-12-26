@@ -400,15 +400,12 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
     if (differences) {
         differences.forEach((difference, index) => {
-            // there is a bug in geth where it prints
-            // balance of zero address (coinbase) in calls
-            // even though it has not been accessed
-            if (difference.kind == "D" && difference.path!.length == 1) {
+            if (difference.kind == "E" && difference.path!.length == 2) {
                 let address = difference.path![0];
-                if (address == ZERO_ADDRESS)
+                if (address == ZERO_ADDRESS && difference.path![1] == "balance") {
                     return;
+                }
             }
-
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);

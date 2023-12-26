@@ -33,7 +33,7 @@ void FourByteTracePrinter::print(
     STATE_CHECK( _jsonTrace.isObject() )
     std::map< string, uint64_t > callMap;
 
-    m_standardTrace.getTopFunctionCall()->collectFourByteTrace( callMap );
+    m_trace.getTopFunctionCall()->collectFourByteTrace( callMap );
     for ( auto&& key : callMap ) {
         _jsonTrace[key.first] = key.second;
     }
