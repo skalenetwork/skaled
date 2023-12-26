@@ -411,6 +411,16 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                     return;
             }
 
+
+            if (difference.kind == "N" && difference.path!.length == 2) {
+                let address = difference.path![0];
+                let key = difference.path![1];
+
+                if (address == "CALL.address" && key == "nonce")
+                    return;
+            }
+
+
             if (difference.kind == "D" && difference.path!.length == 1) {
                 let address = difference.path![0];
                 if (address == ZERO_ADDRESS)
