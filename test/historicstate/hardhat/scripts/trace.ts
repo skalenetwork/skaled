@@ -1,4 +1,5 @@
 import {mkdir, readdir, writeFileSync, readFile, unlink} from "fs";
+
 const fs = require('fs');
 import {existsSync} from "fs";
 import deepDiff, {diff} from 'deep-diff';
@@ -19,17 +20,22 @@ const SKALE_TRACES_DIR = "/tmp/skale_traces/"
 const GETH_TRACES_DIR = "scripts/geth_traces/"
 
 let DEFAULT_TRACER = "defaultTracer";
-let CALL_TRACER =  "callTracer";
+let CALL_TRACER = "callTracer";
 let PRESTATE_TRACER = "prestateTracer";
+let PRESTATEDIFF_TRACER = "prestateDiffTracer";
 let FOUR_BYTE_TRACER = "4byteTracer";
 
 
-async function getTraceJsonOptions(_tracer : string):Promise<object> {
+async function getTraceJsonOptions(_tracer: string): Promise<object> {
     if (_tracer == DEFAULT_TRACER) {
         return {};
     }
 
-    return {"tracer" : _tracer}
+    if (_tracer == PRESTATEDIFF_TRACER) {
+        return {"tracer": PRESTATE_TRACER};
+    }
+
+    return {"tracer": _tracer}
 }
 
 const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
@@ -37,6 +43,7 @@ const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME
 const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateDiffTracer.json";
 const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".4byteTracer.json";
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
@@ -95,7 +102,7 @@ async function replaceStringInFile(_filePath, _str1, _str2) {
     // Replace the string
     const transformedFile = data.replace(new RegExp(_str1, 'g'), _str2);
 
-        // Write the file
+    // Write the file
     fs.writeFileSync(_filePath, transformedFile, 'utf8');
 
 
@@ -144,7 +151,7 @@ async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<S
 //    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
 //        "tracerConfig": {"withLog":true}}]);
 
-    console.log("Calling debug_traceTransaction to generate " + _skaleFileName );
+    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
 
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
@@ -222,19 +229,19 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
     writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
 
-    let deployedContractAddressLowerCase  = _deployedContract.address.toString().toLowerCase();
-    let callAddressLowerCase  = CALL_ADDRESS.toLowerCase();
+    let deployedContractAddressLowerCase = _deployedContract.address.toString().toLowerCase();
+    let callAddressLowerCase = CALL_ADDRESS.toLowerCase();
 
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName ,
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
         deployedContractAddressLowerCase, TEST_CONTRACT_NAME + ".address");
 
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName ,
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
         callAddressLowerCase, "CALL.address");
 
-    let ownerAddressLowerCase  = OWNER_ADDRESS.toLowerCase();
+    let ownerAddressLowerCase = OWNER_ADDRESS.toLowerCase();
 
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName ,
-        ownerAddressLowerCase,  "OWNER.address");
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+        ownerAddressLowerCase, "OWNER.address");
 
 
 }
@@ -307,7 +314,6 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 }
 
 
-
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
@@ -360,7 +366,7 @@ async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
             // do not print differences related to total gas in the account
 
             if (difference.kind == "E" && difference.path!.length == 2) {
-                if ( difference.path![0] == "difference.path![0]" || key == "gas" || key == "gasUsed")
+                if (difference.path![0] == "difference.path![0]" || key == "gas" || key == "gasUsed")
                     return;
             }
 
@@ -374,9 +380,6 @@ async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
     await expect(foundDiffs).to.be.eq(false)
 }
-
-
-
 
 
 async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
@@ -397,7 +400,7 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
             // do not print differences related to total gas in the account
 
             if (difference.kind == "E" && difference.path!.length == 2) {
-                if ( difference.path![0] == "OWNER.address" || difference.path![1] == "nonce")
+                if (difference.path![0] == "OWNER.address" || difference.path![1] == "nonce")
                     return;
             }
 
@@ -428,7 +431,6 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
             }
 
 
-
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
@@ -439,8 +441,6 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
     await expect(foundDiffs).to.be.eq(false)
 }
-
-
 
 
 async function verifyGasCalculations(_actualResult: any): Promise<void> {
@@ -469,33 +469,26 @@ async function main(): Promise<void> {
     await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
 
     let deployedContract = await deployTestContract();
-
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
 
     await callTestContractRun(deployedContract);
-
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
 
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
-
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME)
 
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
-
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
 
 
     await callDebugTraceCall(deployedContract, FOUR_BYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
-
     await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
 
     await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
-
-    // since deployed contract address changes from one test run to another we replace the
-    // contract address with contract name. This is done to be able to compare trace files.
-
-
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
+
+    await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
 
 }
 
