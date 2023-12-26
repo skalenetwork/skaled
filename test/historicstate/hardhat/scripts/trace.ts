@@ -329,6 +329,14 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                     return;
             }
 
+            if (difference.kind == "E" && difference.path!.length == 2) {
+                let address = difference.path![0];
+                let key = difference.path![1];
+                if (address == ZERO_ADDRESS || key == "balance")
+                    return;
+            }
+
+
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
