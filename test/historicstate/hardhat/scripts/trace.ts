@@ -365,11 +365,6 @@ async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
 
-            if (difference.kind == "E" && difference.path!.length == 2) {
-                if (difference.path![0] == "difference.path![0]" || key == "gas" || key == "gasUsed")
-                    return;
-            }
-
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
@@ -400,7 +395,7 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
             // do not print differences related to total gas in the account
 
             if (difference.kind == "E" && difference.path!.length == 2) {
-                if (difference.path![0] == "OWNER.address" || difference.path![1] == "nonce")
+                if (difference.path![0] == "OWNER.address" && difference.path![1] == "nonce")
                     return;
             }
 
@@ -441,6 +436,43 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
     await expect(foundDiffs).to.be.eq(false)
 }
+
+async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+            // do not print differences related to total gas in the account
+
+            if (difference.path!.length == 3) {
+                if (difference.path![1] == "CALL.address") {
+                    return;
+                }
+            }
+
+            foundDiffs = true;
+
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+        });
+    }
+
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+
+
 
 
 async function verifyGasCalculations(_actualResult: any): Promise<void> {
@@ -488,7 +520,7 @@ async function main(): Promise<void> {
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
 
     await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
-    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
 
 }
 
