@@ -405,8 +405,6 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                 if (address == ZERO_ADDRESS && key == "balance")
                     return;
 
-                if (address == "CALL.address" && key == "balance")
-                    return;
             }
 
 

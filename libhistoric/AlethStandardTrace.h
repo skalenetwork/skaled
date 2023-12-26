@@ -83,7 +83,16 @@ public:
         const;
     void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
 
-    static string toGethCompatibleCompactHexPrefixed(const u256 &_value);
+    [[nodiscard]] const Address& getBlockAuthor() const;
+    [[nodiscard]] const u256& getMinerPayment() const;
+    void setOriginalFromBalance( const u256& _originalFromBalance );
+
+    [[nodiscard]] const u256& getOriginalFromBalance() const;
+
+    [[nodiscard]] bool isCall() const;
+
+
+    static string toGethCompatibleCompactHexPrefixed( const u256& _value );
 
 private:
     // this operator will be executed by skaled on each EVM instruction
@@ -118,11 +127,6 @@ private:
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
 
-public:
-    const Address& getBlockAuthor() const;
-    const u256& getMinerPayment() const;
-
-private:
     void appendOpToStandardOpTrace( std::uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
         const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
@@ -130,7 +134,7 @@ private:
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
 
-    void recordMinerPayment(u256 _minerGasPayment);
+    void recordMinerPayment( u256 _minerGasPayment );
 
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
@@ -160,6 +164,7 @@ private:
 
     const Address m_blockAuthor;
     u256 m_minerPayment;
-
+    u256 m_originalFromBalance;
+    bool m_isCall;
 };
 }  // namespace dev::eth

@@ -65,6 +65,14 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     // if this _address did not exist, we do not include it in the diff
     if ( !_statePre.addressInUse( _address ) )
         return;
+
+    auto balance = _statePre.balance( _address );
+
+    if (m_standardTrace.isCall()) {
+        // take into account that for calls balance is modified in the state before execution
+        balance = m_standardTrace.getOriginalFromBalance();
+    }
+
     storagePreValues["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( _address ) );
     storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );

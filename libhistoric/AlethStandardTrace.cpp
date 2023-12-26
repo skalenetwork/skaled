@@ -239,10 +239,13 @@ AlethStandardTrace::AlethStandardTrace(
           { TraceType::REPLAY_TRACER, m_replayTracePrinter },
           { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
           { TraceType::NOOP_TRACER, m_noopTracePrinter } },
-      m_blockAuthor( _blockAuthor ) {
+      m_blockAuthor( _blockAuthor ), m_isCall(_isCall) {
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
+}
+void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
+    m_originalFromBalance = _originalFromBalance;
 }
 
 /*
@@ -254,7 +257,9 @@ void AlethStandardTrace::operator()( uint64_t _counter, uint64_t _pc, Instructio
     if (_counter) {
         recordMinerPayment(u256(_gasOpGas));
     }
+
     recordInstructionIsExecuted( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
+
 }
 
 // this will be called each time before an instruction is executed by evm
@@ -439,6 +444,12 @@ void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
     // add miner to the list of accessed accounts, since the miner is paid
     // transaction fee
     this->m_accessedAccounts.insert(m_blockAuthor);
+}
+bool AlethStandardTrace::isCall() const {
+    return m_isCall;
+}
+const u256& AlethStandardTrace::getOriginalFromBalance() const {
+    return m_originalFromBalance;
 }
 }  // namespace dev::eth
 
