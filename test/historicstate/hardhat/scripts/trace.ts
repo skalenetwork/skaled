@@ -394,26 +394,12 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
 
-            if (difference.kind == "E" && difference.path!.length == 2) {
-                if (difference.path![0] == "OWNER.address" && difference.path![1] == "nonce")
-                    return;
-            }
-
-            if (difference.kind == "E" && difference.path!.length == 2) {
+            if (difference.kind == "D" && difference.path!.length == 2) {
                 let address = difference.path![0];
                 let key = difference.path![1];
                 if (address == ZERO_ADDRESS && key == "balance")
                     return;
-
             }
-
-
-            if (difference.kind == "D" && difference.path!.length == 1) {
-                let address = difference.path![0];
-       //         if (address == ZERO_ADDRESS)
-         //           return;
-            }
-
 
             foundDiffs = true;
 
