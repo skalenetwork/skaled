@@ -35,8 +35,21 @@ void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult
         for ( auto&& item : m_standardTrace.getAccessedAccounts() ) {
             printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
         };
+
+
+        auto minerAddress = m_standardTrace.getBlockAuthor();
+
+        if ( m_standardTrace.getAccessedAccounts().count( minerAddress ) == 0 ) {
+            // to be compatible with geth always print miner balance
+            // miner balance is not in the list of accessed accounts, print it anyway
+            Json::Value minerValue;
+            minerValue["balance"] =
+                AlethStandardTrace::toGethCompatibleCompactHexPrefixed( _statePre.balance( minerAddress ) );
+            _jsonTrace[toHexPrefixed( minerAddress )] = minerValue;
+        }
     }
 }
+
 
 void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
     const HistoricState& _statePre, const HistoricState& _statePost ) {
@@ -61,27 +74,26 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     STATE_CHECK( _jsonTrace.isObject() )
 
 
-    Json::Value storagePreValues;
+    Json::Value accountPreValues;
     // if this _address did not exist, we do not include it in the diff
     if ( !_statePre.addressInUse( _address ) )
         return;
 
     auto balance = _statePre.balance( _address );
 
-    if (m_standardTrace.isCall() && _address == m_standardTrace.getFrom()) {
+    if ( m_standardTrace.isCall() && _address == m_standardTrace.getFrom() ) {
         // take into account that for calls balance is modified in the state before execution
         balance = m_standardTrace.getOriginalFromBalance();
     } else {
         // geth does not print nonce for from address in debug_traceCall;
-        storagePreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
+        accountPreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
     }
 
-    storagePreValues["balance"] =
-        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
+    accountPreValues["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
 
     bytes const& code = _statePre.code( _address );
     if ( code != NullBytes ) {
-        storagePreValues["code"] = toHexPrefixed( code );
+        accountPreValues["code"] = toHexPrefixed( code );
     }
 
     Json::Value storagePairs;
@@ -102,12 +114,12 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
     }
 
     if ( storagePairs ) {
-        storagePreValues["storage"] = storagePairs;
+        accountPreValues["storage"] = storagePairs;
     }
 
     // if nothing changed we do not add it to the diff
-    if ( storagePreValues )
-        _jsonTrace[toHexPrefixed( _address )] = storagePreValues;
+    if ( accountPreValues )
+        _jsonTrace[toHexPrefixed( _address )] = accountPreValues;
 }
 
 
