@@ -89,13 +89,18 @@ public:
     }
 
     uint64_t checkOracleResult( const string&
-           /*_receipt*/, string& /*_result */) {
+           /*_receipt*/, string& /*_result */) override {
         return 0;
     }
 
-    map< string, uint64_t > getConsensusDbUsage() const {
+    map< string, uint64_t > getConsensusDbUsage() const override {
         return map< string, uint64_t >();
     };
+
+    virtual ConsensusInterface::SyncInfo getSyncInfo() override {
+        return ConsensusInterface::SyncInfo{};
+    };
+
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -194,8 +199,8 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 #define CHECK_BLOCK_BEGIN auto blockBefore = client->number()
 
 #define REQUIRE_BLOCK_INCREASE( increase ) \
-    auto blockAfter = client->number();    \
-    BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase )
+    { auto blockAfter = client->number();    \
+    BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase ); }
 
 #define REQUIRE_BLOCK_SIZE( number, s )                                             \
     {                                                                               \
@@ -214,18 +219,18 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 #define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
 
 #define REQUIRE_NONCE_INCREASE( senderAddress, increase ) \
-    u256 nonceAfter = client->countAt( senderAddress );   \
-    BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase )
+    { u256 nonceAfter = client->countAt( senderAddress );   \
+    BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase ); }
 
 #define CHECK_BALANCE_BEGIN( senderAddress ) u256 balanceBefore = client->balanceAt( senderAddress )
 
 #define REQUIRE_BALANCE_DECREASE( senderAddress, decrease ) \
-    u256 balanceAfter = client->balanceAt( senderAddress ); \
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease )
+    { u256 balanceAfter = client->balanceAt( senderAddress ); \
+    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease ); }
 
 #define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease ) \
-    u256 balanceAfter = client->balanceAt( senderAddress );    \
-    BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease )
+    { u256 balanceAfter = client->balanceAt( senderAddress );    \
+    BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease ); }
 
 BOOST_FIXTURE_TEST_SUITE( SkaleHostSuite, SkaleHostFixture )  //, *boost::unit_test::disabled() )
 
@@ -752,6 +757,32 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
+
+    // step 2: check that receipt "moved" to another block after successfull re-execution of the same transaction
+
+    if(!skipInvalidTransactionsFlag){
+        LocalisedTransactionReceipt r1 = client->localisedTransactionReceipt(txHash);
+        BOOST_REQUIRE_EQUAL(r1.blockNumber(), 1);
+        BOOST_REQUIRE_EQUAL(r1.gasUsed(), 0);
+        LocalisedTransaction lt = client->localisedTransaction(txHash);
+        BOOST_REQUIRE_EQUAL(lt.blockNumber(), 1);
+    }
+
+    // make money
+    dev::eth::simulateMining( *client, 1, senderAddress );
+
+    stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 2U );
+
+    REQUIRE_BLOCK_SIZE( 2, 1 );
+    REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE_GE( senderAddress, 1 );
+
+    LocalisedTransactionReceipt r2 = client->localisedTransactionReceipt(txHash);
+    BOOST_REQUIRE_EQUAL(r2.blockNumber(), 2);
+    BOOST_REQUIRE_GE(r2.gasUsed(), 21000);
+    LocalisedTransaction lt = client->localisedTransaction(txHash);
+    BOOST_REQUIRE_EQUAL(lt.blockNumber(), 2);
 }
 
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag

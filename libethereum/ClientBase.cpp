@@ -115,7 +115,8 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
-        int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
+        int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data,
+            bc().sealEngine()->chainParams().scheduleForBlockNumber( bc().number() ) );
         Block bk = latestBlock();
         if ( upperBound > bk.info().gasLimit() ) {
             upperBound = bk.info().gasLimit().convert_to< int64_t >();

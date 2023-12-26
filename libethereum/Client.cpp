@@ -54,6 +54,8 @@
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
 #include <libskale/POWCheckPatch.h>
+#include <libskale/PrecompiledConfigPatch.h>
+#include <libskale/PushZeroPatch.h>
 #include <libskale/RevertableFSPatch.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libskale/State.h>
@@ -163,8 +165,10 @@ Client::Client( ChainParams const& _params, int _networkID,
     RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
     StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
     POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
+    PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
     SkipInvalidTransactionsPatch::setTimestamp(
         this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
+    PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
 }
 
 
@@ -311,8 +315,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( ChainParams().sChain.nodeGroups.size() > 0 )
-        initIMABLSPublicKey();
+    if ( chainParams().sChain.nodeGroups.size() > 0 ) {
+        initHistoricGroupIndex();
+    } else {
+        LOG( m_logger ) << "Empty node groups in config. "
+                           "This is OK in tests but not OK in production";
+    }
 
     // init snapshots for not newly created chains
     if ( number() ) {
@@ -619,7 +627,7 @@ size_t Client::importTransactionsAsBlock(
     }
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
-        updateIMABLSPublicKey();
+        updateHistoricGroupIndex();
 
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
@@ -657,7 +665,9 @@ size_t Client::syncTransactions(
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -1118,10 +1128,9 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
-    // TODO implement this when syncing will be needed
-    SyncStatus s;
-    s.startBlockNumber = s.currentBlockNumber = s.highestBlockNumber = 0;
-    return s;
+    if ( !m_skaleHost )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "SkaleHost was not initialized" ) );
+    return m_skaleHost->syncStatus();
 }
 
 TransactionSkeleton Client::populateTransactionWithDefaults( TransactionSkeleton const& _t ) const {
@@ -1285,9 +1294,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     return ret;
 }
 
-void Client::initIMABLSPublicKey() {
+void Client::initHistoricGroupIndex() {
     if ( number() == 0 ) {
-        imaBLSPublicKeyGroupIndex = 0;
+        historicGroupIndex = 0;
         return;
     }
 
@@ -1299,7 +1308,11 @@ void Client::initIMABLSPublicKey() {
         chainParams().sChain.nodeGroups.end(),
         [&currentBlockTimestamp](
             const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
-    assert( it != chainParams().sChain.nodeGroups.end() );
+
+    if ( it == chainParams().sChain.nodeGroups.end() ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Assertion failed: it == chainParams().sChain.nodeGroups.end()" ) );
+    }
 
     if ( it != chainParams().sChain.nodeGroups.begin() ) {
         auto prevIt = std::prev( it );
@@ -1308,15 +1321,18 @@ void Client::initIMABLSPublicKey() {
             it = prevIt;
     }
 
-    imaBLSPublicKeyGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+    historicGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
 }
 
-void Client::updateIMABLSPublicKey() {
+void Client::updateHistoricGroupIndex() {
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups.at( historicGroupIndex ).finishTs;
     if ( blockTimestamp >= currentFinishTs )
-        ++imaBLSPublicKeyGroupIndex;
-    assert( imaBLSPublicKeyGroupIndex < chainParams().sChain.nodeGroups.size() );
+        ++historicGroupIndex;
+    if ( historicGroupIndex >= chainParams().sChain.nodeGroups.size() ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
+    }
 }
 
 // new block watch

@@ -742,7 +742,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     logState();
 
-    clog( VerbosityDebug, "skale-host" )
+    clog( VerbosityInfo, "skale-host" )
         << "TQBYTES:CTQ:" << m_tq.status().currentBytes << ":FTQ:" << m_tq.status().futureBytes
         << ":TQSIZE:CTQ:" << m_tq.status().current << ":FTQ:" << m_tq.status().future;
 
@@ -951,12 +951,39 @@ u256 SkaleHost::getBlockRandom() const {
     return m_consensus->getRandomForBlockId( m_client.number() );
 }
 
+dev::eth::SyncStatus SkaleHost::syncStatus() const {
+    if ( !m_consensus )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "Consensus was not initialized" ) );
+    auto syncInfo = m_consensus->getSyncInfo();
+    dev::eth::SyncStatus syncStatus;
+    // SKALE: catchup downloads blocks with transactions, then the node executes them
+    // we don't download state changes separately
+    syncStatus.state = syncInfo.isSyncing ? dev::eth::SyncState::Blocks : dev::eth::SyncState::Idle;
+    syncStatus.startBlockNumber = syncInfo.startingBlock;
+    syncStatus.currentBlockNumber = syncInfo.currentBlock;
+    syncStatus.highestBlockNumber = syncInfo.highestBlock;
+    syncStatus.majorSyncing = syncInfo.isSyncing;
+    return syncStatus;
+}
+
 std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
 }
 
 std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
     return m_client.getIMABLSPublicKey();
+}
+
+std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {
+    return m_client.getHistoricNodeId( _id );
+}
+
+std::string SkaleHost::getHistoricNodeIndex( unsigned _index ) const {
+    return m_client.getHistoricNodeIndex( _index );
+}
+
+std::string SkaleHost::getHistoricNodePublicKey( unsigned _idx ) const {
+    return m_client.getHistoricNodePublicKey( _idx );
 }
 
 uint64_t SkaleHost::submitOracleRequest(

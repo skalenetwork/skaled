@@ -20,6 +20,8 @@ set(sources
     OverlayFS.cpp
     StorageDestructionPatch.cpp
     POWCheckPatch.cpp
+    PrecompiledConfigPatch.cpp
+    PushZeroPatch.cpp
     SkipInvalidTransactionsPatch.cpp
 )
 
@@ -39,6 +41,7 @@ set(headers
     AmsterdamFixPatch.h
     RevertableFSPatch.h
     POWCheckPatch.h
+    PrecompiledConfigPatch.h
     OverlayFS.h
     SkipInvalidTransactionsPatch.h
 )

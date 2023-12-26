@@ -20,6 +20,8 @@
 #include "SealEngine.h"
 #include "TransactionBase.h"
 
+#include <libskale/POWCheckPatch.h>
+
 #include "../libdevcore/microprofile.h"
 
 using namespace std;
@@ -94,6 +96,16 @@ void SealEngineFace::populateFromParent( BlockHeader& _bi, BlockHeader const& _p
 
 void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
     BlockHeader const& _header, u256 const& _gasUsed ) const {
+    // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
+    u256 gas;
+    if ( POWCheckPatch::isEnabled() ) {
+        // new behavior is to use pow-enabled gas
+        gas = _t.gas();
+    } else {
+        // old behavior is to use non-POW gas
+        gas = _t.nonPowGas();
+    }
+
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
          _header.number() < chainParams().EIP158ForkBlock && _t.isReplayProtected() )
@@ -118,17 +130,16 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
     eth::EVMSchedule const& schedule = evmSchedule( _header.number() );
 
     // Pre calculate the gas needed for execution
-    if ( ( _ir & ImportRequirements::TransactionBasic ) &&
-         _t.baseGasRequired( schedule ) > _t.gas() )
+    if ( ( _ir & ImportRequirements::TransactionBasic ) && _t.baseGasRequired( schedule ) > gas )
         BOOST_THROW_EXCEPTION( OutOfGasIntrinsic() << RequirementError(
                                    static_cast< bigint >( _t.baseGasRequired( schedule ) ),
-                                   static_cast< bigint >( _t.gas() ) ) );
+                                   static_cast< bigint >( gas ) ) );
 
     // Avoid transactions that would take us beyond the block gas limit.
-    if ( _gasUsed + static_cast< bigint >( _t.gas() ) > _header.gasLimit() )
+    if ( _gasUsed + static_cast< bigint >( gas ) > _header.gasLimit() )
         BOOST_THROW_EXCEPTION( BlockGasLimitReached() << RequirementErrorComment(
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
-                                   static_cast< bigint >( _t.gas() ),
+                                   static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
 }
 

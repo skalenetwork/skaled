@@ -40,7 +40,7 @@
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
-// SKALE #include <libweb3jsonrpc/Net.h>
+#include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <test/tools/libtesteth/TestHelper.h>
@@ -78,6 +78,7 @@ static std::string const c_genesisConfigString =
          "EIP158ForkBlock": "0x00",
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
+         "istanbulForkBlock": "0x00",
          "skaleDisableChainIdCheck": true,
          "externalGasDifficulty": "0x1"
     },
@@ -280,6 +281,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.byzantiumForkBlock = 0;
             chainParams.EIP158ForkBlock = 0;
             chainParams.constantinopleForkBlock = 0;
+            chainParams.istanbulForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
@@ -329,7 +331,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         else
             client->setAuthor( chainParams.sChain.blockAuthor );
 
-        using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
+        using FullServer = ModularServer< rpc::EthFace, rpc::NetFace, rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
@@ -343,7 +345,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
+        rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
             new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
@@ -501,6 +503,23 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 //    rpcClient->admin_net_stop(adminSession);
 //    BOOST_CHECK_EQUAL(web3->isNetworkStarted(), false);
 //}
+
+BOOST_AUTO_TEST_CASE( jsonrpc_netVersion )
+{
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535
+    ret["params"]["chainID"] = "0xffff"; 
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    
+    auto version = fixture.rpcClient->net_version();
+    BOOST_CHECK_EQUAL( version, "65535" );
+}
 
 BOOST_AUTO_TEST_CASE( jsonrpc_setMining ) {
     JsonRpcFixture fixture;
@@ -1246,7 +1265,11 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
     testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
     response = fixture.rpcClient->eth_estimateGas( testPositive );
-    BOOST_CHECK( response == "0x1dc58" );
+    string response2 = fixture.rpcClient->eth_estimateGas( testPositive, "latest" );
+    string response3 = fixture.rpcClient->eth_estimateGas( testPositive, "1" );
+    BOOST_CHECK_EQUAL( response, "0x1db20" );
+    BOOST_CHECK_EQUAL( response2, "0x1db20" );
+    BOOST_CHECK_EQUAL( response3, "0x1db20" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -1579,22 +1602,26 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     string balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 
+    Json::Value transact;
+    transact["from"] = toJS( address2 );
+    transact["to"] = contractAddress;
+    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+
+    string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+    u256 gasEstimate = jsToU256(gasEstimateStr);
+
     u256 powGasPrice = 0;
     do {
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( address2 ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
         u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= 21000 + 21000 ) {
+        if ( externalGas >= gasEstimate && externalGas < gasEstimate + gasEstimate/10 ) {
             powGasPrice = candidate;
         }
     } while ( !powGasPrice );
-
-    Json::Value transact;
-    transact["from"] = toJS( address2 );
-    transact["to"] = contractAddress;
     transact["gasPrice"] = toJS( powGasPrice );
-    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+
     fixture.rpcClient->eth_sendTransaction( transact );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -1848,7 +1875,8 @@ contract TestEstimateGas {
     txStore1["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
     txStore1["from"] = toJS( senderAddress );
     txStore1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    string txHash = fixture.rpcClient->eth_call( txStore1, "latest" );
+    fixture.rpcClient->eth_sendTransaction( txStore1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value estimateGasCall;  // call clear(0)
     estimateGasCall["to"] = contractAddress;
@@ -1858,11 +1886,25 @@ contract TestEstimateGas {
     string estimatedGas = fixture.rpcClient->eth_estimateGas( estimateGasCall );
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
-
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
                        false, &data, fixture.client->chainParams().scheduleForBlockNumber(
                            fixture.client->number() ) ) );
-    BOOST_REQUIRE( dev::jsToU256( estimatedGas ) == 21871 );
+
+    // try to send with this gas
+    estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );
+    string clearHash = fixture.rpcClient->eth_sendTransaction( estimateGasCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
+    BOOST_REQUIRE_EQUAL(clearReceipt["status"], "0x1");
+    BOOST_REQUIRE_LT(jsToInt(clearReceipt["gasUsed"].asString()), 21000);
+
+    // try to lower gas
+    estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) - 1 );
+    clearHash = fixture.rpcClient->eth_sendTransaction( estimateGasCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
+    BOOST_REQUIRE_EQUAL(clearReceipt["status"], "0x0");
+    BOOST_REQUIRE_GT(jsToInt(clearReceipt["gasUsed"].asString()), 21000);
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
@@ -2988,6 +3030,20 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
     cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
     BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+
+    // send it successfully
+
+    // make money
+    dev::eth::simulateMining( *fixture.client, 1);
+
+    h2 = fixture.client->importTransaction( tx2 ); // invalid
+
+    dev::eth::mineTransaction(*(fixture.client), 1);
+
+    // checks:
+    Json::Value r2;
+    BOOST_REQUIRE_NO_THROW(r2 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h2)));
+    BOOST_REQUIRE_EQUAL(r2["blockNumber"], toJS(fixture.client->number()));
 #endif
 }
 
