@@ -45,8 +45,7 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     Json::Value functionTraceArray( Json::arrayValue );
     Json::Value emptyAddress( Json::arrayValue );
 
-    m_trace.getTopFunctionCall()->printParityFunctionTrace(
-        functionTraceArray, emptyAddress );
+    m_trace.getTopFunctionCall()->printParityFunctionTrace( functionTraceArray, emptyAddress );
     _jsonTrace["trace"] = functionTraceArray;
 }
 
