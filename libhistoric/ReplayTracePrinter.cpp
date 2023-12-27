@@ -33,7 +33,7 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     STATE_CHECK( _jsonTrace.isObject() )
     _jsonTrace["vmTrace"] = Json::Value::null;
     _jsonTrace["stateDiff"] = Json::Value::null;
-    _jsonTrace["transactionHash"] = toHexPrefixed( m_standardTrace.getTxHash() );
+    _jsonTrace["transactionHash"] = toHexPrefixed( m_trace.getTxHash() );
     _jsonTrace["output"] = toHexPrefixed( _er.output );
     auto failed = _er.excepted != TransactionException::None;
     if ( failed ) {
@@ -45,8 +45,7 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     Json::Value functionTraceArray( Json::arrayValue );
     Json::Value emptyAddress( Json::arrayValue );
 
-    m_standardTrace.getTopFunctionCall()->printParityFunctionTrace(
-        functionTraceArray, emptyAddress );
+    m_trace.getTopFunctionCall()->printParityFunctionTrace( functionTraceArray, emptyAddress );
     _jsonTrace["trace"] = functionTraceArray;
 }
 

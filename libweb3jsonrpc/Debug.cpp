@@ -164,8 +164,6 @@ Json::Value Debug::debug_traceTransaction( string const&
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
     }
 
-    auto traceOptions = TraceOptions::make( _jsonTraceConfig );
-    auto tracer = make_shared< AlethStandardTrace >( localisedTransaction, traceOptions );
 
     try {
         Json::Value tracedBlock;
@@ -241,19 +239,8 @@ Json::Value Debug::debug_traceCall( Json::Value const&
 
         TransactionSkeleton ts = toTransactionSkeleton( _call );
 
-        if ( !ts.from ) {
-            ts.from = Address();
-        }
-
-        u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
-        u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
-
-        Transaction t( ts.value, gasPrice, gas, ts.to, ts.data, ts.nonce );
-        t.forceSender( ts.from );
-        t.forceChainId( m_eth.chainParams().chainID );
-        auto traceOptions = TraceOptions::make( _jsonTraceConfig );
-        auto tracer = make_shared< AlethStandardTrace >( t, traceOptions, true );
-        return m_eth.traceCall( t, bN, tracer );
+        return m_eth.traceCall(
+            ts.from, ts.value, ts.to, ts.data, ts.gas, ts.gasPrice, bN, _jsonTraceConfig );
     } catch ( Exception const& _e ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
     }

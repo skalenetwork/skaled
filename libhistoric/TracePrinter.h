@@ -45,7 +45,7 @@ public:
     static std::string getEvmErrorDescription( evmc_status_code _error );
 
 protected:
-    AlethStandardTrace& m_standardTrace;
+    AlethStandardTrace& m_trace;
     const std::string m_jsonName;
 };
 }  // namespace dev::eth
