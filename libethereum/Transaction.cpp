@@ -197,7 +197,7 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn ) {
         if ( CorrectForkInPowPatch::isEnabled() )
             scheduleForUse = _cp.scheduleForBlockNumber( _bn );
 
-        // !! never call checkOutExternalGas with non-last block!
+        // never call checkOutExternalGas with non-last block
         if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {
             ctrace << _bn << " != " << CorrectForkInPowPatch::getLastBlockNumber();
             BOOST_THROW_EXCEPTION( std::runtime_error(
