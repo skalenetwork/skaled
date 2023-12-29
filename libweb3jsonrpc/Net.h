@@ -44,7 +44,7 @@ public:
     virtual bool net_listening() override;
 
 private:
-    const dev::eth::ChainParams& m_chainParams;
+    const dev::eth::ChainParams m_chainParams;
 };
 
 }  // namespace rpc
