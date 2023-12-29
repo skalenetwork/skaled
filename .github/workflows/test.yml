@@ -188,7 +188,7 @@ jobs:
           ./testeth -t BlockQueueSuite -- --express && touch /tmp/BlockQueueSuitePassed
           ./testeth -t ClientBase -- --express && touch /tmp/ClientBasePassed
           ./testeth -t EstimateGas -- --express && touch /tmp/EstimateGasPassed
-          ./testeth -t IMABLSPublicKey -- --express && touch /tmp/IMABLSPublicKeyPassed
+          ./testeth -t getHistoricNodesData -- --express && touch /tmp/getHistoricNodesDataPassed
           ./testeth -t ExtVmSuite -- --express && touch /tmp/ExtVmSuitePassed
           ./testeth -t GasPricer -- --express && touch /tmp/GasPricerPassed
           ./testeth -t BasicTests -- --express && touch /tmp/BasicTestsPassed
@@ -239,7 +239,7 @@ jobs:
           ls /tmp/BlockQueueSuitePassed || ./testeth -t BlockQueueSuite -- --express --verbosity 4
           ls /tmp/ClientBasePassed || ./testeth -t ClientBase -- --express --verbosity 4
           ls /tmp/EstimateGasPassed || ./testeth -t EstimateGas -- --express --verbosity 4
-          ls /tmp/IMABLSPublicKeyPassed || ./testeth -t IMABLSPublicKey -- --express --verbosity 4
+          ls /tmp/getHistoricNodesDataPassed || ./testeth -t getHistoricNodesData -- --express --verbosity 4
           ls /tmp/ExtVmSuitePassed || ./testeth -t ExtVmSuite -- --express --verbosity 4
           ls /tmp/GasPricerPassed || ./testeth -t GasPricer -- --express --verbosity 4
           ls /tmp/BasicTestsPassed || ./testeth -t BasicTests -- --express --verbosity 4
