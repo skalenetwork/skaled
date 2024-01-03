@@ -73,8 +73,9 @@ void FunctionCallRecord::printFunctionExecutionDetail(
     if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
         _jsonTrace["to"] = toHexPrefixed( m_to );
     }
-    _jsonTrace["gas"] = toCompactHexPrefixed( m_functionGasLimit );
-    _jsonTrace["gasUsed"] = toCompactHexPrefixed( m_gasUsed );
+    _jsonTrace["gas"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_functionGasLimit );
+    _jsonTrace["gasUsed"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_gasUsed );
     if ( !m_error.empty() ) {
         _jsonTrace["error"] = m_error;
     }
@@ -82,7 +83,7 @@ void FunctionCallRecord::printFunctionExecutionDetail(
         _jsonTrace["revertReason"] = m_revertReason;
     }
 
-    _jsonTrace["value"] = toCompactHexPrefixed( m_value );
+    _jsonTrace["value"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_value );
 
     if ( !m_outputData.empty() ) {
         _jsonTrace["output"] = toHexPrefixed( m_outputData );

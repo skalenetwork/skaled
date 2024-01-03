@@ -32,13 +32,13 @@ void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult&
     const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
     _jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
-    auto defaultOpTrace = m_standardTrace.getDefaultOpTrace();
+    auto defaultOpTrace = m_trace.getDefaultOpTrace();
     STATE_CHECK( defaultOpTrace );
     _jsonTrace["structLogs"] = *defaultOpTrace;
     auto failed = _er.excepted != TransactionException::None;
     _jsonTrace["failed"] = failed;
     if ( !failed ) {
-        if ( m_standardTrace.getOptions().enableReturnData ) {
+        if ( m_trace.getOptions().enableReturnData ) {
             _jsonTrace["returnValue"] = toHex( _er.output );
         }
     } else {

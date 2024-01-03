@@ -178,6 +178,9 @@ public:
 
     // Information concerning ongoing transactions
 
+    /// Get the gas limit in this block.
+    u256 gasLimit() const { return m_currentBlock.gasLimit(); }
+
     /// Get the remaining gas limit in this block.
     u256 gasLimitRemaining() const { return m_currentBlock.gasLimit() - gasUsed(); }
 
