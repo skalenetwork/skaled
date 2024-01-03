@@ -80,6 +80,15 @@ BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
     BOOST_CHECK_EQUAL(rotateJson["timestamp"].get< uint64_t >(), ts);
 }
 
+
+BOOST_AUTO_TEST_CASE( test_isTimeToRotate_invalid_file ) {
+    uint64_t currentTime = 100;
+    std::ofstream rotationInfoFile(instanceMonitor->getRotationInfoFilePath().string() );
+    rotationInfoFile << "Broken file";
+    BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
+}
+
+
 BOOST_AUTO_TEST_CASE( test_isTimeToRotate_false ) {
     uint64_t currentTime = 100;
     uint64_t finishTime = 200;

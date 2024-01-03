@@ -40,28 +40,43 @@ void InstanceMonitor::prepareRotation() {
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
-    nlohmann::json rotationJson = nlohmann::json::object();
-    rotationJson["timestamp"] = _finishTimestamp;
+    try {
+        nlohmann::json rotationJson = nlohmann::json::object();
+        rotationJson["timestamp"] = _finishTimestamp;
 
-    std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
-    rotationInfoFile << rotationJson;
+        std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
+        rotationInfoFile << rotationJson;
 
-    LOG( m_logger ) << "Set rotation time to " << _finishTimestamp;
+        LOG( m_logger ) << "Set rotation time to " << _finishTimestamp;
+    } catch ( ... ) {
+        LOG( m_logger ) << "Setting rotation timestamp failed";
+        throw_with_nested( std::runtime_error( "cannot save rotation timestamp" ) );
+    }
 }
 
 bool InstanceMonitor::isTimeToRotate( uint64_t _blockTimestamp ) const {
     if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;
     }
-    return rotationTimestamp() <= _blockTimestamp;
+    try {
+        auto _rotationTimestamp = rotationTimestamp();
+        return _rotationTimestamp <= _blockTimestamp;
+    } catch ( InvalidRotationInfoFileException& ex ) {
+        return false;
+    }
 }
 
 uint64_t InstanceMonitor::rotationTimestamp() const {
     std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
-    auto rotationJson = nlohmann::json::parse( rotationInfoFile );
-    auto timestamp = rotationJson["timestamp"].get< uint64_t >();
-    LOG( m_logger ) << "Rotation scheduled for " << timestamp;
-    return timestamp;
+    try {
+        auto rotationJson = nlohmann::json::parse( rotationInfoFile );
+        auto timestamp = rotationJson["timestamp"].get< uint64_t >();
+        LOG( m_logger ) << "Rotation scheduled for " << timestamp;
+        return timestamp;
+    } catch ( ... ) {
+        LOG( m_logger ) << "Rotation file is malformed or missing";
+        throw InvalidRotationInfoFileException( m_rotationInfoFilePath );
+    }
 }
 
 void InstanceMonitor::reportExitTimeReached( bool _reached ) {

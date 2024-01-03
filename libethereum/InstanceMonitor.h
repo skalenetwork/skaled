@@ -55,6 +55,20 @@ protected:
 
     void reportExitTimeReached( bool _reached );
 
+    class InvalidRotationInfoFileException : public std::exception {
+    protected:
+        std::string what_str;
+
+    public:
+        boost::filesystem::path path;
+
+        InvalidRotationInfoFileException( const boost::filesystem::path& _path ) : path( _path ) {
+            what_str = "File " + path.string() + " is malformed or missing";
+        }
+        virtual const char* what() const noexcept override { return what_str.c_str(); }
+    };
+
+
 private:
     mutable dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
 };
