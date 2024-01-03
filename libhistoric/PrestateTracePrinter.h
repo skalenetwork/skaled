@@ -54,5 +54,6 @@ private:
     uint64_t m_storageValuesReturnedPre = 0;
     uint64_t m_storageValuesReturnedPost = 0;
     uint64_t m_storageValuesReturnedAll = 0;
+    void printPre( Json::Value& _jsonTrace, const HistoricState& _statePre );
 };
 }  // namespace dev::eth

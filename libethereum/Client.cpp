@@ -1233,7 +1233,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
 
 ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, bytes const& _data,
-    u256 _gas, u256 _gasPrice,
+    u256 _gasLimit, u256 _gasPrice,
 #ifdef HISTORIC_STATE
     BlockNumber _blockNumber,
 #endif
@@ -1246,17 +1246,20 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
             // historic state
             try {
                 u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
-                u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
+                // if the user did not specify transaction gas limit, we give transaction block gas
+                // limit of gas
+                u256 gasLimit = _gasLimit == Invalid256 ? historicBlock.gasLimit() : _gasLimit;
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-                Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
+                Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
                 t.checkOutExternalGas( ~u256( 0 ) );
-                if ( _ff == FudgeFactor::Lenient ) {
-                    historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-                }
-
+                // if we are in a call, we add to the balance of the account
+                // value needed for the call to guaranteed pass
+                // geth does a similar thing, we need to check whether it is fully compatible with
+                // geth
+                historicBlock.mutableState().mutableHistoricState().addBalance(
+                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1271,9 +1274,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         // TODO there can be race conditions between prev and next line!
         State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
-        u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
+        // if the user did not specify transaction gas limit, we give transaction block gas
+        // limit of gas
+        u256 gasLimit = _gasLimit == Invalid256 ? temp.gasLimit() : _gasLimit;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-        Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
+        Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().chainID );
         t.checkOutExternalGas( ~u256( 0 ) );
@@ -1294,21 +1299,51 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 
 
 #ifdef HISTORIC_STATE
-Json::Value Client::traceCall(
-    Transaction& _t, BlockNumber _blockNumber, std::shared_ptr< AlethStandardTrace > _tracer ) {
-    Block historicBlock = blockByNumber( _blockNumber );
+
+Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
+    u256 _gasLimit, u256 _gasPrice, BlockNumber _blockNumber,
+    Json::Value const& _jsonTraceConfig ) {
     try {
-        _t.setNonce( historicBlock.mutableState().mutableHistoricState().getNonce( _t.from() ) );
-        _t.checkOutExternalGas( ~u256( 0 ) );
+        Block historicBlock = blockByNumber( _blockNumber );
+        auto nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
+        // if the user did not specify transaction gas limit, we give transaction block gas
+        // limit of gas
+        auto gasLimit = _gasLimit == Invalid256 ? historicBlock.gasLimit() : _gasLimit;
+
+        Transaction t = createTransactionForCallOrTraceCall(
+            _from, _value, _to, _data, gasLimit, _gasPrice, nonce );
+        // record original t.from balance for trace and then give
+        // lots of gas to it
+        auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _t.from(), ( u256 )( _t.gas() * _t.gasPrice() + _t.value() ) );
-        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), _t, _tracer, 0 );
-        return _tracer->getJSONResult();
+            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+        auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+        auto tracer =
+            make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );
+        tracer->setOriginalFromBalance( originalFromBalance );
+        auto er = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, tracer, 0 );
+        return tracer->getJSONResult();
     } catch ( ... ) {
         cwarn << boost::current_exception_diagnostic_information();
         throw;
     }
 }
+
+
+Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, const u256& _value,
+    const Address& _to, const bytes& _data, const u256& _gasLimit, const u256& _gasPrice,
+    const u256& _nonce ) const {
+    auto gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
+    Transaction t( _value, gasPrice, _gasLimit, _to, _data, _nonce );
+    // if call or trace call request did not specify from address, zero address is used
+    auto from = _from ? _from : ZeroAddress;
+    t.forceSender( from );
+    t.forceChainId( chainParams().chainID );
+    // call and traceCall do not use PoW
+    t.checkOutExternalGas( ~u256( 0 ) );
+    return t;
+}
+
 
 Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
     Block previousBlock = blockByNumber( _blockNumber - 1 );
@@ -1335,7 +1370,8 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         auto hashString = toHexPrefixed( tx.sha3() );
         transactionLog["txHash"] = hashString;
         tx.checkOutExternalGas( chainParams().externalGasDifficulty );
-        auto tracer = std::make_shared< AlethStandardTrace >( tx, traceOptions );
+        auto tracer =
+            std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
         auto executionResult =
             previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
         auto result = tracer->getJSONResult();

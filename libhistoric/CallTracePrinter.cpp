@@ -31,7 +31,7 @@ namespace dev::eth {
 void CallTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
-    m_standardTrace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_standardTrace.getOptions() );
+    m_trace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_trace.getOptions() );
 }
 
 CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )

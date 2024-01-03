@@ -127,6 +127,9 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
         STATE_CHECK( currentDepth == m_lastOpRecord.m_depth )
     }
 }
+const Address& AlethStandardTrace::getFrom() const {
+    return m_from;
+}
 
 vector< uint8_t > AlethStandardTrace::extractSmartContractMemoryByteArrayFromStackPointer(
     const LegacyVM* _vm ) {
@@ -212,7 +215,7 @@ Json::Value AlethStandardTrace::getJSONResult() const {
 }
 
 AlethStandardTrace::AlethStandardTrace(
-    Transaction& _t, const TraceOptions& _options, bool _isCall )
+    Transaction& _t, const Address& _blockAuthor, const TraceOptions& _options, bool _isCall )
     : m_defaultOpTrace{ std::make_shared< Json::Value >() },
       m_from{ _t.from() },
       m_to( _t.to() ),
@@ -238,18 +241,27 @@ AlethStandardTrace::AlethStandardTrace(
           { TraceType::CALL_TRACER, m_callTracePrinter },
           { TraceType::REPLAY_TRACER, m_replayTracePrinter },
           { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
-          { TraceType::NOOP_TRACER, m_noopTracePrinter } } {
+          { TraceType::NOOP_TRACER, m_noopTracePrinter } },
+      m_blockAuthor( _blockAuthor ),
+      m_isCall( _isCall ) {
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
+}
+void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
+    m_originalFromBalance = _originalFromBalance;
 }
 
 /*
  * This function is called by EVM on each instruction
  */
-void AlethStandardTrace::operator()( uint64_t, uint64_t _pc, Instruction _inst, bigint,
+void AlethStandardTrace::operator()( uint64_t _counter, uint64_t _pc, Instruction _inst, bigint,
     bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _ext ) {
     STATE_CHECK( !m_isFinalized )
+    if ( _counter ) {
+        recordMinerPayment( u256( _gasOpGas ) );
+    }
+
     recordInstructionIsExecuted( _pc, _inst, _gasOpGas, _gasRemaining, _vm, _ext );
 }
 
@@ -289,14 +301,8 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
         Json::Value stack( Json::arrayValue );
         // Try extracting information about the stack from the VM is supported.
         for ( auto const& i : _vm->stack() ) {
-            auto stackStr = toCompactHex( i );
-            // now make it compatible with the way geth prints string
-            if ( stackStr.empty() ) {
-                stackStr = "0";
-            } else if ( stackStr.front() == '0' ) {
-                stackStr = stackStr.substr( 1 );
-            }
-            stack.append( "0x" + stackStr );
+            string stackStr = toGethCompatibleCompactHexPrefixed( i );
+            stack.append( stackStr );
         }
         r["stack"] = stack;
     }
@@ -342,6 +348,17 @@ void AlethStandardTrace::appendOpToStandardOpTrace( uint64_t _pc, Instruction& _
     }
 
     m_defaultOpTrace->append( r );
+}
+
+string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _value ) {
+    auto hexStr = toCompactHex( _value );
+    // now make it compatible with the way geth prints string
+    if ( hexStr.empty() ) {
+        hexStr = "0";
+    } else if ( hexStr.front() == '0' ) {
+        hexStr = hexStr.substr( 1 );
+    }
+    return "0x" + hexStr;
 }
 
 // execution completed.  Now use the tracer that the user requested
@@ -418,6 +435,24 @@ void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall ) {
     STATE_CHECK( _currentlyExecutingFunctionCall )
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
+}
+const Address& AlethStandardTrace::getBlockAuthor() const {
+    return m_blockAuthor;
+}
+const u256& AlethStandardTrace::getMinerPayment() const {
+    return m_minerPayment;
+}
+void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
+    this->m_minerPayment = _minerGasPayment;
+    // add miner to the list of accessed accounts, since the miner is paid
+    // transaction fee
+    this->m_accessedAccounts.insert( m_blockAuthor );
+}
+bool AlethStandardTrace::isCall() const {
+    return m_isCall;
+}
+const u256& AlethStandardTrace::getOriginalFromBalance() const {
+    return m_originalFromBalance;
 }
 }  // namespace dev::eth
 

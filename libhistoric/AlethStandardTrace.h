@@ -52,8 +52,8 @@ class FunctionCallRecord;
 class AlethStandardTrace {
 public:
     // Append json trace to given (array) value
-    explicit AlethStandardTrace(
-        Transaction& _t, const TraceOptions& _options, bool _isCall = false );
+    explicit AlethStandardTrace( Transaction& _t, const Address& _blockAuthor,
+        const TraceOptions& _options, bool _isCall = false );
 
     // this function is executed on each operation
     [[nodiscard]] OnOpFunc functionToExecuteOnEachOperation() {
@@ -83,6 +83,17 @@ public:
         const;
     void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
 
+    [[nodiscard]] const Address& getBlockAuthor() const;
+    [[nodiscard]] const u256& getMinerPayment() const;
+    void setOriginalFromBalance( const u256& _originalFromBalance );
+
+    [[nodiscard]] const u256& getOriginalFromBalance() const;
+
+    [[nodiscard]] bool isCall() const;
+
+
+    static string toGethCompatibleCompactHexPrefixed( const u256& _value );
+    const Address& getFrom() const;
 
 private:
     // this operator will be executed by skaled on each EVM instruction
@@ -124,6 +135,8 @@ private:
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
 
+    void recordMinerPayment( u256 _minerGasPayment );
+
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
     std::vector< Instruction > m_lastInst;
@@ -149,5 +162,10 @@ private:
     DefaultTracePrinter m_defaultTracePrinter;
 
     const std::map< TraceType, TracePrinter& > m_tracePrinters;
+
+    const Address m_blockAuthor;
+    u256 m_minerPayment;
+    u256 m_originalFromBalance;
+    bool m_isCall;
 };
 }  // namespace dev::eth
