@@ -66,6 +66,12 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     _readLock.unlock();
     _writeLock.lock();
 
+    unsigned realBn = _bn;
+    if ( _bn == LatestBlock )
+        realBn = client.number();
+    else if ( _bn == PendingBlock )
+        realBn = 0;  // TODO test this case and decide
+
     assert( real2gappedCache.size() <= cacheSize );
     if ( real2gappedCache.size() >= cacheSize ) {
         real2gappedCache.erase( real2gappedCache.begin() );
@@ -89,7 +95,7 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
         pair< h256, unsigned > loc = client.transactionLocation( th );
 
         // ignore transactions with 0 gas usage OR different location!
-        if ( diff == 0 || client.numberFromHash( loc.first ) != _bn || loc.second != realIndex )
+        if ( diff == 0 || client.numberFromHash( loc.first ) != realBn || loc.second != realIndex )
             continue;
 
         // cache it
