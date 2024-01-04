@@ -70,5 +70,6 @@ protected:
 
 
 private:
-    mutable dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
+    mutable dev::Logger m_info_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
+    mutable dev::Logger m_error_logger{ createLogger( dev::VerbosityError, "instance-monitor" ) };
 };
