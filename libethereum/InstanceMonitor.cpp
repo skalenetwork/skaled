@@ -32,7 +32,7 @@
 using namespace dev;
 namespace fs = boost::filesystem;
 
-const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
+const std::string InstanceMonitor::rotation_info_file_name = "rotation.json";
 
 void InstanceMonitor::prepareRotation() {
     reportExitTimeReached( true );
