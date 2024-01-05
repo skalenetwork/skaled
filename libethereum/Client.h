@@ -127,7 +127,7 @@ public:
     /// Retrieve pending transactions
     Transactions pending() const override;
 
-    Transactions DEBUG_getFutureTransactions() const { return m_tq.DEBUGgetFutureTransactions(); }
+    Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
 
     /// Queues a block for import.
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );

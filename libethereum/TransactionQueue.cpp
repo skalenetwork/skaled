@@ -538,7 +538,7 @@ void TransactionQueue::verifierBody() {
     }
 }
 
-Transactions TransactionQueue::DEBUGgetFutureTransactions() const {
+Transactions TransactionQueue::debugGetFutureTransactions() const {
     Transactions res;
     ReadGuard l( m_lock );
     for ( auto addressAndMap : m_future ) {
