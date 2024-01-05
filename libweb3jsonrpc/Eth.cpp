@@ -70,7 +70,7 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     if ( _bn == LatestBlock )
         realBn = client.number();
     else if ( _bn == PendingBlock )
-        realBn = 0;  // TODO test this case and decide
+        realBn = client.number() + 1;  // TODO test this case and decide
 
     assert( real2gappedCache.size() <= cacheSize );
     if ( real2gappedCache.size() >= cacheSize ) {
