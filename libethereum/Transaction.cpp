@@ -181,10 +181,10 @@ u256 Transaction::gasPrice() const {
     }
 }
 
-void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn ) {
+void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, bool _force ) {
     u256 const& difficulty = _cp.externalGasDifficulty;
     assert( difficulty > 0 );
-    if ( !m_externalGasIsChecked && !isInvalid() ) {
+    if ( ( _force || !m_externalGasIsChecked ) && !isInvalid() ) {
         h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
         if ( !hash ) {
             hash = h256( 1 );

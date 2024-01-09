@@ -644,6 +644,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // TODO clear occasionally this cache?!
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
                 Transaction t = m_m_transaction_cache.at( sha.asArray() );
+                t.checkOutExternalGas( m_client.chainParams(), m_client.number(), true );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
