@@ -1104,7 +1104,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
+        // removed m_blockImportMutex here
+        // this function doesn't interact with latest block so the mutex isn't needed
+        return Block( bc(), hash, readState );
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
