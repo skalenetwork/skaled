@@ -23,6 +23,7 @@
  */
 
 #include "ClientBase.h"
+#include <libskale/CorrectForkInPowPatch.h>
 
 #include <algorithm>
 #include <utility>
@@ -115,8 +116,11 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
-        int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data,
-            bc().sealEngine()->chainParams().scheduleForBlockNumber( bc().number() ) );
+        int64_t lowerBound =
+            CorrectForkInPowPatch::isEnabled() ?
+                Transaction::baseGasRequired( !_dest, &_data,
+                    bc().sealEngine()->chainParams().scheduleForBlockNumber( bc().number() ) ) :
+                Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
         Block bk = latestBlock();
         if ( upperBound > bk.info().gasLimit() ) {
