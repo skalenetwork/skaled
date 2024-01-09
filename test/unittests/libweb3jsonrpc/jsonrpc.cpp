@@ -2878,22 +2878,39 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
     BOOST_REQUIRE( h1 );
     BOOST_REQUIRE_EQUAL( tq->futureSize(), 1);
 
+    Json::Value call = fixture.rpcClient->debug_getFutureTransactions();
+    BOOST_REQUIRE_EQUAL( call.size(), 1);
+
     h256 h2 = fixture.client->importTransaction( tx3 );
     BOOST_REQUIRE( h2 );
     BOOST_REQUIRE_EQUAL( tq->futureSize(), 2);
+
+    call = fixture.rpcClient->debug_getFutureTransactions();
+    BOOST_REQUIRE_EQUAL( call.size(), 2);
+    BOOST_REQUIRE_EQUAL( call[0]["from"], string("0x")+txJson["from"].asString() );
+
     h256 h3 = fixture.client->importTransaction( tx2 );
     BOOST_REQUIRE( h3 );
     BOOST_REQUIRE_EQUAL( tq->futureSize(), 3);
+
+    call = fixture.rpcClient->debug_getFutureTransactions();
+    BOOST_REQUIRE_EQUAL( call.size(), 3);
 
     h256 h4 = fixture.client->importTransaction( tx1 );
     BOOST_REQUIRE( h4 );
     BOOST_REQUIRE_EQUAL( tq->futureSize(), 1);
     BOOST_REQUIRE_EQUAL( tq->status().current, 3);
 
+    call = fixture.rpcClient->debug_getFutureTransactions();
+    BOOST_REQUIRE_EQUAL( call.size(), 1);
+
     h256 h5 = fixture.client->importTransaction( tx4 );
     BOOST_REQUIRE( h5 );
     BOOST_REQUIRE_EQUAL( tq->futureSize(), 0);
     BOOST_REQUIRE_EQUAL( tq->status().current, 5);
+
+    call = fixture.rpcClient->debug_getFutureTransactions();
+    BOOST_REQUIRE_EQUAL( call.size(), 0);
 
     fixture.client->skaleHost()->pauseConsensus( false );
 }
