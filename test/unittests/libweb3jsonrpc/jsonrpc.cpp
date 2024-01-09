@@ -246,7 +246,9 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false, int _emptyBlockIntervalMs = -1 ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
+                    bool _deploymentControl = true, bool _generation2 = false, 
+                    bool _mtmEnabled = false, int _emptyBlockIntervalMs = -1, bool _isSyncNode = false ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -298,6 +300,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
+        chainParams.nodeInfo.syncNode = _isSyncNode;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -318,16 +321,17 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         client->setAuthor( coinbase.address() );
 
         // wait for 1st block - because it's always empty
-        std::promise< void > block_promise;
+        std::promise< void > blockPromise;
         auto importHandler = client->setOnBlockImport(
-            [&block_promise]( BlockHeader const& ) {
-                    block_promise.set_value();
+            [&blockPromise]( BlockHeader const& ) {
+                    blockPromise.set_value();
         } );
 
         client->injectSkaleHost();
         client->startWorking();
 
-        block_promise.get_future().wait();
+        if ( !_isSyncNode )
+            blockPromise.get_future().wait();
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
@@ -745,6 +749,41 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
         "Same transaction already exists in the pending transaction queue." );
+}
+
+BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
+    // Enable sync mode
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, true, false, true );
+    Address senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+    create["code"] = compiled;
+    create["gas"] = "180000";
+
+    BOOST_REQUIRE( fixture.client->transactionQueueStatus().current == 0);
+
+    // Sending tx to sync node
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    
+    auto pendingTransactions = fixture.client->pending();
+    BOOST_REQUIRE( pendingTransactions.size() == 1);
+    auto txHashFromQueue = "0x" + pendingTransactions[0].sha3().hex();
+    BOOST_REQUIRE( txHashFromQueue == txHash );
 }
 
 BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
