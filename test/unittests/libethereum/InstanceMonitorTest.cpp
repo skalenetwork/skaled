@@ -17,10 +17,6 @@ class InstanceMonitorMock: public InstanceMonitor {
 public:
     explicit InstanceMonitorMock(fs::path const &rotationFlagFilePath, std::shared_ptr<StatusAndControl> statusAndControl) : InstanceMonitor(rotationFlagFilePath, statusAndControl) {};
 
-    uint64_t getFinishTimestamp() {
-        return this->finishTimestamp();
-    };
-
     fs::path getRotationInfoFilePath() {
         return this->rotationInfoFilePath();
     }
@@ -31,6 +27,10 @@ public:
 
     void removeFlagFileTest(){
         this->reportExitTimeReached( false );
+    }
+
+    uint64_t getRotationTimestamp() const {
+        return this->rotationTimestamp();
     }
 };
 
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
     uint64_t ts = 100;
     BOOST_REQUIRE( !fs::exists(instanceMonitor->getRotationInfoFilePath() ) );
     instanceMonitor->initRotationParams(ts);
-    BOOST_CHECK_EQUAL(instanceMonitor->getFinishTimestamp(), ts);
+    BOOST_CHECK_EQUAL(instanceMonitor->getRotationTimestamp(), ts);
 
     BOOST_REQUIRE( fs::exists(instanceMonitor->getRotationInfoFilePath() ) );
 
@@ -79,6 +79,15 @@ BOOST_AUTO_TEST_CASE( test_initRotationParams ) {
     auto rotateJson = nlohmann::json::parse( rotateFile );
     BOOST_CHECK_EQUAL(rotateJson["timestamp"].get< uint64_t >(), ts);
 }
+
+
+BOOST_AUTO_TEST_CASE( test_isTimeToRotate_invalid_file ) {
+    uint64_t currentTime = 100;
+    std::ofstream rotationInfoFile(instanceMonitor->getRotationInfoFilePath().string() );
+    rotationInfoFile << "Broken file";
+    BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
+}
+
 
 BOOST_AUTO_TEST_CASE( test_isTimeToRotate_false ) {
     uint64_t currentTime = 100;
@@ -98,6 +107,9 @@ BOOST_AUTO_TEST_CASE( test_isTimeToRotate_true ) {
 
     instanceMonitor->initRotationParams(50);
     BOOST_REQUIRE( instanceMonitor->isTimeToRotate( currentTime ) );
+
+    currentTime = 49;
+    BOOST_REQUIRE( !instanceMonitor->isTimeToRotate( currentTime ) );
 }
 
 BOOST_AUTO_TEST_CASE( test_rotation ) {
