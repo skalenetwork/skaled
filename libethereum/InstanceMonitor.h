@@ -36,23 +36,18 @@ class InstanceMonitor {
 public:
     explicit InstanceMonitor( const boost::filesystem::path& _rotationInfoFileDirPath,
         std::shared_ptr< StatusAndControl > _statusAndControl = nullptr )
-        : m_finishTimestamp( 0 ),
-          m_rotationInfoFilePath( _rotationInfoFileDirPath / rotation_info_file_name ),
+        : m_rotationInfoFilePath( _rotationInfoFileDirPath / rotation_info_file_name ),
           m_statusAndControl( _statusAndControl ) {
-        restoreRotationParams();
         reportExitTimeReached( false );
     }
     void prepareRotation();
     void initRotationParams( uint64_t _finishTimestamp );
-    bool isTimeToRotate( uint64_t _finishTimestamp );
+    bool isTimeToRotate( uint64_t _blockTimestamp ) const;
 
 protected:
-    void restoreRotationParams();
-    [[nodiscard]] uint64_t finishTimestamp() const { return m_finishTimestamp; }
-
+    [[nodiscard]] uint64_t rotationTimestamp() const;
     [[nodiscard]] fs::path rotationInfoFilePath() const { return m_rotationInfoFilePath; }
 
-    uint64_t m_finishTimestamp;
     const fs::path m_rotationInfoFilePath;
     std::shared_ptr< StatusAndControl > m_statusAndControl;
 
@@ -60,6 +55,21 @@ protected:
 
     void reportExitTimeReached( bool _reached );
 
+    class InvalidRotationInfoFileException : public std::exception {
+    protected:
+        std::string what_str;
+
+    public:
+        boost::filesystem::path path;
+
+        InvalidRotationInfoFileException( const boost::filesystem::path& _path ) : path( _path ) {
+            what_str = "File " + path.string() + " is malformed or missing";
+        }
+        virtual const char* what() const noexcept override { return what_str.c_str(); }
+    };
+
+
 private:
-    dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
+    mutable dev::Logger m_infoLogger{ createLogger( dev::VerbosityInfo, "instance-monitor" ) };
+    mutable dev::Logger m_errorLogger{ createLogger( dev::VerbosityError, "instance-monitor" ) };
 };
