@@ -111,9 +111,36 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
                 TrExpectSection* search2 = &search;
                 checkGeneralTestSectionSearch( exp.get_obj(), stateIndexesToPrint, "", search2 );
                 throw std::logic_error( "Skale state does not support addresses list" );
+                //                if (search.second.first.addresses().size() != 0)  // if match in
+                //                the expect sections
+                //                                                                  // for this tr
+                //                                                                  found
+                //                {
+                //                    // replace expected mining reward (in state tests it is 0)
+                //                    json_spirit::mObject obj =
+                //                        fillJsonWithState(search2->second.first,
+                //                        search2->second.second);
+                //                    for (auto& adr : obj)
+                //                    {
+                //                        if (adr.first == toHexPrefixed(m_envInfo->author()) &&
+                //                            adr.second.get_obj().count("balance"))
+                //                        {
+                //                            u256 expectCoinbaseBalance =
+                //                            toInt(adr.second.get_obj()["balance"]);
+                //                            expectCoinbaseBalance += blockReward;
+                //                            adr.second.get_obj()["balance"] =
+                //                                toCompactHexPrefixed(expectCoinbaseBalance);
+                //                        }
+                //                    }
 
+                //                    json_spirit::mObject expetSectionObj;
+                //                    expetSectionObj["network"] = test::netIdToString(net);
+                //                    expetSectionObj["result"] = obj;
+                //                    expetSectionArray.push_back(expetSectionObj);
+                //                    break;
+                //                }
             }  // for exp
-        } // for net
+        }      // for net
 
         testObj["expect"] = expetSectionArray;
 
@@ -198,6 +225,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             continue;
 
         for ( auto& tr : m_transactions ) {
+            tr.transaction.checkOutExternalGas( 100 );
             Options const& opt = Options::get();
             if ( opt.trDataIndex != -1 && opt.trDataIndex != tr.dataInd )
                 continue;
@@ -711,6 +739,15 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                         _errorTransactions.push_back( i );
                     }
                 } else if ( _expects.count( "hash" ) ) {
+                    // checking filled state test against client
+                    //                    BOOST_CHECK_MESSAGE(_expects.at("hash").get_str() ==
+                    //                                            toHexPrefixed(tr.postState.globalRoot().asBytes()),
+                    //                        TestOutputHelper::get().testName() + " on " +
+                    //                            test::netIdToString(tr.netId) +
+                    //                            ": Expected another postState hash! expected: " +
+                    //                            _expects.at("hash").get_str() + " actual: " +
+                    //                            toHexPrefixed(tr.postState.globalRoot().asBytes()) +
+                    //                            " in " + trInfo);
                     if ( _expects.count( "logs" ) )
                         BOOST_CHECK_MESSAGE(
                             _expects.at( "logs" ).get_str() == exportLog( tr.output.second.log() ),

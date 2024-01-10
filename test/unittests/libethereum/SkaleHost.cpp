@@ -123,7 +123,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         chainParams.allowFutureBlocks = true;
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.istanbulForkBlock = 0;
+        chainParams.byzantiumForkBlock = 0;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
@@ -913,7 +913,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
 
     // submit it!
     tq->import( tx1 );
@@ -970,7 +970,7 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
 
     // submit it!
     tq->import( tx1 );
@@ -1027,7 +1027,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
 
     // submit it!
     tq->import( tx1 );
@@ -1090,7 +1090,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams().difficulty );
 
     RLPStream stream1;
     tx1.streamRLP( stream1 );

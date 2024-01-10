@@ -23,7 +23,6 @@ set(sources
     PrecompiledConfigPatch.cpp
     PushZeroPatch.cpp
     SkipInvalidTransactionsPatch.cpp
-    CorrectForkInPowPatch.cpp
 )
 
 set(headers
@@ -45,7 +44,6 @@ set(headers
     PrecompiledConfigPatch.h
     OverlayFS.h
     SkipInvalidTransactionsPatch.h
-    CorrectForkInPowPatch.h
 )
 
 add_library(skale ${sources} ${headers})
