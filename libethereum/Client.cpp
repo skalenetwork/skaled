@@ -333,6 +333,10 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
 
+    // needed for checkOutExternalGas
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
     initCPUUSage();
 
     doWork( false );
