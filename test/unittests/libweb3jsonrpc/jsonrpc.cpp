@@ -248,7 +248,7 @@ private:
 struct JsonRpcFixture : public TestOutputHelperFixture {
     JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
                     bool _deploymentControl = true, bool _generation2 = false, 
-                    bool _mtmEnabled = false, int _emptyBlockIntervalMs = -1, bool _isSyncNode = false ) {
+                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1 ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -1604,7 +1604,7 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
 
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     // 1s empty block interval
-    JsonRpcFixture fixture( "", true, true, false, false, 1000 );
+    JsonRpcFixture fixture( "", true, true, false, false, false, 1000 );
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
     auto senderAddress = fixture.coinbase.address();
@@ -1621,15 +1621,17 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
     u256 gasEstimate = jsToU256(gasEstimateStr);
 
-    BOOST_REQUIRE_EQUAL(gasEstimate, u256(21000+1024*16));
+    // old estimate before patch
+    BOOST_REQUIRE_EQUAL(gasEstimate, u256(21000+1024*68));
 
     u256 powGasPrice = 0;
+    u256 correctEstimate = u256(21000+1024*16);
     do {
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
         u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= gasEstimate && externalGas < gasEstimate + gasEstimate/10 ) {
+        if ( externalGas >= correctEstimate && externalGas < correctEstimate + correctEstimate/10 ) {
             powGasPrice = candidate;
         }
     } while ( !powGasPrice );
@@ -1640,17 +1642,27 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     string txHash;
     BlockHeader badInfo, goodInfo;
     for(;;) {
-        try {
+        string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+        u256 gasEstimate = jsToU256(gasEstimateStr);
+        // old
+        if(gasEstimate == u256(21000+1024*68)){
+            try{
+                fixture.rpcClient->eth_sendTransaction( transact );
+                BOOST_REQUIRE(false);
+            } catch(const std::exception& ex) {
+                assert(string(ex.what()).find("balance is too low") != string::npos);
+                badInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
+                dev::eth::mineTransaction( *( fixture.client ), 1 ); // empty block
+            } // catch
+        }
+        // new
+        else {
+            BOOST_REQUIRE_EQUAL(gasEstimate, correctEstimate);
             txHash = fixture.rpcClient->eth_sendTransaction( transact );
             goodInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
             break;
-        } catch(const std::exception& ex) {
-            // error should be "balance is too low"
-            assert(string(ex.what()).find("balance is too low") != string::npos);
-            badInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
-            dev::eth::mineTransaction( *( fixture.client ), 1 ); // empty block
-        } // catch
-    }
+        } // else
+    } // for
 
     BOOST_REQUIRE_LT(badInfo.timestamp(), fixture.powPatchActivationTimestamp);
     BOOST_REQUIRE_GE(goodInfo.timestamp(), fixture.powPatchActivationTimestamp);
