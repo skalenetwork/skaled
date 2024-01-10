@@ -274,6 +274,8 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "skipInvalidTransactionsPatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "precompiledConfigPatchTimestamp",
+                { { js::int_type }, JsonFieldPresence::Optional } },
+            { "correctForkInPowPatchTimestamp",
                 { { js::int_type }, JsonFieldPresence::Optional } } } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
