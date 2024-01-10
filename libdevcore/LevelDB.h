@@ -26,6 +26,8 @@
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
+#include <secp256k1_sha256.h>
+
 namespace dev {
 namespace db {
 class LevelDB : public DatabaseFace {
@@ -58,6 +60,9 @@ public:
 
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
+
+    void hashBasePartially(
+        secp256k1_sha256_t* ctx, const std::string& start, const std::string& finish ) const;
 
     void doCompaction() const;
 
