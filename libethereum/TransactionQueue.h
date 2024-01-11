@@ -123,6 +123,8 @@ public:
     template < class... Args >
     Transactions topTransactionsSync( unsigned _limit, Args... args );
 
+    Transactions debugGetFutureTransactions() const;
+
     /// Get a hash set of transactions in the queue
     /// @returns A hash set of all transactions in the queue
     const h256Hash knownTransactions() const;
