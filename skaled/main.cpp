@@ -460,7 +460,7 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
                            "hash " )
                     << cc::notice( votedHash.first.hex() )
                     << cc::notice( " is not equal to calculated hash " )
-                    << cc::notice( calculated_hash.hex() ) << cc::notice( "Will try again" );
+                    << cc::notice( calculated_hash.hex() ) << cc::notice( " Will try again" );
                 if ( isRegularSnapshot )
                     snapshotManager->cleanup();
                 else

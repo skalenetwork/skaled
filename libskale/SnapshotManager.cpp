@@ -445,8 +445,11 @@ void SnapshotManager::computeDatabaseHash(
         BOOST_THROW_EXCEPTION( InvalidPath( _dbDir ) );
     }
 
-    std::array< std::string, 17 > lexographicKeysSegments = { "0", "1", "2", "3", "4", "5", "6",
-        "7", "8", "9", "a", "b", "c", "d", "e", "f", "g" };
+    //    std::array< std::string, 23 > lexographicKeysSegments = { "0", "1", "2", "3", "4", "5",
+    //    "6",
+    //        "7", "8", "9", "A", "B", "C", "D", "E", "F", "a", "b", "c", "d", "e", "f", "{" };
+    std::array< std::string, 11 > lexographicKeysSegments = { "0", "2", "4", "6", "8", "A", "F",
+        "a", "c", "e", "{" };
 
     secp256k1_sha256_t dbCtx;
     secp256k1_sha256_initialize( &dbCtx );

@@ -212,7 +212,6 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     }
 }
 
-
 void LevelDB::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     cnote << "Iterating over the LevelDB prefix: " << _prefix;
