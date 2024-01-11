@@ -66,6 +66,8 @@ using namespace dev::eth;
 #define CONSENSUS 1
 #endif
 
+const int SkaleHost::REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC = 600;
+
 std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
 #if CONSENSUS
@@ -325,6 +327,13 @@ void SkaleHost::logState() {
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
+    // drop incoming transactions if skaled has an outdated state
+    if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
+         std::time( NULL ) ) {
+        LOG( m_debugLogger ) << "Dropped the transaction received through broadcast";
+        return h256();
+    }
+
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
 
     h256 sha = transaction.sha3();
