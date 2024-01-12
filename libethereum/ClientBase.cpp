@@ -23,6 +23,7 @@
  */
 
 #include "ClientBase.h"
+#include <libskale/CorrectForkInPowPatch.h>
 
 #include <algorithm>
 #include <utility>
@@ -89,7 +90,7 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
     t.forceChainId( chainId() );
-    t.checkOutExternalGas( ~u256( 0 ) );
+    t.ignoreExternalGas();
     EnvInfo const env( _latestBlock.info(), bc().lastBlockHashes(), 0, _gas );
     // Make a copy of state!! It will be deleted after step!
     State tempState = _latestBlock.mutableState();
@@ -115,8 +116,12 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
-        int64_t lowerBound = Transaction::baseGasRequired( !_dest, &_data,
-            bc().sealEngine()->chainParams().scheduleForBlockNumber( bc().number() ) );
+        int64_t lowerBound =
+            CorrectForkInPowPatch::isEnabled() ?
+                Transaction::baseGasRequired( !_dest, &_data,
+                    bc().sealEngine()->chainParams().scheduleForBlockNumber( bc().number() ) ) :
+                Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
+
         Block bk = latestBlock();
         if ( upperBound > bk.info().gasLimit() ) {
             upperBound = bk.info().gasLimit().convert_to< int64_t >();
