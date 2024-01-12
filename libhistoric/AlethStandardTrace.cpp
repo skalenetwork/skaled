@@ -27,6 +27,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 TraceOptions eth::AlethStandardTrace::getOptions() const {
+    STATE_CHECK( m_isFinalized )
     return m_options;
 }
 
@@ -35,6 +36,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     const LegacyVM* _vm ) {
     STATE_CHECK( _face )
     STATE_CHECK( _vm )
+    STATE_CHECK( !m_isFinalized )
 
     // check if instruction depth changed. This means a function has been called or has returned
     processFunctionCallOrReturnIfHappened( _ext, _vm, ( uint64_t ) _gasRemaining );
@@ -128,6 +130,7 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     }
 }
 const Address& AlethStandardTrace::getFrom() const {
+    STATE_CHECK( m_isFinalized )
     return m_from;
 }
 
@@ -178,6 +181,7 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
 void AlethStandardTrace::setTopFunctionCall(
     const shared_ptr< FunctionCallRecord >& _topFunctionCall ) {
     STATE_CHECK( _topFunctionCall )
+    STATE_CHECK( !m_isFinalized )
     m_topFunctionCall = _topFunctionCall;
 }
 
@@ -185,6 +189,7 @@ void AlethStandardTrace::recordFunctionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOpRecord.m_gasRemaining >= m_lastOpRecord.m_opGas )
     STATE_CHECK( m_currentlyExecutingFunctionCall )
+    STATE_CHECK( !m_isFinalized )
 
     // record return values
     getCurrentlyExecutingFunctionCall()->setReturnValues( _status, _returnData, _gasUsed );
@@ -249,6 +254,7 @@ AlethStandardTrace::AlethStandardTrace(
     m_accessedAccounts.insert( m_to );
 }
 void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
+    STATE_CHECK( !m_isFinalized )
     m_originalFromBalance = _originalFromBalance;
 }
 
@@ -368,9 +374,6 @@ void eth::AlethStandardTrace::finalizeTrace(
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
-    // we are done. Set the trace to finalized.
-    STATE_CHECK( !m_isFinalized.exchange( true ) )
-
     STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
 
@@ -388,6 +391,9 @@ void eth::AlethStandardTrace::finalizeTrace(
         // this should never happen
         STATE_CHECK( false );
     }
+
+    // we are done. Set the trace to finalized.
+    STATE_CHECK( !m_isFinalized.exchange( true ) )
 }
 
 // print all supported traces. This is useful for testing.
@@ -427,12 +433,14 @@ const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
 
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getCurrentlyExecutingFunctionCall()
     const {
+    STATE_CHECK( !m_isFinalized )
     STATE_CHECK( m_currentlyExecutingFunctionCall )
     return m_currentlyExecutingFunctionCall;
 }
 
 void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall ) {
+    STATE_CHECK( !m_isFinalized )
     STATE_CHECK( _currentlyExecutingFunctionCall )
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
 }
@@ -443,10 +451,11 @@ const u256& AlethStandardTrace::getMinerPayment() const {
     return m_minerPayment;
 }
 void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
-    this->m_minerPayment = _minerGasPayment;
+    STATE_CHECK( !m_isFinalized )
+    m_minerPayment = _minerGasPayment;
     // add miner to the list of accessed accounts, since the miner is paid
     // transaction fee
-    this->m_accessedAccounts.insert( m_blockAuthor );
+    m_accessedAccounts.insert( m_blockAuthor );
 }
 bool AlethStandardTrace::isCall() const {
     return m_isCall;

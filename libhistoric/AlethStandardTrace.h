@@ -66,6 +66,13 @@ public:
     // this function will be called at the end of executions
     void finalizeTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
+
+    // this is to set original from balance for calls
+    // in a geth call, the from account balance is always incremented to
+    // make sure account has enough funds for block gas limit of gas
+    // we need to save original from account balance since it is printed in trace
+    void setOriginalFromBalance( const u256& _originalFromBalance );
+
     [[nodiscard]] Json::Value getJSONResult() const;
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
     [[nodiscard]] TraceOptions getOptions() const;
@@ -75,27 +82,21 @@ public:
     [[nodiscard]] const h256& getTxHash() const;
     [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
 
-
-    void setCurrentlyExecutingFunctionCall(
-        const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
-
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
         const;
-    void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
-
     [[nodiscard]] const Address& getBlockAuthor() const;
     [[nodiscard]] const u256& getMinerPayment() const;
-    void setOriginalFromBalance( const u256& _originalFromBalance );
-
     [[nodiscard]] const u256& getOriginalFromBalance() const;
-
     [[nodiscard]] bool isCall() const;
-
+    [[nodiscard]] const Address& getFrom() const;
 
     static string toGethCompatibleCompactHexPrefixed( const u256& _value );
-    const Address& getFrom() const;
 
 private:
+    void setCurrentlyExecutingFunctionCall(
+        const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
+    void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
+
     // this operator will be executed by skaled on each EVM instruction
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
         bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
