@@ -548,6 +548,9 @@ static std::unique_ptr< Client > g_client;
 unique_ptr< ModularServer<> > g_jsonrpcIpcServer;
 
 int main( int argc, char** argv ) try {
+
+    assert(false);
+
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
