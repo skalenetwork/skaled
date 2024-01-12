@@ -207,7 +207,6 @@ void AlethStandardTrace::recordFunctionReturned(
 
 // the getter functions are called by printer classes after the trace has been generated
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getTopFunctionCall() const {
-    STATE_CHECK( m_isFinalized )
     return m_topFunctionCall;
 }
 
