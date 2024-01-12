@@ -6,6 +6,7 @@ import deepDiff, {diff} from 'deep-diff';
 import {expect} from "chai";
 import * as path from 'path';
 import {int, string} from "hardhat/internal/core/params/argumentTypes";
+import internal from "node:stream";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
@@ -188,11 +189,55 @@ async function deployTestContract(): Promise<object> {
 
 }
 
+
+function generateNewWallet() {
+    const wallet = hre.ethers.Wallet.createRandom();
+    console.log("Address:", wallet.address);
+    console.log("Private Key:", wallet.privateKey);
+    return wallet;
+}
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+
+
+async function sendMoneyWithoutConfirmation(): Promise<int> {
+    // Generate a new wallet
+    const newWallet = generateNewWallet();
+
+    await sleep(3000);  // Sleep for 1000 milliseconds (1 second)
+
+    // Get the first signer from Hardhat's local network
+    const [signer] = await hre.ethers.getSigners();
+
+    const currentNonce = await signer.getTransactionCount();
+
+    // Define the transaction
+    const tx = {
+        to: newWallet.address,
+        value: hre.ethers.utils.parseEther("0.1"),
+        nonce: currentNonce
+    };
+
+    // Send the transaction
+    const txResponse = signer.sendTransaction(tx);
+    //await txResponse.wait();
+
+    console.log(`Submitted a tx to send 0.1 ETH to ${newWallet.address}`);
+
+    return currentNonce;
+}
+
 async function callTestContractRun(deployedContract: any): Promise<void> {
 
+    let currentNonce : int = await sendMoneyWithoutConfirmation();
 
     const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+        nonce: currentNonce + 1,
     });
 
     //await getAndPrintBlockTrace(transferReceipt.blockNumber);
