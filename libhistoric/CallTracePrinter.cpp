@@ -31,7 +31,15 @@ namespace dev::eth {
 void CallTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
-    m_trace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_trace.getOptions() );
+
+    auto topFunctionCallRecord = m_trace.getTopFunctionCall();
+    if ( !topFunctionCallRecord ) {
+        // no bytecodes were executed, this was purely ETH transfer
+        // print nothing
+        return;
+    }
+
+    topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
 }
 
 CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )

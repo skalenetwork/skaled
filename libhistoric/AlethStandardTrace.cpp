@@ -208,7 +208,6 @@ void AlethStandardTrace::recordFunctionReturned(
 // the getter functions are called by printer classes after the trace has been generated
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getTopFunctionCall() const {
     STATE_CHECK( m_isFinalized )
-    STATE_CHECK( m_topFunctionCall );
     return m_topFunctionCall;
 }
 
@@ -374,11 +373,13 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
-    STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
 
+    // if transaction is not just ETH transfer
     // record return of the top function.
-    recordFunctionReturned( statusCode, _er.output, totalGasUsed );
+    if (getTopFunctionCall()) {
+        recordFunctionReturned( statusCode, _er.output, totalGasUsed );
+    }
     // we are done. Set the trace to finalized
     STATE_CHECK( !m_isFinalized.exchange( true ) )
     // now print trace

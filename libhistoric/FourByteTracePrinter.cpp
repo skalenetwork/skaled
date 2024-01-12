@@ -33,7 +33,14 @@ void FourByteTracePrinter::print(
     STATE_CHECK( _jsonTrace.isObject() )
     std::map< string, uint64_t > callMap;
 
-    m_trace.getTopFunctionCall()->collectFourByteTrace( callMap );
+    auto topFunctionCallRecord = m_trace.getTopFunctionCall();
+    if ( !topFunctionCallRecord ) {
+        // no bytecodes were executed, this was purely ETH transfer
+        // print nothing
+        return;
+    }
+
+    topFunctionCallRecord->collectFourByteTrace( callMap );
     for ( auto&& key : callMap ) {
         _jsonTrace[key.first] = key.second;
     }
