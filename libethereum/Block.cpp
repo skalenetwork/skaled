@@ -822,9 +822,8 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         try {
             _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
         } catch ( std::exception& e ) {
-            throw dev::eth::VMTracingError(
-                std::string( "Exception doing trace for transaction index:" ) +
-                std::to_string( _transactionIndex ) + ":" + e.what() );
+            throw dev::eth::VMTracingError( "Exception doing trace for transaction index:" +
+                                            std::to_string( _transactionIndex ) + ":" + e.what() );
         }
         return resultReceipt.first;
     } else {
