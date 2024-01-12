@@ -158,6 +158,10 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     // TODO check
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    if ( blockNumber != m_client.getLatestSnapshotBlockNumer() ) {
+        joResponse["error"] = "Wrong snapshot block number requested.";
+        return joResponse;
+    }
 
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 ) {
