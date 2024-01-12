@@ -64,7 +64,7 @@ public:
     }
 
     // this function will be called at the end of executions
-    void finalizeTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
+    void finalizeAndPrintTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
 
     // this is to set original from balance for calls
@@ -168,5 +168,7 @@ private:
     u256 m_minerPayment;
     u256 m_originalFromBalance;
     bool m_isCall;
+    void printTrace(
+        ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 };
 }  // namespace dev::eth

@@ -367,9 +367,9 @@ string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _valu
     return "0x" + hexStr;
 }
 
-// execution completed.  Now use the tracer that the user requested
-// to print the resulting trace
-void eth::AlethStandardTrace::finalizeTrace(
+// execution completed.  Now finalize the trace and use the tracer that the user requested
+// to print the resulting trace to json
+void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
     auto totalGasUsed = ( uint64_t ) _er.gasUsed;
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
@@ -379,9 +379,14 @@ void eth::AlethStandardTrace::finalizeTrace(
 
     // record return of the top function.
     recordFunctionReturned( statusCode, _er.output, totalGasUsed );
-
+    // we are done. Set the trace to finalized
+    STATE_CHECK( !m_isFinalized.exchange( true ) )
+    // now print trace
+    printTrace( _er, _statePre, _statePost );
+}
+void eth::AlethStandardTrace::printTrace( ExecutionResult& _er, const HistoricState& _statePre,
+    const HistoricState& _statePost ) {  // now print the trace
     m_jsonTrace = Json::Value( Json::objectValue );
-
     // now run the trace that the user wants based on options provided
     if ( m_tracePrinters.count( m_options.tracerType ) > 0 ) {
         m_tracePrinters.at( m_options.tracerType ).print( m_jsonTrace, _er, _statePre, _statePost );
@@ -391,9 +396,6 @@ void eth::AlethStandardTrace::finalizeTrace(
         // this should never happen
         STATE_CHECK( false );
     }
-
-    // we are done. Set the trace to finalized.
-    STATE_CHECK( !m_isFinalized.exchange( true ) )
 }
 
 // print all supported traces. This is useful for testing.

@@ -819,7 +819,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         auto resultReceipt = m_state.mutableHistoricState().execute(
             envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
         HistoricState stateAfter( m_state.mutableHistoricState() );
-        _tracer->finalizeTrace( resultReceipt.first, stateBefore, stateAfter );
+        _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
         return resultReceipt.first;
     } else {
         auto resultReceipt = m_state.mutableHistoricState().execute(
