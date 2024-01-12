@@ -819,7 +819,13 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         auto resultReceipt = m_state.mutableHistoricState().execute(
             envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
         HistoricState stateAfter( m_state.mutableHistoricState() );
-        _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
+        try {
+            _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
+        } catch ( std::exception& e ) {
+            throw dev::eth::VMTracingError(
+                std::string( "Exception doing trace for transaction index:" ) +
+                std::to_string( _transactionIndex ) + ":" + e.what() );
+        }
         return resultReceipt.first;
     } else {
         auto resultReceipt = m_state.mutableHistoricState().execute(
