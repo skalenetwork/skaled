@@ -98,10 +98,6 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_doBlocksDbCompaction",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_doBlocksDbCompactionI );
-
-        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getFutureTransactions",
-                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::DebugFace::debug_getFutureTransactionsI );
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -183,10 +179,6 @@ public:
         response = this->debug_doBlocksDbCompaction();
     }
 
-    virtual void debug_getFutureTransactionsI( const Json::Value&, Json::Value& response ) {
-        response = this->debug_getFutureTransactions();
-    }
-
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
     virtual Json::Value debug_traceTransaction(
@@ -214,8 +206,6 @@ public:
 
     virtual uint64_t debug_doStateDbCompaction() = 0;
     virtual uint64_t debug_doBlocksDbCompaction() = 0;
-
-    virtual Json::Value debug_getFutureTransactions() = 0;
 };
 
 }  // namespace rpc

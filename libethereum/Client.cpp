@@ -53,6 +53,7 @@
 
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/CorrectForkInPowPatch.h>
 #include <libskale/POWCheckPatch.h>
 #include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/PushZeroPatch.h>
@@ -169,6 +170,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     SkipInvalidTransactionsPatch::setTimestamp(
         this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
     PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
+    CorrectForkInPowPatch::setTimestamp( chainParams().sChain.correctForkInPowPatchTimestamp );
 }
 
 
@@ -330,6 +332,10 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
+
+    // needed for checkOutExternalGas
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
     initCPUUSage();
 
@@ -600,6 +606,10 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
+    // this needs to be updated as soon as possible, as it's used in new transactions validation
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerDetail ) << "Total unsafe time so far = "
                               << std::chrono::duration_cast< std::chrono::seconds >(
@@ -668,6 +678,9 @@ size_t Client::syncTransactions(
     PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
     PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -1190,8 +1203,6 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
 
-    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
-
     // throws in case of error
     State state;
     u256 gasBidPrice;
@@ -1199,6 +1210,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
     DEV_GUARDED( m_blockImportMutex ) {
         state = this->state().createStateReadOnlyCopy();
         gasBidPrice = this->gasBidPrice();
+
+        // We need to check external gas under mutex to be sure about current block bumber
+        // correctness
+        const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
     }
 
     Executive::verifyTransaction( _t,
@@ -1255,7 +1270,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
                 t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
-                t.checkOutExternalGas( ~u256( 0 ) );
+                t.ignoreExternalGas();
                 if ( _ff == FudgeFactor::Lenient ) {
                     historicBlock.mutableState().mutableHistoricState().addBalance(
                         _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
@@ -1280,7 +1295,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Transaction t( _value, gasPrice, gas, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().chainID );
-        t.checkOutExternalGas( ~u256( 0 ) );
+        t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
