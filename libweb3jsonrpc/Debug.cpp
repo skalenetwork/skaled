@@ -24,9 +24,9 @@ using namespace dev::eth;
 using namespace skale;
 
 
-#define THROW_TRACE_JSON_EXCEPTION( __MSG__ ) \
-    throw jsonrpc::JsonRpcException(          \
-        std::string( __FUNCTION__ ) + ":" + std::to_string(__LINE__) + ":" + std::string( __MSG__ ) )
+#define THROW_TRACE_JSON_EXCEPTION( __MSG__ )                            \
+    throw jsonrpc::JsonRpcException( std::string( __FUNCTION__ ) + ":" + \
+                                     std::to_string( __LINE__ ) + ":" + std::string( __MSG__ ) )
 
 
 void Debug::checkPrivilegedAccess() const {

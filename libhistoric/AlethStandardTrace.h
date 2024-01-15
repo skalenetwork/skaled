@@ -64,7 +64,8 @@ public:
     }
 
     // this function will be called at the end of executions
-    void finalizeAndPrintTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
+    void finalizeAndPrintTrace(
+        ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
 
 
     // this is to set original from balance for calls
