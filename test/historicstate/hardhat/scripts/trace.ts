@@ -42,7 +42,8 @@ async function getTraceJsonOptions(_tracer: string): Promise<object> {
 
 const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
 const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const TEST_TRANSFER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
+const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
+const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
 const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
@@ -144,13 +145,13 @@ async function getBlockTrace(blockNumber: number): Promise<String> {
     const blockStr = "0x" + blockNumber.toString(16);
     const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
 
-   0// console.log(JSON.stringify(trace, null, 4));
+    0// console.log(JSON.stringify(trace, null, 4));
     return trace;
 }
 
-async function getAndPrintTransactionTrace(hash: string, _skaleFileName: string): Promise<String> {
+async function getAndPrintTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
 
-    console.log("Calling debug_traceTransaction to generate " + _skaleFileName + " for tx " + hash);
+    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
 
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
@@ -175,7 +176,7 @@ async function deployTestContract(): Promise<object> {
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
-    await getAndPrintTransactionTrace(hash, TEST_CONTRACT_DEPLOY_FILE_NAME);
+    await getAndPrintTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
@@ -192,8 +193,6 @@ function generateNewWallet() {
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-
 
 
 async function sendMoneyWithoutConfirmation(): Promise<int> {
@@ -217,7 +216,7 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
     // Send the transaction and wait until it is submitted ot the queue
     const txResponse = signer.sendTransaction(tx);
 
-    if (hre.network.name == "geth")  {
+    if (hre.network.name == "geth") {
         await txResponse;
     }
 
@@ -226,7 +225,7 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
     return currentNonce;
 }
 
-async function sendMoneyWithConfirmation() : Promise<string>  {
+async function sendMoneyWithConfirmation(): Promise<string> {
     // Generate a new wallet
     const newWallet = generateNewWallet();
 
@@ -253,10 +252,9 @@ async function sendMoneyWithConfirmation() : Promise<string>  {
 }
 
 
-
 async function callTestContractRun(deployedContract: any): Promise<void> {
 
-    let currentNonce : int = await sendMoneyWithoutConfirmation();
+    let currentNonce: int = await sendMoneyWithoutConfirmation();
 
     const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
@@ -266,11 +264,11 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
     expect(transferReceipt.blockNumber).not.to.be.null;
 
 
-    await getAndPrintTransactionTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
+    await getAndPrintTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_RUN_FILE_NAME);
     await getBlockTrace(transferReceipt.blockNumber);
 
-    const transferHash : string = await sendMoneyWithConfirmation();
-    await getAndPrintTransactionTrace(transferHash, TEST_TRANSFER_FILE_NAME);
+    const transferHash: string = await sendMoneyWithConfirmation();
+    await getAndPrintTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
 
 
 }
@@ -341,7 +339,7 @@ async function readJSONFile(fileName: string): Promise<object> {
 
 async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -391,7 +389,7 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyDefaultTransferTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -417,7 +415,7 @@ async function verifyDefaultTransferTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -453,7 +451,7 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -484,7 +482,7 @@ async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -518,7 +516,7 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -544,9 +542,6 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
 
     await expect(foundDiffs).to.be.eq(false)
 }
-
-
-
 
 
 async function verifyGasCalculations(_actualResult: any): Promise<void> {
@@ -586,12 +581,12 @@ async function main(): Promise<void> {
 
 
     // geth does not have replay trace
-    if ( hre.network.name != "geth") {
+    if (hre.network.name != "geth") {
         await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
     }
 
 
-    await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_FILE_NAME)
+    await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME)
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
