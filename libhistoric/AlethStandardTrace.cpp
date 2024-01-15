@@ -376,7 +376,7 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
 
     // if transaction is not just ETH transfer
     // record return of the top function.
-    if (getTopFunctionCall()) {
+    if ( getTopFunctionCall() ) {
         recordFunctionReturned( statusCode, _er.output, totalGasUsed );
     }
     // we are done. Set the trace to finalized
