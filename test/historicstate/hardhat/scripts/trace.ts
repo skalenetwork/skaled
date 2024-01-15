@@ -174,10 +174,6 @@ async function deployTestContract(): Promise<object> {
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
-    // await waitUntilNextBlock()
-
-    //await getBlockTrace(deployBlockNumber);
-    //await getBlockTrace(deployBlockNumber);
     await getAndPrintTransactionTrace(hash, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
@@ -217,7 +213,7 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
         nonce: currentNonce
     };
 
-    // Send the transaction
+    // Send the transaction and wait until it is submitted ot the queue
     const txResponse = signer.sendTransaction(tx);
     //await txResponse.wait();
 
@@ -234,6 +230,8 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
+
+    expect(transferReceipt.blockNumber).not.to.be.null;
 
 
     await getAndPrintTransactionTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
