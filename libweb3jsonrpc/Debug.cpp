@@ -23,6 +23,12 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
+
+#define THROW_TRACE_JSON_EXCEPTION( __MSG__ ) \
+    throw jsonrpc::JsonRpcException(          \
+        std::string( __FUNCTION__ ) + ":" + std::to_string(__LINE__) + ":" + std::string( __MSG__ ) )
+
+
 void Debug::checkPrivilegedAccess() const {
     if ( !m_enablePrivilegedApis ) {
         BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not enabled" ) );
@@ -52,7 +58,7 @@ h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
     try {
         return m_eth.blockChain().numberHash( stoul( _blockNumberOrHash ) );
     } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Invalid argument" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Invalid argument" );
     }
 }
 
@@ -76,22 +82,22 @@ Json::Value Debug::debug_traceBlockByNumber( const string&
     }
 
     if ( !m_eth.isKnown( bN ) ) {
-        BOOST_THROW_EXCEPTION(
-            jsonrpc::JsonRpcException( "Unknown block number:" + _blockNumber ) );
+        THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + _blockNumber );
     }
 
     if ( bN == 0 ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
     }
 
     try {
         return m_eth.traceBlock( bN, _jsonTraceConfig );
-    } catch ( Exception const& _e ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
     }
 #else
-    BOOST_THROW_EXCEPTION(
-        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
+    THROW_TRACE_JSON_EXCEPTION( "This API call is only supported on archive nodes" );
 #endif
 }
 
@@ -111,23 +117,24 @@ Json::Value Debug::debug_traceBlockByHash( string const&
     h256 h = jsToFixed< 32 >( _blockHash );
 
     if ( !m_eth.isKnown( h ) ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown block hash" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Unknown block hash" + _blockHash );
     }
 
     BlockNumber bN = m_eth.numberFromHash( h );
 
     if ( bN == 0 ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
     }
 
     try {
         return m_eth.traceBlock( bN, _jsonTraceConfig );
-    } catch ( Exception const& _e ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
     }
 #else
-    BOOST_THROW_EXCEPTION(
-        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
+    THROW_TRACE_JSON_EXCEPTION( "This API call is only supported on archive nodes" );
 #endif
 }
 
@@ -147,23 +154,23 @@ Json::Value Debug::debug_traceTransaction( string const&
 #ifdef HISTORIC_STATE
     auto txHash = h256( _txHashStr );
 
+
     LocalisedTransaction localisedTransaction = m_eth.localisedTransaction( txHash );
 
     if ( localisedTransaction.blockHash() == h256( 0 ) ) {
-        BOOST_THROW_EXCEPTION(
-            jsonrpc::JsonRpcException( "no committed transaction with this hash" ) );
+        THROW_TRACE_JSON_EXCEPTION(
+            "Can't find committed transaction with this hash:" + _txHashStr );
     }
 
     auto blockNumber = localisedTransaction.blockNumber();
 
     if ( !m_eth.isKnown( blockNumber ) ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Unknown block number" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + to_string( blockNumber ) );
     }
 
     if ( blockNumber == 0 ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
     }
-
 
     try {
         Json::Value tracedBlock;
@@ -188,10 +195,14 @@ Json::Value Debug::debug_traceTransaction( string const&
             }
         }
 
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "No transaction in block" ) );
+        THROW_TRACE_JSON_EXCEPTION( "Transaction not found in block" );
 
-    } catch ( Exception const& _e ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
+    } catch ( jsonrpc::JsonRpcException& ) {
+        throw;
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
     }
 #else
     BOOST_THROW_EXCEPTION(
@@ -228,21 +239,23 @@ Json::Value Debug::debug_traceCall( Json::Value const&
         }
 
         if ( !m_eth.isKnown( bN ) ) {
-            BOOST_THROW_EXCEPTION(
-                jsonrpc::JsonRpcException( "Unknown block number:" + _blockNumber ) );
+            THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + _blockNumber );
         }
 
         if ( bN == 0 ) {
-            BOOST_THROW_EXCEPTION(
-                jsonrpc::JsonRpcException( "Block number must be more than zero" ) );
+            THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
         }
 
         TransactionSkeleton ts = toTransactionSkeleton( _call );
 
         return m_eth.traceCall(
             ts.from, ts.value, ts.to, ts.data, ts.gas, ts.gasPrice, bN, _jsonTraceConfig );
-    } catch ( Exception const& _e ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( _e.what() ) );
+    } catch ( jsonrpc::JsonRpcException& ) {
+        throw;
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
     }
 
 #else
