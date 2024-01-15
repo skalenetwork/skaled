@@ -1092,7 +1092,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
+        DEV_GUARDED( m_blockImportMutex ) {
+            return Block( bc(), hash, readState );
+        }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1106,7 +1108,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 Block Client::latestBlock() const {
     // TODO Why it returns not-filled block??! (see Block ctor)
     try {
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), bc().currentHash(), m_state ); }
+        DEV_GUARDED( m_blockImportMutex ) {
+            return Block( bc(), bc().currentHash(), m_state );
+        }
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1259,7 +1263,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
                 historicBlock.mutableState().mutableHistoricState().addBalance(
-                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1283,7 +1287,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.checkOutExternalGas( ~u256( 0 ) );
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance(
+                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
@@ -1316,7 +1321,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         // lots of gas to it
         auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer =
             make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );
@@ -1346,43 +1351,48 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
 
 
 Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
-    Block previousBlock = blockByNumber( _blockNumber - 1 );
-    Block historicBlock = blockByNumber( _blockNumber );
+    try {
+        Block previousBlock = blockByNumber( _blockNumber - 1 );
+        Block historicBlock = blockByNumber( _blockNumber );
 
-    Json::Value traces( Json::arrayValue );
+        Json::Value traces( Json::arrayValue );
 
-    auto hash = ClientBase::hashFromNumber( _blockNumber );
-    Transactions transactions = this->transactions( hash );
+        auto hash = ClientBase::hashFromNumber( _blockNumber );
+        Transactions transactions = this->transactions( hash );
 
-    auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+        auto traceOptions = TraceOptions::make( _jsonTraceConfig );
 
-    // cache results for better peformance
-    string key = to_string( _blockNumber ) + traceOptions.toString();
+        // cache results for better peformance
+        string key = to_string( _blockNumber ) + traceOptions.toString();
 
-    auto cachedResult = m_blockTraceCache.getIfExists( key );
-    if ( cachedResult.has_value() ) {
-        return std::any_cast< Json::Value >( cachedResult );
+        auto cachedResult = m_blockTraceCache.getIfExists( key );
+        if ( cachedResult.has_value() ) {
+            return std::any_cast< Json::Value >( cachedResult );
+        }
+
+        for ( unsigned k = 0; k < transactions.size(); k++ ) {
+            Json::Value transactionLog( Json::objectValue );
+            Transaction tx = transactions.at( k );
+            auto hashString = toHexPrefixed( tx.sha3() );
+            transactionLog["txHash"] = hashString;
+            tx.checkOutExternalGas( chainParams().externalGasDifficulty );
+            auto tracer =
+                std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
+            auto executionResult =
+                previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
+            auto result = tracer->getJSONResult();
+            transactionLog["result"] = result;
+            traces.append( transactionLog );
+        }
+
+        auto tracesSize = traces.toStyledString().size();
+        m_blockTraceCache.put( key, traces, tracesSize );
+
+        return traces;
+    } catch ( std::exception& e ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Could not trace block:" + to_string( _blockNumber ) + ":" + e.what() ) );
     }
-
-    for ( unsigned k = 0; k < transactions.size(); k++ ) {
-        Json::Value transactionLog( Json::objectValue );
-        Transaction tx = transactions.at( k );
-        auto hashString = toHexPrefixed( tx.sha3() );
-        transactionLog["txHash"] = hashString;
-        tx.checkOutExternalGas( chainParams().externalGasDifficulty );
-        auto tracer =
-            std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
-        auto executionResult =
-            previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
-        auto result = tracer->getJSONResult();
-        transactionLog["result"] = result;
-        traces.append( transactionLog );
-    }
-
-    auto tracesSize = traces.toStyledString().size();
-    m_blockTraceCache.put( key, traces, tracesSize );
-
-    return traces;
 }
 
 #endif

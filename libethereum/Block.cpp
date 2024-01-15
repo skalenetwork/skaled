@@ -795,41 +795,53 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 #ifdef HISTORIC_STATE
 ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
     std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex ) {
-    auto onOp = OnOpFunc();
+    try {
+        auto onOp = OnOpFunc();
 
-    if ( _tracer ) {
-        onOp = _tracer->functionToExecuteOnEachOperation();
-    }
-
-
-    if ( isSealed() )
-        BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
-
-    // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
-    // transaction as possible.
-    uncommitToSeal();
-
-    u256 const gasUsed =
-        _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
-
-    EnvInfo const envInfo{ info(), _lh, gasUsed, m_sealEngine->chainParams().chainID };
-
-    if ( _tracer ) {
-        HistoricState stateBefore( m_state.mutableHistoricState() );
-        auto resultReceipt = m_state.mutableHistoricState().execute(
-            envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
-        HistoricState stateAfter( m_state.mutableHistoricState() );
-        try {
-            _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
-        } catch ( std::exception& e ) {
-            throw dev::eth::VMTracingError( "Exception doing trace for transaction index:" +
-                                            std::to_string( _transactionIndex ) + ":" + e.what() );
+        if ( _tracer ) {
+            onOp = _tracer->functionToExecuteOnEachOperation();
         }
-        return resultReceipt.first;
-    } else {
-        auto resultReceipt = m_state.mutableHistoricState().execute(
-            envInfo, *m_sealEngine, _t, skale::Permanence::Reverted, onOp );
-        return resultReceipt.first;
+
+
+        if ( isSealed() )
+            BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
+
+        // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
+        // transaction as possible.
+        uncommitToSeal();
+
+        u256 const gasUsed =
+            _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
+
+        EnvInfo const envInfo{ info(), _lh, gasUsed, m_sealEngine->chainParams().chainID };
+
+        if ( _tracer ) {
+            try {
+                HistoricState stateBefore( m_state.mutableHistoricState() );
+
+                auto resultReceipt = m_state.mutableHistoricState().execute(
+                    envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
+                HistoricState stateAfter( m_state.mutableHistoricState() );
+                _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
+                return resultReceipt.first;
+            } catch ( std::exception& e ) {
+                throw dev::eth::VMTracingError( "Exception doing trace for transaction index:" +
+                                                std::to_string( _transactionIndex ) + ":" +
+                                                e.what() );
+            }
+        } else {
+            auto resultReceipt = m_state.mutableHistoricState().execute(
+                envInfo, *m_sealEngine, _t, skale::Permanence::Reverted, onOp );
+            return resultReceipt.first;
+        }
+    } catch ( std::exception& e ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Could not execute historic call for transactionIndex:" +
+                                to_string( _transactionIndex ) + ":" + e.what() ) );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Could not execute historic call for transactionIndex:" +
+                                to_string( _transactionIndex ) + ": unknown error" ) );
     }
 }
 #endif
