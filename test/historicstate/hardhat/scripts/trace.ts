@@ -389,6 +389,31 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
     await expect(foundDiffs).to.be.eq(false)
 }
 
+async function verifyDefaultTransferTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " +  _fileName);
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+            foundDiffs = true;
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
@@ -566,6 +591,7 @@ async function main(): Promise<void> {
     }
 
 
+    await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_FILE_NAME)
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
@@ -574,6 +600,7 @@ async function main(): Promise<void> {
     await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
+
 
 }
 
