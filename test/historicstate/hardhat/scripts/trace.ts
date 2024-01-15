@@ -138,21 +138,16 @@ function CHECK(result: any): void {
 
 }
 
-async function getAndPrintBlockTrace(blockNumber: number): Promise<String> {
+async function getBlockTrace(blockNumber: number): Promise<String> {
 
     const blockStr = "0x" + blockNumber.toString(16);
     const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
 
-    console.log(JSON.stringify(trace, null, 4));
+   0// console.log(JSON.stringify(trace, null, 4));
     return trace;
 }
 
-async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<String> {
-//    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"prestateTracer",
-//        "tracerConfig": {"diffMode":true}}]);
-
-//    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
-//        "tracerConfig": {"withLog":true}}]);
+async function getAndPrintTransactionTrace(hash: string, _skaleFileName: string): Promise<String> {
 
     console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
 
@@ -181,9 +176,9 @@ async function deployTestContract(): Promise<object> {
 
     // await waitUntilNextBlock()
 
-    //await getAndPrintBlockTrace(deployBlockNumber);
-    //await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash, TEST_CONTRACT_DEPLOY_FILE_NAME);
+    //await getBlockTrace(deployBlockNumber);
+    //await getBlockTrace(deployBlockNumber);
+    await getAndPrintTransactionTrace(hash, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
@@ -240,11 +235,9 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
         nonce: currentNonce + 1,
     });
 
-    //await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    //await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    //
 
-    await getAndPrintTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
+    await getAndPrintTransactionTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
+    await getBlockTrace(transferReceipt.blockNumber);
 
 }
 
