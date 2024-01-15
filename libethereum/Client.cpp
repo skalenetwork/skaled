@@ -1377,7 +1377,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
             transactionLog["txHash"] = hashString;
             tx.checkOutExternalGas( chainParams().externalGasDifficulty );
             auto tracer =
-                std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
+                std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions);
             auto executionResult =
                 previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
             auto result = tracer->getJSONResult();

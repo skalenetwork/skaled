@@ -806,9 +806,9 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
         if ( isSealed() )
             BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
-        // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
-        // transaction as possible.
         uncommitToSeal();
+
+        STATE_CHECK( _transactionIndex <= m_receipts.size() )
 
         u256 const gasUsed =
             _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
@@ -823,6 +823,9 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
                     envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
                 HistoricState stateAfter( m_state.mutableHistoricState() );
                 _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, stateAfter );
+                // for tracing the entire block is traced therefore, we save transaction receipt
+                // as it is used for execution of the next transaction
+                m_receipts.push_back( resultReceipt.second );
                 return resultReceipt.first;
             } catch ( std::exception& e ) {
                 throw dev::eth::VMTracingError( "Exception doing trace for transaction index:" +
