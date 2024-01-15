@@ -42,6 +42,7 @@ async function getTraceJsonOptions(_tracer: string): Promise<object> {
 
 const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
 const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_TRANSFER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
 const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
@@ -149,7 +150,7 @@ async function getBlockTrace(blockNumber: number): Promise<String> {
 
 async function getAndPrintTransactionTrace(hash: string, _skaleFileName: string): Promise<String> {
 
-    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
+    console.log("Calling debug_traceTransaction to generate " + _skaleFileName + " for tx " + hash);
 
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
 
@@ -215,12 +216,43 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
 
     // Send the transaction and wait until it is submitted ot the queue
     const txResponse = signer.sendTransaction(tx);
-    //await txResponse.wait();
+
+    if (hre.network.name == "geth")  {
+        await txResponse;
+    }
 
     console.log(`Submitted a tx to send 0.1 ETH to ${newWallet.address}`);
 
     return currentNonce;
 }
+
+async function sendMoneyWithConfirmation() : Promise<string>  {
+    // Generate a new wallet
+    const newWallet = generateNewWallet();
+
+    await sleep(3000);  // Sleep for 1000 milliseconds (1 second)
+
+    // Get the first signer from Hardhat's local network
+    const [signer] = await hre.ethers.getSigners();
+
+    const currentNonce = await signer.getTransactionCount();
+
+    // Define the transaction
+    const tx = {
+        to: newWallet.address,
+        value: hre.ethers.utils.parseEther("0.1"),
+    };
+
+    // Send the transaction and wait until it is submitted ot the queue
+    const txResponse = await signer.sendTransaction(tx);
+    const txReceipt = await txResponse.wait();
+
+    console.log(`Submitted a tx to send 0.1 ETH to ${newWallet.address}`);
+
+    return txReceipt.transactionHash!;
+}
+
+
 
 async function callTestContractRun(deployedContract: any): Promise<void> {
 
@@ -236,6 +268,10 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
 
     await getAndPrintTransactionTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
     await getBlockTrace(transferReceipt.blockNumber);
+
+    const transferHash : string = await sendMoneyWithConfirmation();
+    await getAndPrintTransactionTrace(transferHash, TEST_TRANSFER_FILE_NAME);
+
 
 }
 
