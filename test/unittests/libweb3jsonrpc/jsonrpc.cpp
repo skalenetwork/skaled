@@ -3099,15 +3099,36 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
 #ifdef HISTORIC_STATE
     // 3 check that historic node sees only 3 txns
 
+    string explicitNumberStr = to_string(fixture.client->number());
+
     // 1 Block
     Json::Value block = fixture.rpcClient->eth_getBlockByNumber("latest", "false");
+
+    string bh = block["hash"].asString();
+
+    // 2 transaction count
+    Json::Value cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber("latest");
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+    cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber(explicitNumberStr);
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+    cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+
 
     BOOST_REQUIRE_EQUAL(block["transactions"].size(), 3);
     BOOST_REQUIRE_EQUAL(block["transactions"][0]["transactionIndex"], "0x0");
     BOOST_REQUIRE_EQUAL(block["transactions"][1]["transactionIndex"], "0x1");
     BOOST_REQUIRE_EQUAL(block["transactions"][2]["transactionIndex"], "0x2");
 
-    // 2 receipts
+    // same with explicit number
+    block = fixture.rpcClient->eth_getBlockByNumber(explicitNumberStr, "false");
+
+    BOOST_REQUIRE_EQUAL(block["transactions"].size(), 3);
+    BOOST_REQUIRE_EQUAL(block["transactions"][0]["transactionIndex"], "0x0");
+    BOOST_REQUIRE_EQUAL(block["transactions"][1]["transactionIndex"], "0x1");
+    BOOST_REQUIRE_EQUAL(block["transactions"][2]["transactionIndex"], "0x2");
+
+    // 3 receipts
     Json::Value r1,r3,r4;
     BOOST_REQUIRE_NO_THROW(r1 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h1)));
     BOOST_REQUIRE_THROW   (fixture.rpcClient->eth_getTransactionReceipt(toJS(h2)), jsonrpc::JsonRpcException);
@@ -3118,16 +3139,24 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL(r3["transactionIndex"], "0x1");
     BOOST_REQUIRE_EQUAL(r4["transactionIndex"], "0x2");
 
-    // 3 transaction by index
+    // 4 transaction by index
     Json::Value t0 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "0");
     Json::Value t1 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "1");
     Json::Value t2 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "2");
-
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t0["hash"].asString()), h1);
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
 
-    string bh = r1["blockHash"].asString();
+    // same with explicit block number
+
+    t0 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(explicitNumberStr, "0");
+    t1 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(explicitNumberStr, "1");
+    t2 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(explicitNumberStr, "2");
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t0["hash"].asString()), h1);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
+
+    BOOST_REQUIRE_EQUAL(bh, r1["blockHash"].asString());
 
     t0 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "0");
     t1 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "1");
@@ -3137,14 +3166,8 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
 
-    // 4 transaction by hash
+    // 5 transaction by hash
     BOOST_REQUIRE_THROW   (fixture.rpcClient->eth_getTransactionByHash(toJS(h2)), jsonrpc::JsonRpcException);
-
-    // 5 transaction count
-    Json::Value cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber("latest");
-    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
-    cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
-    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
 
     // send it successfully
 
