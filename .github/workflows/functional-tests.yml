@@ -92,6 +92,7 @@
           skaled_providers
           !skaled_providers/**/skaled
           /tmp/tmp*
+          /tmp/*.log
           *.log
           ./integration_tests/skaled/internals/third_party/skale-node-tests/btrfs
           !**/.env
