@@ -122,7 +122,6 @@ jobs:
           ccache --show-stats
       - name: Build dependencies
         run: |
-          
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export CC=gcc-9
           export CXX=g++-9
@@ -134,6 +133,7 @@ jobs:
           rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
           cd ..
+
       - name: Configure all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
@@ -282,7 +282,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.info
-    
+
       - name: Configure all as historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
@@ -310,3 +310,9 @@ jobs:
       - name: Print ccache stats after full historic build
         run : |
           ccache --show-stats
+      - name: Testeth historic
+        run : |
+          cd build/test
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1
+          ./testeth -t JsonRpcSuite -- --express --verbosity 4
