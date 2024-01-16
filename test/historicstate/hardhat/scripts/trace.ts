@@ -599,6 +599,7 @@ async function main(): Promise<void> {
 
 
     await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME)
+    await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME)
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
