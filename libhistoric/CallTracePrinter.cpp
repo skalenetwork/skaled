@@ -36,7 +36,6 @@ void CallTracePrinter::print(
     if ( !topFunctionCallRecord ) {
         // no bytecodes were executed
         printTransferTrace( _jsonTrace );
-        return;
     } else {
         topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
     }
