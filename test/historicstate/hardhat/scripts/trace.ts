@@ -228,7 +228,7 @@ async function sendMoneyWithConfirmation(): Promise<string> {
 
     // Define the transaction
     const tx = {
-        to: newWallet.address,
+        to: "0x388C818CA8B9251b393131C08a736A67ccB19297",
         value: hre.ethers.utils.parseEther("0.1"),
     };
 
