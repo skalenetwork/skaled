@@ -445,24 +445,17 @@ void SnapshotManager::computeDatabaseHash(
         BOOST_THROW_EXCEPTION( InvalidPath( _dbDir ) );
     }
 
-    std::array< std::string, 17 > lexographicKeysSegments = { std::string( 1, char( 0 ) ),
-        std::string( 1, char( 16 ) ), std::string( 1, char( 32 ) ), std::string( 1, char( 48 ) ),
-        std::string( 1, char( 64 ) ), std::string( 1, char( 80 ) ), std::string( 1, char( 96 ) ),
-        std::string( 1, char( 112 ) ), std::string( 1, char( 128 ) ), std::string( 1, char( 144 ) ),
-        std::string( 1, char( 160 ) ), std::string( 1, char( 176 ) ), std::string( 1, char( 192 ) ),
-        std::string( 1, char( 208 ) ), std::string( 1, char( 224 ) ), std::string( 1, char( 240 ) ),
-        std::string( 1000, char( 255 ) ) };
-
     secp256k1_sha256_t dbCtx;
     secp256k1_sha256_initialize( &dbCtx );
 
-    for ( size_t i = 0; i < lexographicKeysSegments.size() - 1; ++i ) {
+    std::string finishKey = "start";
+
+    while ( finishKey != "stop" ) {
         std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
             dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
             dev::db::LevelDB::defaultSnapshotDBOptions() ) );
 
-        m_db->hashBasePartially(
-            &dbCtx, lexographicKeysSegments[i], lexographicKeysSegments[i + 1] );
+        m_db->hashBasePartially( &dbCtx, finishKey );
     }
 
     dev::h256 dbHash;

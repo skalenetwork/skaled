@@ -62,7 +62,7 @@ public:
     h256 hashBaseWithPrefix( char _prefix ) const;
 
     void hashBasePartially(
-        secp256k1_sha256_t* ctx, const std::string& start, const std::string& finish ) const;
+        secp256k1_sha256_t* ctx, std::string& lastHashedKey, size_t batchSize = 10000 ) const;
 
     void doCompaction() const;
 

@@ -282,13 +282,18 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
 }
 
 void LevelDB::hashBasePartially(
-    secp256k1_sha256_t* ctx, const std::string& start, const std::string& finish ) const {
+    secp256k1_sha256_t* ctx, std::string& lastHashedKey, size_t batchSize ) const {
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
 
-    for ( it->Seek( start ); it->Valid() && it->key().ToString() < finish; it->Next() ) {
+    if ( lastHashedKey != "start" )
+        it->Seek( lastHashedKey );
+    else
+        it->SeekToFirst();
+
+    for ( size_t counter = 0; it->Valid() && counter < batchSize; it->Next() ) {
         std::string key_ = it->key().ToString();
         std::string value_ = it->value().ToString();
         // HACK! For backward compatibility! When snapshot could happen between update of two nodes
@@ -300,7 +305,13 @@ void LevelDB::hashBasePartially(
         const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
         bytesConstRef strKeyValue( usc.data(), usc.size() );
         secp256k1_sha256_write( ctx, strKeyValue.data(), strKeyValue.size() );
+        ++counter;
     }
+
+    if ( it->Valid() )
+        lastHashedKey = it->key().ToString();
+    else
+        lastHashedKey = "stop";
 }
 
 void LevelDB::doCompaction() const {
