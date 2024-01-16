@@ -164,6 +164,8 @@ Json::Value Debug::debug_traceTransaction( string const&
 
     auto blockNumber = localisedTransaction.blockNumber();
 
+
+
     if ( !m_eth.isKnown( blockNumber ) ) {
         THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + to_string( blockNumber ) );
     }
@@ -174,6 +176,7 @@ Json::Value Debug::debug_traceTransaction( string const&
 
     try {
         Json::Value tracedBlock;
+
         tracedBlock = m_eth.traceBlock( blockNumber, _jsonTraceConfig );
         STATE_CHECK( tracedBlock.isArray() )
         STATE_CHECK( !tracedBlock.empty() )

@@ -34,16 +34,39 @@ void CallTracePrinter::print(
 
     auto topFunctionCallRecord = m_trace.getTopFunctionCall();
     if ( !topFunctionCallRecord ) {
-        // no bytecodes were executed, this was purely ETH transfer
-        // print nothing
+        // no bytecodes were executed
+        printTransferTrace( _jsonTrace );
         return;
+    } else {
+        topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
     }
-
-    topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
 }
 
 CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )
     : TracePrinter( _standardTrace, "callTrace" ) {}
+
+
+void CallTracePrinter::printTransferTrace( Json::Value& _jsonTrace ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+
+    _jsonTrace["type"] = "CALL";
+    _jsonTrace["from"] = toHexPrefixed( m_trace.getFrom() );
+    _jsonTrace["to"] = toHexPrefixed( m_trace.getTo() );
+
+    _jsonTrace["gas"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getGasLimit() );
+    _jsonTrace["gasUsed"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getTotalGasUsed() );
+
+
+    _jsonTrace["value"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getValue() );
+
+    _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
+}
+
+
 }  // namespace dev::eth
+
 
 #endif

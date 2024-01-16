@@ -90,8 +90,14 @@ public:
     [[nodiscard]] const u256& getOriginalFromBalance() const;
     [[nodiscard]] bool isCall() const;
     [[nodiscard]] const Address& getFrom() const;
+    [[nodiscard]] uint64_t getTotalGasUsed() const;
+    [[nodiscard]] const u256& getGasLimit() const;
+    [[nodiscard]] const u256& getValue() const;
+    [[nodiscard]] const bytes& getInputData() const;
+    [[nodiscard]] const Address& getTo() const;
 
     static string toGethCompatibleCompactHexPrefixed( const u256& _value );
+
 
 private:
     void setCurrentlyExecutingFunctionCall(
@@ -154,6 +160,7 @@ private:
     // std::map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
     std::map< Address, std::map< dev::u256, dev::u256 > > m_accessedStorageValues;
+
     OpExecutionRecord m_lastOpRecord;
     std::atomic< bool > m_isFinalized = false;
     NoopTracePrinter m_noopTracePrinter;
@@ -169,6 +176,11 @@ private:
     u256 m_minerPayment;
     u256 m_originalFromBalance;
     bool m_isCall;
+    uint64_t m_totalGasUsed;
+    u256 m_value;
+    u256 m_gasLimit;
+    bytes m_inputData;
+
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 };

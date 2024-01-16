@@ -149,17 +149,7 @@ async function getBlockTrace(blockNumber: number): Promise<String> {
     return trace;
 }
 
-async function getAndPrintTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
 
-    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
-
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
-
-    const result = JSON.stringify(trace, null, 4);
-    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
-
-    return trace;
-}
 
 async function deployTestContract(): Promise<object> {
 
@@ -176,7 +166,7 @@ async function deployTestContract(): Promise<object> {
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
-    await getAndPrintTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
@@ -252,7 +242,7 @@ async function sendMoneyWithConfirmation(): Promise<string> {
 }
 
 
-async function callTestContractRun(deployedContract: any): Promise<void> {
+async function callTestContractRun(deployedContract: any): Promise<string> {
 
     let currentNonce: int = await sendMoneyWithoutConfirmation();
 
@@ -264,11 +254,13 @@ async function callTestContractRun(deployedContract: any): Promise<void> {
     expect(transferReceipt.blockNumber).not.to.be.null;
 
 
-    await getAndPrintTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_RUN_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_RUN_FILE_NAME);
     await getBlockTrace(transferReceipt.blockNumber);
 
     const transferHash: string = await sendMoneyWithConfirmation();
-    await getAndPrintTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+
+    return transferHash;
+
 
 
 }
@@ -318,6 +310,20 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
 }
 
+
+async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
+
+    let traceOptions = await getTraceJsonOptions(_tracer);
+
+    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
+
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+
+    const result = JSON.stringify(trace, null, 4);
+    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
+
+    return trace;
+}
 
 async function readJSONFile(fileName: string): Promise<object> {
     return new Promise((resolve, reject) => {
@@ -572,7 +578,14 @@ async function main(): Promise<void> {
     let deployedContract = await deployTestContract();
 
 
-    await callTestContractRun(deployedContract);
+    const transferHash : string  = await callTestContractRun(deployedContract);
+
+    await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
+    await sleep(1000000);
+    await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+
+
+
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, FOUR_BYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);

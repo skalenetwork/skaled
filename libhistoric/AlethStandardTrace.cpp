@@ -216,6 +216,9 @@ Json::Value AlethStandardTrace::getJSONResult() const {
     STATE_CHECK( !m_jsonTrace.isNull() )
     return m_jsonTrace;
 }
+uint64_t AlethStandardTrace::getTotalGasUsed() const {
+    return m_totalGasUsed;
+}
 
 AlethStandardTrace::AlethStandardTrace(
     Transaction& _t, const Address& _blockAuthor, const TraceOptions& _options, bool _isCall )
@@ -246,10 +249,19 @@ AlethStandardTrace::AlethStandardTrace(
           { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
           { TraceType::NOOP_TRACER, m_noopTracePrinter } },
       m_blockAuthor( _blockAuthor ),
-      m_isCall( _isCall ) {
+      m_isCall( _isCall ),
+      m_value(_t.value()),
+      m_gasLimit(_t.gas()),
+      m_inputData(_t.data())
+{
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
+
+
+}
+const u256& AlethStandardTrace::getGasLimit() const {
+    return m_gasLimit;
 }
 void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
     STATE_CHECK( !m_isFinalized )
@@ -369,7 +381,8 @@ string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _valu
 // to print the resulting trace to json
 void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
-    auto totalGasUsed = ( uint64_t ) _er.gasUsed;
+    m_totalGasUsed = ( uint64_t ) _er.gasUsed;
+
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
@@ -377,7 +390,7 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     // if transaction is not just ETH transfer
     // record return of the top function.
     if ( getTopFunctionCall() ) {
-        recordFunctionReturned( statusCode, _er.output, totalGasUsed );
+        recordFunctionReturned( statusCode, _er.output, m_totalGasUsed );
     }
     // we are done. Set the trace to finalized
     STATE_CHECK( !m_isFinalized.exchange( true ) )
@@ -464,6 +477,17 @@ bool AlethStandardTrace::isCall() const {
 }
 const u256& AlethStandardTrace::getOriginalFromBalance() const {
     return m_originalFromBalance;
+}
+
+
+const bytes& AlethStandardTrace::getInputData() const {
+    return m_inputData;
+}
+const u256& AlethStandardTrace::getValue() const {
+    return m_value;
+}
+const Address& AlethStandardTrace::getTo() const {
+    return m_to;
 }
 }  // namespace dev::eth
 
