@@ -154,7 +154,6 @@ Json::Value Debug::debug_traceTransaction( string const&
 #ifdef HISTORIC_STATE
     auto txHash = h256( _txHashStr );
 
-
     LocalisedTransaction localisedTransaction = m_eth.localisedTransaction( txHash );
 
     if ( localisedTransaction.blockHash() == h256( 0 ) ) {

@@ -1363,6 +1363,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         auto cachedResult = m_blockTraceCache.getIfExists( key );
         if ( cachedResult.has_value() ) {
             return std::any_cast< Json::Value >( cachedResult );
+            cerr << "match !!!" << endl;
         }
 
         for ( unsigned k = 0; k < transactions.size(); k++ ) {
