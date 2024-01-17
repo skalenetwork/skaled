@@ -40,11 +40,7 @@ void PrestateTracePrinter::printPre( Json::Value& _jsonTrace, const HistoricStat
         printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
     };
 
-
-    if ( !m_trace.isCall() )
-        return;
-
-    // when in call trace geth always prints the balance of block miner balance
+    // geth always prints the balance of block miner balance
 
     auto minerAddress = m_trace.getBlockAuthor();
     auto minerBalance = _statePre.balance( minerAddress );
@@ -56,6 +52,7 @@ void PrestateTracePrinter::printPre( Json::Value& _jsonTrace, const HistoricStat
 
     _jsonTrace[toHexPrefixed( minerAddress )]["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalance );
+    std::cerr << _jsonTrace << "!!!" << std::endl;
 }
 
 
