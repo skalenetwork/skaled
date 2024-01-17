@@ -166,55 +166,57 @@ jobs:
           ccache --show-stats
       - name: Testeth verbosity 1
         run : |
+          mkdir -p /tmp/tests/
+          rm -rf /tmp/tests/*
           #first run with verbosity 1. If test fails, rerun with verbosity 4
           cd build/test
           export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1          
+          export NO_ULIMIT_CHECK=1
           # we specifically run each test for easier log review          
-          ./testeth -t BlockchainTests -- --express && touch /tmp/BlockchainTestsPassed
-          ./testeth -t TransitionTests  -- --express && touch /tmp/TransitionTestsPassed
-          ./testeth -t TransactionTests -- --express && touch /tmp/TransactionTestsPassed
-          ./testeth -t VMTests -- --express && touch /tmp/VMTestsPassed
-          ./testeth -t LevelDBTests -- --express && touch /tmp/LevelDBTestsPassed
-          ./testeth -t CoreLibTests -- --express && touch /tmp/CoreLibTestsPassed
-          ./testeth -t RlpTests -- --express && touch /tmp/RlpTestsPassed
-          ./testeth -t SharedSpaceTests -- --express && touch /tmp/SharedSpaceTestsPassed
-          ./testeth -t EthashTests -- --express && touch /tmp/EthashTestsPassed
-          ./testeth -t SealEngineTests -- --express && touch /tmp/SealEngineTestsPassed
-          ./testeth -t DifficultyTests -- --express && touch /tmp/DifficultyTestsPassed
-          ./testeth -t BlockSuite -- --express && touch /tmp/BlockSuitePassed
-          ./testeth -t BlockChainMainNetworkSuite -- --express && touch /tmp/BlockChainMainNetworkSuitePassed
-          ./testeth -t BlockChainFrontierSuite -- --express && touch /tmp/BlockChainFrontierSuitePassed
-          ./testeth -t BlockQueueSuite -- --express && touch /tmp/BlockQueueSuitePassed
-          ./testeth -t ClientBase -- --express && touch /tmp/ClientBasePassed
-          ./testeth -t EstimateGas -- --express && touch /tmp/EstimateGasPassed
-          ./testeth -t getHistoricNodesData -- --express && touch /tmp/getHistoricNodesDataPassed
-          ./testeth -t ExtVmSuite -- --express && touch /tmp/ExtVmSuitePassed
-          ./testeth -t GasPricer -- --express && touch /tmp/GasPricerPassed
-          ./testeth -t BasicTests -- --express && touch /tmp/BasicTestsPassed
-          ./testeth -t InstanceMonitorSuite -- --express && touch /tmp/InstanceMonitorSuitePassed
-          ./testeth -t PrecompiledTests -- --express && touch /tmp/PrecompiledTestsPassed
-          ./testeth -t SkaleHostSuite -- --express && touch /tmp/SkaleHostSuitePassed
-          ./testeth -t StateUnitTests -- --express && touch /tmp/StateUnitTestsPassed
-          ./testeth -t libethereum -- --express && touch /tmp/libethereumPassed
-          ./testeth -t TransactionQueueSuite -- --express && touch /tmp/TransactionQueueSuitePassed
-          ./testeth -t LegacyVMSuite -- --express && touch /tmp/LegacyVMSuitePassed
-          ./testeth -t SkaleInterpreterSuite -- --express && touch /tmp/SkaleInterpreterSuitePassed
-          ./testeth -t SnapshotSigningTestSuite -- --express && touch /tmp/SnapshotSigningTestSuitePassed
-          ./testeth -t SkUtils -- --express && touch /tmp/SkUtilsPassed
-          ./testeth -t BlockChainTestSuite -- --express && touch /tmp/BlockChainTestSuitePassed
-          ./testeth -t TestHelperSuite -- --express && touch /tmp/TestHelperSuitePassed
-          ./testeth -t LevelDBHashBase -- --express && touch /tmp/LevelDBHashBasePassed
-          ./testeth -t memDB -- --express && touch /tmp/memDBPassed
-          ./testeth -t OverlayDBTests -- --express && touch /tmp/OverlayDBTestsPassed
-          ./testeth -t AccountHolderTest -- --express && touch /tmp/AccountHolderTestPassed
-          ./testeth -t ClientTests -- --express && touch /tmp/ClientTestsPassed
-          ./testeth -t JsonRpcSuite  -- --express && touch /tmp/JsonRpcSuitePassed 
-          ./testeth -t SingleConsensusTests  -- --express && touch /tmp/SingleConsensusTestsPassed
-          ./testeth -t ConsensusTests  -- --express && touch /tmp/ConsensusTestsPassed
-          sudo ./testeth -t BtrfsTestSuite -- --all && touch /tmp/BtrfsTestSuitePassed
-          sudo ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/HashSnapshotTestSuitePassed
-          sudo ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/ClientSnapshotsSuitePassed
+          ./testeth -t BlockchainTests -- --express && touch /tmp/tests/BlockchainTestsPassed
+          ./testeth -t TransitionTests  -- --express && touch /tmp/tests/TransitionTestsPassed
+          ./testeth -t TransactionTests -- --express && touch /tmp/tests/TransactionTestsPassed
+          ./testeth -t VMTests -- --express && touch /tmp/tests/VMTestsPassed
+          ./testeth -t LevelDBTests -- --express && touch /tmp/tests/LevelDBTestsPassed
+          ./testeth -t CoreLibTests -- --express && touch /tmp/tests/CoreLibTestsPassed
+          ./testeth -t RlpTests -- --express && touch /tmp/tests/RlpTestsPassed
+          ./testeth -t SharedSpaceTests -- --express && touch /tmp/tests/SharedSpaceTestsPassed
+          ./testeth -t EthashTests -- --express && touch /tmp/tests/EthashTestsPassed
+          ./testeth -t SealEngineTests -- --express && touch /tmp/tests/SealEngineTestsPassed
+          ./testeth -t DifficultyTests -- --express && touch /tmp/tests/DifficultyTestsPassed
+          ./testeth -t BlockSuite -- --express && touch /tmp/tests/BlockSuitePassed
+          ./testeth -t BlockChainMainNetworkSuite -- --express && touch /tmp/tests/BlockChainMainNetworkSuitePassed
+          ./testeth -t BlockChainFrontierSuite -- --express && touch /tmp/tests/BlockChainFrontierSuitePassed
+          ./testeth -t BlockQueueSuite -- --express && touch /tmp/tests/BlockQueueSuitePassed
+          ./testeth -t ClientBase -- --express && touch /tmp/tests/ClientBasePassed
+          ./testeth -t EstimateGas -- --express && touch /tmp/tests/EstimateGasPassed
+          ./testeth -t getHistoricNodesData -- --express && touch /tmp/tests/getHistoricNodesDataPassed
+          ./testeth -t ExtVmSuite -- --express && touch /tmp/tests/ExtVmSuitePassed
+          ./testeth -t GasPricer -- --express && touch /tmp/tests/GasPricerPassed
+          ./testeth -t BasicTests -- --express && touch /tmp/tests/BasicTestsPassed
+          ./testeth -t InstanceMonitorSuite -- --express && touch /tmp/tests/InstanceMonitorSuitePassed
+          ./testeth -t PrecompiledTests -- --express && touch /tmp/tests/PrecompiledTestsPassed
+          ./testeth -t SkaleHostSuite -- --express && touch /tmp/tests/SkaleHostSuitePassed
+          ./testeth -t StateUnitTests -- --express && touch /tmp/tests/StateUnitTestsPassed
+          ./testeth -t libethereum -- --express && touch /tmp/tests/libethereumPassed
+          ./testeth -t TransactionQueueSuite -- --express && touch /tmp/tests/TransactionQueueSuitePassed
+          ./testeth -t LegacyVMSuite -- --express && touch /tmp/tests/LegacyVMSuitePassed
+          ./testeth -t SkaleInterpreterSuite -- --express && touch /tmp/tests/SkaleInterpreterSuitePassed
+          ./testeth -t SnapshotSigningTestSuite -- --express && touch /tmp/tests/SnapshotSigningTestSuitePassed
+          ./testeth -t SkUtils -- --express && touch /tmp/tests/SkUtilsPassed
+          ./testeth -t BlockChainTestSuite -- --express && touch /tmp/tests/BlockChainTestSuitePassed
+          ./testeth -t TestHelperSuite -- --express && touch /tmp/tests/TestHelperSuitePassed
+          ./testeth -t LevelDBHashBase -- --express && touch /tmp/tests/LevelDBHashBasePassed
+          ./testeth -t memDB -- --express && touch /tmp/tests/memDBPassed
+          ./testeth -t OverlayDBTests -- --express && touch /tmp/tests/OverlayDBTestsPassed
+          ./testeth -t AccountHolderTest -- --express && touch /tmp/tests/AccountHolderTestPassed
+          ./testeth -t ClientTests -- --express && touch /tmp/tests/ClientTestsPassed
+          ./testeth -t JsonRpcSuite  -- --express && touch /tmp/tests/JsonRpcSuitePassed 
+          ./testeth -t SingleConsensusTests  -- --express && touch /tmp/tests/SingleConsensusTestsPassed
+          ./testeth -t ConsensusTests  -- --express && touch /tmp/tests/ConsensusTestsPassed
+          sudo ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
+          sudo ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
+          sudo ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
           cd ..
       - name: Testeth verbosity 4
         run : |
@@ -222,50 +224,50 @@ jobs:
           cd build/test      
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
-          ls /tmp/BlockchainTestsPassed || ./testeth -t BlockchainTests -- --express --verbosity 4
-          ls /tmp/TransitionTestsPassed || ./testeth -t TransitionTests -- --express --verbosity 4
-          ls /tmp/TransactionTestsPassed || ./testeth -t TransactionTests -- --express --verbosity 4
-          ls /tmp/VMTestsPassed || ./testeth -t VMTests -- --express --verbosity 4
-          ls /tmp/LevelDBTestsPassed || ./testeth -t LevelDBTests -- --express --verbosity 4
-          ls /tmp/CoreLibTestsPassed || ./testeth -t CoreLibTests -- --express --verbosity 4
-          ls /tmp/RlpTestsPassed || ./testeth -t RlpTests -- --express --verbosity 4
-          ls /tmp/SharedSpaceTestsPassed || ./testeth -t SharedSpaceTests -- --express --verbosity 4
-          ls /tmp/EthashTestsPassed || ./testeth -t EthashTests -- --express --verbosity 4
-          ls /tmp/SealEngineTestsPassed || ./testeth -t SealEngineTests -- --express --verbosity 4
-          ls /tmp/DifficultyTestsPassed || ./testeth -t DifficultyTests -- --express --verbosity 4
-          ls /tmp/BlockSuitePassed || ./testeth -t BlockSuite -- --express --verbosity 4
-          ls /tmp/BlockChainMainNetworkSuitePassed || ./testeth -t BlockChainMainNetworkSuite -- --express --verbosity 4
-          ls /tmp/BlockChainFrontierSuitePassed || ./testeth -t BlockChainFrontierSuite -- --express --verbosity 4
-          ls /tmp/BlockQueueSuitePassed || ./testeth -t BlockQueueSuite -- --express --verbosity 4
-          ls /tmp/ClientBasePassed || ./testeth -t ClientBase -- --express --verbosity 4
-          ls /tmp/EstimateGasPassed || ./testeth -t EstimateGas -- --express --verbosity 4
-          ls /tmp/getHistoricNodesDataPassed || ./testeth -t getHistoricNodesData -- --express --verbosity 4
-          ls /tmp/ExtVmSuitePassed || ./testeth -t ExtVmSuite -- --express --verbosity 4
-          ls /tmp/GasPricerPassed || ./testeth -t GasPricer -- --express --verbosity 4
-          ls /tmp/BasicTestsPassed || ./testeth -t BasicTests -- --express --verbosity 4
-          ls /tmp/InstanceMonitorSuitePassed || ./testeth -t InstanceMonitorSuite -- --express --verbosity 4
-          ls /tmp/PrecompiledTestsPassed || ./testeth -t PrecompiledTests -- --express --verbosity 4
-          ls /tmp/SkaleHostSuitePassed || ./testeth -t SkaleHostSuite -- --express --verbosity 4
-          ls /tmp/StateUnitTestsPassed || ./testeth -t StateUnitTests -- --express --verbosity 4
-          ls /tmp/libethereumPassed || ./testeth -t libethereum -- --express --verbosity 4
-          ls /tmp/TransactionQueueSuitePassed || ./testeth -t TransactionQueueSuite -- --express --verbosity 4
-          ls /tmp/LegacyVMSuitePassed || ./testeth -t LegacyVMSuite -- --express --verbosity 4
-          ls /tmp/SkaleInterpreterSuitePassed || ./testeth -t SkaleInterpreterSuite -- --express --verbosity 4
-          ls /tmp/SnapshotSigningTestSuitePassed || ./testeth -t SnapshotSigningTestSuite -- --express --verbosity 4
-          ls /tmp/SkUtilsPassed || ./testeth -t SkUtils -- --express --verbosity 4
-          ls /tmp/BlockChainTestSuitePassed || ./testeth -t BlockChainTestSuite -- --express --verbosity 4
-          ls /tmp/TestHelperSuitePassed || ./testeth -t TestHelperSuite -- --express --verbosity 4
-          ls /tmp/LevelDBHashBasePassed || ./testeth -t LevelDBHashBase -- --express --verbosity 4
-          ls /tmp/memDBPassed || ./testeth -t memDB -- --express --verbosity 4
-          ls /tmp/OverlayDBTestsPassed || ./testeth -t OverlayDBTests -- --express --verbosity 4
-          ls /tmp/AccountHolderTestPassed || ./testeth -t AccountHolderTest -- --express --verbosity 4
-          ls /tmp/ClientTestsPassed || ./testeth -t ClientTests -- --express --verbosity 4
-          ls /tmp/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite  -- --express --verbosity 4 
-          ls /tmp/SingleConsensusTestsPassed || ./testeth -t SingleConsensusTests  -- --express --verbosity 4
-          ls /tmp/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4
-          ls /tmp/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          ls /tmp/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          ls /tmp/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+          ls /tmp/tests/BlockchainTestsPassed || ./testeth -t BlockchainTests -- --express --verbosity 4
+          ls /tmp/tests/TransitionTestsPassed || ./testeth -t TransitionTests -- --express --verbosity 4
+          ls /tmp/tests/TransactionTestsPassed || ./testeth -t TransactionTests -- --express --verbosity 4
+          ls /tmp/tests/VMTestsPassed || ./testeth -t VMTests -- --express --verbosity 4
+          ls /tmp/tests/LevelDBTestsPassed || ./testeth -t LevelDBTests -- --express --verbosity 4
+          ls /tmp/tests/CoreLibTestsPassed || ./testeth -t CoreLibTests -- --express --verbosity 4
+          ls /tmp/tests/RlpTestsPassed || ./testeth -t RlpTests -- --express --verbosity 4
+          ls /tmp/tests/SharedSpaceTestsPassed || ./testeth -t SharedSpaceTests -- --express --verbosity 4
+          ls /tmp/tests/EthashTestsPassed || ./testeth -t EthashTests -- --express --verbosity 4
+          ls /tmp/tests/SealEngineTestsPassed || ./testeth -t SealEngineTests -- --express --verbosity 4
+          ls /tmp/tests/DifficultyTestsPassed || ./testeth -t DifficultyTests -- --express --verbosity 4
+          ls /tmp/tests/BlockSuitePassed || ./testeth -t BlockSuite -- --express --verbosity 4
+          ls /tmp/tests/BlockChainMainNetworkSuitePassed || ./testeth -t BlockChainMainNetworkSuite -- --express --verbosity 4
+          ls /tmp/tests/BlockChainFrontierSuitePassed || ./testeth -t BlockChainFrontierSuite -- --express --verbosity 4
+          ls /tmp/tests/BlockQueueSuitePassed || ./testeth -t BlockQueueSuite -- --express --verbosity 4
+          ls /tmp/tests/ClientBasePassed || ./testeth -t ClientBase -- --express --verbosity 4
+          ls /tmp/tests/EstimateGasPassed || ./testeth -t EstimateGas -- --express --verbosity 4
+          ls /tmp/tests/getHistoricNodesDataPassed || ./testeth -t getHistoricNodesData -- --express --verbosity 4
+          ls /tmp/tests/ExtVmSuitePassed || ./testeth -t ExtVmSuite -- --express --verbosity 4
+          ls /tmp/tests/GasPricerPassed || ./testeth -t GasPricer -- --express --verbosity 4
+          ls /tmp/tests/BasicTestsPassed || ./testeth -t BasicTests -- --express --verbosity 4
+          ls /tmp/tests/InstanceMonitorSuitePassed || ./testeth -t InstanceMonitorSuite -- --express --verbosity 4
+          ls /tmp/tests/PrecompiledTestsPassed || ./testeth -t PrecompiledTests -- --express --verbosity 4
+          ls /tmp/tests/SkaleHostSuitePassed || ./testeth -t SkaleHostSuite -- --express --verbosity 4
+          ls /tmp/tests/StateUnitTestsPassed || ./testeth -t StateUnitTests -- --express --verbosity 4
+          ls /tmp/tests/libethereumPassed || ./testeth -t libethereum -- --express --verbosity 4
+          ls /tmp/tests/TransactionQueueSuitePassed || ./testeth -t TransactionQueueSuite -- --express --verbosity 4
+          ls /tmp/tests/LegacyVMSuitePassed || ./testeth -t LegacyVMSuite -- --express --verbosity 4
+          ls /tmp/tests/SkaleInterpreterSuitePassed || ./testeth -t SkaleInterpreterSuite -- --express --verbosity 4
+          ls /tmp/tests/SnapshotSigningTestSuitePassed || ./testeth -t SnapshotSigningTestSuite -- --express --verbosity 4
+          ls /tmp/tests/SkUtilsPassed || ./testeth -t SkUtils -- --express --verbosity 4
+          ls /tmp/tests/BlockChainTestSuitePassed || ./testeth -t BlockChainTestSuite -- --express --verbosity 4
+          ls /tmp/tests/TestHelperSuitePassed || ./testeth -t TestHelperSuite -- --express --verbosity 4
+          ls /tmp/tests/LevelDBHashBasePassed || ./testeth -t LevelDBHashBase -- --express --verbosity 4
+          ls /tmp/tests/memDBPassed || ./testeth -t memDB -- --express --verbosity 4
+          ls /tmp/tests/OverlayDBTestsPassed || ./testeth -t OverlayDBTests -- --express --verbosity 4
+          ls /tmp/tests/AccountHolderTestPassed || ./testeth -t AccountHolderTest -- --express --verbosity 4
+          ls /tmp/tests/ClientTestsPassed || ./testeth -t ClientTests -- --express --verbosity 4
+          ls /tmp/tests/JsonRpcSuitePassed || ./testeth -t JsonRpcSuite  -- --express --verbosity 4 
+          ls /tmp/tests/SingleConsensusTestsPassed || ./testeth -t SingleConsensusTests  -- --express --verbosity 4
+          ls /tmp/tests/ConsensusTestsPassed || ./testeth -t ConsensusTests  -- --express --verbosity 4
+          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
           
       - name: Create lcov report
