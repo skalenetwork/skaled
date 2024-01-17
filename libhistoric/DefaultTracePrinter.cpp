@@ -34,10 +34,10 @@ void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult&
     _jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
     auto defaultOpTrace = m_trace.getDefaultOpTrace();
     STATE_CHECK( defaultOpTrace );
-    if (defaultOpTrace->empty()) {
+    if ( defaultOpTrace->empty() ) {
         // make it compatible with geth in cases where
         // no contract was called so there is no trace
-        _jsonTrace["structLogs"] = Json::Value(Json::arrayValue);
+        _jsonTrace["structLogs"] = Json::Value( Json::arrayValue );
     } else {
         _jsonTrace["structLogs"] = *defaultOpTrace;
     }
