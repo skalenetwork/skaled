@@ -133,7 +133,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
         // not 0-timestamp genesis - to test patch
-        chainParams.timestamp = 1;
+        chainParams.timestamp = std::time( NULL ) - 5;
 
         if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;
