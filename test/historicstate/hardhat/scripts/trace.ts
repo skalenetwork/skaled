@@ -153,7 +153,6 @@ async function getBlockTrace(blockNumber: number): Promise<String> {
 }
 
 
-
 async function deployTestContract(): Promise<object> {
 
     console.log(`Deploying ` + TEST_CONTRACT_NAME);
@@ -263,7 +262,6 @@ async function callTestContractRun(deployedContract: any): Promise<string> {
     const transferHash: string = await sendMoneyWithConfirmation();
 
     return transferHash;
-
 
 
 }
@@ -396,7 +394,7 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
     await expect(foundDiffs).to.be.eq(false)
 }
 
-async function verifyDefaultTransferTraceAgainstGethTrace(_fileName: string) {
+async function verifyTransferTraceAgainstGethTrace(_fileName: string) {
 
     console.log("Verifying " + _fileName);
 
@@ -413,6 +411,37 @@ async function verifyDefaultTransferTraceAgainstGethTrace(_fileName: string) {
 
     if (differences) {
         differences.forEach((difference, index) => {
+            foundDiffs = true;
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+async function verifyPrestateTransferTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " + _fileName);
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+
+            if (difference.kind == "E" && difference.path!.length == 2) {
+                if (difference.path![1] == "balance" || difference.path![1] == "nonce") {
+                    return;
+                }
+            }
             foundDiffs = true;
         });
     }
@@ -581,12 +610,11 @@ async function main(): Promise<void> {
     let deployedContract = await deployTestContract();
 
 
-    const transferHash : string  = await callTestContractRun(deployedContract);
+    const transferHash: string = await callTestContractRun(deployedContract);
 
     await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(transferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
-
 
 
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
@@ -602,16 +630,18 @@ async function main(): Promise<void> {
     }
 
 
-    await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME)
-    await verifyDefaultTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME)
+    await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+    await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
+    await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
 
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME)
-    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
-    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
-    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
-    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
+
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
 
 
 }
