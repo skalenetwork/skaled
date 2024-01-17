@@ -66,6 +66,8 @@ using namespace dev::eth;
 #define CONSENSUS 1
 #endif
 
+const int SkaleHost::REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC = 600;
+
 std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
 #if CONSENSUS
@@ -325,6 +327,13 @@ void SkaleHost::logState() {
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
+    // drop incoming transactions if skaled has an outdated state
+    if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
+         std::time( NULL ) ) {
+        LOG( m_debugLogger ) << "Dropped the transaction received through broadcast";
+        return h256();
+    }
+
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
 
     h256 sha = transaction.sha3();
@@ -644,6 +653,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // TODO clear occasionally this cache?!
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
                 Transaction t = m_m_transaction_cache.at( sha.asArray() );
+                t.checkOutExternalGas( m_client.chainParams(), m_client.number(), true );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
@@ -657,7 +667,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // ).detach();
             } else {
                 Transaction t( data, CheckTransaction::Everything, true );
-                t.checkOutExternalGas( m_client.chainParams().externalGasDifficulty );
+                t.checkOutExternalGas( m_client.chainParams(), m_client.number() );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn";
                 m_debugTracer.tracepoint( "import_consensus_born" );

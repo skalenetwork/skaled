@@ -229,4 +229,8 @@ private:
     std::atomic_int total_sent, total_arrived;
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
+
+    // reject old transactions that come through broadcast
+    // if current ts is much bigger than currentBlock.ts
+    static const int REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC;
 };

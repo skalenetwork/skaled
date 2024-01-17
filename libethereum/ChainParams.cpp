@@ -280,6 +280,11 @@ ChainParams ChainParams::loadConfig(
                 sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
                 0;
 
+        s.correctForkInPowPatchTimestamp =
+            sChainObj.count( "correctForkInPowPatchTimestamp" ) ?
+                sChainObj.at( "correctForkInPowPatchTimestamp" ).get_int64() :
+                0;
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
