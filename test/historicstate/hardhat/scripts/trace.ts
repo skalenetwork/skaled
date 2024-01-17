@@ -450,6 +450,9 @@ async function verifyPrestateTransferTraceAgainstGethTrace(_fileName: string) {
                 }
             }
 
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+
             foundDiffs = true;
         });
     }
@@ -637,7 +640,6 @@ async function main(): Promise<void> {
     }
 
     await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
-
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
 

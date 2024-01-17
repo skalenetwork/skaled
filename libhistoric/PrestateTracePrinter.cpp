@@ -32,12 +32,13 @@ void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult
     if ( m_trace.getOptions().prestateDiffMode ) {
         printDiff( _jsonTrace, _er, _statePre, _statePost );
     } else {
-        printPre( _jsonTrace, _statePre );
+        printPre( _jsonTrace, _statePre, _statePost );
     }
 }
-void PrestateTracePrinter::printPre( Json::Value& _jsonTrace, const HistoricState& _statePre ) {
+void PrestateTracePrinter::printPre(
+    Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost ) {
     for ( auto&& item : m_trace.getAccessedAccounts() ) {
-        printAllAccessedAccountPreValues( _jsonTrace, _statePre, item );
+        printAllAccessedAccountPreValues( _jsonTrace, _statePre, _statePost, item );
     };
 
     // geth always prints the balance of block miner balance
@@ -74,8 +75,8 @@ void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionRe
 
 
 // this function returns original values (pre) to result
-void PrestateTracePrinter::printAllAccessedAccountPreValues(
-    Json::Value& _jsonTrace, const HistoricState& _statePre, const Address& _address ) {
+void PrestateTracePrinter::printAllAccessedAccountPreValues( Json::Value& _jsonTrace,
+    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
 
@@ -86,12 +87,22 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues(
 
     auto balance = _statePre.balance( _address );
 
+    // take into account that for calls balance is modified in the state before execution
     if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
-        // take into account that for calls balance is modified in the state before execution
         balance = m_trace.getOriginalFromBalance();
-    } else {
-        // geth does not print nonce for from address in debug_traceCall;
-        accountPreValues["nonce"] = ( uint64_t ) _statePre.getNonce( _address );
+    }
+
+
+    // geth does not print nonce for from address in debug_traceCall;
+    bool dontPrintNonce = m_trace.isCall() && _address == m_trace.getFrom();
+
+    if (!dontPrintNonce) {
+        auto preNonce = ( uint64_t ) _statePre.getNonce( _address );
+        auto postNonce = ( uint64_t ) _statePost.getNonce( _address );
+        // in calls nonce is always printed by geth
+        if (postNonce != preNonce || m_trace.isCall()) {
+            accountPreValues["nonce"] = preNonce;
+        }
     }
 
     accountPreValues["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
