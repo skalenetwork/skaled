@@ -36,8 +36,8 @@ public:
 
     void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
-private:
 
-    void printTransferTrace(Json::Value& _jsonTrace);
+private:
+    void printTransferTrace( Json::Value& _jsonTrace );
 };
 }  // namespace dev::eth
