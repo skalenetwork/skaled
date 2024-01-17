@@ -1,12 +1,12 @@
 {
     "0x0000000000000000000000000000000000000000": {
-        "balance": "0x3da9099"
+        "balance": "0x4170dc6"
     },
     "0x388c818ca8b9251b393131c08a736a67ccb19297": {
-        "balance": "0x429d069189e0000"
+        "balance": "0xde0b6b3a7640000"
     },
     "0x907cd0881e50d359bb9fd120b1a5a143b1c97de6": {
-        "balance": "0x35c984425bc240b1ec",
-        "nonce": 314
+        "balance": "0x35b61675c6a2944b57",
+        "nonce": 342
     }
 }

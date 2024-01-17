@@ -45,6 +45,7 @@ const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
 const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
 const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
+const TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateDiffTracer.json";
 
 
 const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
@@ -461,6 +462,48 @@ async function verifyPrestateTransferTraceAgainstGethTrace(_fileName: string) {
     await expect(foundDiffs).to.be.eq(false)
 }
 
+async function verifyPrestateDiffTransferTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " + _fileName);
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+
+            if (difference.kind == "E" && difference.path!.length == 3) {
+                if (difference.path![2] == "balance" || difference.path![2] == "nonce") {
+                    return;
+                }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 3) {
+                let address = difference.path![1];
+                if (address == ZERO_ADDRESS && difference.path![2] == "balance") {
+                    return;
+                }
+            }
+
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+
+            foundDiffs = true;
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
@@ -623,6 +666,8 @@ async function main(): Promise<void> {
 
     const transferHash: string = await callTestContractRun(deployedContract);
 
+    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(transferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
@@ -639,6 +684,7 @@ async function main(): Promise<void> {
         await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
     }
 
+    await verifyPrestateDiffTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
     await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
