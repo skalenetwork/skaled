@@ -417,6 +417,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "schainID": 1,
         "contractStorageLimit": 32000,
         "emptyBlockIntervalMs": -1,
+        "correctForkInPowPatchTimestamp": 1,
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
