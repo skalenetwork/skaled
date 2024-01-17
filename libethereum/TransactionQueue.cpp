@@ -537,14 +537,3 @@ void TransactionQueue::verifierBody() {
         MICROPROFILE_LEAVE();
     }
 }
-
-Transactions TransactionQueue::debugGetFutureTransactions() const {
-    Transactions res;
-    ReadGuard l( m_lock );
-    for ( auto addressAndMap : m_future ) {
-        for ( auto nonceAndTransaction : addressAndMap.second ) {
-            res.push_back( nonceAndTransaction.second.transaction );
-        }  // for nonce
-    }      // for address
-    return res;
-}

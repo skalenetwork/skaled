@@ -57,7 +57,7 @@ public:
     std::string eth_call( const Json::Value& param1, const std::string& param2 ) noexcept( false );
     std::string eth_callEIP1898( const Json::Value& param1, const Json::Value& param2 ) noexcept( false );
     bool eth_flush() noexcept( false );
-    std::string eth_estimateGas( const Json::Value& param1, const std::string& param2 = "" ) noexcept( false );
+    std::string eth_estimateGas( const Json::Value& param1, const std::string& param2 = "latest" ) noexcept( false );
     Json::Value eth_getBlockByHash( const std::string& param1, bool param2 ) noexcept( false );
     Json::Value eth_getBlockByNumber( const std::string& param1, bool param2 ) noexcept( false );
     Json::Value eth_getTransactionByHash( const std::string& param1 ) noexcept( false );
@@ -160,7 +160,6 @@ public:
         const Json::Value& param3 ) noexcept( false );
     Json::Value debug_doStateDbCompaction() noexcept( false );
     Json::Value debug_doBlocksDbCompaction() noexcept( false );
-    Json::Value debug_getFutureTransactions() noexcept( false );
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_
