@@ -43,17 +43,23 @@ void PrestateTracePrinter::printPre(
 
     // geth always prints the balance of block miner balance
 
+    Address minerAddress = m_trace.getBlockAuthor();
+    u256 minerBalance = getMinerBalancePre( _statePre );
+
+    _jsonTrace[toHexPrefixed( minerAddress )]["balance"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalance );
+}
+
+u256 PrestateTracePrinter::getMinerBalancePre( const HistoricState& _statePre ) const {
     auto minerAddress = m_trace.getBlockAuthor();
     auto minerBalance = _statePre.balance( minerAddress );
 
-    if ( minerAddress == m_trace.getFrom() ) {
+    if ( m_trace.isCall() && minerAddress == m_trace.getFrom() ) {
         // take into account that for calls balance is modified in the state before execution
         minerBalance = m_trace.getOriginalFromBalance();
     }
 
-    _jsonTrace[toHexPrefixed( minerAddress )]["balance"] =
-        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalance );
-    std::cerr << _jsonTrace << "!!!" << std::endl;
+    return minerBalance;
 }
 
 
@@ -96,11 +102,11 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues( Json::Value& _jsonT
     // geth does not print nonce for from address in debug_traceCall;
     bool dontPrintNonce = m_trace.isCall() && _address == m_trace.getFrom();
 
-    if (!dontPrintNonce) {
+    if ( !dontPrintNonce ) {
         auto preNonce = ( uint64_t ) _statePre.getNonce( _address );
         auto postNonce = ( uint64_t ) _statePost.getNonce( _address );
         // in calls nonce is always printed by geth
-        if (postNonce != preNonce || m_trace.isCall()) {
+        if ( postNonce != preNonce || m_trace.isCall() ) {
             accountPreValues["nonce"] = preNonce;
         }
     }
