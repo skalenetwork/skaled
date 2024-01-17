@@ -39,6 +39,7 @@ public:
     explicit PrestateTracePrinter( AlethStandardTrace& standardTrace );
 
     [[nodiscard]] u256 getMinerBalancePre( const HistoricState& _statePre ) const;
+    [[nodiscard]] u256 getMinerBalancePost( const HistoricState& _statePre ) const;
 
 private:
     void printDiff( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
@@ -59,5 +60,7 @@ private:
     void printPre(
         Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost );
 
+    void printMinerBalanceChange(
+        const HistoricState& _statePre, Json::Value& preDiff, Json::Value& postDiff ) const;
 };
 }  // namespace dev::eth

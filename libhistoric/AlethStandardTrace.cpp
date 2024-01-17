@@ -252,7 +252,8 @@ AlethStandardTrace::AlethStandardTrace(
       m_isCall( _isCall ),
       m_value(_t.value()),
       m_gasLimit(_t.gas()),
-      m_inputData(_t.data())
+      m_inputData(_t.data()),
+      m_gasPrice(_t.gasPrice())
 {
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
@@ -488,6 +489,9 @@ const u256& AlethStandardTrace::getValue() const {
 }
 const Address& AlethStandardTrace::getTo() const {
     return m_to;
+}
+const u256& AlethStandardTrace::getGasPrice() const {
+    return m_gasPrice;
 }
 }  // namespace dev::eth
 

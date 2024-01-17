@@ -176,10 +176,16 @@ private:
     u256 m_minerPayment;
     u256 m_originalFromBalance;
     bool m_isCall;
+
+public:
+    const u256& getGasPrice() const;
+
+private:
     uint64_t m_totalGasUsed;
     u256 m_value;
     u256 m_gasLimit;
     bytes m_inputData;
+    u256 m_gasPrice;
 
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );

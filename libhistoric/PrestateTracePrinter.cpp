@@ -45,21 +45,8 @@ void PrestateTracePrinter::printPre(
 
     Address minerAddress = m_trace.getBlockAuthor();
     u256 minerBalance = getMinerBalancePre( _statePre );
-
     _jsonTrace[toHexPrefixed( minerAddress )]["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalance );
-}
-
-u256 PrestateTracePrinter::getMinerBalancePre( const HistoricState& _statePre ) const {
-    auto minerAddress = m_trace.getBlockAuthor();
-    auto minerBalance = _statePre.balance( minerAddress );
-
-    if ( m_trace.isCall() && minerAddress == m_trace.getFrom() ) {
-        // take into account that for calls balance is modified in the state before execution
-        minerBalance = m_trace.getOriginalFromBalance();
-    }
-
-    return minerBalance;
 }
 
 
@@ -75,8 +62,28 @@ void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionRe
         printAccountPostDiff( postDiff, _statePre, _statePost, item );
     };
 
+
+    // now deal with miner balance change as a result of transaction
+    // geth always prints miner balance change when NOT in call
+    if ( !m_trace.isCall() ) {
+        printMinerBalanceChange( _statePre, preDiff, postDiff );
+    }
+
+    // we are done, complete the trace JSON
+
     _jsonTrace["pre"] = preDiff;
     _jsonTrace["post"] = postDiff;
+}
+void PrestateTracePrinter::printMinerBalanceChange(
+    const HistoricState& _statePre, Json::Value& preDiff, Json::Value& postDiff ) const {
+    Address minerAddress = m_trace.getBlockAuthor();
+    u256 minerBalancePre = getMinerBalancePre( _statePre );
+    u256 minerBalancePost = getMinerBalancePost( _statePre );
+
+    preDiff[toHexPrefixed( minerAddress )]["balance"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalancePre );
+    postDiff[toHexPrefixed( minerAddress )]["balance"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalancePost );
 }
 
 
@@ -289,6 +296,24 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
     : TracePrinter( standardTrace, "prestateTrace" ) {}
 
+
+u256 PrestateTracePrinter::getMinerBalancePre( const HistoricState& _statePre ) const {
+    auto minerAddress = m_trace.getBlockAuthor();
+    auto minerBalance = _statePre.balance( minerAddress );
+
+    if ( m_trace.isCall() && minerAddress == m_trace.getFrom() ) {
+        // take into account that for calls balance is modified in the state before execution
+        minerBalance = m_trace.getOriginalFromBalance();
+    }
+
+    return minerBalance;
+}
+
+u256 PrestateTracePrinter::getMinerBalancePost( const HistoricState& _statePre ) const {
+    auto minerBalance =
+        getMinerBalancePre( _statePre ) + m_trace.getTotalGasUsed() * m_trace.getGasPrice();
+    return minerBalance;
+}
 
 }  // namespace dev::eth
 
