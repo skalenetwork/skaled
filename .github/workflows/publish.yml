@@ -150,6 +150,7 @@ jobs:
           export VERSION=$(cat VERSION)
           export VERSION=$(bash ./scripts/calculate_version.sh $BRANCH $VERSION)
           echo "::set-env name=VERSION::$VERSION"
+          echo "::set-env name=VERSION_ORIG::$VERSION"
           echo "Version $VERSION"
           ( test $BRANCH = "stable" && export PRERELEASE=false ) || export PRERELEASE=true
           echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
@@ -191,6 +192,7 @@ jobs:
           echo "Branch $BRANCH"
           export VERSION=$VERSION-historic
           echo "::set-env name=VERSION::$VERSION"
+          echo "::set-env name=VERSION_HISTORIC::$VERSION"
           echo "Version $VERSION"
           export RELEASE=true
           echo "::set-env name=RELEASE::$RELEASE"
@@ -214,7 +216,8 @@ jobs:
           asset_name: skaled-debug-historic
           asset_content_type: application/octet-stream
     outputs:
-      version: ${{ env.VERSION }}
+      version_orig: ${{ env.VERSION_ORIG }}
+      version_historic: ${{ env.VERSION_HISTORIC }}
     
   functional-tests:
     uses: ./.github/workflows/functional-tests.yml
@@ -222,4 +225,12 @@ jobs:
     needs: [build]
     with:
       version: ${{ needs.build.outputs.version }}
+    secrets: inherit
+
+  functional-tests-historic:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for build
+    needs: [build]
+    with:
+      version: ${{ needs.build.outputs.version_orig }}
     secrets: inherit
