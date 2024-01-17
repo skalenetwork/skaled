@@ -49,7 +49,7 @@ public:
 
     [[nodiscard]] std::string toString() {
         std::stringstream s;
-        s << (uint64_t ) tracerType;
+        s << ( uint64_t ) tracerType;
         s << disableStorage;
         s << enableMemory;
         s << disableStack;

@@ -664,11 +664,7 @@ async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
-
     const transferHash: string = await callTestContractRun(deployedContract);
-
-
-
 
     await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);

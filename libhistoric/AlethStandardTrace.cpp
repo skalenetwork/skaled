@@ -250,16 +250,13 @@ AlethStandardTrace::AlethStandardTrace(
           { TraceType::NOOP_TRACER, m_noopTracePrinter } },
       m_blockAuthor( _blockAuthor ),
       m_isCall( _isCall ),
-      m_value(_t.value()),
-      m_gasLimit(_t.gas()),
-      m_inputData(_t.data()),
-      m_gasPrice(_t.gasPrice())
-{
+      m_value( _t.value() ),
+      m_gasLimit( _t.gas() ),
+      m_inputData( _t.data() ),
+      m_gasPrice( _t.gasPrice() ) {
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
-
-
 }
 const u256& AlethStandardTrace::getGasLimit() const {
     return m_gasLimit;
