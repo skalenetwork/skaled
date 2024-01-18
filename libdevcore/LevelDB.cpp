@@ -240,17 +240,17 @@ h256 LevelDB::hashBase() const {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
-        std::string key_ = it->key().ToString();
-        std::string value_ = it->value().ToString();
+        std::string keyTmp = it->key().ToString();
+        std::string valueTmp = it->value().ToString();
         // HACK! For backward compatibility! When snapshot could happen between update of two nodes
         // - it would lead to stateRoot mismatch
         // TODO Move this logic to separate "compatiliblity layer"!
-        if ( key_ == "pieceUsageBytes" )
+        if ( keyTmp == "pieceUsageBytes" )
             continue;
-        std::string key_value = key_ + value_;
-        const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
-        bytesConstRef str_key_value( usc.data(), usc.size() );
-        secp256k1_sha256_write( &ctx, str_key_value.data(), str_key_value.size() );
+        std::string keyValue = keyTmp + valueTmp;
+        const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
+        bytesConstRef strKeyValue( usc.data(), usc.size() );
+        secp256k1_sha256_write( &ctx, strKeyValue.data(), strKeyValue.size() );
     }
 
     h256 hash;
@@ -268,12 +268,12 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     secp256k1_sha256_initialize( &ctx );
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
         if ( it->key()[0] == _prefix ) {
-            std::string key_ = it->key().ToString();
-            std::string value_ = it->value().ToString();
-            std::string key_value = key_ + value_;
-            const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
-            bytesConstRef str_key_value( usc.data(), usc.size() );
-            secp256k1_sha256_write( &ctx, str_key_value.data(), str_key_value.size() );
+            std::string keyTmp = it->key().ToString();
+            std::string valueTmp = it->value().ToString();
+            std::string keyValue = keyTmp + valueTmp;
+            const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
+            bytesConstRef strKeyValue( usc.data(), usc.size() );
+            secp256k1_sha256_write( &ctx, strKeyValue.data(), strKeyValue.size() );
         }
     }
     h256 hash;
@@ -294,14 +294,14 @@ void LevelDB::hashBasePartially(
         it->SeekToFirst();
 
     for ( size_t counter = 0; it->Valid() && counter < batchSize; it->Next() ) {
-        std::string key_ = it->key().ToString();
-        std::string value_ = it->value().ToString();
+        std::string keyTmp = it->key().ToString();
+        std::string valueTmp = it->value().ToString();
         // HACK! For backward compatibility! When snapshot could happen between update of two nodes
         // - it would lead to stateRoot mismatch
         // TODO Move this logic to separate "compatiliblity layer"!
-        if ( key_ == "pieceUsageBytes" )
+        if ( keyTmp == "pieceUsageBytes" )
             continue;
-        std::string keyValue = key_ + value_;
+        std::string keyValue = keyTmp + valueTmp;
         const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
         bytesConstRef strKeyValue( usc.data(), usc.size() );
         secp256k1_sha256_write( ctx, strKeyValue.data(), strKeyValue.size() );
