@@ -224,7 +224,7 @@ jobs:
     name: Functional testing for build
     needs: [build]
     with:
-      version: ${{ needs.build.outputs.version }}
+      version: ${{ needs.build.outputs.version_orig }}
     secrets: inherit
 
   functional-tests-historic:
@@ -232,5 +232,5 @@ jobs:
     name: Functional testing for build
     needs: [build]
     with:
-      version: ${{ needs.build.outputs.version_orig }}
+      version: ${{ needs.build.outputs.version_historic }}
     secrets: inherit
