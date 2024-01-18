@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE( hash ) {
                 dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
                 dev::db::LevelDB::defaultSnapshotDBOptions() ) );
 
-            m_db->hashBasePartially( &dbCtx, lastHashedKey, 10 );
+            m_db->hashBasePartially( &dbCtx, lastHashedKey );
         }
 
         secp256k1_sha256_finalize( &dbCtx, hashPartially.data() );

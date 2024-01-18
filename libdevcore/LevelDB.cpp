@@ -28,6 +28,8 @@ namespace db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
 
+const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
+
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
     return leveldb::Slice( _slice.data(), _slice.size() );
@@ -281,8 +283,7 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     return hash;
 }
 
-void LevelDB::hashBasePartially(
-    secp256k1_sha256_t* ctx, std::string& lastHashedKey, size_t batchSize ) const {
+void LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -293,7 +294,7 @@ void LevelDB::hashBasePartially(
     else
         it->SeekToFirst();
 
-    for ( size_t counter = 0; it->Valid() && counter < batchSize; it->Next() ) {
+    for ( size_t counter = 0; it->Valid() && counter < BATCH_CHUNK_SIZE; it->Next() ) {
         std::string keyTmp = it->key().ToString();
         std::string valueTmp = it->value().ToString();
         // HACK! For backward compatibility! When snapshot could happen between update of two nodes
