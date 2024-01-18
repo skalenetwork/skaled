@@ -448,14 +448,14 @@ void SnapshotManager::computeDatabaseHash(
     secp256k1_sha256_t dbCtx;
     secp256k1_sha256_initialize( &dbCtx );
 
-    std::string finishKey = "start";
+    std::string lastHashedKey = "start";
 
-    while ( finishKey != "stop" ) {
+    while ( lastHashedKey != "stop" ) {
         std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
             dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
             dev::db::LevelDB::defaultSnapshotDBOptions() ) );
 
-        m_db->hashBasePartially( &dbCtx, finishKey );
+        m_db->hashBasePartially( &dbCtx, lastHashedKey );
     }
 
     dev::h256 dbHash;
