@@ -158,6 +158,10 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
 
     // TODO check
     unsigned blockNumber = joRequest["blockNumber"].get< unsigned >();
+    if ( blockNumber != m_client.getLatestSnapshotBlockNumer() ) {
+        joResponse["error"] = "Invalid snapshot block number requested - it might be deleted.";
+        return joResponse;
+    }
 
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 ) {
@@ -365,6 +369,11 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     dev::eth::ChainParams chainParams = this->m_client.chainParams();
     if ( chainParams.nodeInfo.keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
+
+    if ( blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
+        throw jsonrpc::JsonRpcException(
+            "Invalid snapshot block number requested - it might be deleted." );
+    }
 
     try {
         dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber );

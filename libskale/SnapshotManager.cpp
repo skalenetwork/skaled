@@ -445,13 +445,25 @@ void SnapshotManager::computeDatabaseHash(
         BOOST_THROW_EXCEPTION( InvalidPath( _dbDir ) );
     }
 
-    std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
-        dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-        dev::db::LevelDB::defaultSnapshotDBOptions() ) );
-    dev::h256 hash_volume = m_db->hashBase();
-    cnote << _dbDir << " hash is: " << hash_volume << std::endl;
+    secp256k1_sha256_t dbCtx;
+    secp256k1_sha256_initialize( &dbCtx );
 
-    secp256k1_sha256_write( ctx, hash_volume.data(), hash_volume.size );
+    std::string lastHashedKey = "start";
+    bool isContinue = true;
+
+    while ( isContinue ) {
+        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
+            dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
+            dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+
+        isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
+    }
+
+    dev::h256 dbHash;
+    secp256k1_sha256_finalize( &dbCtx, dbHash.data() );
+    cnote << _dbDir << " hash is: " << dbHash << std::endl;
+
+    secp256k1_sha256_write( ctx, dbHash.data(), dbHash.size );
 } catch ( const fs::filesystem_error& ex ) {
     std::throw_with_nested( CannotRead( ex.path1() ) );
 }
