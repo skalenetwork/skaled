@@ -283,7 +283,7 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     return hash;
 }
 
-void LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
+bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -309,10 +309,11 @@ void LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashe
         ++counter;
     }
 
-    if ( it->Valid() )
+    if ( it->Valid() ) {
         lastHashedKey = it->key().ToString();
-    else
-        lastHashedKey = "stop";
+        return true;
+    } else
+        return false;
 }
 
 void LevelDB::doCompaction() const {

@@ -74,12 +74,13 @@ BOOST_AUTO_TEST_CASE( hash ) {
         secp256k1_sha256_initialize( &dbCtx );
 
         std::string lastHashedKey = "start";
-        while ( lastHashedKey != "stop" ) {
+        bool isContinue = true;
+        while ( isContinue ) {
             std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path(),
                 dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
                 dev::db::LevelDB::defaultSnapshotDBOptions() ) );
 
-            m_db->hashBasePartially( &dbCtx, lastHashedKey );
+            isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
         }
 
         secp256k1_sha256_finalize( &dbCtx, hashPartially.data() );

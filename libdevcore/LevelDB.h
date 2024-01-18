@@ -61,7 +61,7 @@ public:
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
-    void hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const;
+    bool hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const;
 
     void doCompaction() const;
 
