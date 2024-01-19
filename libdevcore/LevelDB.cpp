@@ -28,7 +28,7 @@ namespace db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
 
-const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
+const size_t LevelDB::BATCH_CHUNK_SIZE = 1000;
 
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
