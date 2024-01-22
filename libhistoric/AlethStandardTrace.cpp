@@ -107,6 +107,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     // record the instruction
     m_lastOpRecord = OpExecutionRecord( _ext.depth, _inst, _gasRemaining, _lastOpGas );
 }
+
 void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
     STATE_CHECK( !m_isFinalized )
@@ -149,7 +150,6 @@ vector< uint8_t > AlethStandardTrace::extractSmartContractMemoryByteArrayFromSta
     }
     return result;
 }
-
 
 void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Address& _to,
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
@@ -216,6 +216,7 @@ Json::Value AlethStandardTrace::getJSONResult() const {
     STATE_CHECK( !m_jsonTrace.isNull() )
     return m_jsonTrace;
 }
+
 uint64_t AlethStandardTrace::getTotalGasUsed() const {
     return m_totalGasUsed;
 }
@@ -258,6 +259,7 @@ AlethStandardTrace::AlethStandardTrace(
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
 }
+
 const u256& AlethStandardTrace::getGasLimit() const {
     return m_gasLimit;
 }
@@ -395,6 +397,7 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     // now print trace
     printTrace( _er, _statePre, _statePost );
 }
+
 void eth::AlethStandardTrace::printTrace( ExecutionResult& _er, const HistoricState& _statePre,
     const HistoricState& _statePost ) {  // now print the trace
     m_jsonTrace = Json::Value( Json::objectValue );
@@ -457,12 +460,15 @@ void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     STATE_CHECK( _currentlyExecutingFunctionCall )
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
 }
+
 const Address& AlethStandardTrace::getBlockAuthor() const {
     return m_blockAuthor;
 }
+
 const u256& AlethStandardTrace::getMinerPayment() const {
     return m_minerPayment;
 }
+
 void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
     STATE_CHECK( !m_isFinalized )
     m_minerPayment = _minerGasPayment;
@@ -470,13 +476,14 @@ void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
     // transaction fee
     m_accessedAccounts.insert( m_blockAuthor );
 }
+
 bool AlethStandardTrace::isCall() const {
     return m_isCall;
 }
+
 const u256& AlethStandardTrace::getOriginalFromBalance() const {
     return m_originalFromBalance;
 }
-
 
 const bytes& AlethStandardTrace::getInputData() const {
     return m_inputData;
@@ -487,6 +494,7 @@ const u256& AlethStandardTrace::getValue() const {
 const Address& AlethStandardTrace::getTo() const {
     return m_to;
 }
+
 const u256& AlethStandardTrace::getGasPrice() const {
     return m_gasPrice;
 }

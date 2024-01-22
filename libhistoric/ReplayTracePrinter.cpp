@@ -46,10 +46,12 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     Json::Value emptyAddress( Json::arrayValue );
 
     auto topFunctionCallRecord = m_trace.getTopFunctionCall();
-    if ( !topFunctionCallRecord ) {
-        // no bytecodes were executed, this was purely ETH transfer
-        // print nothing
-    } else {
+
+
+    // if topFunctionCallRecord is null
+    // it means that no bytecodes were executed, this was purely ETH transfer
+    // print nothing
+    if ( topFunctionCallRecord ) {
         topFunctionCallRecord->printParityFunctionTrace( functionTraceArray, emptyAddress );
     }
     _jsonTrace["trace"] = functionTraceArray;
