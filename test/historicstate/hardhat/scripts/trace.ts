@@ -226,7 +226,7 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
     return currentNonce;
 }
 
-async function sendMoneyWithConfirmation(): Promise<string> {
+async function sendTransferWithConfirmation(): Promise<string> {
     // Generate a new wallet
     const newWallet = generateNewWallet();
 
@@ -253,7 +253,7 @@ async function sendMoneyWithConfirmation(): Promise<string> {
 }
 
 
-async function callTestContractRun(deployedContract: any): Promise<string> {
+async function executeTransferAndThenTestContractMintInSingleBlock(deployedContract: any): Promise<string> {
 
     let currentNonce: int = await sendMoneyWithoutConfirmation();
 
@@ -265,13 +265,17 @@ async function callTestContractRun(deployedContract: any): Promise<string> {
     expect(transferReceipt.blockNumber).not.to.be.null;
 
 
-    await getAndPrintCommittedTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
-    await getBlockTrace(transferReceipt.blockNumber);
+    const trace : string = await getBlockTrace(transferReceipt.blockNumber);
 
-    const transferHash: string = await sendMoneyWithConfirmation();
 
-    return transferHash;
+    expect(Array.isArray(trace));
 
+    // the array should have two elements
+    if (hre.network.name != "geth") {
+        expect(trace.length == 2);
+    }
+
+    return transferReceipt.hash!;
 
 }
 
@@ -671,13 +675,19 @@ async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
-    const transferHash: string = await callTestContractRun(deployedContract);
 
-    await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, FOURBYTE_TRACER, TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
+    const firstTransferHash: string = await executeTransferAndThenTestContractMintInSingleBlock(deployedContract);
+
+    await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER,
+        TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
+
+    const secondTransferHash: string = await sendTransferWithConfirmation();
+
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, FOURBYTE_TRACER, TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
 
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
