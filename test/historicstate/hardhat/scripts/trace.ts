@@ -14,7 +14,7 @@ const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
 const ZERO_ADDRESS: string = '0x0000000000000000000000000000000000000000';
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
-const RUN_FUNCTION_NAME = "mint";
+const EXECUTE_FUNCTION_NAME = "mint";
 const CALL_FUNCTION_NAME = "getBalance";
 
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
@@ -26,6 +26,27 @@ let PRESTATE_TRACER = "prestateTracer";
 let PRESTATEDIFF_TRACER = "prestateDiffTracer";
 let FOURBYTE_TRACER = "4byteTracer";
 let REPLAY_TRACER = "replayTracer"
+
+
+const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+
+
+const TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".defaultTracer.json";
+
+
+const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
+const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
+const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
+const TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateDiffTracer.json";
+const TEST_TRANSFER_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.4byteTracer.json";
+
+
+const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateDiffTracer.json";
+const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".4byteTracer.json";
+const TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".replayTracer.json";
 
 
 async function getTraceJsonOptions(_tracer: string): Promise<object> {
@@ -40,21 +61,7 @@ async function getTraceJsonOptions(_tracer: string): Promise<object> {
     return {"tracer": _tracer}
 }
 
-const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
-const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
-const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
-const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
-const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
-const TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateDiffTracer.json";
-const TEST_TRANSFER_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.4byteTracer.json";
 
-
-const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
-const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
-const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
-const TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateDiffTracer.json";
-const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".4byteTracer.json";
-const TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".replayTracer.json";
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
     try {
@@ -250,7 +257,7 @@ async function callTestContractRun(deployedContract: any): Promise<string> {
 
     let currentNonce: int = await sendMoneyWithoutConfirmation();
 
-    const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
+    const transferReceipt = await deployedContract[EXECUTE_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
@@ -258,7 +265,7 @@ async function callTestContractRun(deployedContract: any): Promise<string> {
     expect(transferReceipt.blockNumber).not.to.be.null;
 
 
-    await getAndPrintCommittedTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_RUN_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await getBlockTrace(transferReceipt.blockNumber);
 
     const transferHash: string = await sendMoneyWithConfirmation();
@@ -657,7 +664,7 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
 async function main(): Promise<void> {
 
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_DEPLOY_FILE_NAME));
-    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_RUN_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME));
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME));
 
     await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
@@ -691,7 +698,7 @@ async function main(): Promise<void> {
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME);
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
     await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
