@@ -35,7 +35,7 @@ class AlethStandardTrace;
 
 class TracePrinter {
 public:
-    TracePrinter( AlethStandardTrace& mStandardTrace, const std::string jsonName );
+    TracePrinter( AlethStandardTrace& _standardTrace, const std::string jsonName );
 
     virtual void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) = 0;

@@ -6,6 +6,7 @@ import deepDiff, {diff} from 'deep-diff';
 import {expect} from "chai";
 import * as path from 'path';
 import {int, string} from "hardhat/internal/core/params/argumentTypes";
+import internal from "node:stream";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
@@ -23,7 +24,7 @@ let DEFAULT_TRACER = "defaultTracer";
 let CALL_TRACER = "callTracer";
 let PRESTATE_TRACER = "prestateTracer";
 let PRESTATEDIFF_TRACER = "prestateDiffTracer";
-let FOUR_BYTE_TRACER = "4byteTracer";
+let FOURBYTE_TRACER = "4byteTracer";
 let REPLAY_TRACER = "replayTracer"
 
 
@@ -41,6 +42,13 @@ async function getTraceJsonOptions(_tracer: string): Promise<object> {
 
 const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
 const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
+const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
+const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
+const TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateDiffTracer.json";
+const TEST_TRANSFER_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.4byteTracer.json";
+
+
 const TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".callTracer.json";
 const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateTracer.json";
@@ -137,31 +145,15 @@ function CHECK(result: any): void {
 
 }
 
-async function getAndPrintBlockTrace(blockNumber: number): Promise<String> {
+async function getBlockTrace(blockNumber: number): Promise<String> {
 
     const blockStr = "0x" + blockNumber.toString(16);
     const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
 
-    console.log(JSON.stringify(trace, null, 4));
+    0// console.log(JSON.stringify(trace, null, 4));
     return trace;
 }
 
-async function getAndPrintTrace(hash: string, _skaleFileName: string): Promise<String> {
-//    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer":"prestateTracer",
-//        "tracerConfig": {"diffMode":true}}]);
-
-//    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {"tracer": "callTracer",
-//        "tracerConfig": {"withLog":true}}]);
-
-    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
-
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, {}]);
-
-    const result = JSON.stringify(trace, null, 4);
-    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
-
-    return trace;
-}
 
 async function deployTestContract(): Promise<object> {
 
@@ -178,28 +170,101 @@ async function deployTestContract(): Promise<object> {
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
-    // await waitUntilNextBlock()
-
-    //await getAndPrintBlockTrace(deployBlockNumber);
-    //await getAndPrintBlockTrace(deployBlockNumber);
-    await getAndPrintTrace(hash, TEST_CONTRACT_DEPLOY_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
 }
 
-async function callTestContractRun(deployedContract: any): Promise<void> {
 
+function generateNewWallet() {
+    const wallet = hre.ethers.Wallet.createRandom();
+    console.log("Address:", wallet.address);
+    console.log("Private Key:", wallet.privateKey);
+    return wallet;
+}
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+async function sendMoneyWithoutConfirmation(): Promise<int> {
+    // Generate a new wallet
+    const newWallet = generateNewWallet();
+
+    await sleep(3000);  // Sleep for 1000 milliseconds (1 second)
+
+    // Get the first signer from Hardhat's local network
+    const [signer] = await hre.ethers.getSigners();
+
+    const currentNonce = await signer.getTransactionCount();
+
+    // Define the transaction
+    const tx = {
+        to: newWallet.address,
+        value: hre.ethers.utils.parseEther("0.1"),
+        nonce: currentNonce
+    };
+
+    // Send the transaction and wait until it is submitted ot the queue
+    const txResponse = signer.sendTransaction(tx);
+
+    if (hre.network.name == "geth") {
+        await txResponse;
+    }
+
+    console.log(`Submitted a tx to send 0.1 ETH to ${newWallet.address}`);
+
+    return currentNonce;
+}
+
+async function sendMoneyWithConfirmation(): Promise<string> {
+    // Generate a new wallet
+    const newWallet = generateNewWallet();
+
+    await sleep(3000);  // Sleep for 1000 milliseconds (1 second)
+
+    // Get the first signer from Hardhat's local network
+    const [signer] = await hre.ethers.getSigners();
+
+    const currentNonce = await signer.getTransactionCount();
+
+    // Define the transaction
+    const tx = {
+        to: "0x388C818CA8B9251b393131C08a736A67ccB19297",
+        value: hre.ethers.utils.parseEther("0.1"),
+    };
+
+    // Send the transaction and wait until it is submitted ot the queue
+    const txResponse = await signer.sendTransaction(tx);
+    const txReceipt = await txResponse.wait();
+
+    console.log(`Submitted a tx to send 0.1 ETH to ${newWallet.address}`);
+
+    return txReceipt.transactionHash!;
+}
+
+
+async function callTestContractRun(deployedContract: any): Promise<string> {
+
+    let currentNonce: int = await sendMoneyWithoutConfirmation();
 
     const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+        nonce: currentNonce + 1,
     });
 
-    //await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    //await getAndPrintBlockTrace(transferReceipt.blockNumber);
-    //
+    expect(transferReceipt.blockNumber).not.to.be.null;
 
-    await getAndPrintTrace(transferReceipt.hash, TEST_CONTRACT_RUN_FILE_NAME);
+
+    await getAndPrintCommittedTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_RUN_FILE_NAME);
+    await getBlockTrace(transferReceipt.blockNumber);
+
+    const transferHash: string = await sendMoneyWithConfirmation();
+
+    return transferHash;
+
 
 }
 
@@ -249,6 +314,20 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 }
 
 
+async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
+
+    let traceOptions = await getTraceJsonOptions(_tracer);
+
+    console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
+
+    const trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+
+    const result = JSON.stringify(trace, null, 4);
+    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
+
+    return trace;
+}
+
 async function readJSONFile(fileName: string): Promise<object> {
     return new Promise((resolve, reject) => {
         readFile(fileName, 'utf8', (err, data) => {
@@ -269,7 +348,7 @@ async function readJSONFile(fileName: string): Promise<object> {
 
 async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -317,10 +396,119 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
     await expect(foundDiffs).to.be.eq(false)
 }
 
+async function verifyTransferTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " + _fileName);
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+            foundDiffs = true;
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+async function verifyPrestateTransferTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " + _fileName);
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+
+            if (difference.kind == "E" && difference.path!.length == 2) {
+                if (difference.path![1] == "balance" || difference.path![1] == "nonce") {
+                    return;
+                }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 2) {
+                let address = difference.path![0];
+                if (address == ZERO_ADDRESS && difference.path![1] == "balance") {
+                    return;
+                }
+            }
+
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+
+            foundDiffs = true;
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
+async function verifyPrestateDiffTransferTraceAgainstGethTrace(_fileName: string) {
+
+    console.log("Verifying " + _fileName);
+
+    const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
+    const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
+
+    let expectedResult = await readJSONFile(_expectedResultFileName)
+    let actualResult = await readJSONFile(_actualResultFileName)
+
+    const differences = deepDiff(expectedResult, actualResult)!;
+
+    let foundDiffs = false;
+
+
+    if (differences) {
+        differences.forEach((difference, index) => {
+
+            if (difference.kind == "E" && difference.path!.length == 3) {
+                if (difference.path![2] == "balance" || difference.path![2] == "nonce") {
+                    return;
+                }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 3) {
+                let address = difference.path![1];
+                if (address == ZERO_ADDRESS && difference.path![2] == "balance") {
+                    return;
+                }
+            }
+
+            console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
+            console.log(`Difference ${index + 1}:`, difference);
+
+            foundDiffs = true;
+        });
+    }
+    ;
+
+    await expect(foundDiffs).to.be.eq(false)
+}
+
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -356,7 +544,7 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -387,7 +575,7 @@ async function verifyFourByteTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -421,7 +609,7 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
 
 async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
 
-    console.log("Verifying " +  _fileName);
+    console.log("Verifying " + _fileName);
 
     const _expectedResultFileName = GETH_TRACES_DIR + _fileName;
     const _actualResultFileName = SKALE_TRACES_DIR + _fileName;
@@ -447,9 +635,6 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
 
     await expect(foundDiffs).to.be.eq(false)
 }
-
-
-
 
 
 async function verifyGasCalculations(_actualResult: any): Promise<void> {
@@ -479,25 +664,39 @@ async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
+    const transferHash: string = await callTestContractRun(deployedContract);
 
-    await callTestContractRun(deployedContract);
+    await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(transferHash, FOURBYTE_TRACER, TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
+
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
-    await callDebugTraceCall(deployedContract, FOUR_BYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
+    await callDebugTraceCall(deployedContract, FOURBYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
-    await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
 
 
+    // geth does not have replay trace
+    if (hre.network.name != "geth") {
+        await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
+    }
 
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME)
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME)
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME)
-    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME)
-    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME)
-    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME)
-    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME)
+    await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+    await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
+    await verifyPrestateDiffTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
+    await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
+    await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
 
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
 }
 
 

@@ -31,11 +31,41 @@ namespace dev::eth {
 void CallTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
-    m_trace.getTopFunctionCall()->printTrace( _jsonTrace, 0, m_trace.getOptions() );
+
+    auto topFunctionCallRecord = m_trace.getTopFunctionCall();
+    if ( !topFunctionCallRecord ) {
+        // no bytecodes were executed
+        printTransferTrace( _jsonTrace );
+    } else {
+        topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
+    }
 }
 
 CallTracePrinter::CallTracePrinter( AlethStandardTrace& _standardTrace )
     : TracePrinter( _standardTrace, "callTrace" ) {}
+
+
+void CallTracePrinter::printTransferTrace( Json::Value& _jsonTrace ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+
+    _jsonTrace["type"] = "CALL";
+    _jsonTrace["from"] = toHexPrefixed( m_trace.getFrom() );
+    _jsonTrace["to"] = toHexPrefixed( m_trace.getTo() );
+
+    _jsonTrace["gas"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getGasLimit() );
+    _jsonTrace["gasUsed"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getTotalGasUsed() );
+
+
+    _jsonTrace["value"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getValue() );
+
+    _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
+}
+
+
 }  // namespace dev::eth
+
 
 #endif

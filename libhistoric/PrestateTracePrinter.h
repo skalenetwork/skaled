@@ -38,12 +38,15 @@ public:
 
     explicit PrestateTracePrinter( AlethStandardTrace& standardTrace );
 
+    [[nodiscard]] u256 getMinerBalancePre( const HistoricState& _statePre ) const;
+    [[nodiscard]] u256 getMinerBalancePost( const HistoricState& _statePre ) const;
+
 private:
     void printDiff( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
         const HistoricState& _statePost );
 
-    void printAllAccessedAccountPreValues(
-        Json::Value& _jsonTrace, const HistoricState& _statePre, const Address& _address );
+    void printAllAccessedAccountPreValues( Json::Value& _jsonTrace, const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address );
 
     void printAccountPreDiff( Json::Value& _preDiffTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
@@ -54,6 +57,10 @@ private:
     uint64_t m_storageValuesReturnedPre = 0;
     uint64_t m_storageValuesReturnedPost = 0;
     uint64_t m_storageValuesReturnedAll = 0;
-    void printPre( Json::Value& _jsonTrace, const HistoricState& _statePre );
+    void printPre(
+        Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost );
+
+    void printMinerBalanceChange(
+        const HistoricState& _statePre, Json::Value& preDiff, Json::Value& postDiff ) const;
 };
 }  // namespace dev::eth

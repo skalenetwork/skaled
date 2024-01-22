@@ -64,7 +64,15 @@ public:
     }
 
     // this function will be called at the end of executions
-    void finalizeTrace( ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
+    void finalizeAndPrintTrace(
+        ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
+
+
+    // this is to set original from balance for calls
+    // in a geth call, the from account balance is always incremented to
+    // make sure account has enough funds for block gas limit of gas
+    // we need to save original from account balance since it is printed in trace
+    void setOriginalFromBalance( const u256& _originalFromBalance );
 
     [[nodiscard]] Json::Value getJSONResult() const;
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
@@ -75,27 +83,27 @@ public:
     [[nodiscard]] const h256& getTxHash() const;
     [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
 
-
-    void setCurrentlyExecutingFunctionCall(
-        const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
-
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
         const;
-    void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
-
     [[nodiscard]] const Address& getBlockAuthor() const;
     [[nodiscard]] const u256& getMinerPayment() const;
-    void setOriginalFromBalance( const u256& _originalFromBalance );
-
     [[nodiscard]] const u256& getOriginalFromBalance() const;
-
     [[nodiscard]] bool isCall() const;
-
+    [[nodiscard]] const Address& getFrom() const;
+    [[nodiscard]] uint64_t getTotalGasUsed() const;
+    [[nodiscard]] const u256& getGasLimit() const;
+    [[nodiscard]] const u256& getValue() const;
+    [[nodiscard]] const bytes& getInputData() const;
+    [[nodiscard]] const Address& getTo() const;
 
     static string toGethCompatibleCompactHexPrefixed( const u256& _value );
-    const Address& getFrom() const;
+
 
 private:
+    void setCurrentlyExecutingFunctionCall(
+        const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
+    void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
+
     // this operator will be executed by skaled on each EVM instruction
     void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
         bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
@@ -152,6 +160,7 @@ private:
     // std::map of all storage addresses accessed (read or write) during execution
     // for each storage address the current value if recorded
     std::map< Address, std::map< dev::u256, dev::u256 > > m_accessedStorageValues;
+
     OpExecutionRecord m_lastOpRecord;
     std::atomic< bool > m_isFinalized = false;
     NoopTracePrinter m_noopTracePrinter;
@@ -167,5 +176,18 @@ private:
     u256 m_minerPayment;
     u256 m_originalFromBalance;
     bool m_isCall;
+
+public:
+    const u256& getGasPrice() const;
+
+private:
+    uint64_t m_totalGasUsed;
+    u256 m_value;
+    u256 m_gasLimit;
+    bytes m_inputData;
+    u256 m_gasPrice;
+
+    void printTrace(
+        ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 };
 }  // namespace dev::eth

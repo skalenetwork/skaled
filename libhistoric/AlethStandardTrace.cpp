@@ -27,6 +27,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 TraceOptions eth::AlethStandardTrace::getOptions() const {
+    STATE_CHECK( m_isFinalized )
     return m_options;
 }
 
@@ -35,6 +36,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     const LegacyVM* _vm ) {
     STATE_CHECK( _face )
     STATE_CHECK( _vm )
+    STATE_CHECK( !m_isFinalized )
 
     // check if instruction depth changed. This means a function has been called or has returned
     processFunctionCallOrReturnIfHappened( _ext, _vm, ( uint64_t ) _gasRemaining );
@@ -105,6 +107,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     // record the instruction
     m_lastOpRecord = OpExecutionRecord( _ext.depth, _inst, _gasRemaining, _lastOpGas );
 }
+
 void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     const AlethExtVM& _ext, const LegacyVM* _vm, uint64_t _gasRemaining ) {
     STATE_CHECK( !m_isFinalized )
@@ -128,6 +131,7 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     }
 }
 const Address& AlethStandardTrace::getFrom() const {
+    STATE_CHECK( m_isFinalized )
     return m_from;
 }
 
@@ -146,7 +150,6 @@ vector< uint8_t > AlethStandardTrace::extractSmartContractMemoryByteArrayFromSta
     }
     return result;
 }
-
 
 void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Address& _to,
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
@@ -178,6 +181,7 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
 void AlethStandardTrace::setTopFunctionCall(
     const shared_ptr< FunctionCallRecord >& _topFunctionCall ) {
     STATE_CHECK( _topFunctionCall )
+    STATE_CHECK( !m_isFinalized )
     m_topFunctionCall = _topFunctionCall;
 }
 
@@ -185,6 +189,7 @@ void AlethStandardTrace::recordFunctionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
     STATE_CHECK( m_lastOpRecord.m_gasRemaining >= m_lastOpRecord.m_opGas )
     STATE_CHECK( m_currentlyExecutingFunctionCall )
+    STATE_CHECK( !m_isFinalized )
 
     // record return values
     getCurrentlyExecutingFunctionCall()->setReturnValues( _status, _returnData, _gasUsed );
@@ -203,7 +208,6 @@ void AlethStandardTrace::recordFunctionReturned(
 // the getter functions are called by printer classes after the trace has been generated
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getTopFunctionCall() const {
     STATE_CHECK( m_isFinalized )
-    STATE_CHECK( m_topFunctionCall );
     return m_topFunctionCall;
 }
 
@@ -212,6 +216,11 @@ Json::Value AlethStandardTrace::getJSONResult() const {
     STATE_CHECK( m_isFinalized )
     STATE_CHECK( !m_jsonTrace.isNull() )
     return m_jsonTrace;
+}
+
+uint64_t AlethStandardTrace::getTotalGasUsed() const {
+    STATE_CHECK( m_isFinalized )
+    return m_totalGasUsed;
 }
 
 AlethStandardTrace::AlethStandardTrace(
@@ -243,12 +252,22 @@ AlethStandardTrace::AlethStandardTrace(
           { TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter },
           { TraceType::NOOP_TRACER, m_noopTracePrinter } },
       m_blockAuthor( _blockAuthor ),
-      m_isCall( _isCall ) {
+      m_isCall( _isCall ),
+      m_value( _t.value() ),
+      m_gasLimit( _t.gas() ),
+      m_inputData( _t.data() ),
+      m_gasPrice( _t.gasPrice() ) {
     // mark from and to accounts as accessed
     m_accessedAccounts.insert( m_from );
     m_accessedAccounts.insert( m_to );
 }
+
+const u256& AlethStandardTrace::getGasLimit() const {
+    STATE_CHECK( m_isFinalized )
+    return m_gasLimit;
+}
 void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
+    STATE_CHECK( !m_isFinalized )
     m_originalFromBalance = _originalFromBalance;
 }
 
@@ -361,24 +380,30 @@ string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _valu
     return "0x" + hexStr;
 }
 
-// execution completed.  Now use the tracer that the user requested
-// to print the resulting trace
-void eth::AlethStandardTrace::finalizeTrace(
+// execution completed.  Now finalize the trace and use the tracer that the user requested
+// to print the resulting trace to json
+void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
-    auto totalGasUsed = ( uint64_t ) _er.gasUsed;
+    m_totalGasUsed = ( uint64_t ) _er.gasUsed;
+
     auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
-    // we are done. Set the trace to finalized.
-    STATE_CHECK( !m_isFinalized.exchange( true ) )
-
-    STATE_CHECK( m_topFunctionCall )
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
 
+    // if transaction is not just ETH transfer
     // record return of the top function.
-    recordFunctionReturned( statusCode, _er.output, totalGasUsed );
+    if ( m_topFunctionCall ) {
+        recordFunctionReturned( statusCode, _er.output, m_totalGasUsed );
+    }
+    // we are done. Set the trace to finalized
+    STATE_CHECK( !m_isFinalized.exchange( true ) )
+    // now print trace
+    printTrace( _er, _statePre, _statePost );
+}
 
+void eth::AlethStandardTrace::printTrace( ExecutionResult& _er, const HistoricState& _statePre,
+    const HistoricState& _statePost ) {  // now print the trace
     m_jsonTrace = Json::Value( Json::objectValue );
-
     // now run the trace that the user wants based on options provided
     if ( m_tracePrinters.count( m_options.tracerType ) > 0 ) {
         m_tracePrinters.at( m_options.tracerType ).print( m_jsonTrace, _er, _statePre, _statePost );
@@ -427,32 +452,62 @@ const shared_ptr< Json::Value >& AlethStandardTrace::getDefaultOpTrace() const {
 
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getCurrentlyExecutingFunctionCall()
     const {
+    STATE_CHECK( !m_isFinalized )
     STATE_CHECK( m_currentlyExecutingFunctionCall )
     return m_currentlyExecutingFunctionCall;
 }
 
 void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
     const shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall ) {
+    STATE_CHECK( !m_isFinalized )
     STATE_CHECK( _currentlyExecutingFunctionCall )
     m_currentlyExecutingFunctionCall = _currentlyExecutingFunctionCall;
 }
+
 const Address& AlethStandardTrace::getBlockAuthor() const {
+    STATE_CHECK( m_isFinalized )
     return m_blockAuthor;
 }
+
 const u256& AlethStandardTrace::getMinerPayment() const {
+    STATE_CHECK( m_isFinalized )
     return m_minerPayment;
 }
+
 void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
-    this->m_minerPayment = _minerGasPayment;
+    STATE_CHECK( !m_isFinalized )
+    m_minerPayment = _minerGasPayment;
     // add miner to the list of accessed accounts, since the miner is paid
     // transaction fee
-    this->m_accessedAccounts.insert( m_blockAuthor );
+    m_accessedAccounts.insert( m_blockAuthor );
 }
+
 bool AlethStandardTrace::isCall() const {
+    STATE_CHECK( m_isFinalized )
     return m_isCall;
 }
+
 const u256& AlethStandardTrace::getOriginalFromBalance() const {
+    STATE_CHECK( m_isFinalized )
     return m_originalFromBalance;
+}
+
+const bytes& AlethStandardTrace::getInputData() const {
+    STATE_CHECK( m_isFinalized )
+    return m_inputData;
+}
+const u256& AlethStandardTrace::getValue() const {
+    STATE_CHECK( m_isFinalized )
+    return m_value;
+}
+const Address& AlethStandardTrace::getTo() const {
+    STATE_CHECK( m_isFinalized )
+    return m_to;
+}
+
+const u256& AlethStandardTrace::getGasPrice() const {
+    STATE_CHECK( m_isFinalized )
+    return m_gasPrice;
 }
 }  // namespace dev::eth
 

@@ -1346,43 +1346,48 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
 
 
 Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig ) {
-    Block previousBlock = blockByNumber( _blockNumber - 1 );
-    Block historicBlock = blockByNumber( _blockNumber );
+    try {
+        Block previousBlock = blockByNumber( _blockNumber - 1 );
+        Block historicBlock = blockByNumber( _blockNumber );
 
-    Json::Value traces( Json::arrayValue );
+        Json::Value traces( Json::arrayValue );
 
-    auto hash = ClientBase::hashFromNumber( _blockNumber );
-    Transactions transactions = this->transactions( hash );
+        auto hash = ClientBase::hashFromNumber( _blockNumber );
+        Transactions transactions = this->transactions( hash );
 
-    auto traceOptions = TraceOptions::make( _jsonTraceConfig );
+        auto traceOptions = TraceOptions::make( _jsonTraceConfig );
 
-    // cache results for better peformance
-    string key = to_string( _blockNumber ) + traceOptions.toString();
+        // cache results for better peformance
+        string key = to_string( _blockNumber ) + traceOptions.toString();
 
-    auto cachedResult = m_blockTraceCache.getIfExists( key );
-    if ( cachedResult.has_value() ) {
-        return std::any_cast< Json::Value >( cachedResult );
+        auto cachedResult = m_blockTraceCache.getIfExists( key );
+        if ( cachedResult.has_value() ) {
+            return std::any_cast< Json::Value >( cachedResult );
+        }
+
+        for ( unsigned k = 0; k < transactions.size(); k++ ) {
+            Json::Value transactionLog( Json::objectValue );
+            Transaction tx = transactions.at( k );
+            auto hashString = toHexPrefixed( tx.sha3() );
+            transactionLog["txHash"] = hashString;
+            tx.checkOutExternalGas( chainParams().externalGasDifficulty );
+            auto tracer =
+                std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
+            auto executionResult =
+                previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
+            auto result = tracer->getJSONResult();
+            transactionLog["result"] = result;
+            traces.append( transactionLog );
+        }
+
+        auto tracesSize = traces.toStyledString().size();
+        m_blockTraceCache.put( key, traces, tracesSize );
+
+        return traces;
+    } catch ( std::exception& e ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Could not trace block:" + to_string( _blockNumber ) + ":" + e.what() ) );
     }
-
-    for ( unsigned k = 0; k < transactions.size(); k++ ) {
-        Json::Value transactionLog( Json::objectValue );
-        Transaction tx = transactions.at( k );
-        auto hashString = toHexPrefixed( tx.sha3() );
-        transactionLog["txHash"] = hashString;
-        tx.checkOutExternalGas( chainParams().externalGasDifficulty );
-        auto tracer =
-            std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
-        auto executionResult =
-            previousBlock.executeHistoricCall( bc().lastBlockHashes(), tx, tracer, k );
-        auto result = tracer->getJSONResult();
-        transactionLog["result"] = result;
-        traces.append( transactionLog );
-    }
-
-    auto tracesSize = traces.toStyledString().size();
-    m_blockTraceCache.put( key, traces, tracesSize );
-
-    return traces;
 }
 
 #endif
