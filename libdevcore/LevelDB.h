@@ -26,6 +26,8 @@
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
+#include <secp256k1_sha256.h>
+
 namespace dev {
 namespace db {
 class LevelDB : public DatabaseFace {
@@ -59,6 +61,8 @@ public:
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
+    bool hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const;
+
     void doCompaction() const;
 
     // Return the total count of key deletes  since the start
@@ -74,6 +78,8 @@ private:
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
     boost::filesystem::path const m_path;
+
+    static const size_t BATCH_CHUNK_SIZE;
 };
 
 }  // namespace db

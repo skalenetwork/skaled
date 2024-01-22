@@ -40,7 +40,7 @@
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
-// SKALE #include <libweb3jsonrpc/Net.h>
+#include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <test/tools/libtesteth/TestHelper.h>
@@ -78,6 +78,7 @@ static std::string const c_genesisConfigString =
          "EIP158ForkBlock": "0x00",
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
+         "istanbulForkBlock": "0x00",
          "skaleDisableChainIdCheck": true,
          "externalGasDifficulty": "0x1"
     },
@@ -245,7 +246,9 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false ) {
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
+                    bool _deploymentControl = true, bool _generation2 = false, 
+                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1 ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -280,11 +283,15 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.byzantiumForkBlock = 0;
             chainParams.EIP158ForkBlock = 0;
             chainParams.constantinopleForkBlock = 0;
+            chainParams.istanbulForkBlock = 0;
             chainParams.externalGasDifficulty = 1;
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
             chainParams.sChain.contractStoragePatchTimestamp = 1;
+            powPatchActivationTimestamp = time(nullptr) + 60;
+            chainParams.sChain.correctForkInPowPatchTimestamp = powPatchActivationTimestamp;       // 10 guessed seconds
+            chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -293,6 +300,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
+        chainParams.nodeInfo.syncNode = _isSyncNode;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -313,23 +321,24 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         client->setAuthor( coinbase.address() );
 
         // wait for 1st block - because it's always empty
-        std::promise< void > block_promise;
+        std::promise< void > blockPromise;
         auto importHandler = client->setOnBlockImport(
-            [&block_promise]( BlockHeader const& ) {
-                    block_promise.set_value();
+            [&blockPromise]( BlockHeader const& ) {
+                    blockPromise.set_value();
         } );
 
         client->injectSkaleHost();
         client->startWorking();
 
-        block_promise.get_future().wait();
+        if ( !_isSyncNode )
+            blockPromise.get_future().wait();
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
         else
             client->setAuthor( chainParams.sChain.blockAuthor );
 
-        using FullServer = ModularServer< rpc::EthFace, /* rpc::NetFace,*/ rpc::Web3Face,
+        using FullServer = ModularServer< rpc::EthFace, rpc::NetFace, rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
@@ -343,7 +352,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
+        rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
             new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
             /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
@@ -410,6 +419,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
     SkaleServerOverride* skale_server_connector;
+    time_t powPatchActivationTimestamp;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
@@ -501,6 +511,23 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 //    rpcClient->admin_net_stop(adminSession);
 //    BOOST_CHECK_EQUAL(web3->isNetworkStarted(), false);
 //}
+
+BOOST_AUTO_TEST_CASE( jsonrpc_netVersion )
+{
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535
+    ret["params"]["chainID"] = "0xffff"; 
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    
+    auto version = fixture.rpcClient->net_version();
+    BOOST_CHECK_EQUAL( version, "65535" );
+}
 
 BOOST_AUTO_TEST_CASE( jsonrpc_setMining ) {
     JsonRpcFixture fixture;
@@ -722,6 +749,41 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
         "Same transaction already exists in the pending transaction queue." );
+}
+
+BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
+    // Enable sync mode
+    JsonRpcFixture fixture( c_genesisConfigString, true, true, true, false, true );
+    Address senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+        "608060405260043610603f576000357c01000000000000000000000000"
+        "00000000000000000000000000000000900463ffffffff168063b3de64"
+        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+        "019080803590602001909291905050506080565b604051808281526020"
+        "0191505060405180910390f35b60006007820290509190505600a16562"
+        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+        "8fb480406fc2728a960029";
+
+    Json::Value create;
+    create["code"] = compiled;
+    create["gas"] = "180000";
+
+    BOOST_REQUIRE( fixture.client->transactionQueueStatus().current == 0);
+
+    // Sending tx to sync node
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    
+    auto pendingTransactions = fixture.client->pending();
+    BOOST_REQUIRE( pendingTransactions.size() == 1);
+    auto txHashFromQueue = "0x" + pendingTransactions[0].sha3().hex();
+    BOOST_REQUIRE( txHashFromQueue == txHash );
 }
 
 BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
@@ -1246,7 +1308,11 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     testPositive["to"] = "0xD2001300000000000000000000000000000000D4";
     testPositive["data"] = "0xfdde8d66000000000000000000000000000000000000000000000000000000000000c350";
     response = fixture.rpcClient->eth_estimateGas( testPositive );
-    BOOST_CHECK( response == "0x1dc58" );
+    string response2 = fixture.rpcClient->eth_estimateGas( testPositive, "latest" );
+    string response3 = fixture.rpcClient->eth_estimateGas( testPositive, "1" );
+    BOOST_CHECK_EQUAL( response, "0x1db20" );
+    BOOST_CHECK_EQUAL( response2, "0x1db20" );
+    BOOST_CHECK_EQUAL( response3, "0x1db20" );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -1536,6 +1602,78 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
 }
 
+BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
+    // 1s empty block interval
+    JsonRpcFixture fixture( "", true, true, false, false, false, 1000 );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value transact;
+    transact["from"] = toJS( senderAddress );
+    transact["to"] = toJS( senderAddress );
+    // 1k
+    ostringstream ss("0x");
+    for(int i=0; i<1024/16; ++i)
+        ss << "112233445566778899aabbccddeeff11";
+    transact["data"] = ss.str();
+
+    string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+    u256 gasEstimate = jsToU256(gasEstimateStr);
+
+    // old estimate before patch
+    BOOST_REQUIRE_EQUAL(gasEstimate, u256(21000+1024*68));
+
+    u256 powGasPrice = 0;
+    u256 correctEstimate = u256(21000+1024*16);
+    do {
+        const u256 GAS_PER_HASH = 1;
+        u256 candidate = h256::random();
+        h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
+        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        if ( externalGas >= correctEstimate && externalGas < correctEstimate + correctEstimate/10 ) {
+            powGasPrice = candidate;
+        }
+    } while ( !powGasPrice );
+    // Account balance is too low will mean that PoW didn't work out
+    transact["gasPrice"] = toJS( powGasPrice );
+
+    // wait for patch turning on and see how it happens
+    string txHash;
+    BlockHeader badInfo, goodInfo;
+    for(;;) {
+        string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+        u256 gasEstimate = jsToU256(gasEstimateStr);
+        // old
+        if(gasEstimate == u256(21000+1024*68)){
+            try{
+                fixture.rpcClient->eth_sendTransaction( transact );
+                BOOST_REQUIRE(false);
+            } catch(const std::exception& ex) {
+                assert(string(ex.what()).find("balance is too low") != string::npos);
+                badInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
+                dev::eth::mineTransaction( *( fixture.client ), 1 ); // empty block
+            } // catch
+        }
+        // new
+        else {
+            BOOST_REQUIRE_EQUAL(gasEstimate, correctEstimate);
+            txHash = fixture.rpcClient->eth_sendTransaction( transact );
+            goodInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
+            break;
+        } // else
+    } // for
+
+    BOOST_REQUIRE_LT(badInfo.timestamp(), fixture.powPatchActivationTimestamp);
+    BOOST_REQUIRE_GE(goodInfo.timestamp(), fixture.powPatchActivationTimestamp);
+    BOOST_REQUIRE_EQUAL(badInfo.number()+1, goodInfo.number());
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL(receipt["status"], "0x1");
+}
+
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -1579,22 +1717,26 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     string balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 
+    Json::Value transact;
+    transact["from"] = toJS( address2 );
+    transact["to"] = contractAddress;
+    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+
+    string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
+    u256 gasEstimate = jsToU256(gasEstimateStr);
+
     u256 powGasPrice = 0;
     do {
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( address2 ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
         u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= 21000 + 21000 ) {
+        if ( externalGas >= gasEstimate && externalGas < gasEstimate + gasEstimate/10 ) {
             powGasPrice = candidate;
         }
     } while ( !powGasPrice );
-
-    Json::Value transact;
-    transact["from"] = toJS( address2 );
-    transact["to"] = contractAddress;
     transact["gasPrice"] = toJS( powGasPrice );
-    transact["data"] = "0x15b2eec30000000000000000000000000000000000000000000000000000000000000003";
+
     fixture.rpcClient->eth_sendTransaction( transact );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -1848,7 +1990,8 @@ contract TestEstimateGas {
     txStore1["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000001";
     txStore1["from"] = toJS( senderAddress );
     txStore1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    string txHash = fixture.rpcClient->eth_call( txStore1, "latest" );
+    fixture.rpcClient->eth_sendTransaction( txStore1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value estimateGasCall;  // call clear(0)
     estimateGasCall["to"] = contractAddress;
@@ -1858,11 +2001,25 @@ contract TestEstimateGas {
     string estimatedGas = fixture.rpcClient->eth_estimateGas( estimateGasCall );
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
-
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
                        false, &data, fixture.client->chainParams().scheduleForBlockNumber(
                            fixture.client->number() ) ) );
-    BOOST_REQUIRE( dev::jsToU256( estimatedGas ) == 21871 );
+
+    // try to send with this gas
+    estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );
+    string clearHash = fixture.rpcClient->eth_sendTransaction( estimateGasCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
+    BOOST_REQUIRE_EQUAL(clearReceipt["status"], "0x1");
+    BOOST_REQUIRE_LT(jsToInt(clearReceipt["gasUsed"].asString()), 21000);
+
+    // try to lower gas
+    estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) - 1 );
+    clearHash = fixture.rpcClient->eth_sendTransaction( estimateGasCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    clearReceipt = fixture.rpcClient->eth_getTransactionReceipt( clearHash );
+    BOOST_REQUIRE_EQUAL(clearReceipt["status"], "0x0");
+    BOOST_REQUIRE_GT(jsToInt(clearReceipt["gasUsed"].asString()), 21000);
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
@@ -2942,15 +3099,36 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
 #ifdef HISTORIC_STATE
     // 3 check that historic node sees only 3 txns
 
+    string explicitNumberStr = to_string(fixture.client->number());
+
     // 1 Block
     Json::Value block = fixture.rpcClient->eth_getBlockByNumber("latest", "false");
+
+    string bh = block["hash"].asString();
+
+    // 2 transaction count
+    Json::Value cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber("latest");
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+    cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber(explicitNumberStr);
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+    cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
+    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
+
 
     BOOST_REQUIRE_EQUAL(block["transactions"].size(), 3);
     BOOST_REQUIRE_EQUAL(block["transactions"][0]["transactionIndex"], "0x0");
     BOOST_REQUIRE_EQUAL(block["transactions"][1]["transactionIndex"], "0x1");
     BOOST_REQUIRE_EQUAL(block["transactions"][2]["transactionIndex"], "0x2");
 
-    // 2 receipts
+    // same with explicit number
+    block = fixture.rpcClient->eth_getBlockByNumber(explicitNumberStr, "false");
+
+    BOOST_REQUIRE_EQUAL(block["transactions"].size(), 3);
+    BOOST_REQUIRE_EQUAL(block["transactions"][0]["transactionIndex"], "0x0");
+    BOOST_REQUIRE_EQUAL(block["transactions"][1]["transactionIndex"], "0x1");
+    BOOST_REQUIRE_EQUAL(block["transactions"][2]["transactionIndex"], "0x2");
+
+    // 3 receipts
     Json::Value r1,r3,r4;
     BOOST_REQUIRE_NO_THROW(r1 = fixture.rpcClient->eth_getTransactionReceipt(toJS(h1)));
     BOOST_REQUIRE_THROW   (fixture.rpcClient->eth_getTransactionReceipt(toJS(h2)), jsonrpc::JsonRpcException);
@@ -2961,16 +3139,24 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL(r3["transactionIndex"], "0x1");
     BOOST_REQUIRE_EQUAL(r4["transactionIndex"], "0x2");
 
-    // 3 transaction by index
+    // 4 transaction by index
     Json::Value t0 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "0");
     Json::Value t1 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "1");
     Json::Value t2 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex("latest", "2");
-
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t0["hash"].asString()), h1);
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
 
-    string bh = r1["blockHash"].asString();
+    // same with explicit block number
+
+    t0 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(explicitNumberStr, "0");
+    t1 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(explicitNumberStr, "1");
+    t2 = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(explicitNumberStr, "2");
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t0["hash"].asString()), h1);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
+    BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
+
+    BOOST_REQUIRE_EQUAL(bh, r1["blockHash"].asString());
 
     t0 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "0");
     t1 = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(bh, "1");
@@ -2980,14 +3166,8 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t1["hash"].asString()), h3);
     BOOST_REQUIRE_EQUAL(jsToFixed<32>(t2["hash"].asString()), h4);
 
-    // 4 transaction by hash
+    // 5 transaction by hash
     BOOST_REQUIRE_THROW   (fixture.rpcClient->eth_getTransactionByHash(toJS(h2)), jsonrpc::JsonRpcException);
-
-    // 5 transaction count
-    Json::Value cnt = fixture.rpcClient->eth_getBlockTransactionCountByNumber("latest");
-    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
-    cnt = fixture.rpcClient->eth_getBlockTransactionCountByHash(bh);
-    BOOST_REQUIRE_EQUAL(cnt.asString(), "0x3");
 
     // send it successfully
 
@@ -3234,7 +3414,7 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
     Transaction valid(
         fromHex( "0xf86c808504a817c80083015f90943d7112ee86223baf0a506b9d2a77595cbbba51d1872386f26fc10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a071882ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
-    valid.checkOutExternalGas( 1 );
+    valid.ignoreExternalGas();
 
     client->importTransactionsAsBlock(Transactions{invalid, valid}, 1);
 
@@ -3262,7 +3442,7 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
     Transaction valid(
         fromHex( "0xf86c808504a817c80083015f90943d7112ee86223baf0a506b9d2a77595cbbba51d1872386f26fc10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a071882ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
-    valid.checkOutExternalGas( 1 );
+    valid.ignoreExternalGas();
 
     client->importTransactionsAsBlock(Transactions{invalid, valid}, 1);
 
