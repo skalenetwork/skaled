@@ -207,6 +207,7 @@ void AlethStandardTrace::recordFunctionReturned(
 
 // the getter functions are called by printer classes after the trace has been generated
 const shared_ptr< FunctionCallRecord >& AlethStandardTrace::getTopFunctionCall() const {
+    STATE_CHECK( m_isFinalized )
     return m_topFunctionCall;
 }
 
@@ -218,6 +219,7 @@ Json::Value AlethStandardTrace::getJSONResult() const {
 }
 
 uint64_t AlethStandardTrace::getTotalGasUsed() const {
+    STATE_CHECK( m_isFinalized )
     return m_totalGasUsed;
 }
 
@@ -261,6 +263,7 @@ AlethStandardTrace::AlethStandardTrace(
 }
 
 const u256& AlethStandardTrace::getGasLimit() const {
+    STATE_CHECK( m_isFinalized )
     return m_gasLimit;
 }
 void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
@@ -389,7 +392,7 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
 
     // if transaction is not just ETH transfer
     // record return of the top function.
-    if ( getTopFunctionCall() ) {
+    if ( m_topFunctionCall ) {
         recordFunctionReturned( statusCode, _er.output, m_totalGasUsed );
     }
     // we are done. Set the trace to finalized
@@ -462,10 +465,12 @@ void AlethStandardTrace::setCurrentlyExecutingFunctionCall(
 }
 
 const Address& AlethStandardTrace::getBlockAuthor() const {
+    STATE_CHECK( m_isFinalized )
     return m_blockAuthor;
 }
 
 const u256& AlethStandardTrace::getMinerPayment() const {
+    STATE_CHECK( m_isFinalized )
     return m_minerPayment;
 }
 
@@ -478,24 +483,30 @@ void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
 }
 
 bool AlethStandardTrace::isCall() const {
+    STATE_CHECK( m_isFinalized )
     return m_isCall;
 }
 
 const u256& AlethStandardTrace::getOriginalFromBalance() const {
+    STATE_CHECK( m_isFinalized )
     return m_originalFromBalance;
 }
 
 const bytes& AlethStandardTrace::getInputData() const {
+    STATE_CHECK( m_isFinalized )
     return m_inputData;
 }
 const u256& AlethStandardTrace::getValue() const {
+    STATE_CHECK( m_isFinalized )
     return m_value;
 }
 const Address& AlethStandardTrace::getTo() const {
+    STATE_CHECK( m_isFinalized )
     return m_to;
 }
 
 const u256& AlethStandardTrace::getGasPrice() const {
+    STATE_CHECK( m_isFinalized )
     return m_gasPrice;
 }
 }  // namespace dev::eth
