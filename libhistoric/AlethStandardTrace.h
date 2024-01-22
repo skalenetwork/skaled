@@ -179,6 +179,9 @@ private:
 
 public:
     const u256& getGasPrice() const;
+    const bytes& getOutput() const;
+    bool isFailed() const;
+    evmc_status_code getStatusCode() const;
 
 private:
     uint64_t m_totalGasUsed;
@@ -186,6 +189,9 @@ private:
     u256 m_gasLimit;
     bytes m_inputData;
     u256 m_gasPrice;
+    bytes m_output;
+    bool m_failed;
+    evmc_status_code m_statusCode;
 
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
