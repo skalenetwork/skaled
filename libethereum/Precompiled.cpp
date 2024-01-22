@@ -26,6 +26,7 @@
 #include <cryptopp/files.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/sha.h>
+#include <libdevcore/CommonJS.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/SHA3.h>
@@ -36,8 +37,11 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
 #include <libethereum/SkaleHost.h>
+#include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <mutex>
 
@@ -247,10 +251,20 @@ static Logger& getLogger( int a_severity = VerbosityTrace ) {
 
 static void convertBytesToString(
     bytesConstRef _in, size_t _startPosition, std::string& _out, size_t& _stringLength ) {
+    if ( _in.size() < UINT256_SIZE ) {
+        throw std::runtime_error( "Input is too short - invalid input in convertBytesToString()" );
+    }
     bigint const sstringLength( parseBigEndianRightPadded( _in, _startPosition, UINT256_SIZE ) );
+    if ( sstringLength < 0 ) {
+        throw std::runtime_error(
+            "Negative string length - invalid input in convertBytesToString()" );
+    }
     _stringLength = sstringLength.convert_to< size_t >();
+    if ( _startPosition + UINT256_SIZE + _stringLength > _in.size() ) {
+        throw std::runtime_error( "Invalid input in convertBytesToString()" );
+    }
     vector_ref< const unsigned char > byteFilename =
-        _in.cropped( _startPosition + 32, _stringLength );
+        _in.cropped( _startPosition + UINT256_SIZE, _stringLength );
     _out = std::string( ( char* ) byteFilename.data(), _stringLength );
 }
 
@@ -673,25 +687,8 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-static const std::list< std::string > g_listReadableConfigParts{ "sealEngine",
-    //"genesis.*"
-    //"params.*",
-
-    "skaleConfig.nodeInfo.wallets.ima.commonBLSPublicKey*",
-    "skaleConfig.nodeInfo.wallets.ima.BLSPublicKey*",
-
-    "skaleConfig.nodeInfo.nodeName", "skaleConfig.nodeInfo.nodeID",
-    "skaleConfig.nodeInfo.basePort*", "skaleConfig.nodeInfo.*RpcPort*",
-    "skaleConfig.nodeInfo.acceptors", "skaleConfig.nodeInfo.max-connections",
-    "skaleConfig.nodeInfo.max-http-queues", "skaleConfig.nodeInfo.ws-mode",
-
-    "skaleConfig.contractSettings.*",
-
-    "skaleConfig.sChain.emptyBlockIntervalMs",
-
-    "skaleConfig.sChain.schainName", "skaleConfig.sChain.schainID",
-
-    "skaleConfig.sChain.nodes.*" };
+static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes.",
+    "skaleConfig.nodeInfo.wallets.ima.n" };
 
 static bool stat_is_accessible_json_path( const std::string& strPath ) {
     if ( strPath.empty() )
@@ -700,7 +697,7 @@ static bool stat_is_accessible_json_path( const std::string& strPath ) {
                                              itEnd = g_listReadableConfigParts.cend();
     for ( ; itWalk != itEnd; ++itWalk ) {
         const std::string strWildCard = ( *itWalk );
-        if ( skutils::tools::wildcmp( strWildCard.c_str(), strPath.c_str() ) )
+        if ( boost::algorithm::starts_with( strPath, strWildCard ) )
             return true;
     }
     return false;
@@ -756,6 +753,47 @@ static dev::u256 stat_parse_u256_hex_or_dec( const std::string& strValue ) {
     return uValue;
 }
 
+static bool isCallToHistoricData( const std::string& callData ) {
+    // in C++ 20 there is string::starts_with, but we do not use C++ 20 yet
+    return boost::algorithm::starts_with( callData, "skaleConfig.sChain.nodes." );
+}
+
+static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string callData ) {
+    std::vector< std::string > splitted;
+    boost::split( splitted, callData, boost::is_any_of( "." ) );
+    // first 3 elements are skaleConfig, sChain, nodes - it was checked before
+    unsigned id = std::stoul( splitted.at( 3 ) );
+    std::string fieldName;
+    std::set< std::string > allowedValues{ "id", "schainIndex", "publicKey" };
+    fieldName = splitted.at( 4 );
+    if ( allowedValues.count( fieldName ) ) {
+        return { fieldName, id };
+    } else {
+        BOOST_THROW_EXCEPTION( std::runtime_error( "Unknown field:" + fieldName ) );
+    }
+    return { fieldName, id };
+}
+
+/*
+ * this precompiled contract is designed to get access to specific integer config values
+ * and works as key / values map
+ * input: bytes - length + path to config variable
+ * output: bytes - config variable value
+ *
+ * variables available through this precompiled contract:
+ * 1. id - node id for INDEX node in schain group for current block number
+ * 2. schainIndex - schain index for INDEX node in schain group for current block number
+ * to access those variables one should use the following scheme:
+ * prefix=skaleConfig.sChain.nodes - to access corresponding structure inside skaled
+ * index - node index user wants to get access to
+ * field - the field user wants to request
+ *
+ * example:
+ * to request the value for 1-st node (1 based) for the node id field the input should be
+ * input=skaleConfig.sChain.nodes.0.id (inside skaled node indexes are 0 based)
+ * so one should pass the following as calldata:
+ * toBytes( input.length + toBytes(input) )
+ */
 ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -767,18 +805,33 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
-        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-        nlohmann::json joValue =
-            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = skutils::tools::trim_copy(
-            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
 
-        // dev::u256 uValue( strValue.c_str() );
-        dev::u256 uValue = stat_parse_u256_hex_or_dec( strValue );
-        // std::cout << "------------ Loaded config var \""
-        //          << rawName << "\" value is " << uValue
-        //          << "\n";
+        std::string strValue;
+        // call to skaleConfig.sChain.nodes means call to the historic data
+        // need to proccess it in a different way
+        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
+            if ( !g_skaleHost )
+                throw std::runtime_error( "SkaleHost accessor was not initialized" );
 
+            std::string field;
+            unsigned id;
+            std::tie( field, id ) = parseHistoricFieldRequest( rawName );
+            if ( field == "id" ) {
+                strValue = g_skaleHost->getHistoricNodeId( id );
+            } else if ( field == "schainIndex" ) {
+                strValue = g_skaleHost->getHistoricNodeIndex( id );
+            } else {
+                throw std::runtime_error( "Incorrect config field" );
+            }
+        } else {
+            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+            nlohmann::json joValue =
+                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+            strValue = skutils::tools::trim_copy(
+                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+        }
+
+        dev::u256 uValue = jsToInt( strValue );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -807,13 +860,14 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
+
         nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
         nlohmann::json joValue =
             skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
         std::string strValue = skutils::tools::trim_copy(
             joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
-        dev::u256 uValue( strValue.c_str() );
 
+        dev::u256 uValue( strValue );
         bytes response = toBigEndian( uValue );
         return { true, response };
     } catch ( std::exception& ex ) {
@@ -831,6 +885,24 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
+/*
+ * this precompiled contract is designed to get access to specific config values that are
+ * strings and works as key / values map input: bytes - length + path to config variable output:
+ * bytes - config variable value
+ *
+ * variables available through this precompiled contract:
+ * 1. publicKey - ETH public key for INDEX node in schain group for current block number
+ * to access those variables one should use the following scheme:
+ * prefix=skaleConfig.sChain.nodes - to access corresponding structure inside skaled
+ * index - node index user wants to get access to
+ * field - the field user wants to request
+ *
+ * example:
+ * to request the value for 2-nd node (1 based) for the publicKey field the input should be
+ * input=skaleConfig.sChain.nodes.1.publicKey (inside skaled node indexes are 0 based)
+ * so one should pass the following as calldata
+ * toBytes( input.length + toBytes(input) )
+ */
 ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     try {
         size_t lengthName;
@@ -842,11 +914,29 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
-        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-        nlohmann::json joValue =
-            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = joValue.is_string() ? joValue.get< std::string >() : joValue.dump();
-        bytes response = stat_string_to_bytes_with_length( strValue );
+        std::string strValue;
+        // call to skaleConfig.sChain.nodes means call to the historic data
+        // need to proccess it in a different way
+        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
+            if ( !g_skaleHost )
+                throw std::runtime_error( "SkaleHost accessor was not initialized" );
+
+            std::string field;
+            unsigned id;
+            std::tie( field, id ) = parseHistoricFieldRequest( rawName );
+            if ( field == "publicKey" ) {
+                strValue = g_skaleHost->getHistoricNodePublicKey( id );
+            } else {
+                throw std::runtime_error( "Incorrect config field" );
+            }
+        } else {
+            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+            nlohmann::json joValue =
+                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+            strValue = skutils::tools::trim_copy(
+                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+        }
+        bytes response = dev::fromHex( strValue );
         return { true, response };
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
