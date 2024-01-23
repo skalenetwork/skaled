@@ -32,6 +32,8 @@ string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
         return "success";
     case EVMC_FAILURE:
         return "evm failure";
+    case EVMC_REVERT:
+        return "execution reverted";
     case EVMC_OUT_OF_GAS:
         return "out of gas";
     case EVMC_INVALID_INSTRUCTION:
@@ -63,7 +65,7 @@ string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
     case EVMC_OUT_OF_MEMORY:
         return "out of memory";
     default:
-        return "";
+        return "unexpected EVM error";
     };
 }
 
