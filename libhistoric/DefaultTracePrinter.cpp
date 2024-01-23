@@ -48,8 +48,7 @@ void DefaultTracePrinter::print(
             _jsonTrace["returnValue"] = toHex( m_trace.getOutput() );
         }
     } else {
-        string errMessage = getEvmErrorDescription( m_trace.getStatusCode() );
-        _jsonTrace["returnValue"] = errMessage;
+        _jsonTrace["returnValue"] = "";
     }
 }
 DefaultTracePrinter::DefaultTracePrinter( AlethStandardTrace& standardTrace )

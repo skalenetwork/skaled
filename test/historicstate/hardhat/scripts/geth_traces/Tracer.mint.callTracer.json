@@ -1,0 +1,10 @@
+{
+    "from": "0x907cd0881e50d359bb9fd120b1a5a143b1c97de6",
+    "gas": "0x200b20",
+    "gasUsed": "0x1221b",
+    "to": "0xce36f2e1b97971b5e53a217f667f2a3c5e47f6f2",
+    "input": "0xa0712d6800000000000000000000000000000000000000000000000000000000000003e8",
+    "error": "execution reverted",
+    "value": "0x0",
+    "type": "CALL"
+}
