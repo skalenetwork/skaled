@@ -221,7 +221,7 @@ jobs:
     
   functional-tests:
     uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for build
+    name: Functional testing for orig build
     needs: [build]
     with:
       version: ${{ needs.build.outputs.version_orig }}
@@ -229,7 +229,7 @@ jobs:
 
   functional-tests-historic:
     uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for build
+    name: Functional testing for historic build
     needs: [build]
     with:
       version: ${{ needs.build.outputs.version_historic }}
