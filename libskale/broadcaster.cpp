@@ -60,12 +60,14 @@ std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
     return url;
 }
 
-void HttpBroadcaster::broadcast( const std::string& _rlp ) {
-    if ( _rlp.empty() )
+void HttpBroadcaster::broadcast( const std::vector< std::string >& _rlps ) {
+    if ( _rlps.empty() )
         return;
 
     for ( const auto& node : m_nodeClients ) {
-        node->skale_receiveTransaction( _rlp );
+        for ( const auto& _rlp : _rlps ) {
+            node->skale_receiveTransaction( _rlp );
+        }
     }
 }
 
@@ -180,39 +182,51 @@ void ZmqBroadcaster::startService() {
             zmq_msg_t msg;
 
             try {
-                int res = zmq_msg_init( &msg );
-                assert( res == 0 );
-                res = zmq_msg_recv( &msg, client_socket(), 0 );
+                std::vector< std::string > rlps;
+                int more = 1;
+                size_t moreSize = sizeof( more );
 
-                if ( m_need_exit ) {
-                    zmq_msg_close( &msg );
-                    int linger = 1;
-                    zmq_setsockopt( client_socket(), ZMQ_LINGER, &linger, sizeof( linger ) );
-                    zmq_close( client_socket() );
-                    break;
+                auto socket = client_socket();
+                while ( more ) {
+                    int res = zmq_msg_init( &msg );
+                    assert( res == 0 );
+                    res = zmq_msg_recv( &msg, socket, 0 );
+                    zmq_getsockopt( socket, ZMQ_RCVMORE, &more, &moreSize );
+
+                    if ( m_need_exit ) {
+                        zmq_msg_close( &msg );
+                        int linger = 1;
+                        zmq_setsockopt( socket, ZMQ_LINGER, &linger, sizeof( linger ) );
+                        zmq_close( socket );
+                        break;
+                    }
+
+                    if ( res < 0 && errno == EAGAIN ) {
+                        zmq_msg_close( &msg );
+                        continue;
+                    }
+
+                    if ( res < 0 ) {
+                        clog( dev::VerbosityWarning, "skale-host" )
+                            << "Received bad message on ZmqBroadcaster port. errno = " << errno;
+                        continue;
+                    }
+
+                    size_t size = zmq_msg_size( &msg );
+                    void* data = zmq_msg_data( &msg );
+
+                    std::string str( static_cast< char* >( data ), size );
+                    rlps.push_back( str );
                 }
 
-                if ( res < 0 && errno == EAGAIN ) {
-                    zmq_msg_close( &msg );
-                    continue;
-                }
-
-                if ( res < 0 ) {
-                    clog( dev::VerbosityWarning, "skale-host" )
-                        << "Received bad message on ZmqBroadcaster port. errno = " << errno;
-                    continue;
-                }
-
-                size_t size = zmq_msg_size( &msg );
-                void* data = zmq_msg_data( &msg );
-
-                std::string str( static_cast< char* >( data ), size );
-
-                try {
-                    m_skaleHost.receiveTransaction( str );
-                } catch ( const std::exception& ex ) {
-                    clog( dev::VerbosityDebug, "skale-host" )
-                        << "Received bad transaction through broadcast: " << ex.what();
+                std::cout << "RECEIVED TXNS THROUGH BROADCAST: " << rlps.size() << '\n';
+                for ( const auto& rlp : rlps ) {
+                    try {
+                        m_skaleHost.receiveTransaction( rlp );
+                    } catch ( const std::exception& ex ) {
+                        clog( dev::VerbosityDebug, "skale-host" )
+                            << "Received bad transaction through broadcast: " << ex.what();
+                    }
                 }
 
             } catch ( const std::exception& ex ) {
@@ -246,14 +260,22 @@ void ZmqBroadcaster::stopService() {
     m_thread.join();
 }
 
-void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
-    if ( _rlp.empty() ) {
+void ZmqBroadcaster::broadcast( const std::vector< std::string >& _rlps ) {
+    if ( _rlps.empty() ) {
         server_socket();
         return;
     }
 
-    int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
-    if ( res <= 0 ) {
-        throw std::runtime_error( "Zmq can't send data" );
+    auto socket = server_socket();
+    for ( size_t i = 0; i < _rlps.size(); ++i ) {
+        int res = 0;
+        if ( i != _rlps.size() - 1 )
+            res = zmq_send(
+                socket, const_cast< char* >( _rlps[i].c_str() ), _rlps[i].size(), ZMQ_SNDMORE );
+        else
+            res = zmq_send( socket, const_cast< char* >( _rlps[i].c_str() ), _rlps[i].size(), 0 );
+        if ( res <= 0 ) {
+            throw std::runtime_error( "Zmq can't send data" );
+        }
     }
 }

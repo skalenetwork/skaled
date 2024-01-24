@@ -233,4 +233,7 @@ private:
     // reject old transactions that come through broadcast
     // if current ts is much bigger than currentBlock.ts
     static const int REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC;
+
+    // limit the number of possible txns coming through one broadcast batch
+    static const int TXNS_BROADCAST_LIMIT;
 };

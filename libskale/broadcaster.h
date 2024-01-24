@@ -52,7 +52,7 @@ public:
     Broadcaster() {}
     virtual ~Broadcaster();
 
-    virtual void broadcast( const std::string& _rlp ) = 0;
+    virtual void broadcast( const std::vector< std::string >& _rlps ) = 0;
 
     virtual void startService() = 0;
     virtual void stopService() = 0;
@@ -63,7 +63,7 @@ public:
     HttpBroadcaster( dev::eth::Client& _client );
     virtual ~HttpBroadcaster() {}
 
-    virtual void broadcast( const std::string& _rlp );
+    virtual void broadcast( const std::vector< std::string >& _rlps );
     virtual void startService() {}
     virtual void stopService() {}
 
@@ -80,7 +80,7 @@ public:
     ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost );
     virtual ~ZmqBroadcaster();
 
-    virtual void broadcast( const std::string& _rlp );
+    virtual void broadcast( const std::vector< std::string >& _rlps );
 
     virtual void startService();
     virtual void stopService();

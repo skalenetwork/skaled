@@ -67,6 +67,7 @@ using namespace dev::eth;
 #endif
 
 const int SkaleHost::REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC = 600;
+const int SkaleHost::TXNS_BROADCAST_LIMIT = 100;
 
 std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
@@ -866,9 +867,9 @@ void SkaleHost::broadcastFunc() {
     size_t nBroadcastTaskNumber = 0;
     while ( !m_exitNeeded ) {
         try {
-            m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
+            m_broadcaster->broadcast( {} );  // HACK this is just to initialize sockets
 
-            dev::eth::Transactions txns = m_tq.topTransactionsSync( 1, 0, 1 );
+            dev::eth::Transactions txns = m_tq.topTransactionsSync( TXNS_BROADCAST_LIMIT, 0, 1 );
             if ( txns.empty() )  // means timeout
                 continue;
 
@@ -876,36 +877,40 @@ void SkaleHost::broadcastFunc() {
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 
-            assert( txns.size() == 1 );
-            Transaction& txn = txns[0];
-            h256 sha = txn.sha3();
+            dev::eth::Transactions txnsToBroadcast;
 
             // TODO XXX such blocks are bad :(
-            size_t received;
-            {
-                std::lock_guard< std::mutex > lock( m_receivedMutex );
-                received = m_received.count( sha );
+            for ( const auto& txn : txns ) {
+                size_t received;
+                {
+                    std::lock_guard< std::mutex > lock( m_receivedMutex );
+                    received = m_received.count( txn.sha3() );
+                }
+                if ( received == 0 )
+                    txnsToBroadcast.push_back( txn );
             }
 
-            if ( received == 0 ) {
+            if ( txnsToBroadcast.size() > 0 ) {
                 try {
+                    std::vector< std::string > rlps( txnsToBroadcast.size() );
+                    for ( size_t i = 0; i < rlps.size(); ++i ) {
+                        rlps[i] = toJS( txnsToBroadcast[i].rlp() );
+                    }
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
-                        std::string rlp = toJS( txn.rlp() );
-                        std::string h = toJS( txn.sha3() );
                         //
                         std::string strPerformanceQueueName = "bc/broadcast";
                         std::string strPerformanceActionName =
                             skutils::tools::format( "broadcast %zu", nBroadcastTaskNumber++ );
                         skutils::task::performance::json jsn =
                             skutils::task::performance::json::object();
-                        jsn["hash"] = h;
+                        jsn["broadcastSize"] = txnsToBroadcast.size();
                         skutils::task::performance::action a(
                             strPerformanceQueueName, strPerformanceActionName, jsn );
                         //
                         m_debugTracer.tracepoint( "broadcast" );
-                        m_broadcaster->broadcast( rlp );
+                        m_broadcaster->broadcast( rlps );
                     }
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT" << endl;
@@ -916,7 +921,7 @@ void SkaleHost::broadcastFunc() {
             else
                 m_debugTracer.tracepoint( "broadcast_already_have" );
 
-            ++m_bcast_counter;
+            m_bcast_counter += txnsToBroadcast.size();
 
             logState();
         } catch ( const std::exception& ex ) {
@@ -993,7 +998,7 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
-    m_broadcaster->broadcast( toJS( _txn.rlp() ) );
+    m_broadcaster->broadcast( { toJS( _txn.rlp() ) } );
 }
 
 void SkaleHost::noteNewTransactions() {}
