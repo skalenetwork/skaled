@@ -41,8 +41,8 @@ void CallTracePrinter::print(
     }
 
 
-    if (m_trace.isFailed()) {
-        _jsonTrace["error"] = getEvmErrorDescription(m_trace.getStatusCode());
+    if ( m_trace.isFailed() ) {
+        _jsonTrace["error"] = getEvmErrorDescription( m_trace.getEVMCStatusCode() );
     }
 }
 
@@ -67,7 +67,6 @@ void CallTracePrinter::printTransferTrace( Json::Value& _jsonTrace ) {
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getValue() );
 
     _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
-
 }
 
 

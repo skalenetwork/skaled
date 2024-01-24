@@ -386,20 +386,16 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
     m_totalGasUsed = ( uint64_t ) _er.gasUsed;
 
-    auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
+    m_output = _er.output;
+    m_evmcStatusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
 
     // if transaction is not just ETH transfer
     // record return of the top function.
     if ( m_topFunctionCall ) {
-        recordFunctionReturned( statusCode, _er.output, m_totalGasUsed );
+        recordFunctionReturned( m_evmcStatusCode, m_output, m_totalGasUsed );
     }
-
-
-    m_output = _er.output;
-    m_failed = _er.excepted != TransactionException::None;
-    m_statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
 
     // we are done. Set the trace to finalized
@@ -408,16 +404,12 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     printTrace( _er, _statePre, _statePost );
 }
 const bytes& AlethStandardTrace::getOutput() const {
-    STATE_CHECK(m_isFinalized)
+    STATE_CHECK( m_isFinalized )
     return m_output;
 }
 bool AlethStandardTrace::isFailed() const {
-    STATE_CHECK(m_isFinalized)
-    return m_failed;
-}
-evmc_status_code AlethStandardTrace::getStatusCode() const {
-    STATE_CHECK(m_isFinalized)
-    return m_statusCode;
+    STATE_CHECK( m_isFinalized )
+    return m_evmcStatusCode != EVMC_SUCCESS;
 }
 
 void eth::AlethStandardTrace::printTrace( ExecutionResult& _er, const HistoricState& _statePre,
@@ -527,6 +519,9 @@ const Address& AlethStandardTrace::getTo() const {
 const u256& AlethStandardTrace::getGasPrice() const {
     STATE_CHECK( m_isFinalized )
     return m_gasPrice;
+}
+evmc_status_code AlethStandardTrace::getEVMCStatusCode() const {
+    return m_evmcStatusCode;
 }
 }  // namespace dev::eth
 

@@ -95,7 +95,10 @@ public:
     [[nodiscard]] const u256& getValue() const;
     [[nodiscard]] const bytes& getInputData() const;
     [[nodiscard]] const Address& getTo() const;
-
+    [[nodiscard]] const u256& getGasPrice() const;
+    [[nodiscard]] const bytes& getOutput() const;
+    [[nodiscard]] bool isFailed() const;
+    evmc_status_code getEVMCStatusCode() const;
     static string toGethCompatibleCompactHexPrefixed( const u256& _value );
 
 
@@ -129,7 +132,6 @@ private:
     // get the currently executing smartcontract memory from EVM
     [[nodiscard]] static std::vector< std::uint8_t >
     extractSmartContractMemoryByteArrayFromStackPointer( const LegacyVM* _vm );
-
 
     // this is called when the function call depth of the current instruction is different from the
     // previous instruction. This happens when a function is called or returned.
@@ -176,23 +178,13 @@ private:
     u256 m_minerPayment;
     u256 m_originalFromBalance;
     bool m_isCall;
-
-public:
-    const u256& getGasPrice() const;
-    const bytes& getOutput() const;
-    bool isFailed() const;
-    evmc_status_code getStatusCode() const;
-
-private:
     uint64_t m_totalGasUsed;
     u256 m_value;
     u256 m_gasLimit;
     bytes m_inputData;
     u256 m_gasPrice;
     bytes m_output;
-    bool m_failed;
-    evmc_status_code m_statusCode;
-
+    evmc_status_code m_evmcStatusCode;
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 };

@@ -27,9 +27,9 @@ namespace dev::eth {
 
 // we try to be compatible with geth messages as much as we can
 string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
+    // this function should not be called if the status code is success
+    STATE_CHECK( _error != EVMC_SUCCESS );
     switch ( _error ) {
-    case EVMC_SUCCESS:
-        return "success";
     case EVMC_FAILURE:
         return "evm failure";
     case EVMC_REVERT:
@@ -65,7 +65,7 @@ string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
     case EVMC_OUT_OF_MEMORY:
         return "out of memory";
     default:
-        return "unexpected EVM error";
+        return "unexpected EVM error status code";
     };
 }
 

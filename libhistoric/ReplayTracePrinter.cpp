@@ -36,10 +36,9 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     _jsonTrace["transactionHash"] = toHexPrefixed( m_trace.getTxHash() );
     _jsonTrace["output"] = toHexPrefixed( _er.output );
     auto failed = _er.excepted != TransactionException::None;
+
     if ( failed ) {
-        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = getEvmErrorDescription( statusCode );
-        _jsonTrace["error"] = errMessage;
+        _jsonTrace["error"] = getEvmErrorDescription(m_trace.getEVMCStatusCode());
     }
 
     Json::Value functionTraceArray( Json::arrayValue );
