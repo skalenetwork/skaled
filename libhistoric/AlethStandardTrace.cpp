@@ -485,7 +485,7 @@ const u256& AlethStandardTrace::getMinerPayment() const {
     return m_minerPayment;
 }
 
-void AlethStandardTrace::recordMinerPayment( u256 _minerGasPayment ) {
+void AlethStandardTrace::recordMinerPayment( u256& _minerGasPayment ) {
     STATE_CHECK( !m_isFinalized )
     m_minerPayment = _minerGasPayment;
     // add miner to the list of accessed accounts, since the miner is paid
@@ -521,6 +521,7 @@ const u256& AlethStandardTrace::getGasPrice() const {
     return m_gasPrice;
 }
 evmc_status_code AlethStandardTrace::getEVMCStatusCode() const {
+    STATE_CHECK( m_isFinalized )
     return m_evmcStatusCode;
 }
 }  // namespace dev::eth

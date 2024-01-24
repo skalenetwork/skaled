@@ -145,7 +145,7 @@ private:
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
         const HistoricState& _statePre, const HistoricState& _statePost );
 
-    void recordMinerPayment( u256 _minerGasPayment );
+    void recordMinerPayment( u256& _minerGasPayment );
 
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
