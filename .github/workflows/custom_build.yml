@@ -16,7 +16,7 @@ on:
         default: ''
         required: false
       build_type:
-        description: 'Build type'
+        description: 'Build type of skaled binary'
         type: choice
         required: true
         options: 
