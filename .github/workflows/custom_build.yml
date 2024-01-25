@@ -15,6 +15,14 @@ on:
         description: 'Additional cmake options'
         default: ''
         required: false
+      build_type:
+        description: 'Build type'
+        type: choice
+        required: true
+        options: 
+        - Debug
+        - RelWithDebInfo
+        default: Debug
 
 jobs:
   main_job:
