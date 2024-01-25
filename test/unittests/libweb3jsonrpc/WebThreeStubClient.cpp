@@ -1344,3 +1344,13 @@ Json::Value WebThreeStubClient::debug_doBlocksDbCompaction() {
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
+
+Json::Value WebThreeStubClient::debug_getFutureTransactions() {
+    Json::Value p;
+    Json::Value result = this->CallMethod( "debug_getFutureTransactions", p );
+    if ( result.isArray() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
