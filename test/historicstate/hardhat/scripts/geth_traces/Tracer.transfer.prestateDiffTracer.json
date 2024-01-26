@@ -1,26 +1,26 @@
 {
     "post": {
         "0x0000000000000000000000000000000000000000": {
-            "balance": "0x11ec66"
+            "balance": "0x4ca368"
         },
         "0x388c818ca8b9251b393131c08a736a67ccb19297": {
-            "balance": "0x2c68af0bb140000"
+            "balance": "0xb1a2bc2ec500000"
         },
-        "0x907cd0881e50d359bb9fd120b1a5a143b1c97de6": {
-            "balance": "0x6c66043820e9509154",
-            "nonce": 8
+        "OWNER.address": {
+            "balance": "0x6c555bbca6ef90e577",
+            "nonce": 33
         }
     },
     "pre": {
         "0x0000000000000000000000000000000000000000": {
-            "balance": "0x119a5e"
+            "balance": "0x4c5160"
         },
         "0x388c818ca8b9251b393131c08a736a67ccb19297": {
-            "balance": "0x16345785d8a0000"
+            "balance": "0x9b6e64a8ec60000"
         },
-        "0x907cd0881e50d359bb9fd120b1a5a143b1c97de6": {
-            "balance": "0x6c676782c49c7b49fc",
-            "nonce": 7
+        "OWNER.address": {
+            "balance": "0x6c56bf0252ddaa91ef",
+            "nonce": 32
         }
     }
 }
