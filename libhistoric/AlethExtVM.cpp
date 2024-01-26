@@ -110,9 +110,6 @@ evmc_status_code AlethExtVM::transactionExceptionToEvmcStatusCode(TransactionExc
         case TransactionException::BadJumpDestination:
             return EVMC_BAD_JUMP_DESTINATION;
 
-        case TransactionException::NotEnoughCash:
-            return EVMC_INSUFFICIENT_BALANCE;
-
         case TransactionException::InvalidContractDeployer:
             return EVMC_CONTRACT_VALIDATION_FAILURE;
 
