@@ -1,12 +1,12 @@
 {
     "0x0000000000000000000000000000000000000000": {
-        "balance": "0x4c5160"
+        "balance": "0x5d99b6"
     },
     "0x388c818ca8b9251b393131c08a736a67ccb19297": {
-        "balance": "0x9b6e64a8ec60000"
+        "balance": "0xc7d713b49da0000"
     },
     "OWNER.address": {
-        "balance": "0x6c56bf0252ddaa91ef",
-        "nonce": 32
+        "balance": "0x6c5131e514447bf3d0",
+        "nonce": 40
     }
 }

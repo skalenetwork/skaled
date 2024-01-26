@@ -36,7 +36,6 @@ const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EX
 const TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateTracer.json";
 
 
-
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
 const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
 const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
@@ -51,6 +50,30 @@ const TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "."
 const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".4byteTracer.json";
 const TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".replayTracer.json";
 
+var DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE: string = "";
+
+async function replaceAddressesWithSymbolicNames(_traceFileName: string) {
+
+    let callAddressLowerCase = CALL_ADDRESS.toLowerCase();
+
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+        callAddressLowerCase, "CALL.address");
+
+    let ownerAddressLowerCase = OWNER_ADDRESS.toLowerCase();
+
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+        ownerAddressLowerCase, "OWNER.address");
+
+    // if the contract has been deployed, also replace contract address
+
+    if (DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE.length > 0) {
+        await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+            DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE, TEST_CONTRACT_NAME + ".address");
+
+    }
+
+
+}
 
 async function getTraceJsonOptions(_tracer: string): Promise<object> {
     if (_tracer == DEFAULT_TRACER) {
@@ -63,7 +86,6 @@ async function getTraceJsonOptions(_tracer: string): Promise<object> {
 
     return {"tracer": _tracer}
 }
-
 
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
@@ -125,7 +147,6 @@ async function replaceStringInFile(_filePath, _str1, _str2) {
     // Write the file
     fs.writeFileSync(_filePath, transformedFile, 'utf8');
 
-
 }
 
 
@@ -181,6 +202,8 @@ async function deployTestContract(): Promise<object> {
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
     await getAndPrintCommittedTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
+
+    DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedTestContract.address.toString().toLowerCase();
 
     return deployedTestContract;
 
@@ -268,7 +291,7 @@ async function executeTransferAndThenTestContractMintInSingleBlock(deployedContr
     expect(transferReceipt.blockNumber).not.to.be.null;
 
 
-    const trace : string = await getBlockTrace(transferReceipt.blockNumber);
+    const trace: string = await getBlockTrace(transferReceipt.blockNumber);
 
 
     expect(Array.isArray(trace));
@@ -280,6 +303,12 @@ async function executeTransferAndThenTestContractMintInSingleBlock(deployedContr
 
     return transferReceipt.hash!;
 
+}
+
+
+async function writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName: string, traceResult: string) {
+    writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
+    await replaceAddressesWithSymbolicNames(_traceFileName);
 }
 
 async function callDebugTraceCall(_deployedContract: any, _tracer: string, _traceFileName: string): Promise<void> {
@@ -307,23 +336,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
     const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", traceOptions]);
 
     const traceResult = JSON.stringify(trace, null, 4);
-
-    writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
-
-    let deployedContractAddressLowerCase = _deployedContract.address.toString().toLowerCase();
-    let callAddressLowerCase = CALL_ADDRESS.toLowerCase();
-
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
-        deployedContractAddressLowerCase, TEST_CONTRACT_NAME + ".address");
-
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
-        callAddressLowerCase, "CALL.address");
-
-    let ownerAddressLowerCase = OWNER_ADDRESS.toLowerCase();
-
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
-        ownerAddressLowerCase, "OWNER.address");
-
+    await writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName, traceResult);
 
 }
 
@@ -337,7 +350,8 @@ async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: strin
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
 
     const result = JSON.stringify(trace, null, 4);
-    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
+
+    await writeTraceFileReplacingAddressesWithSymbolicNames(_skaleFileName, result);
 
     return trace;
 }
@@ -717,7 +731,6 @@ async function main(): Promise<void> {
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
-
 
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
