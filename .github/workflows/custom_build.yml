@@ -137,8 +137,8 @@ jobs:
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${{ github.event.inputs.branch_name }}
-          [[ $BUILD_TYPE = "Debug" ]] && export SUFFIX=debug || export SUFFIX=release
-          export VERSION=${{ github.event.inputs.image_version }}-$SUFFIX
+          [[ $BUILD_TYPE = "Debug" ]] && export VERSION_SUFFIX=debug || export VERSION_SUFFIX=release
+          export VERSION=${{ github.event.inputs.image_version }}-$VERSION_SUFFIX
           echo "Version $VERSION"
           export RELEASE=true
           bash ./scripts/build_and_publish.sh
