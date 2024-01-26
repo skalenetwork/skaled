@@ -716,7 +716,7 @@ async function main(): Promise<void> {
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
-
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
 
 
 
