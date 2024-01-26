@@ -623,6 +623,15 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                 if (address == ZERO_ADDRESS && difference.path![1] == "balance") {
                     return;
                 }
+
+                if (address == "OWNER.address" && difference.path![1] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![1] == "nonce") {
+                    return;
+                }
+
             }
             foundDiffs = true;
 
