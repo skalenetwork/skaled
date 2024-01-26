@@ -113,10 +113,17 @@ void PrestateTracePrinter::printAllAccessedAccountPreValues( Json::Value& _jsonT
         auto preNonce = ( uint64_t ) _statePre.getNonce( _address );
         auto postNonce = ( uint64_t ) _statePost.getNonce( _address );
         // in calls nonce is always printed by geth
-        if ( postNonce != preNonce || m_trace.isCall() ) {
+        // find out if the address is a contract. Geth always prints nonce for contracts
+
+        auto isContract = _statePre.addressHasCode(_address);
+
+        if ( postNonce != preNonce || m_trace.isCall() || isContract ) {
             accountPreValues["nonce"] = preNonce;
         }
     }
+
+
+
 
     accountPreValues["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
 
