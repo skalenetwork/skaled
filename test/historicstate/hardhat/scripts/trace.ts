@@ -34,6 +34,7 @@ const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTrac
 const TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".callTracer.json";
 const TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".4byteTracer.json";
 
 
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
@@ -707,6 +708,8 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstTransferHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstTransferHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
+
 
     const secondTransferHash: string = await sendTransferWithConfirmation();
 
@@ -740,6 +743,7 @@ async function main(): Promise<void> {
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
 
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
