@@ -1,10 +1,10 @@
 {
     "0x0000000000000000000000000000000000000000": {
-        "balance": "0x17043b"
+        "balance": "0x5c2593"
     },
     "OWNER.address": {
-        "balance": "0x36319cfec672f1c4fd",
-        "nonce": 7
+        "balance": "0x361b676fc5ba32b7d3",
+        "nonce": 39
     },
     "Tracer.address": {
         "balance": "0x0",
