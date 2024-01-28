@@ -91,6 +91,11 @@ void FunctionCallRecord::printFunctionExecutionDetail(
 
     if ( !m_inputData.empty() ) {
         _jsonTrace["input"] = toHexPrefixed( m_inputData );
+    } else {
+        // for create and create2 geth makes input equal to output
+        if ( m_type == Instruction::CREATE || m_type == Instruction::CREATE2 ) {
+            _jsonTrace["input"] = toHexPrefixed( m_outputData );
+        }
     }
 
     if ( !_debugOptions.withLog )
