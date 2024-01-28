@@ -761,6 +761,7 @@ async function main(): Promise<void> {
 
     await verifyDefaultTraceAgainstGethTrace(TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
 
+
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
     await verifyPrestateDiffTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
