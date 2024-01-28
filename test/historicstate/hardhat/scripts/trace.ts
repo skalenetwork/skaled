@@ -20,12 +20,12 @@ const CALL_FUNCTION_NAME = "getBalance";
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
 const GETH_TRACES_DIR = "scripts/geth_traces/"
 
-let DEFAULT_TRACER = "defaultTracer";
-let CALL_TRACER = "callTracer";
-let PRESTATE_TRACER = "prestateTracer";
-let PRESTATEDIFF_TRACER = "prestateDiffTracer";
-let FOURBYTE_TRACER = "4byteTracer";
-let REPLAY_TRACER = "replayTracer"
+const DEFAULT_TRACER = "defaultTracer";
+const CALL_TRACER = "callTracer";
+const PRESTATE_TRACER = "prestateTracer";
+const PRESTATEDIFF_TRACER = "prestateDiffTracer";
+const FOURBYTE_TRACER = "4byteTracer";
+const REPLAY_TRACER = "replayTracer";
 
 
 const TEST_DEPLOY_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
@@ -388,7 +388,7 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
     let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
 
-    verifyGasCalculations(actualResult);
+    await verifyGasCalculations(actualResult);
 
     const differences = deepDiff(expectedResult, actualResult)!;
 
@@ -760,6 +760,7 @@ async function main(): Promise<void> {
     }
 
     await verifyDefaultTraceAgainstGethTrace(TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+    await verifyCallTraceAgainstGethTrace(TEST_DEPLOY_CALLTRACER_FILE_NAME);
 
 
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
