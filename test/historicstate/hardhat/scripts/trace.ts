@@ -29,6 +29,11 @@ let REPLAY_TRACER = "replayTracer"
 
 
 const TEST_DEPLOY_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const TEST_DEPLOY_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.callTracer.json";
+const TEST_DEPLOY_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.prestateTracer.json";
+const TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.prestateDiffTracer.json";
+const TEST_DEPLOY_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.4byteTracer.json";
+
 
 
 const TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".defaultTracer.json";
@@ -718,7 +723,13 @@ async function main(): Promise<void> {
 
     const deployHash = deployedContract.deployTransaction.hash;
     DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
+
+
     await getAndPrintCommittedTransactionTrace(deployHash, DEFAULT_TRACER, TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, CALL_TRACER, TEST_DEPLOY_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATE_TRACER, TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATEDIFF_TRACER, TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, FOURBYTE_TRACER, TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
 
 
     await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
