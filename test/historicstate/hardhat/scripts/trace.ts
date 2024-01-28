@@ -28,7 +28,7 @@ let FOURBYTE_TRACER = "4byteTracer";
 let REPLAY_TRACER = "replayTracer"
 
 
-const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const TEST_DEPLOY_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
 
 
 const TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".defaultTracer.json";
@@ -200,12 +200,9 @@ async function deployTestContract(): Promise<object> {
 
     const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTestContract.deployTransaction.hash)
     const deployBlockNumber: number = deployReceipt.blockNumber;
+
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
-
-    await getAndPrintCommittedTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
-
-    DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedTestContract.address.toString().toLowerCase();
 
     return deployedTestContract;
 
@@ -709,7 +706,7 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
 
 async function main(): Promise<void> {
 
-    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_DEPLOY_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_DEPLOY_DEFAULTTRACER_FILE_NAME));
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME));
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME));
 
@@ -717,8 +714,12 @@ async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
 
-
     const firstTransferHash: string = await executeTransferAndThenTestContractMintInSingleBlock(deployedContract);
+
+    const deployHash = deployedContract.deployTransaction.hash;
+    DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
+    await getAndPrintCommittedTransactionTrace(deployHash, DEFAULT_TRACER, TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+
 
     await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
@@ -747,13 +748,15 @@ async function main(): Promise<void> {
         await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
     }
 
+    await verifyDefaultTraceAgainstGethTrace(TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
     await verifyPrestateDiffTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
     await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
 
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME);
+
 
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
