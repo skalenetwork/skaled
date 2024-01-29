@@ -238,7 +238,6 @@ ChainParams ChainParams::loadConfig(
 
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
-        s.multiTransactionMode = true;
 
         if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
             s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
