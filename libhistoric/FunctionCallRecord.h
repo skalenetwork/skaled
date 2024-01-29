@@ -64,6 +64,7 @@ public:
     void collectFourByteTrace( std::map< string, uint64_t >& _callMap );
     void setReturnValues(
         evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
+    Instruction getType() const;
 
 private:
     Instruction m_type;

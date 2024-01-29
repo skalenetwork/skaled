@@ -38,6 +38,12 @@ void CallTracePrinter::print(
         printTransferTrace( _jsonTrace );
     } else {
         topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
+        // for CREATE geth prints transaction input data as input
+
+        // for create and create2 geth makes input equal to output
+        if ( topFunctionCallRecord && topFunctionCallRecord->getType() == Instruction::CREATE) {
+            _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
+        }
     }
 
 
