@@ -82,7 +82,7 @@ public:
     [[nodiscard]] const std::set< Address >& getAccessedAccounts() const;
     [[nodiscard]] const h256& getTxHash() const;
     [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
-
+    [[nodiscard]] const Address& getDeployedContractAddress() const;
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
         const;
     [[nodiscard]] const Address& getBlockAuthor() const;
@@ -98,9 +98,11 @@ public:
     [[nodiscard]] const u256& getGasPrice() const;
     [[nodiscard]] const bytes& getOutput() const;
     [[nodiscard]] bool isFailed() const;
-    evmc_status_code getEVMCStatusCode() const;
-    static string toGethCompatibleCompactHexPrefixed( const u256& _value );
+    [[nodiscard]] evmc_status_code getEVMCStatusCode() const;
+    [[nodiscard]] bool isSimpleTransfer();
+    [[nodiscard]] bool isContractCreation();
 
+    [[nodiscard]] static string toGethCompatibleCompactHexPrefixed( const u256& _value );
 
 private:
     void setCurrentlyExecutingFunctionCall(
@@ -185,6 +187,9 @@ private:
     u256 m_gasPrice;
     bytes m_output;
     evmc_status_code m_evmcStatusCode;
+    // this will include deployed contract address if the transaction was CREATE
+    Address m_deployedContractAddress;
+
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 };

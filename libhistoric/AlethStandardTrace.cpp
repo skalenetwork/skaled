@@ -387,6 +387,7 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     m_totalGasUsed = ( uint64_t ) _er.gasUsed;
 
     m_output = _er.output;
+    m_deployedContractAddress = _er.newAddress;
     m_evmcStatusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
@@ -524,6 +525,22 @@ evmc_status_code AlethStandardTrace::getEVMCStatusCode() const {
     STATE_CHECK( m_isFinalized )
     return m_evmcStatusCode;
 }
+const Address& AlethStandardTrace::getDeployedContractAddress() const {
+    return m_deployedContractAddress;
+}
+
+// return true if transaction is a simple Eth transfer
+[[nodiscard]] bool AlethStandardTrace::isSimpleTransfer() {
+    return !m_topFunctionCall;
+}
+
+// return true if transaction is contract creation
+[[nodiscard]] bool AlethStandardTrace::isContractCreation() {
+    return m_topFunctionCall && m_topFunctionCall->getType() == Instruction::CREATE;
+}
+
 }  // namespace dev::eth
+
+
 
 #endif

@@ -32,23 +32,31 @@ void CallTracePrinter::print(
     Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
-    auto topFunctionCallRecord = m_trace.getTopFunctionCall();
-    if ( !topFunctionCallRecord ) {
-        // no bytecodes were executed
-        printTransferTrace( _jsonTrace );
-    } else {
-        topFunctionCallRecord->printTrace( _jsonTrace, 0, m_trace.getOptions() );
-        // for CREATE geth prints transaction input data as input
-
-        // for create and create2 geth makes input equal to output
-        if ( topFunctionCallRecord && topFunctionCallRecord->getType() == Instruction::CREATE) {
-            _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
-        }
-    }
-
-
+    // first print error description if the transaction failed
     if ( m_trace.isFailed() ) {
         _jsonTrace["error"] = getEvmErrorDescription( m_trace.getEVMCStatusCode() );
+    }
+
+    // now deal with the cases of simple ETH transfer vs contract interaction
+    if ( m_trace.isSimpleTransfer() ) {
+        // no bytecode was executed
+        printTransferTrace( _jsonTrace );
+    } else {
+        printContractTransactionTrace( _jsonTrace );
+    }
+}
+void CallTracePrinter::printContractTransactionTrace( Json::Value& _jsonTrace ) {
+    auto topFunctionCall = m_trace.getTopFunctionCall();
+    STATE_CHECK( topFunctionCall );
+    // call trace on the top Solidity function call in the stack
+    // this will also recursively call printTrace on nested calls if exist
+    topFunctionCall->printTrace( _jsonTrace, 0, m_trace.getOptions() );
+    // handle the case of a transaction that deploys a contract
+    // in this case geth prints transaction input data as input
+    // end prints to as newly created contract address
+    if ( m_trace.isContractCreation() ) {
+        _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
+        _jsonTrace["to"] = toHexPrefixed( m_trace.getDeployedContractAddress() );
     }
 }
 
@@ -62,16 +70,12 @@ void CallTracePrinter::printTransferTrace( Json::Value& _jsonTrace ) {
     _jsonTrace["type"] = "CALL";
     _jsonTrace["from"] = toHexPrefixed( m_trace.getFrom() );
     _jsonTrace["to"] = toHexPrefixed( m_trace.getTo() );
-
     _jsonTrace["gas"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getGasLimit() );
     _jsonTrace["gasUsed"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getTotalGasUsed() );
-
-
     _jsonTrace["value"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getValue() );
-
     _jsonTrace["input"] = toHexPrefixed( m_trace.getInputData() );
 }
 

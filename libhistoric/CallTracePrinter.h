@@ -39,5 +39,7 @@ public:
 
 private:
     void printTransferTrace( Json::Value& _jsonTrace );
+
+    void printContractTransactionTrace( Json::Value& _jsonTrace );
 };
 }  // namespace dev::eth
