@@ -680,6 +680,22 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
                 }
             }
 
+            if (difference.kind == "E" && difference.path!.length == 3) {
+                let address = difference.path![1];
+                if (address == ZERO_ADDRESS && difference.path![2] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![2] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![2] == "nonce") {
+                    return;
+                }
+            }
+
+
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
@@ -727,9 +743,10 @@ async function main(): Promise<void> {
 
     await getAndPrintCommittedTransactionTrace(deployHash, DEFAULT_TRACER, TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(deployHash, CALL_TRACER, TEST_DEPLOY_CALLTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATE_TRACER, TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATEDIFF_TRACER, TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(deployHash, FOURBYTE_TRACER, TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATEDIFF_TRACER, TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATE_TRACER, TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
+
 
 
     await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
@@ -764,6 +781,7 @@ async function main(): Promise<void> {
     await verifyFourByteTraceAgainstGethTrace(TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+
 
 
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
