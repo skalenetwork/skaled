@@ -177,14 +177,15 @@ namespace dev::eth {
         if ( !_statePre.addressInUse( _address ) )
             return;
 
-        auto balance = _statePre.balance( _address );
+        auto balancePre = _statePre.balance( _address );
+        auto balancePost = _statePost.balance( _address );
+
         if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
             // take into account that for calls balance is modified in the state before execution
-            balance = m_trace.getOriginalFromBalance();
-            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
-        } else if ( !_statePost.addressInUse( _address ) ||
-                    _statePost.balance( _address ) != balance ) {
-            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balance );
+            balancePre = m_trace.getOriginalFromBalance();
+            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
+        } else if ( !_statePost.addressInUse( _address ) || balancePost != balancePre ) {
+            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
         }
 
         auto& code = _statePre.code( _address );
@@ -249,7 +250,10 @@ namespace dev::eth {
         if ( !_statePost.addressInUse( _address ) )
             return;
 
+
+        auto balancePre = _statePre.balance( _address );
         auto balancePost = _statePost.balance( _address );
+
         auto noncePost = _statePost.getNonce( _address );
         auto& codePost = _statePost.code( _address );
 
@@ -258,9 +262,10 @@ namespace dev::eth {
         if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
             // geth does not postbalance of from address in calls
         } else if ( !_statePre.addressInUse( _address ) ||
-                    _statePre.balance( _address ) != balancePost ) {
+                    balancePre != balancePost ) {
             value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
         }
+
         if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
             value["nonce"] = ( uint64_t ) noncePost;
         }

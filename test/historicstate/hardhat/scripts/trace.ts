@@ -776,11 +776,7 @@ async function main(): Promise<void> {
         await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
     }
 
-    await verifyDefaultTraceAgainstGethTrace(TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
-    await verifyCallTraceAgainstGethTrace(TEST_DEPLOY_CALLTRACER_FILE_NAME);
-    await verifyFourByteTraceAgainstGethTrace(TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
-    await verifyPrestateTraceAgainstGethTrace(TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
-    await verifyPrestateDiffTraceAgainstGethTrace(TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+
 
 
 
@@ -805,6 +801,12 @@ async function main(): Promise<void> {
     await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
+
+    await verifyDefaultTraceAgainstGethTrace(TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+    await verifyCallTraceAgainstGethTrace(TEST_DEPLOY_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
 }
 
 
