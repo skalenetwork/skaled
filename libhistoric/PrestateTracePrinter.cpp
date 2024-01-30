@@ -219,8 +219,8 @@ namespace dev::eth {
                 }
 
                 if ( includePair ) {
-                    storagePairs[toHex( it.first )] =
-                        toHex( _statePre.originalStorageValue( _address, it.first ) );
+                    storagePairs[toHexPrefixed( it.first )] =
+                        toHexPrefixed( _statePre.originalStorageValue( _address, it.first ) );
                     // return limited number of storage pairs to prevent DOS attacks
                     m_storageValuesReturnedPre++;
                     if ( m_storageValuesReturnedPre >= MAX_STORAGE_VALUES_RETURNED )
@@ -335,7 +335,7 @@ namespace dev::eth {
                 }
 
                 if ( includePair ) {
-                    storagePairs[toHex( storageAddress )] = toHex( storageValue );
+                    storagePairs[toHexPrefixed( storageAddress )] = toHexPrefixed( storageValue );
                     // return limited number of storage pairs to prevent DOS attacks
                     m_storageValuesReturnedPost++;
                     if ( m_storageValuesReturnedPost >= MAX_STORAGE_VALUES_RETURNED )
