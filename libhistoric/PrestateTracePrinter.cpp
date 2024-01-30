@@ -171,7 +171,7 @@ namespace dev::eth {
 
     void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
-        Json::Value value( Json::objectValue );
+        Json::Value diffPre( Json::objectValue );
 
         // balance diff
         if ( !_statePre.addressInUse( _address ) )
@@ -183,23 +183,19 @@ namespace dev::eth {
         if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
             // take into account that for calls balance is modified in the state before execution
             balancePre = m_trace.getOriginalFromBalance();
-            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
+            diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
         } else if ( !_statePost.addressInUse( _address ) || balancePost != balancePre ) {
-            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
+            diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
         }
 
         auto& code = _statePre.code( _address );
-        auto nonce = _statePre.getNonce( _address );
 
-        // geth does not print from nonce in calls
-        if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
-            // take into account that for calls balance is modified in the state before execution
-        } else if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != nonce ) {
-            value["nonce"] = ( uint64_t ) nonce;
-        }
+        printPreDiffNonce( _statePre, _statePost, _address, diffPre );
+
+
         if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
             if ( code != NullBytes ) {
-                value["code"] = toHexPrefixed( code );
+                diffPre["code"] = toHexPrefixed( code );
             }
         }
 
@@ -233,17 +229,38 @@ namespace dev::eth {
             }
 
             if ( !storagePairs.empty() )
-                value["storage"] = storagePairs;
+                diffPre["storage"] = storagePairs;
         }
 
-        if ( !value.empty() )
-            _preDiffTrace[toHexPrefixed( _address )] = value;
+        if ( !diffPre.empty() )
+            _preDiffTrace[toHexPrefixed( _address )] = diffPre;
+    }
+    void PrestateTracePrinter::printPreDiffNonce( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const {
+
+
+        // geth does not print pre from nonce in calls
+        if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
+            return;
+        };
+
+        // geth does always print pre nonce equal 1 for newly created contract
+        if (!_statePre.addressHasCode(_address) && _statePost.addressHasCode(_address)) {
+            _diff["nonce"] = 1;
+            return;
+        }
+
+        // now handle generic case
+        auto noncePre = _statePre.getNonce( _address );
+        if ( !_statePost.addressInUse( _address ) || _statePost.getNonce( _address ) != noncePre ) {
+            _diff["nonce"] = ( uint64_t ) noncePre;
+        }
     }
 
 
     void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
-        Json::Value value( Json::objectValue );
+        Json::Value diffPost( Json::objectValue );
 
 
         // if this address does not exist post-transaction we dot include it in the trace
@@ -263,15 +280,15 @@ namespace dev::eth {
             // geth does not postbalance of from address in calls
         } else if ( !_statePre.addressInUse( _address ) ||
                     balancePre != balancePost ) {
-            value["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
+            diffPost["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
         }
 
         if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
-            value["nonce"] = ( uint64_t ) noncePost;
+            diffPost["nonce"] = ( uint64_t ) noncePost;
         }
         if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {
             if ( codePost != NullBytes ) {
-                value["code"] = toHexPrefixed( codePost );
+                diffPost["code"] = toHexPrefixed( codePost );
             }
         }
 
@@ -308,11 +325,11 @@ namespace dev::eth {
             }
 
             if ( !storagePairs.empty() )
-                value["storage"] = storagePairs;
+                diffPost["storage"] = storagePairs;
         }
 
-        if ( !value.empty() )
-            _postDiffTrace[toHexPrefixed( _address )] = value;
+        if ( !diffPost.empty() )
+            _postDiffTrace[toHexPrefixed( _address )] = diffPost;
     }
 
 
