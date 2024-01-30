@@ -219,7 +219,6 @@ void ZmqBroadcaster::startService() {
                     rlps.push_back( str );
                 }
 
-                std::cout << "RECEIVED TXNS THROUGH BROADCAST: " << rlps.size() << '\n';
                 for ( const auto& rlp : rlps ) {
                     try {
                         m_skaleHost.receiveTransaction( rlp );
