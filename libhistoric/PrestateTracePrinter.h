@@ -62,5 +62,7 @@ private:
 
     void printMinerBalanceChange(
         const HistoricState& _statePre, Json::Value& preDiff, Json::Value& postDiff ) const;
+    void printNonce( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& accountPreValues ) const;
 };
 }  // namespace dev::eth
