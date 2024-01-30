@@ -177,19 +177,19 @@ namespace dev::eth {
         if ( !_statePre.addressInUse( _address ) )
             return;
 
-        auto balancePre = _statePre.balance( _address );
-        auto balancePost = _statePost.balance( _address );
-
-        if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
-            // take into account that for calls balance is modified in the state before execution
-            balancePre = m_trace.getOriginalFromBalance();
-            diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
-        } else if ( !_statePost.addressInUse( _address ) || balancePost != balancePre ) {
-            diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
-        }
+        printPreDiffBalance( _statePre, _statePost, _address, diffPre );
 
         printPreDiffNonce( _statePre, _statePost, _address, diffPre );
 
+        printPreDiffCode( _statePre, _statePost, _address, diffPre );
+
+        printPreDiffStorage( _statePre, _statePost, _address, diffPre );
+
+        if ( !diffPre.empty() )
+            _preDiffTrace[toHexPrefixed( _address )] = diffPre;
+    }
+    void PrestateTracePrinter::printPreDiffCode( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& diffPre ) const {
         auto& code = _statePre.code( _address );
 
         if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
@@ -197,11 +197,19 @@ namespace dev::eth {
                 diffPre["code"] = toHexPrefixed( code );
             }
         }
+    }
+    void PrestateTracePrinter::printPreDiffBalance( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& _diffPre ) const {
+        auto balancePre = _statePre.balance( _address );
+        auto balancePost = _statePost.balance( _address );
 
-        printPreDiffStorage( _statePre, _statePost, _address, diffPre );
-
-        if ( !diffPre.empty() )
-            _preDiffTrace[toHexPrefixed( _address )] = diffPre;
+        if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
+            // take into account that for calls balance is modified in the state before execution
+            balancePre = m_trace.getOriginalFromBalance();
+            _diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
+        } else if ( !_statePost.addressInUse( _address ) || balancePost != balancePre ) {
+            _diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
+        }
     }
     void PrestateTracePrinter::printPreDiffStorage( const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address, Json::Value& _diffPre ) {
@@ -288,6 +296,30 @@ namespace dev::eth {
         if ( !_statePost.addressInUse( _address ) )
             return;
 
+        printPostDiffBalance( _statePre, _statePost, _address, diffPost );
+
+        printPostDiffNonce( _statePre, _statePost, _address, diffPost );
+
+        diffPost = printPostDiffCode( _statePre, _statePost, _address, diffPost );
+
+        printPostDiffStorage( _statePre, _address, diffPost );
+
+        if ( !diffPost.empty() )
+            _postDiffTrace[toHexPrefixed( _address )] = diffPost;
+    }
+    Json::Value& PrestateTracePrinter::printPostDiffCode( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& diffPost ) const {
+        auto& codePost = _statePost.code( _address );
+
+        if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {
+            if ( codePost != NullBytes ) {
+                diffPost["code"] = toHexPrefixed( codePost );
+            }
+        }
+        return diffPost;
+    }
+    void PrestateTracePrinter::printPostDiffBalance( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& diffPost ) const {
         auto balancePre = _statePre.balance( _address );
         auto balancePost = _statePost.balance( _address );
 
@@ -298,21 +330,6 @@ namespace dev::eth {
             // if the new address, ot if the value changed, include in post trace
             diffPost["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
         }
-
-        printPostDiffNonce( _statePre, _statePost, _address, diffPost );
-
-        auto& codePost = _statePost.code( _address );
-
-        if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {
-            if ( codePost != NullBytes ) {
-                diffPost["code"] = toHexPrefixed( codePost );
-            }
-        }
-
-        printPostDiffStorage( _statePre, _address, diffPost );
-
-        if ( !diffPost.empty() )
-            _postDiffTrace[toHexPrefixed( _address )] = diffPost;
     }
 
     void PrestateTracePrinter::printPostDiffStorage( const HistoricState& _statePre,
