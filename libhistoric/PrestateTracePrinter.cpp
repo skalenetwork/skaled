@@ -188,10 +188,11 @@ namespace dev::eth {
             diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
         }
 
-        auto& code = _statePre.code( _address );
+
 
         printPreDiffNonce( _statePre, _statePost, _address, diffPre );
 
+        auto& code = _statePre.code( _address );
 
         if ( !_statePost.addressInUse( _address ) || _statePost.code( _address ) != code ) {
             if ( code != NullBytes ) {
@@ -199,6 +200,13 @@ namespace dev::eth {
             }
         }
 
+        printPreDiffStorage( _statePre, _statePost, _address, diffPre );
+
+        if ( !diffPre.empty() )
+            _preDiffTrace[toHexPrefixed( _address )] = diffPre;
+    }
+    void PrestateTracePrinter::printPreDiffStorage( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& _diffPre ) {
         if ( m_trace.getAccessedStorageValues().find( _address ) !=
              m_trace.getAccessedStorageValues().end() ) {
             Json::Value storagePairs;
@@ -229,11 +237,8 @@ namespace dev::eth {
             }
 
             if ( !storagePairs.empty() )
-                diffPre["storage"] = storagePairs;
+                _diffPre["storage"] = storagePairs;
         }
-
-        if ( !diffPre.empty() )
-            _preDiffTrace[toHexPrefixed( _address )] = diffPre;
     }
     void PrestateTracePrinter::printPreDiffNonce( const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const {
