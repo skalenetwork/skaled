@@ -188,8 +188,6 @@ namespace dev::eth {
             diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
         }
 
-
-
         printPreDiffNonce( _statePre, _statePost, _address, diffPre );
 
         auto& code = _statePre.code( _address );
@@ -281,8 +279,6 @@ namespace dev::eth {
 
     }
 
-
-
     void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
         Json::Value diffPost( Json::objectValue );
@@ -292,23 +288,20 @@ namespace dev::eth {
         if ( !_statePost.addressInUse( _address ) )
             return;
 
-
         auto balancePre = _statePre.balance( _address );
         auto balancePost = _statePost.balance( _address );
 
-
-        auto& codePost = _statePost.code( _address );
-
-
-        // if the new address, ot if the value changed, include in post trace
         if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
             // geth does not postbalance of from address in calls
         } else if ( !_statePre.addressInUse( _address ) ||
                     balancePre != balancePost ) {
+            // if the new address, ot if the value changed, include in post trace
             diffPost["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
         }
 
         printPostDiffNonce( _statePre, _statePost, _address, diffPost );
+
+        auto& codePost = _statePost.code( _address );
 
         if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {
             if ( codePost != NullBytes ) {
@@ -316,7 +309,14 @@ namespace dev::eth {
             }
         }
 
-        // post diffs for storage values
+        printPostDiffStorage( _statePre, _address, diffPost );
+
+        if ( !diffPost.empty() )
+            _postDiffTrace[toHexPrefixed( _address )] = diffPost;
+    }
+
+    void PrestateTracePrinter::printPostDiffStorage( const HistoricState& _statePre,
+        const Address& _address, Json::Value& diffPost ) {  // post diffs for storage values
         if ( m_trace.getAccessedStorageValues().find( _address ) !=
              m_trace.getAccessedStorageValues().end() ) {
             Json::Value storagePairs( Json::objectValue );
@@ -351,9 +351,6 @@ namespace dev::eth {
             if ( !storagePairs.empty() )
                 diffPost["storage"] = storagePairs;
         }
-
-        if ( !diffPost.empty() )
-            _postDiffTrace[toHexPrefixed( _address )] = diffPost;
     }
 
 
