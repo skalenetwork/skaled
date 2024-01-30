@@ -66,5 +66,7 @@ private:
         const Address& _address, Json::Value& accountPreValues ) const;
     void printPreDiffNonce( const HistoricState& _statePre, const HistoricState& _statePost,
         const Address& _address, Json::Value& _diff ) const;
+    void printPostDiffNonce( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const;
 };
 }  // namespace dev::eth

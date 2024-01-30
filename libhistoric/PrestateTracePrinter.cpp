@@ -258,6 +258,26 @@ namespace dev::eth {
     }
 
 
+    void PrestateTracePrinter::printPostDiffNonce( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const {
+
+
+        // geth does noty print post diff nonce for newly created contract
+        if (!_statePre.addressHasCode(_address) && _statePost.addressHasCode(_address)) {
+            return;
+        }
+
+        // now handle generic case
+
+        auto noncePost = _statePost.getNonce( _address );
+        if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
+            _diff["nonce"] = ( uint64_t ) noncePost;
+        }
+
+    }
+
+
+
     void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
         Json::Value diffPost( Json::objectValue );
@@ -271,7 +291,7 @@ namespace dev::eth {
         auto balancePre = _statePre.balance( _address );
         auto balancePost = _statePost.balance( _address );
 
-        auto noncePost = _statePost.getNonce( _address );
+
         auto& codePost = _statePost.code( _address );
 
 
@@ -283,9 +303,8 @@ namespace dev::eth {
             diffPost["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePost );
         }
 
-        if ( !_statePre.addressInUse( _address ) || _statePre.getNonce( _address ) != noncePost ) {
-            diffPost["nonce"] = ( uint64_t ) noncePost;
-        }
+        printPostDiffNonce( _statePre, _statePost, _address, diffPost );
+
         if ( !_statePre.addressInUse( _address ) || _statePre.code( _address ) != codePost ) {
             if ( codePost != NullBytes ) {
                 diffPost["code"] = toHexPrefixed( codePost );
