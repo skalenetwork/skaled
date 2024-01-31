@@ -175,7 +175,8 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
     Json::Value diffPre( Json::objectValue );
 
     // If the account did not exist before the transaction, geth does not print it in pre trace
-    // exception is if a contract is created during the transaction. Geth always prints it in pre diff
+    // exception is if a contract is created during the transaction. Geth always prints it in pre
+    // diff
     if ( !_statePre.addressInUse( _address ) && !isNewContract( _statePre, _statePost, _address ) )
         return;
 
@@ -202,13 +203,12 @@ void PrestateTracePrinter::printPreDiffCode( const HistoricState& _statePre,
 }
 void PrestateTracePrinter::printPreDiffBalance( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& _diffPre ) const {
-    auto balancePre = _statePre.balance( _address );
-    auto balancePost = _statePost.balance( _address );
+    auto balancePre = getBalancePre( _statePre, _address );
+    auto balancePost = getBalancePost( _statePost, _address );
 
 
+    // always print balance of from address in calls
     if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
-        // take into account that for calls balance is modified in the state before execution
-        balancePre = m_trace.getOriginalFromBalance();
         _diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
         return;
     }
@@ -226,12 +226,35 @@ void PrestateTracePrinter::printPreDiffBalance( const HistoricState& _statePre,
         _diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( balancePre );
     }
 }
+u256 PrestateTracePrinter::getBalancePre(
+    const HistoricState& _statePre, const Address& _address ) const {
+    auto balancePre = _statePre.balance( _address );
+
+    if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
+        // take into account that for calls balance is modified in the state before execution
+        balancePre = m_trace.getOriginalFromBalance();
+    }
+
+    return balancePre;
+}
+u256 PrestateTracePrinter::getBalancePost(
+    const HistoricState& _statePost, const Address& _address ) const {
+    auto balancePost = _statePost.balance( _address );
+
+    if ( _address == m_trace.getFrom() ) {
+        // take into account the fact that from balance changes due to gas fee
+        auto fee = m_trace.getGasPrice() * m_trace.getTotalGasUsed();
+        STATE_CHECK( fee <= balancePost );
+        balancePost = balancePost - m_trace.getGasPrice() * m_trace.getTotalGasUsed();
+    }
+
+    return balancePost;
+}
 void PrestateTracePrinter::printPreDiffStorage( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& _diffPre ) {
-
     // if its a new contract that did not exist before the transaction,
     // then geth does not print its storage in pre
-    if ( isNewContract(_statePre, _statePost, _address)) {
+    if ( isNewContract( _statePre, _statePost, _address ) ) {
         return;
     }
 
@@ -341,8 +364,8 @@ Json::Value& PrestateTracePrinter::printPostDiffCode( const HistoricState& _stat
 }
 void PrestateTracePrinter::printPostDiffBalance( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& diffPost ) const {
-    auto balancePre = _statePre.balance( _address );
-    auto balancePost = _statePost.balance( _address );
+    auto balancePre = getBalancePre( _statePre, _address );
+    auto balancePost = getBalancePost( _statePost, _address );
 
     // geth does not postbalance of from address in calls
     if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
@@ -350,7 +373,7 @@ void PrestateTracePrinter::printPostDiffBalance( const HistoricState& _statePre,
     }
 
     // geth does not print postbalance for a newly created contract
-    if ( isNewContract(_statePre, _statePost, _address)) {
+    if ( isNewContract( _statePre, _statePost, _address ) ) {
         return;
     }
 
@@ -407,12 +430,7 @@ PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
 
 u256 PrestateTracePrinter::getMinerBalancePre( const HistoricState& _statePre ) const {
     auto minerAddress = m_trace.getBlockAuthor();
-    auto minerBalance = _statePre.balance( minerAddress );
-
-    if ( m_trace.isCall() && minerAddress == m_trace.getFrom() ) {
-        // take into account that for calls balance is modified in the state before execution
-        minerBalance = m_trace.getOriginalFromBalance();
-    }
+    auto minerBalance = getBalancePre(_statePre, minerAddress);
 
     return minerBalance;
 }

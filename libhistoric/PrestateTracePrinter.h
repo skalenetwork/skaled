@@ -82,5 +82,7 @@ private:
     uint64_t m_storageValuesReturnedPre = 0;
     uint64_t m_storageValuesReturnedPost = 0;
     uint64_t m_storageValuesReturnedAll = 0;
+    u256 getBalancePost( const HistoricState& _statePost, const Address& _address ) const;
+    u256 getBalancePre( const HistoricState& _statePre, const Address& _address ) const;
 };
 }  // namespace dev::eth
