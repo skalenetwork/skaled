@@ -42,7 +42,7 @@ public:
     [[nodiscard]] u256 getMinerBalancePost( const HistoricState& _statePre ) const;
 
 private:
-    void printDiff( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
+    void printDiffTrace( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
         const HistoricState& _statePost );
 
     void printAllAccessedAccountPreValues( Json::Value& _jsonTrace, const HistoricState& _statePre,
@@ -54,7 +54,7 @@ private:
     void printAccountPostDiff( Json::Value& _postDiffTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
 
-    void printPre(
+    void printPreStateTrace(
         Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost );
 
     void printMinerBalanceChange(

@@ -30,12 +30,12 @@ void PrestateTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult
     const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() );
     if ( m_trace.getOptions().prestateDiffMode ) {
-        printDiff( _jsonTrace, _er, _statePre, _statePost );
+        printDiffTrace( _jsonTrace, _er, _statePre, _statePost );
     } else {
-        printPre( _jsonTrace, _statePre, _statePost );
+        printPreStateTrace( _jsonTrace, _statePre, _statePost );
     }
 }
-void PrestateTracePrinter::printPre(
+void PrestateTracePrinter::printPreStateTrace(
     Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost ) {
     for ( auto&& item : m_trace.getAccessedAccounts() ) {
         printAllAccessedAccountPreValues( _jsonTrace, _statePre, _statePost, item );
@@ -50,7 +50,7 @@ void PrestateTracePrinter::printPre(
 }
 
 
-void PrestateTracePrinter::printDiff( Json::Value& _jsonTrace, const ExecutionResult&,
+void PrestateTracePrinter::printDiffTrace( Json::Value& _jsonTrace, const ExecutionResult&,
     const HistoricState& _statePre, const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
@@ -152,7 +152,7 @@ void PrestateTracePrinter::printNonce( const HistoricState& _statePre,
     // handle special case of contract creation transaction
     // in this case geth prints nonce = 1 for the contract
     // that has been created
-    if ( isNewContract(_statePre, _statePost, _address) ) {
+    if ( isNewContract( _statePre, _statePost, _address ) ) {
         accountPreValues["nonce"] = 1;
         return;
     }
@@ -164,7 +164,8 @@ void PrestateTracePrinter::printNonce( const HistoricState& _statePre,
     // in calls nonce is always printed by geth
     // find out if the address is a contract. Geth always prints nonce for contracts
 
-    if ( postNonce != preNonce || m_trace.isCall() || isPreExistingContract(_statePre, _address) ) {
+    if ( postNonce != preNonce || m_trace.isCall() ||
+         isPreExistingContract( _statePre, _address ) ) {
         accountPreValues["nonce"] = preNonce;
     }
 }
@@ -173,8 +174,9 @@ void PrestateTracePrinter::printAccountPreDiff( Json::Value& _preDiffTrace,
     const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
     Json::Value diffPre( Json::objectValue );
 
-    // balance diff
-    if ( !_statePre.addressInUse( _address ) )
+    // If the account did not exist before the transaction, geth does not print it in pre trace
+    // exception is if a contract is created during the transaction. Geth always prints it in pre diff
+    if ( !_statePre.addressInUse( _address ) && !isNewContract( _statePre, _statePost, _address ) )
         return;
 
     printPreDiffBalance( _statePre, _statePost, _address, diffPre );
@@ -213,7 +215,7 @@ void PrestateTracePrinter::printPreDiffBalance( const HistoricState& _statePre,
 
     // handle the case of a contract creation. Geth always prints balance 0 as pre for new contract
     // geth does always print pre nonce equal 1 for newly created contract
-    if ( isNewContract(_statePre, _statePost, _address) ) {
+    if ( isNewContract( _statePre, _statePost, _address ) ) {
         _diffPre["balance"] = "0x0";
         return;
     }
@@ -226,6 +228,15 @@ void PrestateTracePrinter::printPreDiffBalance( const HistoricState& _statePre,
 }
 void PrestateTracePrinter::printPreDiffStorage( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& _diffPre ) {
+
+    // if its a new contract that did not exist before the transaction,
+    // then geth does not print its storage in pre
+    if ( isNewContract(_statePre, _statePost, _address)) {
+        return;
+    }
+
+    // now handle generic case
+
     if ( m_trace.getAccessedStorageValues().find( _address ) !=
          m_trace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs;
@@ -285,7 +296,7 @@ void PrestateTracePrinter::printPreDiffNonce( const HistoricState& _statePre,
 void PrestateTracePrinter::printPostDiffNonce( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const {
     // geth does noty print post diff nonce for newly created contract
-    if ( isNewContract(_statePre, _statePost, _address) ) {
+    if ( isNewContract( _statePre, _statePost, _address ) ) {
         return;
     }
 
@@ -333,10 +344,16 @@ void PrestateTracePrinter::printPostDiffBalance( const HistoricState& _statePre,
     auto balancePre = _statePre.balance( _address );
     auto balancePost = _statePost.balance( _address );
 
+    // geth does not postbalance of from address in calls
     if ( m_trace.isCall() && _address == m_trace.getFrom() ) {
-        // geth does not postbalance of from address in calls
         return;
     }
+
+    // geth does not print postbalance for a newly created contract
+    if ( isNewContract(_statePre, _statePost, _address)) {
+        return;
+    }
+
 
     // now handle generic case
     if ( !_statePre.addressInUse( _address ) || balancePre != balancePost ) {

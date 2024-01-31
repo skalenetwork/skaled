@@ -88,7 +88,9 @@ bool TracePrinter::isPreExistingContract(
 // during the current transaction and has not been deleted
 bool TracePrinter::isNewContract( const HistoricState& _statePre, const HistoricState& _statePost,
     const Address& _address ) {
-    return !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
+    auto isNewContract =  !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
+    std::cerr << _address << ":is new contract " << isNewContract << std::endl;
+    return isNewContract;
 }
 
 }  // namespace dev::eth
