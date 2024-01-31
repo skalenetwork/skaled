@@ -270,12 +270,12 @@ void PrestateTracePrinter::printPreDiffStorage( const HistoricState& _statePre,
 
         for ( auto&& it : m_trace.getAccessedStorageValues().at( _address ) ) {
             auto& storageAddress = it.first;
-            auto& storageValuePost = it.second;
+            auto storageValuePost = _statePost.storage(_address, storageAddress);
             bool includePair;
             if ( !_statePost.addressInUse( _address ) ) {
                 // contract has been deleted. Include in diff
                 includePair = true;
-            } else if ( it.second == 0 ) {
+            } else if ( storageValuePost == 0 ) {
                 // storage has been deleted. Do not include
                 includePair = false;
             } else {
@@ -350,7 +350,7 @@ void PrestateTracePrinter::printAccountPostDiff( Json::Value& _postDiffTrace,
 
     diffPost = printPostDiffCode( _statePre, _statePost, _address, diffPost );
 
-    printPostDiffStorage( _statePre, _address, diffPost );
+    printPostDiffStorage( _statePre, _statePost, _address, diffPost );
 
     if ( !diffPost.empty() )
         _postDiffTrace[toHexPrefixed( _address )] = diffPost;
@@ -390,7 +390,8 @@ void PrestateTracePrinter::printPostDiffBalance( const HistoricState& _statePre,
 }
 
 void PrestateTracePrinter::printPostDiffStorage( const HistoricState& _statePre,
-    const Address& _address, Json::Value& diffPost ) {  // post diffs for storage values
+    const HistoricState& _statePost, const Address& _address,
+    Json::Value& diffPost ) {  // post diffs for storage values
     if ( m_trace.getAccessedStorageValues().find( _address ) !=
          m_trace.getAccessedStorageValues().end() ) {
         Json::Value storagePairs( Json::objectValue );
@@ -398,7 +399,9 @@ void PrestateTracePrinter::printPostDiffStorage( const HistoricState& _statePre,
         // iterate over all accessed storage values
         for ( auto&& it : m_trace.getAccessedStorageValues().at( _address ) ) {
             auto& storageAddress = it.first;
-            auto& storageValue = it.second;
+            // take into account the fact that the change could have been reverted
+            // so we cannot use the value set by the last SSTORE
+            auto storageValue = _statePost.storage(_address, it.first);
 
             bool includePair;
             if ( !_statePre.addressInUse( _address ) ) {

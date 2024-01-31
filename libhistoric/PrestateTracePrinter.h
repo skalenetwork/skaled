@@ -67,8 +67,8 @@ private:
         const Address& _address, Json::Value& _diff ) const;
     void printPreDiffStorage( const HistoricState& _statePre, const HistoricState& _statePost,
         const Address& _address, Json::Value& _diffPre );
-    void printPostDiffStorage(
-        const HistoricState& _statePre, const Address& _address, Json::Value& diffPost );
+    void printPostDiffStorage( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& diffPost );
     void printPreDiffBalance( const HistoricState& _statePre, const HistoricState& _statePost,
         const Address& _address, Json::Value& _diffPre ) const;
     void printPreDiffCode( const HistoricState& _statePre, const HistoricState& _statePost,
