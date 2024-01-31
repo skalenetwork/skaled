@@ -752,7 +752,7 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstTransferHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(firstTransferHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstTransferHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstTransferHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
 
 
