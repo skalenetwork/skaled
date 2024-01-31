@@ -66,7 +66,7 @@ void PrestateTracePrinter::printDiffTrace( Json::Value& _jsonTrace, const Execut
     // now deal with miner balance change as a result of transaction
     // geth always prints miner balance change when NOT in call
     if ( !m_trace.isCall() ) {
-        printMinerBalanceChange( _statePre, preDiff, postDiff );
+        printMinerBalanceChange( _statePre, _statePost, preDiff, postDiff );
     }
 
     // we are done, complete the trace JSON
@@ -74,11 +74,11 @@ void PrestateTracePrinter::printDiffTrace( Json::Value& _jsonTrace, const Execut
     _jsonTrace["pre"] = preDiff;
     _jsonTrace["post"] = postDiff;
 }
-void PrestateTracePrinter::printMinerBalanceChange(
-    const HistoricState& _statePre, Json::Value& preDiff, Json::Value& postDiff ) const {
+void PrestateTracePrinter::printMinerBalanceChange( const HistoricState& _statePre,
+    const HistoricState& _statePost, Json::Value& preDiff, Json::Value& postDiff ) const {
     Address minerAddress = m_trace.getBlockAuthor();
     u256 minerBalancePre = getMinerBalancePre( _statePre );
-    u256 minerBalancePost = getMinerBalancePost( _statePre );
+    u256 minerBalancePost = getMinerBalancePost( _statePost );
 
     preDiff[toHexPrefixed( minerAddress )]["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalancePre );
@@ -241,7 +241,11 @@ u256 PrestateTracePrinter::getBalancePost(
     const HistoricState& _statePost, const Address& _address ) const {
     auto balancePost = _statePost.balance( _address );
 
-    if ( _address == m_trace.getFrom() ) {
+    auto minerAddress = m_trace.getBlockAuthor();
+
+    // for miner the gss payment does not change balance since the payment
+    // is made to herself
+    if ( _address == m_trace.getFrom() && _address != minerAddress) {
         // take into account the fact that from balance changes due to gas fee
         auto fee = m_trace.getGasPrice() * m_trace.getTotalGasUsed();
         STATE_CHECK( fee <= balancePost );
@@ -431,13 +435,12 @@ PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
 u256 PrestateTracePrinter::getMinerBalancePre( const HistoricState& _statePre ) const {
     auto minerAddress = m_trace.getBlockAuthor();
     auto minerBalance = getBalancePre(_statePre, minerAddress);
-
     return minerBalance;
 }
 
-u256 PrestateTracePrinter::getMinerBalancePost( const HistoricState& _statePre ) const {
-    auto minerBalance =
-        getMinerBalancePre( _statePre ) + m_trace.getTotalGasUsed() * m_trace.getGasPrice();
+u256 PrestateTracePrinter::getMinerBalancePost( const HistoricState& _statePost ) const {
+    auto minerAddress = m_trace.getBlockAuthor();
+    auto minerBalance = getBalancePost(_statePost, minerAddress);
     return minerBalance;
 }
 
