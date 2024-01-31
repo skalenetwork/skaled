@@ -163,8 +163,8 @@ void PrestateTracePrinter::printNonce( const HistoricState& _statePre,
     auto postNonce = ( uint64_t ) _statePost.getNonce( _address );
     // in calls nonce is always printed by geth
     // find out if the address is a contract. Geth always prints nonce for contracts
-    auto isContract = _statePre.addressHasCode( _address );
-    if ( postNonce != preNonce || m_trace.isCall() || isContract ) {
+
+    if ( postNonce != preNonce || m_trace.isCall() || isPreExistingContract(_statePre, _address) ) {
         accountPreValues["nonce"] = preNonce;
     }
 }
@@ -213,7 +213,7 @@ void PrestateTracePrinter::printPreDiffBalance( const HistoricState& _statePre,
 
     // handle the case of a contract creation. Geth always prints balance 0 as pre for new contract
     // geth does always print pre nonce equal 1 for newly created contract
-    if ( !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address ) ) {
+    if ( isNewContract(_statePre, _statePost, _address) ) {
         _diffPre["balance"] = "0x0";
         return;
     }
@@ -281,21 +281,6 @@ void PrestateTracePrinter::printPreDiffNonce( const HistoricState& _statePre,
         _diff["nonce"] = ( uint64_t ) noncePre;
     }
 }
-
-// this will return true if the contract existed before the transaction happened
-bool PrestateTracePrinter::isPreExistingContract(
-    const HistoricState& _statePre, const Address& _address ) const {
-    return _statePre.addressHasCode( _address );
-}
-
-
-// this will return true if the address is a contract that has been created
-// during the current transaction and has not been deleted
-bool PrestateTracePrinter::isNewContract( const HistoricState& _statePre,
-    const HistoricState& _statePost, const Address& _address ) const {
-    return !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
-}
-
 
 void PrestateTracePrinter::printPostDiffNonce( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const {

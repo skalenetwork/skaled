@@ -75,6 +75,22 @@ TracePrinter::TracePrinter( AlethStandardTrace& _standardTrace, const string _js
 const string& TracePrinter::getJsonName() const {
     return m_jsonName;
 }
+
+
+// this will return true if the contract existed before the transaction happened
+bool TracePrinter::isPreExistingContract(
+    const HistoricState& _statePre, const Address& _address ) {
+    return _statePre.addressHasCode( _address );
+}
+
+
+// this will return true if the address is a contract that has been created
+// during the current transaction and has not been deleted
+bool TracePrinter::isNewContract( const HistoricState& _statePre, const HistoricState& _statePost,
+    const Address& _address ) {
+    return !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
+}
+
 }  // namespace dev::eth
 
 #endif
