@@ -152,7 +152,7 @@ void PrestateTracePrinter::printNonce( const HistoricState& _statePre,
     // handle special case of contract creation transaction
     // in this case geth prints nonce = 1 for the contract
     // that has been created
-    if ( !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address ) ) {
+    if ( isNewContract(_statePre, _statePost, _address) ) {
         accountPreValues["nonce"] = 1;
         return;
     }
@@ -266,8 +266,11 @@ void PrestateTracePrinter::printPreDiffNonce( const HistoricState& _statePre,
         return;
     };
 
+
     // geth does always print pre nonce equal 1 for newly created contract
-    if ( !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address ) ) {
+
+
+    if ( isNewContract( _statePre, _statePost, _address ) ) {
         _diff["nonce"] = 1;
         return;
     }
@@ -279,11 +282,25 @@ void PrestateTracePrinter::printPreDiffNonce( const HistoricState& _statePre,
     }
 }
 
+// this will return true if the contract existed before the transaction happened
+bool PrestateTracePrinter::isPreExistingContract(
+    const HistoricState& _statePre, const Address& _address ) const {
+    return _statePre.addressHasCode( _address );
+}
+
+
+// this will return true if the address is a contract that has been created
+// during the current transaction and has not been deleted
+bool PrestateTracePrinter::isNewContract( const HistoricState& _statePre,
+    const HistoricState& _statePost, const Address& _address ) const {
+    return !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
+}
+
 
 void PrestateTracePrinter::printPostDiffNonce( const HistoricState& _statePre,
     const HistoricState& _statePost, const Address& _address, Json::Value& _diff ) const {
     // geth does noty print post diff nonce for newly created contract
-    if ( !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address ) ) {
+    if ( isNewContract(_statePre, _statePost, _address) ) {
         return;
     }
 

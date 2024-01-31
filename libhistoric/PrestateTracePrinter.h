@@ -54,9 +54,6 @@ private:
     void printAccountPostDiff( Json::Value& _postDiffTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
 
-    uint64_t m_storageValuesReturnedPre = 0;
-    uint64_t m_storageValuesReturnedPost = 0;
-    uint64_t m_storageValuesReturnedAll = 0;
     void printPre(
         Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost );
 
@@ -80,5 +77,13 @@ private:
         const Address& _address, Json::Value& diffPost ) const;
     Json::Value& printPostDiffCode( const HistoricState& _statePre, const HistoricState& _statePost,
         const Address& _address, Json::Value& diffPost ) const;
+    bool isNewContract( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address ) const;
+    bool isPreExistingContract( const HistoricState& _statePre, const Address& _address ) const;
+
+    uint64_t m_storageValuesReturnedPre = 0;
+    uint64_t m_storageValuesReturnedPost = 0;
+    uint64_t m_storageValuesReturnedAll = 0;
+
 };
 }  // namespace dev::eth
