@@ -89,7 +89,6 @@ bool TracePrinter::isPreExistingContract(
 bool TracePrinter::isNewContract( const HistoricState& _statePre, const HistoricState& _statePost,
     const Address& _address ) {
     auto isNewContract =  !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
-    std::cerr << _address << ":is new contract " << isNewContract << std::endl;
     return isNewContract;
 }
 
