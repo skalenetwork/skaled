@@ -384,6 +384,7 @@ string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _valu
 // to print the resulting trace to json
 void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
+
     m_totalGasUsed = ( uint64_t ) _er.gasUsed;
 
     m_output = _er.output;
@@ -399,6 +400,13 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     }
 
 
+    auto fee = m_gasPrice * m_totalGasUsed;
+    auto fromPostBalance = _statePost.balance(m_from);
+
+    if (m_from != m_blockAuthor) {
+        _statePost.setBalance(m_from, fromPostBalance - fee);
+    }
+    
     // we are done. Set the trace to finalized
     STATE_CHECK( !m_isFinalized.exchange( true ) )
     // now print trace
