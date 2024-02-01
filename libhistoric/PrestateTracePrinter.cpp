@@ -44,7 +44,7 @@ void PrestateTracePrinter::printPreStateTrace(
     // geth always prints the balance of block miner balance
 
     Address minerAddress = m_trace.getBlockAuthor();
-    u256 minerBalance = getMinerBalancePre( _statePre );
+    u256 minerBalance = getBalancePre( _statePre, minerAddress );
     _jsonTrace[toHexPrefixed( minerAddress )]["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalance );
 }
@@ -77,8 +77,8 @@ void PrestateTracePrinter::printDiffTrace( Json::Value& _jsonTrace, const Execut
 void PrestateTracePrinter::printMinerBalanceChange( const HistoricState& _statePre,
     const HistoricState& _statePost, Json::Value& preDiff, Json::Value& postDiff ) const {
     Address minerAddress = m_trace.getBlockAuthor();
-    u256 minerBalancePre = getMinerBalancePre( _statePre );
-    u256 minerBalancePost = getMinerBalancePost( _statePost );
+    u256 minerBalancePre = getBalancePre(_statePre, minerAddress);
+    u256 minerBalancePost = getBalancePost(_statePost, minerAddress);
 
     preDiff[toHexPrefixed( minerAddress )]["balance"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( minerBalancePre );
@@ -426,18 +426,6 @@ void PrestateTracePrinter::printPostDiffStorage( const HistoricState& _statePre,
 PrestateTracePrinter::PrestateTracePrinter( AlethStandardTrace& standardTrace )
     : TracePrinter( standardTrace, "prestateTrace" ) {}
 
-
-u256 PrestateTracePrinter::getMinerBalancePre( const HistoricState& _statePre ) const {
-    auto minerAddress = m_trace.getBlockAuthor();
-    auto minerBalance = getBalancePre(_statePre, minerAddress);
-    return minerBalance;
-}
-
-u256 PrestateTracePrinter::getMinerBalancePost( const HistoricState& _statePost ) const {
-    auto minerAddress = m_trace.getBlockAuthor();
-    auto minerBalance = getBalancePost(_statePost, minerAddress);
-    return minerBalance;
-}
 
 }  // namespace dev::eth
 
