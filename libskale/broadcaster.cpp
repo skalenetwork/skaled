@@ -24,6 +24,9 @@
 
 #include "broadcaster.h"
 
+#include <libdevcore/CommonJS.h>
+#include <libdevcore/RLP.h>
+
 #include <libethereum/Client.h>
 #include <libethereum/SkaleHost.h>
 #include <libskale/SkaleClient.h>
@@ -208,11 +211,17 @@ void ZmqBroadcaster::startService() {
 
                 std::string str( static_cast< char* >( data ), size );
 
-                try {
-                    m_skaleHost.receiveTransaction( str );
-                } catch ( const std::exception& ex ) {
-                    clog( dev::VerbosityDebug, "skale-host" )
-                        << "Received bad transaction through broadcast: " << ex.what();
+                auto bytesRlp = dev::fromHex( str );
+                auto txnsRLP = dev::RLP( bytesRlp );
+
+                for ( size_t i = 0; i < txnsRLP.itemCount(); ++i ) {
+                    try {
+                        auto rlp = txnsRLP[i];
+                        m_skaleHost.receiveTransaction( dev::toHex( rlp.data() ) );
+                    } catch ( const std::exception& ex ) {
+                        clog( dev::VerbosityDebug, "skale-host" )
+                            << "Received bad transaction through broadcast: " << ex.what();
+                    }
                 }
 
             } catch ( const std::exception& ex ) {
