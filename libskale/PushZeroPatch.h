@@ -9,7 +9,7 @@ class Client;
 
 /*
  * Context: enable effective storage destruction
- */
+ *
 class PushZeroPatch : public SchainPatch {
 public:
     static bool isEnabled();
@@ -25,3 +25,6 @@ private:
     static time_t pushZeroPatchTimestamp;
     static time_t lastBlockTimestamp;
 };
+*/
+
+DEFINE_EVM_PATCH( PushZeroPatch )

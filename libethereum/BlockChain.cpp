@@ -1776,3 +1776,18 @@ unsigned BlockChain::chainStartBlockNumber() const {
     auto const value = m_extrasDB->lookup( c_sliceChainStart );
     return value.empty() ? 0 : number( h256( value, h256::FromBinary ) );
 }
+
+bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _bn ) const {
+    if ( _bn == 0 || _ts == 0 )
+        return false;
+
+    if ( _bn == LatestBlock )
+        _bn = number();
+
+    if ( _bn == PendingBlock )
+        _bn = number() + 1;
+
+    time_t prev_ts = this->info( this->numberHash( _bn ) ).timestamp();
+
+    return prev_ts >= _ts;
+}

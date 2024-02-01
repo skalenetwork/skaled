@@ -126,6 +126,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
     return _out;
 }
 
+DEFINE_BASIC_PATCH( MainPatch )
+
 Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
@@ -157,6 +159,10 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     init( _forceAction, _networkID );
 
+    //////////////////////////////////////
+    MainPatch::isEnabled( bc() );
+    //////////////////////////////////////
+
     // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
     ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
@@ -166,7 +172,7 @@ Client::Client( ChainParams const& _params, int _networkID,
     RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
     StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
     POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
-    PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
+    // PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
     SkipInvalidTransactionsPatch::setTimestamp(
         this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
     PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
@@ -675,7 +681,7 @@ size_t Client::syncTransactions(
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    // PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
     PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
     CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();

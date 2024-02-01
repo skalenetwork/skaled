@@ -53,23 +53,7 @@ ChainOperationParams::ChainOperationParams()
       durationLimit( 0x0d ) {}
 
 EVMSchedule const& ChainOperationParams::scheduleForBlockNumber( u256 const& _blockNumber ) const {
-    if ( _blockNumber >= skaleUnlimitedForkBlock )
-        return SkaleSchedule_Unlimited;
-    else if ( _blockNumber >= skale1024ForkBlock )
-        return SkaleSchedule_1024k;
-    else if ( _blockNumber >= skale512ForkBlock )
-        return SkaleSchedule_512k;
-    else if ( _blockNumber >= skale256ForkBlock )
-        return SkaleSchedule_256k;
-    else if ( _blockNumber >= skale128ForkBlock )
-        return SkaleSchedule_128k;
-    else if ( _blockNumber >= skale64ForkBlock )
-        return SkaleSchedule_64k;
-    else if ( _blockNumber >= skale32ForkBlock )
-        return SkaleSchedule_32k;
-    else if ( _blockNumber >= skale16ForkBlock )
-        return SkaleSchedule_16k;
-    else if ( _blockNumber >= experimentalForkBlock )
+    if ( _blockNumber >= experimentalForkBlock )
         return ExperimentalSchedule;
     else if ( _blockNumber >= istanbulForkBlock )
         return IstanbulSchedule;
@@ -77,18 +61,14 @@ EVMSchedule const& ChainOperationParams::scheduleForBlockNumber( u256 const& _bl
         return ConstantinopleFixSchedule;
     else if ( _blockNumber >= constantinopleForkBlock )
         return ConstantinopleSchedule;
-    else if ( _blockNumber >= eWASMForkBlock )
-        return EWASMSchedule;
     else if ( _blockNumber >= byzantiumForkBlock )
         return ByzantiumSchedule;
     else if ( _blockNumber >= EIP158ForkBlock )
         return EIP158Schedule;
     else if ( _blockNumber >= EIP150ForkBlock )
         return EIP150Schedule;
-    else if ( _blockNumber >= homesteadForkBlock )
-        return HomesteadSchedule;
     else
-        return FrontierSchedule;
+        return HomesteadSchedule;
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {

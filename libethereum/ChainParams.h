@@ -74,6 +74,10 @@ struct ChainParams : public ChainOperationParams {
     const std::string& getOriginalJson() const;
     void resetJson() { originalJSON = ""; }
 
+    // all fields named "*PatchTimestamp" should be read into array, that would be available to this
+    // function
+    time_t getPatchTimestamp( const std::string& _name ) const;
+
 private:
     void populateFromGenesis( bytes const& _genesisRLP, AccountMap const& _state );
 
