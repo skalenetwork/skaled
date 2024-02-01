@@ -240,18 +240,6 @@ u256 PrestateTracePrinter::getBalancePre(
 u256 PrestateTracePrinter::getBalancePost(
     const HistoricState& _statePost, const Address& _address ) const {
     auto balancePost = _statePost.balance( _address );
-
-    auto minerAddress = m_trace.getBlockAuthor();
-
-    // for miner the gss payment does not change balance since the payment
-    // is made to herself
-    if ( _address == m_trace.getFrom() && _address != minerAddress) {
-        // take into account the fact that from balance changes due to gas fee
-        auto fee = m_trace.getGasPrice() * m_trace.getTotalGasUsed();
-        STATE_CHECK( fee <= balancePost );
-        balancePost = balancePost - m_trace.getGasPrice() * m_trace.getTotalGasUsed();
-    }
-
     return balancePost;
 }
 void PrestateTracePrinter::printPreDiffStorage( const HistoricState& _statePre,
