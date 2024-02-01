@@ -403,9 +403,11 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     auto fee = m_gasPrice * m_totalGasUsed;
     auto fromPostBalance = _statePost.balance(m_from);
 
-    if (m_from != m_blockAuthor) {
-        _statePost.setBalance(m_from, fromPostBalance - fee);
-    }
+    _statePost.setBalance(m_from, fromPostBalance - fee);
+
+    auto minerBalance = _statePost.balance(m_blockAuthor);
+    _statePost.setBalance(m_blockAuthor, minerBalance + fee);
+
     
     // we are done. Set the trace to finalized
     STATE_CHECK( !m_isFinalized.exchange( true ) )
