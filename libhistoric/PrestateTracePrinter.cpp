@@ -318,9 +318,6 @@ void PrestateTracePrinter::printPostDiffNonce( const HistoricState& _statePre,
     // now handle generic case
 
     auto noncePost = _statePost.getNonce( _address );
-    auto fee = m_gasPrice * m_totalGasUsed;
-    auto fromPostBalance = _statePost.balance(m_from);
-    _statePost.setBalance(m_from, fromPostBalance - fee);
 
     if ( _statePre.getNonce( _address ) != noncePost ) {
         _diff["nonce"] = ( uint64_t ) noncePost;
