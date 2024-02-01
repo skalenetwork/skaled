@@ -15,6 +15,7 @@ const ZERO_ADDRESS: string = '0x0000000000000000000000000000000000000000';
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
 const EXECUTE_FUNCTION_NAME = "mint";
+const EXECUTE2_FUNCTION_NAME = "mint2";
 const CALL_FUNCTION_NAME = "getBalance";
 
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
@@ -41,6 +42,13 @@ const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EX
 const TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateTracer.json";
 const TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateDiffTracer.json";
 const TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".4byteTracer.json";
+
+
+const TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".prestateDiffTracer.json";
+const TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".4byteTracer.json";
 
 
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
@@ -287,15 +295,15 @@ async function executeTransferAndThenTestContractMintInSingleBlock(deployedContr
 
     let currentNonce: int = await sendMoneyWithoutConfirmation();
 
-    const transferReceipt = await deployedContract[EXECUTE_FUNCTION_NAME](1000, {
+    const mintReceipt = await deployedContract[EXECUTE_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
 
-    expect(transferReceipt.blockNumber).not.to.be.null;
+    expect(mintReceipt.blockNumber).not.to.be.null;
 
 
-    const trace: string = await getBlockTrace(transferReceipt.blockNumber);
+    const trace: string = await getBlockTrace(mintReceipt.blockNumber);
 
 
     expect(Array.isArray(trace));
@@ -305,7 +313,21 @@ async function executeTransferAndThenTestContractMintInSingleBlock(deployedContr
         expect(trace.length == 2);
     }
 
-    return transferReceipt.hash!;
+    return mintReceipt.hash!;
+
+}
+
+async function executeMint2(deployedContract: any): Promise<string> {
+
+
+    const mint2Receipt = await deployedContract[EXECUTE2_FUNCTION_NAME](1000, {
+        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call,
+    });
+
+    expect(mint2Receipt.blockNumber).not.to.be.null;
+
+
+    return mint2Receipt.hash!;
 
 }
 
@@ -734,12 +756,11 @@ async function main(): Promise<void> {
     await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
 
     let deployedContract = await deployTestContract();
-
-    const firstTransferHash: string = await executeTransferAndThenTestContractMintInSingleBlock(deployedContract);
-
     const deployHash = deployedContract.deployTransaction.hash;
     DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
 
+
+    const firstMintHash: string = await executeTransferAndThenTestContractMintInSingleBlock(deployedContract);
 
     await getAndPrintCommittedTransactionTrace(deployHash, DEFAULT_TRACER, TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(deployHash, CALL_TRACER, TEST_DEPLOY_CALLTRACER_FILE_NAME);
@@ -749,11 +770,11 @@ async function main(): Promise<void> {
 
 
 
-    await getAndPrintCommittedTransactionTrace(firstTransferHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(firstTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(firstTransferHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(firstTransferHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(firstTransferHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
 
 
     const secondTransferHash: string = await sendTransferWithConfirmation();
@@ -764,11 +785,22 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(secondTransferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(secondTransferHash, FOURBYTE_TRACER, TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
 
+
+    const secondMintHash: string = await executeMint2(deployedContract);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, CALL_TRACER, TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
+
+
+
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, FOURBYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
+
 
 
     // geth does not have replay trace
