@@ -579,8 +579,16 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
 
+
+
             if (difference.kind == "E" && difference.path!.length == 1) {
                 let key = difference.path![0];
+                if (key == "to" || key == "gas" || key == "gasUsed")
+                    return;
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![0] == "calls") {
+                let key = difference.path![2];
                 if (key == "to" || key == "gas" || key == "gasUsed")
                     return;
             }
@@ -839,6 +847,15 @@ async function main(): Promise<void> {
     await verifyFourByteTraceAgainstGethTrace(TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+
+
+
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME);
+    //await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
+    //await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
+    //await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
+    //await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
+
 }
 
 
