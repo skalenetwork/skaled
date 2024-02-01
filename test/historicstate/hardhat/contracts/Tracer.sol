@@ -67,6 +67,16 @@ contract Tracer {
         return 1;
     }
 
+    function mint2(uint amount) public returns (uint256) {
+        emit InternalCallEvent(msg.sender, amount, "topic");
+        secondContract = new SecondContract();
+        balance += amount;
+        internalCall(amount + 1);
+        precompileCall();
+        secondContract.mint(amount);
+        return 1;
+    }
+
     function internalCall(uint amount) public returns (uint256) {
         emit InternalCallEvent(msg.sender, amount, "internal topic");
         internalVar += amount;

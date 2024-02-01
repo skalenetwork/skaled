@@ -1,7 +1,7 @@
 {
     "from": "OWNER.address",
     "gas": "0x200b20",
-    "gasUsed": "0x1221b",
+    "gasUsed": "0x12205",
     "to": "Tracer.address",
     "input": "0xa0712d6800000000000000000000000000000000000000000000000000000000000003e8",
     "error": "execution reverted",
