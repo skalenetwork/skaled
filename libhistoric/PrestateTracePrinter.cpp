@@ -287,8 +287,10 @@ namespace dev::eth {
                     // storage has been deleted. Do not include
                     includePair = false;
                 } else {
+                    auto storageValuePre = _statePre.originalStorageValue(_address, storageAddress);
                     includePair =
-                            _statePre.originalStorageValue(_address, storageAddress) != storageValuePost;
+                            storageValuePre != storageValuePost &&
+                            storageValuePre != 0; // geth does not print storage in pre if it is zero
                 }
 
                 if (includePair) {
