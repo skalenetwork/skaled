@@ -237,7 +237,8 @@ namespace dev::eth {
 
         // now handle generic case
 
-        if (!_statePost.addressInUse(_address) || balancePost != balancePre) {
+        if (!_statePost.addressInUse(_address) || balancePost != balancePre ||
+            _statePre.getNonce(_address) != _statePost.getNonce(_address)) {// geth alw prints balance if nonce changed
             _diffPre["balance"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed(balancePre);
         }
     }
