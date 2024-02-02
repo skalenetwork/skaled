@@ -33,7 +33,7 @@ jobs:
         env:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       - name: Cache apt packages
         uses: actions/cache@v2
