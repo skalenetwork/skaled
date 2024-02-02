@@ -70,9 +70,9 @@ void FunctionCallRecord::printFunctionExecutionDetail(
 
     _jsonTrace["type"] = instructionInfo( m_type ).name;
     _jsonTrace["from"] = toHexPrefixed( m_from );
-    if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
+    //if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
         _jsonTrace["to"] = toHexPrefixed( m_to );
-    }
+    //}
     _jsonTrace["gas"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_functionGasLimit );
     _jsonTrace["gasUsed"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_gasUsed );
