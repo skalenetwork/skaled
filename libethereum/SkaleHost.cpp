@@ -910,7 +910,6 @@ void SkaleHost::broadcastFunc() {
                             strPerformanceQueueName, strPerformanceActionName, jsn );
                         //
                         m_debugTracer.tracepoint( "broadcast" );
-                        std::reverse( rlps.begin(), rlps.end() );
                         m_broadcaster->broadcast( rlps );
                     }
                 } catch ( const std::exception& ex ) {
