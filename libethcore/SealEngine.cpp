@@ -94,8 +94,9 @@ void SealEngineFace::populateFromParent( BlockHeader& _bi, BlockHeader const& _p
     _bi.populateFromParent( _parent );
 }
 
-void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
-    BlockHeader const& _header, u256 const& _gasUsed ) const {
+void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams,
+    ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header,
+    u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
     if ( POWCheckPatch::isEnabled() ) {
@@ -108,26 +109,26 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < chainParams().EIP158ForkBlock && _t.isReplayProtected() )
+         _header.number() < _chainParams.EIP158ForkBlock && _t.isReplayProtected() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < chainParams().experimentalForkBlock && _t.hasZeroSignature() )
+         _header.number() < _chainParams.experimentalForkBlock && _t.hasZeroSignature() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
-         _header.number() >= chainParams().experimentalForkBlock && _t.hasZeroSignature() &&
+         _header.number() >= _chainParams.experimentalForkBlock && _t.hasZeroSignature() &&
          ( _t.value() != 0 || _t.gasPrice() != 0 || _t.nonce() != 0 ) )
         BOOST_THROW_EXCEPTION( InvalidZeroSignatureTransaction()
                                << errinfo_got( static_cast< bigint >( _t.gasPrice() ) )
                                << errinfo_got( static_cast< bigint >( _t.value() ) )
                                << errinfo_got( static_cast< bigint >( _t.nonce() ) ) );
 
-    if ( _header.number() >= chainParams().homesteadForkBlock &&
+    if ( _header.number() >= _chainParams.homesteadForkBlock &&
          ( _ir & ImportRequirements::TransactionSignatures ) && _t.hasSignature() )
         _t.checkLowS();
 
-    eth::EVMSchedule const& schedule = evmSchedule( _header.number() );
+    eth::EVMSchedule const& schedule = _chainParams.scheduleForBlockNumber( _header.number() );
 
     // Pre calculate the gas needed for execution
     if ( ( _ir & ImportRequirements::TransactionBasic ) && _t.baseGasRequired( schedule ) > gas )

@@ -1224,7 +1224,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
     Executive::verifyTransaction( _t,
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
+        chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
     ImportResult res;
     if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&

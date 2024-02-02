@@ -253,6 +253,22 @@ public:
     u256 externalGasDifficulty = ~u256( 0 );
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
+
+    bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
+        return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();
+    }
+    bigint costOfPrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
+        return precompiled.at( _a ).cost( _in, *this, _blockNumber );
+    }
+    std::pair< bool, bytes > executePrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& ) const {
+        return precompiled.at( _a ).execute( _in );
+    }
+    bool precompiledExecutionAllowedFrom(
+        Address const& _a, Address const& _from, bool _readOnly ) const {
+        return precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
+    }
 };
 
 }  // namespace eth

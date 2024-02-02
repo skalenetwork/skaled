@@ -57,8 +57,9 @@ public:
     virtual void verify( Strictness _s, BlockHeader const& _bi,
         BlockHeader const& _parent = BlockHeader(), bytesConstRef _block = bytesConstRef() ) const;
     /// Additional verification for transactions in blocks.
-    virtual void verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
-        BlockHeader const& _header, u256 const& _gasUsed ) const;
+    static void verifyTransaction( ChainOperationParams const& _chainParams,
+        ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header,
+        u256 const& _gasUsed );
     /// Don't forget to call Super::populateFromParent when subclassing & overriding.
     virtual void populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const;
 

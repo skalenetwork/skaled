@@ -26,6 +26,7 @@
 #include <json/json.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/microprofile.h>
+#include <libethashseal/Ethash.h>
 #include <libethcore/CommonJS.h>
 #include <libevm/LegacyVM.h>
 #include <libevm/VMFactory.h>
@@ -167,7 +168,7 @@ Executive::Executive(
       m_envInfo( _s.info(), _bc.lastBlockHashes(), 0, _bc.chainID() ),
       m_depth( _level ),
       m_readOnly( _readOnly ),
-      m_sealEngine( *_bc.sealEngine() ),
+      m_chainParams( _bc.chainParams() ),
       m_systemGasPrice( _gasPrice ) {}
 
 Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _gasPrice,
@@ -176,7 +177,7 @@ Executive::Executive( Block& _s, LastBlockHashesFace const& _lh, const u256& _ga
       m_envInfo( _s.info(), _lh, 0, _s.sealEngine()->chainParams().chainID ),
       m_depth( _level ),
       m_readOnly( _readOnly ),
-      m_sealEngine( *_s.sealEngine() ),
+      m_chainParams( _s.sealEngine()->chainParams() ),
       m_systemGasPrice( _gasPrice ) {}
 
 u256 Executive::gasUsed() const {
@@ -189,7 +190,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
 }
 
 void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-    const State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
+    const State& _state, const eth::ChainOperationParams& _chainParams, u256 const& _gasUsed,
     const u256& _gasPrice, const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
@@ -199,8 +200,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
                 static_cast< bigint >( _transaction.gasPrice() ) ) );
     }
 
-    _sealEngine.verifyTransaction(
-        ImportRequirements::Everything, _transaction, _blockHeader, _gasUsed );
+    Ethash::verifyTransaction(
+        _chainParams, ImportRequirements::Everything, _transaction, _blockHeader, _gasUsed );
 
     if ( !_transaction.hasZeroSignature() ) {
         // skip nonce check for calls
@@ -244,11 +245,12 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
 void Executive::initialize( Transaction const& _transaction ) {
     MICROPROFILE_SCOPEI( "Executive", "initialize", MP_GAINSBORO );
     m_t = _transaction;
-    m_baseGasRequired = m_t.baseGasRequired( m_sealEngine.evmSchedule( m_envInfo.number() ) );
+    m_baseGasRequired =
+        m_t.baseGasRequired( m_chainParams.scheduleForBlockNumber( m_envInfo.number() ) );
 
     try {
-        verifyTransaction( _transaction, m_envInfo.header(), m_s, m_sealEngine, m_envInfo.gasUsed(),
-            m_systemGasPrice );
+        verifyTransaction( _transaction, m_envInfo.header(), m_s, m_chainParams,
+            m_envInfo.gasUsed(), m_systemGasPrice );
     } catch ( Exception const& ex ) {
         m_excepted = toTransactionException( ex );
         throw;
@@ -293,7 +295,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
         //        for the transaction.
         // Increment associated nonce for sender.
         if ( _p.senderAddress != MaxAddress ||
-             m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock ) {  // EIP86
+             m_envInfo.number() < m_chainParams.constantinopleForkBlock ) {  // EIP86
             MICROPROFILE_SCOPEI( "Executive", "call-incNonce", MP_SEAGREEN );
             m_s.incNonce( _p.senderAddress );
         }
@@ -301,11 +303,11 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
 
     m_savepoint = m_s.savepoint();
 
-    if ( m_sealEngine.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
-         m_sealEngine.precompiledExecutionAllowedFrom(
+    if ( m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) &&
+         m_chainParams.precompiledExecutionAllowedFrom(
              _p.codeAddress, _p.senderAddress, m_readOnly ) ) {
         MICROPROFILE_SCOPEI( "Executive", "call-precompiled", MP_CYAN );
-        bigint g = m_sealEngine.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
         if ( _p.gas < g ) {
             m_excepted = TransactionException::OutOfGasBase;
             // Bail from exception.
@@ -316,7 +318,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             // https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
             // We mark the account as touched here, so that is can be removed among other touched
             // empty accounts (after tx finalization)
-            if ( m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock )
+            if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
                 m_s.addBalance( _p.codeAddress, 0 );
 
             return true;  // true actually means "all finished - nothing more to be done regarding
@@ -328,7 +330,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             // dev::eth::g_state = m_s.delegateWrite();
             dev::eth::g_overlayFS = m_s.fs();
             tie( success, output ) =
-                m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
             // m_s = dev::eth::g_state.delegateWrite();
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
@@ -346,7 +348,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             h256 codeHash = m_s.codeHash( _p.codeAddress );
             // Contract will be executed with the version stored in account
             auto const version = m_s.version( _p.codeAddress );
-            m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
+            m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                 version, m_depth, false, _p.staticCall, m_readOnly );
         }
@@ -388,7 +390,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _version ) {
     if ( _sender != MaxAddress ||
-         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock )  // EIP86
+         m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
@@ -415,7 +417,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     m_s.transferBalance( _sender, m_newAddress, _endowment );
 
     u256 newNonce = m_s.requireAccountStartNonce();
-    if ( m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock )
+    if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
         newNonce += 1;
     m_s.setNonce( m_newAddress, newNonce );
 
@@ -423,7 +425,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
 
     // Schedule _init execution if not empty.
     if ( !_init.empty() )
-        m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin,
+        m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin,
             _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version, m_depth, true,
             false );
     else

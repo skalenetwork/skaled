@@ -448,7 +448,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
                     Executive::verifyTransaction( tx,
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().createStateReadOnlyCopy(), *m_client.sealEngine(), 0,
+                        m_client.state().createStateReadOnlyCopy(), m_client.chainParams(), 0,
                         getGasPrice(), isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )

@@ -40,6 +40,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieHash.h>
 #include <libdevcore/microprofile.h>
+#include <libethashseal/Ethash.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
@@ -1752,7 +1753,7 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                 Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
                                       CheckTransaction::Everything :
                                       CheckTransaction::None );
-                m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs
+                Ethash::verifyTransaction( chainParams(), _ir, t, h, 0 );  // the gasUsed vs
                 // blockGasLimit is checked
                 // later in enact function
                 res.transactions.push_back( t );

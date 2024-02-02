@@ -1008,12 +1008,12 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
+    eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
     OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
-    Executive e( *this, _envInfo, _sealEngine, 0, 0, _p != Permanence::Committed );
+    Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed );
     ExecutionResult res;
     e.setResultRecipient( res );
 
@@ -1059,14 +1059,14 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         // shaLastTx.hex() << "\n";
 
         TransactionReceipt receipt =
-            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+            _envInfo.number() >= _chainParams.byzantiumForkBlock ?
                 TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
         m_fs_ptr->commit();
 
-        removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
+        removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -1078,7 +1078,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 
     TransactionReceipt receipt =
-        _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );

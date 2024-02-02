@@ -845,7 +845,8 @@ ExecutionResult Block::execute(
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
-        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+        resultReceipt =
+            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
