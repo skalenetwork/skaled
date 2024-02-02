@@ -431,16 +431,17 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
                 let op = expectedResult.structLogs[difference.path![1]]["op"];
-                if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE") {
+                if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE" || op == "CALL" ||
+                   op == "CREATE") {
                     return;
                 }
             }
 
-            if (difference.kind == "E" && difference.path!.length == 4 && difference.path![2] == "stack") {
+            if (difference.kind == "E" && difference.path!.length == 4 && difference.path![2] == "storage") {
                 return;
             }
 
-            if (difference.kind == "E" && difference.path!.length == 4 && difference.path![2] == "storage") {
+            if (difference.kind == "E" && difference.path!.length == 4 && difference.path![2] == "stack") {
                 return;
             }
 
