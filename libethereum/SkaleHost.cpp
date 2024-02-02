@@ -886,7 +886,6 @@ void SkaleHost::broadcastFunc() {
                 if ( received == 0 )
                     txnsToBroadcast.push_back( txn );
             }
-            std::reverse( txnsToBroadcast.begin(), txnsToBroadcast.end() );
 
             if ( txnsToBroadcast.size() > 0 ) {
                 try {
