@@ -192,5 +192,9 @@ private:
 
     void printTrace(
         ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
+
+    vector<uint8_t> getInputData(const AlethExtVM &_ext) const;
+
+    void recordMinerFeePayment(HistoricState &_statePost);
 };
 }  // namespace dev::eth
