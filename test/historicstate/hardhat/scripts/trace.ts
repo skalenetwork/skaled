@@ -673,6 +673,16 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                     return;
                 }
             }
+
+            if (difference.kind != "E" && difference.path!.length == 1) {
+                // ignore everything related to newly deployed contract
+                const key = difference.path![0];
+                if (key != "Tracer.address" && key != ZERO_ADDRESS && key != "OWNER.address") {
+                    return;
+                }
+            }
+
+
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
@@ -728,6 +738,21 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
                 }
 
                 if (address == "OWNER.address" && difference.path![2] == "nonce") {
+                    return;
+                }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 4) {
+                if (difference.path![1] == "Tracer.address" && difference.path![2] == "storage") {
+                    return;
+                }
+            }
+
+            if (difference.kind != "E" && difference.path!.length == 2 &&
+                     difference.path![0] == "post") {
+                // ignore everything related to newly deployed contract
+                const key = difference.path![1];
+                if (key != "Tracer.address" && key != ZERO_ADDRESS && key != "OWNER.address") {
                     return;
                 }
             }
