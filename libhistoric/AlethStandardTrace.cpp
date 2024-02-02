@@ -119,10 +119,21 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
 
     if ( currentDepth == m_lastOpRecord.m_depth + 1 ) {
         // we are beginning to execute a new function
-        auto data = _ext.data.toVector();
-        recordFunctionIsCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
+        // figure out function input inputData
+        vector< uint8_t > inputData;
+        if (m_lastOpRecord.m_op == Instruction::CREATE ||
+            m_lastOpRecord.m_op == Instruction::CREATE2) {
+            // we are in a constructor code, so input to the function is current
+            // code
+            inputData = _ext.code;
+        } else {
+            // we are in a regular function so input is inputData field of _ext
+            inputData = _ext.data.toVector();
+        }
+        recordFunctionIsCalled(_ext.caller, _ext.myAddress, _gasRemaining, inputData, _ext.value );
     } else if ( currentDepth == m_lastOpRecord.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
+
         recordFunctionReturned( status, _vm->getReturnData(),
             getCurrentlyExecutingFunctionCall()->getFunctionGasLimit() - _gasRemaining );
     } else {
