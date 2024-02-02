@@ -46,7 +46,6 @@ public:
     static std::string getEvmErrorDescription( evmc_status_code _error );
 
 protected:
-
     [[nodiscard]] static bool isNewContract(
         const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address );
 

@@ -86,9 +86,10 @@ bool TracePrinter::isPreExistingContract(
 
 // this will return true if the address is a contract that has been created
 // during the current transaction and has not been deleted
-bool TracePrinter::isNewContract( const HistoricState& _statePre, const HistoricState& _statePost,
-    const Address& _address ) {
-    auto isNewContract =  !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
+bool TracePrinter::isNewContract(
+    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
+    auto isNewContract =
+        !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
     return isNewContract;
 }
 
