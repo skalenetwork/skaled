@@ -183,10 +183,12 @@ namespace dev::eth {
         Json::Value diffPre(Json::objectValue);
 
         // If the account did not exist before the transaction, geth does not print it in pre trace
-        // exception is if a contract is created during the transaction. Geth always prints it in pre
+        // exception is a top level contract  created during the CREATE transaction. Geth always prints it in pre
         // diff
-        if (!_statePre.addressInUse(_address) && !isNewContract(_statePre, _statePost, _address))
+        if (!_statePre.addressInUse(_address) &&
+            !(m_trace.isContractCreation() && isNewContract(_statePre, _statePost, _address))) {
             return;
+        }
 
         printPreDiffBalance(_statePre, _statePost, _address, diffPre);
 
