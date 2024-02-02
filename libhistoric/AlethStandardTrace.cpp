@@ -121,8 +121,8 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
         // we are beginning to execute a new function
         // figure out function input inputData
         vector< uint8_t > inputData;
-        if (m_lastOpRecord.m_op == Instruction::CREATE ||
-            m_lastOpRecord.m_op == Instruction::CREATE2) {
+        if ( m_lastOpRecord.m_op == Instruction::CREATE ||
+             m_lastOpRecord.m_op == Instruction::CREATE2 ) {
             // we are in a constructor code, so input to the function is current
             // code
             inputData = _ext.code;
@@ -130,7 +130,7 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
             // we are in a regular function so input is inputData field of _ext
             inputData = _ext.data.toVector();
         }
-        recordFunctionIsCalled(_ext.caller, _ext.myAddress, _gasRemaining, inputData, _ext.value );
+        recordFunctionIsCalled( _ext.caller, _ext.myAddress, _gasRemaining, inputData, _ext.value );
     } else if ( currentDepth == m_lastOpRecord.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
 
@@ -395,7 +395,6 @@ string AlethStandardTrace::toGethCompatibleCompactHexPrefixed( const u256& _valu
 // to print the resulting trace to json
 void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
-
     m_totalGasUsed = ( uint64_t ) _er.gasUsed;
 
     m_output = _er.output;
@@ -411,17 +410,17 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     }
 
 
-    if (!m_isCall) {
+    if ( !m_isCall ) {
         auto fee = m_gasPrice * m_totalGasUsed;
-        auto fromPostBalance = _statePost.balance(m_from);
+        auto fromPostBalance = _statePost.balance( m_from );
 
-        _statePost.setBalance(m_from, fromPostBalance - fee);
+        _statePost.setBalance( m_from, fromPostBalance - fee );
 
-        auto minerBalance = _statePost.balance(m_blockAuthor);
-        _statePost.setBalance(m_blockAuthor, minerBalance + fee);
+        auto minerBalance = _statePost.balance( m_blockAuthor );
+        _statePost.setBalance( m_blockAuthor, minerBalance + fee );
     }
 
-    
+
     // we are done. Set the trace to finalized
     STATE_CHECK( !m_isFinalized.exchange( true ) )
     // now print trace
@@ -563,7 +562,6 @@ const Address& AlethStandardTrace::getDeployedContractAddress() const {
 }
 
 }  // namespace dev::eth
-
 
 
 #endif

@@ -38,7 +38,7 @@ void ReplayTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& 
     auto failed = _er.excepted != TransactionException::None;
 
     if ( failed ) {
-        _jsonTrace["error"] = getEvmErrorDescription(m_trace.getEVMCStatusCode());
+        _jsonTrace["error"] = getEvmErrorDescription( m_trace.getEVMCStatusCode() );
     }
 
     Json::Value functionTraceArray( Json::arrayValue );
