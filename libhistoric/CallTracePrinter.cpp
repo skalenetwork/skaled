@@ -28,8 +28,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 // call tracer as implemented by geth
-void CallTracePrinter::print(
-    Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& _statePost) {
+void CallTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
+    const HistoricState& _statePost ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
     // first print error description if the transaction failed
@@ -42,15 +42,16 @@ void CallTracePrinter::print(
         // no bytecode was executed
         printTransferTrace( _jsonTrace );
     } else {
-        printContractTransactionTrace(_jsonTrace, _statePost);
+        printContractTransactionTrace( _jsonTrace, _statePost );
     }
 }
-void CallTracePrinter::printContractTransactionTrace(Json::Value &_jsonTrace, const HistoricState &_statePost) {
+void CallTracePrinter::printContractTransactionTrace(
+    Json::Value& _jsonTrace, const HistoricState& _statePost ) {
     auto topFunctionCall = m_trace.getTopFunctionCall();
     STATE_CHECK( topFunctionCall );
     // call trace on the top Solidity function call in the stack
     // this will also recursively call printTrace on nested calls if exist
-    topFunctionCall->printTrace( _jsonTrace, _statePost, 0, m_trace.getOptions());
+    topFunctionCall->printTrace( _jsonTrace, _statePost, 0, m_trace.getOptions() );
     // handle the case of a transaction that deploys a contract
     // in this case geth prints transaction input data as input
     // end prints to as newly created contract address

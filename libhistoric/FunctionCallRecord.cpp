@@ -31,227 +31,227 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace dev::eth {
 
-    void FunctionCallRecord::setGasUsed(uint64_t _gasUsed) {
-        m_gasUsed = _gasUsed;
+void FunctionCallRecord::setGasUsed( uint64_t _gasUsed ) {
+    m_gasUsed = _gasUsed;
+}
+
+uint64_t FunctionCallRecord::getFunctionGasLimit() const {
+    return m_functionGasLimit;
+}
+
+void FunctionCallRecord::setOutputData( const vector< uint8_t >& _outputData ) {
+    m_outputData = _outputData;
+}
+
+void FunctionCallRecord::addNestedCall( shared_ptr< FunctionCallRecord >& _nestedCall ) {
+    STATE_CHECK( _nestedCall );
+    m_nestedCalls.push_back( _nestedCall );
+}
+
+void FunctionCallRecord::setError( const string& _error ) {
+    m_error = _error;
+}
+
+void FunctionCallRecord::setRevertReason( const string& _revertReason ) {
+    m_reverted = true;
+    m_revertReason = _revertReason;
+}
+
+const weak_ptr< FunctionCallRecord >& FunctionCallRecord::getParentCall() const {
+    return m_parentCall;
+}
+
+int64_t FunctionCallRecord::getDepth() const {
+    return m_depth;
+}
+
+void FunctionCallRecord::printFunctionExecutionDetail(
+    Json::Value& _jsonTrace, const HistoricState& _statePost, const TraceOptions& _debugOptions ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+
+    _jsonTrace["type"] = instructionInfo( m_type ).name;
+    _jsonTrace["from"] = toHexPrefixed( m_from );
+    _jsonTrace["to"] = toHexPrefixed( m_to );
+    _jsonTrace["gas"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_functionGasLimit );
+    _jsonTrace["gasUsed"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_gasUsed );
+    if ( !m_error.empty() ) {
+        _jsonTrace["error"] = m_error;
+    }
+    if ( !m_revertReason.empty() ) {
+        _jsonTrace["revertReason"] = m_revertReason;
     }
 
-    uint64_t FunctionCallRecord::getFunctionGasLimit() const {
-        return m_functionGasLimit;
+    _jsonTrace["value"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_value );
+
+
+    // treat the special case when the function is a constructor. Then output data is the code of
+    // the constructed contract
+    if ( m_type == Instruction::CREATE || m_type == Instruction::CREATE2 ) {
+        m_outputData = _statePost.code( m_to );
     }
 
-    void FunctionCallRecord::setOutputData(const vector<uint8_t> &_outputData) {
-        m_outputData = _outputData;
+
+    if ( !m_outputData.empty() ) {
+        _jsonTrace["output"] = toHexPrefixed( m_outputData );
     }
 
-    void FunctionCallRecord::addNestedCall(shared_ptr<FunctionCallRecord> &_nestedCall) {
-        STATE_CHECK(_nestedCall);
-        m_nestedCalls.push_back(_nestedCall);
+    if ( !m_inputData.empty() ) {
+        _jsonTrace["input"] = toHexPrefixed( m_inputData );
+    } else {
     }
 
-    void FunctionCallRecord::setError(const string &_error) {
-        m_error = _error;
-    }
+    if ( !_debugOptions.withLog )
+        return;
 
-    void FunctionCallRecord::setRevertReason(const string &_revertReason) {
-        m_reverted = true;
-        m_revertReason = _revertReason;
-    }
-
-    const weak_ptr<FunctionCallRecord> &FunctionCallRecord::getParentCall() const {
-        return m_parentCall;
-    }
-
-    int64_t FunctionCallRecord::getDepth() const {
-        return m_depth;
-    }
-
-    void FunctionCallRecord::printFunctionExecutionDetail(
-            Json::Value &_jsonTrace, const HistoricState &_statePost, const TraceOptions &_debugOptions) {
-        STATE_CHECK(_jsonTrace.isObject())
-
-        _jsonTrace["type"] = instructionInfo(m_type).name;
-        _jsonTrace["from"] = toHexPrefixed(m_from);
-        _jsonTrace["to"] = toHexPrefixed(m_to);
-        _jsonTrace["gas"] =
-                AlethStandardTrace::toGethCompatibleCompactHexPrefixed(m_functionGasLimit);
-        _jsonTrace["gasUsed"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed(m_gasUsed);
-        if (!m_error.empty()) {
-            _jsonTrace["error"] = m_error;
-        }
-        if (!m_revertReason.empty()) {
-            _jsonTrace["revertReason"] = m_revertReason;
-        }
-
-        _jsonTrace["value"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed(m_value);
-
-
-        // treat the special case when the function is a constructor. Then output data is the code of the constructed
-        // contract
-        if (m_type == Instruction::CREATE || m_type == Instruction::CREATE2) {
-            m_outputData = _statePost.code(m_to);
-        }
-
-
-        if (!m_outputData.empty()) {
-            _jsonTrace["output"] = toHexPrefixed(m_outputData);
-        }
-
-        if (!m_inputData.empty()) {
-            _jsonTrace["input"] = toHexPrefixed(m_inputData);
-        } else {
-        }
-
-        if (!_debugOptions.withLog)
-            return;
-
-        if (!m_logRecords.empty() && m_type != Instruction::CREATE &&
-            m_type != Instruction::CREATE2) {
+    if ( !m_logRecords.empty() && m_type != Instruction::CREATE &&
+         m_type != Instruction::CREATE2 ) {
+        _jsonTrace["logs"] = Json::arrayValue;
+        for ( auto&& log : m_logRecords ) {
+            // no logs in contract creation
             _jsonTrace["logs"] = Json::arrayValue;
-            for (auto &&log: m_logRecords) {
-                // no logs in contract creation
-                _jsonTrace["logs"] = Json::arrayValue;
-                if (m_type != Instruction::CREATE && m_type != Instruction::CREATE2) {
-                    Json::Value currentLogRecord = Json::objectValue;
-                    currentLogRecord["address"] = toHexPrefixed(m_to);
-                    currentLogRecord["data"] = toHexPrefixed(log.m_data);
-                    currentLogRecord["topics"] = Json::arrayValue;
-                    for (auto &&topic: log.m_topics) {
-                        currentLogRecord["topics"].append(toHexPrefixed(topic));
-                    }
-                    _jsonTrace["logs"].append(currentLogRecord);
+            if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
+                Json::Value currentLogRecord = Json::objectValue;
+                currentLogRecord["address"] = toHexPrefixed( m_to );
+                currentLogRecord["data"] = toHexPrefixed( log.m_data );
+                currentLogRecord["topics"] = Json::arrayValue;
+                for ( auto&& topic : log.m_topics ) {
+                    currentLogRecord["topics"].append( toHexPrefixed( topic ) );
                 }
+                _jsonTrace["logs"].append( currentLogRecord );
             }
         }
     }
+}
 
-    void FunctionCallRecord::printTrace(
-            Json::Value &_jsonTrace, const HistoricState &_statePost, int64_t _depth,
-            const TraceOptions &_debugOptions) {
-        STATE_CHECK(_jsonTrace.isObject())
-        // prevent Denial of service
-        STATE_CHECK(_depth < MAX_TRACE_DEPTH)
-        STATE_CHECK(_depth == m_depth)
+void FunctionCallRecord::printTrace( Json::Value& _jsonTrace, const HistoricState& _statePost,
+    int64_t _depth, const TraceOptions& _debugOptions ) {
+    STATE_CHECK( _jsonTrace.isObject() )
+    // prevent Denial of service
+    STATE_CHECK( _depth < MAX_TRACE_DEPTH )
+    STATE_CHECK( _depth == m_depth )
 
-        printFunctionExecutionDetail(_jsonTrace, _statePost, _debugOptions);
+    printFunctionExecutionDetail( _jsonTrace, _statePost, _debugOptions );
 
-        if (!m_nestedCalls.empty()) {
-            if (_debugOptions.onlyTopCall)
-                return;
-            _jsonTrace["calls"] = Json::arrayValue;
-            for (uint32_t i = 0; i < m_nestedCalls.size(); i++) {
-                _jsonTrace["calls"].append(Json::objectValue);
-                m_nestedCalls.at(i)->printTrace(_jsonTrace["calls"][i], _statePost, _depth + 1, _debugOptions);
-            }
-        }
-    }
-
-    FunctionCallRecord::FunctionCallRecord(Instruction _type, const Address &_from, const Address &_to,
-                                           uint64_t _functionGasLimit, const weak_ptr<FunctionCallRecord> &_parentCall,
-                                           const vector<uint8_t> &_inputData, const u256 &_value, int64_t _depth)
-            : m_type(_type),
-              m_from(_from),
-              m_to(_to),
-              m_functionGasLimit(_functionGasLimit),
-              m_parentCall(_parentCall),
-              m_inputData(_inputData),
-              m_value(_value),
-              m_depth(_depth) {
-        STATE_CHECK(m_depth >= 0)
-    }
-
-
-    void FunctionCallRecord::addLogEntry(
-            const vector<uint8_t> &_data, const vector<u256> &_topics) {
-        m_logRecords.emplace_back(_data, _topics);
-    }
-
-    string FunctionCallRecord::getParityTraceType() {
-        return boost::algorithm::to_lower_copy(string(instructionInfo(m_type).name));
-    }
-
-    void FunctionCallRecord::printParityFunctionTrace(
-            Json::Value &_outputArray, Json::Value _address) {
-        Json::Value functionTrace(Json::objectValue);
-
-        Json::Value action(Json::objectValue);
-        action["from"] = toHexPrefixed(m_from);
-        action["to"] = toHexPrefixed(m_to);
-        action["gas"] = toHexPrefixed(u256(m_functionGasLimit));
-        action["input"] = toHexPrefixed(m_inputData);
-        action["value"] = toHexPrefixed(m_value);
-        action["callType"] = getParityTraceType();
-        functionTrace["action"] = action;
-
-
-        Json::Value result(Json::objectValue);
-        result["gasUsed"] = toHexPrefixed(u256(m_gasUsed));
-        result["output"] = toHexPrefixed(m_outputData);
-        functionTrace["result"] = result;
-
-        functionTrace["subtraces"] = m_nestedCalls.size();
-        functionTrace["traceAddress"] = _address;
-        functionTrace["type"] = getParityTraceType();
-        _outputArray.append(functionTrace);
-
-        for (uint64_t i = 0; i < m_nestedCalls.size(); i++) {
-            auto nestedFunctionAddress = _address;
-            nestedFunctionAddress.append(i);
-            auto nestedCall = m_nestedCalls.at(i);
-            STATE_CHECK(nestedCall);
-            nestedCall->printParityFunctionTrace(_outputArray, nestedFunctionAddress);
-        }
-    }
-
-    void FunctionCallRecord::collectFourByteTrace(std::map<string, uint64_t> &_callMap) {
-        Json::Value functionTrace(Json::objectValue);
-
-        constexpr int FOUR_BYTES = 4;
-
-        if (m_depth > 0 && (m_type == Instruction::CREATE || m_type == Instruction::CREATE2)) {
-            // geth does not print 4byte traces for constructors called by contracts
+    if ( !m_nestedCalls.empty() ) {
+        if ( _debugOptions.onlyTopCall )
             return;
-        }
-
-        // a call with less than four bytes of data is not a valid solidity call
-        if (m_inputData.size() >= FOUR_BYTES) {
-            vector<uint8_t> fourBytes(m_inputData.begin(), m_inputData.begin() + FOUR_BYTES);
-            auto key = toHexPrefixed(fourBytes)
-                    .append("-")
-                    .append(to_string(m_inputData.size() - FOUR_BYTES));
-            auto count = _callMap[key] + 1;
-            _callMap[key] = count;
-        }
-
-        for (uint64_t i = 0; i < m_nestedCalls.size(); i++) {
-            auto nestedCall = m_nestedCalls.at(i);
-            STATE_CHECK(nestedCall);
-            nestedCall->collectFourByteTrace(_callMap);
+        _jsonTrace["calls"] = Json::arrayValue;
+        for ( uint32_t i = 0; i < m_nestedCalls.size(); i++ ) {
+            _jsonTrace["calls"].append( Json::objectValue );
+            m_nestedCalls.at( i )->printTrace(
+                _jsonTrace["calls"][i], _statePost, _depth + 1, _debugOptions );
         }
     }
+}
+
+FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
+    uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
+    const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
+    : m_type( _type ),
+      m_from( _from ),
+      m_to( _to ),
+      m_functionGasLimit( _functionGasLimit ),
+      m_parentCall( _parentCall ),
+      m_inputData( _inputData ),
+      m_value( _value ),
+      m_depth( _depth ) {
+    STATE_CHECK( m_depth >= 0 )
+}
 
 
-    void FunctionCallRecord::setReturnValues(
-            evmc_status_code _status, const vector<uint8_t> &_returnData, uint64_t _gasUsed) {
-        setGasUsed(_gasUsed);
+void FunctionCallRecord::addLogEntry(
+    const vector< uint8_t >& _data, const vector< u256 >& _topics ) {
+    m_logRecords.emplace_back( _data, _topics );
+}
 
-        if (_status != evmc_status_code::EVMC_SUCCESS) {
-            setError(TracePrinter::getEvmErrorDescription(_status));
-        }
+string FunctionCallRecord::getParityTraceType() {
+    return boost::algorithm::to_lower_copy( string( instructionInfo( m_type ).name ) );
+}
 
-        if (_status == evmc_status_code::EVMC_REVERT) {
-            setRevertReason(string(_returnData.begin(), _returnData.end()));
-        } else {
-            setOutputData(_returnData);
-        }
+void FunctionCallRecord::printParityFunctionTrace(
+    Json::Value& _outputArray, Json::Value _address ) {
+    Json::Value functionTrace( Json::objectValue );
+
+    Json::Value action( Json::objectValue );
+    action["from"] = toHexPrefixed( m_from );
+    action["to"] = toHexPrefixed( m_to );
+    action["gas"] = toHexPrefixed( u256( m_functionGasLimit ) );
+    action["input"] = toHexPrefixed( m_inputData );
+    action["value"] = toHexPrefixed( m_value );
+    action["callType"] = getParityTraceType();
+    functionTrace["action"] = action;
+
+
+    Json::Value result( Json::objectValue );
+    result["gasUsed"] = toHexPrefixed( u256( m_gasUsed ) );
+    result["output"] = toHexPrefixed( m_outputData );
+    functionTrace["result"] = result;
+
+    functionTrace["subtraces"] = m_nestedCalls.size();
+    functionTrace["traceAddress"] = _address;
+    functionTrace["type"] = getParityTraceType();
+    _outputArray.append( functionTrace );
+
+    for ( uint64_t i = 0; i < m_nestedCalls.size(); i++ ) {
+        auto nestedFunctionAddress = _address;
+        nestedFunctionAddress.append( i );
+        auto nestedCall = m_nestedCalls.at( i );
+        STATE_CHECK( nestedCall );
+        nestedCall->printParityFunctionTrace( _outputArray, nestedFunctionAddress );
+    }
+}
+
+void FunctionCallRecord::collectFourByteTrace( std::map< string, uint64_t >& _callMap ) {
+    Json::Value functionTrace( Json::objectValue );
+
+    constexpr int FOUR_BYTES = 4;
+
+    if ( m_depth > 0 && ( m_type == Instruction::CREATE || m_type == Instruction::CREATE2 ) ) {
+        // geth does not print 4byte traces for constructors called by contracts
+        return;
     }
 
-    Instruction FunctionCallRecord::getType() const {
-        return m_type;
+    // a call with less than four bytes of data is not a valid solidity call
+    if ( m_inputData.size() >= FOUR_BYTES ) {
+        vector< uint8_t > fourBytes( m_inputData.begin(), m_inputData.begin() + FOUR_BYTES );
+        auto key = toHexPrefixed( fourBytes )
+                       .append( "-" )
+                       .append( to_string( m_inputData.size() - FOUR_BYTES ) );
+        auto count = _callMap[key] + 1;
+        _callMap[key] = count;
     }
 
-    OpExecutionRecord::OpExecutionRecord(
-            int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas)
-            : m_depth(_depth), m_op(_op), m_gasRemaining(_gasRemaining), m_opGas(_opGas) {}
+    for ( uint64_t i = 0; i < m_nestedCalls.size(); i++ ) {
+        auto nestedCall = m_nestedCalls.at( i );
+        STATE_CHECK( nestedCall );
+        nestedCall->collectFourByteTrace( _callMap );
+    }
+}
+
+
+void FunctionCallRecord::setReturnValues(
+    evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
+    setGasUsed( _gasUsed );
+
+    if ( _status != evmc_status_code::EVMC_SUCCESS ) {
+        setError( TracePrinter::getEvmErrorDescription( _status ) );
+    }
+
+    if ( _status == evmc_status_code::EVMC_REVERT ) {
+        setRevertReason( string( _returnData.begin(), _returnData.end() ) );
+    } else {
+        setOutputData( _returnData );
+    }
+}
+
+Instruction FunctionCallRecord::getType() const {
+    return m_type;
+}
+
+OpExecutionRecord::OpExecutionRecord(
+    int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
+    : m_depth( _depth ), m_op( _op ), m_gasRemaining( _gasRemaining ), m_opGas( _opGas ) {}
 }  // namespace dev::eth
 // namespace dev
 

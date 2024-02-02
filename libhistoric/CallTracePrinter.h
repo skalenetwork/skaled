@@ -40,6 +40,6 @@ public:
 private:
     void printTransferTrace( Json::Value& _jsonTrace );
 
-    void printContractTransactionTrace(Json::Value &_jsonTrace, const HistoricState &_statePost);
+    void printContractTransactionTrace( Json::Value& _jsonTrace, const HistoricState& _statePost );
 };
 }  // namespace dev::eth

@@ -822,7 +822,8 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
                 auto resultReceipt = m_state.mutableHistoricState().execute(
                     envInfo, *m_sealEngine, _t, skale::Permanence::Uncommitted, onOp );
 
-                _tracer->finalizeAndPrintTrace( resultReceipt.first, stateBefore, m_state.mutableHistoricState());
+                _tracer->finalizeAndPrintTrace(
+                    resultReceipt.first, stateBefore, m_state.mutableHistoricState() );
                 // for tracing the entire block is traced therefore, we save transaction receipt
                 // as it is used for execution of the next transaction
                 m_receipts.push_back( resultReceipt.second );

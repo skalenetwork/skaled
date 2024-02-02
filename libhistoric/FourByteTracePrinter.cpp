@@ -60,8 +60,8 @@ void FourByteTracePrinter::addContractCreationEntry( Json::Value& _jsonTrace ) c
         return;
     }
     // the format geth uses in this case. Take first 8 symbols of hex and add hex size
-        auto key =
-            toHexPrefixed( inputBytes ).substr( 0, 10 ) + "-" + to_string( inputBytes.size() - 4 );
+    auto key =
+        toHexPrefixed( inputBytes ).substr( 0, 10 ) + "-" + to_string( inputBytes.size() - 4 );
     _jsonTrace[key] = 1;
 }
 

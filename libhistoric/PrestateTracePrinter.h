@@ -39,8 +39,8 @@ public:
     explicit PrestateTracePrinter( AlethStandardTrace& standardTrace );
 
 private:
-    void printDiffTrace( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
-        const HistoricState& _statePost );
+    void printDiffTrace( Json::Value& _jsonTrace, const ExecutionResult&,
+        const HistoricState& _statePre, const HistoricState& _statePost );
 
     void printAllAccessedAccountPreValues( Json::Value& _jsonTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
