@@ -150,11 +150,11 @@ private:
     void recordMinerPayment( u256 _minerGasPayment );
 
     void printTrace(
-            ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
+        ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
 
-    [[nodiscard]] vector<uint8_t> getInputData(const AlethExtVM &_ext) const;
+    [[nodiscard]] vector< uint8_t > getInputData( const AlethExtVM& _ext ) const;
 
-    void recordMinerFeePayment(HistoricState &_statePost);
+    void recordMinerFeePayment( HistoricState& _statePost );
 
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
@@ -196,7 +196,5 @@ private:
     evmc_status_code m_evmcStatusCode;
     // this will include deployed contract address if the transaction was CREATE
     Address m_deployedContractAddress;
-
-
 };
 }  // namespace dev::eth
