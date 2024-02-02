@@ -445,8 +445,6 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
             }
 
 
-
-
             foundDiffs = true;
             if (difference.kind == "E") {
                 console.log(`Difference op:`, expectedResult["structLogs"][difference.path![1]]);
