@@ -207,6 +207,11 @@ namespace dev::eth {
 
         constexpr int FOUR_BYTES = 4;
 
+        if (m_depth > 0 && (m_type == Instruction::CREATE || m_type == Instruction::CREATE2)) {
+            // geth does not print 4byte traces for constructors called by contracts
+            return;
+        }
+
         // a call with less than four bytes of data is not a valid solidity call
         if (m_inputData.size() >= FOUR_BYTES) {
             vector<uint8_t> fourBytes(m_inputData.begin(), m_inputData.begin() + FOUR_BYTES);

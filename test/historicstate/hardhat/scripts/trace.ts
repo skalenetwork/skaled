@@ -817,16 +817,11 @@ async function main(): Promise<void> {
     }
 
 
-
-
-
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
     await verifyPrestateDiffTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
     await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
-
-
 
 
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
@@ -851,9 +846,10 @@ async function main(): Promise<void> {
 
 
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
     //await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
     //await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
-    //await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
+
     //await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
 
 }
