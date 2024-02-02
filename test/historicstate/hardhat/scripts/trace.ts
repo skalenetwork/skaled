@@ -416,7 +416,6 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
 
     let foundDiffs = false;
 
-
     if (differences) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
@@ -427,7 +426,6 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
             if (difference.kind == "E" && difference.path!.length == 1 && difference.path![0] == "gas") {
                 return;
             }
-
 
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
                 let op = expectedResult.structLogs[difference.path![1]]["op"];
@@ -853,12 +851,12 @@ async function main(): Promise<void> {
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
 
 
-
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME);
     await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
-    //await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
-    //await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
+
 
 
 
