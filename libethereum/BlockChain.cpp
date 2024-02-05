@@ -1753,7 +1753,9 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                 Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
                                       CheckTransaction::Everything :
                                       CheckTransaction::None );
-                Ethash::verifyTransaction( chainParams(), _ir, t, h, 0 );  // the gasUsed vs
+                Ethash::verifyTransaction( chainParams(), _ir, t,
+                    this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
+                    0 );  // the gasUsed vs
                 // blockGasLimit is checked
                 // later in enact function
                 res.transactions.push_back( t );

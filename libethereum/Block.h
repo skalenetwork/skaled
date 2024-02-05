@@ -318,7 +318,7 @@ private:
     void performIrregularModifications();
 
     /// Creates and updates the special contract for storing block hashes according to EIP96
-    void updateBlockhashContract();
+    void updateBlockhashContract( time_t _latestBlockTimestamp );
 
     State m_state;                ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the

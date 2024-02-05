@@ -131,9 +131,10 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
 }
 
 void Ethash::verifyTransaction( ChainOperationParams const& _chainParams,
-    ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header,
-    u256 const& _startGasUsed ) {
-    SealEngineFace::verifyTransaction( _chainParams, _ir, _t, _header, _startGasUsed );
+    ImportRequirements::value _ir, TransactionBase const& _t, time_t _latestBlockTimestamp,
+    BlockHeader const& _header, u256 const& _startGasUsed ) {
+    SealEngineFace::verifyTransaction(
+        _chainParams, _ir, _t, _latestBlockTimestamp, _header, _startGasUsed );
 
     if ( _ir & ImportRequirements::TransactionSignatures ) {
         if ( _header.number() >= _chainParams.EIP158ForkBlock ) {

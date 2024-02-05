@@ -153,9 +153,7 @@ public:
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
 
-    EVMSchedule evmSchedule() const override {
-        return sealEngine()->evmSchedule( pendingInfo().number() );
-    }
+    EVMSchedule evmSchedule() const override;
 
     ImportResult injectBlock( bytes const& _block ) override;
 

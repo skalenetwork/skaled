@@ -116,11 +116,11 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
-        int64_t lowerBound =
-            CorrectForkInPowPatch::isEnabled() ?
-                Transaction::baseGasRequired( !_dest, &_data,
-                    bc().sealEngine()->chainParams().scheduleForBlockNumber( bc().number() ) ) :
-                Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
+        int64_t lowerBound = CorrectForkInPowPatch::isEnabled() ?
+                                 Transaction::baseGasRequired( !_dest, &_data,
+                                     bc().sealEngine()->chainParams().evmSchedule(
+                                         bc().info().timestamp(), bc().number() ) ) :
+                                 Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
         Block bk = latestBlock();
         if ( upperBound > bk.info().gasLimit() ) {
@@ -497,6 +497,10 @@ BlockDetails ClientBase::pendingDetails() const {
     auto li = Interface::blockDetails( LatestBlock );
     return BlockDetails( ( unsigned ) pm.number(), li.totalDifficulty + pm.difficulty(),
         pm.parentHash(), h256s{}, postSeal().blockData().size() );
+}
+
+EVMSchedule ClientBase::evmSchedule() const {
+    return sealEngine()->evmSchedule( bc().info().timestamp(), pendingInfo().number() );
 }
 
 u256 ClientBase::gasLimitRemaining() const {

@@ -206,7 +206,7 @@ private:
     u256 m_blockReward;
 
 public:
-    EVMSchedule const& scheduleForBlockNumber( u256 const& _blockNumber ) const;
+    EVMSchedule const evmSchedule( time_t _lastBlockTimestamp, u256 const& _blockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
     void setBlockReward( u256 const& _newBlockReward );
     u256 maximumExtraDataSize = 1024;
@@ -253,6 +253,10 @@ public:
     u256 externalGasDifficulty = ~u256( 0 );
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
+
+    // all fields named "*PatchTimestamp" should be read into array, that would be available to this
+    // function
+    time_t getPatchTimestamp( const std::string& _name ) const;
 
     bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
         return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();

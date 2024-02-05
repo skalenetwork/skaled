@@ -181,7 +181,8 @@ u256 Transaction::gasPrice() const {
     }
 }
 
-void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, bool _force ) {
+void Transaction::checkOutExternalGas(
+    const ChainParams& _cp, time_t _latestBlockTimestamp, uint64_t _bn, bool _force ) {
     u256 const& difficulty = _cp.externalGasDifficulty;
     assert( difficulty > 0 );
     if ( ( _force || !m_externalGasIsChecked ) && !isInvalid() ) {
@@ -195,7 +196,7 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, boo
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
         if ( CorrectForkInPowPatch::isEnabled() )
-            scheduleForUse = _cp.scheduleForBlockNumber( _bn );
+            scheduleForUse = _cp.evmSchedule( _latestBlockTimestamp, _bn );
 
         // never call checkOutExternalGas with non-last block
         if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {

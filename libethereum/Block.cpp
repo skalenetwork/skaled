@@ -161,7 +161,8 @@ void Block::resetCurrent( int64_t _timestamp ) {
     m_committedToSeal = false;
 
     performIrregularModifications();
-    updateBlockhashContract();
+    // TEMPRORARY!!! - put here actian number
+    updateBlockhashContract( -1 );
 
     //    if ( !m_state.checkVersion() )
     m_state = m_state.createNewCopyWithLocks();
@@ -351,7 +352,7 @@ pair< TransactionReceipts, bool > Block::sync(
                                                                     // caller if we hit the limit
 
     for ( Transaction& transaction : transactions ) {
-        transaction.checkOutExternalGas( _bc.chainParams(), _bc.number() );
+        transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
@@ -631,7 +632,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
-            const_cast< Transaction& >( tr ).checkOutExternalGas( _bc.chainParams(), _bc.number() );
+            const_cast< Transaction& >( tr ).checkOutExternalGas(
+                _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
@@ -762,7 +764,10 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
-    applyRewards( rewarded, _bc.sealEngine()->blockReward( m_currentBlock.number() ) );
+    applyRewards(
+        rewarded, _bc.sealEngine()->blockReward(
+                      _bc.info( _bc.numberHash( m_currentBlock.number() - 1 ) ).timestamp(),
+                      m_currentBlock.number() ) );
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state
@@ -906,7 +911,7 @@ void Block::performIrregularModifications() {
     }
 }
 
-void Block::updateBlockhashContract() {
+void Block::updateBlockhashContract( time_t _latestBlockTimestamp ) {
     u256 const& blockNumber = info().number();
 
     u256 const& forkBlock = m_sealEngine->chainParams().experimentalForkBlock;
@@ -915,13 +920,14 @@ void Block::updateBlockhashContract() {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
                 State state = m_state.createStateModifyCopy();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                    m_sealEngine->evmSchedule( blockNumber ).accountVersion );
+                    m_sealEngine->evmSchedule( _latestBlockTimestamp, blockNumber )
+                        .accountVersion );
                 state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                m_sealEngine->evmSchedule( blockNumber ).accountVersion );
+                m_sealEngine->evmSchedule( _latestBlockTimestamp, blockNumber ).accountVersion );
             m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
     }
@@ -987,7 +993,10 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
-    applyRewards( uncleBlockHeaders, _bc.sealEngine()->blockReward( m_currentBlock.number() ) );
+    applyRewards( uncleBlockHeaders,
+        _bc.sealEngine()->blockReward(
+            _bc.info( _bc.numberHash( m_currentBlock.number() - 1 ) ).timestamp(),
+            m_currentBlock.number() ) );
 
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.

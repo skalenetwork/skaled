@@ -76,10 +76,11 @@ void AlethExecutive::accrueSubState( SubState& _parentContext ) {
 
 void AlethExecutive::initialize( Transaction const& _transaction ) {
     m_t = _transaction;
-    m_baseGasRequired = m_t.baseGasRequired( m_sealEngine.evmSchedule( m_envInfo.number() ) );
+    m_baseGasRequired = m_t.baseGasRequired(
+        m_chainParams.evmSchedule( m_latestBlockTimestamp, m_envInfo.number() ) );
     try {
-        Ethash::verifyTransaction( m_sealEngine.chainParams(), ImportRequirements::Everything, m_t,
-            m_envInfo.header(), m_envInfo.gasUsed() );
+        Ethash::verifyTransaction( m_chainParams, ImportRequirements::Everything, m_t,
+            m_latestBlockTimestamp, m_envInfo.header(), m_envInfo.gasUsed() );
     } catch ( Exception const& ex ) {
         m_excepted = toTransactionException( ex );
         throw;
@@ -151,14 +152,14 @@ bool AlethExecutive::call(
         //        for the transaction.
         // Increment associated nonce for sender.
         if ( _p.senderAddress != MaxAddress ||
-             m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock )  // EIP86
+             m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
             m_s.incNonce( _p.senderAddress );
     }
 
     m_savepoint = m_s.savepoint();
 
 
-    if ( m_sealEngine.isPrecompiled( _p.codeAddress, m_envInfo.number() ) ) {
+    if ( m_chainParams.isPrecompiled( _p.codeAddress, m_envInfo.number() ) ) {
         // Empty RIPEMD contract needs to be deleted even in case of OOG
         // because of the anomaly on the main net caused by buggy behavior by both Geth and Parity
         // https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
@@ -169,7 +170,7 @@ bool AlethExecutive::call(
         if ( _p.receiveAddress == c_RipemdPrecompiledAddress )
             m_s.unrevertableTouch( _p.codeAddress );
 
-        bigint g = m_sealEngine.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+        bigint g = m_chainParams.costOfPrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
         if ( _p.gas < g ) {
             m_excepted = TransactionException::OutOfGasBase;
             // Bail from exception.
@@ -180,7 +181,7 @@ bool AlethExecutive::call(
             bytes output;
             bool success;
             tie( success, output ) =
-                m_sealEngine.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {
@@ -197,9 +198,10 @@ bool AlethExecutive::call(
             // Contract will be executed with the version stored in account
             auto const version = m_s.version( _p.codeAddress );
 
-            m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
-                _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall );
+            m_ext =
+                make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, m_latestBlockTimestamp,
+                    _p.receiveAddress, _p.senderAddress, _origin, _p.apparentValue, _gasPrice,
+                    _p.data, &c, codeHash, version, m_depth, false, _p.staticCall );
         }
     }
 
@@ -211,7 +213,8 @@ bool AlethExecutive::call(
 bool AlethExecutive::create( Address const& _txSender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin ) {
     // Contract will be created with the version corresponding to latest hard fork
-    auto const latestVersion = m_sealEngine.evmSchedule( m_envInfo.number() ).accountVersion;
+    auto const latestVersion =
+        m_chainParams.evmSchedule( m_latestBlockTimestamp, m_envInfo.number() ).accountVersion;
     return createWithAddressFromNonceAndSender(
         _txSender, _endowment, _gasPrice, _gas, _init, _origin, latestVersion );
 }
@@ -245,7 +248,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _version ) {
     if ( _sender != MaxAddress ||
-         m_envInfo.number() < m_sealEngine.chainParams().experimentalForkBlock )  // EIP86
+         m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
@@ -272,7 +275,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     m_s.transferBalance( _sender, m_newAddress, _endowment );
 
     u256 newNonce = m_s.requireAccountStartNonce();
-    if ( m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock )
+    if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
         newNonce += 1;
     m_s.setNonce( m_newAddress, newNonce );
 
@@ -280,9 +283,9 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
 
     // Schedule _init execution if not empty.
     if ( !_init.empty() )
-        m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_sealEngine, m_newAddress, _sender,
-            _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version,
-            m_depth, true, false );
+        m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, m_latestBlockTimestamp,
+            m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init,
+            sha3( _init ), _version, m_depth, true, false );
     else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );

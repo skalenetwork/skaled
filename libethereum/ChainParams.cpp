@@ -653,12 +653,6 @@ const std::string& ChainParams::getOriginalJson() const {
     return originalJSON;
 }
 
-time_t ChainParams::getPatchTimestamp( const std::string& _name ) const {
-    if ( _name == "pushZeroPatchTimestamp" )
-        return sChain.pushZeroPatchTimestamp;
-    assert( false );
-}
-
 bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     if ( vecAdminOrigins.empty() )
         return true;

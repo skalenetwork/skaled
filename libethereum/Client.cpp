@@ -1219,10 +1219,11 @@ h256 Client::importTransaction( Transaction const& _t ) {
 
         // We need to check external gas under mutex to be sure about current block bumber
         // correctness
-        const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
+        const_cast< Transaction& >( _t ).checkOutExternalGas(
+            chainParams(), bc().info().timestamp(), number() );
     }
 
-    Executive::verifyTransaction( _t,
+    Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 

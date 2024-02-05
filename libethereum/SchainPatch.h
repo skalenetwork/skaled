@@ -9,6 +9,8 @@ class EVMSchedule;
 
 #include <libethereum/BlockChain.h>
 
+#include <libethcore/ChainOperationParams.h>
+
 #include <libdevcore/Log.h>
 
 #include <string>
@@ -33,6 +35,11 @@ public:
             time_t timestamp = _bc.chainParams().getPatchTimestamp( getName() );                   \
             return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );                      \
         }                                                                                          \
+        static bool isEnabledWhen(                                                                 \
+            const dev::eth::ChainOperationParams& _cp, time_t _lastBlockTimestamp ) {              \
+            time_t my_timestamp = _cp.getPatchTimestamp( getName() );                              \
+            return _lastBlockTimestamp >= my_timestamp;                                            \
+        }                                                                                          \
     };
 
 #define DEFINE_EVM_PATCH( BlaBlaPatch )                                                            \
@@ -43,6 +50,11 @@ public:
             const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
             time_t timestamp = _bc.chainParams().getPatchTimestamp( getName() );                   \
             return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );                      \
+        }                                                                                          \
+        static bool isEnabledWhen(                                                                 \
+            const dev::eth::ChainOperationParams& _cp, time_t _lastBlockTimestamp ) {              \
+            time_t my_timestamp = _cp.getPatchTimestamp( getName() );                              \
+            return _lastBlockTimestamp >= my_timestamp;                                            \
         }                                                                                          \
         static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
     };

@@ -447,6 +447,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                 try {
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
                     Executive::verifyTransaction( tx,
+                        static_cast< const Interface& >( m_client )
+                            .blockInfo( LatestBlock )
+                            .timestamp(),
                         static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
                         m_client.state().createStateReadOnlyCopy(), m_client.chainParams(), 0,
                         getGasPrice(), isMtmEnabled );
@@ -667,7 +670,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // ).detach();
             } else {
                 Transaction t( data, CheckTransaction::Everything, true );
-                t.checkOutExternalGas( m_client.chainParams(), m_client.number() );
+                t.checkOutExternalGas(
+                    m_client.chainParams(), m_client.bc().info().timestamp(), m_client.number() );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn";
                 m_debugTracer.tracepoint( "import_consensus_born" );

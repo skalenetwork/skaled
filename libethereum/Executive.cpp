@@ -189,9 +189,10 @@ void Executive::accrueSubState( SubState& _parentContext ) {
         _parentContext += m_ext->sub;
 }
 
-void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-    const State& _state, const eth::ChainOperationParams& _chainParams, u256 const& _gasUsed,
-    const u256& _gasPrice, const bool _allowFuture ) {
+void Executive::verifyTransaction( Transaction const& _transaction, time_t _latestBlockTimestamp,
+    BlockHeader const& _blockHeader, const State& _state,
+    const eth::ChainOperationParams& _chainParams, u256 const& _gasUsed, const u256& _gasPrice,
+    const bool _allowFuture ) {
     MICROPROFILE_SCOPEI( "Executive", "verifyTransaction", MP_GAINSBORO );
 
     if ( !_transaction.hasExternalGas() && _transaction.gasPrice() < _gasPrice ) {
@@ -200,8 +201,8 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
                 static_cast< bigint >( _transaction.gasPrice() ) ) );
     }
 
-    Ethash::verifyTransaction(
-        _chainParams, ImportRequirements::Everything, _transaction, _blockHeader, _gasUsed );
+    Ethash::verifyTransaction( _chainParams, ImportRequirements::Everything, _transaction,
+        _latestBlockTimestamp, _blockHeader, _gasUsed );
 
     if ( !_transaction.hasZeroSignature() ) {
         // skip nonce check for calls
@@ -245,12 +246,12 @@ void Executive::verifyTransaction( Transaction const& _transaction, BlockHeader 
 void Executive::initialize( Transaction const& _transaction ) {
     MICROPROFILE_SCOPEI( "Executive", "initialize", MP_GAINSBORO );
     m_t = _transaction;
-    m_baseGasRequired =
-        m_t.baseGasRequired( m_chainParams.scheduleForBlockNumber( m_envInfo.number() ) );
+    m_baseGasRequired = m_t.baseGasRequired(
+        m_chainParams.evmSchedule( m_latestBlockTimestamp, m_envInfo.number() ) );
 
     try {
-        verifyTransaction( _transaction, m_envInfo.header(), m_s, m_chainParams,
-            m_envInfo.gasUsed(), m_systemGasPrice );
+        verifyTransaction( _transaction, m_latestBlockTimestamp, m_envInfo.header(), m_s,
+            m_chainParams, m_envInfo.gasUsed(), m_systemGasPrice );
     } catch ( Exception const& ex ) {
         m_excepted = toTransactionException( ex );
         throw;
@@ -348,9 +349,9 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             h256 codeHash = m_s.codeHash( _p.codeAddress );
             // Contract will be executed with the version stored in account
             auto const version = m_s.version( _p.codeAddress );
-            m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
-                _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall, m_readOnly );
+            m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, m_latestBlockTimestamp,
+                _p.receiveAddress, _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data,
+                &c, codeHash, version, m_depth, false, _p.staticCall, m_readOnly );
         }
     }
 
@@ -425,9 +426,9 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
 
     // Schedule _init execution if not empty.
     if ( !_init.empty() )
-        m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, m_newAddress, _sender, _origin,
-            _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version, m_depth, true,
-            false );
+        m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_chainParams, m_latestBlockTimestamp,
+            m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init,
+            sha3( _init ), _version, m_depth, true, false );
     else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );

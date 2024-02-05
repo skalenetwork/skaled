@@ -22,6 +22,9 @@
  */
 
 #include "ChainOperationParams.h"
+
+#include <libskale/PushZeroPatch.h>
+
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 
@@ -52,23 +55,33 @@ ChainOperationParams::ChainOperationParams()
       difficultyBoundDivisor( 0x0800 ),
       durationLimit( 0x0d ) {}
 
-EVMSchedule const& ChainOperationParams::scheduleForBlockNumber( u256 const& _blockNumber ) const {
+EVMSchedule const ChainOperationParams::evmSchedule(
+    time_t _lastBlockTimestamp, u256 const& _blockNumber ) const {
+    EVMSchedule result;
+
+    // 1 decide by block number
     if ( _blockNumber >= experimentalForkBlock )
-        return ExperimentalSchedule;
+        result = ExperimentalSchedule;
     else if ( _blockNumber >= istanbulForkBlock )
-        return IstanbulSchedule;
+        result = IstanbulSchedule;
     else if ( _blockNumber >= constantinopleFixForkBlock )
-        return ConstantinopleFixSchedule;
+        result = ConstantinopleFixSchedule;
     else if ( _blockNumber >= constantinopleForkBlock )
-        return ConstantinopleSchedule;
+        result = ConstantinopleSchedule;
     else if ( _blockNumber >= byzantiumForkBlock )
-        return ByzantiumSchedule;
+        result = ByzantiumSchedule;
     else if ( _blockNumber >= EIP158ForkBlock )
-        return EIP158Schedule;
+        result = EIP158Schedule;
     else if ( _blockNumber >= EIP150ForkBlock )
-        return EIP150Schedule;
+        result = EIP150Schedule;
     else
-        return HomesteadSchedule;
+        result = HomesteadSchedule;
+
+    // 2 based on previous - decide by timestamp
+    if ( PushZeroPatch::isEnabledWhen( *this, _lastBlockTimestamp ) )
+        result = PushZeroPatch::makeSchedule( result );
+
+    return result;
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
@@ -80,4 +93,10 @@ u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
 
 void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
+}
+
+time_t ChainOperationParams::getPatchTimestamp( const std::string& _name ) const {
+    if ( _name == "pushZeroPatchTimestamp" )
+        return sChain.pushZeroPatchTimestamp;
+    assert( false );
 }

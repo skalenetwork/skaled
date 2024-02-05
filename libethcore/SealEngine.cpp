@@ -95,8 +95,8 @@ void SealEngineFace::populateFromParent( BlockHeader& _bi, BlockHeader const& _p
 }
 
 void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams,
-    ImportRequirements::value _ir, TransactionBase const& _t, BlockHeader const& _header,
-    u256 const& _gasUsed ) {
+    ImportRequirements::value _ir, TransactionBase const& _t, time_t _latestBlockTimestamp,
+    BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
     if ( POWCheckPatch::isEnabled() ) {
@@ -128,7 +128,8 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
          ( _ir & ImportRequirements::TransactionSignatures ) && _t.hasSignature() )
         _t.checkLowS();
 
-    eth::EVMSchedule const& schedule = _chainParams.scheduleForBlockNumber( _header.number() );
+    eth::EVMSchedule const& schedule =
+        _chainParams.evmSchedule( _latestBlockTimestamp, _header.number() );
 
     // Pre calculate the gas needed for execution
     if ( ( _ir & ImportRequirements::TransactionBasic ) && _t.baseGasRequired( schedule ) > gas )
@@ -152,11 +153,12 @@ SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params
     return ret;
 }
 
-EVMSchedule const& SealEngineBase::evmSchedule( u256 const& _blockNumber ) const {
-    return chainParams().scheduleForBlockNumber( _blockNumber );
+EVMSchedule SealEngineBase::evmSchedule(
+    time_t _latestBlockTimestamp, u256 const& _blockNumber ) const {
+    return chainParams().evmSchedule( _latestBlockTimestamp, _blockNumber );
 }
 
-u256 SealEngineBase::blockReward( u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{ evmSchedule( _blockNumber ) };
+u256 SealEngineBase::blockReward( time_t _latestBlockTimestamp, u256 const& _blockNumber ) const {
+    EVMSchedule const& schedule{ evmSchedule( _latestBlockTimestamp, _blockNumber ) };
     return chainParams().blockReward( schedule );
 }

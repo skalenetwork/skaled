@@ -109,7 +109,7 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
 
 
 CallResult AlethExtVM::call( CallParameters& _p ) {
-    dev::eth::AlethExecutive e{ m_s, envInfo(), m_sealEngine, depth + 1 };
+    dev::eth::AlethExecutive e{ m_s, envInfo(), m_chainParams, depth + 1 };
     if ( !e.call( _p, gasPrice, origin ) ) {
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
@@ -133,7 +133,7 @@ void AlethExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult AlethExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code,
     Instruction _op, u256 _salt, OnOpFunc const& _onOp ) {
-    AlethExecutive e{ m_s, envInfo(), m_sealEngine, depth + 1 };
+    AlethExecutive e{ m_s, envInfo(), m_chainParams, depth + 1 };
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
@@ -167,7 +167,7 @@ h256 AlethExtVM::blockHash( u256 _number ) {
     if ( _number >= currentNumber || _number < ( std::max< u256 >( 256, currentNumber ) - 256 ) )
         return h256();
 
-    if ( currentNumber < m_sealEngine.chainParams().experimentalForkBlock + 256 ) {
+    if ( currentNumber < m_chainParams.experimentalForkBlock + 256 ) {
         h256 const parentHash = envInfo().header().parentHash();
         h256s const lastHashes = envInfo().lastHashes().precedingHashes( parentHash );
 
@@ -182,6 +182,6 @@ h256 AlethExtVM::blockHash( u256 _number ) {
 
     ExecutionResult res;
     std::tie( res, std::ignore ) =
-        m_s.execute( envInfo(), m_sealEngine, tx, skale::Permanence::Reverted );
+        m_s.execute( envInfo(), m_chainParams, tx, skale::Permanence::Reverted );
     return h256( res.output );
 }

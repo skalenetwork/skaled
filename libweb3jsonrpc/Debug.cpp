@@ -94,7 +94,7 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
         EnvInfo envInfo(
             _block.info(), m_eth.blockChain().lastBlockHashes(), gasUsed, bc.chainID() );
         // HACK 0 here is for gasPrice
-        Executive e( s, envInfo, m_eth.blockChain().chainParams(), 0 );
+        Executive e( s, envInfo, m_eth.blockChain().chainParams(), _block.info().timestamp(), 0 );
 
         eth::ExecutionResult er;
         e.setResultRecipient( er );
