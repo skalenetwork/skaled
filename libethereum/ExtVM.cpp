@@ -200,6 +200,6 @@ h256 ExtVM::blockHash( u256 _number ) {
 
     ExecutionResult res;
     std::tie( res, std::ignore ) =
-        m_s.execute( envInfo(), m_chainParams, tx, Permanence::Reverted );
+        m_s.execute( envInfo(), m_chainParams, m_latestBlockTimestamp, tx, Permanence::Reverted );
     return h256( res.output );
 }

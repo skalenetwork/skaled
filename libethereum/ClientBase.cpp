@@ -96,7 +96,10 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
     ExecutionResult executionResult =
-        tempState.execute( env, bc().chainParams(), t, Permanence::Reverted ).first;
+        tempState
+            .execute(
+                env, bc().chainParams(), _latestBlock.info().timestamp(), t, Permanence::Reverted )
+            .first;
     if ( executionResult.excepted == TransactionException::OutOfGas ||
          executionResult.excepted == TransactionException::OutOfGasBase ||
          executionResult.excepted == TransactionException::OutOfGasIntrinsic ||

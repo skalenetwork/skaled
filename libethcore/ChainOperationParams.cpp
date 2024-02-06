@@ -96,7 +96,7 @@ void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
 }
 
 time_t ChainOperationParams::getPatchTimestamp( const std::string& _name ) const {
-    if ( _name == "pushZeroPatchTimestamp" )
+    if ( _name == "PushZeroPatch" )
         return sChain.pushZeroPatchTimestamp;
     assert( false );
 }

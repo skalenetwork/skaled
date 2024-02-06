@@ -45,8 +45,9 @@ public:
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
               _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
           m_s( _s ),
+          m_latestBlockTimestamp( _latestBlockTimestamp ),
           m_chainParams( _chainParams ),
-          m_evmSchedule( initEvmSchedule( _latestBlockTimestamp, envInfo().number(), _version ) ),
+          m_evmSchedule( initEvmSchedule( m_latestBlockTimestamp, envInfo().number(), _version ) ),
           m_readOnly( _readOnly ) {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
@@ -117,6 +118,7 @@ private:
     }
 
     skale::State& m_s;  ///< A reference to the base state.
+    time_t m_latestBlockTimestamp;
     ChainOperationParams const& m_chainParams;
     EVMSchedule const m_evmSchedule;
     bool m_readOnly;

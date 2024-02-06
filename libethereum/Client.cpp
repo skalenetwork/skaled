@@ -126,8 +126,6 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
     return _out;
 }
 
-DEFINE_BASIC_PATCH( MainPatch )
-
 Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
@@ -158,10 +156,6 @@ Client::Client( ChainParams const& _params, int _networkID,
     };
 
     init( _forceAction, _networkID );
-
-    //////////////////////////////////////
-    MainPatch::isEnabled( bc() );
-    //////////////////////////////////////
 
     // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
@@ -1305,7 +1299,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-        ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
+        ret = temp.execute(
+            bc().lastBlockHashes(), t, bc().info().timestamp(), skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
                         << boost::current_exception_diagnostic_information() << std::endl;

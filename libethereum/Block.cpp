@@ -358,6 +358,8 @@ pair< TransactionReceipts, bool > Block::sync(
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
 
+    time_t latestBlockTimestamp = _bc.info().timestamp();
+
     for ( int goodTxs = max( 0, ( int ) transactions.size() - 1 );
           goodTxs < ( int ) transactions.size(); ) {
         goodTxs = 0;
@@ -366,7 +368,8 @@ pair< TransactionReceipts, bool > Block::sync(
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
-                        execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
+                        execute( _bc.lastBlockHashes(), t, latestBlockTimestamp,
+                            Permanence::Uncommitted );
                         ret.first.push_back( m_receipts.back() );
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
@@ -456,6 +459,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
         // NB! Not commit! Commit will be after 1st transaction!
         m_state.clearPartialTransactionReceipts();
 
+    time_t latestBlockTimestamp = _bc.info().timestamp();
 
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
@@ -506,8 +510,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, latestBlockTimestamp,
+                Permanence::Committed, OnOpFunc() );
 
             if ( !SkipInvalidTransactionsPatch::isEnabled() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
@@ -623,6 +627,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     vector< bytes > receipts;
 
+    time_t latestBlockTimestamp = _bc.info().timestamp();
+
     // All ok with the block generally. Play back the transactions now...
     unsigned i = 0;
     DEV_TIMED_ABOVE( "txExec", 500 )
@@ -634,7 +640,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //                 endl;
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
-            execute( _bc.lastBlockHashes(), tr );
+            execute( _bc.lastBlockHashes(), tr, latestBlockTimestamp );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
             // cnote << m_state;
@@ -819,8 +825,8 @@ ExecutionResult Block::executeHistoricCall(
 #endif
 
 
-ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
+    time_t _latestBlockTimestamp, Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -850,8 +856,8 @@ ExecutionResult Block::execute(
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
-        resultReceipt =
-            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp );
+        resultReceipt = stateSnapshot.execute(
+            envInfo, m_sealEngine->chainParams(), _latestBlockTimestamp, _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
