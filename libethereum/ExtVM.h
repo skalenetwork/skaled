@@ -38,16 +38,14 @@ class ExtVM : public ExtVMFace {
 public:
     /// Full constructor.
     ExtVM( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
-        time_t _latestBlockTimestamp, Address _myAddress, Address _caller, Address _origin,
-        u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code,
-        h256 const& _codeHash, u256 const& _version, unsigned _depth, bool _isCreate,
-        bool _staticCall, bool _readOnly = true )
+        Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
+        bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
+        unsigned _depth, bool _isCreate, bool _staticCall, bool _readOnly = true )
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
               _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
           m_s( _s ),
-          m_latestBlockTimestamp( _latestBlockTimestamp ),
           m_chainParams( _chainParams ),
-          m_evmSchedule( initEvmSchedule( m_latestBlockTimestamp, envInfo().number(), _version ) ),
+          m_evmSchedule( initEvmSchedule( _version ) ),
           m_readOnly( _readOnly ) {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
@@ -105,12 +103,11 @@ public:
     h256 blockHash( u256 _number ) override;
 
 private:
-    EVMSchedule initEvmSchedule(
-        time_t _latestBlockTimestamp, int64_t _blockNumber, u256 const& _version ) const {
+    EVMSchedule initEvmSchedule( u256 const& _version ) const {
         // If _version is latest for the block, select corresponding latest schedule.
         // Otherwise run with the latest schedule known to correspond to the _version.
         EVMSchedule currentBlockSchedule =
-            m_chainParams.evmSchedule( _latestBlockTimestamp, _blockNumber );
+            m_chainParams.evmSchedule( envInfo().latestBlockTimestamp(), envInfo().number() );
         if ( currentBlockSchedule.accountVersion == _version )
             return currentBlockSchedule;
         else
@@ -118,7 +115,6 @@ private:
     }
 
     skale::State& m_s;  ///< A reference to the base state.
-    time_t m_latestBlockTimestamp;
     ChainOperationParams const& m_chainParams;
     EVMSchedule const m_evmSchedule;
     bool m_readOnly;

@@ -339,8 +339,7 @@ public:
     /// This will change the state accordingly.
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::ChainOperationParams const& _chainParams,
-        time_t _latestBlockTimestamp, dev::eth::Transaction const& _t,
-        Permanence _p = Permanence::Committed,
+        dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
         dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
 
     /// Get the account start nonce. May be required.
@@ -434,8 +433,8 @@ private:
 
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
-    bool executeTransaction( dev::eth::Executive& _e, dev::eth::Transaction const& _t,
-        dev::eth::OnOpFunc const& _onOp, time_t _latestBlockTimestamp );
+    bool executeTransaction(
+        dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 

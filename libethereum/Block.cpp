@@ -365,8 +365,7 @@ pair< TransactionReceipts, bool > Block::sync(
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
-                        execute( _bc.lastBlockHashes(), t,
-                            Permanence::Uncommitted );
+                        execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
                         ret.first.push_back( m_receipts.back() );
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
@@ -505,8 +504,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            ExecutionResult res = execute( _bc.lastBlockHashes(), tr,
-                Permanence::Committed, OnOpFunc() );
+            ExecutionResult res =
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
 
             if ( !SkipInvalidTransactionsPatch::isEnabled() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
@@ -818,7 +817,8 @@ ExecutionResult Block::executeHistoricCall(
 #endif
 
 
-ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+ExecutionResult Block::execute(
+    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -833,7 +833,8 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     State stateSnapshot =
         _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
 
-    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
+    EnvInfo envInfo = EnvInfo(
+        info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );
 
     // "bad" transaction receipt for failed transactions
     TransactionReceipt const null_receipt =
@@ -848,8 +849,8 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
-        resultReceipt = stateSnapshot.execute(
-            envInfo, m_sealEngine->chainParams(), this->m_previousBlock.timestamp(), _t, _p, _onOp );
+        resultReceipt =
+            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
@@ -925,7 +926,8 @@ void Block::updateBlockhashContract() {
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber ).accountVersion );
+                m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
+                    .accountVersion );
             m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
     }
