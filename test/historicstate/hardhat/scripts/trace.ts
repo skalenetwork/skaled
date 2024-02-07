@@ -373,7 +373,14 @@ async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: strin
 
     console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
 
-    const trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+    let trace;
+
+    if (_tracer == DEFAULT_TRACER) {
+        trace = await ethers.provider.send('debug_traceTransaction', [hash]);
+        trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+    } else {
+        trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+    }
 
     const result = JSON.stringify(trace, null, 4);
 
