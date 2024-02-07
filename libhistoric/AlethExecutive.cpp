@@ -198,10 +198,9 @@ bool AlethExecutive::call(
             // Contract will be executed with the version stored in account
             auto const version = m_s.version( _p.codeAddress );
 
-            m_ext =
-                make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, m_latestBlockTimestamp,
-                    _p.receiveAddress, _p.senderAddress, _origin, _p.apparentValue, _gasPrice,
-                    _p.data, &c, codeHash, version, m_depth, false, _p.staticCall );
+            m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, _p.receiveAddress,
+                _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
+                version, m_depth, false, _p.staticCall );
         }
     }
 
@@ -283,9 +282,9 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
 
     // Schedule _init execution if not empty.
     if ( !_init.empty() )
-        m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, m_latestBlockTimestamp,
-            m_newAddress, _sender, _origin, _endowment, _gasPrice, bytesConstRef(), _init,
-            sha3( _init ), _version, m_depth, true, false );
+        m_ext = make_shared< AlethExtVM >( m_s, m_envInfo, m_chainParams, m_newAddress, _sender,
+            _origin, _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version,
+            m_depth, true, false );
     else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
