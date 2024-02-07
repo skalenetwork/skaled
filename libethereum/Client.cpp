@@ -1300,7 +1300,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute(
-            bc().lastBlockHashes(), t, bc().info().timestamp(), skale::Permanence::Reverted );
+            bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
                         << boost::current_exception_diagnostic_information() << std::endl;

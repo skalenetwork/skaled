@@ -182,6 +182,6 @@ h256 AlethExtVM::blockHash( u256 _number ) {
 
     ExecutionResult res;
     std::tie( res, std::ignore ) = m_s.execute(
-        envInfo(), m_chainParams, m_latestBlockTimestamp, tx, skale::Permanence::Reverted );
+        envInfo(), m_chainParams, tx, skale::Permanence::Reverted );
     return h256( res.output );
 }

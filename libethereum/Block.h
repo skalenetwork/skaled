@@ -211,8 +211,7 @@ public:
 
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
-    ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-        time_t _latestBlockTimestamp, skale::Permanence _p = skale::Permanence::Committed,
+    ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t, skale::Permanence _p = skale::Permanence::Committed,
         OnOpFunc const& _onOp = OnOpFunc() );
 
 
@@ -319,7 +318,7 @@ private:
     void performIrregularModifications();
 
     /// Creates and updates the special contract for storing block hashes according to EIP96
-    void updateBlockhashContract( time_t _latestBlockTimestamp );
+    void updateBlockhashContract();
 
     State m_state;                ///< Our state.
     Transactions m_transactions;  ///< The current list of transactions that we've included in the

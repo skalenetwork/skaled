@@ -161,8 +161,7 @@ void Block::resetCurrent( int64_t _timestamp ) {
     m_committedToSeal = false;
 
     performIrregularModifications();
-    // TEMPRORARY!!! - put here actian number
-    updateBlockhashContract( -1 );
+    updateBlockhashContract();
 
     //    if ( !m_state.checkVersion() )
     m_state = m_state.createNewCopyWithLocks();
@@ -358,8 +357,6 @@ pair< TransactionReceipts, bool > Block::sync(
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
 
-    time_t latestBlockTimestamp = _bc.info().timestamp();
-
     for ( int goodTxs = max( 0, ( int ) transactions.size() - 1 );
           goodTxs < ( int ) transactions.size(); ) {
         goodTxs = 0;
@@ -368,7 +365,7 @@ pair< TransactionReceipts, bool > Block::sync(
                 try {
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
-                        execute( _bc.lastBlockHashes(), t, latestBlockTimestamp,
+                        execute( _bc.lastBlockHashes(), t,
                             Permanence::Uncommitted );
                         ret.first.push_back( m_receipts.back() );
                         ++goodTxs;
@@ -459,8 +456,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
         // NB! Not commit! Commit will be after 1st transaction!
         m_state.clearPartialTransactionReceipts();
 
-    time_t latestBlockTimestamp = _bc.info().timestamp();
-
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
@@ -510,7 +505,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 continue;
             }
 
-            ExecutionResult res = execute( _bc.lastBlockHashes(), tr, latestBlockTimestamp,
+            ExecutionResult res = execute( _bc.lastBlockHashes(), tr,
                 Permanence::Committed, OnOpFunc() );
 
             if ( !SkipInvalidTransactionsPatch::isEnabled() ||
@@ -627,8 +622,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     vector< bytes > receipts;
 
-    time_t latestBlockTimestamp = _bc.info().timestamp();
-
     // All ok with the block generally. Play back the transactions now...
     unsigned i = 0;
     DEV_TIMED_ABOVE( "txExec", 500 )
@@ -640,7 +633,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //                 endl;
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
-            execute( _bc.lastBlockHashes(), tr, latestBlockTimestamp );
+            execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
             // cnote << m_state;
@@ -825,8 +818,7 @@ ExecutionResult Block::executeHistoricCall(
 #endif
 
 
-ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-    time_t _latestBlockTimestamp, Permanence _p, OnOpFunc const& _onOp ) {
+ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -857,7 +849,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
             throw -1;  // will catch below
 
         resultReceipt = stateSnapshot.execute(
-            envInfo, m_sealEngine->chainParams(), _latestBlockTimestamp, _t, _p, _onOp );
+            envInfo, m_sealEngine->chainParams(), this->m_previousBlock.timestamp(), _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
@@ -917,7 +909,7 @@ void Block::performIrregularModifications() {
     }
 }
 
-void Block::updateBlockhashContract( time_t _latestBlockTimestamp ) {
+void Block::updateBlockhashContract() {
     u256 const& blockNumber = info().number();
 
     u256 const& forkBlock = m_sealEngine->chainParams().experimentalForkBlock;
@@ -926,14 +918,14 @@ void Block::updateBlockhashContract( time_t _latestBlockTimestamp ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
                 State state = m_state.createStateModifyCopy();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                    m_sealEngine->evmSchedule( _latestBlockTimestamp, blockNumber )
+                    m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                         .accountVersion );
                 state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                m_sealEngine->evmSchedule( _latestBlockTimestamp, blockNumber ).accountVersion );
+                m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber ).accountVersion );
             m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
     }

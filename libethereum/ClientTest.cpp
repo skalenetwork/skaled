@@ -70,7 +70,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
     auto& lastHashes = bc().lastBlockHashes();
     assert( bc().currentHash() == block.info().parentHash() );
     for ( auto const& t : transactions )
-        block.execute( lastHashes, t, bc().info().timestamp() );
+        block.execute( lastHashes, t );
 
     DEV_WRITE_GUARDED( x_working )
     m_working = block;
