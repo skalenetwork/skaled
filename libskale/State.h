@@ -434,8 +434,8 @@ private:
 
     /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
     /// exception occurred.
-    bool executeTransaction(
-        dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
+    bool executeTransaction( dev::eth::Executive& _e, dev::eth::Transaction const& _t,
+        dev::eth::OnOpFunc const& _onOp, time_t _latestBlockTimestamp );
 
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 

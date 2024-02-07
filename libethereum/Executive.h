@@ -103,14 +103,12 @@ class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
-        time_t _latestBlockTimestamp, const u256& _gasPrice, unsigned _level = 0,
-        bool _readOnly = true )
+        const u256& _gasPrice, unsigned _level, bool _readOnly = true )
         : m_s( _s ),
           m_envInfo( _envInfo ),
           m_depth( _level ),
           m_readOnly( _readOnly ),
           m_chainParams( _chainParams ),
-          m_latestBlockTimestamp( _latestBlockTimestamp ),
           m_systemGasPrice( _gasPrice ) {}
 
     /** Easiest constructor.
@@ -140,10 +138,10 @@ public:
 
     /// Initializes the executive for evaluating a transaction. You must call finalize() at some
     /// point following this.
-    void initialize( bytesConstRef _transaction ) {
-        initialize( Transaction( _transaction, CheckTransaction::None ) );
+    void initialize( bytesConstRef _transaction, time_t _latestBlockTimestamp ) {
+        initialize( Transaction( _transaction, CheckTransaction::None ), _latestBlockTimestamp );
     }
-    void initialize( Transaction const& _transaction );
+    void initialize( Transaction const& _transaction, time_t _latestBlockTimestamp );
     /// Finalise a transaction previously set up with initialize().
     /// @warning Only valid after initialize() and execute(), and possibly go().
     /// @returns true if the outermost execution halted normally, false if exceptionally halted.

@@ -1028,7 +1028,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    bool const statusCode = executeTransaction( e, _t, onOp );
+    bool const statusCode = executeTransaction( e, _t, onOp, _latestBlockTimestamp );
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -1090,11 +1090,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
-bool State::executeTransaction(
-    eth::Executive& _e, eth::Transaction const& _t, eth::OnOpFunc const& _onOp ) {
+bool State::executeTransaction( eth::Executive& _e, eth::Transaction const& _t,
+    eth::OnOpFunc const& _onOp, time_t _latestBlockTimestamp ) {
     size_t const savept = savepoint();
     try {
-        _e.initialize( _t );
+        _e.initialize( _t, _latestBlockTimestamp );
 
         if ( !_e.execute() )
             _e.go( _onOp );

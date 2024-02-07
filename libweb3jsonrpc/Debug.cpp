@@ -73,7 +73,7 @@ Json::Value Debug::traceTransaction(
     StandardTrace st;
     st.setShowMnemonics();
     st.setOptions( debugOptions( _json ) );
-    _e.initialize( _t );
+    _e.initialize( _t, m_eth.blockInfo( m_eth.hashFromNumber( m_eth.number() - 1 ) ).timestamp() );
     if ( !_e.execute() )
         _e.go( st.onOp() );
     _e.finalize();
@@ -94,7 +94,8 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
         EnvInfo envInfo(
             _block.info(), m_eth.blockChain().lastBlockHashes(), gasUsed, bc.chainID() );
         // HACK 0 here is for gasPrice
-        Executive e( s, envInfo, m_eth.blockChain().chainParams(), _block.info().timestamp(), 0 );
+        // TODO timestamp of wrong block!
+        Executive e( s, envInfo, m_eth.blockChain().chainParams(), 0, 0 );
 
         eth::ExecutionResult er;
         e.setResultRecipient( er );

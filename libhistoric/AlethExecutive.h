@@ -47,13 +47,8 @@ class AlethExecutive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     AlethExecutive( dev::eth::HistoricState& _s, EnvInfo const& _envInfo,
-        ChainOperationParams const& _chainParams, time_t _latestBlockTimestamp,
-        unsigned _level = 0 )
-        : m_s( _s ),
-          m_envInfo( _envInfo ),
-          m_depth( _level ),
-          m_chainParams( _chainParams ),
-          m_latestBlockTimestamp( _latestBlockTimestamp ){};
+        ChainOperationParams const& _chainParams, unsigned _level = 0 )
+        : m_s( _s ), m_envInfo( _envInfo ), m_depth( _level ), m_chainParams( _chainParams ){};
 
     /** Easiest constructor.
      * Creates executive to operate on the state of end of the given block, populating environment

@@ -243,11 +243,11 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _late
     _transaction.verifiedOn = _blockHeader.number();
 }
 
-void Executive::initialize( Transaction const& _transaction ) {
+void Executive::initialize( Transaction const& _transaction, time_t _latestBlockTimestamp ) {
     MICROPROFILE_SCOPEI( "Executive", "initialize", MP_GAINSBORO );
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(
-        m_chainParams.evmSchedule( m_latestBlockTimestamp, m_envInfo.number() ) );
+        m_chainParams.evmSchedule( _latestBlockTimestamp, m_envInfo.number() ) );
 
     try {
         verifyTransaction( _transaction, m_latestBlockTimestamp, m_envInfo.header(), m_s,
