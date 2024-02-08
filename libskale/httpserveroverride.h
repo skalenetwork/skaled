@@ -82,15 +82,11 @@ class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 enum class e_server_mode_t { esm_standard, esm_informational };
 
 extern const char* esm2str( e_server_mode_t esm );
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleStatsSubscriptionManager {
 public:
@@ -123,8 +119,7 @@ public:
     virtual SkaleServerOverride& getSSO() = 0;
 };  // class SkaleStatsSubscriptionManager
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 struct SkaleServerConnectionsTrackHelper {
     SkaleServerOverride& m_sso;
@@ -132,8 +127,6 @@ struct SkaleServerConnectionsTrackHelper {
     ~SkaleServerConnectionsTrackHelper();
 };  /// struct SkaleServerConnectionsTrackHelper
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleWsPeer : public skutils::ws::peer {
 public:
@@ -206,8 +199,6 @@ public:
     std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
 };  /// class SkaleWsPeer
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleServerHelper {
 protected:
@@ -219,8 +210,6 @@ public:
     int serverIndex() const { return m_nServerIndex; }
 };  /// class SkaleServerHelper
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleRelayWS : public skutils::ws::server, public SkaleServerHelper {
 protected:
@@ -267,36 +256,11 @@ public:
     friend class SkaleWsPeer;
 };  /// class SkaleRelayWS
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-class SkaleRelayMiniHTTP : public SkaleServerHelper {
-protected:
-    SkaleServerOverride* m_pSO = nullptr;
 
-public:
-    int ipVer_;
-    std::string strBindAddr_;
-    int nPort_;
-    const bool m_bHelperIsSSL : 1;
-    std::shared_ptr< skutils::http::server > m_pServer;
-    SkaleRelayMiniHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr, int nPort,
-        const char* cert_path = nullptr, const char* private_key_path = nullptr,
-        const char* ca_path = nullptr, int nServerIndex = -1,
-        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-        bool is_async_http_transfer_mode = true );
-    ~SkaleRelayMiniHTTP() override;
-    SkaleServerOverride* pso() { return m_pSO; }
-    const SkaleServerOverride* pso() const { return m_pSO; }
-};  /// class SkaleRelayMiniHTTP
-*/
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleRelayProxygenHTTP : public SkaleServerHelper {
 protected:
     SkaleServerOverride* m_pSO = nullptr;
-    // skutils::http_pg::wrapped_proxygen_server_handle hProxygenServer_ = nullptr;
 
 public:
     int ipVer_;
@@ -317,8 +281,6 @@ public:
     void stop();
 };  /// class SkaleRelayProxygenHTTP
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
                             public SkaleStatsSubscriptionManager,
@@ -459,18 +421,18 @@ public:
     dev::Verbosity methodTraceVerbosity( const std::string& strMethod ) const;
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
+#ifdef HISTORIC_STATE
+    void preprocessTraceRequestIfNeeded(
+        const std::string& methodName, nlohmann::json& jsonRpcRequest );
+#endif
+
 protected:
     skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& joIn,
         const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer,
         int nPort, e_server_mode_t esm );
 
 private:
-    //    bool implStartListening(  // mini HTTP
-    //        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, const std::string& strAddr,
-    //        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
-    //        const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm,
-    //        size_t a_max_http_handler_queues = __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__,
-    //        bool is_async_http_transfer_mode = true );
+
     bool implStartListening(  // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
         const std::string& strPathSslKey, const std::string& strPathSslCert,
@@ -481,9 +443,6 @@ private:
         const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm, int32_t threads = 0,
         int32_t threads_limit = 0 );
 
-    //    bool implStopListening(  // mini HTTP
-    //        std::shared_ptr< SkaleRelayMiniHTTP >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t
-    //        esm );
     bool implStopListening(  // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, bool bIsSSL, e_server_mode_t esm );
     bool implStopListening(  // proxygen HTTP
@@ -519,10 +478,7 @@ public:
     std::atomic_bool m_bShutdownMode = false;
 
 private:
-    //    std::list< std::shared_ptr< SkaleRelayMiniHTTP > > serversMiniHTTP4std_,
-    //    serversMiniHTTP6std_,
-    //        serversMiniHTTPS4std_, serversMiniHTTPS6std_, serversMiniHTTP4nfo_,
-    //        serversMiniHTTP6nfo_, serversMiniHTTPS4nfo_, serversMiniHTTPS6nfo_;
+
     std::list< std::shared_ptr< SkaleRelayWS > > serversWS4std_, serversWS6std_, serversWSS4std_,
         serversWSS6std_, serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > > serversProxygenHTTP4std_,
@@ -535,9 +491,6 @@ private:
         const std::string& strDstAddress, int nDstPort, e_server_mode_t& esm );
 
 public:
-    // status API, returns running server port or -1 if server is not started
-    //    int getServerPortStatusMiniHTTP( int ipVer, e_server_mode_t esm ) const;
-    //    int getServerPortStatusMiniHTTPS( int ipVer, e_server_mode_t esm ) const;
     int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;
     int getServerPortStatusWSS( int ipVer, e_server_mode_t esm ) const;
     int getServerPortStatusProxygenHTTP( int ipVer, e_server_mode_t esm ) const;
@@ -572,7 +525,9 @@ public:
         e_server_mode_t esm, const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
     bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOriginURL );
 
-    bool isShutdownMode() const { return m_bShutdownMode; }
+    bool isShutdownMode() const {
+        return m_bShutdownMode;
+    }
 
     bool handleProtocolSpecificRequest( const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
@@ -631,13 +586,10 @@ public:
         size_t nMaxStringValueLengthForJsonLogs, size_t nMaxStringValueLengthForTransactionParams,
         size_t nCallIndent = 0 );
 
-    // friend class SkaleRelayMiniHTTP;
     friend class SkaleRelayProxygenHTTP;
     friend class SkaleRelayWS;
     friend class SkaleWsPeer;
 };  /// class SkaleServerOverride
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif  ///(!defined __HTTP_SERVER_OVERRIDE_H)
