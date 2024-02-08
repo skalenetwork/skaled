@@ -160,10 +160,10 @@ Client::Client( ChainParams const& _params, int _networkID,
     // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
     ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
-    ContractStorageZeroValuePatch::setTimestamp(
-        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
+    //    ContractStorageZeroValuePatch::setTimestamp(
+    //        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
     VerifyDaSigsPatch::setTimestamp( chainParams().sChain.verifyDaSigsPatchTimestamp );
-    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
+    //    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
     StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
     POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
     // PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
@@ -671,8 +671,8 @@ size_t Client::syncTransactions(
     unsigned goodReceipts;
 
     ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
-    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    //    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
+    //    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
     // PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();

@@ -16,7 +16,7 @@ class Client;
  * Solution: we fixed the bug and added new config field introudceChangesTimestamp
  * Purpose: avoid incorrect txn behaviour
  * Version introduced:
- */
+ *
 class ContractStorageZeroValuePatch : public SchainPatch {
 public:
     static bool isEnabled();
@@ -32,5 +32,8 @@ private:
     static time_t contractStorageZeroValuePatchTimestamp;
     static time_t lastBlockTimestamp;
 };
+*/
+
+DEFINE_AMNESIC_PATCH( ContractStorageZeroValuePatch )
 
 #endif  // CONTRACTSTORAGEZEROVALUYEPATCH_H

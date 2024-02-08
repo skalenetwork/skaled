@@ -12,6 +12,7 @@ class EVMSchedule;
 #include <libethcore/ChainOperationParams.h>
 
 #include <libdevcore/Log.h>
+#include <libethcore/ChainOperationParams.h>
 
 #include <string>
 
@@ -24,9 +25,25 @@ public:
             cnote << "Patch " << _patchName << " is set at timestamp " << _timeStamp;
         }
     }
+    static void init( const dev::eth::ChainOperationParams& _cp );
+    static void useLatestBlockTimestamp( time_t _timestamp );
+
+protected:
+    static dev::eth::ChainOperationParams chainParams;
+    static time_t latestBlockTimestamp;
 };
 
-#define DEFINE_BASIC_PATCH( BlaBlaPatch )                                                          \
+#define DEFINE_AMNESIC_PATCH( BlaBlaPatch )                                                 \
+    class BlaBlaPatch : public SchainPatch {                                                \
+    public:                                                                                 \
+        static std::string getName() { return #BlaBlaPatch; }                               \
+        static bool isEnabledAtLatestBlock() {                                              \
+            time_t activationTimestamp = chainParams.getPatchTimestamp( getName() );        \
+            return activationTimestamp != 0 && latestBlockTimestamp >= activationTimestamp; \
+        }                                                                                   \
+    };
+
+#define DEFINE_SIMPLE_PATCH( BlaBlaPatch )                                                         \
     class BlaBlaPatch : public SchainPatch {                                                       \
     public:                                                                                        \
         static std::string getName() { return #BlaBlaPatch; }                                      \
@@ -37,8 +54,8 @@ public:
         }                                                                                          \
         static bool isEnabledWhen(                                                                 \
             const dev::eth::ChainOperationParams& _cp, time_t _lastBlockTimestamp ) {              \
-            time_t my_timestamp = _cp.getPatchTimestamp( getName() );                              \
-            return _lastBlockTimestamp >= my_timestamp;                                            \
+            time_t activationTimestamp = _cp.getPatchTimestamp( getName() );                       \
+            return activationTimestamp != 0 && _lastBlockTimestamp >= activationTimestamp;         \
         }                                                                                          \
     };
 

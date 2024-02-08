@@ -1018,7 +1018,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     ExecutionResult res;
     e.setResultRecipient( res );
 
-    bool isCacheEnabled = RevertableFSPatch::isEnabled();
+    bool isCacheEnabled =
+        RevertableFSPatch::isEnabledWhen( _chainParams, _envInfo.latestBlockTimestamp() );
     resetOverlayFS( isCacheEnabled );
 
     auto onOp = _onOp;
