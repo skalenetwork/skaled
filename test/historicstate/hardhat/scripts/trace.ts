@@ -367,6 +367,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 }
 
 
+
 async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
 
     let traceOptions = await getTraceJsonOptions(_tracer);
