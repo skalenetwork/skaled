@@ -66,6 +66,8 @@ const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + C
 const TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".replayTracer.json";
 
 var DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE: string = "";
+var globalCallCount = 0;
+
 
 async function replaceAddressesWithSymbolicNames(_traceFileName: string) {
 
@@ -194,7 +196,9 @@ function CHECK(result: any): void {
 async function getBlockTrace(blockNumber: number): Promise<String> {
 
     const blockStr = "0x" + blockNumber.toString(16);
-    const trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
+    //trace both empty tracer and no tracer
+    let trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr]);
+    trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
 
     0// console.log(JSON.stringify(trace, null, 4));
     return trace;
@@ -369,6 +373,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
 
 async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
+    globalCallCount++;
 
     let traceOptions = await getTraceJsonOptions(_tracer);
 
@@ -376,9 +381,15 @@ async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: strin
 
     let trace;
 
+
+
     if (_tracer == DEFAULT_TRACER) {
-        trace = await ethers.provider.send('debug_traceTransaction', [hash]);
-        trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+        // test both empty tracer and now tracer
+        if (globalCallCount % 2 === 0) {
+            trace = await ethers.provider.send('debug_traceTransaction', [hash]);
+        } else {
+            trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
+        }
     } else {
         trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
     }
