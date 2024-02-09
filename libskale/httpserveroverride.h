@@ -120,7 +120,6 @@ public:
 };  // class SkaleStatsSubscriptionManager
 
 
-
 struct SkaleServerConnectionsTrackHelper {
     SkaleServerOverride& m_sso;
     SkaleServerConnectionsTrackHelper( SkaleServerOverride& sso );
@@ -255,7 +254,6 @@ public:
 
     friend class SkaleWsPeer;
 };  /// class SkaleRelayWS
-
 
 
 class SkaleRelayProxygenHTTP : public SkaleServerHelper {
@@ -432,7 +430,6 @@ protected:
         int nPort, e_server_mode_t esm );
 
 private:
-
     bool implStartListening(  // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
         const std::string& strPathSslKey, const std::string& strPathSslCert,
@@ -478,7 +475,6 @@ public:
     std::atomic_bool m_bShutdownMode = false;
 
 private:
-
     std::list< std::shared_ptr< SkaleRelayWS > > serversWS4std_, serversWS6std_, serversWSS4std_,
         serversWSS6std_, serversWS4nfo_, serversWS6nfo_, serversWSS4nfo_, serversWSS6nfo_;
     std::list< std::shared_ptr< SkaleRelayProxygenHTTP > > serversProxygenHTTP4std_,
@@ -525,9 +521,7 @@ public:
         e_server_mode_t esm, const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
     bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOriginURL );
 
-    bool isShutdownMode() const {
-        return m_bShutdownMode;
-    }
+    bool isShutdownMode() const { return m_bShutdownMode; }
 
     bool handleProtocolSpecificRequest( const std::string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );

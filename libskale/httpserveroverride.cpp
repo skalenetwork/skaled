@@ -268,7 +268,6 @@ bool checkParamsIsObject( const char* strMethodName, const rapidjson::Document& 
 };  // namespace skale
 
 
-
 namespace stats {
 
 typedef skutils::multithreading::recursive_mutex_type mutex_type_stats;
@@ -1981,7 +1980,6 @@ dev::eth::Interface* SkaleRelayWS::ethereum() const {
 }
 
 
-
 SkaleRelayProxygenHTTP::SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ipVer,
     const char* strBindAddr, int nPort, const char* cert_path, const char* private_key_path,
     const char* ca_path, int nServerIndex, e_server_mode_t esm, int32_t threads,
@@ -2548,7 +2546,6 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
 }
 
 
-
 bool SkaleServerOverride::implStartListening(  // web socket
     std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
     const std::string& strPathSslKey, const std::string& strPathSslCert,
@@ -3018,7 +3015,6 @@ bool SkaleServerOverride::StopListening() {
     bool b = ( b1 && b2 ) ? true : false;
     return b;
 }
-
 
 
 int SkaleServerOverride::getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const {
@@ -3537,7 +3533,6 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const std::string& strOrigi
     joResponse.AddMember( "result", d, joResponse.GetAllocator() );
 
 
-
     rapidjson::StringBuffer bufferResponse;
     rapidjson::Writer< rapidjson::StringBuffer > writerResponse( bufferResponse );
     joResponse.Accept( writerResponse );
@@ -3657,4 +3652,3 @@ void SkaleServerOverride::stat_transformJsonForLogOutput( nlohmann::json& jo, bo
         }
     }
 }
-
