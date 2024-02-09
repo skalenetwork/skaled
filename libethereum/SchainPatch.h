@@ -43,6 +43,7 @@ protected:
         }                                                                                   \
     };
 
+// TODO One more overload - with EnvInfo?
 #define DEFINE_SIMPLE_PATCH( BlaBlaPatch )                                                         \
     class BlaBlaPatch : public SchainPatch {                                                       \
     public:                                                                                        \

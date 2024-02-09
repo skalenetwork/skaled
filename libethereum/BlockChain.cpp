@@ -174,24 +174,6 @@ unsigned c_maxCacheSize = 1024 * 1024 * 64;
 /// Min size, below which we don't bother flushing it.
 unsigned c_minCacheSize = 1024 * 1024 * 32;
 
-bool hasPotentialInvalidTransactionsInBlock( BlockNumber _bn, const BlockChain& _bc ) {
-    if ( _bn == 0 )
-        return false;
-
-    if ( SkipInvalidTransactionsPatch::getActivationTimestamp() == 0 )
-        return true;
-
-    if ( _bn == PendingBlock )
-        return !SkipInvalidTransactionsPatch::isEnabled();
-
-    if ( _bn == LatestBlock )
-        _bn = _bc.number();
-
-    time_t prev_ts = _bc.info( _bc.numberHash( _bn - 1 ) ).timestamp();
-
-    return prev_ts < SkipInvalidTransactionsPatch::getActivationTimestamp();
-}
-
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
 }
@@ -371,7 +353,8 @@ std::pair< h256, unsigned > BlockChain::transactionLocation( h256 const& _transa
 
     auto blockNumber = this->number( ta.blockHash );
 
-    if ( !hasPotentialInvalidTransactionsInBlock( blockNumber, *this ) )
+    if ( !SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+             blockNumber, *this ) )
         return std::make_pair( ta.blockHash, ta.index );
 
     // rest is for blocks with possibility of invalid transactions

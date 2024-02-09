@@ -32,21 +32,54 @@ class Client;
 // Transactions are removed from Transaction Queue as usually.
 
 // TODO better start to apply patches from 1st block after timestamp, not second
+// class SkipInvalidTransactionsPatch : public SchainPatch {
+// public:
+//    static bool isEnabled();
+
+//    static void setTimestamp( time_t _activationTimestamp ) {
+//        activationTimestamp = _activationTimestamp;
+//        printInfo( __FILE__, _activationTimestamp );
+//    }
+
+//    static time_t getActivationTimestamp() { return activationTimestamp; }
+
+// private:
+//    friend class dev::eth::Client;
+//    static time_t activationTimestamp;
+//    static time_t lastBlockTimestamp;
+//};
+
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
-    static bool isEnabled();
-
-    static void setTimestamp( time_t _activationTimestamp ) {
-        activationTimestamp = _activationTimestamp;
-        printInfo( __FILE__, _activationTimestamp );
+    static std::string getName() { return "SkipInvalidTransactionsPatch"; }
+    static bool isEnabled(
+        const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) {
+        time_t timestamp = _bc.chainParams().getPatchTimestamp( getName() );
+        return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );
     }
+    static bool isEnabledWhen(
+        const dev::eth::ChainOperationParams& _cp, time_t _lastBlockTimestamp ) {
+        time_t activationTimestamp = _cp.getPatchTimestamp( getName() );
+        return activationTimestamp != 0 && _lastBlockTimestamp >= activationTimestamp;
+    }
+    static bool hasPotentialInvalidTransactionsInBlock(
+        dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc ) {
+        if ( _bn == 0 )
+            return false;
 
-    static time_t getActivationTimestamp() { return activationTimestamp; }
+        time_t activationTimestamp = _bc.chainParams().getPatchTimestamp( getName() );
 
-private:
-    friend class dev::eth::Client;
-    static time_t activationTimestamp;
-    static time_t lastBlockTimestamp;
+        if ( activationTimestamp == 0 )
+            return true;
+
+        if ( _bn == dev::eth::PendingBlock )
+            return !isEnabled( _bc );
+
+        if ( _bn == dev::eth::LatestBlock )
+            _bn = _bc.number();
+
+        return !isEnabled( _bc, _bn );
+    }
 };
 
 #endif  // SKIPINVALIDTRANSACTIONSPATCH_H
