@@ -357,7 +357,6 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 
     const result = _deployedContract.interface.decodeFunctionResult("getBalance", returnData);
 
-    // Example usageac
 
     console.log("Calling debug_traceCall to generate  " + _traceFileName);
 
