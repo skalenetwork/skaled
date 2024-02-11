@@ -359,50 +359,39 @@ namespace dev::eth {
         }
 
 
-
-
-
         m_lastOpRecord.push_back(executionRecord);
 
 
         if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
             m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToStandardOpTrace(executionRecord->m_pc, executionRecord->m_op,
-                                      executionRecord->m_opGas,
-                                      executionRecord->m_gasRemaining, executionRecord->m_depth,
-                                      executionRecord->m_refund,
-                                      executionRecord->m_accessedStorageValues, executionRecord->m_opName,
-                                      executionRecord->m_stack, executionRecord->m_memory);
+            appendOpToStandardOpTrace(executionRecord);
     }
 
 // append instruction record to the default trace log that logs every instruction
-    void AlethStandardTrace::appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
-                                                       const bigint &_gas, int64_t _depth, int64_t _refund,
-                                                       std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
-                                                       std::string _instructionName, std::shared_ptr<u256s> _stack,
-                                                       std::shared_ptr<bytes> _memory) {
+    void AlethStandardTrace::appendOpToStandardOpTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord) {
         Json::Value r(Json::objectValue);
 
         STATE_CHECK(!m_isFinalized)
+        STATE_CHECK(_opExecutionRecord)
 
 
-        r["op"] = _instructionName;
-        r["pc"] = _pc;
-        r["gas"] = static_cast< uint64_t >( _gas );
-        r["gasCost"] = static_cast< uint64_t >( _gasCost );
-        r["depth"] = _depth + 1;  // depth in standard trace is 1-based
+        r["op"] = _opExecutionRecord->m_opName;
+        r["pc"] = _opExecutionRecord->m_pc;
+        r["gas"] = _opExecutionRecord->m_gasRemaining;
+        r["gasCost"] = static_cast< uint64_t >( _opExecutionRecord->m_opGas );
+        r["depth"] = _opExecutionRecord->m_depth + 1;  // depth in standard trace is 1-based
 
 
-        if (_refund > 0) {
-            r["refund"] = _refund;
+        if (_opExecutionRecord->m_refund > 0) {
+            r["refund"] = _opExecutionRecord->m_refund;
         }
 
 
         if (!m_options.disableStack) {
             Json::Value stack(Json::arrayValue);
             // Try extracting information about the stack from the VM is supported.
-            STATE_CHECK(_stack)
-            for (auto const &i: *_stack) {
+            STATE_CHECK(_opExecutionRecord->m_stack)
+            for (auto const &i: *_opExecutionRecord->m_stack) {
                 string stackStr = toGethCompatibleCompactHexPrefixed(i);
                 stack.append(stackStr);
             }
@@ -411,9 +400,10 @@ namespace dev::eth {
 
         Json::Value memJson(Json::arrayValue);
         if (m_options.enableMemory) {
-            STATE_CHECK(_memory)
-            for (unsigned i = 0; (i < _memory->size() && i < MAX_MEMORY_VALUES_RETURNED); i += 32) {
-                bytesConstRef memRef(_memory->data() + i, 32);
+            STATE_CHECK(_opExecutionRecord->m_memory)
+            for (unsigned i = 0; (i < _opExecutionRecord->m_memory->size() &&
+                                  i < MAX_MEMORY_VALUES_RETURNED); i += 32) {
+                bytesConstRef memRef(_opExecutionRecord->m_memory->data() + i, 32);
                 memJson.append(toHex(memRef));
             }
             r["memory"] = memJson;
@@ -421,10 +411,10 @@ namespace dev::eth {
 
 
         if (!m_options.disableStorage) {
-            if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
+            if (_opExecutionRecord->m_op == Instruction::SSTORE || _opExecutionRecord->m_op == Instruction::SLOAD) {
                 Json::Value storage(Json::objectValue);
-                STATE_CHECK(_accessedStorageValues)
-                for (auto const &i: *_accessedStorageValues)
+                STATE_CHECK(_opExecutionRecord->m_accessedStorageValues)
+                for (auto const &i: *_opExecutionRecord->m_accessedStorageValues)
                     storage[toHex(i.first)] = toHex(i.second);
                 r["storage"] = storage;
             }

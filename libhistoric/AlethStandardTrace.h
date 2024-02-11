@@ -167,12 +167,7 @@ namespace dev::eth {
         void processFunctionCallOrReturnIfHappened(
                 const AlethExtVM &_ext, const LegacyVM *_vm, std::uint64_t _gasRemaining);
 
-        void appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
-                                       const bigint &_gas, int64_t _depth, int64_t _refund,
-                                       std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
-                                       std::string _instructionName, std::shared_ptr<u256s> _stack,
-                                       std::shared_ptr<bytes>
-                                       _memory);
+        void appendOpToStandardOpTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord);
 
         // print all supported traces. This can be used for QA
         void printAllTraces(Json::Value &_jsonTrace, ExecutionResult &_er,
