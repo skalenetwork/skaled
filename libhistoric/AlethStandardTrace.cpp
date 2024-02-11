@@ -273,7 +273,7 @@ namespace dev::eth {
                 -1,
                 // when we start execution a user transaction the top level function can  be a call
                 // or a contract create
-                _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0, 0));
+                _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0, 0, 0));
 
 
         // mark from and to accounts as accessed
@@ -325,22 +325,36 @@ namespace dev::eth {
 
         // record the instruction
 
+        auto refund = ext.sub.refunds;
+
         auto lastExecutionRecord = std::make_shared<OpExecutionRecord>(ext.depth, _inst, (uint64_t) _gasRemaining,
-                                                                       (uint64_t) _gasOpGas, _pc);
+                                                                       (uint64_t) _gasOpGas, _pc, refund);
+
+
+        if (!m_options.disableStorage) {
+            if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
+                lastExecutionRecord->m_accessedStorageValues = make_shared<
+                        std::map<dev::u256, dev::u256>>(m_accessedStorageValues[ext.myAddress]);
+            }
+        }
+
 
         m_lastOpRecord.push_back(lastExecutionRecord);
 
+
         if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
             m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToStandardOpTrace(lastExecutionRecord->m_pc, lastExecutionRecord->m_op, lastExecutionRecord->m_opGas,
-                                      lastExecutionRecord->m_gasRemaining, _voidExt, ext, vm);
+            appendOpToStandardOpTrace(lastExecutionRecord->m_pc, lastExecutionRecord->m_op,
+                                      lastExecutionRecord->m_opGas,
+                                      lastExecutionRecord->m_gasRemaining, _voidExt, lastExecutionRecord->m_refund, vm,
+                                      lastExecutionRecord->m_accessedStorageValues);
     }
 
 // append instruction record to the default trace log that logs every instruction
-    void AlethStandardTrace::appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst,
-                                                       const bigint &_gasCost, const bigint &_gas,
-                                                       const ExtVMFace *_ext, AlethExtVM &_alethExt,
-                                                       const LegacyVM *_vm) {
+    void AlethStandardTrace::appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
+                                                       const bigint &_gas, const ExtVMFace *_ext, int64_t _refund,
+                                                       const LegacyVM *_vm,
+                                                       std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues) {
         Json::Value r(Json::objectValue);
 
         STATE_CHECK(!m_isFinalized)
@@ -364,9 +378,9 @@ namespace dev::eth {
         r["gasCost"] = static_cast< uint64_t >( _gasCost );
         r["depth"] = _ext->depth + 1;  // depth in standard trace is 1-based
 
-        auto refund = _alethExt.sub.refunds;
-        if (refund > 0) {
-            r["refund"] = _alethExt.sub.refunds;
+
+        if (_refund > 0) {
+            r["refund"] = _refund;
         }
 
 
@@ -394,7 +408,8 @@ namespace dev::eth {
         if (!m_options.disableStorage) {
             if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
                 Json::Value storage(Json::objectValue);
-                for (auto const &i: m_accessedStorageValues[_alethExt.myAddress])
+                STATE_CHECK(_accessedStorageValues)
+                for (auto const &i: *_accessedStorageValues)
                     storage[toHex(i.first)] = toHex(i.second);
                 r["storage"] = storage;
             }

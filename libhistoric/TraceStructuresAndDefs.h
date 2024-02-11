@@ -57,15 +57,18 @@ namespace dev::eth {
     struct OpExecutionRecord {
 
         OpExecutionRecord(
-                int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas, uint64_t _pc)
+                int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas, uint64_t _pc,
+                int64_t _refund)
                 : m_depth(_depth), m_op(_op), m_gasRemaining(_gasRemaining), m_opGas(_opGas),
-                  m_pc(_pc) {}
+                  m_pc(_pc), m_refund(_refund) {}
 
         std::int64_t m_depth;
         Instruction m_op;
         std::uint64_t m_gasRemaining;
         std::uint64_t m_opGas;
         std::uint64_t m_pc;
+        std::int64_t m_refund;
+        std::shared_ptr<std::map< dev::u256, dev::u256 >>  m_accessedStorageValues = nullptr;
     };
 
 }  // namespace dev::eth

@@ -140,8 +140,10 @@ private:
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
 
-    void appendOpToStandardOpTrace( std::uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
-        const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
+    void appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
+                                   const bigint &_gas, const ExtVMFace *_ext, int64_t _refund,
+                                   const LegacyVM *_vm,
+                                   std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues);
 
     // print all supported traces. This can be used for QA
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
