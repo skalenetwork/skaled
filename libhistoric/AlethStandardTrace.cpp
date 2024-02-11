@@ -346,20 +346,19 @@ namespace dev::eth {
             m_options.tracerType == TraceType::ALL_TRACER)
             appendOpToStandardOpTrace(lastExecutionRecord->m_pc, lastExecutionRecord->m_op,
                                       lastExecutionRecord->m_opGas,
-                                      lastExecutionRecord->m_gasRemaining, _voidExt, lastExecutionRecord->m_refund, vm,
+                                      lastExecutionRecord->m_gasRemaining, lastExecutionRecord->m_depth, lastExecutionRecord->m_refund, vm,
                                       lastExecutionRecord->m_accessedStorageValues);
     }
 
 // append instruction record to the default trace log that logs every instruction
     void AlethStandardTrace::appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
-                                                       const bigint &_gas, const ExtVMFace *_ext, int64_t _refund,
+                                                       const bigint &_gas, int64_t _depth, int64_t _refund,
                                                        const LegacyVM *_vm,
                                                        std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues) {
         Json::Value r(Json::objectValue);
 
         STATE_CHECK(!m_isFinalized)
         STATE_CHECK(_vm)
-        STATE_CHECK(_ext)
 
         string instructionStr(instructionInfo(_inst).name);
 
@@ -376,7 +375,7 @@ namespace dev::eth {
         r["pc"] = _pc;
         r["gas"] = static_cast< uint64_t >( _gas );
         r["gasCost"] = static_cast< uint64_t >( _gasCost );
-        r["depth"] = _ext->depth + 1;  // depth in standard trace is 1-based
+        r["depth"] = _depth + 1;  // depth in standard trace is 1-based
 
 
         if (_refund > 0) {
