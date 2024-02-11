@@ -88,7 +88,7 @@ namespace dev::eth {
 
         [[nodiscard]] const h256 &getTxHash() const;
 
-        [[nodiscard]] const std::shared_ptr<Json::Value> &getDefaultOpTrace() const;
+        [[nodiscard]] const shared_ptr<vector<shared_ptr<OpExecutionRecord>>> & getOpRecordsSequence() const;
 
         [[nodiscard]] const Address &getDeployedContractAddress() const;
 
@@ -129,6 +129,11 @@ namespace dev::eth {
 
         [[nodiscard]] static string toGethCompatibleCompactHexPrefixed(const u256 &_value);
 
+        static void appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
+                                           std::shared_ptr<Json::Value> &_defaultTrace,
+                                           TraceOptions &_traceOptions);
+
+
     private:
         void setCurrentlyExecutingFunctionCall(
                 const std::shared_ptr<FunctionCallRecord> &_currentlyExecutingFunctionCall);
@@ -166,9 +171,6 @@ namespace dev::eth {
         void processFunctionCallOrReturnIfHappened(
                 const AlethExtVM &_ext, const LegacyVM *_vm, std::uint64_t _gasRemaining);
 
-        static void appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
-                                           std::shared_ptr<Json::Value> &_defaultTrace,
-                                           TraceOptions &_traceOptions);
 
         // print all supported traces. This can be used for QA
         void printAllTraces(Json::Value &_jsonTrace, ExecutionResult &_er,
@@ -188,7 +190,6 @@ namespace dev::eth {
         std::shared_ptr<FunctionCallRecord> m_topFunctionCall;
         std::shared_ptr<FunctionCallRecord> m_currentlyExecutingFunctionCall;
         std::vector<Instruction> m_lastInst;
-        std::shared_ptr<Json::Value> m_defaultOpTrace = nullptr;
         Json::FastWriter m_fastWriter;
         Address m_from;
         Address m_to;
@@ -201,7 +202,7 @@ namespace dev::eth {
         // for each storage address the current value if recorded
         std::map<Address, std::map<dev::u256, dev::u256> > m_accessedStorageValues;
 
-        std::vector<std::shared_ptr<OpExecutionRecord>> m_executionRecordSequence;
+        std::shared_ptr<std::vector<std::shared_ptr<OpExecutionRecord>>> m_executionRecordSequence = nullptr;
         std::atomic<bool> m_isFinalized = false;
         NoopTracePrinter m_noopTracePrinter;
         FourByteTracePrinter m_fourByteTracePrinter;

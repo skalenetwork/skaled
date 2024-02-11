@@ -28,31 +28,41 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 // default tracer as implemented by geth. Runs when no specific tracer is specified
-void DefaultTracePrinter::print(
-    Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
-    STATE_CHECK( _jsonTrace.isObject() )
-    _jsonTrace["gas"] = m_trace.getTotalGasUsed();
-    auto defaultOpTrace = m_trace.getDefaultOpTrace();
-    STATE_CHECK( defaultOpTrace );
-    if ( defaultOpTrace->empty() ) {
-        // make it compatible with geth in cases where
-        // no contract was called so there is no trace
-        _jsonTrace["structLogs"] = Json::Value( Json::arrayValue );
-    } else {
-        _jsonTrace["structLogs"] = *defaultOpTrace;
+    void DefaultTracePrinter::print(
+            Json::Value &_jsonTrace, const ExecutionResult &, const HistoricState &, const HistoricState &) {
+        STATE_CHECK(_jsonTrace.isObject())
+        auto opRecordsSequence = m_trace.getOpRecordsSequence();
+        STATE_CHECK(opRecordsSequence);
+        auto opTrace = std::make_shared<Json::Value>();
+        auto options = m_trace.getOptions();
+
+        for (uint64_t i = 1; i < opRecordsSequence->size(); i++) { // skip first dummy entry
+            auto executionRecord = opRecordsSequence->at(i);
+            AlethStandardTrace::appendOpToDefaultTrace(executionRecord, opTrace, options);
+        }
+
+        if (opTrace->empty()) {
+            // make it compatible with geth in cases where
+            // no contract was called so there is no opTrace
+            _jsonTrace["structLogs"] = Json::Value(Json::arrayValue);
+        } else {
+            _jsonTrace["structLogs"] = *opTrace;
+        }
+
+        _jsonTrace["failed"] = m_trace.isFailed();
+        _jsonTrace["gas"] = m_trace.getTotalGasUsed();
+
+        if (!m_trace.isFailed()) {
+            if (m_trace.getOptions().enableReturnData) {
+                _jsonTrace["returnValue"] = toHex(m_trace.getOutput());
+            }
+        } else {
+            _jsonTrace["returnValue"] = "";
+        }
     }
 
-    _jsonTrace["failed"] = m_trace.isFailed();
-    if ( !m_trace.isFailed() ) {
-        if ( m_trace.getOptions().enableReturnData ) {
-            _jsonTrace["returnValue"] = toHex( m_trace.getOutput() );
-        }
-    } else {
-        _jsonTrace["returnValue"] = "";
-    }
-}
-DefaultTracePrinter::DefaultTracePrinter( AlethStandardTrace& standardTrace )
-    : TracePrinter( standardTrace, "defaultTrace" ) {}
+    DefaultTracePrinter::DefaultTracePrinter(AlethStandardTrace &standardTrace)
+            : TracePrinter(standardTrace, "defaultTrace") {}
 
 }  // namespace dev::eth
 

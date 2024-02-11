@@ -241,33 +241,34 @@ namespace dev::eth {
 
     AlethStandardTrace::AlethStandardTrace(
             Transaction &_t, const Address &_blockAuthor, const TraceOptions &_options, bool _isCall)
-            : m_defaultOpTrace{std::make_shared<Json::Value>()},
-              m_from{_t.from()},
-              m_to(_t.to()),
-              m_options(_options),
+            :
+            m_from{_t.from()},
+            m_to(_t.to()),
+            m_options(_options),
             // if it is a call trace, the transaction does not have signature
             // therefore, its hash should not include signature
-              m_txHash(_t.sha3(_isCall ? dev::eth::WithoutSignature : dev::eth::WithSignature)),
-              m_noopTracePrinter(*this),
-              m_fourByteTracePrinter(*this),
-              m_callTracePrinter(*this),
-              m_replayTracePrinter(*this),
-              m_prestateTracePrinter(*this),
-              m_defaultTracePrinter(*this),
-              m_tracePrinters{{TraceType::DEFAULT_TRACER,   m_defaultTracePrinter},
-                              {TraceType::PRESTATE_TRACER,  m_prestateTracePrinter},
-                              {TraceType::CALL_TRACER,      m_callTracePrinter},
-                              {TraceType::REPLAY_TRACER,    m_replayTracePrinter},
-                              {TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter},
-                              {TraceType::NOOP_TRACER,      m_noopTracePrinter}},
-              m_blockAuthor(_blockAuthor),
-              m_isCall(_isCall),
-              m_value(_t.value()),
-              m_gasLimit(_t.gas()),
-              m_inputData(_t.data()),
-              m_gasPrice(_t.gasPrice()) {
+            m_txHash(_t.sha3(_isCall ? dev::eth::WithoutSignature : dev::eth::WithSignature)),
+            m_noopTracePrinter(*this),
+            m_fourByteTracePrinter(*this),
+            m_callTracePrinter(*this),
+            m_replayTracePrinter(*this),
+            m_prestateTracePrinter(*this),
+            m_defaultTracePrinter(*this),
+            m_tracePrinters{{TraceType::DEFAULT_TRACER,   m_defaultTracePrinter},
+                            {TraceType::PRESTATE_TRACER,  m_prestateTracePrinter},
+                            {TraceType::CALL_TRACER,      m_callTracePrinter},
+                            {TraceType::REPLAY_TRACER,    m_replayTracePrinter},
+                            {TraceType::FOUR_BYTE_TRACER, m_fourByteTracePrinter},
+                            {TraceType::NOOP_TRACER,      m_noopTracePrinter}},
+            m_blockAuthor(_blockAuthor),
+            m_isCall(_isCall),
+            m_value(_t.value()),
+            m_gasLimit(_t.gas()),
+            m_inputData(_t.data()),
+            m_gasPrice(_t.gasPrice()) {
         // set the initial lastOpRecord
-        m_executionRecordSequence.push_back(make_shared<OpExecutionRecord>(
+        m_executionRecordSequence = make_shared<vector<shared_ptr<OpExecutionRecord>>>();
+        m_executionRecordSequence->push_back(make_shared<OpExecutionRecord>(
                 // the top function is executed at depth 0
                 // therefore it is called from depth -1
                 -1,
@@ -325,12 +326,9 @@ namespace dev::eth {
 
         auto executionRecord = createOpExecutionRecord(_pc, _inst, _gasOpGas, _gasRemaining, ext, vm);
         STATE_CHECK(executionRecord)
-        m_executionRecordSequence.push_back(executionRecord);
+        STATE_CHECK(m_executionRecordSequence)
+        m_executionRecordSequence->push_back(executionRecord);
 
-
-        if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
-            m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToDefaultTrace(executionRecord, m_defaultOpTrace, m_options);
     }
 
     shared_ptr<OpExecutionRecord>
@@ -339,7 +337,6 @@ namespace dev::eth {
                                                 const LegacyVM *_vm) {
 
         STATE_CHECK(_vm)
-
 
         string opName(instructionInfo(_inst).name);
 
@@ -388,18 +385,15 @@ namespace dev::eth {
         STATE_CHECK(_defaultTrace);
         STATE_CHECK(_opExecutionRecord)
 
-
         result["op"] = _opExecutionRecord->m_opName;
         result["pc"] = _opExecutionRecord->m_pc;
         result["gas"] = _opExecutionRecord->m_gasRemaining;
         result["gasCost"] = static_cast< uint64_t >( _opExecutionRecord->m_opGas );
         result["depth"] = _opExecutionRecord->m_depth + 1;  // depth in standard trace is 1-based
 
-
         if (_opExecutionRecord->m_refund > 0) {
             result["refund"] = _opExecutionRecord->m_refund;
         }
-
 
         if (!_traceOptions.disableStack) {
             Json::Value stack(Json::arrayValue);
@@ -422,7 +416,6 @@ namespace dev::eth {
             }
             result["memory"] = memJson;
         }
-
 
         if (!_traceOptions.disableStorage) {
             if (_opExecutionRecord->m_op == Instruction::SSTORE || _opExecutionRecord->m_op == Instruction::SLOAD) {
@@ -466,9 +459,7 @@ namespace dev::eth {
             recordFunctionReturned(m_evmcStatusCode, m_output, m_totalGasUsed);
         }
 
-
         recordMinerFeePayment(_statePost);
-
 
         // we are done. Set the trace to finalized
         STATE_CHECK(!m_isFinalized.exchange(true))
@@ -541,9 +532,10 @@ namespace dev::eth {
         return m_accessedStorageValues;
     }
 
-    const shared_ptr<Json::Value> &AlethStandardTrace::getDefaultOpTrace() const {
+    const shared_ptr<vector<shared_ptr<OpExecutionRecord>>> &AlethStandardTrace::getOpRecordsSequence() const {
         STATE_CHECK(m_isFinalized)
-        return m_defaultOpTrace;
+        STATE_CHECK(m_executionRecordSequence);
+        return m_executionRecordSequence;
     }
 
     const shared_ptr<FunctionCallRecord> &AlethStandardTrace::getCurrentlyExecutingFunctionCall()
@@ -629,8 +621,9 @@ namespace dev::eth {
 
     std::shared_ptr<OpExecutionRecord> AlethStandardTrace::getLastOpRecord() const {
         STATE_CHECK(!m_isFinalized);
-        STATE_CHECK(!m_executionRecordSequence.empty())
-        auto lastOpRecord = m_executionRecordSequence.back();
+        STATE_CHECK(m_executionRecordSequence);
+        STATE_CHECK(!m_executionRecordSequence->empty())
+        auto lastOpRecord = m_executionRecordSequence->back();
         STATE_CHECK(lastOpRecord)
         return lastOpRecord;
     }
