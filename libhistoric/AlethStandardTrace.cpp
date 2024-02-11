@@ -273,7 +273,7 @@ namespace dev::eth {
                 -1,
                 // when we start execution a user transaction the top level function can  be a call
                 // or a contract create
-                _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0));
+                _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0, 0));
 
 
         // mark from and to accounts as accessed
@@ -324,12 +324,16 @@ namespace dev::eth {
                 _pc, _inst, (uint64_t) _gasOpGas, (uint64_t) _gasRemaining, _voidExt, ext, vm);
 
         // record the instruction
-        m_lastOpRecord.push_back(
-                std::make_shared<OpExecutionRecord>(ext.depth, _inst, (uint64_t) _gasRemaining, (uint64_t) _gasOpGas));
+
+        auto lastExecutionRecord = std::make_shared<OpExecutionRecord>(ext.depth, _inst, (uint64_t) _gasRemaining,
+                                                                       (uint64_t) _gasOpGas, _pc);
+
+        m_lastOpRecord.push_back(lastExecutionRecord);
 
         if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
             m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToStandardOpTrace(_pc, _inst, _gasOpGas, _gasRemaining, _voidExt, ext, vm);
+            appendOpToStandardOpTrace(lastExecutionRecord->m_pc, lastExecutionRecord->m_op, lastExecutionRecord->m_opGas,
+                                      lastExecutionRecord->m_gasRemaining, _voidExt, ext, vm);
     }
 
 // append instruction record to the default trace log that logs every instruction

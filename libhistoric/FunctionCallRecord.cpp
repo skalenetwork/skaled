@@ -249,9 +249,6 @@ Instruction FunctionCallRecord::getType() const {
     return m_type;
 }
 
-OpExecutionRecord::OpExecutionRecord(
-    int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
-    : m_depth( _depth ), m_op( _op ), m_gasRemaining( _gasRemaining ), m_opGas( _opGas ) {}
 }  // namespace dev::eth
 // namespace dev
 
