@@ -38,7 +38,7 @@ namespace dev::eth {
 
         for (uint64_t i = 1; i < opRecordsSequence->size(); i++) { // skip first dummy entry
             auto executionRecord = opRecordsSequence->at(i);
-            AlethStandardTrace::appendOpToDefaultTrace(executionRecord, opTrace, options);
+            appendOpToDefaultTrace(executionRecord, opTrace, options);
         }
 
         if (opTrace->empty()) {
@@ -63,6 +63,60 @@ namespace dev::eth {
 
     DefaultTracePrinter::DefaultTracePrinter(AlethStandardTrace &standardTrace)
             : TracePrinter(standardTrace, "defaultTrace") {}
+
+
+    void DefaultTracePrinter::appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
+                                                     std::shared_ptr<Json::Value> &_defaultTrace,
+                                                     TraceOptions &_traceOptions) {
+        Json::Value result(Json::objectValue);
+
+        STATE_CHECK(_defaultTrace);
+        STATE_CHECK(_opExecutionRecord)
+
+        result["op"] = _opExecutionRecord->m_opName;
+        result["pc"] = _opExecutionRecord->m_pc;
+        result["gas"] = _opExecutionRecord->m_gasRemaining;
+        result["gasCost"] = static_cast< uint64_t >( _opExecutionRecord->m_opGas );
+        result["depth"] = _opExecutionRecord->m_depth + 1;  // depth in standard trace is 1-based
+
+        if (_opExecutionRecord->m_refund > 0) {
+            result["refund"] = _opExecutionRecord->m_refund;
+        }
+
+        if (!_traceOptions.disableStack) {
+            Json::Value stack(Json::arrayValue);
+            // Try extracting information about the stack from the VM is supported.
+            STATE_CHECK(_opExecutionRecord->m_stack)
+            for (auto const &i: *_opExecutionRecord->m_stack) {
+                string stackStr = AlethStandardTrace::toGethCompatibleCompactHexPrefixed(i);
+                stack.append(stackStr);
+            }
+            result["stack"] = stack;
+        }
+
+        Json::Value memJson(Json::arrayValue);
+        if (_traceOptions.enableMemory) {
+            STATE_CHECK(_opExecutionRecord->m_memory)
+            for (unsigned i = 0; (i < _opExecutionRecord->m_memory->size() &&
+                                  i < MAX_MEMORY_VALUES_RETURNED); i += 32) {
+                bytesConstRef memRef(_opExecutionRecord->m_memory->data() + i, 32);
+                memJson.append(toHex(memRef));
+            }
+            result["memory"] = memJson;
+        }
+
+        if (!_traceOptions.disableStorage) {
+            if (_opExecutionRecord->m_op == Instruction::SSTORE || _opExecutionRecord->m_op == Instruction::SLOAD) {
+                Json::Value storage(Json::objectValue);
+                STATE_CHECK(_opExecutionRecord->m_accessedStorageValues)
+                for (auto const &i: *_opExecutionRecord->m_accessedStorageValues)
+                    storage[toHex(i.first)] = toHex(i.second);
+                result["storage"] = storage;
+            }
+        }
+
+        _defaultTrace->append(result);
+    }
 
 }  // namespace dev::eth
 

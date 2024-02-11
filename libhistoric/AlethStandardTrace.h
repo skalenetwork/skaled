@@ -129,11 +129,6 @@ namespace dev::eth {
 
         [[nodiscard]] static string toGethCompatibleCompactHexPrefixed(const u256 &_value);
 
-        static void appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
-                                           std::shared_ptr<Json::Value> &_defaultTrace,
-                                           TraceOptions &_traceOptions);
-
-
     private:
         void setCurrentlyExecutingFunctionCall(
                 const std::shared_ptr<FunctionCallRecord> &_currentlyExecutingFunctionCall);
