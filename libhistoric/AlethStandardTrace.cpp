@@ -273,7 +273,7 @@ namespace dev::eth {
                 -1,
                 // when we start execution a user transaction the top level function can  be a call
                 // or a contract create
-                _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0, 0, 0));
+                _t.isCreation() ? Instruction::CREATE : Instruction::CALL, 0, 0, 0, 0, ""));
 
 
         // mark from and to accounts as accessed
@@ -325,53 +325,56 @@ namespace dev::eth {
 
         // record the instruction
 
-        auto refund = ext.sub.refunds;
+        string opName(instructionInfo(_inst).name);
 
-        auto lastExecutionRecord = std::make_shared<OpExecutionRecord>(ext.depth, _inst, (uint64_t) _gasRemaining,
-                                                                       (uint64_t) _gasOpGas, _pc, refund);
+        // make strings compatible to geth trace
+        if (opName == "JUMPCI") {
+            opName = "JUMPI";
+        } else if (opName == "JUMPC") {
+            opName = "JUMP";
+        } else if (opName == "SHA3") {
+            opName = "KECCAK256";
+        }
+
+
+        auto executionRecord = std::make_shared<OpExecutionRecord>(ext.depth, _inst, (uint64_t) _gasRemaining,
+                                                                   (uint64_t) _gasOpGas, _pc, ext.sub.refunds, opName);
 
 
         if (!m_options.disableStorage) {
             if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
-                lastExecutionRecord->m_accessedStorageValues = make_shared<
+                executionRecord->m_accessedStorageValues = make_shared<
                         std::map<dev::u256, dev::u256>>(m_accessedStorageValues[ext.myAddress]);
             }
         }
 
 
-        m_lastOpRecord.push_back(lastExecutionRecord);
+        m_lastOpRecord.push_back(executionRecord);
 
 
         if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
             m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToStandardOpTrace(lastExecutionRecord->m_pc, lastExecutionRecord->m_op,
-                                      lastExecutionRecord->m_opGas,
-                                      lastExecutionRecord->m_gasRemaining, lastExecutionRecord->m_depth, lastExecutionRecord->m_refund, vm,
-                                      lastExecutionRecord->m_accessedStorageValues);
+            appendOpToStandardOpTrace(executionRecord->m_pc, executionRecord->m_op,
+                                      executionRecord->m_opGas,
+                                      executionRecord->m_gasRemaining, executionRecord->m_depth,
+                                      executionRecord->m_refund, vm,
+                                      executionRecord->m_accessedStorageValues, executionRecord->m_opName);
     }
 
 // append instruction record to the default trace log that logs every instruction
     void AlethStandardTrace::appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
                                                        const bigint &_gas, int64_t _depth, int64_t _refund,
                                                        const LegacyVM *_vm,
-                                                       std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues) {
+                                                       std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
+                                                       std::string _instructionName) {
         Json::Value r(Json::objectValue);
 
         STATE_CHECK(!m_isFinalized)
         STATE_CHECK(_vm)
 
-        string instructionStr(instructionInfo(_inst).name);
 
-        // make strings compatible to geth trace
-        if (instructionStr == "JUMPCI") {
-            instructionStr = "JUMPI";
-        } else if (instructionStr == "JUMPC") {
-            instructionStr = "JUMP";
-        } else if (instructionStr == "SHA3") {
-            instructionStr = "KECCAK256";
-        }
 
-        r["op"] = instructionStr;
+        r["op"] = _instructionName;
         r["pc"] = _pc;
         r["gas"] = static_cast< uint64_t >( _gas );
         r["gasCost"] = static_cast< uint64_t >( _gasCost );

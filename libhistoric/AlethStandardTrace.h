@@ -143,7 +143,8 @@ private:
     void appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
                                    const bigint &_gas, int64_t _depth, int64_t _refund,
                                    const LegacyVM *_vm,
-                                   std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues);
+                                   std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
+                                   std::string _instructionName);
 
     // print all supported traces. This can be used for QA
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
