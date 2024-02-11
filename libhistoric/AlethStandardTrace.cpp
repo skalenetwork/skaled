@@ -32,7 +32,7 @@ namespace dev::eth {
     }
 
     void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation(uint64_t, Instruction &_inst,
-                                                                          uint64_t _lastOpGas, uint64_t _gasRemaining,
+                                                                          uint64_t _gasRemaining,
                                                                           const ExtVMFace *_face, AlethExtVM &_ext,
                                                                           const LegacyVM *_vm) {
         STATE_CHECK(_face)
@@ -321,9 +321,25 @@ namespace dev::eth {
         }
 
         analyzeInstructionAndRecordNeededInformation(
-                _pc, _inst, (uint64_t) _gasOpGas, (uint64_t) _gasRemaining, _voidExt, ext, vm);
+                _pc, _inst, (uint64_t) _gasRemaining, _voidExt, ext, vm);
 
-        // record the instruction
+        auto executionRecord = createOpExecutionRecord(_pc, _inst, _gasOpGas, _gasRemaining, ext, vm);
+        STATE_CHECK(executionRecord)
+        m_lastOpRecord.push_back(executionRecord);
+
+
+        if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
+            m_options.tracerType == TraceType::ALL_TRACER)
+            appendOpToStandardOpTrace(executionRecord);
+    }
+
+    shared_ptr<OpExecutionRecord>
+    AlethStandardTrace::createOpExecutionRecord(uint64_t _pc, Instruction &_inst, const bigint &_gasOpGas,
+                                                const bigint &_gasRemaining, const AlethExtVM &ext,
+                                                const LegacyVM *_vm) {
+
+        STATE_CHECK(_vm)
+
 
         string opName(instructionInfo(_inst).name);
 
@@ -343,28 +359,20 @@ namespace dev::eth {
 
         if (!m_options.disableStorage) {
             if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
-                executionRecord->m_accessedStorageValues = make_shared<
-                        std::map<dev::u256, dev::u256>>(m_accessedStorageValues[ext.myAddress]);
+                executionRecord->m_accessedStorageValues = std::make_shared<
+                        std::map<u256, u256>>(m_accessedStorageValues[ext.myAddress]);
             }
         }
 
         if (!m_options.disableStack) {
-            executionRecord->m_stack = make_shared<u256s>(vm->stack());
+            executionRecord->m_stack = std::make_shared<u256s>(_vm->stack());
         }
 
-
-        Json::Value memJson(Json::arrayValue);
         if (m_options.enableMemory) {
-            executionRecord->m_memory = make_shared<bytes>(vm->memory());
+            executionRecord->m_memory = make_shared<bytes>(_vm->memory());
         }
 
-
-        m_lastOpRecord.push_back(executionRecord);
-
-
-        if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
-            m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToStandardOpTrace(executionRecord);
+        return executionRecord;
     }
 
 // append instruction record to the default trace log that logs every instruction

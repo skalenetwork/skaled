@@ -153,10 +153,9 @@ namespace dev::eth {
 
         // analyze instruction and record function calls, returns and storage value
         // accesses
-        void analyzeInstructionAndRecordNeededInformation(uint64_t, Instruction &_inst,
-                                                          std::uint64_t _lastOpGas, std::uint64_t _gasRemaining,
-                                                          const ExtVMFace *_face,
-                                                          AlethExtVM &_ext, const LegacyVM *_vm);
+        void analyzeInstructionAndRecordNeededInformation(uint64_t, Instruction &_inst, uint64_t _gasRemaining,
+                                                          const ExtVMFace *_face, AlethExtVM &_ext,
+                                                          const LegacyVM *_vm);
 
         // get the currently executing smartcontract memory from EVM
         [[nodiscard]] static std::vector<std::uint8_t>
@@ -224,5 +223,9 @@ namespace dev::eth {
         evmc_status_code m_evmcStatusCode;
         // this will include deployed contract address if the transaction was CREATE
         Address m_deployedContractAddress;
+
+        shared_ptr<OpExecutionRecord>
+        createOpExecutionRecord(uint64_t _pc, Instruction &_inst, const bigint &_gasOpGas,
+                                const bigint &_gasRemaining, const AlethExtVM &ext, const LegacyVM *_vm);
     };
 }  // namespace dev::eth
