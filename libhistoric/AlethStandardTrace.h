@@ -156,6 +156,8 @@ private:
 
     void recordMinerFeePayment( HistoricState& _statePost );
 
+    [[nodiscard]] std::shared_ptr<OpExecutionRecord> getLastOpRecord() const;
+
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
     std::vector< Instruction > m_lastInst;
@@ -172,7 +174,7 @@ private:
     // for each storage address the current value if recorded
     std::map< Address, std::map< dev::u256, dev::u256 > > m_accessedStorageValues;
 
-    OpExecutionRecord m_lastOpRecord;
+    std::vector<std::shared_ptr<OpExecutionRecord>> m_lastOpRecord;
     std::atomic< bool > m_isFinalized = false;
     NoopTracePrinter m_noopTracePrinter;
     FourByteTracePrinter m_fourByteTracePrinter;
