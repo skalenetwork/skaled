@@ -356,20 +356,24 @@ namespace dev::eth {
         auto executionRecord = std::make_shared<OpExecutionRecord>(ext.depth, _inst, (uint64_t) _gasRemaining,
                                                                    (uint64_t) _gasOpGas, _pc, ext.sub.refunds, opName);
 
+        // this info is only required by DEFAULT_TRACER
+        if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
+            m_options.tracerType == TraceType::ALL_TRACER) {
 
-        if (!m_options.disableStorage) {
-            if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
-                executionRecord->m_accessedStorageValues = std::make_shared<
-                        std::map<u256, u256>>(m_accessedStorageValues[ext.myAddress]);
+            if (!m_options.disableStorage) {
+                if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
+                    executionRecord->m_accessedStorageValues = std::make_shared<
+                            std::map<u256, u256>>(m_accessedStorageValues[ext.myAddress]);
+                }
             }
-        }
 
-        if (!m_options.disableStack) {
-            executionRecord->m_stack = std::make_shared<u256s>(_vm->stack());
-        }
+            if (!m_options.disableStack) {
+                executionRecord->m_stack = std::make_shared<u256s>(_vm->stack());
+            }
 
-        if (m_options.enableMemory) {
-            executionRecord->m_memory = make_shared<bytes>(_vm->memory());
+            if (m_options.enableMemory) {
+                executionRecord->m_memory = make_shared<bytes>(_vm->memory());
+            }
         }
 
         return executionRecord;
