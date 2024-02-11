@@ -184,7 +184,7 @@ namespace dev::eth {
         } else {
             // the top function is called
             // this happens at the beginning of the execution. When this happens, we init
-            // m_lastOpRecord.m_depth to -1
+            // m_executionRecordSequence.m_depth to -1
             STATE_CHECK(getLastOpRecord()->m_depth == -1)
             STATE_CHECK(!m_currentlyExecutingFunctionCall)
             // at init, m_topFuntionCall is null, set it now.
@@ -267,7 +267,7 @@ namespace dev::eth {
               m_inputData(_t.data()),
               m_gasPrice(_t.gasPrice()) {
         // set the initial lastOpRecord
-        m_lastOpRecord.push_back(make_shared<OpExecutionRecord>(
+        m_executionRecordSequence.push_back(make_shared<OpExecutionRecord>(
                 // the top function is executed at depth 0
                 // therefore it is called from depth -1
                 -1,
@@ -325,12 +325,12 @@ namespace dev::eth {
 
         auto executionRecord = createOpExecutionRecord(_pc, _inst, _gasOpGas, _gasRemaining, ext, vm);
         STATE_CHECK(executionRecord)
-        m_lastOpRecord.push_back(executionRecord);
+        m_executionRecordSequence.push_back(executionRecord);
 
 
         if (m_options.tracerType == TraceType::DEFAULT_TRACER ||
             m_options.tracerType == TraceType::ALL_TRACER)
-            appendOpToStandardOpTrace(executionRecord);
+            appendOpToDefaultTrace(executionRecord, m_defaultOpTrace, m_options);
     }
 
     shared_ptr<OpExecutionRecord>
@@ -380,26 +380,28 @@ namespace dev::eth {
     }
 
 // append instruction record to the default trace log that logs every instruction
-    void AlethStandardTrace::appendOpToStandardOpTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord) {
-        Json::Value r(Json::objectValue);
+    void AlethStandardTrace::appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
+                                                    std::shared_ptr<Json::Value> &_defaultTrace,
+                                                    TraceOptions &_traceOptions) {
+        Json::Value result(Json::objectValue);
 
-        STATE_CHECK(!m_isFinalized)
+        STATE_CHECK(_defaultTrace);
         STATE_CHECK(_opExecutionRecord)
 
 
-        r["op"] = _opExecutionRecord->m_opName;
-        r["pc"] = _opExecutionRecord->m_pc;
-        r["gas"] = _opExecutionRecord->m_gasRemaining;
-        r["gasCost"] = static_cast< uint64_t >( _opExecutionRecord->m_opGas );
-        r["depth"] = _opExecutionRecord->m_depth + 1;  // depth in standard trace is 1-based
+        result["op"] = _opExecutionRecord->m_opName;
+        result["pc"] = _opExecutionRecord->m_pc;
+        result["gas"] = _opExecutionRecord->m_gasRemaining;
+        result["gasCost"] = static_cast< uint64_t >( _opExecutionRecord->m_opGas );
+        result["depth"] = _opExecutionRecord->m_depth + 1;  // depth in standard trace is 1-based
 
 
         if (_opExecutionRecord->m_refund > 0) {
-            r["refund"] = _opExecutionRecord->m_refund;
+            result["refund"] = _opExecutionRecord->m_refund;
         }
 
 
-        if (!m_options.disableStack) {
+        if (!_traceOptions.disableStack) {
             Json::Value stack(Json::arrayValue);
             // Try extracting information about the stack from the VM is supported.
             STATE_CHECK(_opExecutionRecord->m_stack)
@@ -407,32 +409,32 @@ namespace dev::eth {
                 string stackStr = toGethCompatibleCompactHexPrefixed(i);
                 stack.append(stackStr);
             }
-            r["stack"] = stack;
+            result["stack"] = stack;
         }
 
         Json::Value memJson(Json::arrayValue);
-        if (m_options.enableMemory) {
+        if (_traceOptions.enableMemory) {
             STATE_CHECK(_opExecutionRecord->m_memory)
             for (unsigned i = 0; (i < _opExecutionRecord->m_memory->size() &&
                                   i < MAX_MEMORY_VALUES_RETURNED); i += 32) {
                 bytesConstRef memRef(_opExecutionRecord->m_memory->data() + i, 32);
                 memJson.append(toHex(memRef));
             }
-            r["memory"] = memJson;
+            result["memory"] = memJson;
         }
 
 
-        if (!m_options.disableStorage) {
+        if (!_traceOptions.disableStorage) {
             if (_opExecutionRecord->m_op == Instruction::SSTORE || _opExecutionRecord->m_op == Instruction::SLOAD) {
                 Json::Value storage(Json::objectValue);
                 STATE_CHECK(_opExecutionRecord->m_accessedStorageValues)
                 for (auto const &i: *_opExecutionRecord->m_accessedStorageValues)
                     storage[toHex(i.first)] = toHex(i.second);
-                r["storage"] = storage;
+                result["storage"] = storage;
             }
         }
 
-        m_defaultOpTrace->append(r);
+        _defaultTrace->append(result);
     }
 
     string AlethStandardTrace::toGethCompatibleCompactHexPrefixed(const u256 &_value) {
@@ -627,8 +629,8 @@ namespace dev::eth {
 
     std::shared_ptr<OpExecutionRecord> AlethStandardTrace::getLastOpRecord() const {
         STATE_CHECK(!m_isFinalized);
-        STATE_CHECK(!m_lastOpRecord.empty())
-        auto lastOpRecord = m_lastOpRecord.back();
+        STATE_CHECK(!m_executionRecordSequence.empty())
+        auto lastOpRecord = m_executionRecordSequence.back();
         STATE_CHECK(lastOpRecord)
         return lastOpRecord;
     }

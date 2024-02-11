@@ -166,7 +166,9 @@ namespace dev::eth {
         void processFunctionCallOrReturnIfHappened(
                 const AlethExtVM &_ext, const LegacyVM *_vm, std::uint64_t _gasRemaining);
 
-        void appendOpToStandardOpTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord);
+        static void appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
+                                           std::shared_ptr<Json::Value> &_defaultTrace,
+                                           TraceOptions &_traceOptions);
 
         // print all supported traces. This can be used for QA
         void printAllTraces(Json::Value &_jsonTrace, ExecutionResult &_er,
@@ -199,7 +201,7 @@ namespace dev::eth {
         // for each storage address the current value if recorded
         std::map<Address, std::map<dev::u256, dev::u256> > m_accessedStorageValues;
 
-        std::vector<std::shared_ptr<OpExecutionRecord>> m_lastOpRecord;
+        std::vector<std::shared_ptr<OpExecutionRecord>> m_executionRecordSequence;
         std::atomic<bool> m_isFinalized = false;
         NoopTracePrinter m_noopTracePrinter;
         FourByteTracePrinter m_fourByteTracePrinter;
