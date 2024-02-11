@@ -36,7 +36,6 @@ const TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.p
 const TEST_DEPLOY_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.4byteTracer.json";
 
 
-
 const TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".defaultTracer.json";
 const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".callTracer.json";
 const TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateTracer.json";
@@ -370,7 +369,6 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
 }
 
 
-
 async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
     globalCallCount++;
 
@@ -379,7 +377,6 @@ async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: strin
     console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
 
     let trace;
-
 
 
     if (_tracer == DEFAULT_TRACER) {
@@ -428,7 +425,7 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
     let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
 
-    //await verifyGasCalculations(actualResult);
+    await verifyGasCalculations(actualResult);
 
     const differences = deepDiff(expectedResult, actualResult)!;
 
@@ -448,7 +445,7 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
                 let op = expectedResult.structLogs[difference.path![1]]["op"];
                 if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE" || op == "CALL" ||
-                   op == "CREATE") {
+                    op == "CREATE") {
                     return;
                 }
             }
@@ -603,7 +600,6 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
     if (differences) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
-
 
 
             if (difference.kind == "E" && difference.path!.length == 1) {
@@ -767,7 +763,7 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
             }
 
             if (difference.kind != "E" && difference.path!.length == 2 &&
-                     difference.path![0] == "post") {
+                difference.path![0] == "post") {
                 // ignore everything related to newly deployed contract
                 const key = difference.path![1];
                 if (key != "Tracer.address" && key != ZERO_ADDRESS && key != "OWNER.address") {
@@ -792,15 +788,26 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
     let structLogs: object[] = _actualResult.structLogs;
     expect(structLogs.length > 0)
     let gasRemaining: bigint = structLogs[0].gas
-    let gasCost = structLogs[0].gasCost
-    let totalGasUsedInOps: bigint = gasCost;
+    let currentOpGasCost = structLogs[0].gasCost
+    let totalGasUsedInOps: bigint = currentOpGasCost;
+
 
     for (let index = 1; index < structLogs.length; index++) {
-        let newGasRemaining: bigint = structLogs[index].gas
-        expect(gasRemaining - newGasRemaining).eq(gasCost);
+        const currentOpLog = structLogs[index]
+        const previousOpLog = structLogs[index - 1]
+
+        let newGasRemaining: bigint = currentOpLog.gas
+        // geth does not correctly report gas cost of create operation
+        if (previousOpLog.op !== "CREATE" && previousOpLog.op !== "RETURN"
+            && previousOpLog.op !== "CALL") {
+            expect(gasRemaining - newGasRemaining).eq(currentOpGasCost,
+                // in case of failure we print current and previous op log
+                "\n" + JSON.stringify(structLogs[index - 1]) +
+                "\n" + JSON.stringify(currentOpLog) + "\n");
+        }
         gasRemaining = newGasRemaining;
-        gasCost = structLogs[index].gasCost
-        totalGasUsedInOps += gasCost;
+        currentOpGasCost = structLogs[index].gasCost
+        totalGasUsedInOps += currentOpGasCost;
     }
 }
 
@@ -827,7 +834,6 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(deployHash, PRESTATE_TRACER, TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
 
 
-
     await getAndPrintCommittedTransactionTrace(firstMintHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstMintHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(firstMintHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
@@ -852,13 +858,11 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(secondMintHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
 
 
-
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, FOURBYTE_TRACER, TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, PRESTATE_TRACER, TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
-
 
 
     // geth does not have replay trace
@@ -899,8 +903,6 @@ async function main(): Promise<void> {
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
-
-
 
 
 }
