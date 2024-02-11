@@ -18,6 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
+
 #include "AlethExtVM.h"
 #include "CallTracePrinter.h"
 #include "DefaultTracePrinter.h"
@@ -36,7 +37,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #include <memory>
 
 namespace Json {
-class Value;
+    class Value;
 }
 
 namespace dev::eth {
@@ -44,162 +45,189 @@ namespace dev::eth {
 // It is important that trace functions do not throw exceptions and do not modify state
 // so that they do not interfere with EVM execution
 
-class FunctionCallRecord;
+    class FunctionCallRecord;
 
 // This class collects information during EVM execution.  The oollected information
 // is then used by trace printers to print the trace requested by the user
 
-class AlethStandardTrace {
-public:
-    // Append json trace to given (array) value
-    explicit AlethStandardTrace( Transaction& _t, const Address& _blockAuthor,
-        const TraceOptions& _options, bool _isCall = false );
+    class AlethStandardTrace {
+    public:
+        // Append json trace to given (array) value
+        explicit AlethStandardTrace(Transaction &_t, const Address &_blockAuthor,
+                                    const TraceOptions &_options, bool _isCall = false);
 
-    // this function is executed on each operation
-    [[nodiscard]] OnOpFunc functionToExecuteOnEachOperation() {
-        return [=]( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
-                   bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
-            ( *this )( _steps, _pc, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM );
-        };
-    }
+        // this function is executed on each operation
+        [[nodiscard]] OnOpFunc functionToExecuteOnEachOperation() {
+            return [=](uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
+                       bigint _gasCost, bigint _gas, VMFace const *_vm, ExtVMFace const *_extVM) {
+                (*this)(_steps, _pc, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM);
+            };
+        }
 
-    // this function will be called at the end of executions
-    void finalizeAndPrintTrace(
-        ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost );
+        // this function will be called at the end of executions
+        void finalizeAndPrintTrace(
+                ExecutionResult &_er, HistoricState &_statePre, HistoricState &_statePost);
 
 
-    // this is to set original from balance for calls
-    // in a geth call, the from account balance is always incremented to
-    // make sure account has enough funds for block gas limit of gas
-    // we need to save original from account balance since it is printed in trace
-    void setOriginalFromBalance( const u256& _originalFromBalance );
+        // this is to set original from balance for calls
+        // in a geth call, the from account balance is always incremented to
+        // make sure account has enough funds for block gas limit of gas
+        // we need to save original from account balance since it is printed in trace
+        void setOriginalFromBalance(const u256 &_originalFromBalance);
 
-    [[nodiscard]] Json::Value getJSONResult() const;
-    [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
-    [[nodiscard]] TraceOptions getOptions() const;
-    [[nodiscard]] const std::map< Address, std::map< u256, u256 > >& getAccessedStorageValues()
+        [[nodiscard]] Json::Value getJSONResult() const;
+
+        [[nodiscard]] const std::shared_ptr<FunctionCallRecord> &getTopFunctionCall() const;
+
+        [[nodiscard]] TraceOptions getOptions() const;
+
+        [[nodiscard]] const std::map<Address, std::map<u256, u256> > &getAccessedStorageValues()
         const;
-    [[nodiscard]] const std::set< Address >& getAccessedAccounts() const;
-    [[nodiscard]] const h256& getTxHash() const;
-    [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
-    [[nodiscard]] const Address& getDeployedContractAddress() const;
-    [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
+
+        [[nodiscard]] const std::set<Address> &getAccessedAccounts() const;
+
+        [[nodiscard]] const h256 &getTxHash() const;
+
+        [[nodiscard]] const std::shared_ptr<Json::Value> &getDefaultOpTrace() const;
+
+        [[nodiscard]] const Address &getDeployedContractAddress() const;
+
+        [[nodiscard]] const std::shared_ptr<FunctionCallRecord> &getCurrentlyExecutingFunctionCall()
         const;
-    [[nodiscard]] const Address& getBlockAuthor() const;
-    [[nodiscard]] const u256& getMinerPayment() const;
-    [[nodiscard]] const u256& getOriginalFromBalance() const;
-    [[nodiscard]] bool isCall() const;
-    [[nodiscard]] const Address& getFrom() const;
-    [[nodiscard]] uint64_t getTotalGasUsed() const;
-    [[nodiscard]] const u256& getGasLimit() const;
-    [[nodiscard]] const u256& getValue() const;
-    [[nodiscard]] const bytes& getInputData() const;
-    [[nodiscard]] const Address& getTo() const;
-    [[nodiscard]] const u256& getGasPrice() const;
-    [[nodiscard]] const bytes& getOutput() const;
-    [[nodiscard]] bool isFailed() const;
-    [[nodiscard]] evmc_status_code getEVMCStatusCode() const;
-    [[nodiscard]] bool isSimpleTransfer();
-    [[nodiscard]] bool isContractCreation();
 
-    [[nodiscard]] static string toGethCompatibleCompactHexPrefixed( const u256& _value );
+        [[nodiscard]] const Address &getBlockAuthor() const;
 
-private:
-    void setCurrentlyExecutingFunctionCall(
-        const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
-    void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
+        [[nodiscard]] const u256 &getMinerPayment() const;
 
-    // this operator will be executed by skaled on each EVM instruction
-    void operator()( uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
-        bigint _gasOpGas, bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
+        [[nodiscard]] const u256 &getOriginalFromBalance() const;
 
-    // called to record execution of each instruction
-    void recordInstructionIsExecuted( uint64_t _pc, Instruction _inst, bigint _gasOpGas,
-        bigint _gasRemaining, VMFace const* _vm, ExtVMFace const* _voidExt );
+        [[nodiscard]] bool isCall() const;
 
-    // called to record function execution when a function of this or other contract is called
-    void recordFunctionIsCalled( const Address& _from, const Address& _to, uint64_t _gasLimit,
-        const std::vector< std::uint8_t >& _inputData, const u256& _value );
+        [[nodiscard]] const Address &getFrom() const;
 
-    // called when a function returns
-    void recordFunctionReturned( evmc_status_code _status,
-        const std::vector< std::uint8_t >& _returnData, uint64_t _gasUsed );
+        [[nodiscard]] uint64_t getTotalGasUsed() const;
 
-    // analyze instruction and record function calls, returns and storage value
-    // accesses
-    void analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
-        std::uint64_t _lastOpGas, std::uint64_t _gasRemaining, const ExtVMFace* _face,
-        AlethExtVM& _ext, const LegacyVM* _vm );
+        [[nodiscard]] const u256 &getGasLimit() const;
 
-    // get the currently executing smartcontract memory from EVM
-    [[nodiscard]] static std::vector< std::uint8_t >
-    extractSmartContractMemoryByteArrayFromStackPointer( const LegacyVM* _vm );
+        [[nodiscard]] const u256 &getValue() const;
 
-    // this is called when the function call depth of the current instruction is different from the
-    // previous instruction. This happens when a function is called or returned.
-    void processFunctionCallOrReturnIfHappened(
-        const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
+        [[nodiscard]] const bytes &getInputData() const;
 
-    void appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
-                                   const bigint &_gas, int64_t _depth, int64_t _refund,
-                                   const LegacyVM *_vm,
-                                   std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
-                                   std::string _instructionName);
+        [[nodiscard]] const Address &getTo() const;
 
-    // print all supported traces. This can be used for QA
-    void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
-        const HistoricState& _statePre, const HistoricState& _statePost );
+        [[nodiscard]] const u256 &getGasPrice() const;
 
-    void recordMinerPayment( u256 _minerGasPayment );
+        [[nodiscard]] const bytes &getOutput() const;
 
-    void printTrace(
-        ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
+        [[nodiscard]] bool isFailed() const;
 
-    [[nodiscard]] vector< uint8_t > getInputData( const AlethExtVM& _ext ) const;
+        [[nodiscard]] evmc_status_code getEVMCStatusCode() const;
 
-    void recordMinerFeePayment( HistoricState& _statePost );
+        [[nodiscard]] bool isSimpleTransfer();
 
-    [[nodiscard]] std::shared_ptr<OpExecutionRecord> getLastOpRecord() const;
+        [[nodiscard]] bool isContractCreation();
 
-    std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
-    std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
-    std::vector< Instruction > m_lastInst;
-    std::shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
-    Json::FastWriter m_fastWriter;
-    Address m_from;
-    Address m_to;
-    TraceOptions m_options;
-    h256 m_txHash;
-    Json::Value m_jsonTrace;
-    // set of all storage values accessed during execution
-    std::set< Address > m_accessedAccounts;
-    // std::map of all storage addresses accessed (read or write) during execution
-    // for each storage address the current value if recorded
-    std::map< Address, std::map< dev::u256, dev::u256 > > m_accessedStorageValues;
+        [[nodiscard]] static string toGethCompatibleCompactHexPrefixed(const u256 &_value);
 
-    std::vector<std::shared_ptr<OpExecutionRecord>> m_lastOpRecord;
-    std::atomic< bool > m_isFinalized = false;
-    NoopTracePrinter m_noopTracePrinter;
-    FourByteTracePrinter m_fourByteTracePrinter;
-    CallTracePrinter m_callTracePrinter;
-    ReplayTracePrinter m_replayTracePrinter;
-    PrestateTracePrinter m_prestateTracePrinter;
-    DefaultTracePrinter m_defaultTracePrinter;
+    private:
+        void setCurrentlyExecutingFunctionCall(
+                const std::shared_ptr<FunctionCallRecord> &_currentlyExecutingFunctionCall);
 
-    const std::map< TraceType, TracePrinter& > m_tracePrinters;
+        void setTopFunctionCall(const std::shared_ptr<FunctionCallRecord> &_topFunctionCall);
 
-    const Address m_blockAuthor;
-    u256 m_minerPayment;
-    u256 m_originalFromBalance;
-    bool m_isCall;
-    uint64_t m_totalGasUsed;
-    u256 m_value;
-    u256 m_gasLimit;
-    bytes m_inputData;
-    u256 m_gasPrice;
-    bytes m_output;
-    evmc_status_code m_evmcStatusCode;
-    // this will include deployed contract address if the transaction was CREATE
-    Address m_deployedContractAddress;
-};
+        // this operator will be executed by skaled on each EVM instruction
+        void operator()(uint64_t _steps, uint64_t _pc, Instruction _inst, bigint _newMemSize,
+                        bigint _gasOpGas, bigint _gasRemaining, VMFace const *_vm, ExtVMFace const *_voidExt);
+
+        // called to record execution of each instruction
+        void recordInstructionIsExecuted(uint64_t _pc, Instruction _inst, bigint _gasOpGas,
+                                         bigint _gasRemaining, VMFace const *_vm, ExtVMFace const *_voidExt);
+
+        // called to record function execution when a function of this or other contract is called
+        void recordFunctionIsCalled(const Address &_from, const Address &_to, uint64_t _gasLimit,
+                                    const std::vector<std::uint8_t> &_inputData, const u256 &_value);
+
+        // called when a function returns
+        void recordFunctionReturned(evmc_status_code _status,
+                                    const std::vector<std::uint8_t> &_returnData, uint64_t _gasUsed);
+
+        // analyze instruction and record function calls, returns and storage value
+        // accesses
+        void analyzeInstructionAndRecordNeededInformation(uint64_t, Instruction &_inst,
+                                                          std::uint64_t _lastOpGas, std::uint64_t _gasRemaining,
+                                                          const ExtVMFace *_face,
+                                                          AlethExtVM &_ext, const LegacyVM *_vm);
+
+        // get the currently executing smartcontract memory from EVM
+        [[nodiscard]] static std::vector<std::uint8_t>
+        extractSmartContractMemoryByteArrayFromStackPointer(const LegacyVM *_vm);
+
+        // this is called when the function call depth of the current instruction is different from the
+        // previous instruction. This happens when a function is called or returned.
+        void processFunctionCallOrReturnIfHappened(
+                const AlethExtVM &_ext, const LegacyVM *_vm, std::uint64_t _gasRemaining);
+
+        void appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
+                                       const bigint &_gas, int64_t _depth, int64_t _refund,
+                                       std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
+                                       std::string _instructionName, std::shared_ptr<u256s> _stack,
+                                       std::shared_ptr<bytes>
+                                       _memory);
+
+        // print all supported traces. This can be used for QA
+        void printAllTraces(Json::Value &_jsonTrace, ExecutionResult &_er,
+                            const HistoricState &_statePre, const HistoricState &_statePost);
+
+        void recordMinerPayment(u256 _minerGasPayment);
+
+        void printTrace(
+                ExecutionResult &_er, const HistoricState &_statePre, const HistoricState &_statePost);
+
+        [[nodiscard]] vector<uint8_t> getInputData(const AlethExtVM &_ext) const;
+
+        void recordMinerFeePayment(HistoricState &_statePost);
+
+        [[nodiscard]] std::shared_ptr<OpExecutionRecord> getLastOpRecord() const;
+
+        std::shared_ptr<FunctionCallRecord> m_topFunctionCall;
+        std::shared_ptr<FunctionCallRecord> m_currentlyExecutingFunctionCall;
+        std::vector<Instruction> m_lastInst;
+        std::shared_ptr<Json::Value> m_defaultOpTrace = nullptr;
+        Json::FastWriter m_fastWriter;
+        Address m_from;
+        Address m_to;
+        TraceOptions m_options;
+        h256 m_txHash;
+        Json::Value m_jsonTrace;
+        // set of all storage values accessed during execution
+        std::set<Address> m_accessedAccounts;
+        // std::map of all storage addresses accessed (read or write) during execution
+        // for each storage address the current value if recorded
+        std::map<Address, std::map<dev::u256, dev::u256> > m_accessedStorageValues;
+
+        std::vector<std::shared_ptr<OpExecutionRecord>> m_lastOpRecord;
+        std::atomic<bool> m_isFinalized = false;
+        NoopTracePrinter m_noopTracePrinter;
+        FourByteTracePrinter m_fourByteTracePrinter;
+        CallTracePrinter m_callTracePrinter;
+        ReplayTracePrinter m_replayTracePrinter;
+        PrestateTracePrinter m_prestateTracePrinter;
+        DefaultTracePrinter m_defaultTracePrinter;
+
+        const std::map<TraceType, TracePrinter &> m_tracePrinters;
+
+        const Address m_blockAuthor;
+        u256 m_minerPayment;
+        u256 m_originalFromBalance;
+        bool m_isCall;
+        uint64_t m_totalGasUsed;
+        u256 m_value;
+        u256 m_gasLimit;
+        bytes m_inputData;
+        u256 m_gasPrice;
+        bytes m_output;
+        evmc_status_code m_evmcStatusCode;
+        // this will include deployed contract address if the transaction was CREATE
+        Address m_deployedContractAddress;
+    };
 }  // namespace dev::eth

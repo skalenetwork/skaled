@@ -70,6 +70,8 @@ namespace dev::eth {
         std::int64_t m_refund;
         std::string m_opName;
         std::shared_ptr<std::map< dev::u256, dev::u256 >>  m_accessedStorageValues = nullptr;
+        std::shared_ptr<u256s> m_stack = nullptr;
+        std::shared_ptr<bytes> m_memory = nullptr;
     };
 
 }  // namespace dev::eth

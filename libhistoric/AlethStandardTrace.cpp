@@ -348,6 +348,19 @@ namespace dev::eth {
             }
         }
 
+        if (!m_options.disableStack) {
+            executionRecord->m_stack = make_shared<u256s>(vm->stack());
+        }
+
+
+        Json::Value memJson(Json::arrayValue);
+        if (m_options.enableMemory) {
+            executionRecord->m_memory = make_shared<bytes>(vm->memory());
+        }
+
+
+
+
 
         m_lastOpRecord.push_back(executionRecord);
 
@@ -357,21 +370,20 @@ namespace dev::eth {
             appendOpToStandardOpTrace(executionRecord->m_pc, executionRecord->m_op,
                                       executionRecord->m_opGas,
                                       executionRecord->m_gasRemaining, executionRecord->m_depth,
-                                      executionRecord->m_refund, vm,
-                                      executionRecord->m_accessedStorageValues, executionRecord->m_opName);
+                                      executionRecord->m_refund,
+                                      executionRecord->m_accessedStorageValues, executionRecord->m_opName,
+                                      executionRecord->m_stack, executionRecord->m_memory);
     }
 
 // append instruction record to the default trace log that logs every instruction
     void AlethStandardTrace::appendOpToStandardOpTrace(uint64_t _pc, Instruction &_inst, const bigint &_gasCost,
                                                        const bigint &_gas, int64_t _depth, int64_t _refund,
-                                                       const LegacyVM *_vm,
                                                        std::shared_ptr<std::map<dev::u256, dev::u256 >> _accessedStorageValues,
-                                                       std::string _instructionName) {
+                                                       std::string _instructionName, std::shared_ptr<u256s> _stack,
+                                                       std::shared_ptr<bytes> _memory) {
         Json::Value r(Json::objectValue);
 
         STATE_CHECK(!m_isFinalized)
-        STATE_CHECK(_vm)
-
 
 
         r["op"] = _instructionName;
@@ -389,18 +401,19 @@ namespace dev::eth {
         if (!m_options.disableStack) {
             Json::Value stack(Json::arrayValue);
             // Try extracting information about the stack from the VM is supported.
-            for (auto const &i: _vm->stack()) {
+            STATE_CHECK(_stack)
+            for (auto const &i: *_stack) {
                 string stackStr = toGethCompatibleCompactHexPrefixed(i);
                 stack.append(stackStr);
             }
             r["stack"] = stack;
         }
 
-        bytes const &memory = _vm->memory();
         Json::Value memJson(Json::arrayValue);
         if (m_options.enableMemory) {
-            for (unsigned i = 0; (i < memory.size() && i < MAX_MEMORY_VALUES_RETURNED); i += 32) {
-                bytesConstRef memRef(memory.data() + i, 32);
+            STATE_CHECK(_memory)
+            for (unsigned i = 0; (i < _memory->size() && i < MAX_MEMORY_VALUES_RETURNED); i += 32) {
+                bytesConstRef memRef(_memory->data() + i, 32);
                 memJson.append(toHex(memRef));
             }
             r["memory"] = memJson;
