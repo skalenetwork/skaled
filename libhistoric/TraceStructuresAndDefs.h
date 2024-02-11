@@ -55,9 +55,6 @@ struct LogRecord {
 };
 
 struct OpExecutionRecord {
-    // this is top level record to enter the transaction
-    // the first function is executed at depth 0, as it was called form depth -1
-    explicit OpExecutionRecord( Instruction _op ) : OpExecutionRecord( -1, _op, 0, 0 ){};
 
     OpExecutionRecord(
         std::int64_t _depth, Instruction _op, std::uint64_t _gasRemaining, std::uint64_t _opGas );

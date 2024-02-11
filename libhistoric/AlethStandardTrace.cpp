@@ -343,6 +343,29 @@ namespace dev::eth {
         STATE_CHECK(_vm)
         STATE_CHECK(_ext)
 
+        string instructionStr(instructionInfo(_inst).name);
+
+        // make strings compatible to geth trace
+        if (instructionStr == "JUMPCI") {
+            instructionStr = "JUMPI";
+        } else if (instructionStr == "JUMPC") {
+            instructionStr = "JUMP";
+        } else if (instructionStr == "SHA3") {
+            instructionStr = "KECCAK256";
+        }
+
+        r["op"] = instructionStr;
+        r["pc"] = _pc;
+        r["gas"] = static_cast< uint64_t >( _gas );
+        r["gasCost"] = static_cast< uint64_t >( _gasCost );
+        r["depth"] = _ext->depth + 1;  // depth in standard trace is 1-based
+
+        auto refund = _alethExt.sub.refunds;
+        if (refund > 0) {
+            r["refund"] = _alethExt.sub.refunds;
+        }
+
+
         if (!m_options.disableStack) {
             Json::Value stack(Json::arrayValue);
             // Try extracting information about the stack from the VM is supported.
@@ -363,27 +386,7 @@ namespace dev::eth {
             r["memory"] = memJson;
         }
 
-        string instructionStr(instructionInfo(_inst).name);
 
-        // make strings compatible to geth trace
-        if (instructionStr == "JUMPCI") {
-            instructionStr = "JUMPI";
-        } else if (instructionStr == "JUMPC") {
-            instructionStr = "JUMP";
-        } else if (instructionStr == "SHA3") {
-            instructionStr = "KECCAK256";
-        }
-
-
-        r["op"] = instructionStr;
-        r["pc"] = _pc;
-        r["gas"] = static_cast< uint64_t >( _gas );
-        r["gasCost"] = static_cast< uint64_t >( _gasCost );
-        r["depth"] = _ext->depth + 1;  // depth in standard trace is 1-based
-        auto refund = _alethExt.sub.refunds;
-        if (refund > 0) {
-            r["refund"] = _alethExt.sub.refunds;
-        }
         if (!m_options.disableStorage) {
             if (_inst == Instruction::SSTORE || _inst == Instruction::SLOAD) {
                 Json::Value storage(Json::objectValue);
