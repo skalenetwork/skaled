@@ -128,6 +128,10 @@ void LegacyVM::caseCreate() {
     }
 
     updateMem( memNeed( initOff, initSize ) );
+#ifdef HISTORIC_STATE
+    // we have calculated gas required. Now we can call ON_OP
+    ON_OP();
+#endif
     updateIOGas();
 
     // Clear the return data buffer. This will not free the memory.
