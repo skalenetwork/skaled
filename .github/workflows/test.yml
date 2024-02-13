@@ -42,12 +42,13 @@ jobs:
           key: ${{ runner.os }}-apt-cache
           ttl: 1000000 # purge cache every 1000000 seconds (10 days). This is to pull updated packages
       - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true
+          sudo apt-get update || true
       - name: install packages
         run: |
           sudo apt-get -y remove libzmq* || true
-          sudo apt-get -y install software-properties-common
-          sudo apt-get -y install gcc-9 g++-9
+          sudo apt-get -y install software-properties-common gcc-9 g++-9 || true
 
       - name: Use g++-9 and gcov-9 by default
         run: |
