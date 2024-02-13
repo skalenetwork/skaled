@@ -53,7 +53,7 @@ const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 
 using namespace dev::rpc::_detail;
 
-// TODO Check LatestBlock number - update!
+// TODO Check LatestBlock number - update
 // Needs external locks to exchange read one to write one
 void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     std::shared_lock< std::shared_mutex >& _readLock,
@@ -98,7 +98,7 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
 
         pair< h256, unsigned > loc = client.transactionLocation( th );
 
-        // ignore transactions with 0 gas usage OR different location!
+        // ignore transactions with 0 gas usage OR different location
         if ( diff == 0 || client.numberFromHash( loc.first ) != realBn || loc.second != realIndex )
             continue;
 
@@ -457,7 +457,7 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     }
 }
 
-// TODO Catch exceptions for all calls other eth_-calls in outer scope!
+// TODO Catch exceptions for all calls other eth_-calls in outer scope
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     if ( !isEnabledTransactionSending() )
