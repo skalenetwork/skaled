@@ -9,14 +9,6 @@ defaults:
   run:
     shell: bash
 jobs:
-  cancel-runs:
-    name: Cancel Previous Runs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
   build:
     runs-on: self-hosted
     env:
@@ -27,6 +19,10 @@ jobs:
         ccache_compress: 'true'
         ccache_compresslevel: 9
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
