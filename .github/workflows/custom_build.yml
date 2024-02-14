@@ -34,7 +34,9 @@ jobs:
         BUILD_TYPE: ${{ github.event.inputs.build_type }}
     steps:
       - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true 
+          sudo apt-get update || true
       - name: install packages
         run: |
           sudo apt-get -y remove libzmq* || true
