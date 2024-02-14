@@ -92,7 +92,7 @@ mObject FakeExtVM::exportEnv() {
     return ret;
 }
 
-EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes ) {
+EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes, time_t _latestBlockTimestamp ) {
     // cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
     assert( _o.count( "currentGasLimit" ) > 0 );
     assert( _o.count( "currentDifficulty" ) > 0 );
@@ -109,7 +109,7 @@ EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _las
     blockHeader.setTimestamp( toPositiveInt64( _o.at( "currentTimestamp" ) ) );
     blockHeader.setAuthor( Address( _o.at( "currentCoinbase" ).get_str() ) );
     blockHeader.setNumber( toPositiveInt64( _o.at( "currentNumber" ) ) );
-    return EnvInfo( blockHeader, _lastBlockHashes, 0, 0 );
+    return EnvInfo( blockHeader, _lastBlockHashes, _latestBlockTimestamp, 0, 0 );
 }
 
 mObject FakeExtVM::exportState() {
@@ -313,7 +313,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
             BOOST_REQUIRE_MESSAGE( testInput.count( "expect" ) == 0, testname + " expect set!" );
 
         TestLastBlockHashes lastBlockHashes( h256s( 256, h256() ) );
-        eth::EnvInfo env = FakeExtVM::importEnv( testInput.at( "env" ).get_obj(), lastBlockHashes );
+        eth::EnvInfo env = FakeExtVM::importEnv( testInput.at( "env" ).get_obj(), lastBlockHashes, 0 );
         FakeExtVM fev( env );
         fev.importState( testInput.at( "pre" ).get_obj() );
 
@@ -446,7 +446,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_REQUIRE_MESSAGE( testInput.at( "logs" ).type() == str_type,
                     testname + " logs field is not a string." );
 
-                dev::test::FakeExtVM test( eth::EnvInfo{BlockHeader{}, lastBlockHashes, 0, 0} );
+                // use all patches here ("1")
+                dev::test::FakeExtVM test( eth::EnvInfo{BlockHeader{}, lastBlockHashes, 1, 0, 0} );
                 test.importState( testInput.at( "post" ).get_obj() );
                 test.importCallCreates( testInput.at( "callcreates" ).get_array() );
 

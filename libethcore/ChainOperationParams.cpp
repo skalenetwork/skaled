@@ -91,6 +91,12 @@ u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
         return m_blockReward;
 }
 
+u256 ChainOperationParams::blockReward(
+    time_t _latestBlockTimestamp, u256 const& _blockNumber ) const {
+    EVMSchedule const& schedule{ evmSchedule( _latestBlockTimestamp, _blockNumber ) };
+    return blockReward( schedule );
+}
+
 void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
 }

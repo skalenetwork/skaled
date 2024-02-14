@@ -808,9 +808,10 @@ ExecutionResult Block::executeHistoricCall(
     // transaction as possible.
     uncommitToSeal();
 
-    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
+    EnvInfo const envInfo{ info(), _lh, this->previousInfo().timestamp(), gasUsed(),
+        m_sealEngine->chainParams().chainID };
     std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, p, onOp );
+        m_state.mutableHistoricState().execute( envInfo, m_sealEngine->chainParams(), _t, p, onOp );
 
     return resultReceipt.first;
 }

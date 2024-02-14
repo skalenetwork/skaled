@@ -507,10 +507,10 @@ void testBCTest( json_spirit::mObject const& _o ) {
         if ( blockFromFields.blockHeader().parentHash() == preHash ) {
             State const postState = testChain.topBlock().state();
             assert( testChain.getInterface().sealEngine() );
-            bigint reward = calculateMiningReward( testChain.topBlock().blockHeader().number(),
+            bigint reward = calculateMiningReward( testChain.topBlock().blockHeader().timestamp(), testChain.topBlock().blockHeader().number(),
                 uncleNumbers.size() >= 1 ? uncleNumbers[0] : 0,
                 uncleNumbers.size() >= 2 ? uncleNumbers[1] : 0,
-                *testChain.getInterface().sealEngine() );
+                testChain.getInterface().sealEngine()->chainParams() );
             ImportTest::checkBalance( preState, postState, reward );
         } else {
             cnote << "Block Number " << testChain.topBlock().blockHeader().number();
@@ -544,9 +544,9 @@ void testBCTest( json_spirit::mObject const& _o ) {
     ImportTest::compareStates( postState, blockchain.topBlock().state() );
 }
 
-bigint calculateMiningReward( u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
-    SealEngineFace const& _sealEngine ) {
-    bigint const baseReward = _sealEngine.blockReward( _blNumber );
+bigint calculateMiningReward( time_t _latestBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
+    ChainOperationParams const& _cp ) {
+    bigint const baseReward = _cp.blockReward( _latestBlockTimestamp, _blNumber );
     bigint reward = baseReward;
     // INCLUDE_UNCLE = BASE_REWARD / 32
     // UNCLE_REWARD  = BASE_REWARD * (8 - Bn + Un) / 8

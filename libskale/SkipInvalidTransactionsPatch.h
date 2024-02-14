@@ -62,6 +62,9 @@ public:
         time_t activationTimestamp = _cp.getPatchTimestamp( getName() );
         return activationTimestamp != 0 && _lastBlockTimestamp >= activationTimestamp;
     }
+    // returns true if block N can contain invalid transactions
+    // returns false if this block was created with SkipInvalidTransactionsPatch and they were
+    // skipped
     static bool hasPotentialInvalidTransactionsInBlock(
         dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc ) {
         if ( _bn == 0 )

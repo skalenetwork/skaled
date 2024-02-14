@@ -103,7 +103,7 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
 
             // Calculate the block reward
             ChainParams const chainParams{genesisInfo( net )};
-            EVMSchedule const schedule = chainParams.evmSchedule( 1 );
+            EVMSchedule const schedule = chainParams.evmSchedule( 0, 1 );
             // u256 const blockReward = chainParams.blockReward(schedule);
 
             TrExpectSection search{trDup, smap};
@@ -262,11 +262,11 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
             StandardTrace st;
             st.setShowMnemonics();
             st.setOptions( Options::get().jsontraceOptions );
-            out = initialState.execute( _env, *se.get(), _tr, Permanence::Committed, st.onOp() );
+            out = initialState.execute( _env, se->chainParams(), _tr, Permanence::Committed, st.onOp() );
             cout << st.json();
             cout << "{\"stateRoot\": \"Is not supported\"}";
         } else
-            out = initialState.execute( _env, *se.get(), _tr, Permanence::Uncommitted );
+            out = initialState.execute( _env, se->chainParams(), _tr, Permanence::Uncommitted );
 
         // the changeLog might be broken under --jsontrace, because it uses intialState.execute with
         // Permanence::Committed rather than Permanence::Uncommitted
@@ -357,7 +357,8 @@ void ImportTest::importEnv( json_spirit::mObject const& _o ) {
     header.setAuthor( Address( _o.at( "currentCoinbase" ).get_str() ) );
 
     m_lastBlockHashes.reset( new TestLastBlockHashes( lastHashes( header.number() ) ) );
-    m_envInfo.reset( new EnvInfo( header, *m_lastBlockHashes, 0, mainnetChainID() ) );
+    // enable all patches ("1")
+    m_envInfo.reset( new EnvInfo( header, *m_lastBlockHashes, 1, 0, mainnetChainID() ) );
 }
 
 // import state from not fully declared json_spirit::mObject, writing to _stateOptionsMap which

@@ -2003,7 +2003,7 @@ contract TestEstimateGas {
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
                        false, &data, fixture.client->chainParams().evmSchedule(
-                           fixture.client->number() ) ) );
+                       fixture.client->latestBlock().info().timestamp(), fixture.client->number() ) ) );
 
     // try to send with this gas
     estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );

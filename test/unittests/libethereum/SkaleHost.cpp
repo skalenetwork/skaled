@@ -241,7 +241,6 @@ BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInv
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -291,7 +290,6 @@ BOOST_DATA_TEST_CASE( transactionRlpBad, skipInvalidTransactionsVariants, skipIn
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
 
@@ -377,7 +375,6 @@ BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipI
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -432,7 +429,6 @@ BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipIn
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -487,7 +483,6 @@ BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, 
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -540,7 +535,6 @@ BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, 
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -601,7 +595,6 @@ BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skip
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -653,7 +646,6 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -717,7 +709,6 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -795,7 +786,6 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
     if(skipInvalidTransactionsFlag){
         const_cast<ChainParams&>(client->chainParams()).sChain.skipInvalidTransactionsPatchTimestamp = 1;
     }
-    SkipInvalidTransactionsPatch::setTimestamp(client->chainParams().sChain.skipInvalidTransactionsPatchTimestamp);
 
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
@@ -913,7 +903,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -970,7 +960,7 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1027,7 +1017,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1090,7 +1080,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     RLPStream stream1;
     tx1.streamRLP( stream1 );
