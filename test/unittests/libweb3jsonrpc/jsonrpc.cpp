@@ -344,9 +344,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
-            new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
-            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
-            /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
+            new rpc::Web3(),  // TODO Add version parameter here?
+            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
+            new rpc::Debug( *client, nullptr, "", true),
             new rpc::Test( *client ) ) );
 
         //
