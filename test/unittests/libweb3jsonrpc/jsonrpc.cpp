@@ -345,7 +345,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
             new rpc::Web3(),  // TODO Add version parameter here?
-            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
+            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
             new rpc::Debug( *client, nullptr, "", true),
             new rpc::Test( *client ) ) );
 
