@@ -13,7 +13,7 @@
  
  jobs:
   functional-tests:
-    name: Functional tests
+    name: Functional tests for ${{ inputs.version }}
     runs-on: ubuntu-20.04
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -87,11 +87,12 @@
       if: ${{ always() }}
       continue-on-error: true
       with:
-        name: debug
+        name: debug-${{ inputs.version }}
         path: |
           skaled_providers
           !skaled_providers/**/skaled
           /tmp/tmp*
+          /tmp/*log
           *.log
           ./integration_tests/skaled/internals/third_party/skale-node-tests/btrfs
           !**/.env
