@@ -249,6 +249,10 @@ Instruction FunctionCallRecord::getType() const {
     return m_type;
 }
 
+uint64_t FunctionCallRecord::getGasUsed() const {
+    return m_gasUsed;
+}
+
 }  // namespace dev::eth
 // namespace dev
 

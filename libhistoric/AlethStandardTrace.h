@@ -127,7 +127,11 @@ namespace dev::eth {
 
         [[nodiscard]] bool isContractCreation();
 
+        [[nodiscard]] shared_ptr<FunctionCallRecord> getNewFunction(uint64_t _executionCounter);
+
         [[nodiscard]] static string toGethCompatibleCompactHexPrefixed(const u256 &_value);
+
+
 
     private:
         void setCurrentlyExecutingFunctionCall(
@@ -229,5 +233,8 @@ namespace dev::eth {
     shared_ptr< OpExecutionRecord > createOpExecutionRecord( uint64_t _pc, Instruction& _inst,
         const bigint& _gasOpGas, const bigint& _gasRemaining, const AlethExtVM& ext,
         const LegacyVM* _vm );
+
+
+
 };
 }  // namespace dev::eth

@@ -83,6 +83,8 @@ public:
 
     Instruction getType() const;
 
+    uint64_t getGasUsed() const;
+
 private:
     Instruction m_type;
     Address m_from;
@@ -91,6 +93,10 @@ private:
     uint64_t m_gasUsed = 0;
     vector< shared_ptr< FunctionCallRecord > > m_nestedCalls;
     weak_ptr< FunctionCallRecord > m_parentCall;
+
+
+
+private:
     vector< uint8_t > m_inputData;
     vector< uint8_t > m_outputData;
     bool m_reverted = false;

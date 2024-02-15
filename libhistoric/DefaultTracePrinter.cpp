@@ -21,6 +21,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "AlethStandardTrace.h"
 
+#include "FunctionCallRecord.h"
 #include "DefaultTracePrinter.h"
 #include "TraceStructuresAndDefs.h"
 
@@ -38,6 +39,13 @@ namespace dev::eth {
 
         for (uint64_t i = 1; i < opRecordsSequence->size(); i++) { // skip first dummy entry
             auto executionRecord = opRecordsSequence->at(i);
+
+            // geth reports function gas cost as op cost for CALL and DELEGATE CALL
+            auto newFunction = m_trace.getNewFunction(i);
+            if (newFunction) {
+                executionRecord->m_opGas = newFunction->getGasUsed();
+            }
+
             appendOpToDefaultTrace(executionRecord, opTrace, options);
         }
 
@@ -76,7 +84,12 @@ namespace dev::eth {
         result["op"] = _opExecutionRecord->m_opName;
         result["pc"] = _opExecutionRecord->m_pc;
         result["gas"] = _opExecutionRecord->m_gasRemaining;
+
+
         result["gasCost"] = static_cast< uint64_t >( _opExecutionRecord->m_opGas );
+
+
+
         result["depth"] = _opExecutionRecord->m_depth + 1;  // depth in standard trace is 1-based
 
         if (_opExecutionRecord->m_refund > 0) {
