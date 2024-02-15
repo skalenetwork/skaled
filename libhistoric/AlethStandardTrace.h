@@ -222,8 +222,12 @@ namespace dev::eth {
         // this will include deployed contract address if the transaction was CREATE
         Address m_deployedContractAddress;
 
-        shared_ptr<OpExecutionRecord>
-        createOpExecutionRecord(uint64_t _pc, Instruction &_inst, const bigint &_gasOpGas,
-                                const bigint &_gasRemaining, const AlethExtVM &ext, const LegacyVM *_vm);
-    };
+    // this map maps CALL or DELEGATECALL instruction counter to the corresponding
+    // function record
+    std::map< uint64_t, shared_ptr< FunctionCallRecord > > m_callInstructionCounterToFunctionRecord;
+
+    shared_ptr< OpExecutionRecord > createOpExecutionRecord( uint64_t _pc, Instruction& _inst,
+        const bigint& _gasOpGas, const bigint& _gasRemaining, const AlethExtVM& ext,
+        const LegacyVM* _vm );
+};
 }  // namespace dev::eth

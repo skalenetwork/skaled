@@ -181,6 +181,11 @@ namespace dev::eth {
             STATE_CHECK(
                     getCurrentlyExecutingFunctionCall()->getDepth() == getLastOpRecord()->m_depth)
             getCurrentlyExecutingFunctionCall()->addNestedCall(functionCall);
+
+            auto lastOpRecordIndex = m_executionRecordSequence->size() - 1;
+            STATE_CHECK(m_callInstructionCounterToFunctionRecord.count(lastOpRecordIndex) == 0);
+            m_callInstructionCounterToFunctionRecord.emplace(lastOpRecordIndex, functionCall);
+
         } else {
             // the top function is called
             // this happens at the beginning of the execution. When this happens, we init
