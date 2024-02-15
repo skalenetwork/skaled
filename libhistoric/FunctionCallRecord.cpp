@@ -32,6 +32,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 void FunctionCallRecord::setGasUsed( uint64_t _gasUsed ) {
+    STATE_CHECK( _gasUsed < std::numeric_limits< uint32_t >::max() );
     m_gasUsed = _gasUsed;
 }
 
@@ -147,7 +148,8 @@ void FunctionCallRecord::printTrace( Json::Value& _jsonTrace, const HistoricStat
 
 FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
     uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
-    const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth )
+    const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
+    uint64_t _gasRemainingBeforeCall )
     : m_type( _type ),
       m_from( _from ),
       m_to( _to ),
@@ -155,8 +157,13 @@ FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from,
       m_parentCall( _parentCall ),
       m_inputData( _inputData ),
       m_value( _value ),
-      m_depth( _depth ) {
+      m_depth( _depth ),
+      m_gasRemainingBeforeCall( _gasRemainingBeforeCall ) {
     STATE_CHECK( m_depth >= 0 )
+}
+
+uint64_t FunctionCallRecord::getGasRemainingBeforeCall() const {
+    return m_gasRemainingBeforeCall;
 }
 
 

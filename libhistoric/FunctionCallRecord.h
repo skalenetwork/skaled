@@ -46,7 +46,8 @@ class FunctionCallRecord {
 public:
     FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
         uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
-        const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
+        const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
+        uint64_t _gasRemainingBeforeCall);
 
     [[nodiscard]] int64_t getDepth() const;
 
@@ -84,6 +85,7 @@ public:
     Instruction getType() const;
 
     uint64_t getGasUsed() const;
+    uint64_t getGasRemainingBeforeCall() const;
 
 private:
     Instruction m_type;
@@ -105,6 +107,7 @@ private:
     u256 m_value;
     int64_t m_depth = 0;
     vector< LogRecord > m_logRecords;
+    uint64_t m_gasRemainingBeforeCall;
 };
 
 

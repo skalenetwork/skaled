@@ -121,7 +121,7 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
         auto status = _vm->getAndClearLastCallStatus();
 
         recordFunctionReturned( status, _vm->getReturnData(),
-            getCurrentlyExecutingFunctionCall()->getFunctionGasLimit() - _gasRemaining );
+            getCurrentlyExecutingFunctionCall()->getGasRemainingBeforeCall() - _gasRemaining );
     } else {
         // depth did not increase or decrease by one, therefore it should be the same
         STATE_CHECK( currentDepth == getLastOpRecord()->m_depth )
@@ -167,7 +167,8 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
 
     auto functionCall =
         make_shared< FunctionCallRecord >( getLastOpRecord()->m_op, _from, _to, _gasLimit,
-            m_currentlyExecutingFunctionCall, _inputData, _value, getLastOpRecord()->m_depth + 1 );
+            m_currentlyExecutingFunctionCall, _inputData, _value, getLastOpRecord()->m_depth + 1,
+            getLastOpRecord()->m_gasRemaining);
 
     if ( getLastOpRecord()->m_depth >= 0 ) {
         // we are not in the top smartcontract call

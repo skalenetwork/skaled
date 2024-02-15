@@ -446,23 +446,7 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
                 let op = expectedResult.structLogs[difference.path![1]]["op"];
                 if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE" || op == "CALL" ||
                     op == "CREATE") {
-
-                    let getRight = parseInt(difference.lhs);
-                    let getLeft = parseInt(difference.rhs);
-                    let sum = getLeft + getRight;
-
-                    if (getRight === 0 && getLeft === 0) {
-                        return;
-                    }
-
-
-                    let errorRight = Math.abs(0.5 - (getRight / sum));
-                    let errorLeft = Math.abs(0.5 - (getLeft / sum ));
-
-                    // ignore small gas diffs
-                    if (errorLeft < 0.45 && errorRight < 0.45) {
-                        return;
-                    }
+                    return;
                 }
             }
 
