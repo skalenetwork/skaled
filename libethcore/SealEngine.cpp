@@ -143,6 +143,13 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
+
+    if ( _ir & ImportRequirements::TransactionSignatures ) {
+        if ( _header.number() >= _chainParams.EIP158ForkBlock ) {
+            uint64_t chainID = _chainParams.chainID;
+            _t.checkChainId( chainID, _chainParams.skaleDisableChainIdCheck );
+        }  // if
+    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {
