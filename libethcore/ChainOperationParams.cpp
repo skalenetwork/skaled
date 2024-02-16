@@ -110,5 +110,7 @@ time_t ChainOperationParams::getPatchTimestamp( const std::string& _name ) const
         return sChain.revertableFSPatchTimestamp;
     if ( _name == "ContractStorageZeroValuePatch" )
         return sChain.contractStorageZeroValuePatchTimestamp;
+    if ( _name == "SkipInvalidTransactionsPatch" )
+        return sChain.skipInvalidTransactionsPatchTimestamp;
     assert( false );
 }

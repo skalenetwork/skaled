@@ -135,13 +135,6 @@ void Ethash::verifyTransaction( ChainOperationParams const& _chainParams,
     BlockHeader const& _header, u256 const& _startGasUsed ) {
     SealEngineFace::verifyTransaction(
         _chainParams, _ir, _t, _latestBlockTimestamp, _header, _startGasUsed );
-
-    if ( _ir & ImportRequirements::TransactionSignatures ) {
-        if ( _header.number() >= _chainParams.EIP158ForkBlock ) {
-            uint64_t chainID = _chainParams.chainID;
-            _t.checkChainId( chainID, _chainParams.skaleDisableChainIdCheck );
-        }  // if
-    }
 }
 
 u256 Ethash::childGasLimit( BlockHeader const& _bi, u256 const& _gasFloorTarget ) const {

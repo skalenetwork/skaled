@@ -298,6 +298,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.extraData = h256::random().asBytes();
             chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
             chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+            chainParams.skaleDisableChainIdCheck = true;
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
         chainParams.nodeInfo.syncNode = _isSyncNode;
