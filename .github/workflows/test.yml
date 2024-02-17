@@ -9,14 +9,6 @@ defaults:
   run:
     shell: bash
 jobs:
-  cancel-runs:
-    name: Cancel Previous Runs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
   build:
     runs-on: self-hosted
     env:
@@ -27,6 +19,10 @@ jobs:
         ccache_compress: 'true'
         ccache_compresslevel: 9
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -42,12 +38,13 @@ jobs:
           key: ${{ runner.os }}-apt-cache
           ttl: 1000000 # purge cache every 1000000 seconds (10 days). This is to pull updated packages
       - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true
+          sudo apt-get update || true
       - name: install packages
         run: |
           sudo apt-get -y remove libzmq* || true
-          sudo apt-get -y install software-properties-common
-          sudo apt-get -y install gcc-9 g++-9
+          sudo apt-get -y install software-properties-common gcc-9 g++-9 || true
 
       - name: Use g++-9 and gcov-9 by default
         run: |
@@ -269,21 +266,6 @@ jobs:
           ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
-          
-      - name: Create lcov report
-        run: |
-          lcov --capture --directory . --output-file coverage.info
-          lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-          lcov --remove coverage.info 'deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info 'libconsensus/libBLS/deps/*' --output-file coverage.info # filter dependency files
-          lcov --remove coverage.info '.hunter/*' --output-file coverage.info # filter dependency files
-           
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.info
 
       - name: Configure all as historic
         run: |
