@@ -89,13 +89,18 @@ public:
     }
 
     uint64_t checkOracleResult( const string&
-           /*_receipt*/, string& /*_result */) {
+           /*_receipt*/, string& /*_result */) override {
         return 0;
     }
 
-    map< string, uint64_t > getConsensusDbUsage() const {
+    map< string, uint64_t > getConsensusDbUsage() const override {
         return map< string, uint64_t >();
     };
+
+    virtual ConsensusInterface::SyncInfo getSyncInfo() override {
+        return ConsensusInterface::SyncInfo{};
+    };
+
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -118,7 +123,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         chainParams.allowFutureBlocks = true;
         chainParams.difficulty = chainParams.minimumDifficulty;
         chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.byzantiumForkBlock = 0;
+        chainParams.istanbulForkBlock = 0;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
@@ -128,7 +133,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
         // not 0-timestamp genesis - to test patch
-        chainParams.timestamp = 1;
+        chainParams.timestamp = std::time( NULL ) - 5;
 
         if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;
@@ -908,7 +913,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams().difficulty );
+    tx1.checkOutExternalGas( client->chainParams(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -965,7 +970,7 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams().difficulty );
+    tx1.checkOutExternalGas( client->chainParams(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1022,7 +1027,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams().difficulty );
+    tx1.checkOutExternalGas( client->chainParams(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1085,7 +1090,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams().difficulty );
+    tx1.checkOutExternalGas( client->chainParams(), client->number() );
 
     RLPStream stream1;
     tx1.streamRLP( stream1 );

@@ -51,6 +51,7 @@
 
 namespace dev {
 namespace eth {
+struct SyncStatus;
 class Client;
 class TransactionQueue;
 class BlockHeader;
@@ -123,8 +124,18 @@ public:
 
     dev::u256 getGasPrice() const;
     dev::u256 getBlockRandom() const;
+    dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
     std::array< std::string, 4 > getIMABLSPublicKey() const;
+
+    // get node id for historic node in chain
+    std::string getHistoricNodeId( unsigned _id ) const;
+
+    // get schain index for historic node in chain
+    std::string getHistoricNodeIndex( unsigned _idx ) const;
+
+    // get public key for historic node in chain
+    std::string getHistoricNodePublicKey( unsigned _idx ) const;
 
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
@@ -193,6 +204,10 @@ private:
 
     bool m_broadcastEnabled;
 
+
+    dev::Logger m_errorLogger{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
+    dev::Logger m_warningLogger{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };
+    dev::Logger m_infoLogger{ dev::createLogger( dev::VerbosityInfo, "skale-host" ) };
     dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
     dev::Logger m_traceLogger{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
     void logState();
@@ -214,4 +229,8 @@ private:
     std::atomic_int total_sent, total_arrived;
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
+
+    // reject old transactions that come through broadcast
+    // if current ts is much bigger than currentBlock.ts
+    static const int REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC;
 };

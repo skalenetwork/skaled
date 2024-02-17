@@ -21,6 +21,8 @@
  * that manage block/transaction import and test mining
  */
 
+#include <libskale/CorrectForkInPowPatch.h>
+
 #include <libdevcore/TransientDirectory.h>
 #include <libethashseal/GenesisInfo.h>
 #include <libethereum/Block.h>
@@ -473,6 +475,10 @@ void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
 }
 
 bool TestBlockChain::addBlock( TestBlock const& _block ) {
+
+    CorrectForkInPowPatch::lastBlockTimestamp = m_blockChain->info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = m_blockChain->number();
+
     while ( true ) {
         try {
             _block.verify( *this );  // check that block header match TestBlock contents
@@ -494,6 +500,10 @@ bool TestBlockChain::addBlock( TestBlock const& _block ) {
 
         State st( block.state() );
         m_lastBlock.setState( st );
+
+        CorrectForkInPowPatch::lastBlockTimestamp = m_blockChain->info().timestamp();
+        CorrectForkInPowPatch::lastBlockNumber = m_blockChain->number();
+
         return true;
     }
 
