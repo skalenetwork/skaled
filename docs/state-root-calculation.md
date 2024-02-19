@@ -1,7 +1,7 @@
 # State Root calculation
 
 State Root is used to ensure blockchain state is the same on all the schain nodes. 
-StateRoot is calculated on each snapshot (after doing [n]-th snapshot we calculate it’s hash and use [n-1] -th snapshot’s hash as StateRoot).
+StateRoot is calculated on each snapshot (after doing [n]-th snapshot we calculate its hash and use [n-1] -th snapshot’s hash as StateRoot).
 
     [StateRoot = SHA256(Filestorage's hash, LastPrice's hash, Blocks' hash, State's hash)]
 

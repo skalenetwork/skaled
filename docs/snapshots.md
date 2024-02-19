@@ -16,17 +16,17 @@ One of the main features of SKALE Network is node rotation, and this is performe
 
 SKALE Network solves this by periodically performing snapshots of the SKALE chain file system on each node so that nodes can share the latest snapshot with incoming node `B`.
 
-Additionally, a node can be restarted from a snapshot it the node was offline for a long period of time, if it cannot catch up with other nodes using SKALE Consensus' catch-up algorithm.
+Additionally, a node can be restarted from a snapshot if the node was offline for a long period of time, if it cannot catch up with other nodes using SKALE Consensus' catch-up algorithm.
 
 ## Design
 
 Skaled uses the btrfs file system to create snapshots.
 
 Assumptions:
-1. First block on SKALE chain occured at T<sub>firstBlock</sub>
+1. First block on SKALE chain occurred at T<sub>firstBlock</sub>
 2. node does snapshot every T<sub>snapshotInterval</sub> seconds (configurable number, stored in SKALE chain config, so it is similar for all nodes in SKALE chain )
 
-Assume `k` snapshots were already done. Lets see when `k+1`-th will be done and ready to be used:
+Assume `k` snapshots were already done. Let's see when `k+1`-th will be done and ready to be used:
 1. `k+1`-th snapshot will be done once another block’s B timestamp crosses boundary (\[T<sub>firstBlock</sub> / T<sub>snapshotInterval</sub>] + 1) \* T<sub>snapshotInterval</sub>.
 2. Node updates `last_snapshoted_block_with_hash` with `k`-th snapshot block number.
 3. If it is time to do snapshot and node already has 3 snapshots stored it deletes the latest of them.
