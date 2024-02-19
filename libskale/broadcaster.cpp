@@ -97,11 +97,7 @@ void* ZmqBroadcaster::server_socket() const {
         val = 60000;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
-
-        // ZMQ_PUB socket doesn't support zmq_rcv
-        //        val = 16;
-        //        zmq_setsockopt( m_zmq_server_socket, ZMQ_RCVHWM, &val, sizeof( val ) );
-        // remove limits
+        // remove limits to prevent txns from being dropped out
         val = 0;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
@@ -136,14 +132,9 @@ void* ZmqBroadcaster::client_socket() const {
         value = 300;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
-        // remove limits
+        // remove limits to prevent txns from being dropped out
         value = 0;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
-
-        // ZMQ_SUB doesn't support zmq_snd
-        //        value = 16;
-        //        zmq_setsockopt( m_zmq_client_socket, ZMQ_SNDHWM, &value, sizeof( value ) );
-
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
