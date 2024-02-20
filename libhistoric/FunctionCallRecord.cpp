@@ -247,9 +247,9 @@ void FunctionCallRecord::setReturnValues(
 
     if ( _status == evmc_status_code::EVMC_REVERT ) {
         setRevertReason( string( _returnData.begin(), _returnData.end() ) );
-    } else {
-        setOutputData( _returnData );
     }
+
+    setOutputData( _returnData );
 }
 
 Instruction FunctionCallRecord::getType() const {
