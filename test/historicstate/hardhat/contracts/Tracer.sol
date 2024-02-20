@@ -77,6 +77,15 @@ contract Tracer {
         return 1;
     }
 
+
+    // test revert
+    function readableRevert(uint amount) public returns (uint256) {
+        require(false, "INSUFFICIENT BALANCE");
+        return 1;
+    }
+
+
+
     function internalCall(uint amount) public returns (uint256) {
         emit InternalCallEvent(msg.sender, amount, "internal topic");
         internalVar += amount;

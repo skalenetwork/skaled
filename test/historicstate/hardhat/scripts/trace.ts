@@ -16,6 +16,7 @@ const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
 const EXECUTE_FUNCTION_NAME = "mint";
 const EXECUTE2_FUNCTION_NAME = "mint2";
+const EXECUTE3_FUNCTION_NAME = "readableRevert";
 const CALL_FUNCTION_NAME = "getBalance";
 
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
@@ -48,6 +49,14 @@ const TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + E
 const TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".prestateTracer.json";
 const TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".prestateDiffTracer.json";
 const TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".4byteTracer.json";
+
+const TEST_CONTRACT_EXECUTE3_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_EXECUTE3_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_EXECUTE3_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_EXECUTE3_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".prestateDiffTracer.json";
+const TEST_CONTRACT_EXECUTE3_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".4byteTracer.json";
+
+
 
 
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
@@ -331,6 +340,20 @@ async function executeMint2(deployedContract: any): Promise<string> {
 
 
     return mint2Receipt.hash!;
+
+}
+
+
+async function executeRevert(deployedContract: any): Promise<string> {
+
+    const revertReceipt = await deployedContract[EXECUTE3_FUNCTION_NAME](1000, {
+        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call,
+    });
+
+    expect(revertReceipt.blockNumber).not.to.be.null;
+
+
+    return revertReceipt.hash!;
 
 }
 
@@ -856,6 +879,15 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(secondMintHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(secondMintHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(secondMintHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
+
+
+    const revertHash: string = await executeRevert(deployedContract);
+    await getAndPrintCommittedTransactionTrace(revertHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE3_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(revertHash, CALL_TRACER, TEST_CONTRACT_EXECUTE3_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(revertHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE3_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(revertHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE3_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(revertHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE3_FOURBYTETRACER_FILE_NAME);
+
 
 
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
