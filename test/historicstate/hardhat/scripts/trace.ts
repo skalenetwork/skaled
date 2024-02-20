@@ -936,6 +936,12 @@ async function main(): Promise<void> {
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
 
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE3_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE3_FOURBYTETRACER_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE3_DEFAULTTRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE3_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE3_PRESTATEDIFFTRACER_FILE_NAME);
+
 
 }
 
