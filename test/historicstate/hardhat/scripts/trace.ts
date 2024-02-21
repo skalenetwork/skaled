@@ -237,7 +237,6 @@ async function deployTestContract(): Promise<object> {
 function generateNewWallet() {
     const wallet = hre.ethers.Wallet.createRandom();
     console.log("Address:", wallet.address);
-    console.log("Private Key:", wallet.privateKey);
     return wallet;
 }
 

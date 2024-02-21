@@ -65,7 +65,7 @@ public:
 
     void setError( const string& _error );
 
-    void setRevertReason( const string& _revertReason );
+    void setRevertReason( const bytes& _encodedRevertReason );
 
     void printTrace( Json::Value& _jsonTrace, const HistoricState& _statePost, int64_t _depth,
         const TraceOptions& _debugOptions );
@@ -86,6 +86,8 @@ public:
 
     uint64_t getGasUsed() const;
     uint64_t getGasRemainingBeforeCall() const;
+
+    static uint32_t bytesToUint32(const std::vector<uint8_t>& _bytes, size_t _startIndex );
 
 private:
     Instruction m_type;

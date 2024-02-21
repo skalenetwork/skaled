@@ -53,9 +53,73 @@ void FunctionCallRecord::setError( const string& _error ) {
     m_error = _error;
 }
 
-void FunctionCallRecord::setRevertReason( const string& _revertReason ) {
+// decode 4 consequitive byes in a byte array to uint32_t
+uint32_t FunctionCallRecord::bytesToUint32(
+    const std::vector< uint8_t >& _bytes, size_t _startIndex ) {
+    STATE_CHECK( ( _startIndex + 4 ) < _bytes.size() )
+
+    return ( uint32_t( _bytes[_startIndex] ) << 24 ) |
+           ( uint32_t( _bytes[_startIndex + 1] ) << 16 ) |
+           ( uint32_t( _bytes[_startIndex + 2] ) << 8 ) | uint32_t( _bytes[_startIndex + 3] );
+}
+
+constexpr uint64_t FUNCTION_SELECTOR_SIZE = 4;
+constexpr uint64_t OFFSET_SIZE = 32;
+constexpr uint64_t STRING_LENGTH_SIZE = 32;
+
+void FunctionCallRecord::setRevertReason( const bytes& _encodedRevertReason ) {
+
+    static  unsigned char functionSelector[] = {0x08, 0xC3, 0x79, 0xA0};
+
     m_reverted = true;
-    m_revertReason = _revertReason;
+
+    // Check if the encoded data is at least long enough for a function selector, offset, and
+    // length.
+    if ( _encodedRevertReason.size() < FUNCTION_SELECTOR_SIZE + OFFSET_SIZE + STRING_LENGTH_SIZE ) {
+        // incorrect encoding - setting revert reason to empty
+        m_revertReason = "";
+        return;
+    }
+
+
+    if (!std::equal(functionSelector, functionSelector + 4, _encodedRevertReason.begin())) {
+        m_revertReason = "";
+    }
+
+    u256 offset;
+
+    boost::multiprecision::import_bits( offset,
+        _encodedRevertReason.begin() + FUNCTION_SELECTOR_SIZE,
+        _encodedRevertReason.begin() + FUNCTION_SELECTOR_SIZE + OFFSET_SIZE );
+
+    // offset is always 0x20
+    if ( offset != u256( 0x20 ) ) {
+        // incorrect offset - setting revert reason to empty
+        m_revertReason = "";
+        return;
+    }
+
+
+    u256 stringLength;
+
+    boost::multiprecision::import_bits( stringLength,
+        _encodedRevertReason.begin() + FUNCTION_SELECTOR_SIZE + OFFSET_SIZE,
+        _encodedRevertReason.begin() + FUNCTION_SELECTOR_SIZE + OFFSET_SIZE + STRING_LENGTH_SIZE );
+
+    // Ensure the encoded data is long enough to contain the described string.
+    if ( _encodedRevertReason.size() <
+         FUNCTION_SELECTOR_SIZE + OFFSET_SIZE + STRING_LENGTH_SIZE + stringLength ) {
+        m_revertReason = "";
+    }
+
+    // Extract the string itself.
+    std::string result;
+    for ( size_t i = 0; i < stringLength; ++i ) {
+        result += char(
+            _encodedRevertReason[FUNCTION_SELECTOR_SIZE + OFFSET_SIZE + STRING_LENGTH_SIZE + i] );
+    }
+
+    m_revertReason = result;
 }
 
 const weak_ptr< FunctionCallRecord >& FunctionCallRecord::getParentCall() const {
@@ -158,11 +222,9 @@ FunctionCallRecord::FunctionCallRecord( Instruction _type, const Address& _from,
       m_inputData( _inputData ),
       m_value( _value ),
       m_depth( _depth ),
-      m_gasRemainingBeforeCall( _gasRemainingBeforeCall ) {
-    STATE_CHECK( m_depth >= 0 )
-}
+      m_gasRemainingBeforeCall( _gasRemainingBeforeCall ){ STATE_CHECK( m_depth >= 0 ) }
 
-uint64_t FunctionCallRecord::getGasRemainingBeforeCall() const {
+      uint64_t FunctionCallRecord::getGasRemainingBeforeCall() const {
     return m_gasRemainingBeforeCall;
 }
 
@@ -246,7 +308,7 @@ void FunctionCallRecord::setReturnValues(
     }
 
     if ( _status == evmc_status_code::EVMC_REVERT ) {
-        setRevertReason( string( _returnData.begin(), _returnData.end() ) );
+        setRevertReason( _returnData );
     }
 
     setOutputData( _returnData );
