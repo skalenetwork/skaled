@@ -57,8 +57,6 @@ const TEST_CONTRACT_EXECUTE3_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME +
 const TEST_CONTRACT_EXECUTE3_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".4byteTracer.json";
 
 
-
-
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
 const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
 const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
@@ -821,7 +819,7 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
         let newGasRemaining: bigint = currentOpLog.gas
         // geth does not correctly report gas cost of create operation
         if (previousOpLog.op !== "CREATE" && previousOpLog.op !== "RETURN"
-            && previousOpLog.op !== "CALL" && previousOpLog.op !== "REVERT") {
+            && previousOpLog.op !== "CALL" && previousOpLog.op !== "REVERT" && previousOpLog.op !== "STATICCALL") {
             expect(gasRemaining - newGasRemaining).eq(currentOpGasCost,
                 // in case of failure we print current and previous op log
                 "\n" + JSON.stringify(structLogs[index - 1]) +
@@ -886,7 +884,6 @@ async function main(): Promise<void> {
     await getAndPrintCommittedTransactionTrace(revertHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE3_PRESTATETRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(revertHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE3_PRESTATEDIFFTRACER_FILE_NAME);
     await getAndPrintCommittedTransactionTrace(revertHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE3_FOURBYTETRACER_FILE_NAME);
-
 
 
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);

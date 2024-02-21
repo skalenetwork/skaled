@@ -42,7 +42,7 @@ contract SecondContract {
         return expectedHash;
     }
 
-    function riskyFunction() public {
+    function riskyFunction() public pure{
         revert("This function reverted!");
     }
 }
@@ -63,9 +63,17 @@ contract Tracer {
     }
 
 
-    function riskyFunction() public {
+    error InsufficientBalance(uint256 requested, uint256 available);
+
+    function riskyFunction() public pure {
         revert("This function reverted!");
     }
+
+
+    function riskyFunction2() public pure {
+        revert InsufficientBalance(1, 1);
+    }
+
 
     function mint(uint amount) public returns (uint256) {
         emit InternalCallEvent(msg.sender, amount, "topic");
@@ -87,21 +95,31 @@ contract Tracer {
     }
 
 
-
     event ErrorHandled(string message);
 
     // test revert
-    function readableRevert(uint amount) public returns (uint256) {
+    function readableRevert(uint) public returns (uint256) {
 
         try  this.riskyFunction() {
             // If the call succeeds, this block is executed
         } catch Error(string memory reason) {
             // If the call reverts with an error message, this block is executed
             emit ErrorHandled(reason);
-        } catch (bytes memory lowLevelData) {
+        } catch (bytes memory) {
             // If the call reverts without an error message, this block is executed
             emit ErrorHandled("External call failed without an error message");
         }
+
+        try  this.riskyFunction2() {
+            // If the call succeeds, this block is executed
+        } catch Error(string memory reason) {
+            // If the call reverts with an error message, this block is executed
+            emit ErrorHandled(reason);
+        } catch (bytes memory ) {
+            // If the call reverts without an error message, this block is executed
+            emit ErrorHandled("External call failed without an error message");
+        }
+
 
         require(false, "INSUFFICIENT BALANCE");
         return 1;
