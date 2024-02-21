@@ -68,8 +68,7 @@ constexpr uint64_t OFFSET_SIZE = 32;
 constexpr uint64_t STRING_LENGTH_SIZE = 32;
 
 void FunctionCallRecord::setRevertReason( const bytes& _encodedRevertReason ) {
-
-    static  unsigned char functionSelector[] = {0x08, 0xC3, 0x79, 0xA0};
+    static unsigned char functionSelector[] = { 0x08, 0xC3, 0x79, 0xA0 };
 
     m_reverted = true;
 
@@ -82,7 +81,7 @@ void FunctionCallRecord::setRevertReason( const bytes& _encodedRevertReason ) {
     }
 
 
-    if (!std::equal(functionSelector, functionSelector + 4, _encodedRevertReason.begin())) {
+    if ( !std::equal( functionSelector, functionSelector + 4, _encodedRevertReason.begin() ) ) {
         m_revertReason = "";
     }
 
@@ -147,7 +146,11 @@ void FunctionCallRecord::printFunctionExecutionDetail(
         _jsonTrace["revertReason"] = m_revertReason;
     }
 
-    _jsonTrace["value"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_value );
+    // geth always prints value when there is not revert
+    // in case of revert value is printed only in top lavel functions
+    if ( m_error.empty() || m_depth == 0 ) {
+        _jsonTrace["value"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_value );
+    }
 
 
     // treat the special case when the function is a constructor. Then output data is the code of
