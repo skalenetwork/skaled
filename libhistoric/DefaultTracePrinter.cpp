@@ -60,12 +60,8 @@ namespace dev::eth {
         _jsonTrace["failed"] = m_trace.isFailed();
         _jsonTrace["gas"] = m_trace.getTotalGasUsed();
 
-        if (!m_trace.isFailed()) {
-            if (m_trace.getOptions().enableReturnData) {
-                _jsonTrace["returnValue"] = toHex(m_trace.getOutput());
-            }
-        } else {
-            _jsonTrace["returnValue"] = "";
+        if (m_trace.getOptions().enableReturnData) {
+            _jsonTrace["returnValue"] = toHex(m_trace.getOutput());
         }
     }
 
