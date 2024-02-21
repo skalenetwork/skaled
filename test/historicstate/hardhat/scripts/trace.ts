@@ -821,7 +821,7 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
         let newGasRemaining: bigint = currentOpLog.gas
         // geth does not correctly report gas cost of create operation
         if (previousOpLog.op !== "CREATE" && previousOpLog.op !== "RETURN"
-            && previousOpLog.op !== "CALL") {
+            && previousOpLog.op !== "CALL" && previousOpLog.op !== "REVERT") {
             expect(gasRemaining - newGasRemaining).eq(currentOpGasCost,
                 // in case of failure we print current and previous op log
                 "\n" + JSON.stringify(structLogs[index - 1]) +
