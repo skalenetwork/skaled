@@ -78,7 +78,7 @@ EVMSchedule const ChainOperationParams::evmSchedule(
         result = HomesteadSchedule;
 
     // 2 based on previous - decide by timestamp
-    if ( PushZeroPatch::isEnabledWhen( *this, _lastBlockTimestamp ) )
+    if ( PushZeroPatch::isEnabledWhen( _lastBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
 
     return result;
