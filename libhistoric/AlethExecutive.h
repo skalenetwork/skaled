@@ -168,7 +168,6 @@ private:
 
     u256 m_gasCost;
     ChainOperationParams const& m_chainParams;
-    time_t m_latestBlockTimestamp;
 
     bool m_isCreation = false;
     Address m_newAddress;
