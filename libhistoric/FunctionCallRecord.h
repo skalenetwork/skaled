@@ -47,7 +47,7 @@ public:
     FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
         uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
         const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
-        uint64_t _gasRemainingBeforeCall);
+        uint64_t _gasRemainingBeforeCall );
 
     [[nodiscard]] int64_t getDepth() const;
 
@@ -87,7 +87,7 @@ public:
     uint64_t getGasUsed() const;
     uint64_t getGasRemainingBeforeCall() const;
 
-    static uint32_t bytesToUint32(const std::vector<uint8_t>& _bytes, size_t _startIndex );
+    static uint32_t bytesToUint32( const std::vector< uint8_t >& _bytes, size_t _startIndex );
 
 private:
     Instruction m_type;
@@ -97,7 +97,6 @@ private:
     uint64_t m_gasUsed = 0;
     vector< shared_ptr< FunctionCallRecord > > m_nestedCalls;
     weak_ptr< FunctionCallRecord > m_parentCall;
-
 
 
 private:
