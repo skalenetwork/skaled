@@ -232,7 +232,7 @@ void LegacyVM::interpretCases() {
         CASE( CREATE2 ) {
             // for CREATE and CREATE2 we call ON_OP in caseCreate, since it calculates
             // correct gas cost
-            //ON_OP();
+            // ON_OP();
             if ( !m_schedule->haveCreate2 )
                 throwBadInstruction();
             if ( m_ext->staticCall )
@@ -245,7 +245,7 @@ void LegacyVM::interpretCases() {
         CASE( CREATE ) {
             // for CREATE and CREATE2 we call ON_OP in caseCreate, since it calculates
             // correct gas cost
-            //ON_OP();
+            // ON_OP();
             if ( m_ext->staticCall )
                 throwDisallowedStateChange();
 

@@ -20,8 +20,8 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 
-#include "TracePrinter.h"
 #include "TraceOptions.h"
+#include "TracePrinter.h"
 
 namespace Json {
 class Value;
@@ -38,11 +38,9 @@ public:
 
     virtual void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
+
 private:
-
-    static void appendOpToDefaultTrace(std::shared_ptr<OpExecutionRecord> _opExecutionRecord,
-                                                     std::shared_ptr<Json::Value> &_defaultTrace,
-                                                     TraceOptions &_traceOptions);
-
+    static void appendOpToDefaultTrace( std::shared_ptr< OpExecutionRecord > _opExecutionRecord,
+        std::shared_ptr< Json::Value >& _defaultTrace, TraceOptions& _traceOptions );
 };
 }  // namespace dev::eth

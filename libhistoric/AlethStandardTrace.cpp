@@ -165,10 +165,9 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
     uint64_t _gasLimit, const vector< uint8_t >& _inputData, const u256& _value ) {
     STATE_CHECK( !m_isFinalized )
 
-    auto functionCall =
-        make_shared< FunctionCallRecord >( getLastOpRecord()->m_op, _from, _to, _gasLimit,
-            m_currentlyExecutingFunctionCall, _inputData, _value, getLastOpRecord()->m_depth + 1,
-            getLastOpRecord()->m_gasRemaining);
+    auto functionCall = make_shared< FunctionCallRecord >( getLastOpRecord()->m_op, _from, _to,
+        _gasLimit, m_currentlyExecutingFunctionCall, _inputData, _value,
+        getLastOpRecord()->m_depth + 1, getLastOpRecord()->m_gasRemaining );
 
     if ( getLastOpRecord()->m_depth >= 0 ) {
         // we are not in the top smartcontract call
@@ -180,8 +179,8 @@ void AlethStandardTrace::recordFunctionIsCalled( const Address& _from, const Add
         auto lastOpRecordIndex = m_executionRecordSequence->size() - 1;
         auto lastOp = getLastOpRecord()->m_op;
 
-        if (lastOp == Instruction::CALL || lastOp == Instruction:: DELEGATECALL ||
-            lastOp == Instruction::CALLCODE || lastOp == Instruction::STATICCALL) {
+        if ( lastOp == Instruction::CALL || lastOp == Instruction::DELEGATECALL ||
+             lastOp == Instruction::CALLCODE || lastOp == Instruction::STATICCALL ) {
             STATE_CHECK( m_callInstructionCounterToFunctionRecord.count( lastOpRecordIndex ) == 0 );
             m_callInstructionCounterToFunctionRecord.emplace( lastOpRecordIndex, functionCall );
         }
