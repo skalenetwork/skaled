@@ -111,6 +111,14 @@ inline bytes asBytes( std::string const& _b ) {
 /// @example asNibbles("A")[0] == 4 && asNibbles("A")[1] == 1
 bytes asNibbles( bytesConstRef const& _s );
 
+// converts byte array containing a custom error message thrown by EVM to string
+std::string customErrorMessageToString( const bytes& _b );
+
+// converts byte array containing a revert message thrown by EVM to string
+std::string revertMessageToString( const bytes& _b );
+
+// converts byte array containing an error message thrown by EVM to string
+std::string errorMessageToString( const bytes& _b );
 
 // Big-endian to/from host endian conversion functions.
 
