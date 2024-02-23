@@ -245,9 +245,14 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
+
+    // chain params needs to be a field of JsonRPCFixture
+    // since references to it are passed to the server
+    ChainParams chainParams;
+
     JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false ) {
         dev::p2p::NetworkPreferences nprefs;
-        ChainParams chainParams;
+
 
         if ( _config != "" ) {
             if ( !_generation2 ) {
