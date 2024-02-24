@@ -101,16 +101,6 @@ void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
 }
 
-// this will be changed to just extract all **PatchTimestamp params by wildcard,
-// thus eliminating if..if
 time_t ChainOperationParams::getPatchTimestamp( const std::string& _name ) const {
-    if ( _name == "PushZeroPatch" )
-        return sChain.pushZeroPatchTimestamp;
-    if ( _name == "RevertableFSPatch" )
-        return sChain.revertableFSPatchTimestamp;
-    if ( _name == "ContractStorageZeroValuePatch" )
-        return sChain.contractStorageZeroValuePatchTimestamp;
-    if ( _name == "SkipInvalidTransactionsPatch" )
-        return sChain.skipInvalidTransactionsPatchTimestamp;
-    assert( false );
+    return sChain.getPatchTimestamp( _name );
 }

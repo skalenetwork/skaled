@@ -213,7 +213,8 @@ bool AlethExecutive::create( Address const& _txSender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin ) {
     // Contract will be created with the version corresponding to latest hard fork
     auto const latestVersion =
-        m_chainParams.evmSchedule( m_envInfo.latestBlockTimestamp(), m_envInfo.number() ).accountVersion;
+        m_chainParams.evmSchedule( m_envInfo.latestBlockTimestamp(), m_envInfo.number() )
+            .accountVersion;
     return createWithAddressFromNonceAndSender(
         _txSender, _endowment, _gasPrice, _gas, _init, _origin, latestVersion );
 }

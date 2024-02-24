@@ -138,7 +138,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;
         if( params.count("skipInvalidTransactionsPatchTimestamp") && stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) ) )
-            chainParams.sChain.skipInvalidTransactionsPatchTimestamp = 1;
+            chainParams.sChain._patchTimestamps["SkipInvalidTransactionsPatch"] = 1;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase, account2} );

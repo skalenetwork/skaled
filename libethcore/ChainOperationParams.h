@@ -169,16 +169,28 @@ public:
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     size_t t = 1;
-    time_t revertableFSPatchTimestamp = 0;
-    time_t contractStoragePatchTimestamp = 0;
-    time_t contractStorageZeroValuePatchTimestamp = 0;
-    time_t verifyDaSigsPatchTimestamp = 0;
-    time_t storageDestructionPatchTimestamp = 0;
-    time_t powCheckPatchTimestamp = 0;
-    time_t precompiledConfigPatchTimestamp = 0;
-    time_t pushZeroPatchTimestamp = 0;
-    time_t skipInvalidTransactionsPatchTimestamp = 0;
-    time_t correctForkInPowPatchTimestamp = 0;
+
+    // key is patch name
+    // public - for tests, don't access it directly
+    std::map< std::string, time_t > _patchTimestamps;
+    time_t getPatchTimestamp( const std::string& name ) const {
+        try {
+            return _patchTimestamps.at( name );
+        } catch ( const std::out_of_range& ) {
+            return 0;
+        }  // catch
+    }
+
+    //    time_t revertableFSPatchTimestamp = 0;
+    //    time_t contractStoragePatchTimestamp = 0;
+    //    time_t contractStorageZeroValuePatchTimestamp = 0;
+    //    time_t verifyDaSigsPatchTimestamp = 0;
+    //    time_t storageDestructionPatchTimestamp = 0;
+    //    time_t powCheckPatchTimestamp = 0;
+    //    time_t precompiledConfigPatchTimestamp = 0;
+    //    time_t pushZeroPatchTimestamp = 0;
+    //    time_t skipInvalidTransactionsPatchTimestamp = 0;
+    //    time_t correctForkInPowPatchTimestamp = 0;
 
     SChain() {
         name = "TestChain";

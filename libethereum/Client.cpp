@@ -159,18 +159,17 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
-    //    ContractStorageZeroValuePatch::setTimestamp(
-    //        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
-    VerifyDaSigsPatch::setTimestamp( chainParams().sChain.verifyDaSigsPatchTimestamp );
-    //    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
-    StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
-    POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
-    // PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
-    //    SkipInvalidTransactionsPatch::setTimestamp(
-    //        this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
-    PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
-    CorrectForkInPowPatch::setTimestamp( chainParams().sChain.correctForkInPowPatchTimestamp );
+    ContractStorageLimitPatch::setTimestamp(
+        chainParams().sChain.getPatchTimestamp( "ContractStoragePatch" ) );
+    VerifyDaSigsPatch::setTimestamp(
+        chainParams().sChain.getPatchTimestamp( "VerifyDaSigsPatch" ) );
+    StorageDestructionPatch::setTimestamp(
+        chainParams().sChain.getPatchTimestamp( "StorageDestructionPatch" ) );
+    POWCheckPatch::setTimestamp( chainParams().sChain.getPatchTimestamp( "PowCheckPatch" ) );
+    PrecompiledConfigPatch::setTimestamp(
+        chainParams().sChain.getPatchTimestamp( "PrecompiledConfigPatch" ) );
+    CorrectForkInPowPatch::setTimestamp(
+        chainParams().sChain.getPatchTimestamp( "CorrectForkInPowPatch" ) );
 }
 
 
@@ -329,6 +328,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         m_snapshotAgent->init( number(), blockInfo( hashFromNumber( 1 ) ).timestamp() );
         m_snapshotAgentInited = true;
     }
+
+    SchainPatch::init( chainParams() );
+    SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
@@ -605,6 +607,8 @@ size_t Client::importTransactionsAsBlock(
         _transactions, _gasPrice, _timestamp, bIsPartial ? &vecMissing : nullptr );
     sealUnconditionally( false );
     importWorkingBlock();
+
+    SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
     // this needs to be updated as soon as possible, as it's used in new transactions validation
     CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
