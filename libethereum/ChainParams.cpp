@@ -251,6 +251,11 @@ ChainParams ChainParams::loadConfig(
             }  // if
         }      // for
 
+        // HACK Some names are non-standard
+        s._patchTimestamps["ContractStorageLimitPatch"] =
+            s.getPatchTimestamp( "ContractStoragePatch" );
+        s._patchTimestamps["POWCheckPatch"] = s.getPatchTimestamp( "PowCheckPatch" );
+
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
