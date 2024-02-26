@@ -53,7 +53,7 @@ public:
     void verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent,
         bytesConstRef _block ) const override;
     static void verifyTransaction( ChainOperationParams const& _chainParams,
-        ImportRequirements::value _ir, TransactionBase const& _t, time_t _latestBlockTimestamp,
+        ImportRequirements::value _ir, TransactionBase const& _t, time_t _committedBlockTimestamp,
         BlockHeader const& _header, u256 const& _startGasUsed );
     void populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const override;
 

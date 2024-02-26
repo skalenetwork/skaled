@@ -56,7 +56,7 @@ ChainOperationParams::ChainOperationParams()
       durationLimit( 0x0d ) {}
 
 EVMSchedule const ChainOperationParams::evmSchedule(
-    time_t _lastBlockTimestamp, u256 const& _blockNumber ) const {
+    time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
     EVMSchedule result;
 
     // 1 decide by block number
@@ -78,7 +78,7 @@ EVMSchedule const ChainOperationParams::evmSchedule(
         result = HomesteadSchedule;
 
     // 2 based on previous - decide by timestamp
-    if ( PushZeroPatch::isEnabledWhen( _lastBlockTimestamp ) )
+    if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
 
     return result;
@@ -92,8 +92,8 @@ u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
 }
 
 u256 ChainOperationParams::blockReward(
-    time_t _latestBlockTimestamp, u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{ evmSchedule( _latestBlockTimestamp, _blockNumber ) };
+    time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
+    EVMSchedule const& schedule{ evmSchedule( _committedBlockTimestamp, _blockNumber ) };
     return blockReward( schedule );
 }
 

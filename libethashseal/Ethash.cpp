@@ -131,10 +131,10 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
 }
 
 void Ethash::verifyTransaction( ChainOperationParams const& _chainParams,
-    ImportRequirements::value _ir, TransactionBase const& _t, time_t _latestBlockTimestamp,
+    ImportRequirements::value _ir, TransactionBase const& _t, time_t _committedBlockTimestamp,
     BlockHeader const& _header, u256 const& _startGasUsed ) {
     SealEngineFace::verifyTransaction(
-        _chainParams, _ir, _t, _latestBlockTimestamp, _header, _startGasUsed );
+        _chainParams, _ir, _t, _committedBlockTimestamp, _header, _startGasUsed );
 }
 
 u256 Ethash::childGasLimit( BlockHeader const& _bi, u256 const& _gasFloorTarget ) const {

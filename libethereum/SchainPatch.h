@@ -30,17 +30,17 @@ public:
 
 protected:
     static dev::eth::ChainOperationParams chainParams;
-    static time_t latestBlockTimestamp;
+    static time_t committedBlockTimestamp;
 };
 
-#define DEFINE_AMNESIC_PATCH( BlaBlaPatch )                                                 \
-    class BlaBlaPatch : public SchainPatch {                                                \
-    public:                                                                                 \
-        static std::string getName() { return #BlaBlaPatch; }                               \
-        static bool isEnabledAtLatestBlock() {                                              \
-            time_t activationTimestamp = chainParams.getPatchTimestamp( getName() );        \
-            return activationTimestamp != 0 && latestBlockTimestamp >= activationTimestamp; \
-        }                                                                                   \
+#define DEFINE_AMNESIC_PATCH( BlaBlaPatch )                                                    \
+    class BlaBlaPatch : public SchainPatch {                                                   \
+    public:                                                                                    \
+        static std::string getName() { return #BlaBlaPatch; }                                  \
+        static bool isEnabledAtLatestBlock() {                                                 \
+            time_t activationTimestamp = chainParams.getPatchTimestamp( getName() );           \
+            return activationTimestamp != 0 && committedBlockTimestamp >= activationTimestamp; \
+        }                                                                                      \
     };
 
 // TODO One more overload - with EnvInfo?
@@ -53,9 +53,9 @@ protected:
             time_t timestamp = chainParams.getPatchTimestamp( getName() );                         \
             return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );                      \
         }                                                                                          \
-        static bool isEnabledWhen( time_t _lastBlockTimestamp ) {                                  \
+        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
             time_t activationTimestamp = chainParams.getPatchTimestamp( getName() );               \
-            return activationTimestamp != 0 && _lastBlockTimestamp >= activationTimestamp;         \
+            return activationTimestamp != 0 && _committedBlockTimestamp >= activationTimestamp;    \
         }                                                                                          \
     };
 
@@ -68,9 +68,9 @@ protected:
             time_t timestamp = _bc.chainParams().getPatchTimestamp( getName() );                   \
             return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );                      \
         }                                                                                          \
-        static bool isEnabledWhen( time_t _lastBlockTimestamp ) {                                  \
+        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
             time_t my_timestamp = chainParams.getPatchTimestamp( getName() );                      \
-            return _lastBlockTimestamp >= my_timestamp;                                            \
+            return _committedBlockTimestamp >= my_timestamp;                                       \
         }                                                                                          \
         static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
     };

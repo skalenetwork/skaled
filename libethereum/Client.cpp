@@ -336,7 +336,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     AmsterdamFixPatch::isEnabled( *this );
 
     // needed for checkOutExternalGas
-    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::committedBlockTimestamp = blockChain().info().timestamp();
     CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
     initCPUUSage();
@@ -611,7 +611,7 @@ size_t Client::importTransactionsAsBlock(
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
     // this needs to be updated as soon as possible, as it's used in new transactions validation
-    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::committedBlockTimestamp = blockChain().info().timestamp();
     CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
     if ( !UnsafeRegion::isActive() ) {
@@ -683,7 +683,6 @@ size_t Client::syncTransactions(
     //    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
     PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
     CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
 
     DEV_WRITE_GUARDED( x_working ) {

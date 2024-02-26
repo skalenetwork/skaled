@@ -544,9 +544,9 @@ void testBCTest( json_spirit::mObject const& _o ) {
     ImportTest::compareStates( postState, blockchain.topBlock().state() );
 }
 
-bigint calculateMiningReward( time_t _latestBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
+bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
     ChainOperationParams const& _cp ) {
-    bigint const baseReward = _cp.blockReward( _latestBlockTimestamp, _blNumber );
+    bigint const baseReward = _cp.blockReward( _committedBlockTimestamp, _blNumber );
     bigint reward = baseReward;
     // INCLUDE_UNCLE = BASE_REWARD / 32
     // UNCLE_REWARD  = BASE_REWARD * (8 - Bn + Un) / 8

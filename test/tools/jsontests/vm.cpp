@@ -92,7 +92,7 @@ mObject FakeExtVM::exportEnv() {
     return ret;
 }
 
-EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes, time_t _latestBlockTimestamp ) {
+EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes, time_t _committedBlockTimestamp ) {
     // cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
     assert( _o.count( "currentGasLimit" ) > 0 );
     assert( _o.count( "currentDifficulty" ) > 0 );
@@ -109,7 +109,7 @@ EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _las
     blockHeader.setTimestamp( toPositiveInt64( _o.at( "currentTimestamp" ) ) );
     blockHeader.setAuthor( Address( _o.at( "currentCoinbase" ).get_str() ) );
     blockHeader.setNumber( toPositiveInt64( _o.at( "currentNumber" ) ) );
-    return EnvInfo( blockHeader, _lastBlockHashes, _latestBlockTimestamp, 0, 0 );
+    return EnvInfo( blockHeader, _lastBlockHashes, _committedBlockTimestamp, 0, 0 );
 }
 
 mObject FakeExtVM::exportState() {

@@ -58,7 +58,7 @@ public:
         BlockHeader const& _parent = BlockHeader(), bytesConstRef _block = bytesConstRef() ) const;
     /// Additional verification for transactions in blocks.
     static void verifyTransaction( ChainOperationParams const& _chainParams,
-        ImportRequirements::value _ir, TransactionBase const& _t, time_t _latestBlockTimestamp,
+        ImportRequirements::value _ir, TransactionBase const& _t, time_t _committedBlockTimestamp,
         BlockHeader const& _header, u256 const& _gasUsed );
     /// Don't forget to call Super::populateFromParent when subclassing & overriding.
     virtual void populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const;
@@ -95,8 +95,8 @@ public:
         return this;
     }
     virtual EVMSchedule evmSchedule(
-        time_t _latestBlockTimestamp, u256 const& _blockNumber ) const = 0;
-    virtual u256 blockReward( time_t _latestBlockTimestamp, u256 const& _blockNumber ) const = 0;
+        time_t _committedBlockTimestamp, u256 const& _blockNumber ) const = 0;
+    virtual u256 blockReward( time_t _committedBlockTimestamp, u256 const& _blockNumber ) const = 0;
 
     virtual bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
         return m_params.precompiled.count( _a ) != 0 &&
@@ -138,8 +138,8 @@ public:
         m_onSealGenerated = _f;
     }
     EVMSchedule evmSchedule(
-        time_t _latestBlockTimestamp, u256 const& _blockNumber ) const override;
-    u256 blockReward( time_t _latestBlockTimestamp, u256 const& _blockNumber ) const override;
+        time_t _committedBlockTimestamp, u256 const& _blockNumber ) const override;
+    u256 blockReward( time_t _committedBlockTimestamp, u256 const& _blockNumber ) const override;
 
 protected:
     std::function< void( bytes const& s ) > m_onSealGenerated;

@@ -39,8 +39,8 @@ public:
               _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
           m_s( _s ),
           m_chainParams( _chainParams ),
-          m_evmSchedule(
-              initEvmSchedule( _envInfo.latestBlockTimestamp(), envInfo().number(), _version ) ) {
+          m_evmSchedule( initEvmSchedule(
+              _envInfo.committedBlockTimestamp(), envInfo().number(), _version ) ) {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
         // the account must be created first.
@@ -98,11 +98,11 @@ public:
 
 private:
     EVMSchedule initEvmSchedule(
-        time_t _latestBlockTimestamp, int64_t _blockNumber, u256 const& _version ) const {
+        time_t _committedBlockTimestamp, int64_t _blockNumber, u256 const& _version ) const {
         // If _version is latest for the block, select corresponding latest schedule.
         // Otherwise run with the latest schedule known to correspond to the _version.
         EVMSchedule currentBlockSchedule =
-            m_chainParams.evmSchedule( _latestBlockTimestamp, _blockNumber );
+            m_chainParams.evmSchedule( _committedBlockTimestamp, _blockNumber );
         if ( currentBlockSchedule.accountVersion == _version )
             return currentBlockSchedule;
         else
@@ -111,7 +111,7 @@ private:
 
 
     dev::eth::HistoricState& m_s;  ///< A reference to the base state.
-    time_t m_latestBlockTimestamp;
+    time_t m_committedBlockTimestamp;
     ChainOperationParams const& m_chainParams;
     EVMSchedule const m_evmSchedule;
 };

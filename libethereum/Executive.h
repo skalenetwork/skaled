@@ -202,7 +202,7 @@ public:
     /// Revert all changes made to the state by this execution.
     void revert();
 
-    static void verifyTransaction( Transaction const& _transaction, time_t _latestBlockTimestamp,
+    static void verifyTransaction( Transaction const& _transaction, time_t _committedBlockTimestamp,
         BlockHeader const& _blockHeader, const skale::State& _state,
         const ChainOperationParams& _chainParams, u256 const& _gasUsed, const u256& _gasPrice,
         const bool _allowFuture = false );

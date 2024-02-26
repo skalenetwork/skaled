@@ -191,7 +191,7 @@ void Executive::accrueSubState( SubState& _parentContext ) {
         _parentContext += m_ext->sub;
 }
 
-void Executive::verifyTransaction( Transaction const& _transaction, time_t _latestBlockTimestamp,
+void Executive::verifyTransaction( Transaction const& _transaction, time_t _committedBlockTimestamp,
     BlockHeader const& _blockHeader, const State& _state,
     const eth::ChainOperationParams& _chainParams, u256 const& _gasUsed, const u256& _gasPrice,
     const bool _allowFuture ) {
@@ -204,7 +204,7 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _late
     }
 
     Ethash::verifyTransaction( _chainParams, ImportRequirements::Everything, _transaction,
-        _latestBlockTimestamp, _blockHeader, _gasUsed );
+        _committedBlockTimestamp, _blockHeader, _gasUsed );
 
     if ( !_transaction.hasZeroSignature() ) {
         // skip nonce check for calls
@@ -249,11 +249,11 @@ void Executive::initialize( Transaction const& _transaction ) {
     MICROPROFILE_SCOPEI( "Executive", "initialize", MP_GAINSBORO );
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(
-        m_chainParams.evmSchedule( m_envInfo.latestBlockTimestamp(), m_envInfo.number() ) );
+        m_chainParams.evmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() ) );
 
     try {
-        verifyTransaction( _transaction, m_envInfo.latestBlockTimestamp(), m_envInfo.header(), m_s,
-            m_chainParams, m_envInfo.gasUsed(), m_systemGasPrice );
+        verifyTransaction( _transaction, m_envInfo.committedBlockTimestamp(), m_envInfo.header(),
+            m_s, m_chainParams, m_envInfo.gasUsed(), m_systemGasPrice );
     } catch ( Exception const& ex ) {
         m_excepted = toTransactionException( ex );
         throw;
