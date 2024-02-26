@@ -2313,7 +2313,7 @@ string hostname_to_ip( string hostname ) {
 // we add empty object if no tracer  parameter is present
 void SkaleServerOverride::preprocessTraceRequestIfNeeded(
     const string& methodName, nlohmann::json& jsonRpcRequest ) {
-    if ( methodName.find( "debug_trace" ) == string::npos ) {
+    if ( methodName.find( "debug_trace" ) != 0 ) {
         // not a debug trace call
         return;
     }
