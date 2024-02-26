@@ -200,7 +200,6 @@ async function getBlockTrace(blockNumber: number): Promise<String> {
     let trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr]);
     trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
 
-    0// console.log(JSON.stringify(trace, null, 4));
     return trace;
 }
 
