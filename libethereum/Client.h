@@ -124,6 +124,10 @@ public:
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
 
+    using ClientBase::blockDetails;
+    using ClientBase::blockInfo;  // for another overload
+    using ClientBase::uncleHashes;
+
     /// Retrieve pending transactions
     Transactions pending() const override;
 
