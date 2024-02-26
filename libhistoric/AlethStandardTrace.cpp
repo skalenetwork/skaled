@@ -50,7 +50,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
     vector< uint8_t > returnData;
     uint64_t logTopicsCount = 0;
     switch ( _inst ) {
-        // record storage accesses
+    // record storage accesses
     case Instruction::SLOAD:
         // SLOAD - record storage access
         // the stackSize() check prevents malicios code crashing the tracer
@@ -67,7 +67,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
                 _vm->getStackElement( 1 );
         }
         break;
-    // NOW HANDLE CONTRACT FUNCTION CALL INSTRUCTIONS
+        // NOW HANDLE CONTRACT FUNCTION CALL INSTRUCTIONS
     case Instruction::CALL:
     case Instruction::CALLCODE:
     case Instruction::DELEGATECALL:
@@ -78,7 +78,7 @@ void AlethStandardTrace::analyzeInstructionAndRecordNeededInformation( uint64_t,
             m_accessedAccounts.insert( address );
         }
         break;
-    // NOW HANDLE SUICIDE
+        // NOW HANDLE SUICIDE
     case Instruction::SUICIDE:
         if ( _vm->stackSize() > 0 ) {
             m_accessedAccounts.insert( asAddress( _vm->getStackElement( 0 ) ) );
@@ -118,11 +118,11 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
     // check if instruction depth changed. This means a function has been called or has returned
 
     if ( currentDepth == m_lastOpRecord.m_depth + 1 ) {
-        // we are beginning to execute a new function
-        auto data = _ext.data.toVector();
-        recordFunctionIsCalled( _ext.caller, _ext.myAddress, _gasRemaining, data, _ext.value );
+        recordFunctionIsCalled(
+            _ext.caller, _ext.myAddress, _gasRemaining, getInputData( _ext ), _ext.value );
     } else if ( currentDepth == m_lastOpRecord.m_depth - 1 ) {
         auto status = _vm->getAndClearLastCallStatus();
+
         recordFunctionReturned( status, _vm->getReturnData(),
             getCurrentlyExecutingFunctionCall()->getFunctionGasLimit() - _gasRemaining );
     } else {
@@ -130,6 +130,19 @@ void AlethStandardTrace::processFunctionCallOrReturnIfHappened(
         STATE_CHECK( currentDepth == m_lastOpRecord.m_depth )
     }
 }
+
+vector< uint8_t > AlethStandardTrace::getInputData( const AlethExtVM& _ext ) const {
+    if ( m_lastOpRecord.m_op == Instruction::CREATE ||
+         m_lastOpRecord.m_op == Instruction::CREATE2 ) {
+        // we are in a constructor code, so input to the function is current
+        // code
+        return _ext.code;
+    } else {
+        // we are in a regular function so input is inputData field of _ext
+        return _ext.data.toVector();
+    }
+}
+
 const Address& AlethStandardTrace::getFrom() const {
     STATE_CHECK( m_isFinalized )
     return m_from;
@@ -266,6 +279,7 @@ const u256& AlethStandardTrace::getGasLimit() const {
     STATE_CHECK( m_isFinalized )
     return m_gasLimit;
 }
+
 void AlethStandardTrace::setOriginalFromBalance( const u256& _originalFromBalance ) {
     STATE_CHECK( !m_isFinalized )
     m_originalFromBalance = _originalFromBalance;
@@ -386,19 +400,47 @@ void eth::AlethStandardTrace::finalizeAndPrintTrace(
     ExecutionResult& _er, HistoricState& _statePre, HistoricState& _statePost ) {
     m_totalGasUsed = ( uint64_t ) _er.gasUsed;
 
-    auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
+    m_output = _er.output;
+    m_deployedContractAddress = _er.newAddress;
+    m_evmcStatusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
 
     STATE_CHECK( m_topFunctionCall == m_currentlyExecutingFunctionCall )
 
     // if transaction is not just ETH transfer
     // record return of the top function.
     if ( m_topFunctionCall ) {
-        recordFunctionReturned( statusCode, _er.output, m_totalGasUsed );
+        recordFunctionReturned( m_evmcStatusCode, m_output, m_totalGasUsed );
     }
+
+
+    recordMinerFeePayment( _statePost );
+
+
     // we are done. Set the trace to finalized
     STATE_CHECK( !m_isFinalized.exchange( true ) )
     // now print trace
     printTrace( _er, _statePre, _statePost );
+}
+
+void eth::AlethStandardTrace::recordMinerFeePayment( HistoricState& _statePost ) {
+    if ( !m_isCall ) {  // geth does not record miner fee payments in call traces
+        auto fee = m_gasPrice * m_totalGasUsed;
+        auto fromPostBalance = _statePost.balance( m_from );
+        STATE_CHECK( fromPostBalance >= fee )
+        _statePost.setBalance( m_from, fromPostBalance - fee );
+        auto minerBalance = _statePost.balance( m_blockAuthor );
+        _statePost.setBalance( m_blockAuthor, minerBalance + fee );
+    }
+}
+
+const bytes& AlethStandardTrace::getOutput() const {
+    STATE_CHECK( m_isFinalized )
+    return m_output;
+}
+
+bool AlethStandardTrace::isFailed() const {
+    STATE_CHECK( m_isFinalized )
+    return m_evmcStatusCode != EVMC_SUCCESS;
 }
 
 void eth::AlethStandardTrace::printTrace( ExecutionResult& _er, const HistoricState& _statePre,
@@ -496,10 +538,12 @@ const bytes& AlethStandardTrace::getInputData() const {
     STATE_CHECK( m_isFinalized )
     return m_inputData;
 }
+
 const u256& AlethStandardTrace::getValue() const {
     STATE_CHECK( m_isFinalized )
     return m_value;
 }
+
 const Address& AlethStandardTrace::getTo() const {
     STATE_CHECK( m_isFinalized )
     return m_to;
@@ -509,6 +553,27 @@ const u256& AlethStandardTrace::getGasPrice() const {
     STATE_CHECK( m_isFinalized )
     return m_gasPrice;
 }
+
+evmc_status_code AlethStandardTrace::getEVMCStatusCode() const {
+    STATE_CHECK( m_isFinalized )
+    return m_evmcStatusCode;
+}
+
+const Address& AlethStandardTrace::getDeployedContractAddress() const {
+    return m_deployedContractAddress;
+}
+
+// return true if transaction is a simple Eth transfer
+[[nodiscard]] bool AlethStandardTrace::isSimpleTransfer() {
+    return !m_topFunctionCall;
+}
+
+// return true if transaction is contract creation
+[[nodiscard]] bool AlethStandardTrace::isContractCreation() {
+    return m_topFunctionCall && m_topFunctionCall->getType() == Instruction::CREATE;
+}
+
 }  // namespace dev::eth
+
 
 #endif

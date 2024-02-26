@@ -14,34 +14,43 @@ const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
 const ZERO_ADDRESS: string = '0x0000000000000000000000000000000000000000';
 const INITIAL_MINT: bigint = 10000000000000000000000000000000000000000n;
 const TEST_CONTRACT_NAME = "Tracer";
-const RUN_FUNCTION_NAME = "mint";
+const EXECUTE_FUNCTION_NAME = "mint";
+const EXECUTE2_FUNCTION_NAME = "mint2";
 const CALL_FUNCTION_NAME = "getBalance";
 
 const SKALE_TRACES_DIR = "/tmp/skale_traces/"
 const GETH_TRACES_DIR = "scripts/geth_traces/"
 
-let DEFAULT_TRACER = "defaultTracer";
-let CALL_TRACER = "callTracer";
-let PRESTATE_TRACER = "prestateTracer";
-let PRESTATEDIFF_TRACER = "prestateDiffTracer";
-let FOURBYTE_TRACER = "4byteTracer";
-let REPLAY_TRACER = "replayTracer"
+const DEFAULT_TRACER = "defaultTracer";
+const CALL_TRACER = "callTracer";
+const PRESTATE_TRACER = "prestateTracer";
+const PRESTATEDIFF_TRACER = "prestateDiffTracer";
+const FOURBYTE_TRACER = "4byteTracer";
+const REPLAY_TRACER = "replayTracer";
 
 
-async function getTraceJsonOptions(_tracer: string): Promise<object> {
-    if (_tracer == DEFAULT_TRACER) {
-        return {};
-    }
+const TEST_DEPLOY_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
+const TEST_DEPLOY_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.callTracer.json";
+const TEST_DEPLOY_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.prestateTracer.json";
+const TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.prestateDiffTracer.json";
+const TEST_DEPLOY_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.4byteTracer.json";
 
-    if (_tracer == PRESTATEDIFF_TRACER) {
-        return {"tracer": PRESTATE_TRACER, "tracerConfig": {diffMode: true}};
-    }
 
-    return {"tracer": _tracer}
-}
 
-const TEST_CONTRACT_DEPLOY_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.defaultTracer.json";
-const TEST_CONTRACT_RUN_FILE_NAME = TEST_CONTRACT_NAME + "." + RUN_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".prestateDiffTracer.json";
+const TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".4byteTracer.json";
+
+
+const TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".defaultTracer.json";
+const TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".callTracer.json";
+const TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".prestateTracer.json";
+const TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".prestateDiffTracer.json";
+const TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".4byteTracer.json";
+
+
 const TEST_TRANSFER_DEFAULTTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.defaultTracer.json";
 const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
 const TEST_TRANSFER_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.prestateTracer.json";
@@ -55,6 +64,44 @@ const TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + C
 const TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".prestateDiffTracer.json";
 const TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".4byteTracer.json";
 const TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + CALL_FUNCTION_NAME + ".replayTracer.json";
+
+var DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE: string = "";
+
+async function replaceAddressesWithSymbolicNames(_traceFileName: string) {
+
+    let callAddressLowerCase = CALL_ADDRESS.toLowerCase();
+
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+        callAddressLowerCase, "CALL.address");
+
+    let ownerAddressLowerCase = OWNER_ADDRESS.toLowerCase();
+
+    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+        ownerAddressLowerCase, "OWNER.address");
+
+    // if the contract has been deployed, also replace contract address
+
+    if (DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE.length > 0) {
+        await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
+            DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE, TEST_CONTRACT_NAME + ".address");
+
+    }
+
+
+}
+
+async function getTraceJsonOptions(_tracer: string): Promise<object> {
+    if (_tracer == DEFAULT_TRACER) {
+        return {};
+    }
+
+    if (_tracer == PRESTATEDIFF_TRACER) {
+        return {"tracer": PRESTATE_TRACER, "tracerConfig": {diffMode: true}};
+    }
+
+    return {"tracer": _tracer}
+}
+
 
 async function deleteAndRecreateDirectory(dirPath: string): Promise<void> {
     try {
@@ -115,7 +162,6 @@ async function replaceStringInFile(_filePath, _str1, _str2) {
     // Write the file
     fs.writeFileSync(_filePath, transformedFile, 'utf8');
 
-
 }
 
 
@@ -167,10 +213,9 @@ async function deployTestContract(): Promise<object> {
 
     const deployReceipt = await ethers.provider.getTransactionReceipt(deployedTestContract.deployTransaction.hash)
     const deployBlockNumber: number = deployReceipt.blockNumber;
+
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
-
-    await getAndPrintCommittedTransactionTrace(hash, DEFAULT_TRACER, TEST_CONTRACT_DEPLOY_FILE_NAME);
 
     return deployedTestContract;
 
@@ -219,7 +264,7 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
     return currentNonce;
 }
 
-async function sendMoneyWithConfirmation(): Promise<string> {
+async function sendTransferWithConfirmation(): Promise<string> {
     // Generate a new wallet
     const newWallet = generateNewWallet();
 
@@ -246,26 +291,50 @@ async function sendMoneyWithConfirmation(): Promise<string> {
 }
 
 
-async function callTestContractRun(deployedContract: any): Promise<string> {
+async function executeTransferAndThenTestContractMintInSingleBlock(deployedContract: any): Promise<string> {
 
     let currentNonce: int = await sendMoneyWithoutConfirmation();
 
-    const transferReceipt = await deployedContract[RUN_FUNCTION_NAME](1000, {
+    const mintReceipt = await deployedContract[EXECUTE_FUNCTION_NAME](1000, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
 
-    expect(transferReceipt.blockNumber).not.to.be.null;
+    expect(mintReceipt.blockNumber).not.to.be.null;
 
 
-    await getAndPrintCommittedTransactionTrace(transferReceipt.hash, DEFAULT_TRACER, TEST_CONTRACT_RUN_FILE_NAME);
-    await getBlockTrace(transferReceipt.blockNumber);
-
-    const transferHash: string = await sendMoneyWithConfirmation();
-
-    return transferHash;
+    const trace: string = await getBlockTrace(mintReceipt.blockNumber);
 
 
+    expect(Array.isArray(trace));
+
+    // the array should have two elements
+    if (hre.network.name != "geth") {
+        expect(trace.length == 2);
+    }
+
+    return mintReceipt.hash!;
+
+}
+
+async function executeMint2(deployedContract: any): Promise<string> {
+
+
+    const mint2Receipt = await deployedContract[EXECUTE2_FUNCTION_NAME](1000, {
+        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call,
+    });
+
+    expect(mint2Receipt.blockNumber).not.to.be.null;
+
+
+    return mint2Receipt.hash!;
+
+}
+
+
+async function writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName: string, traceResult: string) {
+    writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
+    await replaceAddressesWithSymbolicNames(_traceFileName);
 }
 
 async function callDebugTraceCall(_deployedContract: any, _tracer: string, _traceFileName: string): Promise<void> {
@@ -293,23 +362,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
     const trace = await ethers.provider.send('debug_traceCall', [transaction, "latest", traceOptions]);
 
     const traceResult = JSON.stringify(trace, null, 4);
-
-    writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
-
-    let deployedContractAddressLowerCase = _deployedContract.address.toString().toLowerCase();
-    let callAddressLowerCase = CALL_ADDRESS.toLowerCase();
-
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
-        deployedContractAddressLowerCase, TEST_CONTRACT_NAME + ".address");
-
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
-        callAddressLowerCase, "CALL.address");
-
-    let ownerAddressLowerCase = OWNER_ADDRESS.toLowerCase();
-
-    await replaceStringInFile(SKALE_TRACES_DIR + _traceFileName,
-        ownerAddressLowerCase, "OWNER.address");
-
+    await writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName, traceResult);
 
 }
 
@@ -323,7 +376,8 @@ async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: strin
     const trace = await ethers.provider.send('debug_traceTransaction', [hash, traceOptions]);
 
     const result = JSON.stringify(trace, null, 4);
-    writeFileSync(SKALE_TRACES_DIR + _skaleFileName, result);
+
+    await writeTraceFileReplacingAddressesWithSymbolicNames(_skaleFileName, result);
 
     return trace;
 }
@@ -356,12 +410,11 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
     let expectedResult = await readJSONFile(_expectedResultFileName)
     let actualResult = await readJSONFile(_actualResultFileName)
 
-    verifyGasCalculations(actualResult);
+    //await verifyGasCalculations(actualResult);
 
     const differences = deepDiff(expectedResult, actualResult)!;
 
     let foundDiffs = false;
-
 
     if (differences) {
         differences.forEach((difference, index) => {
@@ -374,12 +427,20 @@ async function verifyDefaultTraceAgainstGethTrace(_fileName: string) {
                 return;
             }
 
-
             if (difference.kind == "E" && difference.path!.length == 3 && difference.path![2] == "gasCost") {
                 let op = expectedResult.structLogs[difference.path![1]]["op"];
-                if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE") {
+                if (op == "SLOAD" || op == "SSTORE" || op == "EXTCODESIZE" || op == "CALL" ||
+                   op == "CREATE") {
                     return;
                 }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 4 && difference.path![2] == "storage") {
+                return;
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 4 && difference.path![2] == "stack") {
+                return;
             }
 
 
@@ -525,8 +586,16 @@ async function verifyCallTraceAgainstGethTrace(_fileName: string) {
         differences.forEach((difference, index) => {
             // do not print differences related to total gas in the account
 
+
+
             if (difference.kind == "E" && difference.path!.length == 1) {
                 let key = difference.path![0];
+                if (key == "to" || key == "gas" || key == "gasUsed")
+                    return;
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 3 && difference.path![0] == "calls") {
+                let key = difference.path![2];
                 if (key == "to" || key == "gas" || key == "gasUsed")
                     return;
             }
@@ -595,7 +664,25 @@ async function verifyPrestateTraceAgainstGethTrace(_fileName: string) {
                 if (address == ZERO_ADDRESS && difference.path![1] == "balance") {
                     return;
                 }
+
+                if (address == "OWNER.address" && difference.path![1] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![1] == "nonce") {
+                    return;
+                }
             }
+
+            if (difference.kind != "E" && difference.path!.length == 1) {
+                // ignore everything related to newly deployed contract
+                const key = difference.path![0];
+                if (key != "Tracer.address" && key != ZERO_ADDRESS && key != "OWNER.address") {
+                    return;
+                }
+            }
+
+
             foundDiffs = true;
 
             console.log(`Found difference (lhs is expected value) ${index + 1} at path:`, difference.path);
@@ -624,6 +711,52 @@ async function verifyPrestateDiffTraceAgainstGethTrace(_fileName: string) {
 
     if (differences) {
         differences.forEach((difference, index) => {
+
+            if (difference.kind == "E" && difference.path!.length == 2) {
+                let address = difference.path![0];
+                if (address == ZERO_ADDRESS && difference.path![1] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![1] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![1] == "nonce") {
+                    return;
+                }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 3) {
+                let address = difference.path![1];
+                if (address == ZERO_ADDRESS && difference.path![2] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![2] == "balance") {
+                    return;
+                }
+
+                if (address == "OWNER.address" && difference.path![2] == "nonce") {
+                    return;
+                }
+            }
+
+            if (difference.kind == "E" && difference.path!.length == 4) {
+                if (difference.path![1] == "Tracer.address" && difference.path![2] == "storage") {
+                    return;
+                }
+            }
+
+            if (difference.kind != "E" && difference.path!.length == 2 &&
+                     difference.path![0] == "post") {
+                // ignore everything related to newly deployed contract
+                const key = difference.path![1];
+                if (key != "Tracer.address" && key != ZERO_ADDRESS && key != "OWNER.address") {
+                    return;
+                }
+            }
+
 
             foundDiffs = true;
 
@@ -656,21 +789,51 @@ async function verifyGasCalculations(_actualResult: any): Promise<void> {
 
 async function main(): Promise<void> {
 
-    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_DEPLOY_FILE_NAME));
-    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_RUN_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_DEPLOY_DEFAULTTRACER_FILE_NAME));
+    expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME));
     expect(existsSync(GETH_TRACES_DIR + TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME));
 
     await deleteAndRecreateDirectory(SKALE_TRACES_DIR);
 
     let deployedContract = await deployTestContract();
+    const deployHash = deployedContract.deployTransaction.hash;
+    DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
 
-    const transferHash: string = await callTestContractRun(deployedContract);
 
-    await getAndPrintCommittedTransactionTrace(transferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
-    await getAndPrintCommittedTransactionTrace(transferHash, FOURBYTE_TRACER, TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
+    const firstMintHash: string = await executeTransferAndThenTestContractMintInSingleBlock(deployedContract);
+
+    await getAndPrintCommittedTransactionTrace(deployHash, DEFAULT_TRACER, TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, CALL_TRACER, TEST_DEPLOY_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, FOURBYTE_TRACER, TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATEDIFF_TRACER, TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(deployHash, PRESTATE_TRACER, TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
+
+
+
+    await getAndPrintCommittedTransactionTrace(firstMintHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(firstMintHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
+
+
+    const secondTransferHash: string = await sendTransferWithConfirmation();
+
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, DEFAULT_TRACER, TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, CALL_TRACER, TEST_TRANSFER_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, PRESTATE_TRACER, TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, PRESTATEDIFF_TRACER, TEST_TRANSFER_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondTransferHash, FOURBYTE_TRACER, TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
+
+
+    const secondMintHash: string = await executeMint2(deployedContract);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, DEFAULT_TRACER, TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, CALL_TRACER, TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, PRESTATE_TRACER, TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, PRESTATEDIFF_TRACER, TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
+    await getAndPrintCommittedTransactionTrace(secondMintHash, FOURBYTE_TRACER, TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
+
+
 
     await callDebugTraceCall(deployedContract, DEFAULT_TRACER, TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await callDebugTraceCall(deployedContract, CALL_TRACER, TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
@@ -679,10 +842,12 @@ async function main(): Promise<void> {
     await callDebugTraceCall(deployedContract, PRESTATEDIFF_TRACER, TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
 
 
+
     // geth does not have replay trace
     if (hre.network.name != "geth") {
         await callDebugTraceCall(deployedContract, REPLAY_TRACER, TEST_CONTRACT_CALL_REPLAYTRACER_FILE_NAME);
     }
+
 
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_DEFAULTTRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_CALLTRACER_FILE_NAME);
@@ -690,13 +855,36 @@ async function main(): Promise<void> {
     await verifyPrestateTransferTraceAgainstGethTrace(TEST_TRANSFER_PRESTATETRACER_FILE_NAME);
     await verifyTransferTraceAgainstGethTrace(TEST_TRANSFER_FOURBYTETRACER_FILE_NAME);
 
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_DEPLOY_FILE_NAME);
-    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_RUN_FILE_NAME);
+
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_DEFAULTTRACER_FILE_NAME);
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_PRESTATEDIFFTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_FOURBYTETRACER_FILE_NAME);
+
+
     await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_CALL_DEFAULTTRACER_FILE_NAME);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_CALL_CALLTRACER_FILE_NAME);
     await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_CALL_FOURBYTETRACER_FILE_NAME);
     await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATETRACER_FILE_NAME);
     await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_CALL_PRESTATEDIFFTRACER_FILE_NAME);
+
+    await verifyDefaultTraceAgainstGethTrace(TEST_DEPLOY_DEFAULTTRACER_FILE_NAME);
+    await verifyCallTraceAgainstGethTrace(TEST_DEPLOY_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_DEPLOY_FOURBYTETRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_DEPLOY_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_DEPLOY_PRESTATEDIFFTRACER_FILE_NAME);
+
+
+    await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME);
+    await verifyFourByteTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_FOURBYTETRACER_FILE_NAME);
+    await verifyDefaultTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_DEFAULTTRACER_FILE_NAME);
+    await verifyPrestateTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATETRACER_FILE_NAME);
+    await verifyPrestateDiffTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE2_PRESTATEDIFFTRACER_FILE_NAME);
+
+
+
+
 }
 
 

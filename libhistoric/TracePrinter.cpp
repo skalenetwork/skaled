@@ -27,11 +27,13 @@ namespace dev::eth {
 
 // we try to be compatible with geth messages as much as we can
 string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
+    // this function should not be called if the status code is success
+    STATE_CHECK( _error != EVMC_SUCCESS );
     switch ( _error ) {
-    case EVMC_SUCCESS:
-        return "success";
     case EVMC_FAILURE:
         return "evm failure";
+    case EVMC_REVERT:
+        return "execution reverted";
     case EVMC_OUT_OF_GAS:
         return "out of gas";
     case EVMC_INVALID_INSTRUCTION:
@@ -63,7 +65,7 @@ string TracePrinter::getEvmErrorDescription( evmc_status_code _error ) {
     case EVMC_OUT_OF_MEMORY:
         return "out of memory";
     default:
-        return "";
+        return "unexpected EVM error status code";
     };
 }
 
@@ -73,6 +75,24 @@ TracePrinter::TracePrinter( AlethStandardTrace& _standardTrace, const string _js
 const string& TracePrinter::getJsonName() const {
     return m_jsonName;
 }
+
+
+// this will return true if the contract existed before the transaction happened
+bool TracePrinter::isPreExistingContract(
+    const HistoricState& _statePre, const Address& _address ) {
+    return _statePre.addressHasCode( _address );
+}
+
+
+// this will return true if the address is a contract that has been created
+// during the current transaction and has not been deleted
+bool TracePrinter::isNewContract(
+    const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address ) {
+    auto isNewContract =
+        !_statePre.addressHasCode( _address ) && _statePost.addressHasCode( _address );
+    return isNewContract;
+}
+
 }  // namespace dev::eth
 
 #endif

@@ -21,6 +21,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "TraceStructuresAndDefs.h"
 #include "evmc/evmc.h"
+#include "libdevcore/Address.h"
 #include <string>
 
 namespace Json {
@@ -45,6 +46,12 @@ public:
     static std::string getEvmErrorDescription( evmc_status_code _error );
 
 protected:
+    [[nodiscard]] static bool isNewContract(
+        const HistoricState& _statePre, const HistoricState& _statePost, const Address& _address );
+
+    [[nodiscard]] static bool isPreExistingContract(
+        const HistoricState& _statePre, const Address& _address );
+
     AlethStandardTrace& m_trace;
     const std::string m_jsonName;
 };

@@ -123,6 +123,18 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::InvalidContractDeployer:
         _out << "InvalidContractDeployer";
         break;
+    case TransactionException::RevertInstruction:
+        _out << "RevertInstruction";
+        break;
+    case TransactionException::InvalidZeroSignatureFormat:
+        _out << "InvalidZeroSignatureFormat";
+        break;
+    case TransactionException::AddressAlreadyUsed:
+        _out << "AddressAlreadyUsed";
+        break;
+    case TransactionException::WouldNotBeInBlock:
+        _out << "WouldNotBeInBlock";
+        break;
     default:
         _out << "Unknown";
         break;

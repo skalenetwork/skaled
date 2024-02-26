@@ -44,6 +44,25 @@ void FourByteTracePrinter::print(
     for ( auto&& key : callMap ) {
         _jsonTrace[key.first] = key.second;
     }
+
+    // there is a special case of contract creation. In this case, geth adds
+    // a special entry to the fourbyte trace as specified below
+
+    if ( m_trace.isContractCreation() ) {
+        addContractCreationEntry( _jsonTrace );
+    }
+}
+void FourByteTracePrinter::addContractCreationEntry( Json::Value& _jsonTrace ) const {
+    auto inputBytes = m_trace.getInputData();
+    // input data needs to be at least four bytes, otherwise it is an incorrect
+    // Solidity constructor call
+    if ( inputBytes.size() < 4 ) {
+        return;
+    }
+    // the format geth uses in this case. Take first 8 symbols of hex and add hex size
+    auto key =
+        toHexPrefixed( inputBytes ).substr( 0, 10 ) + "-" + to_string( inputBytes.size() - 4 );
+    _jsonTrace[key] = 1;
 }
 
 FourByteTracePrinter::FourByteTracePrinter( AlethStandardTrace& standardTrace )

@@ -56,6 +56,7 @@ void FunctionCallRecord::setRevertReason( const string& _revertReason ) {
     m_reverted = true;
     m_revertReason = _revertReason;
 }
+
 const weak_ptr< FunctionCallRecord >& FunctionCallRecord::getParentCall() const {
     return m_parentCall;
 }
@@ -65,14 +66,12 @@ int64_t FunctionCallRecord::getDepth() const {
 }
 
 void FunctionCallRecord::printFunctionExecutionDetail(
-    Json::Value& _jsonTrace, const TraceOptions& _debugOptions ) {
+    Json::Value& _jsonTrace, const HistoricState& _statePost, const TraceOptions& _debugOptions ) {
     STATE_CHECK( _jsonTrace.isObject() )
 
     _jsonTrace["type"] = instructionInfo( m_type ).name;
     _jsonTrace["from"] = toHexPrefixed( m_from );
-    if ( m_type != Instruction::CREATE && m_type != Instruction::CREATE2 ) {
-        _jsonTrace["to"] = toHexPrefixed( m_to );
-    }
+    _jsonTrace["to"] = toHexPrefixed( m_to );
     _jsonTrace["gas"] =
         AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_functionGasLimit );
     _jsonTrace["gasUsed"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_gasUsed );
@@ -85,12 +84,21 @@ void FunctionCallRecord::printFunctionExecutionDetail(
 
     _jsonTrace["value"] = AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_value );
 
+
+    // treat the special case when the function is a constructor. Then output data is the code of
+    // the constructed contract
+    if ( m_type == Instruction::CREATE || m_type == Instruction::CREATE2 ) {
+        m_outputData = _statePost.code( m_to );
+    }
+
+
     if ( !m_outputData.empty() ) {
         _jsonTrace["output"] = toHexPrefixed( m_outputData );
     }
 
     if ( !m_inputData.empty() ) {
         _jsonTrace["input"] = toHexPrefixed( m_inputData );
+    } else {
     }
 
     if ( !_debugOptions.withLog )
@@ -116,24 +124,23 @@ void FunctionCallRecord::printFunctionExecutionDetail(
     }
 }
 
-void FunctionCallRecord::printTrace(
-    Json::Value& _jsonTrace, int64_t _depth, const TraceOptions& _debugOptions ) {
+void FunctionCallRecord::printTrace( Json::Value& _jsonTrace, const HistoricState& _statePost,
+    int64_t _depth, const TraceOptions& _debugOptions ) {
     STATE_CHECK( _jsonTrace.isObject() )
     // prevent Denial of service
     STATE_CHECK( _depth < MAX_TRACE_DEPTH )
     STATE_CHECK( _depth == m_depth )
 
-    printFunctionExecutionDetail( _jsonTrace, _debugOptions );
+    printFunctionExecutionDetail( _jsonTrace, _statePost, _debugOptions );
 
     if ( !m_nestedCalls.empty() ) {
-        _jsonTrace["calls"] = Json::arrayValue;
-        uint32_t i = 0;
         if ( _debugOptions.onlyTopCall )
             return;
-        for ( auto&& nestedCall : m_nestedCalls ) {
+        _jsonTrace["calls"] = Json::arrayValue;
+        for ( uint32_t i = 0; i < m_nestedCalls.size(); i++ ) {
             _jsonTrace["calls"].append( Json::objectValue );
-            nestedCall->printTrace( _jsonTrace["calls"][i], _depth + 1, _debugOptions );
-            i++;
+            m_nestedCalls.at( i )->printTrace(
+                _jsonTrace["calls"][i], _statePost, _depth + 1, _debugOptions );
         }
     }
 }
@@ -200,6 +207,11 @@ void FunctionCallRecord::collectFourByteTrace( std::map< string, uint64_t >& _ca
 
     constexpr int FOUR_BYTES = 4;
 
+    if ( m_depth > 0 && ( m_type == Instruction::CREATE || m_type == Instruction::CREATE2 ) ) {
+        // geth does not print 4byte traces for constructors called by contracts
+        return;
+    }
+
     // a call with less than four bytes of data is not a valid solidity call
     if ( m_inputData.size() >= FOUR_BYTES ) {
         vector< uint8_t > fourBytes( m_inputData.begin(), m_inputData.begin() + FOUR_BYTES );
@@ -233,10 +245,14 @@ void FunctionCallRecord::setReturnValues(
     }
 }
 
+Instruction FunctionCallRecord::getType() const {
+    return m_type;
+}
+
 OpExecutionRecord::OpExecutionRecord(
     int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas )
     : m_depth( _depth ), m_op( _op ), m_gasRemaining( _gasRemaining ), m_opGas( _opGas ) {}
 }  // namespace dev::eth
-   // namespace dev
+// namespace dev
 
 #endif

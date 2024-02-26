@@ -28,10 +28,10 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 namespace dev::eth {
 
 // default tracer as implemented by geth. Runs when no specific tracer is specified
-void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult& _er,
-    const HistoricState&, const HistoricState& ) {
+void DefaultTracePrinter::print(
+    Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&, const HistoricState& ) {
     STATE_CHECK( _jsonTrace.isObject() )
-    _jsonTrace["gas"] = ( uint64_t ) _er.gasUsed;
+    _jsonTrace["gas"] = m_trace.getTotalGasUsed();
     auto defaultOpTrace = m_trace.getDefaultOpTrace();
     STATE_CHECK( defaultOpTrace );
     if ( defaultOpTrace->empty() ) {
@@ -41,16 +41,14 @@ void DefaultTracePrinter::print( Json::Value& _jsonTrace, const ExecutionResult&
     } else {
         _jsonTrace["structLogs"] = *defaultOpTrace;
     }
-    auto failed = _er.excepted != TransactionException::None;
-    _jsonTrace["failed"] = failed;
-    if ( !failed ) {
+
+    _jsonTrace["failed"] = m_trace.isFailed();
+    if ( !m_trace.isFailed() ) {
         if ( m_trace.getOptions().enableReturnData ) {
-            _jsonTrace["returnValue"] = toHex( _er.output );
+            _jsonTrace["returnValue"] = toHex( m_trace.getOutput() );
         }
     } else {
-        auto statusCode = AlethExtVM::transactionExceptionToEvmcStatusCode( _er.excepted );
-        string errMessage = getEvmErrorDescription( statusCode );
-        _jsonTrace["returnValue"] = errMessage;
+        _jsonTrace["returnValue"] = "";
     }
 }
 DefaultTracePrinter::DefaultTracePrinter( AlethStandardTrace& standardTrace )

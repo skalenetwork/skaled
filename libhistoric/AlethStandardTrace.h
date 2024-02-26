@@ -82,7 +82,7 @@ public:
     [[nodiscard]] const std::set< Address >& getAccessedAccounts() const;
     [[nodiscard]] const h256& getTxHash() const;
     [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
-
+    [[nodiscard]] const Address& getDeployedContractAddress() const;
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
         const;
     [[nodiscard]] const Address& getBlockAuthor() const;
@@ -95,9 +95,14 @@ public:
     [[nodiscard]] const u256& getValue() const;
     [[nodiscard]] const bytes& getInputData() const;
     [[nodiscard]] const Address& getTo() const;
+    [[nodiscard]] const u256& getGasPrice() const;
+    [[nodiscard]] const bytes& getOutput() const;
+    [[nodiscard]] bool isFailed() const;
+    [[nodiscard]] evmc_status_code getEVMCStatusCode() const;
+    [[nodiscard]] bool isSimpleTransfer();
+    [[nodiscard]] bool isContractCreation();
 
-    static string toGethCompatibleCompactHexPrefixed( const u256& _value );
-
+    [[nodiscard]] static string toGethCompatibleCompactHexPrefixed( const u256& _value );
 
 private:
     void setCurrentlyExecutingFunctionCall(
@@ -130,7 +135,6 @@ private:
     [[nodiscard]] static std::vector< std::uint8_t >
     extractSmartContractMemoryByteArrayFromStackPointer( const LegacyVM* _vm );
 
-
     // this is called when the function call depth of the current instruction is different from the
     // previous instruction. This happens when a function is called or returned.
     void processFunctionCallOrReturnIfHappened(
@@ -144,6 +148,13 @@ private:
         const HistoricState& _statePre, const HistoricState& _statePost );
 
     void recordMinerPayment( u256 _minerGasPayment );
+
+    void printTrace(
+        ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
+
+    [[nodiscard]] vector< uint8_t > getInputData( const AlethExtVM& _ext ) const;
+
+    void recordMinerFeePayment( HistoricState& _statePost );
 
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
@@ -176,18 +187,14 @@ private:
     u256 m_minerPayment;
     u256 m_originalFromBalance;
     bool m_isCall;
-
-public:
-    const u256& getGasPrice() const;
-
-private:
     uint64_t m_totalGasUsed;
     u256 m_value;
     u256 m_gasLimit;
     bytes m_inputData;
     u256 m_gasPrice;
-
-    void printTrace(
-        ExecutionResult& _er, const HistoricState& _statePre, const HistoricState& _statePost );
+    bytes m_output;
+    evmc_status_code m_evmcStatusCode;
+    // this will include deployed contract address if the transaction was CREATE
+    Address m_deployedContractAddress;
 };
 }  // namespace dev::eth

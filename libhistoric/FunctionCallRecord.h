@@ -47,23 +47,41 @@ public:
     FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
         uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
         const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
+
     [[nodiscard]] int64_t getDepth() const;
+
     [[nodiscard]] const weak_ptr< FunctionCallRecord >& getParentCall() const;
+
     [[nodiscard]] uint64_t getFunctionGasLimit() const;
+
     [[nodiscard]] string getParityTraceType();
 
     void setGasUsed( uint64_t _gasUsed );
+
     void setOutputData( const vector< uint8_t >& _outputData );
+
     void addNestedCall( shared_ptr< FunctionCallRecord >& _nestedCall );
+
     void setError( const string& _error );
+
     void setRevertReason( const string& _revertReason );
-    void printTrace( Json::Value& _jsonTrace, int64_t _depth, const TraceOptions& _debugOptions );
-    void printFunctionExecutionDetail( Json::Value& _jsonTrace, const TraceOptions& _debugOptions );
+
+    void printTrace( Json::Value& _jsonTrace, const HistoricState& _statePost, int64_t _depth,
+        const TraceOptions& _debugOptions );
+
+    void printFunctionExecutionDetail( Json::Value& _jsonTrace, const HistoricState& _statePost,
+        const TraceOptions& _debugOptions );
+
     void addLogEntry( const vector< uint8_t >& _data, const vector< u256 >& _topics );
+
     void printParityFunctionTrace( Json::Value& _outputArray, Json::Value _address );
+
     void collectFourByteTrace( std::map< string, uint64_t >& _callMap );
+
     void setReturnValues(
         evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed );
+
+    Instruction getType() const;
 
 private:
     Instruction m_type;

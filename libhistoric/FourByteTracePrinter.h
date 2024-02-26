@@ -37,5 +37,6 @@ public:
 public:
     void print( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState&,
         const HistoricState& ) override;
+    void addContractCreationEntry( Json::Value& _jsonTrace ) const;
 };
 }  // namespace dev::eth

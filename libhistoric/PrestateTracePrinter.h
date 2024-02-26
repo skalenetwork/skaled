@@ -20,7 +20,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
 #include "TracePrinter.h"
-#include "libdevcore/Address.h"
+
 
 namespace Json {
 class Value;
@@ -38,12 +38,9 @@ public:
 
     explicit PrestateTracePrinter( AlethStandardTrace& standardTrace );
 
-    [[nodiscard]] u256 getMinerBalancePre( const HistoricState& _statePre ) const;
-    [[nodiscard]] u256 getMinerBalancePost( const HistoricState& _statePre ) const;
-
 private:
-    void printDiff( Json::Value& _jsonTrace, const ExecutionResult&, const HistoricState& _statePre,
-        const HistoricState& _statePost );
+    void printDiffTrace( Json::Value& _jsonTrace, const ExecutionResult&,
+        const HistoricState& _statePre, const HistoricState& _statePost );
 
     void printAllAccessedAccountPreValues( Json::Value& _jsonTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
@@ -54,13 +51,35 @@ private:
     void printAccountPostDiff( Json::Value& _postDiffTrace, const HistoricState& _statePre,
         const HistoricState& _statePost, const Address& _address );
 
+    void printPreStateTrace(
+        Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost );
+
+    void printMinerBalanceChange( const HistoricState& _statePre, const HistoricState& _statePost,
+        Json::Value& preDiff, Json::Value& postDiff ) const;
+    void printNonce( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& accountPreValues ) const;
+    void printPreDiffNonce( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& _diff ) const;
+    void printPostDiffNonce( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& _diff ) const;
+    void printPreDiffStorage( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& _diffPre );
+    void printPostDiffStorage( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& diffPost );
+    void printPreDiffBalance( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& _diffPre ) const;
+    void printPreDiffCode( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& diffPre ) const;
+    void printPostDiffBalance( const HistoricState& _statePre, const HistoricState& _statePost,
+        const Address& _address, Json::Value& diffPost ) const;
+    [[nodiscard]] Json::Value& printPostDiffCode( const HistoricState& _statePre,
+        const HistoricState& _statePost, const Address& _address, Json::Value& diffPost ) const;
+
+
     uint64_t m_storageValuesReturnedPre = 0;
     uint64_t m_storageValuesReturnedPost = 0;
     uint64_t m_storageValuesReturnedAll = 0;
-    void printPre(
-        Json::Value& _jsonTrace, const HistoricState& _statePre, const HistoricState& _statePost );
-
-    void printMinerBalanceChange(
-        const HistoricState& _statePre, Json::Value& preDiff, Json::Value& postDiff ) const;
+    u256 getBalancePost( const HistoricState& _statePost, const Address& _address ) const;
+    u256 getBalancePre( const HistoricState& _statePre, const Address& _address ) const;
 };
 }  // namespace dev::eth
