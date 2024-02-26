@@ -193,15 +193,15 @@ static std::string const c_genesisConfigString =
             "balance": "0",
             "code": "0x6080604052348015600f57600080fd5b506004361060325760003560e01c80639b063104146037578063cd16ecbf146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b81019080803590602001909291905050506097565b005b8060018190555050565b806000819055505056fea265627a7a7231582029df540a7555533ef4b3f66bc4f9abe138b00117d1496efbfd9d035a48cd595e64736f6c634300050d0032",
             "storage": {
-				"0x0": "0x01"
-			},
+                "0x0": "0x01"
+            },
             "nonce": "0"
         },
         "0xD2002000000000000000000000000000000000D2": {
             "balance": "0",
             "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
             "storage": {
-			},
+            },
             "nonce": "0"
         },
         "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
@@ -211,10 +211,10 @@ static std::string const c_genesisConfigString =
             "storage" : {
             }
         },
-        "0xD2001300000000000000000000000000000000D4": { 
-            "balance": "0", 
-            "nonce": "0", 
-            "storage": {}, 
+        "0xD2001300000000000000000000000000000000D4": {
+            "balance": "0",
+            "nonce": "0",
+            "storage": {},
             "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"
         }
     }
@@ -245,9 +245,14 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
+
+    // chain params needs to be a field of JsonRPCFixture
+    // since references to it are passed to the server
+    ChainParams chainParams;
+
     JsonRpcFixture( const std::string& _config = "", bool _owner = true, bool _deploymentControl = true, bool _generation2 = false, bool _mtmEnabled = false ) {
         dev::p2p::NetworkPreferences nprefs;
-        ChainParams chainParams;
+
 
         if ( _config != "" ) {
             if ( !_generation2 ) {
@@ -344,9 +349,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
-            new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
-            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
-            /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
+            new rpc::Web3(),  // TODO Add version parameter here?
+            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
+            new rpc::Debug( *client, nullptr, "", true),
             new rpc::Test( *client ) ) );
 
         //
@@ -509,12 +514,12 @@ BOOST_AUTO_TEST_CASE( jsonrpc_netVersion )
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 65535
-    ret["params"]["chainID"] = "0xffff"; 
+    ret["params"]["chainID"] = "0xffff";
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     JsonRpcFixture fixture( config );
-    
+
     auto version = fixture.rpcClient->net_version();
     BOOST_CHECK_EQUAL( version, "65535" );
 }
@@ -1515,7 +1520,7 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         "fffffffffffffffffffffffff16815260200191505060405180910390f3"
         "5b60003390509056fea165627a7a72305820abfa953fead48d8f657bca6"
         "57713501650734d40342585cafcf156a3fe1f41d20029";
-    
+
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
@@ -1579,7 +1584,7 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
         "0200191505060405180910390f35b600081600081905550600190509190"
         "505600a165627a7a72305820d8407d9cdaaf82966f3fa7a3e665b8cf4e6"
         "5ee8909b83094a3f856b9051274500029";
-    
+
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
@@ -1684,7 +1689,7 @@ contract Logger{
         }// j overflow
     }
 }
-*/    
+*/
 
     string bytecode = "6080604052348015600f57600080fd5b50609b8061001e6000396000f3fe608060405260015460001b60005460001b4360001b4360001b6040518082815260200191505060405180910390a3600160008154809291906001019190505550600a6001541415606357600060018190555060008081548092919060010191905055505b00fea2646970667358221220fdf2f98961b803b6b32dfc9be766990cbdb17559d9a03724d12fc672e33804b164736f6c634300060c0033";
 
@@ -1885,7 +1890,7 @@ contract TestEstimateGas {
 BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 10 );
-    
+
 // pragma solidity 0.4.25;
 
 // contract TestStorageLimit {
@@ -1913,18 +1918,18 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 //     function zero(uint256 index) public {
 //         storageArray[index] = 0;
 //     }
-    
+
 //     function strangeFunction(uint256 index) public {
 //         storageArray[index] = 1;
 //         storageArray[index] = 0;
 //         storageArray[index] = 2;
 //     }
 // }
-    
+
     std::string bytecode = "0x608060405234801561001057600080fd5b5061034f806100206000396000f300608060405260043610610083576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630e031ab1146100885780631007f753146100c95780636057361d146100f6578063c298557814610123578063c67cd8841461013a578063d269ad4e14610167578063e0353e5914610194575b600080fd5b34801561009457600080fd5b506100b3600480360381019080803590602001909291905050506101c1565b6040518082815260200191505060405180910390f35b3480156100d557600080fd5b506100f4600480360381019080803590602001909291905050506101e4565b005b34801561010257600080fd5b5061012160048036038101908080359060200190929190505050610204565b005b34801561012f57600080fd5b50610138610233565b005b34801561014657600080fd5b506101656004803603810190808035906020019092919050505061026c565b005b34801561017357600080fd5b50610192600480360381019080803590602001909291905050506102a3565b005b3480156101a057600080fd5b506101bf60048036038101908080359060200190929190505050610302565b005b6000818154811015156101d057fe5b906000526020600020016000915090505481565b6000818154811015156101f357fe5b906000526020600020016000905550565b600081908060018154018082558091505090600182039060005260206000200160009091929091909150555050565b60008080549050905060006001908060018154018082558091505090600182039060005260206000200160009091929091909150555050565b60008190806001815401808255809150509060018203906000526020600020016000909192909190915055506102a0610233565b50565b60016000828154811015156102b457fe5b9060005260206000200181905550600080828154811015156102d257fe5b906000526020600020018190555060026000828154811015156102f157fe5b906000526020600020018190555050565b6000808281548110151561031257fe5b9060005260206000200181905550505600a165627a7a723058201ed095336772c55688864a6b45ca6ab89311c5533f8d38cdf931f1ce38be78080029";
-    
+
     auto senderAddress = fixture.coinbase.address();
-    
+
     Json::Value create;
     create["from"] = toJS( senderAddress );
     create["data"] = bytecode;
@@ -1952,7 +1957,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 96 );
-    
+
     Json::Value txPushValue;  // call store(2)
     txPushValue["to"] = contractAddress;
     txPushValue["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000002";
@@ -1961,7 +1966,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
-    
+
     Json::Value txThrow;  // trying to call store(3)
     txThrow["to"] = contractAddress;
     txThrow["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000003";
@@ -1970,7 +1975,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txThrow );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE( fixture.client->state().storageUsed( contract ) == 128 );
-    
+
     Json::Value txEraseValue;  // call erase(2)
     txEraseValue["to"] = contractAddress;
     txEraseValue["data"] = "0x1007f7530000000000000000000000000000000000000000000000000000000000000002";
@@ -2174,7 +2179,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     JsonRpcFixture fixture( c_genesisConfigString );
     dev::eth::simulateMining( *( fixture.client ), 20 );
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
-    
+
     string contractAddress = "0xC2002000000000000000000000000000000000C2";
     string senderAddress = toJS(fixture.coinbase.address());
 
@@ -2402,7 +2407,7 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     Json::Value eip1898BadFormed3;
     eip1898BadFormed3["blockHash"] = dev::h256::random().hex();
     eip1898BadFormed3["requireCanonical"] = 228;
-    
+
     Json::Value eip1898BadFormed4;
     eip1898BadFormed4["blockNumber"] = dev::h256::random().hex();
     eip1898BadFormed4["requireCanonical"] = true;
@@ -2413,7 +2418,7 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
 
     std::array<Json::Value, 4> wellFormedCalls = { eip1898WellFormed, eip1898WellFormed1, eip1898WellFormed2, eip1898WellFormed3 };
     std::array<Json::Value, 6> badFormedCalls = { eip1898BadFormed, eip1898BadFormed1, eip1898BadFormed2, eip1898BadFormed3, eip1898BadFormed4, eip1898BadFormed5 };
-    
+
     auto address = fixture.coinbase.address();
 
     std::string response;
@@ -2424,7 +2429,7 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     for (const auto& call: badFormedCalls) {
         BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBalanceEIP1898( toJS( address ), call ), jsonrpc::JsonRpcException);
     }
-    
+
     for (const auto& call: wellFormedCalls) {
         Json::Value transactionCallObject;
         transactionCallObject["to"] = "0x0000000000000000000000000000000000000005";
@@ -2680,7 +2685,7 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( 
     balance = fixture.client->balanceAt( jsToAddress( "0x5C4e11842E8Be09264DC1976943571D7AF6d00f8" ) );
     BOOST_REQUIRE_EQUAL( balance, 16 );
 
-    Json::Value printFakeEthCall;    
+    Json::Value printFakeEthCall;
     printFakeEthCall["data"] = "0x5C4e11842E8Be09264DC1976943571D7AF6d00f80000000000000000000000000000000000000000000000000000000000000010";
     printFakeEthCall["from"] = "0x5C4e11842E8be09264dc1976943571d7Af6d00F9";
     printFakeEthCall["to"] = "0000000000000000000000000000000000000006";
@@ -2691,7 +2696,7 @@ BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth, *boost::unit_test::precondition( 
     BOOST_REQUIRE_EQUAL( balance, 16 );
 
     // pragma solidity ^0.4.25;
-    
+
     // contract Caller {
     //     function call() public view {
     //         bool status;
@@ -2848,7 +2853,7 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 //             }
 //         }
 //     */
-//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906069565b60405180910390f35b60006001905090565b60008115159050919050565b6063816050565b82525050565b6000602082019050607c6000830184605c565b9291505056fea26469706673582212208d89ce57f69b9b53e8f0808cbaa6fa8fd21a495ab92d0b48b6e47d903989835464736f6c63430008090033"; 
+//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906069565b60405180910390f35b60006001905090565b60008115159050919050565b6063816050565b82525050565b6000602082019050607c6000830184605c565b9291505056fea26469706673582212208d89ce57f69b9b53e8f0808cbaa6fa8fd21a495ab92d0b48b6e47d903989835464736f6c63430008090033";
 //     Json::FastWriter fastWriter;
 //     std::string config = fastWriter.write( ret );
 //     JsonRpcFixture fixture( config );
@@ -2868,7 +2873,7 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 //             }
 //         }
 //     */
-//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906065565b60405180910390f35b600090565b60008115159050919050565b605f81604c565b82525050565b6000602082019050607860008301846058565b9291505056fea2646970667358221220c88541a65627d63d4b0cc04094bc5b2154a2700c97677dcd5de2ee2a27bed58564736f6c63430008090033"; 
+//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906065565b60405180910390f35b600090565b60008115159050919050565b605f81604c565b82525050565b6000602082019050607860008301846058565b9291505056fea2646970667358221220c88541a65627d63d4b0cc04094bc5b2154a2700c97677dcd5de2ee2a27bed58564736f6c63430008090033";
 //     Json::FastWriter fastWriter;
 //     std::string config = fastWriter.write( ret );
 //     JsonRpcFixture fixture( config );
@@ -3160,11 +3165,11 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
-    
+
     auto _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1; 
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1;
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     RestrictedAddressFixture fixture( config );
@@ -3196,7 +3201,7 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 9999999999999; 
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 9999999999999;
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     RestrictedAddressFixture fixture( config );
