@@ -13,7 +13,6 @@
 #include <skutils/eth_utils.h>
 
 
-
 #ifdef HISTORIC_STATE
 
 #include <libhistoric/AlethExecutive.h>
