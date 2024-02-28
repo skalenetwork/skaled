@@ -20,9 +20,8 @@ public:
             &dev::rpc::DebugFace::debug_accountRangeAtI );
 
 
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "debug_traceTransaction", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, NULL ),
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_traceTransaction",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_traceTransactionI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "debug_storageRangeAt", jsonrpc::PARAMS_BY_POSITION,
@@ -33,13 +32,11 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_preimage", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_preimageI );
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "debug_traceBlockByNumber", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, NULL ),
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_traceBlockByNumber",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_traceBlockByNumberI );
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "debug_traceBlockByHash", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, NULL ),
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_traceBlockByHash",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_traceBlockByHashI );
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_traceCall", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_OBJECT, "param2",
@@ -144,7 +141,7 @@ public:
     }
     inline virtual void debug_traceBlockByHashI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->debug_traceBlockByHash( request[0u].asString(), getTracer(request) );
+        response = this->debug_traceBlockByHash( request[0u].asString(), getTracer( request ) );
     }
     inline virtual void debug_traceCallI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_traceCall( request[0u], request[1u].asString(), request[2u] );
