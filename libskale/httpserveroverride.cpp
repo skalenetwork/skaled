@@ -2329,7 +2329,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 skutils::tools::getFieldSafe< std::string >( jsonRpcRequest, "method" );
             if ( methodName.empty() )
                 throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
-          
+
             strMethod = methodName;
             if ( jsonRpcRequest.count( "id" ) == 0 )
                 throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
