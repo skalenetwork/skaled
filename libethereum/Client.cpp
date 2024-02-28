@@ -27,7 +27,6 @@
 #include "Executive.h"
 #include "SkaleHost.h"
 #include "SnapshotAgent.h"
-#include "SnapshotStorage.h"
 #include "TransactionQueue.h"
 #include <libdevcore/Log.h>
 #include <boost/filesystem.hpp>
@@ -165,11 +164,6 @@ Client::Client( ChainParams const& _params, int _networkID,
         chainParams().sChain.getPatchTimestamp( "VerifyDaSigsPatch" ) );
     StorageDestructionPatch::setTimestamp(
         chainParams().sChain.getPatchTimestamp( "StorageDestructionPatch" ) );
-    POWCheckPatch::setTimestamp( chainParams().sChain.getPatchTimestamp( "PowCheckPatch" ) );
-    PrecompiledConfigPatch::setTimestamp(
-        chainParams().sChain.getPatchTimestamp( "PrecompiledConfigPatch" ) );
-    CorrectForkInPowPatch::setTimestamp(
-        chainParams().sChain.getPatchTimestamp( "CorrectForkInPowPatch" ) );
 }
 
 
@@ -334,10 +328,6 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
-
-    // needed for checkOutExternalGas
-    CorrectForkInPowPatch::committedBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
     initCPUUSage();
 
@@ -610,10 +600,6 @@ size_t Client::importTransactionsAsBlock(
 
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
-    // this needs to be updated as soon as possible, as it's used in new transactions validation
-    CorrectForkInPowPatch::committedBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
-
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerDetail ) << "Total unsafe time so far = "
                               << std::chrono::duration_cast< std::chrono::seconds >(
@@ -678,11 +664,11 @@ size_t Client::syncTransactions(
     //    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
     //    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    // POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
     // PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     //    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    // PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    // CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
 
 
     DEV_WRITE_GUARDED( x_working ) {

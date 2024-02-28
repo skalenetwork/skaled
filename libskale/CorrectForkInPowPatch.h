@@ -3,39 +3,10 @@
 
 #include <libethereum/SchainPatch.h>
 
-#include <time.h>
-
-namespace dev {
-namespace eth {
-class Client;
-}
-namespace test {
-class TestBlockChain;
-class TestOutputHelperFixture;
-}  // namespace test
-}  // namespace dev
-
 /*
  * Context: use current, and not Constantinople,  fork in Transaction::checkOutExternalGas()
  */
-class CorrectForkInPowPatch : public SchainPatch {
-public:
-    static bool isEnabled();
 
-    static void setTimestamp( time_t _timeStamp ) {
-        printInfo( __FILE__, _timeStamp );
-        activationTimestamp = _timeStamp;
-    }
-
-    static unsigned getLastBlockNumber() { return lastBlockNumber; }
-
-private:
-    friend class dev::eth::Client;
-    friend class dev::test::TestBlockChain;
-    friend class dev::test::TestOutputHelperFixture;
-    static time_t activationTimestamp;
-    static time_t lastBlockTimestamp;
-    static unsigned lastBlockNumber;
-};
+DEFINE_SIMPLE_PATCH( CorrectForkInPowPatch )
 
 #endif  // CORRECTFORKINPOWPATCH_H

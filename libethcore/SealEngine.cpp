@@ -99,7 +99,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
-    if ( POWCheckPatch::isEnabled() ) {
+    if ( POWCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
     } else {

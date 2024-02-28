@@ -195,15 +195,8 @@ void Transaction::checkOutExternalGas(
             ctrace << "Mined gas: " << externalGas << endl;
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
-        if ( CorrectForkInPowPatch::isEnabled() )
+        if ( CorrectForkInPowPatch::isEnabledWhen( _committedBlockTimestamp ) )
             scheduleForUse = _cp.evmSchedule( _committedBlockTimestamp, _bn );
-
-        // never call checkOutExternalGas with non-last block
-        if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {
-            ctrace << _bn << " != " << CorrectForkInPowPatch::getLastBlockNumber();
-            BOOST_THROW_EXCEPTION( std::runtime_error(
-                "Internal error: checkOutExternalGas() has invalid block number" ) );
-        }
 
         if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;

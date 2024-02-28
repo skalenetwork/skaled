@@ -37,7 +37,7 @@ protected:
     class BlaBlaPatch : public SchainPatch {                                                   \
     public:                                                                                    \
         static std::string getName() { return #BlaBlaPatch; }                                  \
-        static bool isEnabledAtLatestBlock() {                                                 \
+        static bool isEnabledInPendingBlock() {                                                \
             time_t activationTimestamp = chainParams.getPatchTimestamp( getName() );           \
             return activationTimestamp != 0 && committedBlockTimestamp >= activationTimestamp; \
         }                                                                                      \
