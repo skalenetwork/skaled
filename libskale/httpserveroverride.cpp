@@ -2307,32 +2307,6 @@ string hostname_to_ip( string hostname ) {
     return "";
 }
 
-
-#ifdef HISTORIC_STATE
-// geth accepts no tracer  parameter instead of empty object parameter in trace calls
-// we add empty object if no tracer  parameter is present
-void SkaleServerOverride::preprocessTraceRequestIfNeeded(
-    const string& methodName, nlohmann::json& jsonRpcRequest ) {
-    if ( methodName.find( "debug_trace" ) == string::npos ) {
-        // not a debug trace call
-        return;
-    }
-
-    if ( jsonRpcRequest.count( "params" ) == 0 || !jsonRpcRequest["params"].is_array() ) {
-        return;
-    }
-
-    static std::unordered_set< std::string > traceMethodNames = { "debug_traceTransaction",
-        "debug_traceBlockByNumber", "debug_traceBlockByHash" };
-
-
-    if ( traceMethodNames.count( methodName ) > 0 && jsonRpcRequest["params"].size() == 1 ) {
-        // tracer parameter missing at the end of params array, add empty object parameter
-        jsonRpcRequest["params"].push_back( nlohmann::json::object() );
-    }
-}
-#endif
-
 skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
     const nlohmann::json& joIn, const std::string& strProtocol, int nServerIndex,
     std::string strOrigin, int ipVer, int nPort, e_server_mode_t esm ) {
@@ -2355,11 +2329,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 skutils::tools::getFieldSafe< std::string >( jsonRpcRequest, "method" );
             if ( methodName.empty() )
                 throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
-
-#ifdef HISTORIC_STATE
-            preprocessTraceRequestIfNeeded( methodName, jsonRpcRequest );
-#endif
-
+          
             strMethod = methodName;
             if ( jsonRpcRequest.count( "id" ) == 0 )
                 throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
