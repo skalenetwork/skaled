@@ -2324,7 +2324,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             jarrRequest = nlohmann::json::array();
             jarrRequest.push_back( joIn );
         }
-        for ( nlohmann::json& jsonRpcRequest : jarrRequest ) {
+        for ( const nlohmann::json& jsonRpcRequest : jarrRequest ) {
             std::string methodName =
                 skutils::tools::getFieldSafe< std::string >( jsonRpcRequest, "method" );
             if ( methodName.empty() )
