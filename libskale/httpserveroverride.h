@@ -419,11 +419,6 @@ public:
     dev::Verbosity methodTraceVerbosity( const std::string& strMethod ) const;
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
-#ifdef HISTORIC_STATE
-    void preprocessTraceRequestIfNeeded(
-        const std::string& methodName, nlohmann::json& jsonRpcRequest );
-#endif
-
 protected:
     skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& joIn,
         const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer,
