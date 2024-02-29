@@ -181,7 +181,8 @@ string Eth::eth_blockNumber( const Json::Value& request ) {
     if ( !request.empty() ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
-ION( Js    return toJS( client()->number() );
+
+    return toJS( client()->number() );
 }
 
 
