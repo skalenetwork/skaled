@@ -46,7 +46,8 @@ class FunctionCallRecord {
 public:
     FunctionCallRecord( Instruction _type, const Address& _from, const Address& _to,
         uint64_t _functionGasLimit, const weak_ptr< FunctionCallRecord >& _parentCall,
-        const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth );
+        const vector< uint8_t >& _inputData, const u256& _value, int64_t _depth,
+        uint64_t _gasRemainingBeforeCall );
 
     [[nodiscard]] int64_t getDepth() const;
 
@@ -64,7 +65,7 @@ public:
 
     void setError( const string& _error );
 
-    void setRevertReason( const string& _revertReason );
+    void setRevertReason( const bytes& _encodedRevertReason );
 
     void printTrace( Json::Value& _jsonTrace, const HistoricState& _statePost, int64_t _depth,
         const TraceOptions& _debugOptions );
@@ -83,6 +84,11 @@ public:
 
     Instruction getType() const;
 
+    uint64_t getGasUsed() const;
+    uint64_t getGasRemainingBeforeCall() const;
+
+    static uint32_t bytesToUint32( const std::vector< uint8_t >& _bytes, size_t _startIndex );
+
 private:
     Instruction m_type;
     Address m_from;
@@ -91,6 +97,9 @@ private:
     uint64_t m_gasUsed = 0;
     vector< shared_ptr< FunctionCallRecord > > m_nestedCalls;
     weak_ptr< FunctionCallRecord > m_parentCall;
+
+
+private:
     vector< uint8_t > m_inputData;
     vector< uint8_t > m_outputData;
     bool m_reverted = false;
@@ -99,6 +108,7 @@ private:
     u256 m_value;
     int64_t m_depth = 0;
     vector< LogRecord > m_logRecords;
+    uint64_t m_gasRemainingBeforeCall;
 };
 
 

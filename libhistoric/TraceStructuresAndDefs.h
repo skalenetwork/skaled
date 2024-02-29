@@ -55,17 +55,26 @@ struct LogRecord {
 };
 
 struct OpExecutionRecord {
-    // this is top level record to enter the transaction
-    // the first function is executed at depth 0, as it was called form depth -1
-    explicit OpExecutionRecord( Instruction _op ) : OpExecutionRecord( -1, _op, 0, 0 ){};
-
-    OpExecutionRecord(
-        std::int64_t _depth, Instruction _op, std::uint64_t _gasRemaining, std::uint64_t _opGas );
+    OpExecutionRecord( int64_t _depth, Instruction _op, uint64_t _gasRemaining, uint64_t _opGas,
+        uint64_t _pc, int64_t _refund, string _opName )
+        : m_depth( _depth ),
+          m_op( _op ),
+          m_gasRemaining( _gasRemaining ),
+          m_opGas( _opGas ),
+          m_pc( _pc ),
+          m_refund( _refund ),
+          m_opName( _opName ) {}
 
     std::int64_t m_depth;
     Instruction m_op;
     std::uint64_t m_gasRemaining;
     std::uint64_t m_opGas;
+    std::uint64_t m_pc;
+    std::int64_t m_refund;
+    std::string m_opName;
+    std::shared_ptr< std::map< dev::u256, dev::u256 > > m_accessedStorageValues = nullptr;
+    std::shared_ptr< u256s > m_stack = nullptr;
+    std::shared_ptr< bytes > m_memory = nullptr;
 };
 
 }  // namespace dev::eth

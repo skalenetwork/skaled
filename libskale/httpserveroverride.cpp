@@ -2307,7 +2307,6 @@ string hostname_to_ip( string hostname ) {
     return "";
 }
 
-
 skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
     const nlohmann::json& joIn, const std::string& strProtocol, int nServerIndex,
     std::string strOrigin, int ipVer, int nPort, e_server_mode_t esm ) {
@@ -2325,7 +2324,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             jarrRequest = nlohmann::json::array();
             jarrRequest.push_back( joIn );
         }
-        for ( nlohmann::json& jsonRpcRequest : jarrRequest ) {
+        for ( const nlohmann::json& jsonRpcRequest : jarrRequest ) {
             std::string methodName =
                 skutils::tools::getFieldSafe< std::string >( jsonRpcRequest, "method" );
             if ( methodName.empty() )

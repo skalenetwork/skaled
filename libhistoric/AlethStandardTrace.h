@@ -18,6 +18,7 @@ along with skaled.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
+
 #include "AlethExtVM.h"
 #include "CallTracePrinter.h"
 #include "DefaultTracePrinter.h"
@@ -75,38 +76,67 @@ public:
     void setOriginalFromBalance( const u256& _originalFromBalance );
 
     [[nodiscard]] Json::Value getJSONResult() const;
+
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getTopFunctionCall() const;
+
     [[nodiscard]] TraceOptions getOptions() const;
+
     [[nodiscard]] const std::map< Address, std::map< u256, u256 > >& getAccessedStorageValues()
         const;
+
     [[nodiscard]] const std::set< Address >& getAccessedAccounts() const;
+
     [[nodiscard]] const h256& getTxHash() const;
-    [[nodiscard]] const std::shared_ptr< Json::Value >& getDefaultOpTrace() const;
+
+    [[nodiscard]] const shared_ptr< vector< shared_ptr< OpExecutionRecord > > >&
+    getOpRecordsSequence() const;
+
     [[nodiscard]] const Address& getDeployedContractAddress() const;
+
     [[nodiscard]] const std::shared_ptr< FunctionCallRecord >& getCurrentlyExecutingFunctionCall()
         const;
+
     [[nodiscard]] const Address& getBlockAuthor() const;
+
     [[nodiscard]] const u256& getMinerPayment() const;
+
     [[nodiscard]] const u256& getOriginalFromBalance() const;
+
     [[nodiscard]] bool isCall() const;
+
     [[nodiscard]] const Address& getFrom() const;
+
     [[nodiscard]] uint64_t getTotalGasUsed() const;
+
     [[nodiscard]] const u256& getGasLimit() const;
+
     [[nodiscard]] const u256& getValue() const;
+
     [[nodiscard]] const bytes& getInputData() const;
+
     [[nodiscard]] const Address& getTo() const;
+
     [[nodiscard]] const u256& getGasPrice() const;
+
     [[nodiscard]] const bytes& getOutput() const;
+
     [[nodiscard]] bool isFailed() const;
+
     [[nodiscard]] evmc_status_code getEVMCStatusCode() const;
+
     [[nodiscard]] bool isSimpleTransfer();
+
     [[nodiscard]] bool isContractCreation();
 
+    [[nodiscard]] shared_ptr< FunctionCallRecord > getNewFunction( uint64_t _executionCounter );
+
     [[nodiscard]] static string toGethCompatibleCompactHexPrefixed( const u256& _value );
+
 
 private:
     void setCurrentlyExecutingFunctionCall(
         const std::shared_ptr< FunctionCallRecord >& _currentlyExecutingFunctionCall );
+
     void setTopFunctionCall( const std::shared_ptr< FunctionCallRecord >& _topFunctionCall );
 
     // this operator will be executed by skaled on each EVM instruction
@@ -128,8 +158,7 @@ private:
     // analyze instruction and record function calls, returns and storage value
     // accesses
     void analyzeInstructionAndRecordNeededInformation( uint64_t, Instruction& _inst,
-        std::uint64_t _lastOpGas, std::uint64_t _gasRemaining, const ExtVMFace* _face,
-        AlethExtVM& _ext, const LegacyVM* _vm );
+        uint64_t _gasRemaining, const ExtVMFace* _face, AlethExtVM& _ext, const LegacyVM* _vm );
 
     // get the currently executing smartcontract memory from EVM
     [[nodiscard]] static std::vector< std::uint8_t >
@@ -140,8 +169,6 @@ private:
     void processFunctionCallOrReturnIfHappened(
         const AlethExtVM& _ext, const LegacyVM* _vm, std::uint64_t _gasRemaining );
 
-    void appendOpToStandardOpTrace( std::uint64_t _pc, Instruction& _inst, const bigint& _gasCost,
-        const bigint& _gas, const ExtVMFace* _ext, AlethExtVM& _alethExt, const LegacyVM* _vm );
 
     // print all supported traces. This can be used for QA
     void printAllTraces( Json::Value& _jsonTrace, ExecutionResult& _er,
@@ -156,10 +183,11 @@ private:
 
     void recordMinerFeePayment( HistoricState& _statePost );
 
+    [[nodiscard]] std::shared_ptr< OpExecutionRecord > getLastOpRecord() const;
+
     std::shared_ptr< FunctionCallRecord > m_topFunctionCall;
     std::shared_ptr< FunctionCallRecord > m_currentlyExecutingFunctionCall;
     std::vector< Instruction > m_lastInst;
-    std::shared_ptr< Json::Value > m_defaultOpTrace = nullptr;
     Json::FastWriter m_fastWriter;
     Address m_from;
     Address m_to;
@@ -172,7 +200,8 @@ private:
     // for each storage address the current value if recorded
     std::map< Address, std::map< dev::u256, dev::u256 > > m_accessedStorageValues;
 
-    OpExecutionRecord m_lastOpRecord;
+    std::shared_ptr< std::vector< std::shared_ptr< OpExecutionRecord > > >
+        m_executionRecordSequence = nullptr;
     std::atomic< bool > m_isFinalized = false;
     NoopTracePrinter m_noopTracePrinter;
     FourByteTracePrinter m_fourByteTracePrinter;
@@ -196,5 +225,13 @@ private:
     evmc_status_code m_evmcStatusCode;
     // this will include deployed contract address if the transaction was CREATE
     Address m_deployedContractAddress;
+
+    // this map maps CALL or DELEGATECALL instruction counter to the corresponding
+    // function record
+    std::map< uint64_t, shared_ptr< FunctionCallRecord > > m_callInstructionCounterToFunctionRecord;
+
+    shared_ptr< OpExecutionRecord > createOpExecutionRecord( uint64_t _pc, Instruction& _inst,
+        const bigint& _gasOpGas, const bigint& _gasRemaining, const AlethExtVM& ext,
+        const LegacyVM* _vm );
 };
 }  // namespace dev::eth
