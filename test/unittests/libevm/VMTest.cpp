@@ -648,6 +648,39 @@ public:
     std::unique_ptr< VMFace > vm;
 };
 
+class InstructionTestFixture : public TestOutputHelperFixture {
+public:
+    InstructionTestFixture() : vm{new LegacyVM()} { state.addBalance( address, 1 * ether ); }
+
+    void testCode( std::string const& _codeStr ) {
+
+        bytes const code = fromHex( _codeStr );
+
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
+                    ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    }
+
+    BlockHeader blockHeader{initBlockHeader()};
+    LastBlockHashes lastBlockHashes;
+    Address address{KeyPair::create().address()};
+    State state{0};
+    std::unique_ptr< SealEngineFace > se{
+                                       ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+
+    u256 value = 0;
+    u256 gasPrice = 1;
+    u256 version = IstanbulSchedule.accountVersion;
+    int depth = 0;
+    bool isCreate = false;
+    bool staticCall = false;
+    u256 gas = 1000000;
+
+    std::unique_ptr< LegacyVM > vm;
+};
+
 class LegacyVMBalanceFixture : public BalanceFixture {
 public:
     LegacyVMBalanceFixture() : BalanceFixture{new LegacyVM} {}
@@ -855,6 +888,18 @@ BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceisInvalidBeforeIstanbul,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testSelfBalanceisInvalidBeforeIstanbul();
 }
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( InstructionSuite, InstructionTestFixture )
+
+BOOST_AUTO_TEST_CASE( Push0 ) {
+    string code = "5f";
+    BOOST_REQUIRE_NO_THROW( this->testCode(code) );
+    u256s stack = vm->stack();
+    BOOST_REQUIRE_EQUAL(stack.size(), 1);
+    BOOST_REQUIRE_EQUAL(stack[0], u256());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
