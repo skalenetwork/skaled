@@ -1366,7 +1366,7 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     t.forceSender( from );
     t.forceChainId( chainParams().chainID );
     // call and traceCall do not use PoW
-    t.checkOutExternalGas( ~u256( 0 ) );
+    t.ignoreExternalGas();
     return t;
 }
 
@@ -1396,7 +1396,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
             Transaction tx = transactions.at( k );
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
-            tx.checkOutExternalGas( chainParams().externalGasDifficulty );
+            tx.checkOutExternalGas( chainParams(), _blockNumber );
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =
