@@ -246,11 +246,16 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
-    JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
-                    bool _deploymentControl = true, bool _generation2 = false, 
+
+// chain params needs to be a field of JsonRPCFixture
+// since references to it are passed to the server
+ChainParams chainParams;
+
+
+JsonRpcFixture( const std::string& _config = "", bool _owner = true,
+                    bool _deploymentControl = true, bool _generation2 = false,
                     bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1 ) {
-        dev::p2p::NetworkPreferences nprefs;
-        ChainParams chainParams;
+
 
         if ( _config != "" ) {
             if ( !_generation2 ) {
@@ -353,9 +358,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
-            new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
-            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
-            /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
+            new rpc::Web3(),  // TODO Add version parameter here?
+            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
+            new rpc::Debug( *client, nullptr, "", true),
             new rpc::Test( *client ) ) );
 
         //
@@ -779,7 +784,7 @@ BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
 
     // Sending tx to sync node
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
-    
+
     auto pendingTransactions = fixture.client->pending();
     BOOST_REQUIRE( pendingTransactions.size() == 1);
     auto txHashFromQueue = "0x" + pendingTransactions[0].sha3().hex();
@@ -1564,7 +1569,7 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         "fffffffffffffffffffffffff16815260200191505060405180910390f3"
         "5b60003390509056fea165627a7a72305820abfa953fead48d8f657bca6"
         "57713501650734d40342585cafcf156a3fe1f41d20029";
-    
+
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;

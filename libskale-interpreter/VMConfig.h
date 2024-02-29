@@ -53,7 +53,12 @@ namespace eth {
 #endif
 #if EVM_OPTIMIZE
 #define EVM_REPLACE_CONST_JUMP true
+// We do not optimize constant pool on
+// historic nodes because it introduces a non-standard instruction PUSHC
+// which leads to non-geth-compatibe traces
+#ifndef HISTORIC_STATE
 #define EVM_USE_CONSTANT_POOL true
+#endif
 #define EVM_DO_FIRST_PASS_OPTIMIZATION ( EVM_REPLACE_CONST_JUMP || EVM_USE_CONSTANT_POOL )
 #endif
 

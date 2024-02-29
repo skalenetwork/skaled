@@ -53,7 +53,7 @@ const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 
 using namespace dev::rpc::_detail;
 
-// TODO Check LatestBlock number - update!
+// TODO Check LatestBlock number - update
 // Needs external locks to exchange read one to write one
 void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     std::shared_lock< std::shared_mutex >& _readLock,
@@ -66,13 +66,17 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     _readLock.unlock();
     _writeLock.lock();
 
+
     unsigned realBn = _bn;
     if ( _bn == LatestBlock )
         realBn = client.number();
     else if ( _bn == PendingBlock )
-        realBn = client.number() + 1;  // TODO test this case and decide
+        realBn = client.number() + 1;
 
-    assert( real2gappedCache.size() <= cacheSize );
+    if ( real2gappedCache.size() > cacheSize ) {
+        throw std::runtime_error( "real2gappedCache.size() > cacheSize" );
+    }
+
     if ( real2gappedCache.size() >= cacheSize ) {
         real2gappedCache.erase( real2gappedCache.begin() );
         gapped2realCache.erase( gapped2realCache.begin() );
@@ -94,7 +98,7 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
 
         pair< h256, unsigned > loc = client.transactionLocation( th );
 
-        // ignore transactions with 0 gas usage OR different location!
+        // ignore transactions with 0 gas usage OR different location
         if ( diff == 0 || client.numberFromHash( loc.first ) != realBn || loc.second != realIndex )
             continue;
 
@@ -177,7 +181,7 @@ string Eth::eth_blockNumber( const Json::Value& request ) {
     if ( !request.empty() ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
-    return toJS( client()->number() );
+ION( Js    return toJS( client()->number() );
 }
 
 
@@ -432,7 +436,7 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     }
 }
 
-// TODO Catch exceptions for all calls other eth_-calls in outer scope!
+// TODO Catch exceptions for all calls other eth_-calls in outer scope
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // Don't need to check the transaction signature (CheckTransaction::None) since it
