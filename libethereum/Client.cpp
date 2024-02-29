@@ -1419,7 +1419,6 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #endif
 
 
-
 void Client::initHistoricGroupIndex() {
     if ( number() == 0 ) {
         historicGroupIndex = 0;
