@@ -75,4 +75,9 @@ protected:
         static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
     };
 
+DEFINE_SIMPLE_PATCH( RevertableFSPatch )
+DEFINE_AMNESIC_PATCH( PrecompiledConfigPatch )
+DEFINE_SIMPLE_PATCH( POWCheckPatch )
+DEFINE_SIMPLE_PATCH( CorrectForkInPowPatch )
+
 #endif  // SCHAINPATCH_H

@@ -28,8 +28,8 @@
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libethereum/SchainPatch.h>
 #include <libevm/VMFace.h>
-#include <libskale/CorrectForkInPowPatch.h>
 
 using namespace std;
 using namespace dev;

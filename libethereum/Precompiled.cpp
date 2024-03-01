@@ -36,8 +36,8 @@
 #include <libdevcrypto/LibSnark.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/SchainPatch.h>
 #include <libethereum/SkaleHost.h>
-#include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string.hpp>

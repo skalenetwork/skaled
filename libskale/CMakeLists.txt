@@ -16,14 +16,10 @@ set(sources
     ContractStorageZeroValuePatch.cpp
     VerifyDaSigsPatch.cpp
     AmsterdamFixPatch.cpp
-    RevertableFSPatch.cpp
     OverlayFS.cpp
     StorageDestructionPatch.cpp
-    POWCheckPatch.cpp
-    PrecompiledConfigPatch.cpp
     PushZeroPatch.cpp
     SkipInvalidTransactionsPatch.cpp
-    CorrectForkInPowPatch.cpp
 )
 
 set(headers
@@ -40,12 +36,8 @@ set(headers
     TotalStorageUsedPatch.h
     ContractStorageLimitPatch.h
     AmsterdamFixPatch.h
-    RevertableFSPatch.h
-    POWCheckPatch.h
-    PrecompiledConfigPatch.h
     OverlayFS.h
     SkipInvalidTransactionsPatch.h
-    CorrectForkInPowPatch.h
 )
 
 add_library(skale ${sources} ${headers})

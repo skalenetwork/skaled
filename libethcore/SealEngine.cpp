@@ -20,7 +20,7 @@
 #include "SealEngine.h"
 #include "TransactionBase.h"
 
-#include <libskale/POWCheckPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include "../libdevcore/microprofile.h"
 

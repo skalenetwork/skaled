@@ -23,7 +23,7 @@
  */
 
 #include "ClientBase.h"
-#include <libskale/CorrectForkInPowPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include <algorithm>
 #include <utility>

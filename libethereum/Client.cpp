@@ -49,18 +49,11 @@
 #include <libhistoric/HistoricState.h>
 #endif
 
-
+#include <libethereum/SchainPatch.h>
 #include <libskale/ContractStorageLimitPatch.h>
-#include <libskale/ContractStorageZeroValuePatch.h>
-#include <libskale/CorrectForkInPowPatch.h>
-#include <libskale/POWCheckPatch.h>
-#include <libskale/PrecompiledConfigPatch.h>
-#include <libskale/PushZeroPatch.h>
-#include <libskale/RevertableFSPatch.h>
-#include <libskale/SkipInvalidTransactionsPatch.h>
-#include <libskale/State.h>
-#include <libskale/StorageDestructionPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
+
+#include <libskale/State.h>
 #include <libskale/UnsafeRegion.h>
 #include <libskale/VerifyDaSigsPatch.h>
 #include <skutils/console_colors.h>
@@ -162,8 +155,6 @@ Client::Client( ChainParams const& _params, int _networkID,
         chainParams().sChain.getPatchTimestamp( "ContractStoragePatch" ) );
     VerifyDaSigsPatch::setTimestamp(
         chainParams().sChain.getPatchTimestamp( "VerifyDaSigsPatch" ) );
-    StorageDestructionPatch::setTimestamp(
-        chainParams().sChain.getPatchTimestamp( "StorageDestructionPatch" ) );
 }
 
 
@@ -663,7 +654,7 @@ size_t Client::syncTransactions(
     ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
     //    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
     //    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    // StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     // POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
     // PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     //    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();

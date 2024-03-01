@@ -21,7 +21,7 @@
  * that manage block/transaction import and test mining
  */
 
-#include <libskale/CorrectForkInPowPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include <libdevcore/TransientDirectory.h>
 #include <libethashseal/GenesisInfo.h>
