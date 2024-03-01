@@ -55,7 +55,10 @@
 
 #include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/ContractStorageZeroValuePatch.h>
+#include <libskale/CorrectForkInPowPatch.h>
 #include <libskale/POWCheckPatch.h>
+#include <libskale/PrecompiledConfigPatch.h>
+#include <libskale/PushZeroPatch.h>
 #include <libskale/RevertableFSPatch.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libskale/State.h>
@@ -170,8 +173,11 @@ Client::Client( ChainParams const& _params, int _networkID,
     RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
     StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
     POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
+    PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
     SkipInvalidTransactionsPatch::setTimestamp(
         this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
+    PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
+    CorrectForkInPowPatch::setTimestamp( chainParams().sChain.correctForkInPowPatchTimestamp );
 }
 
 
@@ -318,8 +324,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( ChainParams().sChain.nodeGroups.size() > 0 )
-        initIMABLSPublicKey();
+    if ( chainParams().sChain.nodeGroups.size() > 0 ) {
+        initHistoricGroupIndex();
+    } else {
+        LOG( m_logger ) << "Empty node groups in config. "
+                           "This is OK in tests but not OK in production";
+    }
 
     // init snapshots for not newly created chains
     if ( number() ) {
@@ -329,6 +339,10 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
+
+    // needed for checkOutExternalGas
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
     initCPUUSage();
 
@@ -599,6 +613,10 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
+    // this needs to be updated as soon as possible, as it's used in new transactions validation
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerDetail ) << "Total unsafe time so far = "
                               << std::chrono::duration_cast< std::chrono::seconds >(
@@ -626,7 +644,7 @@ size_t Client::importTransactionsAsBlock(
     }
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
-        updateIMABLSPublicKey();
+        updateHistoricGroupIndex();
 
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
@@ -664,7 +682,12 @@ size_t Client::syncTransactions(
     RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
     StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
     POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
     SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
+    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -1092,7 +1115,9 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         auto readState = m_state.createStateReadOnlyCopy();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), hash, readState ); }
+        // removed m_blockImportMutex here
+        // this function doesn't interact with latest block so the mutex isn't needed
+        return Block( bc(), hash, readState );
         assert( false );
         return Block( bc() );
     } catch ( Exception& ex ) {
@@ -1125,10 +1150,9 @@ Transactions Client::pending() const {
 }
 
 SyncStatus Client::syncStatus() const {
-    // TODO implement this when syncing will be needed
-    SyncStatus s;
-    s.startBlockNumber = s.currentBlockNumber = s.highestBlockNumber = 0;
-    return s;
+    if ( !m_skaleHost )
+        BOOST_THROW_EXCEPTION( std::runtime_error( "SkaleHost was not initialized" ) );
+    return m_skaleHost->syncStatus();
 }
 
 TransactionSkeleton Client::populateTransactionWithDefaults( TransactionSkeleton const& _t ) const {
@@ -1186,8 +1210,6 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // the latest block in the client's blockchain. This can throw but
     // we'll catch the exception at the RPC level.
 
-    const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams().externalGasDifficulty );
-
     // throws in case of error
     State state;
     u256 gasBidPrice;
@@ -1195,6 +1217,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
     DEV_GUARDED( m_blockImportMutex ) {
         state = this->state().createStateReadOnlyCopy();
         gasBidPrice = this->gasBidPrice();
+
+        // We need to check external gas under mutex to be sure about current block bumber
+        // correctness
+        const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
     }
 
     Executive::verifyTransaction( _t,
@@ -1253,7 +1279,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
                 t.forceChainId( chainParams().chainID );
-                t.checkOutExternalGas( ~u256( 0 ) );
+                t.ignoreExternalGas();
                 // if we are in a call, we add to the balance of the account
                 // value needed for the call to guaranteed pass
                 // geth does a similar thing, we need to check whether it is fully compatible with
@@ -1281,7 +1307,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().chainID );
-        t.checkOutExternalGas( ~u256( 0 ) );
+        t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
@@ -1340,7 +1366,7 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     t.forceSender( from );
     t.forceChainId( chainParams().chainID );
     // call and traceCall do not use PoW
-    t.checkOutExternalGas( ~u256( 0 ) );
+    t.ignoreExternalGas();
     return t;
 }
 
@@ -1370,7 +1396,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
             Transaction tx = transactions.at( k );
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
-            tx.checkOutExternalGas( chainParams().externalGasDifficulty );
+            tx.checkOutExternalGas( chainParams(), _blockNumber );
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =
@@ -1392,9 +1418,10 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 
 #endif
 
-void Client::initIMABLSPublicKey() {
+
+void Client::initHistoricGroupIndex() {
     if ( number() == 0 ) {
-        imaBLSPublicKeyGroupIndex = 0;
+        historicGroupIndex = 0;
         return;
     }
 
@@ -1406,7 +1433,11 @@ void Client::initIMABLSPublicKey() {
         chainParams().sChain.nodeGroups.end(),
         [&currentBlockTimestamp](
             const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
-    assert( it != chainParams().sChain.nodeGroups.end() );
+
+    if ( it == chainParams().sChain.nodeGroups.end() ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Assertion failed: it == chainParams().sChain.nodeGroups.end()" ) );
+    }
 
     if ( it != chainParams().sChain.nodeGroups.begin() ) {
         auto prevIt = std::prev( it );
@@ -1415,15 +1446,18 @@ void Client::initIMABLSPublicKey() {
             it = prevIt;
     }
 
-    imaBLSPublicKeyGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+    historicGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
 }
 
-void Client::updateIMABLSPublicKey() {
+void Client::updateHistoricGroupIndex() {
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].finishTs;
+    uint64_t currentFinishTs = chainParams().sChain.nodeGroups.at( historicGroupIndex ).finishTs;
     if ( blockTimestamp >= currentFinishTs )
-        ++imaBLSPublicKeyGroupIndex;
-    assert( imaBLSPublicKeyGroupIndex < chainParams().sChain.nodeGroups.size() );
+        ++historicGroupIndex;
+    if ( historicGroupIndex >= chainParams().sChain.nodeGroups.size() ) {
+        BOOST_THROW_EXCEPTION( std::runtime_error(
+            "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
+    }
 }
 
 // new block watch

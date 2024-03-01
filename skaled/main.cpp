@@ -274,8 +274,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                 throw std::runtime_error( strErrorDescription );
             }
         } catch ( ... ) {
-            std::throw_with_nested(
-                std::runtime_error( cc::error( "Exception while downloading snapshot" ) ) );
+            // remove partially downloaded snapshot
+            boost::filesystem::remove( saveTo );
+            std::throw_with_nested( std::runtime_error( "Exception while downloading snapshot" ) );
         }
         clog( VerbosityInfo, "downloadSnapshot" )
             << cc::success( "Snapshot download success for block " )
@@ -437,9 +438,9 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
             try {
                 snapshotManager->computeSnapshotHash( blockNumber, true );
             } catch ( const std::exception& ) {
-                std::throw_with_nested(
-                    std::runtime_error( cc::fatal( "FATAL:" ) + " " +
-                                        cc::error( "Exception while computing snapshot hash " ) ) );
+                std::throw_with_nested( std::runtime_error(
+                    std::string( "FATAL:" ) +
+                    std::string( " Exception while computing snapshot hash " ) ) );
             }
 
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
@@ -448,18 +449,15 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
                 successfullDownload = true;
                 if ( isRegularSnapshot ) {
                     snapshotManager->restoreSnapshot( blockNumber );
-                    std::cout << cc::success( "Snapshot restore success for block " )
-                              << cc::u( to_string( blockNumber ) ) << std::endl;
+                    std::cout << "Snapshot restore success for block " << to_string( blockNumber )
+                              << std::endl;
                 }
                 return successfullDownload;
             } else {
                 clog( VerbosityWarning, "tryDownloadSnapshot" )
-                    << cc::notice(
-                           "Downloaded snapshot with incorrect hash! Incoming "
-                           "hash " )
-                    << cc::notice( votedHash.first.hex() )
-                    << cc::notice( " is not equal to calculated hash " )
-                    << cc::notice( calculated_hash.hex() ) << cc::notice( "Will try again" );
+                    << "Downloaded snapshot with incorrect hash! Incoming hash "
+                    << votedHash.first.hex() << " is not equal to calculated hash "
+                    << calculated_hash.hex() << " Will try again";
                 if ( isRegularSnapshot )
                     snapshotManager->cleanup();
                 else
@@ -550,6 +548,7 @@ int main( int argc, char** argv ) try {
     cc::_on_ = false;
     cc::_max_value_size_ = 2048;
     MicroProfileSetEnableAllGroups( true );
+    dev::setThreadName( "main" );
     BlockHeader::useTimestampHack = false;
     srand( time( nullptr ) );
     setCLocale();
@@ -2783,7 +2782,6 @@ int main( int argc, char** argv ) try {
             << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
     }
 
-    dev::setThreadName( "main" );
     if ( g_client ) {
         unsigned int n = g_client->blockChain().details().number;
         unsigned int mining = 0;

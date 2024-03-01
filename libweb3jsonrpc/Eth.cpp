@@ -145,28 +145,6 @@ Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolde
 {
 }
 
-bool Eth::isEnabledTransactionSending() const {
-    bool isEnabled = true;
-    try {
-        nlohmann::json joConfig = getConfigJSON();
-        if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error config.json file, cannot find \"skaleConfig\"" );
-        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
-        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
-        if ( joSkaleConfig_nodeInfo.count( "syncNode" ) == 0 )
-            throw std::runtime_error(
-                "error config.json file, cannot find "
-                "\"skaleConfig\"/\"nodeInfo\"/\"syncNode\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_syncNode = joSkaleConfig_nodeInfo["syncNode"];
-        isEnabled = joSkaleConfig_nodeInfo_syncNode.get< bool >() ? false : true;
-    } catch ( ... ) {
-    }
-    return isEnabled;
-}
-
 string Eth::eth_protocolVersion() {
     return toJS( eth::c_protocolVersion );
 }
@@ -199,7 +177,11 @@ Json::Value Eth::eth_accounts() {
     return toJson( m_ethAccounts.allAccounts() );
 }
 
-string Eth::eth_blockNumber() {
+string Eth::eth_blockNumber( const Json::Value& request ) {
+    if ( !request.empty() ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+
     return toJS( client()->number() );
 }
 
@@ -391,8 +373,6 @@ void Eth::setTransactionDefaults( TransactionSkeleton& _t ) {
 
 string Eth::eth_sendTransaction( Json::Value const& _json ) {
     try {
-        if ( !isEnabledTransactionSending() )
-            throw std::runtime_error( "transacton sending feature is disabled on this instance" );
         TransactionSkeleton t = toTransactionSkeleton( _json );
         setTransactionDefaults( t );
         pair< bool, Secret > ar = m_ethAccounts.authenticate( t );
@@ -460,8 +440,6 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 // TODO Catch exceptions for all calls other eth_-calls in outer scope
 /// skale
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
-    if ( !isEnabledTransactionSending() )
-        throw JsonRpcException( "transacton sending feature is disabled on this instance" );
     // Don't need to check the transaction signature (CheckTransaction::None) since it
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
@@ -899,15 +877,24 @@ Json::Value Eth::eth_getWork() {
 }
 
 Json::Value Eth::eth_syncing() {
-    dev::eth::SyncStatus sync = client()->syncStatus();
-    if ( sync.state == SyncState::Idle || !sync.majorSyncing )
-        return Json::Value( false );
+    try {
+        auto client = this->client();
+        if ( !client )
+            BOOST_THROW_EXCEPTION( std::runtime_error( "Client was not initialized" ) );
 
-    Json::Value info( Json::objectValue );
-    info["startingBlock"] = sync.startBlockNumber;
-    info["highestBlock"] = sync.highestBlockNumber;
-    info["currentBlock"] = sync.currentBlockNumber;
-    return info;
+        // ask consensus whether the node is in catchup mode
+        dev::eth::SyncStatus sync = client->syncStatus();
+        if ( !sync.majorSyncing )
+            return Json::Value( false );
+
+        Json::Value info( Json::objectValue );
+        info["startingBlock"] = sync.startBlockNumber;
+        info["highestBlock"] = sync.highestBlockNumber;
+        info["currentBlock"] = sync.currentBlockNumber;
+        return info;
+    } catch ( const Exception& e ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( e.what() ) );
+    }
 }
 
 string Eth::eth_chainId() {

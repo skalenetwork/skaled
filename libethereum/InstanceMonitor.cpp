@@ -32,7 +32,7 @@
 using namespace dev;
 namespace fs = boost::filesystem;
 
-const std::string InstanceMonitor::rotation_info_file_name = "rotation.txt";
+const std::string InstanceMonitor::rotation_info_file_name = "rotation.json";
 
 void InstanceMonitor::prepareRotation() {
     reportExitTimeReached( true );
@@ -40,35 +40,49 @@ void InstanceMonitor::prepareRotation() {
 }
 
 void InstanceMonitor::initRotationParams( uint64_t _finishTimestamp ) {
-    nlohmann::json rotationJson = nlohmann::json::object();
-    rotationJson["timestamp"] = _finishTimestamp;
+    try {
+        nlohmann::json rotationJson = nlohmann::json::object();
+        rotationJson["timestamp"] = _finishTimestamp;
 
-    std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
-    rotationInfoFile << rotationJson;
+        std::ofstream rotationInfoFile( m_rotationInfoFilePath.string() );
+        rotationInfoFile << rotationJson;
 
-    m_finishTimestamp = _finishTimestamp;
-    LOG( m_logger ) << "Set rotation time to " << m_finishTimestamp;
+        LOG( m_infoLogger ) << "Set rotation time to " << _finishTimestamp;
+    } catch ( ... ) {
+        LOG( m_errorLogger ) << "Setting rotation timestamp failed";
+        throw_with_nested( std::runtime_error( "cannot save rotation timestamp" ) );
+    }
 }
 
-bool InstanceMonitor::isTimeToRotate( uint64_t _finishTimestamp ) {
+bool InstanceMonitor::isTimeToRotate( uint64_t _blockTimestamp ) const {
     if ( !fs::exists( m_rotationInfoFilePath ) ) {
         return false;
     }
-    return m_finishTimestamp <= _finishTimestamp;
+    try {
+        auto _rotationTimestamp = rotationTimestamp();
+        return _rotationTimestamp <= _blockTimestamp;
+    } catch ( InvalidRotationInfoFileException& ex ) {
+        return false;
+    }
 }
 
-void InstanceMonitor::restoreRotationParams() {
-    if ( fs::exists( m_rotationInfoFilePath ) ) {
-        std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
+uint64_t InstanceMonitor::rotationTimestamp() const {
+    std::ifstream rotationInfoFile( m_rotationInfoFilePath.string() );
+    try {
         auto rotationJson = nlohmann::json::parse( rotationInfoFile );
-        m_finishTimestamp = rotationJson["timestamp"].get< uint64_t >();
+        auto timestamp = rotationJson["timestamp"].get< uint64_t >();
+        LOG( m_infoLogger ) << "Rotation scheduled for " << timestamp;
+        return timestamp;
+    } catch ( ... ) {
+        LOG( m_errorLogger ) << "Rotation file is malformed or missing";
+        throw InvalidRotationInfoFileException( m_rotationInfoFilePath );
     }
 }
 
 void InstanceMonitor::reportExitTimeReached( bool _reached ) {
     if ( m_statusAndControl ) {
-        LOG( m_logger ) << "Setting ExitTimeReached = " << _reached;
+        LOG( m_infoLogger ) << "Setting ExitTimeReached = " << _reached;
         m_statusAndControl->setExitState( StatusAndControl::ExitTimeReached, _reached );
     } else
-        LOG( m_logger ) << "Simulating setting ExitTimeReached = " << _reached;
+        LOG( m_infoLogger ) << "Simulating setting ExitTimeReached = " << _reached;
 }

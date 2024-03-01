@@ -22,12 +22,13 @@
 #include "Assertions.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
-#include <secp256k1_sha256.h>
 
 namespace dev {
 namespace db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
+
+const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
 
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
@@ -213,7 +214,6 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     }
 }
 
-
 void LevelDB::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     cnote << "Iterating over the LevelDB prefix: " << _prefix;
@@ -238,21 +238,23 @@ h256 LevelDB::hashBase() const {
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
+
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
-        std::string key_ = it->key().ToString();
-        std::string value_ = it->value().ToString();
+        std::string keyTmp = it->key().ToString();
+        std::string valueTmp = it->value().ToString();
         // HACK! For backward compatibility! When snapshot could happen between update of two nodes
         // - it would lead to stateRoot mismatch
         // TODO Move this logic to separate "compatiliblity layer"!
-        if ( key_ == "pieceUsageBytes" )
+        if ( keyTmp == "pieceUsageBytes" )
             continue;
-        std::string key_value = key_ + value_;
-        const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
-        bytesConstRef str_key_value( usc.data(), usc.size() );
-        secp256k1_sha256_write( &ctx, str_key_value.data(), str_key_value.size() );
+        std::string keyValue = keyTmp + valueTmp;
+        const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
+        bytesConstRef strKeyValue( usc.data(), usc.size() );
+        secp256k1_sha256_write( &ctx, strKeyValue.data(), strKeyValue.size() );
     }
+
     h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
     return hash;
@@ -263,21 +265,55 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
+
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
         if ( it->key()[0] == _prefix ) {
-            std::string key_ = it->key().ToString();
-            std::string value_ = it->value().ToString();
-            std::string key_value = key_ + value_;
-            const std::vector< uint8_t > usc( key_value.begin(), key_value.end() );
-            bytesConstRef str_key_value( usc.data(), usc.size() );
-            secp256k1_sha256_write( &ctx, str_key_value.data(), str_key_value.size() );
+            std::string keyTmp = it->key().ToString();
+            std::string valueTmp = it->value().ToString();
+            std::string keyValue = keyTmp + valueTmp;
+            const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
+            bytesConstRef strKeyValue( usc.data(), usc.size() );
+            secp256k1_sha256_write( &ctx, strKeyValue.data(), strKeyValue.size() );
         }
     }
     h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
     return hash;
+}
+
+bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
+    std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
+    if ( it == nullptr ) {
+        BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
+    }
+
+    if ( lastHashedKey != "start" )
+        it->Seek( lastHashedKey );
+    else
+        it->SeekToFirst();
+
+    for ( size_t counter = 0; it->Valid() && counter < BATCH_CHUNK_SIZE; it->Next() ) {
+        std::string keyTmp = it->key().ToString();
+        std::string valueTmp = it->value().ToString();
+        // HACK! For backward compatibility! When snapshot could happen between update of two nodes
+        // - it would lead to stateRoot mismatch
+        // TODO Move this logic to separate "compatiliblity layer"!
+        if ( keyTmp == "pieceUsageBytes" )
+            continue;
+        std::string keyValue = keyTmp + valueTmp;
+        const std::vector< uint8_t > usc( keyValue.begin(), keyValue.end() );
+        bytesConstRef strKeyValue( usc.data(), usc.size() );
+        secp256k1_sha256_write( ctx, strKeyValue.data(), strKeyValue.size() );
+        ++counter;
+    }
+
+    if ( it->Valid() ) {
+        lastHashedKey = it->key().ToString();
+        return true;
+    } else
+        return false;
 }
 
 void LevelDB::doCompaction() const {

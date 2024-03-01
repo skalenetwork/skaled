@@ -62,6 +62,8 @@ public:
     virtual uint64_t debug_doStateDbCompaction() override;
     virtual uint64_t debug_doBlocksDbCompaction() override;
 
+    virtual Json::Value debug_getFutureTransactions() override;
+
 private:
     eth::Client& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;

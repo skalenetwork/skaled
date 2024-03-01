@@ -212,7 +212,7 @@ public:
                                     jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_syncingI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_estimateGas", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_estimateGasI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_chainId", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
@@ -244,8 +244,7 @@ public:
         response = this->eth_accounts();
     }
     inline virtual void eth_blockNumberI( const Json::Value& request, Json::Value& response ) {
-        ( void ) request;
-        response = this->eth_blockNumber();
+        response = this->eth_blockNumber( request );
     }
     inline virtual void eth_getBalanceI( const Json::Value& request, Json::Value& response ) {
         response = this->eth_getBalance( request[0u].asString(), request[1u].asString() );
@@ -420,6 +419,9 @@ public:
         response = this->eth_syncing();
     }
     inline virtual void eth_estimateGasI( const Json::Value& request, Json::Value& response ) {
+        if ( !request.isArray() || request.empty() )
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
         response = this->eth_estimateGas( request[0u] );
     }
     inline virtual void eth_chainIdI( const Json::Value& request, Json::Value& response ) {
@@ -432,7 +434,7 @@ public:
     virtual bool eth_mining() = 0;
     virtual std::string eth_gasPrice() = 0;
     virtual Json::Value eth_accounts() = 0;
-    virtual std::string eth_blockNumber() = 0;
+    virtual std::string eth_blockNumber( const Json::Value& request ) = 0;
     virtual std::string eth_getBalance( const std::string& param1, const std::string& param2 ) = 0;
     virtual std::string eth_getStorageAt(
         const std::string& param1, const std::string& param2, const std::string& param3 ) = 0;

@@ -16,6 +16,7 @@
 */
 
 #include "LegacyVM.h"
+#include "libskale/PushZeroPatch.h"
 
 using namespace std;
 using namespace dev;
@@ -1364,6 +1365,21 @@ void LegacyVM::interpretCases() {
 #endif
         }
         CONTINUE
+
+        // EIP-3855. Code PUSH0 is similar to PUSH1 but pushes 0
+        // we need to increment program counter only by one since
+        // the value is not read from program code as in PUSH1
+        CASE( PUSH0 ) {
+            if ( !PushZeroPatch::isEnabled() ) {
+                throwBadInstruction();
+            }
+            ON_OP();
+            updateIOGas();
+            m_SPP[0] = 0;
+            ++m_PC;
+        };
+        CONTINUE
+
 
         CASE( PUSH1 ) {
             ON_OP();

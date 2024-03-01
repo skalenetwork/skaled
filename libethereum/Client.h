@@ -145,6 +145,8 @@ public:
     /// Retrieve pending transactions
     Transactions pending() const override;
 
+    Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
+
     /// Queues a block for import.
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
@@ -315,7 +317,25 @@ public:
     }
 
     std::array< std::string, 4 > getIMABLSPublicKey() const {
-        return chainParams().sChain.nodeGroups[imaBLSPublicKeyGroupIndex].blsPublicKey;
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).blsPublicKey;
+    }
+
+    // get node id for historic node in chain
+    std::string getHistoricNodeId( unsigned _id ) const {
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _id ).id.str();
+    }
+
+    // get schain index for historic node in chain
+    std::string getHistoricNodeIndex( unsigned _idx ) const {
+        return chainParams()
+            .sChain.nodeGroups.at( historicGroupIndex )
+            .nodes.at( _idx )
+            .schainIndex.str();
+    }
+
+    // get node owner for historic node in chain
+    std::string getHistoricNodePublicKey( unsigned _idx ) const {
+        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _idx ).publicKey;
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
@@ -553,10 +573,11 @@ protected:
 #endif
 
 private:
-    void initIMABLSPublicKey();
-    void updateIMABLSPublicKey();
+    void initHistoricGroupIndex();
+    void updateHistoricGroupIndex();
 
-    unsigned imaBLSPublicKeyGroupIndex = 0;
+    // which group corresponds to the current block timestamp on this node
+    unsigned historicGroupIndex = 0;
 
 public:
     FILE* performance_fd;

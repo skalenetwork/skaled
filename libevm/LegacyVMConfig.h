@@ -259,7 +259,7 @@ namespace eth {
         &&BEGINDATA,                            \
         &&BEGINSUB,                             \
         &&INVALID,                              \
-        &&INVALID,                              \
+        &&PUSH0, /* EIP-3855  */                \
         &&PUSH1, /* 60, */                      \
         &&PUSH2,                                \
         &&PUSH3,                                \

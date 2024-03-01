@@ -15,6 +15,14 @@ on:
         description: 'Additional cmake options'
         default: ''
         required: false
+      build_type:
+        description: 'Build type of skaled binary'
+        type: choice
+        required: true
+        options: 
+        - Debug
+        - RelWithDebInfo
+        default: RelWithDebInfo
 
 jobs:
   main_job:
@@ -23,14 +31,16 @@ jobs:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        BUILD_TYPE: ${{ github.event.inputs.build_type }}
     steps:
       - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test; sudo apt-get update
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true 
+          sudo apt-get update || true
       - name: install packages
         run: |
           sudo apt-get -y remove libzmq* || true
-          sudo apt-get -y install software-properties-common
-          sudo apt-get -y install gcc-9 g++-9
+          sudo apt-get -y install software-properties-common gcc-9 g++-9 || true
 
       - name: Use g++-9 and gcov-9 by default
         run: |
@@ -74,8 +84,6 @@ jobs:
           rm -rf ./libconsensus || true
           ls -1
           git submodule update --init --recursive 
-      - name: update apt
-        run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test;
 
       - name: Prepare ccache timestamp
         id: ccache_cache_timestamp
@@ -95,18 +103,19 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=$BUILD_TYPE
+          [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
           ./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
-          ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=1
+          ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG
           cd ..
       - name: Configure all
         run: |
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=$BUILD_TYPE
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ${{ github.event.inputs.cmake_options }} ..
@@ -116,7 +125,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Debug
+          export CMAKE_BUILD_TYPE=$BUILD_TYPE
           cd build
           make skaled -j$(nproc)
           #echo "Ensure release mode skaled does not have any debug markers"
@@ -127,7 +136,8 @@ jobs:
         run: |
           cp build/skaled/skaled scripts/skale_build/executable/
           export BRANCH=${{ github.event.inputs.branch_name }}
-          export VERSION=${{ github.event.inputs.image_version }}
+          [[ $BUILD_TYPE = "Debug" ]] && export VERSION_SUFFIX=debug || export VERSION_SUFFIX=release
+          export VERSION=${{ github.event.inputs.image_version }}-$VERSION_SUFFIX
           echo "Version $VERSION"
           export RELEASE=true
           bash ./scripts/build_and_publish.sh

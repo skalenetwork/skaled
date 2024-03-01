@@ -10,7 +10,7 @@ module.exports = {
 const INSECURE_PRIVATE_KEY = "bd200f4e7f597f3c2c77fb405ee7fabeb249f63f03f43d5927b4fa0c43cfe85e";
 
 module.exports = {
-  solidity: "0.8.9",
+  solidity: "0.8.20",
   networks: {
     skaled: {
       url: `http://localhost:1234`,
