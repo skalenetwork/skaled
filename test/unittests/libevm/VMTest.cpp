@@ -17,6 +17,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <libethereum/SchainPatch.h>
 #include <libethereum/LastBlockHashesFace.h>
 #include <libevm/EVMC.h>
 #include <libevm/LegacyVM.h>
@@ -650,13 +651,22 @@ public:
 
 class InstructionTestFixture : public TestOutputHelperFixture {
 public:
-    InstructionTestFixture() : vm{new LegacyVM()} { state.addBalance( address, 1 * ether ); }
+    InstructionTestFixture() : vm{new LegacyVM()} {
+        ChainParams cp( genesisInfo( Network::IstanbulTest ) );
+        cp.sChain._patchTimestamps["PushZeroPatch"] = 1;
+        SchainPatch::init(cp);
+
+        se.reset(cp.createSealEngine());
+        envInfo = std::make_unique<EnvInfo> ( blockHeader, lastBlockHashes, 1, 0, cp.chainID );
+
+        state.addBalance( address, 1 * ether );
+    }
 
     void testCode( std::string const& _codeStr ) {
 
         bytes const code = fromHex( _codeStr );
 
-        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, *envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
                     ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
@@ -666,9 +676,8 @@ public:
     LastBlockHashes lastBlockHashes;
     Address address{KeyPair::create().address()};
     State state{0};
-    std::unique_ptr< SealEngineFace > se{
-                                       ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+    std::unique_ptr< SealEngineFace > se;
+    std::unique_ptr<EnvInfo> envInfo;
 
     u256 value = 0;
     u256 gasPrice = 1;

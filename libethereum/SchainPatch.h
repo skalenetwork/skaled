@@ -70,7 +70,7 @@ protected:
         }                                                                                          \
         static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
             time_t my_timestamp = chainParams.getPatchTimestamp( getName() );                      \
-            return _committedBlockTimestamp >= my_timestamp;                                       \
+            return my_timestamp != 0 && _committedBlockTimestamp >= my_timestamp;                  \
         }                                                                                          \
         static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
     };

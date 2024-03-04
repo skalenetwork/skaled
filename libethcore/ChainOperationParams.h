@@ -181,17 +181,6 @@ public:
         }  // catch
     }
 
-    //    time_t revertableFSPatchTimestamp = 0;
-    //    time_t contractStoragePatchTimestamp = 0;
-    //    time_t contractStorageZeroValuePatchTimestamp = 0;
-    //    time_t verifyDaSigsPatchTimestamp = 0;
-    //    time_t storageDestructionPatchTimestamp = 0;
-    //    time_t powCheckPatchTimestamp = 0;
-    //    time_t precompiledConfigPatchTimestamp = 0;
-    //    time_t pushZeroPatchTimestamp = 0;
-    //    time_t skipInvalidTransactionsPatchTimestamp = 0;
-    //    time_t correctForkInPowPatchTimestamp = 0;
-
     SChain() {
         name = "TestChain";
         id = 1;
