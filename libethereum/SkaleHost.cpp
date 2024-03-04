@@ -47,7 +47,6 @@ using namespace std;
 #include <libethereum/CommonNet.h>
 #include <libethereum/Executive.h>
 #include <libethereum/TransactionQueue.h>
-#include <libskale/VerifyDaSigsPatch.h>
 
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -81,8 +80,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     std::map< std::string, std::uint64_t > patchTimeStamps;
 
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
-        VerifyDaSigsPatch::getVerifyDaSigsPatchTimestamp();
-
+        m_client.chainParams().getPatchTimestamp( "VerifyDaSigsPatch" );
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );

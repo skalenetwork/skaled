@@ -23,7 +23,7 @@
 
 #include "ChainOperationParams.h"
 
-#include <libskale/PushZeroPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>

@@ -32,22 +32,6 @@ class Client;
 // Transactions are removed from Transaction Queue as usually.
 
 // TODO better start to apply patches from 1st block after timestamp, not second
-// class SkipInvalidTransactionsPatch : public SchainPatch {
-// public:
-//    static bool isEnabled();
-
-//    static void setTimestamp( time_t _activationTimestamp ) {
-//        activationTimestamp = _activationTimestamp;
-//        printInfo( __FILE__, _activationTimestamp );
-//    }
-
-//    static time_t getActivationTimestamp() { return activationTimestamp; }
-
-// private:
-//    friend class dev::eth::Client;
-//    static time_t activationTimestamp;
-//    static time_t lastBlockTimestamp;
-//};
 
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
@@ -66,23 +50,7 @@ public:
     // returns false if this block was created with SkipInvalidTransactionsPatch and they were
     // skipped
     static bool hasPotentialInvalidTransactionsInBlock(
-        dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc ) {
-        if ( _bn == 0 )
-            return false;
-
-        time_t activationTimestamp = _bc.chainParams().getPatchTimestamp( getName() );
-
-        if ( activationTimestamp == 0 )
-            return true;
-
-        if ( _bn == dev::eth::PendingBlock )
-            return !isEnabled( _bc );
-
-        if ( _bn == dev::eth::LatestBlock )
-            _bn = _bc.number();
-
-        return !isEnabled( _bc, _bn );
-    }
+        dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc );
 };
 
 #endif  // SKIPINVALIDTRANSACTIONSPATCH_H

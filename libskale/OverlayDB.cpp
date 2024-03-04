@@ -23,8 +23,8 @@
  */
 
 #include "OverlayDB.h"
-#include "ContractStorageZeroValuePatch.h"
 #include "libhistoric/HistoricState.h"
+#include <libethereum/SchainPatch.h>
 
 #include <thread>
 

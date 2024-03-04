@@ -16,7 +16,7 @@
 */
 
 #include "LegacyVM.h"
-#include "libskale/PushZeroPatch.h"
+#include <libethereum/SchainPatch.h>
 
 using namespace std;
 using namespace dev;

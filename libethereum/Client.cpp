@@ -55,7 +55,6 @@
 
 #include <libskale/State.h>
 #include <libskale/UnsafeRegion.h>
-#include <libskale/VerifyDaSigsPatch.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -153,8 +152,6 @@ Client::Client( ChainParams const& _params, int _networkID,
     TotalStorageUsedPatch::g_client = this;
     ContractStorageLimitPatch::setTimestamp(
         chainParams().sChain.getPatchTimestamp( "ContractStoragePatch" ) );
-    VerifyDaSigsPatch::setTimestamp(
-        chainParams().sChain.getPatchTimestamp( "VerifyDaSigsPatch" ) );
 }
 
 

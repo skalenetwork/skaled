@@ -13,12 +13,9 @@ set(sources
     UnsafeRegion.cpp
     TotalStorageUsedPatch.cpp
     ContractStorageLimitPatch.cpp
-    ContractStorageZeroValuePatch.cpp
-    VerifyDaSigsPatch.cpp
     AmsterdamFixPatch.cpp
     OverlayFS.cpp
     StorageDestructionPatch.cpp
-    PushZeroPatch.cpp
     SkipInvalidTransactionsPatch.cpp
 )
 

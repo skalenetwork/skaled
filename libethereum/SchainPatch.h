@@ -79,5 +79,8 @@ DEFINE_SIMPLE_PATCH( RevertableFSPatch )
 DEFINE_AMNESIC_PATCH( PrecompiledConfigPatch )
 DEFINE_SIMPLE_PATCH( POWCheckPatch )
 DEFINE_SIMPLE_PATCH( CorrectForkInPowPatch )
+DEFINE_AMNESIC_PATCH( ContractStorageZeroValuePatch )
+DEFINE_EVM_PATCH( PushZeroPatch )
+DEFINE_SIMPLE_PATCH( VerifyDaSigsPatch )
 
 #endif  // SCHAINPATCH_H
