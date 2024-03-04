@@ -50,7 +50,6 @@
 #endif
 
 #include <libethereum/SchainPatch.h>
-#include <libskale/ContractStorageLimitPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
 
 #include <libskale/State.h>
@@ -150,8 +149,6 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     // Set timestamps for patches
     TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::setTimestamp(
-        chainParams().sChain.getPatchTimestamp( "ContractStoragePatch" ) );
 }
 
 
@@ -647,17 +644,6 @@ size_t Client::syncTransactions(
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
-
-    ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    //    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
-    //    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    // StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    // POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    // PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    //    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    // PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    // CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
-
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );

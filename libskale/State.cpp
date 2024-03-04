@@ -36,8 +36,6 @@
 #include <libethereum/Defaults.h>
 #include <libethereum/StateImporter.h>
 
-#include "ContractStorageLimitPatch.h"
-
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
 
@@ -895,7 +893,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            if ( ContractStorageLimitPatch::isEnabled() ) {
+            if ( ContractStorageLimitPatch::isEnabledInPendingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
                 account.setStorage( change.key, change.value );
@@ -924,7 +922,7 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     clearFileStorageCache();
-    if ( !ContractStorageLimitPatch::isEnabled() ) {
+    if ( !ContractStorageLimitPatch::isEnabledInPendingBlock() ) {
         resetStorageChanges();
     }
 }

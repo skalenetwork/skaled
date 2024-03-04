@@ -288,7 +288,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
-            chainParams.sChain._patchTimestamps["ContractStoragePatch"] = 1;
+            chainParams.sChain._patchTimestamps["ContractStorageLimitPatch"] = 1;
             chainParams.sChain._patchTimestamps["StorageDestructionPatch"] = 1;
             powPatchActivationTimestamp = time(nullptr) + 60;
             chainParams.sChain._patchTimestamps["CorrectForkInPowPatch"] = powPatchActivationTimestamp;       // 10 guessed seconds

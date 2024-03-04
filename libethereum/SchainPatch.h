@@ -82,5 +82,6 @@ DEFINE_SIMPLE_PATCH( CorrectForkInPowPatch )
 DEFINE_AMNESIC_PATCH( ContractStorageZeroValuePatch )
 DEFINE_EVM_PATCH( PushZeroPatch )
 DEFINE_SIMPLE_PATCH( VerifyDaSigsPatch )
+DEFINE_AMNESIC_PATCH( ContractStorageLimitPatch )
 
 #endif  // SCHAINPATCH_H
