@@ -18,6 +18,10 @@ class EVMSchedule;
 
 class SchainPatch {
 public:
+    static void init( const dev::eth::ChainOperationParams& _cp );
+    static void useLatestBlockTimestamp( time_t _timestamp );
+
+protected:
     static void printInfo( const std::string& _patchName, time_t _timeStamp ) {
         if ( _timeStamp == 0 ) {
             cnote << "Patch " << _patchName << " is disabled";
@@ -25,8 +29,16 @@ public:
             cnote << "Patch " << _patchName << " is set at timestamp " << _timeStamp;
         }
     }
-    static void init( const dev::eth::ChainOperationParams& _cp );
-    static void useLatestBlockTimestamp( time_t _timestamp );
+    static bool isPatchEnabled( const std::string& _patchName, const dev::eth::BlockChain& _bc,
+        dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) {
+        time_t timestamp = chainParams.getPatchTimestamp( _patchName );
+        return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );
+    }
+    static bool isPatchEnabledWhen(
+        const std::string& _patchName, time_t _committedBlockTimestamp ) {
+        time_t activationTimestamp = chainParams.getPatchTimestamp( _patchName );
+        return activationTimestamp != 0 && _committedBlockTimestamp >= activationTimestamp;
+    }
 
 protected:
     static dev::eth::ChainOperationParams chainParams;
@@ -50,12 +62,10 @@ protected:
         static std::string getName() { return #BlaBlaPatch; }                                      \
         static bool isEnabled(                                                                     \
             const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
-            time_t timestamp = chainParams.getPatchTimestamp( getName() );                         \
-            return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );                      \
+            return isPatchEnabled( getName(), _bc, _bn );                                          \
         }                                                                                          \
         static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
-            time_t activationTimestamp = chainParams.getPatchTimestamp( getName() );               \
-            return activationTimestamp != 0 && _committedBlockTimestamp >= activationTimestamp;    \
+            return isPatchEnabledWhen( getName(), _committedBlockTimestamp );                      \
         }                                                                                          \
     };
 
@@ -65,12 +75,10 @@ protected:
         static std::string getName() { return #BlaBlaPatch; }                                      \
         static bool isEnabled(                                                                     \
             const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
-            time_t timestamp = _bc.chainParams().getPatchTimestamp( getName() );                   \
-            return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );                      \
+            return isPatchEnabled( getName(), _bc, _bn );                                          \
         }                                                                                          \
         static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
-            time_t my_timestamp = chainParams.getPatchTimestamp( getName() );                      \
-            return my_timestamp != 0 && _committedBlockTimestamp >= my_timestamp;                  \
+            return isPatchEnabledWhen( getName(), _committedBlockTimestamp );                      \
         }                                                                                          \
         static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
     };
