@@ -83,13 +83,53 @@ protected:
         static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
     };
 
+/*
+ * Context: enable revertable filestorage precompileds
+ */
 DEFINE_SIMPLE_PATCH( RevertableFSPatch )
+
+/*
+ * Context: enable precompiled contracts to read historical config data
+ */
 DEFINE_AMNESIC_PATCH( PrecompiledConfigPatch )
+
+/*
+ * Context: enable fix for POW txns gas limit check
+ */
 DEFINE_SIMPLE_PATCH( POWCheckPatch )
+
+/*
+ * Context: use current, and not Constantinople,  fork in Transaction::checkOutExternalGas()
+ */
 DEFINE_SIMPLE_PATCH( CorrectForkInPowPatch )
+
+/*
+ * Context: contractStorageUsed counter didn't work well in one case
+ * Solution: we fixed the bug and added new config field introudceChangesTimestamp
+ * Purpose: avoid incorrect txn behaviour
+ * Version introduced:
+ */
 DEFINE_AMNESIC_PATCH( ContractStorageZeroValuePatch )
+
+/*
+ * Context: enable effective storage destruction
+ */
 DEFINE_EVM_PATCH( PushZeroPatch )
+
+/*
+ * Context: contractStorageUsed counter didn't work well in one case
+ * Solution: we fixed the bug and added new config field introudceChangesTimestamp
+ * Purpose: avoid incorrect txn behaviour
+ * Version introduced:
+ */
 DEFINE_SIMPLE_PATCH( VerifyDaSigsPatch )
+
+/*
+ * Context: contractStorageUsed counter didn't work well in one case
+ * Solution: we fixed the bug and added new config field introudceChangesTimestamp
+ * Purpose: avoid incorrect txn behaviour
+ * Version introduced:
+ */
 DEFINE_AMNESIC_PATCH( ContractStorageLimitPatch )
 
 #endif  // SCHAINPATCH_H
