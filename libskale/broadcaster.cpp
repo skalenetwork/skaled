@@ -98,7 +98,7 @@ void* ZmqBroadcaster::server_socket() const {
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
         // remove limits to prevent txns from being dropped out
-        val = 0;
+        val = 16;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
 
@@ -133,7 +133,7 @@ void* ZmqBroadcaster::client_socket() const {
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
         // remove limits to prevent txns from being dropped out
-        value = 0;
+        value = 64000;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
@@ -176,6 +176,11 @@ void ZmqBroadcaster::startService() {
             zmq_msg_t msg;
 
             try {
+                static uint64_t txnsCounterRcv = 0;
+                static boost::chrono::milliseconds totalExecutionTimeRcv =
+                    boost::chrono::milliseconds( 0 );
+                boost::chrono::high_resolution_clock::time_point txnProccessingTimeStart =
+                    boost::chrono::high_resolution_clock::now();
                 int res = zmq_msg_init( &msg );
                 assert( res == 0 );
                 res = zmq_msg_recv( &msg, client_socket(), 0 );
@@ -206,6 +211,24 @@ void ZmqBroadcaster::startService() {
 
                 try {
                     m_skaleHost.receiveTransaction( str );
+                    boost::chrono::high_resolution_clock::time_point txnProccessingTimeFinish =
+                        boost::chrono::high_resolution_clock::now();
+                    totalExecutionTimeRcv +=
+                        boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                            txnProccessingTimeFinish - txnProccessingTimeStart );
+                    ++txnsCounterRcv;
+                    auto t = boost::chrono::duration_cast< boost::chrono::milliseconds >(
+                        txnProccessingTimeFinish - txnProccessingTimeStart )
+                                 .count();
+                    if ( t > 1000 ) {
+                        clog( dev::VerbosityWarning, "skale-host" )
+                            << "Took " << t << " ms to receive txn via broadcast";
+                    }
+                    if ( txnsCounterRcv % 1000 == 0 ) {
+                        auto avrgTRT = totalExecutionTimeRcv / txnsCounterRcv;
+                        clog( dev::VerbosityWarning, "skale-host" )
+                            << "Average txn receiving time via broadcast is " << avrgTRT << " ms";
+                    }
                 } catch ( const std::exception& ex ) {
                     clog( dev::VerbosityDebug, "skale-host" )
                         << "Received bad transaction through broadcast: " << ex.what();
