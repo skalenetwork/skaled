@@ -878,6 +878,9 @@ void SkaleHost::broadcastFunc() {
 
             boost::chrono::high_resolution_clock::time_point txnProccessingTimeFinish =
                 boost::chrono::high_resolution_clock::now();
+            if ( txns.empty() )  // means timeout
+                continue;
+
             totalExecutionTimeSnd += boost::chrono::duration_cast< boost::chrono::milliseconds >(
                 txnProccessingTimeFinish - txnProccessingTimeStart );
             ++txnsCounterSnd;
@@ -893,8 +896,6 @@ void SkaleHost::broadcastFunc() {
                 clog( dev::VerbosityWarning, "skale-host" )
                     << "Average time to prepare txn for broadcast is " << avrgTST << " ms";
             }
-            if ( txns.empty() )  // means timeout
-                continue;
 
             this->logState();
 

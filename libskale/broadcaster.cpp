@@ -98,7 +98,7 @@ void* ZmqBroadcaster::server_socket() const {
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
         // remove limits to prevent txns from being dropped out
-        val = 16;
+        val = 64000;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
 
@@ -273,6 +273,8 @@ void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
 
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
+        clog( dev::VerbosityWarning, "zmq-broadcaster" )
+            << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
         throw std::runtime_error( "Zmq can't send data" );
     }
 }
