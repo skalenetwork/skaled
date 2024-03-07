@@ -249,7 +249,7 @@ void Executive::initialize( Transaction const& _transaction ) {
     MICROPROFILE_SCOPEI( "Executive", "initialize", MP_GAINSBORO );
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(
-        m_chainParams.evmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() ) );
+        m_chainParams.makeEvmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() ) );
 
     try {
         verifyTransaction( _transaction, m_envInfo.committedBlockTimestamp(), m_envInfo.header(),

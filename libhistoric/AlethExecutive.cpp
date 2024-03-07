@@ -77,7 +77,7 @@ void AlethExecutive::accrueSubState( SubState& _parentContext ) {
 void AlethExecutive::initialize( Transaction const& _transaction ) {
     m_t = _transaction;
     m_baseGasRequired = m_t.baseGasRequired(
-        m_chainParams.evmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() ) );
+        m_chainParams.makeEvmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() ) );
     try {
         Ethash::verifyTransaction( m_chainParams, ImportRequirements::Everything, m_t,
             m_envInfo.committedBlockTimestamp(), m_envInfo.header(), m_envInfo.gasUsed() );
@@ -213,7 +213,7 @@ bool AlethExecutive::create( Address const& _txSender, u256 const& _endowment,
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin ) {
     // Contract will be created with the version corresponding to latest hard fork
     auto const latestVersion =
-        m_chainParams.evmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() )
+        m_chainParams.makeEvmSchedule( m_envInfo.committedBlockTimestamp(), m_envInfo.number() )
             .accountVersion;
     return createWithAddressFromNonceAndSender(
         _txSender, _endowment, _gasPrice, _gas, _init, _origin, latestVersion );

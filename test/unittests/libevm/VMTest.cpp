@@ -653,7 +653,7 @@ class InstructionTestFixture : public TestOutputHelperFixture {
 public:
     InstructionTestFixture() : vm{new LegacyVM()} {
         ChainParams cp( genesisInfo( Network::IstanbulTest ) );
-        cp.sChain._patchTimestamps["PushZeroPatch"] = 1;
+        cp.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = 1;
         SchainPatch::init(cp);
 
         se.reset(cp.createSealEngine());

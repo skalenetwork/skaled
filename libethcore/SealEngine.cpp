@@ -99,7 +99,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
-    if ( POWCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
+    if ( PowCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
     } else {
@@ -129,7 +129,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
         _t.checkLowS();
 
     eth::EVMSchedule const& schedule =
-        _chainParams.evmSchedule( _committedBlockTimestamp, _header.number() );
+        _chainParams.makeEvmSchedule( _committedBlockTimestamp, _header.number() );
 
     // Pre calculate the gas needed for execution
     if ( ( _ir & ImportRequirements::TransactionBasic ) && _t.baseGasRequired( schedule ) > gas )
@@ -162,7 +162,7 @@ SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params
 
 EVMSchedule SealEngineBase::evmSchedule(
     time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
-    return chainParams().evmSchedule( _committedBlockTimestamp, _blockNumber );
+    return chainParams().makeEvmSchedule( _committedBlockTimestamp, _blockNumber );
 }
 
 u256 SealEngineBase::blockReward(

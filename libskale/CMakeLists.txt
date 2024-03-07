@@ -14,7 +14,6 @@ set(sources
     TotalStorageUsedPatch.cpp
     AmsterdamFixPatch.cpp
     OverlayFS.cpp
-    StorageDestructionPatch.cpp
     SkipInvalidTransactionsPatch.cpp
 )
 

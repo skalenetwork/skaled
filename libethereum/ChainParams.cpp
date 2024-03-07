@@ -39,10 +39,11 @@
 #include <libethereum/Precompiled.h>
 
 #include "Account.h"
-#include "GenesisInfo.h"
 #include "ValidationSchemes.h"
 
 #include <skutils/utils.h>
+
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace dev;
@@ -242,19 +243,15 @@ ChainParams ChainParams::loadConfig(
 
         // extract all "*PatchTimestamp" records
         for ( const auto& it : sChainObj ) {
-            const string suffix = "PatchTimestamp";
             const string& key = it.first;
-            if ( key.find( suffix ) == key.size() - suffix.size() ) {
-                string patchName = key.substr( 0, key.size() - string( "Timestamp" ).size() );
+            if ( boost::algorithm::ends_with( key, "PatchTimestamp" ) ) {
+                string patchName = boost::algorithm::erase_last_copy( key, "Timestamp" );
                 patchName[0] = toupper( patchName[0] );
-                s._patchTimestamps[patchName] = it.second.get_int64();
-            }  // if
-        }      // for
-
-        // HACK Some names are non-standard
-        s._patchTimestamps["ContractStorageLimitPatch"] =
-            s.getPatchTimestamp( "ContractStoragePatch" );
-        s._patchTimestamps["POWCheckPatch"] = s.getPatchTimestamp( "PowCheckPatch" );
+                SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
+                s._patchTimestamps[static_cast< size_t >( patchEnum )] =
+                    it.second.get_int64();  // time_t is signed
+            }                               // if
+        }                                   // for
 
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;

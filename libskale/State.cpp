@@ -43,7 +43,7 @@
 #include <skutils/eth_utils.h>
 
 #include <libethereum/BlockDetails.h>
-#include <libskale/StorageDestructionPatch.h>
+#include <libethereum/SchainPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -893,7 +893,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            if ( ContractStorageLimitPatch::isEnabledInPendingBlock() ) {
+            if ( ContractStoragePatch::isEnabledInPendingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
                 account.setStorage( change.key, change.value );
@@ -922,7 +922,7 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     clearFileStorageCache();
-    if ( !ContractStorageLimitPatch::isEnabledInPendingBlock() ) {
+    if ( !ContractStoragePatch::isEnabledInPendingBlock() ) {
         resetStorageChanges();
     }
 }

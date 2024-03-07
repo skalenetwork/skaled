@@ -119,7 +119,7 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
             upperBound = c_maxGasEstimate;
         int64_t lowerBound = CorrectForkInPowPatch::isEnabled( bc() ) ?
                                  Transaction::baseGasRequired( !_dest, &_data,
-                                     bc().sealEngine()->chainParams().evmSchedule(
+                                     bc().sealEngine()->chainParams().makeEvmSchedule(
                                          bc().info().timestamp(), bc().number() ) ) :
                                  Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 

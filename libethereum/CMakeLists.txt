@@ -1,6 +1,7 @@
 
 file( GLOB sources "*.cpp" "*.h" )
-add_library( ethereum ${sources} InstanceMonitor.cpp InstanceMonitor.h)
+add_library( ethereum ${sources} InstanceMonitor.cpp InstanceMonitor.h
+    SchainPatchEnum.h)
 
 target_compile_options( ethereum PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized

@@ -103,7 +103,7 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
 
             // Calculate the block reward
             ChainParams const chainParams{genesisInfo( net )};
-            EVMSchedule const schedule = chainParams.evmSchedule( 0, 1 );
+            EVMSchedule const schedule = chainParams.makeEvmSchedule( 0, 1 );
             // u256 const blockReward = chainParams.blockReward(schedule);
 
             TrExpectSection search{trDup, smap};

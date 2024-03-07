@@ -288,10 +288,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
-            chainParams.sChain._patchTimestamps["ContractStorageLimitPatch"] = 1;
-            chainParams.sChain._patchTimestamps["StorageDestructionPatch"] = 1;
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::ContractStoragePatch)] = 1;
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::StorageDestructionPatch)] = 1;
             powPatchActivationTimestamp = time(nullptr) + 60;
-            chainParams.sChain._patchTimestamps["CorrectForkInPowPatch"] = powPatchActivationTimestamp;       // 10 guessed seconds
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::CorrectForkInPowPatch)] = powPatchActivationTimestamp;       // 10 guessed seconds
             chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
@@ -2004,7 +2004,7 @@ contract TestEstimateGas {
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
-                       false, &data, fixture.client->chainParams().evmSchedule(
+                       false, &data, fixture.client->chainParams().makeEvmSchedule(
                        fixture.client->latestBlock().info().timestamp(), fixture.client->number() ) ) );
 
     // try to send with this gas

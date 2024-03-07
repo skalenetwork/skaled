@@ -45,6 +45,14 @@ PrecompiledContract::PrecompiledContract( unsigned _base, unsigned _word,
           },
           _exec, _startingBlock, _allowedAddresses ) {}
 
+time_t SChain::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
+    assert( _patchEnum < SchainPatchEnum::PatchesCount );
+    if ( _patchEnum < SchainPatchEnum::PatchesCount )
+        return _patchTimestamps[static_cast< size_t >( _patchEnum )];
+    else
+        return 0;
+}
+
 ChainOperationParams::ChainOperationParams()
     : m_blockReward( "0x4563918244F40000" ),
       minGasLimit( 0x1388 ),
@@ -55,7 +63,7 @@ ChainOperationParams::ChainOperationParams()
       difficultyBoundDivisor( 0x0800 ),
       durationLimit( 0x0d ) {}
 
-EVMSchedule const ChainOperationParams::evmSchedule(
+EVMSchedule const ChainOperationParams::makeEvmSchedule(
     time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
     EVMSchedule result;
 
@@ -93,7 +101,7 @@ u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
 
 u256 ChainOperationParams::blockReward(
     time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{ evmSchedule( _committedBlockTimestamp, _blockNumber ) };
+    EVMSchedule const& schedule{ makeEvmSchedule( _committedBlockTimestamp, _blockNumber ) };
     return blockReward( schedule );
 }
 
@@ -101,6 +109,6 @@ void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
 }
 
-time_t ChainOperationParams::getPatchTimestamp( const std::string& _name ) const {
-    return sChain.getPatchTimestamp( _name );
+time_t ChainOperationParams::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
+    return sChain.getPatchTimestamp( _patchEnum );
 }

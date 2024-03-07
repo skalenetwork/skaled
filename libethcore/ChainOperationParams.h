@@ -28,6 +28,7 @@
 
 #include <libdevcore/Common.h>
 #include <libethereum/Precompiled.h>
+#include <libethereum/SchainPatchEnum.h>
 
 #include "libethcore/Common.h"
 #include "libethcore/EVMSchedule.h"
@@ -172,14 +173,9 @@ public:
 
     // key is patch name
     // public - for tests, don't access it directly
-    std::map< std::string, time_t > _patchTimestamps;
-    time_t getPatchTimestamp( const std::string& name ) const {
-        try {
-            return _patchTimestamps.at( name );
-        } catch ( const std::out_of_range& ) {
-            return 0;
-        }  // catch
-    }
+    std::vector< time_t > _patchTimestamps =
+        std::vector< time_t >( static_cast< int >( SchainPatchEnum::PatchesCount ) );
+    time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 
     SChain() {
         name = "TestChain";
@@ -207,7 +203,7 @@ private:
     u256 m_blockReward;
 
 public:
-    EVMSchedule const evmSchedule(
+    EVMSchedule const makeEvmSchedule(
         time_t _committedBlockTimestamp, u256 const& _blockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
     u256 blockReward( time_t _committedBlockTimestamp, u256 const& _blockNumber ) const;
@@ -257,9 +253,7 @@ public:
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
 
-    // all fields named "*PatchTimestamp" should be read into array, that would be available to this
-    // function
-    time_t getPatchTimestamp( const std::string& _name ) const;
+    time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 
     bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
         return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();

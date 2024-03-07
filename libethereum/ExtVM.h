@@ -106,8 +106,8 @@ private:
     EVMSchedule initEvmSchedule( u256 const& _version ) const {
         // If _version is latest for the block, select corresponding latest schedule.
         // Otherwise run with the latest schedule known to correspond to the _version.
-        EVMSchedule currentBlockSchedule =
-            m_chainParams.evmSchedule( envInfo().committedBlockTimestamp(), envInfo().number() );
+        EVMSchedule currentBlockSchedule = m_chainParams.makeEvmSchedule(
+            envInfo().committedBlockTimestamp(), envInfo().number() );
         if ( currentBlockSchedule.accountVersion == _version )
             return currentBlockSchedule;
         else

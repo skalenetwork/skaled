@@ -80,7 +80,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     std::map< std::string, std::uint64_t > patchTimeStamps;
 
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
-        m_client.chainParams().getPatchTimestamp( "VerifyDaSigsPatch" );
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );

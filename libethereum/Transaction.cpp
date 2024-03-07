@@ -196,7 +196,7 @@ void Transaction::checkOutExternalGas(
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
         if ( CorrectForkInPowPatch::isEnabledWhen( _committedBlockTimestamp ) )
-            scheduleForUse = _cp.evmSchedule( _committedBlockTimestamp, _bn );
+            scheduleForUse = _cp.makeEvmSchedule( _committedBlockTimestamp, _bn );
 
         if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;
