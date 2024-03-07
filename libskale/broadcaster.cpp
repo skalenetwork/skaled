@@ -98,7 +98,7 @@ void* ZmqBroadcaster::server_socket() const {
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
         // remove limits to prevent txns from being dropped out
-        val = 16;
+        val = 0;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
 
@@ -133,7 +133,7 @@ void* ZmqBroadcaster::client_socket() const {
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
         // remove limits to prevent txns from being dropped out
-        value = 0;
+        value = 16;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
