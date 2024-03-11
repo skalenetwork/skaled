@@ -45,6 +45,6 @@ void requireJsonFields(
     json_spirit::mObject const& _o, std::string const& _configName,
     std::map< std::string, JsonFieldOptions > const& _validationMap,
     std::function< bool( const std::string& ) > _callbackForUnexpected = []( const std::string& ) {
-        return true;
+        return false;
     } );
 }  // namespace dev

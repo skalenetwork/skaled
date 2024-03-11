@@ -14,32 +14,49 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::PrecompiledConfigPatch;
     else if ( _patchName == "PowCheckPatch" )
         return SchainPatchEnum::PowCheckPatch;
+    else if ( _patchName == "CorrectForkInPowPatch" )
+        return SchainPatchEnum::CorrectForkInPowPatch;
     else if ( _patchName == "ContractStorageZeroValuePatch" )
         return SchainPatchEnum::ContractStorageZeroValuePatch;
     else if ( _patchName == "PushZeroPatch" )
         return SchainPatchEnum::PushZeroPatch;
+    else if ( _patchName == "VerifyDaSigsPatch" )
+        return SchainPatchEnum::VerifyDaSigsPatch;
+    else if ( _patchName == "ContractStoragePatch" )
+        return SchainPatchEnum::ContractStoragePatch;
+    else if ( _patchName == "StorageDestructionPatch" )
+        return SchainPatchEnum::StorageDestructionPatch;
     else if ( _patchName == "SkipInvalidTransactionsPatch" )
         return SchainPatchEnum::SkipInvalidTransactionsPatch;
     else
         throw std::out_of_range( _patchName );
 }
 
-std::string getPatchNameForEnum( SchainPatchEnum enumValue ) {
-    switch ( enumValue ) {
+std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
+    switch ( _enumValue ) {
     case SchainPatchEnum::RevertableFSPatch:
         return "RevertableFSPatch";
     case SchainPatchEnum::PrecompiledConfigPatch:
         return "PrecompiledConfigPatch";
     case SchainPatchEnum::PowCheckPatch:
         return "PowCheckPatch";
+    case SchainPatchEnum::CorrectForkInPowPatch:
+        return "CorrectForkInPowPatch";
     case SchainPatchEnum::ContractStorageZeroValuePatch:
         return "ContractStorageZeroValuePatch";
     case SchainPatchEnum::PushZeroPatch:
         return "PushZeroPatch";
+    case SchainPatchEnum::VerifyDaSigsPatch:
+        return "VerifyDaSigsPatch";
+    case SchainPatchEnum::ContractStoragePatch:
+        return "ContractStoragePatch";
+    case SchainPatchEnum::StorageDestructionPatch:
+        return "StorageDestructionPatch";
     case SchainPatchEnum::SkipInvalidTransactionsPatch:
         return "SkipInvalidTransactionsPatch";
     default:
-        throw std::out_of_range( "UnknownPatch" );
+        throw std::out_of_range(
+            "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );
     }
 }
 
