@@ -61,6 +61,7 @@ void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& 
     std::function< bool( const std::string& ) > _callbackForUnexpected ) {
     // check for unexpected fiedls
     for ( auto const& field : _o ) {
+        // _callbackForUnexpected allows to accept ertain unexpected fields
         if ( !_validationMap.count( field.first ) && !_callbackForUnexpected( field.first ) ) {
             std::string const comment =
                 "Unexpected field '" + field.first + "' in config: " + _config;

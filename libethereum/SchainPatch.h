@@ -37,7 +37,6 @@ protected:
 #define DEFINE_AMNESIC_PATCH( BlaBlaPatch )                                                    \
     class BlaBlaPatch : public SchainPatch {                                                   \
     public:                                                                                    \
-        static std::string getName() { return #BlaBlaPatch; }                                  \
         static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }              \
         static bool isEnabledInPendingBlock() {                                                \
             time_t activationTimestamp = chainParams.getPatchTimestamp( getEnum() );           \
@@ -49,7 +48,6 @@ protected:
 #define DEFINE_SIMPLE_PATCH( BlaBlaPatch )                                                         \
     class BlaBlaPatch : public SchainPatch {                                                       \
     public:                                                                                        \
-        static std::string getName() { return #BlaBlaPatch; }                                      \
         static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }                  \
         static bool isEnabled(                                                                     \
             const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
@@ -63,7 +61,6 @@ protected:
 #define DEFINE_EVM_PATCH( BlaBlaPatch )                                                            \
     class BlaBlaPatch : public SchainPatch {                                                       \
     public:                                                                                        \
-        static std::string getName() { return #BlaBlaPatch; }                                      \
         static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }                  \
         static bool isEnabled(                                                                     \
             const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
