@@ -866,36 +866,12 @@ void SkaleHost::broadcastFunc() {
     size_t nBroadcastTaskNumber = 0;
     while ( !m_exitNeeded ) {
         try {
-            static uint64_t txnsCounterSnd = 0;
-            static boost::chrono::milliseconds totalExecutionTimeSnd =
-                boost::chrono::milliseconds( 0 );
             m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
-
-            boost::chrono::high_resolution_clock::time_point txnProccessingTimeStart =
-                boost::chrono::high_resolution_clock::now();
 
             dev::eth::Transactions txns = m_tq.topTransactionsSync( 1, 0, 1 );
 
-            boost::chrono::high_resolution_clock::time_point txnProccessingTimeFinish =
-                boost::chrono::high_resolution_clock::now();
             if ( txns.empty() )  // means timeout
                 continue;
-
-            totalExecutionTimeSnd += boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                txnProccessingTimeFinish - txnProccessingTimeStart );
-            ++txnsCounterSnd;
-            auto t = boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                txnProccessingTimeFinish - txnProccessingTimeStart )
-                         .count();
-            if ( t > 1000 ) {
-                clog( dev::VerbosityWarning, "skale-host" )
-                    << "Took " << t << " ms to get txn from TQ before broadcast";
-            }
-            if ( txnsCounterSnd % 1000 == 0 ) {
-                auto avrgTST = totalExecutionTimeSnd / txnsCounterSnd;
-                clog( dev::VerbosityWarning, "skale-host" )
-                    << "Average time to prepare txn for broadcast is " << avrgTST << " ms";
-            }
 
             this->logState();
 
