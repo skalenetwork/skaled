@@ -1085,7 +1085,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
 }
 
 void BlockChain::rescue( State const& /*_state*/ ) {
-    clog( VerbosityInfo, "BlockChain" ) << "Rescuing database..." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "Rescuing database...";
     throw std::logic_error( "Rescueing is not implemented" );
 
     unsigned u = 1;
@@ -1100,8 +1100,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    clog( VerbosityInfo, "BlockChain" )
-        << cc::debug( "Finding last likely block number..." ) << endl;
+    clog( VerbosityInfo, "BlockChain" ) << cc::debug( "Finding last likely block number..." );
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
         clog( VerbosityInfo, "BlockChain" ) << " " << m << flush;
@@ -1110,7 +1109,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         else
             u = m;
     }
-    clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
         clog( VerbosityInfo, "BlockChain" )
@@ -1129,7 +1128,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         } catch ( ... ) {
         }
     }
-    clog( VerbosityInfo, "BlockChain" ) << "OK." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "OK.";
     rewind( l );
 }
 

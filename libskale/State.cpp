@@ -356,7 +356,7 @@ std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
-               << *m_storedVersion << endl;
+               << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -438,7 +438,7 @@ eth::Account* State::account( Address const& _address ) {
 
         if ( !checkVersion() ) {
             cerror << "Current state version is " << m_currentVersion << " but stored version is "
-                   << *m_storedVersion << endl;
+                   << *m_storedVersion;
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
 
@@ -666,7 +666,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     const Address& _contract ) const {
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
-               << *m_storedVersion << endl;
+               << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -686,7 +686,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
         }
     }
 
-    cdebug << "Self-destruct cleared values:" << storage.size() << endl;
+    cdebug << "Self-destruct cleared values:" << storage.size();
 
     return storage;
 }

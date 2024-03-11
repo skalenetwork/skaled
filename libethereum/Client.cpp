@@ -634,7 +634,7 @@ size_t Client::syncTransactions(
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
-        cnote << "m_working.isSealed. sleeping" << endl;
+        cnote << "m_working.isSealed. sleeping";
         usleep( 1000 );
     }
 

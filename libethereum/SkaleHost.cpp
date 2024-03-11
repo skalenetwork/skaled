@@ -910,8 +910,8 @@ void SkaleHost::broadcastFunc() {
                         m_broadcaster->broadcast( rlp );
                     }
                 } catch ( const std::exception& ex ) {
-                    cwarn << "BROADCAST EXCEPTION CAUGHT" << endl;
-                    cwarn << ex.what() << endl;
+                    cwarn << "BROADCAST EXCEPTION CAUGHT";
+                    cwarn << ex.what();
                 }  // catch
 
             }  // if
