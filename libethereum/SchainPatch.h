@@ -11,7 +11,7 @@
 
 namespace dev {
 namespace eth {
-class EVMSchedule;
+struct EVMSchedule;
 }
 }  // namespace dev
 
@@ -25,8 +25,10 @@ public:
 
 protected:
     static void printInfo( const std::string& _patchName, time_t _timeStamp );
-    static bool isPatchEnabled( SchainPatchEnum _patchEnum, const dev::eth::BlockChain& _bc,
-        dev::eth::BlockNumber _bn = dev::eth::LatestBlock );
+    static bool isPatchEnabledInWorkingBlock( SchainPatchEnum _patchEnum ) {
+        time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
+        return activationTimestamp != 0 && committedBlockTimestamp >= activationTimestamp;
+    }
     static bool isPatchEnabledWhen( SchainPatchEnum _patchEnum, time_t _committedBlockTimestamp );
 
 protected:
@@ -34,42 +36,39 @@ protected:
     static std::atomic< time_t > committedBlockTimestamp;
 };
 
-#define DEFINE_AMNESIC_PATCH( BlaBlaPatch )                                                    \
-    class BlaBlaPatch : public SchainPatch {                                                   \
-    public:                                                                                    \
-        static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }              \
-        static bool isEnabledInPendingBlock() {                                                \
-            time_t activationTimestamp = chainParams.getPatchTimestamp( getEnum() );           \
-            return activationTimestamp != 0 && committedBlockTimestamp >= activationTimestamp; \
-        }                                                                                      \
+#define DEFINE_AMNESIC_PATCH( BlaBlaPatch )                                       \
+    class BlaBlaPatch : public SchainPatch {                                      \
+    public:                                                                       \
+        static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; } \
+        static bool isEnabledInWorkingBlock() {                                   \
+            return isPatchEnabledInWorkingBlock( getEnum() );                     \
+        }                                                                         \
     };
 
 // TODO One more overload - with EnvInfo?
-#define DEFINE_SIMPLE_PATCH( BlaBlaPatch )                                                         \
-    class BlaBlaPatch : public SchainPatch {                                                       \
-    public:                                                                                        \
-        static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }                  \
-        static bool isEnabled(                                                                     \
-            const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
-            return isPatchEnabled( getEnum(), _bc, _bn );                                          \
-        }                                                                                          \
-        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
-            return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );                      \
-        }                                                                                          \
+#define DEFINE_SIMPLE_PATCH( BlaBlaPatch )                                        \
+    class BlaBlaPatch : public SchainPatch {                                      \
+    public:                                                                       \
+        static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; } \
+        static bool isEnabledInWorkingBlock() {                                   \
+            return isPatchEnabledInWorkingBlock( getEnum() );                     \
+        }                                                                         \
+        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {            \
+            return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );     \
+        }                                                                         \
     };
 
-#define DEFINE_EVM_PATCH( BlaBlaPatch )                                                            \
-    class BlaBlaPatch : public SchainPatch {                                                       \
-    public:                                                                                        \
-        static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }                  \
-        static bool isEnabled(                                                                     \
-            const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) { \
-            return isPatchEnabled( getEnum(), _bc, _bn );                                          \
-        }                                                                                          \
-        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                             \
-            return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );                      \
-        }                                                                                          \
-        static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base );            \
+#define DEFINE_EVM_PATCH( BlaBlaPatch )                                                 \
+    class BlaBlaPatch : public SchainPatch {                                            \
+    public:                                                                             \
+        static SchainPatchEnum getEnum() { return SchainPatchEnum::BlaBlaPatch; }       \
+        static bool isEnabledInWorkingBlock() {                                         \
+            return isPatchEnabledInWorkingBlock( getEnum() );                           \
+        }                                                                               \
+        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {                  \
+            return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );           \
+        }                                                                               \
+        static dev::eth::EVMSchedule makeSchedule( const dev::eth::EVMSchedule& base ); \
     };
 
 /*

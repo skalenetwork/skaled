@@ -161,12 +161,12 @@ SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params
 }
 
 EVMSchedule SealEngineBase::evmSchedule(
-    time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
-    return chainParams().makeEvmSchedule( _committedBlockTimestamp, _blockNumber );
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    return chainParams().makeEvmSchedule( _committedBlockTimestamp, _workingBlockNumber );
 }
 
 u256 SealEngineBase::blockReward(
-    time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{ evmSchedule( _committedBlockTimestamp, _blockNumber ) };
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    EVMSchedule const& schedule{ evmSchedule( _committedBlockTimestamp, _workingBlockNumber ) };
     return chainParams().blockReward( schedule );
 }

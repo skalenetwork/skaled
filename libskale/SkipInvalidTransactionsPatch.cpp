@@ -13,10 +13,10 @@ bool SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
         return true;
 
     if ( _bn == dev::eth::PendingBlock )
-        return !isEnabled( _bc );
+        return !isEnabledInWorkingBlock();
 
     if ( _bn == dev::eth::LatestBlock )
         _bn = _bc.number();
 
-    return !isEnabled( _bc, _bn );
+    return !isEnabledInBlock( _bc, _bn );
 }

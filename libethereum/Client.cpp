@@ -1174,10 +1174,10 @@ h256 Client::importTransaction( Transaction const& _t ) {
         state = this->state().createStateReadOnlyCopy();
         gasBidPrice = this->gasBidPrice();
 
-        // We need to check external gas under mutex to be sure about current block bumber
+        // We need to check external gas under mutex to be sure about current block number
         // correctness
         const_cast< Transaction& >( _t ).checkOutExternalGas(
-            chainParams(), bc().info().timestamp(), number() );
+            chainParams(), bc().info().timestamp(), number(), false );
     }
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),

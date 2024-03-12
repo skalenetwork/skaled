@@ -204,9 +204,9 @@ private:
 
 public:
     EVMSchedule const makeEvmSchedule(
-        time_t _committedBlockTimestamp, u256 const& _blockNumber ) const;
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
-    u256 blockReward( time_t _committedBlockTimestamp, u256 const& _blockNumber ) const;
+    u256 blockReward( time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     void setBlockReward( u256 const& _newBlockReward );
     u256 maximumExtraDataSize = 1024;
     u256 accountStartNonce = 0;

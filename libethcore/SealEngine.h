@@ -95,8 +95,9 @@ public:
         return this;
     }
     virtual EVMSchedule evmSchedule(
-        time_t _committedBlockTimestamp, u256 const& _blockNumber ) const = 0;
-    virtual u256 blockReward( time_t _committedBlockTimestamp, u256 const& _blockNumber ) const = 0;
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const = 0;
+    virtual u256 blockReward(
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const = 0;
 
     virtual bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
         return m_params.precompiled.count( _a ) != 0 &&
@@ -139,7 +140,8 @@ public:
     }
     EVMSchedule evmSchedule(
         time_t _committedBlockTimestamp, u256 const& _blockNumber ) const override;
-    u256 blockReward( time_t _committedBlockTimestamp, u256 const& _blockNumber ) const override;
+    u256 blockReward(
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const override;
 
 protected:
     std::function< void( bytes const& s ) > m_onSealGenerated;

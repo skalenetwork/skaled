@@ -35,17 +35,15 @@ class Client;
 
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
-    static std::string getName() { return "SkipInvalidTransactionsPatch"; }
     static SchainPatchEnum getEnum() { return SchainPatchEnum::SkipInvalidTransactionsPatch; }
-    static bool isEnabled(
-        const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::LatestBlock ) {
+    static bool isEnabledInWorkingBlock() { return isPatchEnabledInWorkingBlock( getEnum() ); }
+    static bool isEnabledWhen( time_t _committedBlockTimestamp ) {
+        return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );
+    }
+    static bool isEnabledInBlock(
+        const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::PendingBlock ) {
         time_t timestamp = _bc.chainParams().getPatchTimestamp( getEnum() );
         return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );
-    }
-    static bool isEnabledWhen(
-        const dev::eth::ChainOperationParams& _cp, time_t _lastBlockTimestamp ) {
-        time_t activationTimestamp = _cp.getPatchTimestamp( getEnum() );
-        return activationTimestamp != 0 && _lastBlockTimestamp >= activationTimestamp;
     }
     // returns true if block N can contain invalid transactions
     // returns false if this block was created with SkipInvalidTransactionsPatch and they were

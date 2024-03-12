@@ -507,7 +507,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
 
-                    if ( StorageDestructionPatch::isEnabledInPendingBlock() ) {
+                    if ( StorageDestructionPatch::isEnabledInWorkingBlock() ) {
                         clearStorage( address );
                     }
 
@@ -893,7 +893,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            if ( ContractStoragePatch::isEnabledInPendingBlock() ) {
+            if ( ContractStoragePatch::isEnabledInWorkingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
                 account.setStorage( change.key, change.value );
@@ -922,7 +922,7 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     clearFileStorageCache();
-    if ( !ContractStoragePatch::isEnabledInPendingBlock() ) {
+    if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
 }

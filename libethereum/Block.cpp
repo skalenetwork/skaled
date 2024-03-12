@@ -351,7 +351,8 @@ pair< TransactionReceipts, bool > Block::sync(
                                                                     // caller if we hit the limit
 
     for ( Transaction& transaction : transactions ) {
-        transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
+        transaction.checkOutExternalGas(
+            _bc.chainParams(), _bc.info().timestamp(), _bc.number(), false );
     }
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
@@ -483,7 +484,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
 
-                if ( SkipInvalidTransactionsPatch::isEnabled( _bc ) ) {
+                if ( SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ) {
                     // Add to the user-originated transactions that we've executed.
                     m_transactions.push_back( tr );
                     m_transactionSet.insert( tr.sha3() );
@@ -507,7 +508,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
 
-            if ( !SkipInvalidTransactionsPatch::isEnabled( _bc ) ||
+            if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
 
@@ -631,7 +632,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
             const_cast< Transaction& >( tr ).checkOutExternalGas(
-                _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
+                _bc.chainParams(), _bc.info().timestamp(), _bc.number(), false );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
@@ -762,10 +763,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
-    applyRewards(
-        rewarded, _bc.sealEngine()->blockReward(
-                      _bc.info( _bc.numberHash( m_currentBlock.number() - 1 ) ).timestamp(),
-                      m_currentBlock.number() ) );
+    applyRewards( rewarded,
+        _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state
@@ -875,8 +874,7 @@ ExecutionResult Block::execute(
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
-        if ( !SkipInvalidTransactionsPatch::isEnabledWhen(
-                 m_sealEngine->chainParams(), previousInfo().timestamp() ) ||
+        if ( !SkipInvalidTransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) ||
              resultReceipt.first.excepted != TransactionException::WouldNotBeInBlock ) {
             m_transactions.push_back( _t );
             m_receipts.push_back( resultReceipt.second );
@@ -996,9 +994,7 @@ void Block::commitToSeal(
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
     applyRewards( uncleBlockHeaders,
-        _bc.sealEngine()->blockReward(
-            _bc.info( _bc.numberHash( m_currentBlock.number() - 1 ) ).timestamp(),
-            m_currentBlock.number() ) );
+        _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.

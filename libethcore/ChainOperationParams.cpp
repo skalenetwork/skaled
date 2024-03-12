@@ -64,23 +64,23 @@ ChainOperationParams::ChainOperationParams()
       durationLimit( 0x0d ) {}
 
 EVMSchedule const ChainOperationParams::makeEvmSchedule(
-    time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
     EVMSchedule result;
 
     // 1 decide by block number
-    if ( _blockNumber >= experimentalForkBlock )
+    if ( _workingBlockNumber >= experimentalForkBlock )
         result = ExperimentalSchedule;
-    else if ( _blockNumber >= istanbulForkBlock )
+    else if ( _workingBlockNumber >= istanbulForkBlock )
         result = IstanbulSchedule;
-    else if ( _blockNumber >= constantinopleFixForkBlock )
+    else if ( _workingBlockNumber >= constantinopleFixForkBlock )
         result = ConstantinopleFixSchedule;
-    else if ( _blockNumber >= constantinopleForkBlock )
+    else if ( _workingBlockNumber >= constantinopleForkBlock )
         result = ConstantinopleSchedule;
-    else if ( _blockNumber >= byzantiumForkBlock )
+    else if ( _workingBlockNumber >= byzantiumForkBlock )
         result = ByzantiumSchedule;
-    else if ( _blockNumber >= EIP158ForkBlock )
+    else if ( _workingBlockNumber >= EIP158ForkBlock )
         result = EIP158Schedule;
-    else if ( _blockNumber >= EIP150ForkBlock )
+    else if ( _workingBlockNumber >= EIP150ForkBlock )
         result = EIP150Schedule;
     else
         result = HomesteadSchedule;
@@ -100,8 +100,8 @@ u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
 }
 
 u256 ChainOperationParams::blockReward(
-    time_t _committedBlockTimestamp, u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{ makeEvmSchedule( _committedBlockTimestamp, _blockNumber ) };
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    EVMSchedule const& schedule{ makeEvmSchedule( _committedBlockTimestamp, _workingBlockNumber ) };
     return blockReward( schedule );
 }
 

@@ -79,11 +79,7 @@ void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) 
         cnote << "Patch " << _patchName << " is set at timestamp " << _timeStamp;
     }
 }
-bool SchainPatch::isPatchEnabled(
-    SchainPatchEnum _patchEnum, const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn ) {
-    time_t timestamp = chainParams.getPatchTimestamp( _patchEnum );
-    return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );
-}
+
 bool SchainPatch::isPatchEnabledWhen(
     SchainPatchEnum _patchEnum, time_t _committedBlockTimestamp ) {
     time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );

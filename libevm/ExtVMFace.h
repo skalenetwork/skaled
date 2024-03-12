@@ -131,19 +131,19 @@ struct CallParameters {
 
 class EnvInfo {
 public:
-    EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh,
+    EnvInfo( BlockHeader const& _working, LastBlockHashesFace const& _lh,
         time_t _committedBlockTimestamp, u256 const& _gasUsed, u256 const& _chainID )
-        : m_headerInfo( _current ),
+        : m_headerInfo( _working ),
           m_lastHashes( _lh ),
           m_committedBlockTimestamp( _committedBlockTimestamp ),
           m_gasUsed( _gasUsed ),
           m_chainID( _chainID ) {}
     // Constructor with custom gasLimit - used in some synthetic scenarios like eth_estimateGas RPC
     // method
-    EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh,
+    EnvInfo( BlockHeader const& _working, LastBlockHashesFace const& _lh,
         time_t _committedBlockTimestamp, u256 const& _gasUsed, u256 const& _gasLimit,
         u256 const& _chainID )
-        : EnvInfo( _current, _lh, _committedBlockTimestamp, _gasUsed, _chainID ) {
+        : EnvInfo( _working, _lh, _committedBlockTimestamp, _gasUsed, _chainID ) {
         m_headerInfo.setGasLimit( _gasLimit );
     }
 

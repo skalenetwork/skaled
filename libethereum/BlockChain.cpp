@@ -1772,7 +1772,7 @@ bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _b
     if ( _bn == PendingBlock )
         _bn = number() + 1;
 
-    time_t prev_ts = this->info( this->numberHash( _bn ) ).timestamp();
+    time_t prev_ts = this->info( this->numberHash( _bn - 1 ) ).timestamp();
 
     return prev_ts >= _ts;
 }
