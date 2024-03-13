@@ -244,7 +244,6 @@ BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInv
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -295,8 +294,6 @@ BOOST_DATA_TEST_CASE( transactionRlpBad, skipInvalidTransactionsVariants, skipIn
     SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -384,7 +381,6 @@ BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipI
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -441,7 +437,6 @@ BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipIn
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -498,7 +493,6 @@ BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, 
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -553,7 +547,6 @@ BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, 
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -616,7 +609,6 @@ BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skip
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -670,7 +662,6 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -736,7 +727,6 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -815,8 +805,6 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
     SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -881,7 +869,6 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
     auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
     auto& account2 = fixture.account2;
@@ -936,7 +923,6 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
     auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
     auto& tq = fixture.tq;
@@ -953,7 +939,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
 
     // submit it!
     tq->import( tx1 );
@@ -1001,8 +987,6 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
     auto& tq = fixture.tq;
 
@@ -1019,7 +1003,7 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
 
     // submit it!
     tq->import( tx1 );
@@ -1067,8 +1051,6 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
     auto& tq = fixture.tq;
 
@@ -1085,7 +1067,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
 
     // submit it!
     tq->import( tx1 );
@@ -1133,7 +1115,6 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
     auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
     auto& tq = fixture.tq;
@@ -1158,7 +1139,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
 
     RLPStream stream1;
     tx1.streamRLP( stream1 );
@@ -1209,8 +1190,6 @@ BOOST_AUTO_TEST_CASE( transactionRace
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -1271,7 +1250,6 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
-    auto& skaleHost = fixture.skaleHost;
     auto& stub = fixture.stub;
 
     auto senderAddress = coinbase.address();
@@ -1325,11 +1303,7 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
 BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 
     SkaleHostFixture fixture;
-    auto& client = fixture.client;
-    auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
     auto& skaleHost = fixture.skaleHost;
-    auto& stub = fixture.stub;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
     auto res = exec( bytesConstRef() );
@@ -1341,11 +1315,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
 
     SkaleHostFixture fixture;
-    auto& client = fixture.client;
-    auto& coinbase = fixture.coinbase;
-    auto& accountHolder = fixture.accountHolder;
     auto& skaleHost = fixture.skaleHost;
-    auto& stub = fixture.stub;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef() );
