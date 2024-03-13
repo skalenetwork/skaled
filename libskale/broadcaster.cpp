@@ -132,7 +132,7 @@ void* ZmqBroadcaster::client_socket() const {
         value = 300;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
-        value = 16;
+        value = 0;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
