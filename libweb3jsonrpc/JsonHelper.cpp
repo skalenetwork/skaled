@@ -478,10 +478,10 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
     if ( !_json["gasPrice"].empty() )
         ret.gasPrice = jsToU256( _json["gasPrice"].asString() );
 
-    if ( !_json["data"].empty() ) 
+    if ( !_json["data"].empty() )
         ret.data = jsToBytes( _json["data"].asString(), OnFailed::Throw );
 
-    if ( !_json["input"].empty() ) 
+    if ( !_json["input"].empty() )
         ret.data = jsToBytes( _json["input"].asString(), OnFailed::Throw );
 
     if ( !_json["code"].empty() )
@@ -534,13 +534,13 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
     }
 
-    if ( _json.HasMember( "data" ) ) {  
+    if ( _json.HasMember( "data" ) ) {
         if ( !_json["data"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.data = jsToBytes( _json["data"].GetString(), OnFailed::Throw );
     }
 
-    if ( _json.HasMember( "input" ) ) {  
+    if ( _json.HasMember( "input" ) ) {
         if ( !_json["input"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.data = jsToBytes( _json["input"].GetString(), OnFailed::Throw );
