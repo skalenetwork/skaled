@@ -118,12 +118,12 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
 }
 
 LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
-    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions )
+    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, uint64_t _restartPeriodS )
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
       m_options( std::move( _dbOptions ) ),
-      m_path( _path ) {
+      m_path( _path ), m_restartPeriodS( _restartPeriodS) {
     auto db = static_cast< leveldb::DB* >( nullptr );
     auto const status = leveldb::DB::Open( m_options, _path.string(), &db );
     checkStatus( status, _path );

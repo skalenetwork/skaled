@@ -27,7 +27,7 @@
 
 namespace dev {
 namespace db {
-enum class DatabaseKind { LevelDB };
+enum class DatabaseKind { LevelDB, LevelDBPeriodicRestart };
 
 /// Provide a set of program options related to databases
 ///

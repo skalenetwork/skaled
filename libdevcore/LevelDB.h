@@ -41,7 +41,7 @@ public:
     explicit LevelDB( boost::filesystem::path const& _path,
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
-        leveldb::Options _dbOptions = defaultDBOptions() );
+        leveldb::Options _dbOptions = defaultDBOptions(), uint64_t _restartPeriodS = 0 );
 
     ~LevelDB();
 
@@ -78,6 +78,7 @@ private:
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
     boost::filesystem::path const m_path;
+    uint64_t m_restartPeriodS;
 
     static const size_t BATCH_CHUNK_SIZE;
 };
