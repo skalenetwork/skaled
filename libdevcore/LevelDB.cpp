@@ -133,6 +133,8 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
 // this does not hold any locks so it needs to be called
 // either from a constructor or from a function that holds a lock on m_db
 void LevelDB::openDBInstanceUnsafe() {
+    cnote << "Time to (re)open LevelDB at " + m_path.string();
+    auto startTimeMs = getCurrentTimeMs();
     auto db = static_cast< leveldb::DB* >( nullptr );
     auto const status = leveldb::DB::Open( m_options, m_path.string(), &db );
     checkStatus( status, m_path );
@@ -143,6 +145,7 @@ void LevelDB::openDBInstanceUnsafe() {
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
+    cnote <<"LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
@@ -246,7 +249,7 @@ void LevelDB::reopenDataBaseIfNeeded() {
     auto currentTimeMs = getCurrentTimeMs();
 
     if ( currentTimeMs - m_lastDBOpenTimeMs >= m_restartPeriodMs ) {
-        cnote << "Time to reopen LevelDB at " + m_path.string();
+
         ExclusiveDBGuard lock(*this);
         // releasing unique pointer will cause database destructor to be called that will close db
         m_db.reset();
@@ -254,7 +257,6 @@ void LevelDB::reopenDataBaseIfNeeded() {
         openDBInstanceUnsafe();
     }
 
-    cnote << "Successfully re-opened LevelDB at " + m_path.string();
 
 }
 
