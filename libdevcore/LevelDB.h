@@ -26,6 +26,7 @@
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
+#include "shared_mutex"
 #include <secp256k1_sha256.h>
 
 namespace dev {
@@ -79,8 +80,51 @@ private:
     leveldb::Options m_options;
     boost::filesystem::path const m_path;
     uint64_t m_restartPeriodS;
+    uint64_t m_lastDBOpenTimeS;
+    mutable std::shared_mutex m_dbMutex;
+
 
     static const size_t BATCH_CHUNK_SIZE;
+
+    class SharedDBGuard {
+        const LevelDB& m_levedlDB;
+
+
+    public:
+        explicit SharedDBGuard( const LevelDB& _levedDB ) : m_levedlDB( _levedDB ) {
+            if ( m_levedlDB.m_restartPeriodS == 0 )
+                return;
+            m_levedlDB.m_dbMutex.lock_shared();
+        }
+
+
+        ~SharedDBGuard() {
+            if ( m_levedlDB.m_restartPeriodS == 0 )
+                return;
+            m_levedlDB.m_dbMutex.unlock_shared();
+        }
+    };
+
+    class ExclusiveDBGuard {
+        LevelDB& m_levedlDB;
+
+    public:
+
+        ExclusiveDBGuard( LevelDB& _levedDB ) : m_levedlDB( _levedDB ) {
+            if ( m_levedlDB.m_restartPeriodS == 0 )
+                return;
+            m_levedlDB.m_dbMutex.lock();
+        }
+
+        ~ExclusiveDBGuard() {
+            if ( m_levedlDB.m_restartPeriodS == 0 )
+                return;
+            m_levedlDB.m_dbMutex.unlock();
+        }
+    };
+    void openDBInstanceUnsafe();
+    uint64_t getCurrentTimeS();
+    void reopenDataBaseIfNeeded();
 };
 
 }  // namespace db

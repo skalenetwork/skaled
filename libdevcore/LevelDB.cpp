@@ -23,6 +23,8 @@
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+using std::string, std::runtime_error;
+
 namespace dev {
 namespace db {
 
@@ -123,13 +125,28 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
       m_options( std::move( _dbOptions ) ),
-      m_path( _path ), m_restartPeriodS( _restartPeriodS) {
-    auto db = static_cast< leveldb::DB* >( nullptr );
-    auto const status = leveldb::DB::Open( m_options, _path.string(), &db );
-    checkStatus( status, _path );
+      m_path( _path ),
+      m_restartPeriodS( _restartPeriodS ) {
+    openDBInstanceUnsafe();
+}
 
-    assert( db );
+// this does not hold any locks so it needs to be called
+// either from a constructor or from a function that holds a lock on m_db
+void LevelDB::openDBInstanceUnsafe() {
+    auto db = static_cast< leveldb::DB* >( nullptr );
+    auto const status = leveldb::DB::Open( m_options, m_path.string(), &db );
+    checkStatus( status, m_path );
+
+    if (!db) {
+        BOOST_THROW_EXCEPTION(runtime_error(string("Null db in ") + __FUNCTION__ ));
+    }
+
     m_db.reset( db );
+    m_lastDBOpenTimeS = getCurrentTimeS();
+}
+uint64_t LevelDB::getCurrentTimeS() {
+    auto currentTime = std::chrono::system_clock::now().time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::seconds>(currentTime).count();
 }
 
 LevelDB::~LevelDB() {
@@ -142,7 +159,12 @@ LevelDB::~LevelDB() {
 std::string LevelDB::lookup( Slice _key ) const {
     leveldb::Slice const key( _key.data(), _key.size() );
     std::string value;
-    auto const status = m_db->Get( m_readOptions, key, &value );
+
+    leveldb::Status status;
+    {
+        SharedDBGuard readLock( *this );
+        status = m_db->Get( m_readOptions, key, &value );
+    }
     if ( status.IsNotFound() )
         return std::string();
 
@@ -153,7 +175,11 @@ std::string LevelDB::lookup( Slice _key ) const {
 bool LevelDB::exists( Slice _key ) const {
     std::string value;
     leveldb::Slice const key( _key.data(), _key.size() );
-    auto const status = m_db->Get( m_readOptions, key, &value );
+    leveldb::Status status;
+    {
+        SharedDBGuard lock( *this );
+        status = m_db->Get( m_readOptions, key, &value );
+    }
     if ( status.IsNotFound() )
         return false;
 
@@ -164,7 +190,11 @@ bool LevelDB::exists( Slice _key ) const {
 void LevelDB::insert( Slice _key, Slice _value ) {
     leveldb::Slice const key( _key.data(), _key.size() );
     leveldb::Slice const value( _value.data(), _value.size() );
-    auto const status = m_db->Put( m_writeOptions, key, value );
+    leveldb::Status status;
+    {
+        SharedDBGuard lock( *this );
+        status = m_db->Put( m_writeOptions, key, value );
+    }
     checkStatus( status );
 }
 
@@ -190,16 +220,53 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
         BOOST_THROW_EXCEPTION(
             DatabaseError() << errinfo_comment( "Invalid batch type passed to LevelDB::commit" ) );
     }
-    auto const status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
+    leveldb::Status status;
+    {
+        SharedDBGuard lock( *this );
+        status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
+    }
     // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes
     // stats and set g_keysToBeDeletedStats to zero
     g_keyDeletesStats += g_keysToBeDeletedStats;
     g_keysToBeDeletedStats = 0;
+
     checkStatus( status );
+
+    // now lets check if it is time to reopen the database
+
+    reopenDataBaseIfNeeded();
+}
+void LevelDB::reopenDataBaseIfNeeded() {
+
+    if (m_restartPeriodS == 0) {
+        // restarts not enabled
+        return;
+    }
+
+    auto currentTimeS = getCurrentTimeS();
+
+    // sanity check
+    if (currentTimeS < m_lastDBOpenTimeS ) {
+        BOOST_THROW_EXCEPTION(runtime_error("Current time is less than m_lastDBOpenTimeS in " +
+            string(__FUNCTION__) ));
+    };
+
+    if (currentTimeS >= m_restartPeriodS ) {
+        cnote << "Time to reopen LevelDB at " + m_path.string();
+        ExclusiveDBGuard lock(*this);
+        // releasing unique pointer will cause database destructor to be called that will close db
+        m_db.reset();
+        // now open db while holding the exclusive lock
+        openDBInstanceUnsafe();
+    }
+
+    cnote << "Successfully re-opened LevelDB at " + m_path.string();
+
 }
 
 void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     cwarn << "Iterating over the entire LevelDB database: " << this->m_path;
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -217,6 +284,7 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
 void LevelDB::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     cnote << "Iterating over the LevelDB prefix: " << _prefix;
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -234,6 +302,7 @@ void LevelDB::forEachWithPrefix(
 }
 
 h256 LevelDB::hashBase() const {
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -261,6 +330,7 @@ h256 LevelDB::hashBase() const {
 }
 
 h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -284,6 +354,7 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
 }
 
 bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -317,6 +388,7 @@ bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashe
 }
 
 void LevelDB::doCompaction() const {
+    SharedDBGuard lock( *this );
     m_db->CompactRange( nullptr, nullptr );
 }
 
