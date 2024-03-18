@@ -120,13 +120,13 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
 }
 
 LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
-    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, uint64_t _restartPeriodS )
+    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, uint64_t _restartPeriodMs )
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
       m_options( std::move( _dbOptions ) ),
       m_path( _path ),
-      m_restartPeriodS( _restartPeriodS ) {
+      m_restartPeriodMs( _restartPeriodMs ) {
     openDBInstanceUnsafe();
 }
 
@@ -142,11 +142,11 @@ void LevelDB::openDBInstanceUnsafe() {
     }
 
     m_db.reset( db );
-    m_lastDBOpenTimeS = getCurrentTimeS();
+    m_lastDBOpenTimeMs = getCurrentTimeMs();
 }
-uint64_t LevelDB::getCurrentTimeS() {
+uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
-    return std::chrono::duration_cast<std::chrono::seconds>(currentTime).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(currentTime).count();
 }
 
 LevelDB::~LevelDB() {
@@ -238,20 +238,14 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
 }
 void LevelDB::reopenDataBaseIfNeeded() {
 
-    if (m_restartPeriodS == 0) {
+    if ( m_restartPeriodMs == 0) {
         // restarts not enabled
         return;
     }
 
-    auto currentTimeS = getCurrentTimeS();
+    auto currentTimeMs = getCurrentTimeMs();
 
-    // sanity check
-    if (currentTimeS < m_lastDBOpenTimeS ) {
-        BOOST_THROW_EXCEPTION(runtime_error("Current time is less than m_lastDBOpenTimeS in " +
-            string(__FUNCTION__) ));
-    };
-
-    if (currentTimeS >= m_restartPeriodS ) {
+    if ( currentTimeMs - m_lastDBOpenTimeMs >= m_restartPeriodMs ) {
         cnote << "Time to reopen LevelDB at " + m_path.string();
         ExclusiveDBGuard lock(*this);
         // releasing unique pointer will cause database destructor to be called that will close db

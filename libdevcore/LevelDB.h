@@ -42,7 +42,7 @@ public:
     explicit LevelDB( boost::filesystem::path const& _path,
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
-        leveldb::Options _dbOptions = defaultDBOptions(), uint64_t _restartPeriodS = 0 );
+        leveldb::Options _dbOptions = defaultDBOptions(), uint64_t _restartPeriodMs = 0 );
 
     ~LevelDB();
 
@@ -79,8 +79,8 @@ private:
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
     boost::filesystem::path const m_path;
-    uint64_t m_restartPeriodS;
-    uint64_t m_lastDBOpenTimeS;
+    uint64_t m_restartPeriodMs;
+    uint64_t m_lastDBOpenTimeMs;
     mutable std::shared_mutex m_dbMutex;
 
 
@@ -92,14 +92,14 @@ private:
 
     public:
         explicit SharedDBGuard( const LevelDB& _levedDB ) : m_levedlDB( _levedDB ) {
-            if ( m_levedlDB.m_restartPeriodS == 0 )
+            if ( m_levedlDB.m_restartPeriodMs == 0 )
                 return;
             m_levedlDB.m_dbMutex.lock_shared();
         }
 
 
         ~SharedDBGuard() {
-            if ( m_levedlDB.m_restartPeriodS == 0 )
+            if ( m_levedlDB.m_restartPeriodMs == 0 )
                 return;
             m_levedlDB.m_dbMutex.unlock_shared();
         }
@@ -111,19 +111,19 @@ private:
     public:
 
         ExclusiveDBGuard( LevelDB& _levedDB ) : m_levedlDB( _levedDB ) {
-            if ( m_levedlDB.m_restartPeriodS == 0 )
+            if ( m_levedlDB.m_restartPeriodMs == 0 )
                 return;
             m_levedlDB.m_dbMutex.lock();
         }
 
         ~ExclusiveDBGuard() {
-            if ( m_levedlDB.m_restartPeriodS == 0 )
+            if ( m_levedlDB.m_restartPeriodMs == 0 )
                 return;
             m_levedlDB.m_dbMutex.unlock();
         }
     };
     void openDBInstanceUnsafe();
-    uint64_t getCurrentTimeS();
+    uint64_t getCurrentTimeMs();
     void reopenDataBaseIfNeeded();
 };
 
