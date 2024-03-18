@@ -123,7 +123,8 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                                          bc().info().timestamp(), bc().number() ) ) :
                                  Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
-        Block bk = latestBlock();
+        Block bk = preSeal();
+
         if ( upperBound > bk.info().gasLimit() ) {
             upperBound = bk.info().gasLimit().convert_to< int64_t >();
         }

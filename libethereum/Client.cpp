@@ -1084,19 +1084,6 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 }
 #endif
 
-Block Client::latestBlock() const {
-    // TODO Why it returns not-filled block??! (see Block ctor)
-    try {
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), bc().currentHash(), m_state ); }
-        assert( false );
-        return Block( bc() );
-    } catch ( Exception& ex ) {
-        ex << errinfo_block( bc().block( bc().currentHash() ) );
-        onBadBlock( ex );
-        return Block( bc() );
-    }
-}
-
 void Client::flushTransactions() {
     doWork();
 }
@@ -1249,7 +1236,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         }
 #endif
 
-        Block temp = latestBlock();
+        Block temp = preSeal();
 
         // TODO there can be race conditions between prev and next line!
         State readStateForLock = temp.mutableState().createStateReadOnlyCopy();

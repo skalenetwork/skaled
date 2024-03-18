@@ -250,8 +250,6 @@ public:
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
 
-    Block latestBlock() const;
-
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {
         assert( m_skaleHost );
