@@ -855,6 +855,16 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     string result = fixture.rpcClient->eth_call( call, "latest" );
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+
+    Json::Value inputCall;
+    inputCall["to"] = contractAddress;
+    inputCall["input"] = "0xb3de648b0000000000000000000000000000000000000000000000000000000000000001";
+    inputCall["gas"] = "1000000";
+    inputCall["gasPrice"] = "0";
+    result = fixture.rpcClient->eth_call( inputCall, "latest" );
+    BOOST_CHECK_EQUAL(
+        result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+
 }
 
 /*
