@@ -146,9 +146,6 @@ Client::Client( ChainParams const& _params, int _networkID,
     };
 
     init( _forceAction, _networkID );
-
-    // Set timestamps for patches
-    TotalStorageUsedPatch::g_client = this;
 }
 
 
@@ -310,7 +307,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     SchainPatch::init( chainParams() );
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
-
+    TotalStorageUsedPatch::init( this );
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
 

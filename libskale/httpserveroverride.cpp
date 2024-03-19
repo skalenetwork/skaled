@@ -2804,12 +2804,14 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
                 cc::success( "/" ) + cc::notice( esm2str( esm ) ) + " " );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+            pSrv ? pSrv->serverIndex() : -1, esm,
             cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "proxygen" ) +
                 cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( ex.what() ) );
     } catch ( ... ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", pSrv->serverIndex(), esm,
+        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
+            pSrv ? pSrv->serverIndex() : -1, esm,
             cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "proxygen" ) +
                 cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
                 cc::error( " server: " ) + cc::warn( "unknown exception" ) );
