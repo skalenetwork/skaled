@@ -231,8 +231,13 @@ public:
         auto b = block( _hash );
         RLP rlp( b );
         h256s ret;
-        for ( auto t : rlp[1] )
-            ret.push_back( sha3( t.data() ) );
+        for ( auto d : rlp[1] ) {
+            if ( d.isList() )
+                // means Legacy transaction
+                ret.push_back( sha3( d.data() ) );
+            else
+                ret.push_back( sha3( d.payload() ) );
+        }
         return ret;
     }
     TransactionHashes transactionHashes() const { return transactionHashes( currentHash() ); }
@@ -319,7 +324,10 @@ public:
     /// none given) & index. Thread-safe.
     bytes transaction( h256 const& _blockHash, unsigned _i ) const {
         bytes b = block( _blockHash );
-        return RLP( b )[1][_i].data().toBytes();
+        if ( RLP( b )[1][_i].isList() )
+            // means Legacy transaction
+            return RLP( b )[1][_i].data().toBytes();
+        return RLP( b )[1][_i].payload().toBytes();
     }
     bytes transaction( unsigned _i ) const { return transaction( currentHash(), _i ); }
 
@@ -328,7 +336,11 @@ public:
         bytes b = block( _blockHash );
         std::vector< bytes > ret;
         for ( auto const& i : RLP( b )[1] )
-            ret.push_back( i.data().toBytes() );
+            if ( i.isList() )
+                // means Legacy transaction
+                ret.push_back( i.data().toBytes() );
+            else
+                ret.push_back( i.payload().toBytes() );
         return ret;
     }
     std::vector< bytes > transactions() const { return transactions( currentHash() ); }

@@ -40,6 +40,8 @@ enum IncludeSignature {
 
 enum class CheckTransaction { None, Cheap, Everything };
 
+enum TransactionType { Legacy, Type1, Type2 };
+
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class TransactionBase {
 public:
@@ -104,6 +106,10 @@ public:
         bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
 
+    /// Constructs a transaction from the given RLP and transaction type.
+    TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
+        TransactionType type );
+
     TransactionBase( TransactionBase const& ) = default;
 
     /// Checks equality of transactions.
@@ -155,7 +161,10 @@ public:
     bytes rlp( IncludeSignature _sig = WithSignature ) const {
         RLPStream s;
         streamRLP( s, _sig );
-        return s.out();
+        bytes output = s.out();
+        if ( m_txType != TransactionType::Legacy )
+            output.insert( output.begin(), m_txType );
+        return output;
     }
 
     /// @returns the SHA3 hash of the RLP serialisation of this transaction.
@@ -249,6 +258,8 @@ public:
 
     bool isInvalid() const { return m_type == Type::Invalid; }
 
+    TransactionType txType() const { return m_txType; }
+
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
         bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es );
@@ -285,8 +296,27 @@ protected:
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
     ///< creation transaction.
     bytes m_rawData;
+    RLPs m_accessList;  ///< The access list. see more https://eips.ethereum.org/EIPS/eip-2930. Not
+                        ///< valid for legacy txns
+    u256 m_maxPriorityFeePerGas;  ///< The maximum priority fee per gas. Only valid for type2 txns
+    u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
+
+    TransactionType m_txType = TransactionType::Legacy;
 
     Counter< TransactionBase > c;
+
+private:
+    static TransactionType getTransactionType( bytesConstRef _rlp );
+    TransactionBase makeLegacyTransaction(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    TransactionBase makeType1Transaction(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    TransactionBase makeType2Transaction(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+
+    void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
+    void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
+    void streamType2Transaction( RLPStream& _s, IncludeSignature _sig ) const;
 
 public:
     mutable int64_t verifiedOn = -1;  // on which block it was imported

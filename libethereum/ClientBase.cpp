@@ -446,8 +446,16 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     Transactions res;
-    for ( unsigned i = 0; i < b[1].itemCount(); i++ )
-        res.emplace_back( b[1][i].data(), CheckTransaction::Cheap, true );
+    for ( unsigned i = 0; i < b[1].itemCount(); i++ ) {
+        auto tx = b[1][i].data().toBytes();
+        if ( RLP( tx ).isList() )
+            // means Legacy transaction
+            res.emplace_back( tx, CheckTransaction::Cheap, true );
+        else {
+            tx = RLP( tx ).payload().toBytes();
+            res.emplace_back( tx, CheckTransaction::Cheap, true );
+        }
+    }
     return res;
 }
 

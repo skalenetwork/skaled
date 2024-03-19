@@ -2604,6 +2604,59 @@ BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     }
 }
 
+BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535
+    ret["params"]["chainID"] = "0xffff"; 
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txRefill;
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = senderAddress;
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 100000000000000000;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+
+    BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0xc868AF52a6549c773082A334E5AE232e0Ea3B513", "latest" ) == "0x16345785d8a0000" );
+
+    // send 1 WEI from 0xc868AF52a6549c773082A334E5AE232e0Ea3B513 to 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b
+    // encoded type 1 txn
+    txHash = fixture.rpcClient->eth_sendRawTransaction( "0x01f86882ffff808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c001a0c171a6fd330b71e278b9030986e0aa9aeba4cad9594bcbe8a608d12f3751f53fa03a24cbd1ab14a62d9f30cf9ace7b5aef04c2289160993ce7df5059d8708762dc" );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
+
+    auto block = fixture.rpcClient->eth_getBlockByNumber( "3", false );
+    BOOST_REQUIRE( block["transactions"].size() == 1 );
+    BOOST_REQUIRE( block["transactions"][0].asString() == txHash );
+
+
+    block = fixture.rpcClient->eth_getBlockByNumber( "3", true );
+    BOOST_REQUIRE( block["transactions"].size() == 1 );
+    BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+}
+
+BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
+    JsonRpcFixture fixture;
+}
+
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
     string etherbase = fixture.rpcClient->eth_coinbase();

@@ -975,9 +975,16 @@ void Block::commitToSeal(
 
         RLPStream txrlp;
         m_transactions[i].streamRLP( txrlp );
-        transactionsMap.insert( std::make_pair( k.out(), txrlp.out() ) );
+        dev::bytes txOutput = txrlp.out();
+        if ( m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
+            txOutput.insert( txOutput.begin(), m_transactions[i].txType() );
+            RLPStream s;
+            s.append( txOutput );
+            txOutput = s.out();
+        }
+        transactionsMap.insert( std::make_pair( k.out(), txOutput ) );
 
-        txs.appendRaw( txrlp.out() );
+        txs.appendRaw( txOutput );
     }
 
     txs.swapOut( m_currentTxs );

@@ -777,8 +777,15 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
-            extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
-                ( db::Slice ) dev::ref( ta.rlp() ) );
+            if ( RLP( *it ).isList() )
+                // means Legacy transaction
+                extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+                    ( db::Slice ) dev::ref( ta.rlp() ) );
+            else {
+                auto payload = ( *it ).payload();
+                extrasWriteBatch.insert( toSlice( sha3( payload ), ExtraTransactionAddress ),
+                    ( db::Slice ) dev::ref( ta.rlp() ) );
+            }
             ++ta.index;
         }
     }
