@@ -1338,23 +1338,37 @@ then compile!
     while( time(nullptr) < fixture.push0PatchActivationTimestamp )
         sleep(1);
 
-    // exec and call should fail in 1st block after timestamp too
-    callResult = fixture.rpcClient->eth_call(callObject, "latest");
-    BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );
-
+    // 1st timestamp-crossing block
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE_GE( fixture.client->blockInfo(LatestBlock).timestamp(), fixture.push0PatchActivationTimestamp );
+
+    uint64_t crossingBlockNumber = fixture.client->number();
+    (void) crossingBlockNumber;
+
+    // in the "corssing" block tx still should fail
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
 
-    // in 1st block with patch they should succeed
+    // in 1st block with patch call should succeed
     callResult = fixture.rpcClient->eth_call(callObject, "latest");
     BOOST_REQUIRE_NE( callResult, string( "0x" ) );
 
+    // tx should succeed too
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+
+#ifdef HISTORIC_STATE
+    // histoic call should fail before activation and succees after it
+
+    callResult = fixture.rpcClient->eth_call(callObject, toJS(crossingBlockNumber-1));
+    BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );
+
+    callResult = fixture.rpcClient->eth_call(callObject, toJS(crossingBlockNumber));
+    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
