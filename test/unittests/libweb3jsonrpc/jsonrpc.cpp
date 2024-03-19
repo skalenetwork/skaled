@@ -292,7 +292,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::StorageDestructionPatch)] = 1;
             powPatchActivationTimestamp = time(nullptr) + 60;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::CorrectForkInPowPatch)] = powPatchActivationTimestamp;
-            push0PatchActivationTimestamp = time(nullptr) + 5;
+            push0PatchActivationTimestamp = time(nullptr) + 10;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = push0PatchActivationTimestamp;
             chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
@@ -1335,8 +1335,10 @@ then compile!
 
     // wait for block after timestamp
     BOOST_REQUIRE_LT( fixture.client->blockInfo(LatestBlock).timestamp(), fixture.push0PatchActivationTimestamp );
-    while( time(nullptr) < fixture.push0PatchActivationTimestamp )
+    while( time(nullptr) < fixture.push0PatchActivationTimestamp ) {
         sleep(1);
+        cout << "SLEEP" << endl;
+    }
 
     // 1st timestamp-crossing block
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
