@@ -165,8 +165,7 @@ ChainParams ChainParams::loadConfig(
 
     return cp;
 }
-void ChainParams::processSkaleConfigItems(
-    ChainParams& cp, json_spirit::mObject& obj ) {
+void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
 
     auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
@@ -184,267 +183,266 @@ void ChainParams::processSkaleConfigItems(
     } catch ( ... ) {
     }
     try {
-            port = infoObj.at( "basePort" ).get_int();
-        } catch ( ... ) {
-        }
-        try {
-            ip6 = infoObj.at( "bindIP6" ).get_str();
-        } catch ( ... ) {
-        }
-        try {
-            port6 = infoObj.at( "basePort6" ).get_int();
-        } catch ( ... ) {
-        }
-        try {
-            syncNode = infoObj.at( "syncNode" ).get_bool();
-        } catch ( ... ) {
-        }
-        try {
-            archiveMode = infoObj.at( "archiveMode" ).get_bool();
-        } catch ( ... ) {
-        }
-        try {
-            syncFromCatchup = infoObj.at( "syncFromCatchup" ).get_bool();
-        } catch ( ... ) {
-        }
+        port = infoObj.at( "basePort" ).get_int();
+    } catch ( ... ) {
+    }
+    try {
+        ip6 = infoObj.at( "bindIP6" ).get_str();
+    } catch ( ... ) {
+    }
+    try {
+        port6 = infoObj.at( "basePort6" ).get_int();
+    } catch ( ... ) {
+    }
+    try {
+        syncNode = infoObj.at( "syncNode" ).get_bool();
+    } catch ( ... ) {
+    }
+    try {
+        archiveMode = infoObj.at( "archiveMode" ).get_bool();
+    } catch ( ... ) {
+    }
+    try {
+        syncFromCatchup = infoObj.at( "syncFromCatchup" ).get_bool();
+    } catch ( ... ) {
+    }
 
-        try {
-            cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
-        } catch ( ... ) {
-        }
-        if ( cp.rotateAfterBlock_ < 0 )
-            cp.rotateAfterBlock_ = 0;
+    try {
+        cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
+    } catch ( ... ) {
+    }
+    if ( cp.rotateAfterBlock_ < 0 )
+        cp.rotateAfterBlock_ = 0;
 
-        string ecdsaKeyName;
-        try {
-            ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
-        } catch ( ... ) {
-        }
+    string ecdsaKeyName;
+    try {
+        ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+    } catch ( ... ) {
+    }
 
-        array< string, 4 > BLSPublicKeys;
-        array< string, 4 > commonBLSPublicKeys;
+    array< string, 4 > BLSPublicKeys;
+    array< string, 4 > commonBLSPublicKeys;
 
-        try {
-            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+    try {
+        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
-            keyShareName = ima.at( "keyShareName" ).get_str();
+        keyShareName = ima.at( "keyShareName" ).get_str();
 
-            t = ima.at( "t" ).get_int();
+        t = ima.at( "t" ).get_int();
 
-            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
-            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
-            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
-            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+        BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+        BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+        BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+        BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
 
-            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
-            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
-            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
-            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-        } catch ( ... ) {
-            // all or nothing
-            if ( !keyShareName.empty() )
-                throw;
-        }
+        commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+        commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+        commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+        commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
+    } catch ( ... ) {
+        // all or nothing
+        if ( !keyShareName.empty() )
+            throw;
+    }
 
-        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
+    cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+        static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName, BLSPublicKeys,
+        commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
 
-        auto sChainObj = skaleObj.at( "sChain" ).get_obj();
-        SChain s{};
-        s.nodes.clear();
+    auto sChainObj = skaleObj.at( "sChain" ).get_obj();
+    SChain s{};
+    s.nodes.clear();
 
-        s.name = sChainObj.at( "schainName" ).get_str();
-        s.id = sChainObj.at( "schainID" ).get_uint64();
-        s.t = t;
-        if ( sChainObj.count( "schainOwner" ) ) {
-            s.owner = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
-            s.blockAuthor = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
-        }
-        if ( sChainObj.count( "blockAuthor" ) )
-            s.blockAuthor = jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
+    s.name = sChainObj.at( "schainName" ).get_str();
+    s.id = sChainObj.at( "schainID" ).get_uint64();
+    s.t = t;
+    if ( sChainObj.count( "schainOwner" ) ) {
+        s.owner = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+        s.blockAuthor = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+    }
+    if ( sChainObj.count( "blockAuthor" ) )
+        s.blockAuthor = jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
 
-        s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
-                                    sChainObj.at( "snapshotIntervalSec" ).get_int() :
-                                    0;
+    s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
+                                sChainObj.at( "snapshotIntervalSec" ).get_int() :
+                                0;
 
-        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
-                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
-                                        3600;
+    s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
+                                    sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
+                                    3600;
 
-        s.snapshotDownloadInactiveTimeout =
-            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
-                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
-                3600;
+    s.snapshotDownloadInactiveTimeout =
+        sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
+            sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
+            3600;
 
-        s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
-                                     sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
-                                     0;
+    s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
+                                 sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
+                                 0;
 
-        // negative levelDBReopenIntervalMs means restarts are disabled
-        s.levelDBReopenIntervalMs = sChainObj.count( "levelDBReopenIntervalMs" ) ?
-                                        sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
-                                        c_defaultLevelDBReopenIntervalMs;
+    // negative levelDBReopenIntervalMs means restarts are disabled
+    s.levelDBReopenIntervalMs = sChainObj.count( "levelDBReopenIntervalMs" ) ?
+                                    sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
+                                    c_defaultLevelDBReopenIntervalMs;
 
-        s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
-                                     sChainObj.at( "contractStorageLimit" ).get_int64() :
-                                     0;
+    s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
+                                 sChainObj.at( "contractStorageLimit" ).get_int64() :
+                                 0;
 
-        s.dbStorageLimit =
-            sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
+    s.dbStorageLimit =
+        sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
 
 
-        if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
-            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
-        }
+    if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
+        s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
+    }
 
-        if ( sChainObj.count( "freeContractDeployment" ) )
-            s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
+    if ( sChainObj.count( "freeContractDeployment" ) )
+        s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 
-        if ( sChainObj.count( "multiTransactionMode" ) )
-            s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+    if ( sChainObj.count( "multiTransactionMode" ) )
+        s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-        if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
-            s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
+    if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
+        s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
 
-        s.contractStoragePatchTimestamp =
-            sChainObj.count( "contractStoragePatchTimestamp" ) ?
-                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
-                0;
+    s.contractStoragePatchTimestamp =
+        sChainObj.count( "contractStoragePatchTimestamp" ) ?
+            sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
+            0;
 
-        s.contractStorageZeroValuePatchTimestamp =
-            sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
-                sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
-                0;
+    s.contractStorageZeroValuePatchTimestamp =
+        sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
+            sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
+            0;
 
-        s.verifyDaSigsPatchTimestamp =
-            sChainObj.count( "verifyDaSigsPatchTimestamp" ) ?
-                sChainObj.at( "verifyDaSigsPatchTimestamp" ).get_int64() :
-                0;
-
-        s.storageDestructionPatchTimestamp =
-            sChainObj.count( "storageDestructionPatchTimestamp" ) ?
-                sChainObj.at( "storageDestructionPatchTimestamp" ).get_int64() :
-                0;
-
-        s.powCheckPatchTimestamp = sChainObj.count( "powCheckPatchTimestamp" ) ?
-                                       sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
+    s.verifyDaSigsPatchTimestamp = sChainObj.count( "verifyDaSigsPatchTimestamp" ) ?
+                                       sChainObj.at( "verifyDaSigsPatchTimestamp" ).get_int64() :
                                        0;
 
-        s.precompiledConfigPatchTimestamp =
-            sChainObj.count( "precompiledConfigPatchTimestamp" ) ?
-                sChainObj.at( "precompiledConfigPatchTimestamp" ).get_int64() :
-                0;
+    s.storageDestructionPatchTimestamp =
+        sChainObj.count( "storageDestructionPatchTimestamp" ) ?
+            sChainObj.at( "storageDestructionPatchTimestamp" ).get_int64() :
+            0;
 
-        s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
-                                       sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
-                                       0;
+    s.powCheckPatchTimestamp = sChainObj.count( "powCheckPatchTimestamp" ) ?
+                                   sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
+                                   0;
 
-        s.skipInvalidTransactionsPatchTimestamp =
-            sChainObj.count( "skipInvalidTransactionsPatchTimestamp" ) ?
-                sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
-                0;
+    s.precompiledConfigPatchTimestamp =
+        sChainObj.count( "precompiledConfigPatchTimestamp" ) ?
+            sChainObj.at( "precompiledConfigPatchTimestamp" ).get_int64() :
+            0;
 
-        s.correctForkInPowPatchTimestamp =
-            sChainObj.count( "correctForkInPowPatchTimestamp" ) ?
-                sChainObj.at( "correctForkInPowPatchTimestamp" ).get_int64() :
-                0;
+    s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
+                                   sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
+                                   0;
 
-        if ( sChainObj.count( "nodeGroups" ) ) {
-            vector< NodeGroup > nodeGroups;
-            for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
-                NodeGroup nodeGroup;
-                auto nodeGroupObj = nodeGroupConf.second.get_obj();
-                if ( nodeGroupObj["bls_public_key"].is_null() )
-                    // failed dkg, skip it
-                    continue;
+    s.skipInvalidTransactionsPatchTimestamp =
+        sChainObj.count( "skipInvalidTransactionsPatchTimestamp" ) ?
+            sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
+            0;
 
-                vector< GroupNode > groupNodes;
-                auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
-                for ( const auto& groupNodeConf : groupNodesObj ) {
-                    auto groupNodeConfObj = groupNodeConf.second.get_array();
-                    u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
-                    u256 id = groupNodeConfObj.at( 1 ).get_uint64();
-                    string publicKey = groupNodeConfObj.at( 2 ).get_str();
-                    if ( publicKey.empty() ) {
-                        BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
-                    }
-                    groupNodes.push_back( { id, sChainIndex, publicKey } );
+    s.correctForkInPowPatchTimestamp =
+        sChainObj.count( "correctForkInPowPatchTimestamp" ) ?
+            sChainObj.at( "correctForkInPowPatchTimestamp" ).get_int64() :
+            0;
+
+    if ( sChainObj.count( "nodeGroups" ) ) {
+        vector< NodeGroup > nodeGroups;
+        for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
+            NodeGroup nodeGroup;
+            auto nodeGroupObj = nodeGroupConf.second.get_obj();
+            if ( nodeGroupObj["bls_public_key"].is_null() )
+                // failed dkg, skip it
+                continue;
+
+            vector< GroupNode > groupNodes;
+            auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
+            for ( const auto& groupNodeConf : groupNodesObj ) {
+                auto groupNodeConfObj = groupNodeConf.second.get_array();
+                u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
+                u256 id = groupNodeConfObj.at( 1 ).get_uint64();
+                string publicKey = groupNodeConfObj.at( 2 ).get_str();
+                if ( publicKey.empty() ) {
+                    BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
                 }
-                sort( groupNodes.begin(), groupNodes.end(),
-                    []( const GroupNode& lhs, const GroupNode& rhs ) {
-                        return lhs.schainIndex < rhs.schainIndex;
-                    } );
-                nodeGroup.nodes = groupNodes;
-
-                array< string, 4 > nodeGroupBlsPublicKey;
-                auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
-                nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
-                nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
-                nodeGroupBlsPublicKey[2] = nodeGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
-                nodeGroupBlsPublicKey[3] = nodeGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
-                nodeGroup.blsPublicKey = nodeGroupBlsPublicKey;
-
-                if ( !nodeGroupObj["finish_ts"].is_null() )
-                    nodeGroup.finishTs = nodeGroupObj["finish_ts"].get_uint64();
-                else
-                    nodeGroup.finishTs = uint64_t( -1 );
-                nodeGroups.push_back( nodeGroup );
+                groupNodes.push_back( { id, sChainIndex, publicKey } );
             }
-            sort( nodeGroups.begin(), nodeGroups.end(),
-                []( const NodeGroup& lhs, const NodeGroup& rhs ) {
-                    return lhs.finishTs < rhs.finishTs;
+            sort( groupNodes.begin(), groupNodes.end(),
+                []( const GroupNode& lhs, const GroupNode& rhs ) {
+                    return lhs.schainIndex < rhs.schainIndex;
                 } );
-            s.nodeGroups = nodeGroups;
-        }
+            nodeGroup.nodes = groupNodes;
 
-        for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
-            auto nodeConfObj = nodeConf.get_obj();
-            sChainNode node{};
-            node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-            node.ip = nodeConfObj.at( "ip" ).get_str();
-            node.port = nodeConfObj.at( "basePort" ).get_uint64();
-            try {
-                node.ip6 = nodeConfObj.at( "ip6" ).get_str();
-            } catch ( ... ) {
-                node.ip6 = "";
-            }
-            try {
-                node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
-            } catch ( ... ) {
-                node.port6 = 0;
-            }
-            node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
-            try {
-                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
-            } catch ( ... ) {
-            }
-            if ( !keyShareName.empty() ) {
-                try {
-                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
-                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
-                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
-                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
-                } catch ( ... ) {
-                    node.blsPublicKey[0] = "";
-                    node.blsPublicKey[1] = "";
-                    node.blsPublicKey[2] = "";
-                    node.blsPublicKey[3] = "";
-                }
-            }
-            s.nodes.push_back( node );
-        }
-        cp.sChain = s;
+            array< string, 4 > nodeGroupBlsPublicKey;
+            auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
+            nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
+            nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
+            nodeGroupBlsPublicKey[2] = nodeGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
+            nodeGroupBlsPublicKey[3] = nodeGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
+            nodeGroup.blsPublicKey = nodeGroupBlsPublicKey;
 
-        cp.vecAdminOrigins.clear();
-        if ( infoObj.count( "adminOrigins" ) ) {
-            for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
-                string strOriginWildcardFilter = nodeOrigun.get_str();
-                cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
-            }
-        } else {
-            cp.vecAdminOrigins.push_back( "*" );
+            if ( !nodeGroupObj["finish_ts"].is_null() )
+                nodeGroup.finishTs = nodeGroupObj["finish_ts"].get_uint64();
+            else
+                nodeGroup.finishTs = uint64_t( -1 );
+            nodeGroups.push_back( nodeGroup );
         }
+        sort(
+            nodeGroups.begin(), nodeGroups.end(), []( const NodeGroup& lhs, const NodeGroup& rhs ) {
+                return lhs.finishTs < rhs.finishTs;
+            } );
+        s.nodeGroups = nodeGroups;
+    }
+
+    for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+        auto nodeConfObj = nodeConf.get_obj();
+        sChainNode node{};
+        node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+        node.ip = nodeConfObj.at( "ip" ).get_str();
+        node.port = nodeConfObj.at( "basePort" ).get_uint64();
+        try {
+            node.ip6 = nodeConfObj.at( "ip6" ).get_str();
+        } catch ( ... ) {
+            node.ip6 = "";
+        }
+        try {
+            node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+        } catch ( ... ) {
+            node.port6 = 0;
+        }
+        node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
+        try {
+            node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+        } catch ( ... ) {
+        }
+        if ( !keyShareName.empty() ) {
+            try {
+                node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+            } catch ( ... ) {
+                node.blsPublicKey[0] = "";
+                node.blsPublicKey[1] = "";
+                node.blsPublicKey[2] = "";
+                node.blsPublicKey[3] = "";
+            }
+        }
+        s.nodes.push_back( node );
+    }
+    cp.sChain = s;
+
+    cp.vecAdminOrigins.clear();
+    if ( infoObj.count( "adminOrigins" ) ) {
+        for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
+            string strOriginWildcardFilter = nodeOrigun.get_str();
+            cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
+        }
+    } else {
+        cp.vecAdminOrigins.push_back( "*" );
+    }
 }
 
 ChainParams ChainParams::loadGenesis( string const& _json ) const {

@@ -24,11 +24,11 @@
 #pragma once
 
 #include "Account.h"
+#include "json_spirit/json_spirit_value.h"
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
-#include "json_spirit/json_spirit_value.h"
 
 
 namespace dev::eth {
@@ -76,7 +76,7 @@ struct ChainParams : public ChainOperationParams {
     void resetJson() { originalJSON = ""; }
 
     bool checkAdminOriginAllowed( const std::string& origin ) const;
-    static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj ) ;
+    static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj );
 
 private:
     void populateFromGenesis( bytes const& _genesisRLP, AccountMap const& _state );
@@ -85,9 +85,6 @@ private:
     ChainParams loadGenesis( std::string const& _json ) const;
 
     mutable std::string originalJSON;
-
-
 };
 
 }  // namespace dev::eth
-
