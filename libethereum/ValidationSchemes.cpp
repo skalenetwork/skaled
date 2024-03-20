@@ -154,6 +154,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalAfterCatchupMs",
                 { { js::int_type }, JsonFieldPresence::Optional } },
+            { "leveldbReopenIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },

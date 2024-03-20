@@ -27,7 +27,7 @@
 
 namespace dev {
 namespace db {
-enum class DatabaseKind { LevelDB, LevelDBHistoricState };
+enum class DatabaseKind { LevelDB };
 
 /// Provide a set of program options related to databases
 ///
@@ -51,6 +51,8 @@ public:
     static std::unique_ptr< DatabaseFace > create( boost::filesystem::path const& _path );
     static std::unique_ptr< DatabaseFace > create( DatabaseKind _kind );
     static std::unique_ptr< DatabaseFace > create(
+        DatabaseKind _kind, boost::filesystem::path const& _path );
+    static std::unique_ptr< DatabaseFace > createHistoric(
         DatabaseKind _kind, boost::filesystem::path const& _path );
 
 private:

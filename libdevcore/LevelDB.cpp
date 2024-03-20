@@ -25,8 +25,7 @@
 
 using std::string, std::runtime_error;
 
-namespace dev {
-namespace db {
+namespace dev::db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
 
@@ -120,13 +119,13 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
 }
 
 LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
-    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, uint64_t _restartPeriodMs )
+    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, int64_t _reopenPeriodMs )
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
       m_options( std::move( _dbOptions ) ),
       m_path( _path ),
-      m_restartPeriodMs( _restartPeriodMs ) {
+      m_reopenPeriodMs( _reopenPeriodMs ) {
     openDBInstanceUnsafe();
 }
 
@@ -241,14 +240,14 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
 }
 void LevelDB::reopenDataBaseIfNeeded() {
 
-    if ( m_restartPeriodMs == 0) {
+    if ( m_reopenPeriodMs < 0) {
         // restarts not enabled
         return;
     }
 
     auto currentTimeMs = getCurrentTimeMs();
 
-    if ( currentTimeMs - m_lastDBOpenTimeMs >= m_restartPeriodMs ) {
+    if ( currentTimeMs - m_lastDBOpenTimeMs >= (uint64_t ) m_reopenPeriodMs ) {
 
         ExclusiveDBGuard lock(*this);
         // releasing unique pointer will cause database destructor to be called that will close db
@@ -309,9 +308,9 @@ h256 LevelDB::hashBase() const {
     for ( it->SeekToFirst(); it->Valid(); it->Next() ) {
         std::string keyTmp = it->key().ToString();
         std::string valueTmp = it->value().ToString();
-        // HACK! For backward compatibility! When snapshot could happen between update of two nodes
-        // - it would lead to stateRoot mismatch
-        // TODO Move this logic to separate "compatiliblity layer"!
+        // For backward compatibility. When snapshot could happen between update of two nodes
+        // it would lead to stateRoot mismatch
+        // TODO Move this logic to separate compatiliblity layer
         if ( keyTmp == "pieceUsageBytes" )
             continue;
         std::string keyValue = keyTmp + valueTmp;
@@ -364,9 +363,9 @@ bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashe
     for ( size_t counter = 0; it->Valid() && counter < BATCH_CHUNK_SIZE; it->Next() ) {
         std::string keyTmp = it->key().ToString();
         std::string valueTmp = it->value().ToString();
-        // HACK! For backward compatibility! When snapshot could happen between update of two nodes
-        // - it would lead to stateRoot mismatch
-        // TODO Move this logic to separate "compatiliblity layer"!
+        // For backward compatibility. When snapshot could happen between update of two nodes
+        // it would lead to stateRoot mismatch
+        // TODO Move this logic to separate compatiliblity layer
         if ( keyTmp == "pieceUsageBytes" )
             continue;
         std::string keyValue = keyTmp + valueTmp;
@@ -395,5 +394,5 @@ uint64_t LevelDB::getKeyDeletesStats() {
     return g_keyDeletesStats;
 }
 
-}  // namespace db
-}  // namespace dev
+}  // namespace dev::db
+

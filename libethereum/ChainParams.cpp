@@ -221,6 +221,11 @@ ChainParams ChainParams::loadConfig(
                                      sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
                                      0;
 
+        // negative levelDBReopenIntervalMs means restarts are disabled
+        s.levelDBReopenIntervalMs = sChainObj.count( "levelDBReopenIntervalMs" ) ?
+                                        sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
+                                        c_defaultLevelDBReopenIntervalMs;
+
         s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                      sChainObj.at( "contractStorageLimit" ).get_int64() :
                                      0;

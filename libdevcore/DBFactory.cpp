@@ -134,7 +134,19 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path ) );
         break;
         // this is currently used by the historic state
-    case DatabaseKind::LevelDBHistoricState:
+        return std::unique_ptr< DatabaseFace >( new LevelDB( _path,
+            LevelDB::defaultReadOptions(), LevelDB::defaultWriteOptions(),
+            LevelDB::defaultDBOptions(), 1) );
+        break;
+    default:
+        assert( false );
+        return {};
+    }
+}
+
+std::unique_ptr< DatabaseFace > DBFactory::createHistoric( DatabaseKind _kind, fs::path const& _path ) {
+    switch ( _kind ) {
+    case DatabaseKind::LevelDB:
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path,
             LevelDB::defaultReadOptions(), LevelDB::defaultWriteOptions(),
             LevelDB::defaultDBOptions(), 1) );
