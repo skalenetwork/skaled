@@ -478,14 +478,14 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
     if ( !_json["gasPrice"].empty() )
         ret.gasPrice = jsToU256( _json["gasPrice"].asString() );
 
+    if ( !_json["code"].empty() )
+        ret.data = jsToBytes( _json["code"].asString(), OnFailed::Throw );
+
     if ( !_json["data"].empty() )
         ret.data = jsToBytes( _json["data"].asString(), OnFailed::Throw );
 
     if ( !_json["input"].empty() )
         ret.data = jsToBytes( _json["input"].asString(), OnFailed::Throw );
-
-    if ( !_json["code"].empty() )
-        ret.data = jsToBytes( _json["code"].asString(), OnFailed::Throw );
 
     if ( !_json["nonce"].empty() )
         ret.nonce = jsToU256( _json["nonce"].asString() );
@@ -534,6 +534,12 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
     }
 
+    if ( _json.HasMember( "code" ) ) {
+        if ( !_json["code"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        ret.data = jsToBytes( _json["code"].GetString(), OnFailed::Throw );
+    }
+
     if ( _json.HasMember( "data" ) ) {
         if ( !_json["data"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -546,12 +552,6 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
         ret.data = jsToBytes( _json["input"].GetString(), OnFailed::Throw );
     }
 
-    if ( _json.HasMember( "code" ) ) {
-        if ( !_json["code"].IsString() )
-            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-        ret.data = jsToBytes( _json["code"].GetString(), OnFailed::Throw );
-    }
-
     if ( _json.HasMember( "nonce" ) ) {
         if ( !_json["nonce"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
@@ -560,37 +560,6 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
 
     return ret;
 }
-/*
-dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
-    dev::eth::LogFilter filter;
-    if ( !_json.isObject() || _json.empty() )
-        return filter;
-
-    // check only !empty. it should throw exceptions if input params are incorrect
-    if ( !_json["fromBlock"].empty() )
-        filter.withEarliest( jsToFixed< 32 >( _json["fromBlock"].asString() ) );
-    if ( !_json["toBlock"].empty() )
-        filter.withLatest( jsToFixed< 32 >( _json["toBlock"].asString() ) );
-    if ( !_json["address"].empty() ) {
-        if ( _json["address"].isArray() )
-            for ( auto i : _json["address"] )
-                filter.address( jsToAddress( i.asString() ) );
-        else
-            filter.address( jsToAddress( _json["address"].asString() ) );
-    }
-    if ( !_json["topics"].empty() )
-        for ( unsigned i = 0; i < _json["topics"].size(); i++ ) {
-            if ( _json["topics"][i].isArray() ) {
-                for ( auto t : _json["topics"][i] )
-                    if ( !t.isNull() )
-                        filter.topic( i, jsToFixed< 32 >( t.asString() ) );
-            } else if ( !_json["topics"][i].isNull() )  // if it is anything else then string, it
-                                                        // should and will fail
-                filter.topic( i, jsToFixed< 32 >( _json["topics"][i].asString() ) );
-        }
-    return filter;
-}
-*/
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
 dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning.
