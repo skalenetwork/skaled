@@ -43,11 +43,11 @@
 
 #include <json_spirit/JsonSpiritHeaders.h>
 
+#include <libdevcore/DBFactory.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
 #include <libdevcore/SharedSpace.h>
-#include <libdevcore/DBFactory.h>
 #include <libdevcore/StatusAndControl.h>
 #include <libethashseal/EthashClient.h>
 #include <libethashseal/GenesisInfo.h>
@@ -1067,10 +1067,10 @@ int main( int argc, char** argv ) try {
         try {
             configPath = vm["config"].as< string >();
             if ( !fs::is_regular_file( configPath.string() ) )
-                throw std::runtime_error("Bad config file path");
+                throw std::runtime_error( "Bad config file path" );
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
-                throw std::runtime_error("Config file probably not found");
+                throw std::runtime_error( "Config file probably not found" );
             chainParams = chainParams.loadConfig( configJSON, configPath );
             chainConfigIsSet = true;
             // TODO avoid double-parse
@@ -1078,7 +1078,7 @@ int main( int argc, char** argv ) try {
             chainConfigParsed = true;
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
-            dev::db::DBFactory::init(chainParams.sChain.levelDBReopenIntervalMs);
+            dev::db::DBFactory::init( chainParams.sChain.levelDBReopenIntervalMs );
         } catch ( const char* str ) {
             clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath;
             return EX_USAGE;

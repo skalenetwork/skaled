@@ -138,17 +138,17 @@ void LevelDB::openDBInstanceUnsafe() {
     auto const status = leveldb::DB::Open( m_options, m_path.string(), &db );
     checkStatus( status, m_path );
 
-    if (!db) {
-        BOOST_THROW_EXCEPTION(runtime_error(string("Null db in ") + __FUNCTION__ ));
+    if ( !db ) {
+        BOOST_THROW_EXCEPTION( runtime_error( string( "Null db in " ) + __FUNCTION__ ) );
     }
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
-    cnote <<"LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(currentTime).count();
+    return std::chrono::duration_cast< std::chrono::milliseconds >( currentTime ).count();
 }
 
 LevelDB::~LevelDB() {
@@ -239,24 +239,20 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     reopenDataBaseIfNeeded();
 }
 void LevelDB::reopenDataBaseIfNeeded() {
-
-    if ( m_reopenPeriodMs < 0) {
+    if ( m_reopenPeriodMs < 0 ) {
         // restarts not enabled
         return;
     }
 
     auto currentTimeMs = getCurrentTimeMs();
 
-    if ( currentTimeMs - m_lastDBOpenTimeMs >= (uint64_t ) m_reopenPeriodMs ) {
-
-        ExclusiveDBGuard lock(*this);
+    if ( currentTimeMs - m_lastDBOpenTimeMs >= ( uint64_t ) m_reopenPeriodMs ) {
+        ExclusiveDBGuard lock( *this );
         // releasing unique pointer will cause database destructor to be called that will close db
         m_db.reset();
         // now open db while holding the exclusive lock
         openDBInstanceUnsafe();
     }
-
-
 }
 
 void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
@@ -395,4 +391,3 @@ uint64_t LevelDB::getKeyDeletesStats() {
 }
 
 }  // namespace dev::db
-
