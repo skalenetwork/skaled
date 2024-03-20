@@ -94,7 +94,6 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
         EnvInfo envInfo( _block.info(), m_eth.blockChain().lastBlockHashes(),
             _block.previousInfo().timestamp(), gasUsed, bc.chainID() );
         // HACK 0 here is for gasPrice
-        // TODO timestamp of wrong block!
         Executive e( s, envInfo, m_eth.blockChain().chainParams(), 0, 0 );
 
         eth::ExecutionResult er;
