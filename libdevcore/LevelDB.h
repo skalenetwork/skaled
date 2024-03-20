@@ -29,7 +29,7 @@
 #include "shared_mutex"
 #include <secp256k1_sha256.h>
 
-namespace dev : db {
+namespace dev::db {
     class LevelDB : public DatabaseFace {
     public:
         static leveldb::ReadOptions defaultReadOptions();

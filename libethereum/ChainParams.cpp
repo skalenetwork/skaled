@@ -105,25 +105,85 @@ ChainParams ChainParams::loadConfig(
                                       params[c_skaleDisableChainIdCheck].get_bool() :
                                       false;
 
-    /// skale
+
     if ( obj.count( c_skaleConfig ) ) {
-        auto skaleObj = obj[c_skaleConfig].get_obj();
+        processSkaleConfigItems( cp, obj );
+    }
 
-        auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
+    auto setOptionalU256Parameter = [&params]( u256& _destination, string const& _name ) {
+        if ( params.count( _name ) )
+            _destination = u256( fromBigEndian< u256 >( fromHex( params.at( _name ).get_str() ) ) );
+    };
+    setOptionalU256Parameter( cp.minGasLimit, c_minGasLimit );
+    setOptionalU256Parameter( cp.maxGasLimit, c_maxGasLimit );
+    setOptionalU256Parameter( cp.gasLimitBoundDivisor, c_gasLimitBoundDivisor );
+    setOptionalU256Parameter( cp.homesteadForkBlock, c_homesteadForkBlock );
+    setOptionalU256Parameter( cp.EIP150ForkBlock, c_EIP150ForkBlock );
+    setOptionalU256Parameter( cp.EIP158ForkBlock, c_EIP158ForkBlock );
+    setOptionalU256Parameter( cp.byzantiumForkBlock, c_byzantiumForkBlock );
+    setOptionalU256Parameter( cp.eWASMForkBlock, c_eWASMForkBlock );
+    setOptionalU256Parameter( cp.constantinopleForkBlock, c_constantinopleForkBlock );
+    setOptionalU256Parameter( cp.constantinopleFixForkBlock, c_constantinopleFixForkBlock );
+    setOptionalU256Parameter( cp.istanbulForkBlock, c_istanbulForkBlock );
+    setOptionalU256Parameter( cp.experimentalForkBlock, c_experimentalForkBlock );
 
-        auto nodeName = infoObj.at( "nodeName" ).get_str();
-        auto nodeID = infoObj.at( "nodeID" ).get_uint64();
-        bool syncNode = false;
-        bool archiveMode = false;
-        bool syncFromCatchup = false;
-        std::string ip, ip6, keyShareName, sgxServerUrl;
-        size_t t = 0;
-        uint64_t port = 0, port6 = 0;
-        try {
-            ip = infoObj.at( "bindIP" ).get_str();
-        } catch ( ... ) {
-        }
-        try {
+    setOptionalU256Parameter( cp.skale16ForkBlock, c_skale16ForkBlock );
+    setOptionalU256Parameter( cp.skale32ForkBlock, c_skale32ForkBlock );
+    setOptionalU256Parameter( cp.skale64ForkBlock, c_skale64ForkBlock );
+    setOptionalU256Parameter( cp.skale128ForkBlock, c_skale128ForkBlock );
+    setOptionalU256Parameter( cp.skale256ForkBlock, c_skale256ForkBlock );
+    setOptionalU256Parameter( cp.skale512ForkBlock, c_skale512ForkBlock );
+    setOptionalU256Parameter( cp.skale1024ForkBlock, c_skale1024ForkBlock );
+    setOptionalU256Parameter( cp.skaleUnlimitedForkBlock, c_skaleUnlimitedForkBlock );
+
+    setOptionalU256Parameter( cp.daoHardforkBlock, c_daoHardforkBlock );
+    setOptionalU256Parameter( cp.minimumDifficulty, c_minimumDifficulty );
+    setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
+    setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
+    setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
+    setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
+
+    if ( params.count( c_chainID ) )
+        cp.chainID = uint64_t(
+            u256( fromBigEndian< u256 >( fromHex( params.at( c_chainID ).get_str() ) ) ) );
+    if ( params.count( c_networkID ) )
+        cp.networkID =
+            int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
+    cp.allowFutureBlocks = params.count( c_allowFutureBlocks );
+    if ( cp.externalGasDifficulty == 0 ) {
+        cp.externalGasDifficulty = -1;
+    }
+
+    // genesis
+    string genesisStr = json_spirit::write_string( obj[c_genesis], false );
+    cp = cp.loadGenesis( genesisStr );
+    // genesis state
+    string genesisStateStr = json_spirit::write_string( obj[c_accounts], false );
+
+    cp.genesisState = jsonToAccountMap(
+        genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath );
+
+    return cp;
+}
+void ChainParams::processSkaleConfigItems(
+    ChainParams& cp, json_spirit::mObject& obj ) {
+    auto skaleObj = obj[c_skaleConfig].get_obj();
+
+    auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
+
+    auto nodeName = infoObj.at( "nodeName" ).get_str();
+    auto nodeID = infoObj.at( "nodeID" ).get_uint64();
+    bool syncNode = false;
+    bool archiveMode = false;
+    bool syncFromCatchup = false;
+    string ip, ip6, keyShareName, sgxServerUrl;
+    size_t t = 0;
+    uint64_t port = 0, port6 = 0;
+    try {
+        ip = infoObj.at( "bindIP" ).get_str();
+    } catch ( ... ) {
+    }
+    try {
             port = infoObj.at( "basePort" ).get_int();
         } catch ( ... ) {
         }
@@ -155,14 +215,14 @@ ChainParams ChainParams::loadConfig(
         if ( cp.rotateAfterBlock_ < 0 )
             cp.rotateAfterBlock_ = 0;
 
-        std::string ecdsaKeyName;
+        string ecdsaKeyName;
         try {
             ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
         } catch ( ... ) {
         }
 
-        std::array< std::string, 4 > BLSPublicKeys;
-        std::array< std::string, 4 > commonBLSPublicKeys;
+        array< string, 4 > BLSPublicKeys;
+        array< string, 4 > commonBLSPublicKeys;
 
         try {
             js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
@@ -198,11 +258,11 @@ ChainParams ChainParams::loadConfig(
         s.id = sChainObj.at( "schainID" ).get_uint64();
         s.t = t;
         if ( sChainObj.count( "schainOwner" ) ) {
-            s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
-            s.blockAuthor = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+            s.owner = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+            s.blockAuthor = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
         }
         if ( sChainObj.count( "blockAuthor" ) )
-            s.blockAuthor = dev::jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
+            s.blockAuthor = jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
 
         s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
                                     sChainObj.at( "snapshotIntervalSec" ).get_int() :
@@ -291,7 +351,7 @@ ChainParams ChainParams::loadConfig(
                 0;
 
         if ( sChainObj.count( "nodeGroups" ) ) {
-            std::vector< NodeGroup > nodeGroups;
+            vector< NodeGroup > nodeGroups;
             for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
                 NodeGroup nodeGroup;
                 auto nodeGroupObj = nodeGroupConf.second.get_obj();
@@ -299,25 +359,25 @@ ChainParams ChainParams::loadConfig(
                     // failed dkg, skip it
                     continue;
 
-                std::vector< GroupNode > groupNodes;
+                vector< GroupNode > groupNodes;
                 auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
                 for ( const auto& groupNodeConf : groupNodesObj ) {
                     auto groupNodeConfObj = groupNodeConf.second.get_array();
                     u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
                     u256 id = groupNodeConfObj.at( 1 ).get_uint64();
-                    std::string publicKey = groupNodeConfObj.at( 2 ).get_str();
+                    string publicKey = groupNodeConfObj.at( 2 ).get_str();
                     if ( publicKey.empty() ) {
-                        BOOST_THROW_EXCEPTION( std::runtime_error( "Empty public key in config" ) );
+                        BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
                     }
                     groupNodes.push_back( { id, sChainIndex, publicKey } );
                 }
-                std::sort( groupNodes.begin(), groupNodes.end(),
+                sort( groupNodes.begin(), groupNodes.end(),
                     []( const GroupNode& lhs, const GroupNode& rhs ) {
                         return lhs.schainIndex < rhs.schainIndex;
                     } );
                 nodeGroup.nodes = groupNodes;
 
-                std::array< std::string, 4 > nodeGroupBlsPublicKey;
+                array< string, 4 > nodeGroupBlsPublicKey;
                 auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
                 nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
                 nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
@@ -331,7 +391,7 @@ ChainParams ChainParams::loadConfig(
                     nodeGroup.finishTs = uint64_t( -1 );
                 nodeGroups.push_back( nodeGroup );
             }
-            std::sort( nodeGroups.begin(), nodeGroups.end(),
+            sort( nodeGroups.begin(), nodeGroups.end(),
                 []( const NodeGroup& lhs, const NodeGroup& rhs ) {
                     return lhs.finishTs < rhs.finishTs;
                 } );
@@ -379,68 +439,12 @@ ChainParams ChainParams::loadConfig(
         cp.vecAdminOrigins.clear();
         if ( infoObj.count( "adminOrigins" ) ) {
             for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
-                std::string strOriginWildcardFilter = nodeOrigun.get_str();
+                string strOriginWildcardFilter = nodeOrigun.get_str();
                 cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
             }
         } else {
             cp.vecAdminOrigins.push_back( "*" );
         }
-    }  // if skale
-
-    auto setOptionalU256Parameter = [&params]( u256& _destination, string const& _name ) {
-        if ( params.count( _name ) )
-            _destination = u256( fromBigEndian< u256 >( fromHex( params.at( _name ).get_str() ) ) );
-    };
-    setOptionalU256Parameter( cp.minGasLimit, c_minGasLimit );
-    setOptionalU256Parameter( cp.maxGasLimit, c_maxGasLimit );
-    setOptionalU256Parameter( cp.gasLimitBoundDivisor, c_gasLimitBoundDivisor );
-    setOptionalU256Parameter( cp.homesteadForkBlock, c_homesteadForkBlock );
-    setOptionalU256Parameter( cp.EIP150ForkBlock, c_EIP150ForkBlock );
-    setOptionalU256Parameter( cp.EIP158ForkBlock, c_EIP158ForkBlock );
-    setOptionalU256Parameter( cp.byzantiumForkBlock, c_byzantiumForkBlock );
-    setOptionalU256Parameter( cp.eWASMForkBlock, c_eWASMForkBlock );
-    setOptionalU256Parameter( cp.constantinopleForkBlock, c_constantinopleForkBlock );
-    setOptionalU256Parameter( cp.constantinopleFixForkBlock, c_constantinopleFixForkBlock );
-    setOptionalU256Parameter( cp.istanbulForkBlock, c_istanbulForkBlock );
-    setOptionalU256Parameter( cp.experimentalForkBlock, c_experimentalForkBlock );
-
-    setOptionalU256Parameter( cp.skale16ForkBlock, c_skale16ForkBlock );
-    setOptionalU256Parameter( cp.skale32ForkBlock, c_skale32ForkBlock );
-    setOptionalU256Parameter( cp.skale64ForkBlock, c_skale64ForkBlock );
-    setOptionalU256Parameter( cp.skale128ForkBlock, c_skale128ForkBlock );
-    setOptionalU256Parameter( cp.skale256ForkBlock, c_skale256ForkBlock );
-    setOptionalU256Parameter( cp.skale512ForkBlock, c_skale512ForkBlock );
-    setOptionalU256Parameter( cp.skale1024ForkBlock, c_skale1024ForkBlock );
-    setOptionalU256Parameter( cp.skaleUnlimitedForkBlock, c_skaleUnlimitedForkBlock );
-
-    setOptionalU256Parameter( cp.daoHardforkBlock, c_daoHardforkBlock );
-    setOptionalU256Parameter( cp.minimumDifficulty, c_minimumDifficulty );
-    setOptionalU256Parameter( cp.difficultyBoundDivisor, c_difficultyBoundDivisor );
-    setOptionalU256Parameter( cp.durationLimit, c_durationLimit );
-    setOptionalU256Parameter( cp.accountInitialFunds, c_accountInitialFunds );
-    setOptionalU256Parameter( cp.externalGasDifficulty, c_externalGasDifficulty );
-
-    if ( params.count( c_chainID ) )
-        cp.chainID = uint64_t(
-            u256( fromBigEndian< u256 >( fromHex( params.at( c_chainID ).get_str() ) ) ) );
-    if ( params.count( c_networkID ) )
-        cp.networkID =
-            int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
-    cp.allowFutureBlocks = params.count( c_allowFutureBlocks );
-    if ( cp.externalGasDifficulty == 0 ) {
-        cp.externalGasDifficulty = -1;
-    }
-
-    // genesis
-    string genesisStr = json_spirit::write_string( obj[c_genesis], false );
-    cp = cp.loadGenesis( genesisStr );
-    // genesis state
-    string genesisStateStr = json_spirit::write_string( obj[c_accounts], false );
-
-    cp.genesisState = jsonToAccountMap(
-        genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath );
-
-    return cp;
 }
 
 ChainParams ChainParams::loadGenesis( string const& _json ) const {

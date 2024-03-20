@@ -28,9 +28,10 @@
 #include <libethcore/BlockHeader.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include "json_spirit/json_spirit_value.h"
 
-namespace dev {
-namespace eth {
+
+namespace dev::eth {
 class SealEngineFace;
 
 struct ChainParams : public ChainOperationParams {
@@ -74,6 +75,9 @@ struct ChainParams : public ChainOperationParams {
     const std::string& getOriginalJson() const;
     void resetJson() { originalJSON = ""; }
 
+    bool checkAdminOriginAllowed( const std::string& origin ) const;
+    static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj ) ;
+
 private:
     void populateFromGenesis( bytes const& _genesisRLP, AccountMap const& _state );
 
@@ -82,9 +86,8 @@ private:
 
     mutable std::string originalJSON;
 
-public:
-    bool checkAdminOriginAllowed( const std::string& origin ) const;
+
 };
 
-}  // namespace eth
-}  // namespace dev
+}  // namespace dev::eth
+
