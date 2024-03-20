@@ -247,6 +247,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "emptyBlockIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "emptyBlockIntervalAfterCatchupMs",
                 { { js::int_type }, JsonFieldPresence::Optional } },
+            { "levelDBReopenIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotDownloadTimeout", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotDownloadInactiveTimeout",
