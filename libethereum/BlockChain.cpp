@@ -1754,7 +1754,12 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
          ( ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures ) ) {
         MICROPROFILE_SCOPEI( "BlockChain", "check txns", MP_ROSYBROWN );
         for ( RLP const& tr : r[1] ) {
-            bytesConstRef d = tr.data();
+            bytesConstRef d;
+            if ( tr.isList() )
+                // means Legacy transaction
+                d = tr.data();
+            else
+                d = tr.payload();
             try {
                 Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
                                       CheckTransaction::Everything :

@@ -2649,8 +2649,19 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
 
+    std::string blockHash = block["hash"].asString();
+
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+
+    auto result = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    BOOST_REQUIRE( result["hash"].asString() == txHash );
+
+    result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
+    BOOST_REQUIRE( result["hash"].asString() == txHash );
+
+    result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x3", "0x0" );
+    BOOST_REQUIRE( result["hash"].asString() == txHash );
 }
 
 BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
