@@ -25,8 +25,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options/options_description.hpp>
 
-namespace dev {
-namespace db {
+namespace dev::db {
+
 enum class DatabaseKind { LevelDB };
 
 /// Provide a set of program options related to databases
@@ -52,8 +52,12 @@ public:
     static std::unique_ptr< DatabaseFace > create( DatabaseKind _kind );
     static std::unique_ptr< DatabaseFace > create(
         DatabaseKind _kind, boost::filesystem::path const& _path );
+    static std::unique_ptr< DatabaseFace > createHistoric(
+        DatabaseKind _kind, boost::filesystem::path const& _path );
+
+    static void setReopenPeriodMs( int64_t _reopenPeriodMs ) { s_reopenPeriodMs = _reopenPeriodMs; }
 
 private:
+    static std::atomic< int64_t > s_reopenPeriodMs;
 };
-}  // namespace db
-}  // namespace dev
+}  // namespace dev::db

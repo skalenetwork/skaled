@@ -383,11 +383,16 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         client->SetTimeout(1000000000);
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
+
+
+        BOOST_TEST_MESSAGE("Constructed JsonRpcFixture");
+
     }
 
     ~JsonRpcFixture() {
         if ( skale_server_connector )
             skale_server_connector->StopListening();
+        BOOST_TEST_MESSAGE("Destructed JsonRpcFixture");
     }
 
     string sendingRawShouldFail( string const& _t ) {
