@@ -55,12 +55,9 @@ public:
     static std::unique_ptr< DatabaseFace > createHistoric(
         DatabaseKind _kind, boost::filesystem::path const& _path );
 
-    static void setReopenPeriodMs( int64_t _reopenPeriodMs ) {
-        s_reopenPeriodMs = _reopenPeriodMs;
-    }
+    static void setReopenPeriodMs( int64_t _reopenPeriodMs ) { s_reopenPeriodMs = _reopenPeriodMs; }
 
 private:
     static std::atomic< int64_t > s_reopenPeriodMs;
 };
 }  // namespace dev::db
-
