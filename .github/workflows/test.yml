@@ -194,23 +194,23 @@ jobs:
           run_test InstanceMonitorSuite
           run_test PrecompiledTests 
           run_test SkaleHostSuite 
-          run_test -t StateUnitTests 
-          run_test -t libethereum 
-          run_test -t TransactionQueueSuite 
-          run_test -t LegacyVMSuite 
-          run_test -t SkaleInterpreterSuite 
-          run_test -t SnapshotSigningTestSuite 
-          run_test -t SkUtils 
-          run_test -t BlockChainTestSuite 
-          run_test -t TestHelperSuite 
-          run_test -t LevelDBHashBase 
-          run_test -t memDB 
-          run_test -t OverlayDBTests 
-          run_test -t AccountHolderTest 
-          run_test -t ClientTests 
-          run_test -t JsonRpcSuite   
-          run_test -t SingleConsensusTests  
-          run_test -t ConsensusTests  
+          run_test StateUnitTests 
+          run_test libethereum 
+          run_test TransactionQueueSuite 
+          run_test LegacyVMSuite 
+          run_test SkaleInterpreterSuite 
+          run_test SnapshotSigningTestSuite 
+          run_test SkUtils 
+          run_test BlockChainTestSuite 
+          run_test TestHelperSuite 
+          run_test LevelDBHashBase 
+          run_test memDB 
+          run_test OverlayDBTests 
+          run_test AccountHolderTest 
+          run_test ClientTests 
+          run_test JsonRpcSuite   
+          run_test SingleConsensusTests  
+          run_test ConsensusTests  
           sudo ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
           sudo ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
           sudo ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
@@ -245,23 +245,23 @@ jobs:
           rerun_test InstanceMonitorSuite
           rerun_test PrecompiledTests 
           rerun_test SkaleHostSuite 
-          rerun_test -t StateUnitTests 
-          rerun_test -t libethereum 
-          rerun_test -t TransactionQueueSuite 
-          rerun_test -t LegacyVMSuite 
-          rerun_test -t SkaleInterpreterSuite 
-          rerun_test -t SnapshotSigningTestSuite 
-          rerun_test -t SkUtils 
-          rerun_test -t BlockChainTestSuite 
-          rerun_test -t TestHelperSuite 
-          rerun_test -t LevelDBHashBase 
-          rerun_test -t memDB 
-          rerun_test -t OverlayDBTests 
-          rerun_test -t AccountHolderTest 
-          rerun_test -t ClientTests 
-          rerun_test -t JsonRpcSuite   
-          rerun_test -t SingleConsensusTests  
-          rerun_test -t ConsensusTests                  
+          rerun_test StateUnitTests 
+          rerun_test libethereum 
+          rerun_test TransactionQueueSuite 
+          rerun_test LegacyVMSuite 
+          rerun_test SkaleInterpreterSuite 
+          rerun_test SnapshotSigningTestSuite 
+          rerun_test SkUtils 
+          rerun_test BlockChainTestSuite 
+          rerun_test TestHelperSuite 
+          rerun_test LevelDBHashBase 
+          rerun_test memDB 
+          rerun_test OverlayDBTests 
+          rerun_test AccountHolderTest 
+          rerun_test ClientTests 
+          rerun_test JsonRpcSuite   
+          rerun_test SingleConsensusTests  
+          rerun_test ConsensusTests                  
           ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
           ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
           ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
