@@ -77,7 +77,7 @@ public:
     u256 doPosts();
     json_spirit::mObject exportEnv();
     static dev::eth::EnvInfo importEnv(
-        json_spirit::mObject const& _o, eth::LastBlockHashesFace const& _lastBlockHashes );
+        json_spirit::mObject const& _o, eth::LastBlockHashesFace const& _lastBlockHashes, time_t _committedBlockTimestamp );
     json_spirit::mObject exportState();
     void importState( json_spirit::mObject const& _object );
     json_spirit::mObject exportExec();

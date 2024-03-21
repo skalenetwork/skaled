@@ -47,8 +47,8 @@ class AlethExecutive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     AlethExecutive( dev::eth::HistoricState& _s, EnvInfo const& _envInfo,
-        SealEngineFace const& _sealEngine, unsigned _level = 0 )
-        : m_s( _s ), m_envInfo( _envInfo ), m_depth( _level ), m_sealEngine( _sealEngine ){};
+        ChainOperationParams const& _chainParams, unsigned _level = 0 )
+        : m_s( _s ), m_envInfo( _envInfo ), m_depth( _level ), m_chainParams( _chainParams ){};
 
     /** Easiest constructor.
      * Creates executive to operate on the state of end of the given block, populating environment
@@ -167,7 +167,7 @@ private:
     LogEntries m_logs;  ///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
-    SealEngineFace const& m_sealEngine;
+    ChainOperationParams const& m_chainParams;
 
     bool m_isCreation = false;
     Address m_newAddress;

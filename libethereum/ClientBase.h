@@ -92,7 +92,7 @@ public:
     /// @param _callback Optional callback function for progress reporting
     std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-        GasEstimationCallback const& _callback ) override;
+        GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
 
     u256 balanceAt( Address _a ) const override;
     u256 countAt( Address _a ) const override;
@@ -116,6 +116,12 @@ public:
     bool uninstallWatch( unsigned _watchId ) override;
     LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
+
+    using Interface::blockDetails;
+    using Interface::blockInfo;  // for another overload
+    using Interface::transactionHashes;
+    using Interface::uncle;
+    using Interface::uncleHashes;
 
     h256 hashFromNumber( BlockNumber _number ) const override;
     BlockNumber numberFromHash( h256 _blockHash ) const override;
@@ -147,15 +153,14 @@ public:
         }
         return transactionCount( hashFromNumber( _block ) );
     }
+    using Interface::uncleCount;
     unsigned uncleCount( h256 _blockHash ) const override;
     unsigned number() const override;
     h256s pendingHashes() const override;
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
 
-    EVMSchedule evmSchedule() const override {
-        return sealEngine()->evmSchedule( pendingInfo().number() );
-    }
+    EVMSchedule evmSchedule() const override;
 
     ImportResult injectBlock( bytes const& _block ) override;
 
@@ -217,7 +222,7 @@ protected:
 
 private:
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
-        Address const& _from, Address const& _destination, u256 const& _value,
+        Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
         u256 const& _gasPrice, bytes const& _data );
 };
 

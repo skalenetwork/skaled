@@ -55,7 +55,6 @@ struct hash< boost::filesystem::path > {
 
 namespace dev {
 namespace eth {
-class SealEngineFace;
 class Executive;
 }  // namespace eth
 }  // namespace dev
@@ -339,7 +338,7 @@ public:
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
-        dev::eth::EnvInfo const& _envInfo, dev::eth::SealEngineFace const& _sealEngine,
+        dev::eth::EnvInfo const& _envInfo, dev::eth::ChainOperationParams const& _chainParams,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
         dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
 

@@ -584,11 +584,11 @@ void HistoricState::rollback( size_t _savepoint ) {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, skale::Permanence _p,
+    eth::ChainOperationParams const& _chainParams, Transaction const& _t, skale::Permanence _p,
     OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
-    AlethExecutive e( *this, _envInfo, _sealEngine );
+    AlethExecutive e( *this, _envInfo, _chainParams, 0 );
     ExecutionResult res;
     e.setResultRecipient( res );
 
@@ -617,7 +617,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
     }
 
     TransactionReceipt const receipt =
-        _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( globalRoot(), startGasUsed + e.gasUsed(), e.logs() );
     return make_pair( res, receipt );

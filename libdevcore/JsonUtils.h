@@ -41,6 +41,10 @@ using JsonFieldOptions = std::pair< JsonTypeSet, JsonFieldPresence >;
   @param _validationMap a map with json objects that would be checked. "objName" -> {js::str_type,
   jsonField::Required}
 */
-void requireJsonFields( json_spirit::mObject const& _o, std::string const& _configName,
-    std::map< std::string, JsonFieldOptions > const& _validationMap );
+void requireJsonFields(
+    json_spirit::mObject const& _o, std::string const& _configName,
+    std::map< std::string, JsonFieldOptions > const& _validationMap,
+    std::function< bool( const std::string& ) > _callbackForUnexpected = []( const std::string& ) {
+        return false;
+    } );
 }  // namespace dev

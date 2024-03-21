@@ -91,10 +91,10 @@ Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
 
         u256 const gasUsed = k ? _block.receipt( k - 1 ).cumulativeGasUsed() : 0;
         auto const& bc = m_eth.blockChain();
-        EnvInfo envInfo(
-            _block.info(), m_eth.blockChain().lastBlockHashes(), gasUsed, bc.chainID() );
+        EnvInfo envInfo( _block.info(), m_eth.blockChain().lastBlockHashes(),
+            _block.previousInfo().timestamp(), gasUsed, bc.chainID() );
         // HACK 0 here is for gasPrice
-        Executive e( s, envInfo, *m_eth.blockChain().sealEngine(), 0 );
+        Executive e( s, envInfo, m_eth.blockChain().chainParams(), 0, 0 );
 
         eth::ExecutionResult er;
         e.setResultRecipient( er );

@@ -127,7 +127,7 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
 
 
 CallResult ExtVM::call( CallParameters& _p ) {
-    Executive e{ m_s, envInfo(), m_sealEngine, 0, depth + 1, m_readOnly };
+    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1, m_readOnly };
     if ( !e.call( _p, gasPrice, origin ) ) {
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
@@ -151,7 +151,7 @@ void ExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op,
     u256 _salt, OnOpFunc const& _onOp ) {
-    Executive e{ m_s, envInfo(), m_sealEngine, 0, depth + 1 };
+    Executive e{ m_s, envInfo(), m_chainParams, 0, depth + 1 };
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
@@ -185,7 +185,7 @@ h256 ExtVM::blockHash( u256 _number ) {
     if ( _number >= currentNumber || _number < ( std::max< u256 >( 256, currentNumber ) - 256 ) )
         return h256();
 
-    if ( currentNumber < m_sealEngine.chainParams().experimentalForkBlock + 256 ) {
+    if ( currentNumber < m_chainParams.experimentalForkBlock + 256 ) {
         h256 const parentHash = envInfo().header().parentHash();
         h256s const lastHashes = envInfo().lastHashes().precedingHashes( parentHash );
 
@@ -199,6 +199,7 @@ h256 ExtVM::blockHash( u256 _number ) {
     tx.forceSender( caller );
 
     ExecutionResult res;
-    std::tie( res, std::ignore ) = m_s.execute( envInfo(), m_sealEngine, tx, Permanence::Reverted );
+    std::tie( res, std::ignore ) =
+        m_s.execute( envInfo(), m_chainParams, tx, Permanence::Reverted );
     return h256( res.output );
 }

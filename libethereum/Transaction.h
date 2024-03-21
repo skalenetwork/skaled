@@ -122,7 +122,8 @@ public:
 
     u256 gasPrice() const;
 
-    void checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, bool _force = false );
+    void checkOutExternalGas( const ChainParams& _cp, time_t _committedBlockTimestamp,
+        uint64_t _committedBlockNumber, bool _force );
 
     void ignoreExternalGas() {
         m_externalGasIsChecked = true;

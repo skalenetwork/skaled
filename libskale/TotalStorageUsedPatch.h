@@ -22,6 +22,10 @@ class Client;
  */
 class TotalStorageUsedPatch : public SchainPatch {
 public:
+    static void init( dev::eth::Client* _client ) {
+        assert( _client );
+        client = _client;
+    }
     static bool isInitOnChainNeeded( batched_io::db_operations_face& _db ) {
         return !_db.exists( ( dev::db::Slice ) "pieceUsageBytes" );
     }
@@ -32,8 +36,7 @@ public:
     static void onProgress( batched_io::db_operations_face& _db, size_t _blockNumber );
 
 private:
-    friend class dev::eth::Client;
-    static dev::eth::Client* g_client;
+    static dev::eth::Client* client;
 };
 
 #endif  // TOTALSTORAGEUSEDPATCH_H

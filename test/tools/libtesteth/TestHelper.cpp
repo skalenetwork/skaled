@@ -117,7 +117,7 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     State state = client.state().createStateModifyCopy();
     u256 reward = 0;
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
-        reward += client.sealEngine()->blockReward( blockNumber );
+        reward += client.sealEngine()->blockReward( 1, blockNumber );
     }
     state.addBalance( address, reward );
     state.commit();

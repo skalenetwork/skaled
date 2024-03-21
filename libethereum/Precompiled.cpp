@@ -36,8 +36,8 @@
 #include <libdevcrypto/LibSnark.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
+#include <libethereum/SchainPatch.h>
 #include <libethereum/SkaleHost.h>
-#include <libskale/PrecompiledConfigPatch.h>
 #include <libskale/State.h>
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string.hpp>
@@ -809,7 +809,9 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         std::string strValue;
         // call to skaleConfig.sChain.nodes means call to the historic data
         // need to proccess it in a different way
-        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
+        // TODO Check if this precompiled can be called on historic block
+        if ( isCallToHistoricData( rawName ) &&
+             PrecompiledConfigPatch::isEnabledInWorkingBlock() ) {
             if ( !g_skaleHost )
                 throw std::runtime_error( "SkaleHost accessor was not initialized" );
 
@@ -917,7 +919,9 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
         std::string strValue;
         // call to skaleConfig.sChain.nodes means call to the historic data
         // need to proccess it in a different way
-        if ( isCallToHistoricData( rawName ) && PrecompiledConfigPatch::isEnabled() ) {
+        // TODO Check if this precompiled can be called on historic block
+        if ( isCallToHistoricData( rawName ) &&
+             PrecompiledConfigPatch::isEnabledInWorkingBlock() ) {
             if ( !g_skaleHost )
                 throw std::runtime_error( "SkaleHost accessor was not initialized" );
 

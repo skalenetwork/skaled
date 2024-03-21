@@ -22,6 +22,9 @@
  */
 
 #include "ChainOperationParams.h"
+
+#include <libethereum/SchainPatch.h>
+
 #include <libdevcore/CommonData.h>
 #include <libdevcore/Log.h>
 
@@ -42,6 +45,14 @@ PrecompiledContract::PrecompiledContract( unsigned _base, unsigned _word,
           },
           _exec, _startingBlock, _allowedAddresses ) {}
 
+time_t SChain::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
+    assert( _patchEnum < SchainPatchEnum::PatchesCount );
+    if ( _patchEnum < SchainPatchEnum::PatchesCount )
+        return _patchTimestamps[static_cast< size_t >( _patchEnum )];
+    else
+        return 0;
+}
+
 ChainOperationParams::ChainOperationParams()
     : m_blockReward( "0x4563918244F40000" ),
       minGasLimit( 0x1388 ),
@@ -52,43 +63,33 @@ ChainOperationParams::ChainOperationParams()
       difficultyBoundDivisor( 0x0800 ),
       durationLimit( 0x0d ) {}
 
-EVMSchedule const& ChainOperationParams::scheduleForBlockNumber( u256 const& _blockNumber ) const {
-    if ( _blockNumber >= skaleUnlimitedForkBlock )
-        return SkaleSchedule_Unlimited;
-    else if ( _blockNumber >= skale1024ForkBlock )
-        return SkaleSchedule_1024k;
-    else if ( _blockNumber >= skale512ForkBlock )
-        return SkaleSchedule_512k;
-    else if ( _blockNumber >= skale256ForkBlock )
-        return SkaleSchedule_256k;
-    else if ( _blockNumber >= skale128ForkBlock )
-        return SkaleSchedule_128k;
-    else if ( _blockNumber >= skale64ForkBlock )
-        return SkaleSchedule_64k;
-    else if ( _blockNumber >= skale32ForkBlock )
-        return SkaleSchedule_32k;
-    else if ( _blockNumber >= skale16ForkBlock )
-        return SkaleSchedule_16k;
-    else if ( _blockNumber >= experimentalForkBlock )
-        return ExperimentalSchedule;
-    else if ( _blockNumber >= istanbulForkBlock )
-        return IstanbulSchedule;
-    else if ( _blockNumber >= constantinopleFixForkBlock )
-        return ConstantinopleFixSchedule;
-    else if ( _blockNumber >= constantinopleForkBlock )
-        return ConstantinopleSchedule;
-    else if ( _blockNumber >= eWASMForkBlock )
-        return EWASMSchedule;
-    else if ( _blockNumber >= byzantiumForkBlock )
-        return ByzantiumSchedule;
-    else if ( _blockNumber >= EIP158ForkBlock )
-        return EIP158Schedule;
-    else if ( _blockNumber >= EIP150ForkBlock )
-        return EIP150Schedule;
-    else if ( _blockNumber >= homesteadForkBlock )
-        return HomesteadSchedule;
+EVMSchedule const ChainOperationParams::makeEvmSchedule(
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    EVMSchedule result;
+
+    // 1 decide by block number
+    if ( _workingBlockNumber >= experimentalForkBlock )
+        result = ExperimentalSchedule;
+    else if ( _workingBlockNumber >= istanbulForkBlock )
+        result = IstanbulSchedule;
+    else if ( _workingBlockNumber >= constantinopleFixForkBlock )
+        result = ConstantinopleFixSchedule;
+    else if ( _workingBlockNumber >= constantinopleForkBlock )
+        result = ConstantinopleSchedule;
+    else if ( _workingBlockNumber >= byzantiumForkBlock )
+        result = ByzantiumSchedule;
+    else if ( _workingBlockNumber >= EIP158ForkBlock )
+        result = EIP158Schedule;
+    else if ( _workingBlockNumber >= EIP150ForkBlock )
+        result = EIP150Schedule;
     else
-        return FrontierSchedule;
+        result = HomesteadSchedule;
+
+    // 2 based on previous - decide by timestamp
+    if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
+        result = PushZeroPatch::makeSchedule( result );
+
+    return result;
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
@@ -98,6 +99,16 @@ u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
         return m_blockReward;
 }
 
+u256 ChainOperationParams::blockReward(
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    EVMSchedule const& schedule{ makeEvmSchedule( _committedBlockTimestamp, _workingBlockNumber ) };
+    return blockReward( schedule );
+}
+
 void ChainOperationParams::setBlockReward( u256 const& _newBlockReward ) {
     m_blockReward = _newBlockReward;
+}
+
+time_t ChainOperationParams::getPatchTimestamp( SchainPatchEnum _patchEnum ) const {
+    return sChain.getPatchTimestamp( _patchEnum );
 }

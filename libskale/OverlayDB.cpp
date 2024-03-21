@@ -23,8 +23,8 @@
  */
 
 #include "OverlayDB.h"
-#include "ContractStorageZeroValuePatch.h"
 #include "libhistoric/HistoricState.h"
+#include <libethereum/SchainPatch.h>
 
 #include <thread>
 
@@ -151,7 +151,7 @@ void OverlayDB::commitStorageValues() {
 
             static const h256 ZERO_VALUE( 0 );
 
-            if ( ContractStorageZeroValuePatch::isEnabled() && value == ZERO_VALUE ) {
+            if ( ContractStorageZeroValuePatch::isEnabledInWorkingBlock() && value == ZERO_VALUE ) {
                 // if the value is zero, the pair will be deleted in LevelDB
                 // if it exists
                 m_db_face->kill(

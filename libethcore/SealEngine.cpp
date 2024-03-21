@@ -20,7 +20,7 @@
 #include "SealEngine.h"
 #include "TransactionBase.h"
 
-#include <libskale/POWCheckPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include "../libdevcore/microprofile.h"
 
@@ -94,11 +94,12 @@ void SealEngineFace::populateFromParent( BlockHeader& _bi, BlockHeader const& _p
     _bi.populateFromParent( _parent );
 }
 
-void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
-    BlockHeader const& _header, u256 const& _gasUsed ) const {
+void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams,
+    ImportRequirements::value _ir, TransactionBase const& _t, time_t _committedBlockTimestamp,
+    BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
-    if ( POWCheckPatch::isEnabled() ) {
+    if ( PowCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
     } else {
@@ -108,26 +109,27 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < chainParams().EIP158ForkBlock && _t.isReplayProtected() )
+         _header.number() < _chainParams.EIP158ForkBlock && _t.isReplayProtected() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
-         _header.number() < chainParams().experimentalForkBlock && _t.hasZeroSignature() )
+         _header.number() < _chainParams.experimentalForkBlock && _t.hasZeroSignature() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
 
     if ( ( _ir & ImportRequirements::TransactionBasic ) &&
-         _header.number() >= chainParams().experimentalForkBlock && _t.hasZeroSignature() &&
+         _header.number() >= _chainParams.experimentalForkBlock && _t.hasZeroSignature() &&
          ( _t.value() != 0 || _t.gasPrice() != 0 || _t.nonce() != 0 ) )
         BOOST_THROW_EXCEPTION( InvalidZeroSignatureTransaction()
                                << errinfo_got( static_cast< bigint >( _t.gasPrice() ) )
                                << errinfo_got( static_cast< bigint >( _t.value() ) )
                                << errinfo_got( static_cast< bigint >( _t.nonce() ) ) );
 
-    if ( _header.number() >= chainParams().homesteadForkBlock &&
+    if ( _header.number() >= _chainParams.homesteadForkBlock &&
          ( _ir & ImportRequirements::TransactionSignatures ) && _t.hasSignature() )
         _t.checkLowS();
 
-    eth::EVMSchedule const& schedule = evmSchedule( _header.number() );
+    eth::EVMSchedule const& schedule =
+        _chainParams.makeEvmSchedule( _committedBlockTimestamp, _header.number() );
 
     // Pre calculate the gas needed for execution
     if ( ( _ir & ImportRequirements::TransactionBasic ) && _t.baseGasRequired( schedule ) > gas )
@@ -141,6 +143,13 @@ void SealEngineFace::verifyTransaction( ImportRequirements::value _ir, Transacti
                                    static_cast< bigint >( _header.gasLimit() - _gasUsed ),
                                    static_cast< bigint >( gas ),
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
+
+    if ( _ir & ImportRequirements::TransactionSignatures ) {
+        if ( _header.number() >= _chainParams.EIP158ForkBlock ) {
+            uint64_t chainID = _chainParams.chainID;
+            _t.checkChainId( chainID, _chainParams.skaleDisableChainIdCheck );
+        }  // if
+    }
 }
 
 SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params ) {
@@ -151,11 +160,13 @@ SealEngineFace* SealEngineRegistrar::create( ChainOperationParams const& _params
     return ret;
 }
 
-EVMSchedule const& SealEngineBase::evmSchedule( u256 const& _blockNumber ) const {
-    return chainParams().scheduleForBlockNumber( _blockNumber );
+EVMSchedule SealEngineBase::evmSchedule(
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    return chainParams().makeEvmSchedule( _committedBlockTimestamp, _workingBlockNumber );
 }
 
-u256 SealEngineBase::blockReward( u256 const& _blockNumber ) const {
-    EVMSchedule const& schedule{ evmSchedule( _blockNumber ) };
+u256 SealEngineBase::blockReward(
+    time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const {
+    EVMSchedule const& schedule{ evmSchedule( _committedBlockTimestamp, _workingBlockNumber ) };
     return chainParams().blockReward( schedule );
 }
