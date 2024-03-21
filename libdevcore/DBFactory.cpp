@@ -138,13 +138,10 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
 
 std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
     DatabaseKind _kind, fs::path const& _path ) {
-    if ( !s_isInited ) {
-        throw std::runtime_error( "DB factory not inited" );
-    }
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path, LevelDB::defaultReadOptions(),
-            LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_isInited ) );
+            LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_reopenPeriodMs ) );
         break;
     default:
         assert( false );
@@ -153,7 +150,6 @@ std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
 }
 
 
-std::atomic< bool > DBFactory::s_isInited = false;
 std::atomic< int64_t > DBFactory::s_reopenPeriodMs = -1;
 
 }  // namespace dev::db
