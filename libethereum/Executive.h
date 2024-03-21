@@ -103,10 +103,12 @@ class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
     Executive( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
-        const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true )
+        const u256& _gasPrice, unsigned _level = 0, const ExtVMFace* _parentExtVM = nullptr,
+        bool _readOnly = true )
         : m_s( _s ),
           m_envInfo( _envInfo ),
           m_depth( _level ),
+          m_parentExtVM( _parentExtVM ),
           m_readOnly( _readOnly ),
           m_sealEngine( _sealEngine ),
           m_systemGasPrice( _gasPrice ) {}
@@ -222,7 +224,10 @@ private:
     owning_bytes_ref m_output;       ///< Execution output.
     ExecutionResult* m_res = nullptr;  ///< Optional storage for execution results.
 
-    unsigned m_depth = 0;    ///< The context's call-depth.
+    unsigned m_depth = 0;  ///< The context's call-depth.
+
+    const ExtVMFace* m_parentExtVM;
+
     bool m_readOnly = true;  ///< The context's permanence state.
     TransactionException m_excepted =
         TransactionException::None;  ///< Details if the VM's execution resulted in an exception.

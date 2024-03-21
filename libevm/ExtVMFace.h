@@ -194,7 +194,8 @@ public:
     /// Full constructor.
     ExtVMFace( EnvInfo const& _envInfo, Address _myAddress, Address _caller, Address _origin,
         u256 _value, u256 _gasPrice, bytesConstRef _data, bytes _code, h256 const& _codeHash,
-        u256 const& _version, unsigned _depth, bool _isCreate, bool _staticCall );
+        u256 const& _version, unsigned _depth, bool _isCreate, bool _staticCall,
+        const ExtVMFace* _parentExtVM = nullptr );
 
     ExtVMFace( ExtVMFace const& ) = delete;
     ExtVMFace& operator=( ExtVMFace const& ) = delete;
@@ -268,6 +269,7 @@ public:
     unsigned depth = 0;       ///< Depth of the present call.
     bool isCreate = false;    ///< Is this a CREATE call?
     bool staticCall = false;  ///< Throw on state changing.
+    const ExtVMFace* parentExtVM = nullptr;
 };
 
 class EvmCHost : public evmc::Host {

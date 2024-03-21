@@ -40,9 +40,10 @@ public:
     ExtVM( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
         Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
         bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
-        unsigned _depth, bool _isCreate, bool _staticCall, bool _readOnly = true )
+        unsigned _depth, bool _isCreate, bool _staticCall, const ExtVMFace* _parentExtVM = nullptr,
+        bool _readOnly = true )
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
-              _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
+              _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall, _parentExtVM ),
           m_s( _s ),
           m_sealEngine( _sealEngine ),
           m_evmSchedule( initEvmSchedule( envInfo().number(), _version ) ),

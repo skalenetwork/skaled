@@ -232,7 +232,8 @@ evmc::result EvmCHost::call( evmc_message const& _msg ) noexcept {
 
 ExtVMFace::ExtVMFace( EnvInfo const& _envInfo, Address _myAddress, Address _caller, Address _origin,
     u256 _value, u256 _gasPrice, bytesConstRef _data, bytes _code, h256 const& _codeHash,
-    u256 const& _version, unsigned _depth, bool _isCreate, bool _staticCall )
+    u256 const& _version, unsigned _depth, bool _isCreate, bool _staticCall,
+    const ExtVMFace* _parentExtVM )
     : m_envInfo( _envInfo ),
       myAddress( _myAddress ),
       caller( _caller ),
@@ -245,7 +246,8 @@ ExtVMFace::ExtVMFace( EnvInfo const& _envInfo, Address _myAddress, Address _call
       version( _version ),
       depth( _depth ),
       isCreate( _isCreate ),
-      staticCall( _staticCall ) {}
+      staticCall( _staticCall ),
+      parentExtVM( _parentExtVM ) {}
 
 }  // namespace eth
 }  // namespace dev

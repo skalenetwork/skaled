@@ -348,7 +348,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             auto const version = m_s.version( _p.codeAddress );
             m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
                 _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-                version, m_depth, false, _p.staticCall, m_readOnly );
+                version, m_depth, false, _p.staticCall, m_parentExtVM, m_readOnly );
         }
     }
 
@@ -425,7 +425,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     if ( !_init.empty() )
         m_ext = make_shared< ExtVM >( m_s, m_envInfo, m_sealEngine, m_newAddress, _sender, _origin,
             _endowment, _gasPrice, bytesConstRef(), _init, sha3( _init ), _version, m_depth, true,
-            false );
+            false, m_parentExtVM );
     else
         // code stays empty, but we set the version
         m_s.setCode( m_newAddress, {}, _version );
