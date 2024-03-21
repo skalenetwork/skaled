@@ -169,8 +169,8 @@ jobs:
           sudo rm -rf /tmp/tests/*
           cd build/test
           export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
-          run_test() {./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"}        
+          export NO_ULIMIT_CHECK=1          
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }          
           run_test TransitionTests 
           run_test TransactionTests 
           run_test VMTests 
@@ -221,7 +221,7 @@ jobs:
           cd build/test      
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
-          rerun_test() {ls "/tmp/tests/${1}Passed" || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4 }
+          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }
           rerun_test TransitionTests 
           rerun_test TransactionTests 
           rerun_test VMTests 
