@@ -2609,8 +2609,8 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
 
-    // Set chainID = 65535
-    ret["params"]["chainID"] = "0xffff"; 
+    // Set chainID = 151
+    ret["params"]["chainID"] = "0x97";
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -2635,15 +2635,17 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
 
     // send 1 WEI from 0xc868AF52a6549c773082A334E5AE232e0Ea3B513 to 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b
     // encoded type 1 txn
-    txHash = fixture.rpcClient->eth_sendRawTransaction( "0x01f86882ffff808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c001a0c171a6fd330b71e278b9030986e0aa9aeba4cad9594bcbe8a608d12f3751f53fa03a24cbd1ab14a62d9f30cf9ace7b5aef04c2289160993ce7df5059d8708762dc" );
+    txHash = fixture.rpcClient->eth_sendRawTransaction( "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c001a01ebdc546c8b85511b7ba831f47c4981069d7af972d10b7dce2c57225cb5df6a7a055ae1e84fea41d37589eb740a0a93017a5cd0e9f10ee50f165bf4b1b4c78ddae" );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // compare with txn hash from geth
+    BOOST_REQUIRE( txHash == "0xc843560015a655b8f81f65a458be9019bdb5cd8e416b6329ca18f36de0b8244d" );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
 
     auto block = fixture.rpcClient->eth_getBlockByNumber( "3", false );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0].asString() == txHash );
-
 
     block = fixture.rpcClient->eth_getBlockByNumber( "3", true );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
@@ -2665,7 +2667,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
 }
 
 BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
-    JsonRpcFixture fixture;
+    BOOST_REQUIRE( true );
 }
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {

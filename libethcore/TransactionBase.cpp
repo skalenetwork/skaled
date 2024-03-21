@@ -281,11 +281,8 @@ TransactionBase::TransactionBase(
 }
 
 TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
-    if ( _rlp.size() < 1 ) {
-        BOOST_THROW_EXCEPTION(
-            InvalidTransactionFormat() << errinfo_comment(
-                "transaction format doesn't correspond to any of the supported formats" ) );
-    }
+    if ( _rlp.empty() )
+        return TransactionType::Legacy;
     if ( _rlp[0] > 2 )
         return TransactionType::Legacy;
     return TransactionType( _rlp[0] );
