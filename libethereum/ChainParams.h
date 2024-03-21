@@ -24,12 +24,11 @@
 #pragma once
 
 #include "Account.h"
-#include "json_spirit/json_spirit_value.h"
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Common.h>
-
+#include <json_spirit/json_spirit.h>
 
 namespace dev::eth {
 class SealEngineFace;
