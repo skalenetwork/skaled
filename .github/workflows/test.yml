@@ -170,8 +170,7 @@ jobs:
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
-          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }          
-          function run_test_sudo() { sudo ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }                    
           run_test TransitionTests 
           run_test TransactionTests 
           run_test VMTests 
@@ -212,9 +211,9 @@ jobs:
           run_test JsonRpcSuite   
           run_test SingleConsensusTests  
           run_test ConsensusTests
-          run_test_sudo BtrfsTestSuite
-          run_test_sudo HashSnapshotTestSuite
-          run_test_sudo ClientSnapshotsSuite          
+          sudo ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
+          sudo ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
+          sudo ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
           cd ..
       - name: Testeth verbosity 4
         run : |
@@ -222,8 +221,7 @@ jobs:
           cd build/test      
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
-          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }  
-          function rerun_test_sudo() { ls "/tmp/tests/${1}Passed" 2>/dev/null || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }          
+          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
           rerun_test TransitionTests 
           rerun_test TransactionTests 
           rerun_test VMTests 
@@ -264,9 +262,9 @@ jobs:
           rerun_test JsonRpcSuite   
           rerun_test SingleConsensusTests  
           rerun_test ConsensusTests
-          rerun_test_sudo BtrfsTestSuite
-          rerun_test_sudo HashSnapshot
-          rerun_test_sudo ClientSnapshot
+          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
 
       - name: Configure all as historic
