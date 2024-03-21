@@ -1078,7 +1078,7 @@ int main( int argc, char** argv ) try {
             chainConfigParsed = true;
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
-            dev::db::DBFactory::init( chainParams.sChain.levelDBReopenIntervalMs );
+            dev::db::DBFactory::setReopenPeriodMs( chainParams.sChain.levelDBReopenIntervalMs );
         } catch ( const char* str ) {
             clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath;
             return EX_USAGE;
