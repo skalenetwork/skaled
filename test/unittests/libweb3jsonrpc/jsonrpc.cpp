@@ -1335,10 +1335,8 @@ then compile!
 
     // wait for block after timestamp
     BOOST_REQUIRE_LT( fixture.client->blockInfo(LatestBlock).timestamp(), fixture.push0PatchActivationTimestamp );
-    while( time(nullptr) < fixture.push0PatchActivationTimestamp ) {
+    while( time(nullptr) < fixture.push0PatchActivationTimestamp )
         sleep(1);
-        cout << "SLEEP" << endl;
-    }
 
     // 1st timestamp-crossing block
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
