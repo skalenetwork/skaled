@@ -105,6 +105,14 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
                                             toJS( 27 + _t.signature().v );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
+        res["type"] = toJS( int( _t.txType() ) );
+        if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["yParity"] = res["v"].asString();
+            res["accessList"] = Json::Value( Json::arrayValue );
+            for ( const auto& d : _t.accessList() ) {
+                res["accessList"].append( dev::toHexPrefixed( d.toBytes() ) );
+            }
+        }
     }
     return res;
 }
@@ -203,6 +211,8 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() )
         res["revertReason"] = strRevertReason;
+    //
+    res["type"] = toJS( _t.txType() );
     return res;
 }
 
@@ -310,6 +320,8 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
         ADD_FIELD_TO_RAPIDJSON( res, "revertReason", strRevertReason, allocator );
     }
 
+    ADD_FIELD_TO_RAPIDJSON( res, "type", toJS( _t.txType() ), allocator );
+
     return res;
 }
 
@@ -359,6 +371,14 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
                                             toJS( 27 + _t.signature().v );
         res["r"] = toJS( _t.signature().r.hex() );
         res["s"] = toJS( _t.signature().s.hex() );
+        res["type"] = toJS( int( _t.txType() ) );
+        if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["yParity"] = res["v"].asString();
+            res["accessList"] = Json::Value( Json::arrayValue );
+            for ( const auto& d : _t.accessList() ) {
+                res["accessList"].append( dev::toHexPrefixed( d.toBytes() ) );
+            }
+        }
     }
     return res;
 }
