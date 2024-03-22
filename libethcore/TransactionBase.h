@@ -260,6 +260,8 @@ public:
 
     TransactionType txType() const { return m_txType; }
 
+    RLPs accessList() const { return m_accessList; }
+
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
         bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es );

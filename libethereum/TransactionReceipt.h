@@ -97,7 +97,8 @@ class LocalisedTransactionReceipt : public TransactionReceipt {
 public:
     LocalisedTransactionReceipt( TransactionReceipt const& _t, h256 const& _hash,
         h256 const& _blockHash, BlockNumber _blockNumber, unsigned _transactionIndex, Address _from,
-        Address _to, u256 const& _gasUsed, Address const& _contractAddress = Address() )
+        Address _to, u256 const& _gasUsed, Address const& _contractAddress = Address(),
+        int _txType = 0 )
         : TransactionReceipt( _t ),
           m_hash( _hash ),
           m_blockHash( _blockHash ),
@@ -106,7 +107,8 @@ public:
           m_from( _from ),
           m_to( _to ),
           m_gasUsed( _gasUsed ),
-          m_contractAddress( _contractAddress ) {
+          m_contractAddress( _contractAddress ),
+          m_txType( _txType ) {
         LogEntries entries = log();
         for ( unsigned i = 0; i < entries.size(); i++ )
             m_localisedLogs.push_back( LocalisedLogEntry(
@@ -124,6 +126,7 @@ public:
     u256 const& gasUsed() const { return m_gasUsed; }
     Address const& contractAddress() const { return m_contractAddress; }
     LocalisedLogEntries const& localisedLogs() const { return m_localisedLogs; };
+    int txType() const { return m_txType; }
 
 private:
     h256 m_hash;
@@ -134,6 +137,7 @@ private:
     u256 m_gasUsed;
     Address m_contractAddress;
     LocalisedLogEntries m_localisedLogs;
+    int m_txType;
 
     Counter< TransactionReceipt > c;
 

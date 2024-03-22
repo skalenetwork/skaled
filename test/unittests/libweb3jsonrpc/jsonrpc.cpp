@@ -2630,6 +2630,12 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    BOOST_REQUIRE( receipt["type"] == "0x0" );
+
+    auto result = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    BOOST_REQUIRE( result["type"] == "0x0" );
+    BOOST_REQUIRE( !result.isMember( "yParity" ) );
+    BOOST_REQUIRE( !result.isMember( "accessList" ) );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0xc868AF52a6549c773082A334E5AE232e0Ea3B513", "latest" ) == "0x16345785d8a0000" );
 
@@ -2650,20 +2656,33 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     block = fixture.rpcClient->eth_getBlockByNumber( "3", true );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
+    BOOST_REQUIRE( block["transactions"][0]["type"] == "0x1" );
+    BOOST_REQUIRE( block["transactions"][0]["yParity"] == block["transactions"][0]["v"] );
+    BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
 
     std::string blockHash = block["hash"].asString();
 
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    BOOST_REQUIRE( receipt["type"] == "0x1" );
 
-    auto result = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
+    BOOST_REQUIRE( result["type"] == "0x1" );
+    BOOST_REQUIRE( result["yParity"] == result["v"] );
+    BOOST_REQUIRE( result["accessList"].isArray() );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
+    BOOST_REQUIRE( result["type"] == "0x1" );
+    BOOST_REQUIRE( result["yParity"] == result["v"] );
+    BOOST_REQUIRE( result["accessList"].isArray() );
 
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x3", "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
+    BOOST_REQUIRE( result["type"] == "0x1" );
+    BOOST_REQUIRE( result["yParity"] == result["v"] );
+    BOOST_REQUIRE( result["accessList"].isArray() );
 }
 
 BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
