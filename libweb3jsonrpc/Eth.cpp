@@ -896,6 +896,21 @@ string Eth::eth_chainId() {
     return toJS( client()->chainId() );
 }
 
+Json::Value Eth::eth_createAccessList(
+    const Json::Value& _param1, const std::string& /*_param2*/ ) {
+    TransactionSkeleton t = toTransactionSkeleton( _param1 );
+    setTransactionDefaults( t );
+
+    int64_t gas = static_cast< int64_t >( t.gas );
+    auto executionResult = client()->estimateGas( t.from, t.value, t.to, t.data, gas, t.gasPrice );
+
+    auto result = Json::Value( Json::objectValue );
+    result["accessList"] = Json::Value( Json::arrayValue );
+    result["gasUsed"] = toJS( executionResult.first );
+
+    return result;
+}
+
 bool Eth::eth_submitWork( string const& _nonce, string const&, string const& _mixHash ) {
     try {
         return asEthashClient( client() )

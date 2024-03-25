@@ -217,6 +217,10 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_chainId", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_chainIdI );
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "eth_createAccessList", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_STRING, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::EthFace::eth_createAccessListI );
     }
 
     inline virtual void eth_protocolVersionI( const Json::Value& request, Json::Value& response ) {
@@ -428,6 +432,12 @@ public:
         ( void ) request;
         response = this->eth_chainId();
     }
+    inline virtual void eth_createAccessListI( const Json::Value& request, Json::Value& response ) {
+        if ( !request.isArray() || request.empty() )
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+        response = this->eth_createAccessList( request[0u], request[1u].asString() );
+    }
     virtual std::string eth_protocolVersion() = 0;
     virtual std::string eth_hashrate() = 0;
     virtual std::string eth_coinbase() = 0;
@@ -493,6 +503,8 @@ public:
     virtual Json::Value eth_syncing() = 0;
     virtual std::string eth_estimateGas( const Json::Value& param1 ) = 0;
     virtual std::string eth_chainId() = 0;
+    virtual Json::Value eth_createAccessList(
+        const Json::Value& param1, const std::string& param2 ) = 0;
 };
 
 }  // namespace rpc
