@@ -36,6 +36,37 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
+RLPs validateAccessListRLP( const RLP& data ) {
+    if ( !data.isList() )
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
+                               << errinfo_comment( "transaction accessList RLP must be a list" ) );
+    auto rlpList = data.toList();
+    if ( rlpList.empty() )
+        // empty accessList, ignore it
+        return rlpList;
+
+    for ( const auto& d : rlpList ) {
+        if ( !d.isList() )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "transaction accessList RLP must be a list" ) );
+        auto accessList = d.toList();
+        if ( accessList.size() != 2 )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "transaction accessList RLP must be a list of size 2" ) );
+        if ( !accessList[0].isData() || !accessList[1].isList() )
+            BOOST_THROW_EXCEPTION(
+                InvalidTransactionFormat() << errinfo_comment(
+                    "transaction accessList RLP must be a list of byte array and a list" ) );
+        for ( const auto& k : accessList[1].toList() )
+            if ( !k.isData() )
+                BOOST_THROW_EXCEPTION(
+                    InvalidTransactionFormat() << errinfo_comment(
+                        "transaction storageKeys RLP must be a list of byte array" ) );
+    }
+
+    return rlpList;
+}
+
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
     : m_nonce( _ts.nonce ),
       m_value( _ts.value ),
@@ -156,7 +187,7 @@ TransactionBase TransactionBase::makeType1Transaction(
 
         m_data = rlp[6].toBytes();
 
-        m_accessList = rlp[7].toList();
+        m_accessList = validateAccessListRLP( rlp[7] );
 
         bool const yParity = rlp[8].toInt< uint8_t >();
         h256 const r = rlp[9].toInt< u256 >();
@@ -223,7 +254,7 @@ TransactionBase TransactionBase::makeType2Transaction(
 
         m_data = rlp[7].toBytes();
 
-        m_accessList = rlp[8].toList();
+        m_accessList = validateAccessListRLP( rlp[8] );
 
         bool const yParity = rlp[9].toInt< uint8_t >();
         h256 const r = rlp[10].toInt< u256 >();

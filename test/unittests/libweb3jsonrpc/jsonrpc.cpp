@@ -2683,6 +2683,37 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( result["type"] == "0x1" );
     BOOST_REQUIRE( result["yParity"] == result["v"] );
     BOOST_REQUIRE( result["accessList"].isArray() );
+
+    // now the same txn with accessList and increased nonce
+    // [ { 'address': HexBytes( "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae" ), 'storageKeys': ( "0x0000000000000000000000000000000000000000000000000000000000000003", "0x0000000000000000000000000000000000000000000000000000000000000007" ) } ]
+    txHash = fixture.rpcClient->eth_sendRawTransaction( "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b03eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c07b6ff742311b04dab760bb3bc206054332879" );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // compare with txn hash from geth
+    BOOST_REQUIRE( txHash == "0xa6d3541e06dff71fb8344a4db2a4ad4e0b45024eb23a8f568982b70a5f50f94d" );
+
+    result = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    BOOST_REQUIRE( result["type"] == "0x1" );
+    BOOST_REQUIRE( result["accessList"].isArray() );
+    BOOST_REQUIRE( result["accessList"].size() == 1 );
+    BOOST_REQUIRE( result["accessList"][0].isObject() && result["accessList"][0].getMemberNames().size() == 2 );
+    BOOST_REQUIRE( result["accessList"][0].isMember( "address" ) && result["accessList"][0].isMember( "storageKeys" ) );
+    BOOST_REQUIRE( result["accessList"][0]["address"].asString() == "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae" );
+    BOOST_REQUIRE( result["accessList"][0]["storageKeys"].isArray() && result["accessList"][0]["storageKeys"].size() == 2 );
+    BOOST_REQUIRE( result["accessList"][0]["storageKeys"][0].asString() == "0x0000000000000000000000000000000000000000000000000000000000000003" );
+    BOOST_REQUIRE( result["accessList"][0]["storageKeys"][1].asString() == "0x0000000000000000000000000000000000000000000000000000000000000007" );
+
+    block = fixture.rpcClient->eth_getBlockByNumber( "4", true );
+    result = block["transactions"][0];
+    BOOST_REQUIRE( result["type"] == "0x1" );
+    BOOST_REQUIRE( result["accessList"].isArray() );
+    BOOST_REQUIRE( result["accessList"].size() == 1 );
+    BOOST_REQUIRE( result["accessList"][0].isObject() && result["accessList"][0].getMemberNames().size() == 2 );
+    BOOST_REQUIRE( result["accessList"][0].isMember( "address" ) && result["accessList"][0].isMember( "storageKeys" ) );
+    BOOST_REQUIRE( result["accessList"][0]["address"].asString() == "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae" );
+    BOOST_REQUIRE( result["accessList"][0]["storageKeys"].isArray() && result["accessList"][0]["storageKeys"].size() == 2 );
+    BOOST_REQUIRE( result["accessList"][0]["storageKeys"][0].asString() == "0x0000000000000000000000000000000000000000000000000000000000000003" );
+    BOOST_REQUIRE( result["accessList"][0]["storageKeys"][1].asString() == "0x0000000000000000000000000000000000000000000000000000000000000007" );
 }
 
 BOOST_AUTO_TEST_CASE( eip1559Transactions ) {

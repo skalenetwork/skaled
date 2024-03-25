@@ -110,7 +110,14 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
             res["yParity"] = res["v"].asString();
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
-                res["accessList"].append( dev::toHexPrefixed( d.toBytes() ) );
+                auto list = d.toList();
+                Json::Value accessList;
+                accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
+                accessList["storageKeys"] = Json::Value( Json::arrayValue );
+                for ( const auto& k : list[1].toList() ) {
+                    accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
+                }
+                res["accessList"].append( accessList );
             }
         }
     }
@@ -376,7 +383,14 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
             res["yParity"] = res["v"].asString();
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
-                res["accessList"].append( dev::toHexPrefixed( d.toBytes() ) );
+                auto list = d.toList();
+                Json::Value accessList;
+                accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
+                accessList["storageKeys"] = Json::Value( Json::arrayValue );
+                for ( const auto& k : list[1].toList() ) {
+                    accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
+                }
+                res["accessList"].append( accessList );
             }
         }
     }
