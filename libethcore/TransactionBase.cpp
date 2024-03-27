@@ -238,6 +238,8 @@ TransactionBase TransactionBase::makeType2Transaction(
         m_nonce = rlp[1].toInt< u256 >();
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();
+        // set m_gasPrice as SKALE ignores priority fees
+        m_gasPrice = m_maxFeePerGas;
         m_gas = rlp[4].toInt< u256 >();
 
         if ( !rlp[5].isData() )

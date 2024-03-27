@@ -262,6 +262,10 @@ public:
 
     RLPs accessList() const { return m_accessList; }
 
+    u256 maxPriorityFeePerGas() const { return m_maxPriorityFeePerGas; }
+
+    u256 maxFeePerGas() const { return m_maxFeePerGas; }
+
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
         bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es );

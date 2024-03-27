@@ -119,6 +119,10 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
                 }
                 res["accessList"].append( accessList );
             }
+            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+                res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+            }
         }
     }
     return res;
@@ -391,6 +395,10 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
                     accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
                 }
                 res["accessList"].append( accessList );
+            }
+            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+                res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
             }
         }
     }
