@@ -674,7 +674,8 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     }
 
     std::map< h256, std::pair< u256, u256 > > storage;
-    for ( auto const& addressValuePair : m_db_ptr->storage( _contract ) ) {
+    unordered_map< u256, u256 > contractStorage = m_db_ptr->storage( _contract );
+    for ( auto const& addressValuePair : contractStorage ) {
         u256 const& address = addressValuePair.first;
         u256 const& value = addressValuePair.second;
         storage[sha3( address )] = { address, value };
@@ -692,6 +693,34 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     cdebug << "Self-destruct cleared values:" << storage.size() << endl;
 
     return storage;
+}
+
+std::vector< h256 > State::storageMemoryAddresses_WITHOUT_LOCK( const Address& _contract ) const {
+    if ( !checkVersion() ) {
+        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+               << *m_storedVersion << endl;
+        BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
+    }
+
+    std::vector< h256 > result;
+    vector< h256 > addresses = m_db_ptr->storageMemoryAddresses( _contract );
+    for ( auto const& address : addresses ) {
+        result.push_back( address );
+    }
+    for ( auto const& addressAccountPair : m_cache ) {
+        Address const& accountAddress = addressAccountPair.first;
+        eth::Account const& account = addressAccountPair.second;
+        if ( account.isDirty() && accountAddress == _contract ) {
+            for ( auto const& addressValuePair : account.storageOverlay() ) {
+                // TODO deduplicate address!!
+                result.push_back( addressValuePair.first );
+            }
+        }
+    }
+
+    cdebug << "Self-destruct cleared values:" << result.size() << endl;
+
+    return result;
 }
 
 u256 State::getNonce( Address const& _addr ) const {
@@ -798,15 +827,13 @@ void State::clearStorage( Address const& _contract ) {
     // clearStorage is called from functions that already hold a read
     // or write lock over the state Therefore, we can use
     // storage_WITHOUT_LOCK() here
-    for ( auto const& hashPairPair : storage_WITHOUT_LOCK( _contract ) ) {
-        auto const& key = hashPairPair.second.first;
-        auto const& value = hashPairPair.second.first;
-        // Set storage to zero in state cache
-        clearStorageValue( _contract, key, value );
+    std::vector< h256 > contractStoragekeys = storageMemoryAddresses_WITHOUT_LOCK( _contract );
+    for ( auto const& key : contractStoragekeys ) {
+        // clearStorageValue( _contract, key, key );
         // Set storage to zero in the account storage cache
         // we have lots of caches, some of them may be unneeded
         // will analyze this more in future releases
-        acc->setStorageCache( key, 0 );
+        // acc->setStorageCache( key, 0 );
         /* The corresponding key/value pair needs to be cleared in database
            Inserting ZERO deletes the key during commit
            at the end of transaction

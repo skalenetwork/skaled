@@ -104,6 +104,7 @@ public:
     std::unordered_map< dev::h160, std::string > accounts() const;
 
     std::unordered_map< dev::u256, dev::u256 > storage( dev::h160 const& address ) const;
+    std::vector< dev::h256 > storageMemoryAddresses( const dev::h160& _address ) const;
 
 private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;

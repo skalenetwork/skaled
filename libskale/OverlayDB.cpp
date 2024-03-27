@@ -356,6 +356,33 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     return storage;
 }
 
+std::vector< h256 > OverlayDB::storageMemoryAddresses( const dev::h160& _address ) const {
+    std::vector< h256 > result;
+    if ( m_db_face ) {
+        // iterate of a keys that start with the given substring
+        string prefix( ( const char* ) _address.data(), _address.size );
+        m_db_face->forEachWithPrefix( prefix, [&result, &_address]( Slice key, Slice value ) {
+            if ( key.size() == h160::size + h256::size ) {
+                // key is storage address
+                string keyString( key.begin(), key.end() );
+                h160 address = h160(
+                    keyString.substr( 0, h160::size ), h160::ConstructFromStringType::FromBinary );
+                if ( address == _address ) {
+                    h256 memoryAddress = h256(
+                        keyString.substr( h160::size ), h256::ConstructFromStringType::FromBinary );
+                    result.push_back( memoryAddress );
+                } else {
+                    cerror << "Address mismatch in:" << __FUNCTION__;
+                }
+            }
+            return true;
+        } );
+    } else {
+        cerror << "Try to load account's storage but connection to database is not established";
+    }
+    return result;
+}
+
 void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
     static uint64_t counter = 0;
 

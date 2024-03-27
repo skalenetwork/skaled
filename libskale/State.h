@@ -300,6 +300,8 @@ public:
     std::map< dev::h256, std::pair< dev::u256, dev::u256 > > storage_WITHOUT_LOCK(
         dev::Address const& _contract ) const;
 
+    std::vector< dev::h256 > storageMemoryAddresses_WITHOUT_LOCK(
+        const dev::Address& _contract ) const;
 
     /// Get the code of an account.
     /// @returns bytes() if no account exists at that address.
