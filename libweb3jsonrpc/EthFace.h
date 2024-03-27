@@ -219,8 +219,14 @@ public:
             &dev::rpc::EthFace::eth_chainIdI );
         this->bindAndAddMethod(
             jsonrpc::Procedure( "eth_createAccessList", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_STRING, jsonrpc::JSON_STRING, NULL ),
+                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_createAccessListI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "eth_feeHistory", jsonrpc::PARAMS_BY_POSITION,
+                                    jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::EthFace::eth_feeHistoryI );
+        this->bindAndAddMethod( jsonrpc::Procedure( "eth_maxPriorityFeePerGas",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::EthFace::eth_maxPriorityFeePerGasI );
     }
 
     inline virtual void eth_protocolVersionI( const Json::Value& request, Json::Value& response ) {
@@ -438,6 +444,18 @@ public:
                 jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
         response = this->eth_createAccessList( request[0u], request[1u].asString() );
     }
+    inline virtual void eth_feeHistoryI( const Json::Value& request, Json::Value& response ) {
+        if ( !request.isArray() || request.size() != 3 )
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+        response =
+            this->eth_feeHistory( request[0u].asInt64(), request[1u].asString(), request[2u] );
+    }
+    inline virtual void eth_maxPriorityFeePerGasI(
+        const Json::Value& request, Json::Value& response ) {
+        ( void ) request;
+        response = this->eth_maxPriorityFeePerGas();
+    }
     virtual std::string eth_protocolVersion() = 0;
     virtual std::string eth_hashrate() = 0;
     virtual std::string eth_coinbase() = 0;
@@ -505,6 +523,9 @@ public:
     virtual std::string eth_chainId() = 0;
     virtual Json::Value eth_createAccessList(
         const Json::Value& param1, const std::string& param2 ) = 0;
+    virtual Json::Value eth_feeHistory(
+        int64_t param1, const std::string& param2, const Json::Value& param3 ) = 0;
+    virtual std::string eth_maxPriorityFeePerGas() = 0;
 };
 
 }  // namespace rpc

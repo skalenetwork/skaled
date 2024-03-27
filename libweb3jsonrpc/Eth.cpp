@@ -896,6 +896,8 @@ string Eth::eth_chainId() {
     return toJS( client()->chainId() );
 }
 
+// SKALE ignores gas costs
+// make response default, only fill in gasUsed field
 Json::Value Eth::eth_createAccessList(
     const Json::Value& _param1, const std::string& /*_param2*/ ) {
     TransactionSkeleton t = toTransactionSkeleton( _param1 );
@@ -909,6 +911,15 @@ Json::Value Eth::eth_createAccessList(
     result["gasUsed"] = toJS( executionResult.first );
 
     return result;
+}
+
+Json::Value Eth::eth_feeHistory(
+    int64_t /*param1*/, const std::string& /*param2*/, const Json::Value& /*param3*/ ) {
+    return Json::Value( Json::objectValue );
+}
+
+std::string Eth::eth_maxPriorityFeePerGas() {
+    return "0x1";
 }
 
 bool Eth::eth_submitWork( string const& _nonce, string const&, string const& _mixHash ) {

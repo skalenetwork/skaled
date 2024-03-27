@@ -218,6 +218,9 @@ public:
     virtual Json::Value setSchainExitTime( Json::Value const& _transaction ) override;
     virtual Json::Value eth_createAccessList(
         const Json::Value& param1, const std::string& param2 ) override;
+    virtual Json::Value eth_feeHistory(
+        int64_t param1, const std::string& param2, const Json::Value& param3 ) override;
+    virtual std::string eth_maxPriorityFeePerGas() override;
 
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
 
