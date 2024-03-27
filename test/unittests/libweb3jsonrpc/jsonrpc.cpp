@@ -2659,6 +2659,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x1" );
     BOOST_REQUIRE( block["transactions"][0]["yParity"] == block["transactions"][0]["v"] );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
+    BOOST_REQUIRE( block["transactions"][0]["accessList"].size() == 0 );
 
     std::string blockHash = block["hash"].asString();
 
@@ -2671,6 +2672,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( result["type"] == "0x1" );
     BOOST_REQUIRE( result["yParity"] == result["v"] );
     BOOST_REQUIRE( result["accessList"].isArray() );
+    BOOST_REQUIRE( result["accessList"].size() == 0 );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -2683,6 +2685,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( result["type"] == "0x1" );
     BOOST_REQUIRE( result["yParity"] == result["v"] );
     BOOST_REQUIRE( result["accessList"].isArray() );
+    BOOST_REQUIRE( result["accessList"].size() == 0 );
 
     // now the same txn with accessList and increased nonce
     // [ { 'address': HexBytes( "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae" ), 'storageKeys': ( "0x0000000000000000000000000000000000000000000000000000000000000003", "0x0000000000000000000000000000000000000000000000000000000000000007" ) } ]

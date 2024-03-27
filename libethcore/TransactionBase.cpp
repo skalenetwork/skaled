@@ -41,9 +41,11 @@ RLPs validateAccessListRLP( const RLP& data ) {
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                << errinfo_comment( "transaction accessList RLP must be a list" ) );
     auto rlpList = data.toList();
-    if ( rlpList.empty() )
+    if ( rlpList.empty() ) {
         // empty accessList, ignore it
+        std::cout << "HERE\n";
         return rlpList;
+    }
 
     for ( const auto& d : rlpList ) {
         if ( !d.isList() )
