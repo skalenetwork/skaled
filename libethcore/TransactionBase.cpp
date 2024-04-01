@@ -43,7 +43,6 @@ RLPs validateAccessListRLP( const RLP& data ) {
     auto rlpList = data.toList();
     if ( rlpList.empty() ) {
         // empty accessList, ignore it
-        std::cout << "HERE\n";
         return rlpList;
     }
 

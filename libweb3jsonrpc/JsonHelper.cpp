@@ -181,7 +181,7 @@ Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
     res["gasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["bloom"] = toJS( _t.bloom() );
     res["log"] = dev::toJson( _t.log() );
-    //
+
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() )
         res["revertReason"] = strRevertReason;
@@ -200,29 +200,27 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     res["blockNumber"] = toJS( _t.blockNumber() );
     res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["gasUsed"] = toJS( _t.gasUsed() );
-    //
+
     // The "contractAddress" field must be null for all types of trasactions but contract deployment
     // ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
-    //
     dev::Address contractAddress = _t.contractAddress();
     if ( contractAddress == dev::Address( 0 ) )
         res["contractAddress"] = Json::Value::nullRef;
     else
         res["contractAddress"] = toJS( contractAddress );
-    //
-    //
+
     res["logs"] = dev::toJson( _t.localisedLogs() );
     res["logsBloom"] = toJS( _t.bloom() );
     if ( _t.hasStatusCode() )
         res["status"] = toString0x< uint8_t >( _t.statusCode() );  // toString( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
-    //
+
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() )
         res["revertReason"] = strRevertReason;
-    //
+
     res["type"] = toJS( _t.txType() );
     return res;
 }
@@ -304,18 +302,16 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     ADD_FIELD_TO_RAPIDJSON( res, "blockNumber", toJS( _t.blockNumber() ), allocator );
     ADD_FIELD_TO_RAPIDJSON( res, "cumulativeGasUsed", toJS( _t.cumulativeGasUsed() ), allocator );
     ADD_FIELD_TO_RAPIDJSON( res, "gasUsed", toJS( _t.gasUsed() ), allocator );
-    //
+
     // The "contractAddress" field must be null for all types of trasactions but contract deployment
     // ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
-    //
     dev::Address contractAddress = _t.contractAddress();
     if ( contractAddress == dev::Address( 0 ) )
         res.AddMember( "contractAddress", rapidjson::Value(), allocator );
     else
         ADD_FIELD_TO_RAPIDJSON( res, "contractAddress", toJS( contractAddress ), allocator );
-    //
-    //
+
     res.AddMember( "logs", dev::toRapidJson( _t.localisedLogs(), allocator ), allocator );
     ADD_FIELD_TO_RAPIDJSON( res, "logsBloom", toJS( _t.bloom() ), allocator );
     if ( _t.hasStatusCode() ) {
@@ -324,7 +320,6 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     } else {
         ADD_FIELD_TO_RAPIDJSON( res, "stateRoot", toJS( _t.stateRoot() ), allocator );
     }
-    //
 
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() ) {
