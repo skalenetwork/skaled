@@ -933,8 +933,10 @@ void SkaleHost::broadcastFunc() {
     m_broadcaster->stopService();
 }
 
-u256 SkaleHost::getGasPrice() const {
-    return m_consensus->getPriceForBlockId( m_client.number() );
+u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
+    if ( _blockNumber == dev::eth::LatestBlock )
+        _blockNumber = m_client.number();
+    return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
 u256 SkaleHost::getBlockRandom() const {

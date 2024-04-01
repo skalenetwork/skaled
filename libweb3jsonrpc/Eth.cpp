@@ -567,7 +567,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             }
 #endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine() );
+                client()->uncleHashes( h ), transactions, client()->sealEngine(),
+                client()->gasBidPrice( client()->numberFromHash( h ) ) );
         } else {
             h256s transactions = client()->transactionHashes( h );
 
@@ -584,7 +585,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             }
 #endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine() );
+                client()->uncleHashes( h ), transactions, client()->sealEngine(),
+                client()->gasBidPrice( client()->numberFromHash( h ) ) );
         }
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -606,11 +608,12 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
 
         if ( _includeTransactions )
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine() );
+                client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine(),
+                client()->gasBidPrice( h ) );
         else
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), client()->transactionHashes( h ),
-                client()->sealEngine() );
+                client()->sealEngine(), client()->gasBidPrice( h ) );
 #endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );

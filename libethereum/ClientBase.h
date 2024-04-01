@@ -160,7 +160,7 @@ public:
     ImportResult injectBlock( bytes const& _block ) override;
 
     u256 gasLimitRemaining() const override;
-    u256 gasBidPrice() const override { return DefaultGasPrice; }
+    u256 gasBidPrice( unsigned = dev::eth::LatestBlock ) const override { return DefaultGasPrice; }
 
     /// Get the block author
     Address author() const override;
