@@ -104,6 +104,9 @@ ChainParams ChainParams::loadConfig(
     cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
                                       params[c_skaleDisableChainIdCheck].get_bool() :
                                       false;
+    cp.maxStorageForSelfdestruct = params.count( "maxStorageForSelfdestruct" ) ?
+                                       params.at( "maxStorageForSelfdestruct" ).get_int64() :
+                                       -1;
 
     /// skale
     if ( obj.count( c_skaleConfig ) ) {

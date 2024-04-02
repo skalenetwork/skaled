@@ -292,6 +292,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             powPatchActivationTimestamp = time(nullptr) + 60;
             chainParams.sChain.correctForkInPowPatchTimestamp = powPatchActivationTimestamp;       // 10 guessed seconds
             chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
+            chainParams.maxStorageForSelfdestruct = 64;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
@@ -3473,5 +3474,99 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
+
+
+BOOST_AUTO_TEST_CASE( suicide_storage_limit ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 10 );
+
+    // pragma solidity ^0.8.0;
+
+    // contract SuicideLimit {
+
+    //     uint[] public storageArray;
+
+    //     function store(uint32 size) public {
+    //         for(uint32 i=0; i<size; ++i){
+    //             storageArray.push( i+1 );
+    //         }
+    //     }
+
+    //     function erase(uint32 size) public {
+    //         for(uint32 i=0; i<size; ++i){
+    //             storageArray.pop();
+    //         }
+    //     }
+
+    //     function size() public view returns(uint256) {
+    //         return storageArray.length;
+    //     }
+
+    //     function destruct() external {
+    //         selfdestruct(payable(msg.sender));
+    //     }
+
+    // }
+
+    std::string bytecode = "0x608060405234801561001057600080fd5b506103ab806100206000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c80630e031ab11461005c5780632b68b9c61461008c57806393edc68f14610096578063949d225d146100b2578063b9e95382146100d0575b600080fd5b6100766004803603810190610071919061021f565b6100ec565b604051610083919061025b565b60405180910390f35b610094610110565b005b6100b060048036038101906100ab91906102b2565b610129565b005b6100ba610177565b6040516100c7919061025b565b60405180910390f35b6100ea60048036038101906100e591906102b2565b610183565b005b600081815481106100fc57600080fd5b906000526020600020016000915090505481565b3373ffffffffffffffffffffffffffffffffffffffff16ff5b60005b8163ffffffff168163ffffffff161015610173576000805480610152576101516102df565b5b6001900381819060005260206000200160009055905580600101905061012c565b5050565b60008080549050905090565b60005b8163ffffffff168163ffffffff1610156101e05760006001826101a9919061033d565b908060018154018082558091505060019003906000526020600020016000909163ffffffff16909190915055806001019050610186565b5050565b600080fd5b6000819050919050565b6101fc816101e9565b811461020757600080fd5b50565b600081359050610219816101f3565b92915050565b600060208284031215610235576102346101e4565b5b60006102438482850161020a565b91505092915050565b610255816101e9565b82525050565b6000602082019050610270600083018461024c565b92915050565b600063ffffffff82169050919050565b61028f81610276565b811461029a57600080fd5b50565b6000813590506102ac81610286565b92915050565b6000602082840312156102c8576102c76101e4565b5b60006102d68482850161029d565b91505092915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603160045260246000fd5b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061034882610276565b915061035383610276565b9250828201905063ffffffff81111561036f5761036e61030e565b5b9291505056fea264697066735822122093330c7c61b090fd27a09fd9fc6ed89c0d0d9cf32ee887edc7d374f929c3064264736f6c63430008180033";
+
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["data"] = bytecode;
+    create["gas"] = "1800000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+    string contractAddress = receipt["contractAddress"].asString();
+    dev::Address contract = dev::Address( contractAddress );
+
+    // 1 fill data
+    Json::Value txStore;
+    txStore["to"] = contractAddress;
+    txStore["data"] = "0xb9e953820000000000000000000000000000000000000000000000000000000000000002";
+    txStore["from"] = toJS( senderAddress );
+    txStore["gas"] = "500000";
+    txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txStore );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value storeReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( storeReceipt["status"], string( "0x1" ) );
+    BOOST_REQUIRE_EQUAL( fixture.client->state().storageUsed( contract ), 96 );
+
+    // 2 suicide should fail
+    Json::Value txSuicide;
+    txSuicide["to"] = contractAddress;
+    txSuicide["data"] = "0x2b68b9c6";
+    txSuicide["from"] = toJS( senderAddress );
+    txSuicide["gas"] = "500000";
+    txSuicide["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txSuicide );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value suicideReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( suicideReceipt["status"], string( "0x0" ) );
+
+    // 3 free 1
+    Json::Value txFree;
+    txFree["to"] = contractAddress;
+    txFree["data"] = "0x93edc68f0000000000000000000000000000000000000000000000000000000000000001";
+    txFree["from"] = toJS( senderAddress );
+    txFree["gas"] = "500000";
+    txFree["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txFree );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value freeReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( freeReceipt["status"], string( "0x1" ) );
+    BOOST_REQUIRE_EQUAL( fixture.client->state().storageUsed( contract ), 64 );
+
+    // 4 suicide should succeed
+    txHash = fixture.rpcClient->eth_sendTransaction( txSuicide );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    suicideReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( suicideReceipt["status"], string( "0x1" ) );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
