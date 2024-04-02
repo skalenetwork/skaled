@@ -2774,7 +2774,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( block["transactions"][0].asString() == txHash );
 
     block = fixture.rpcClient->eth_getBlockByNumber( "3", true );
-    BOOST_REQUIRE( !block["baseGasFee"].asString().empty() );
+    BOOST_REQUIRE( !block["baseFeePerGas"].asString().empty() );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
