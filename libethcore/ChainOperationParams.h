@@ -256,6 +256,7 @@ public:
     u256 externalGasDifficulty = ~u256( 0 );
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
+    int64_t maxStorageForSelfdestruct = -1;
 
     time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 

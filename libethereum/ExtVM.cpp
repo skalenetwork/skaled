@@ -170,6 +170,12 @@ CreateResult ExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code, 
 }
 
 void ExtVM::suicide( Address _a ) {
+    if ( m_sealEngine.chainParams().maxStorageForSelfdestruct >= 0 &&
+         m_s.storageUsed( this->myAddress ) >
+             m_sealEngine.chainParams().maxStorageForSelfdestruct ) {
+        BOOST_THROW_EXCEPTION( TooBigForSelfdestruct() );
+    }
+
     // Why transfer is not used here? That caused a consensus issue before (see Quirk #2 in
     // http://martin.swende.se/blog/Ethereum_quirks_and_vulns.html). There is one test case
     // witnessing the current consensus
