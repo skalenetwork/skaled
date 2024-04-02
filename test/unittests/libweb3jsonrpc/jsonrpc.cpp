@@ -2664,6 +2664,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( block["transactions"][0]["accessList"].size() == 0 );
 
     std::string blockHash = block["hash"].asString();
+    BOOST_REQUIRE( fixture.client->transactionHashes( dev::h256( blockHash ) )[0] == dev::h256( "0xc843560015a655b8f81f65a458be9019bdb5cd8e416b6329ca18f36de0b8244d") );
 
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
@@ -2773,7 +2774,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( block["transactions"][0].asString() == txHash );
 
     block = fixture.rpcClient->eth_getBlockByNumber( "3", true );
-//    BOOST_REQUIRE( !block["baseGasFee"].asString().empty() );
+    BOOST_REQUIRE( !block["baseGasFee"].asString().empty() );
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
