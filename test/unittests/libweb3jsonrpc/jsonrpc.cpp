@@ -820,20 +820,38 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
-
+    // pragma solidity 0.8.4;
     // contract test {
-    //  function f(uint a) returns(uint d) { return a * 7; }
+    //     uint value;
+    //     function f(uint a) public pure returns(uint d) { 
+    //         return a * 7; 
+    //     }
+    //     function setValue(uint _value) external {
+    //         value = _value;
+    //     }
     // }
 
-    string compiled =
-        "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
-        "608060405260043610603f576000357c01000000000000000000000000"
-        "00000000000000000000000000000000900463ffffffff168063b3de64"
-        "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
-        "019080803590602001909291905050506080565b604051808281526020"
-        "0191505060405180910390f35b60006007820290509190505600a16562"
-        "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
-        "8fb480406fc2728a960029";
+    string compiled = 
+        "608060405234801561001057600080fd5b506101ef8061002060003"
+        "96000f3fe608060405234801561001057600080fd5b506004361061"
+        "00365760003560e01c8063552410771461003b578063b3de648b146"
+        "10057575b600080fd5b610055600480360381019061005091906100"
+        "bc565b610087565b005b610071600480360381019061006c9190610"
+        "0bc565b610091565b60405161007e91906100f4565b604051809103"
+        "90f35b8060008190555050565b60006007826100a0919061010f565"
+        "b9050919050565b6000813590506100b6816101a2565b9291505056"
+        "5b6000602082840312156100ce57600080fd5b60006100dc8482850"
+        "16100a7565b91505092915050565b6100ee81610169565b82525050"
+        "565b600060208201905061010960008301846100e5565b929150505"
+        "65b600061011a82610169565b915061012583610169565b9250817f"
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        "fffffffff048311821515161561015e5761015d610173565b5b8282"
+        "02905092915050565b6000819050919050565b7f4e487b710000000"
+        "0000000000000000000000000000000000000000000000000600052"
+        "601160045260246000fd5b6101ab81610169565b81146101b657600"
+        "080fd5b5056fea26469706673582212200be8156151b5ef7c250fa7"
+        "b8c8ed4e2a1c32cd526f9c868223f6838fa1193c9e64736f6c63430"
+        "008040033";
 
     Json::Value create;
     create["code"] = compiled;
@@ -860,6 +878,31 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     string result = fixture.rpcClient->eth_call( call, "latest" );
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+
+    Json::Value inputCall;
+    inputCall["to"] = contractAddress;
+    inputCall["input"] = "0xb3de648b0000000000000000000000000000000000000000000000000000000000000001";
+    inputCall["gas"] = "1000000";
+    inputCall["gasPrice"] = "0";
+    result = fixture.rpcClient->eth_call( inputCall, "latest" );
+    BOOST_CHECK_EQUAL(
+        result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
+
+    Json::Value transact;
+    transact["to"] = contractAddress;
+    transact["data"] = "0x552410770000000000000000000000000000000000000000000000000000000000000001";
+    txHash = fixture.rpcClient->eth_sendTransaction( transact );
+    dev::eth::mineTransaction( *( fixture.client ), 1 ); 
+    auto res = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( res["status"], string( "0x1" ) );  
+
+    Json::Value inputTx;
+    inputTx["to"] = contractAddress;
+    inputTx["input"] = "0x552410770000000000000000000000000000000000000000000000000000000000000002";
+    txHash = fixture.rpcClient->eth_sendTransaction( inputTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 ); 
+    res = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( res["status"], string( "0x1" ) );  
 }
 
 /*
