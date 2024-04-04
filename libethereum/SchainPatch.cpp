@@ -54,6 +54,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "StorageDestructionPatch";
     case SchainPatchEnum::SkipInvalidTransactionsPatch:
         return "SkipInvalidTransactionsPatch";
+    case SchainPatchEnum::SelfdestructStorageLimitPatch:
+        return "SelfdestructStorageLimitPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );
