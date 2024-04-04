@@ -125,4 +125,9 @@ DEFINE_AMNESIC_PATCH( ContractStoragePatch )
  */
 DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 
+/*
+ * Enable restriction on contract storage size, when it's doing selfdestruct
+ */
+DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
+
 #endif  // SCHAINPATCH_H
