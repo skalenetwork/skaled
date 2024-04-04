@@ -54,7 +54,7 @@ async function deployWriteAndDestroy(): Promise<void> {
     console.log(`Now testing`);
 
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 1000; i++) {
 
         console.log("Current Linux Time in Seconds: ", Math.floor(new Date().getTime() / 1000));
 
@@ -72,6 +72,7 @@ async function deployWriteAndDestroy(): Promise<void> {
         };
 
         // Use provider.call to execute the call at the specific historic block number
+        await ethers.provider.call(callTransaction);
         await ethers.provider.call(callTransaction, historicBlockNumber);
 
     }
