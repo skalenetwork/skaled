@@ -96,6 +96,8 @@ public:
     /// Hash of a block if within the last 256 blocks, or h256() otherwise.
     h256 blockHash( u256 _number ) final;
 
+    static evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex );
+
 private:
     EVMSchedule initEvmSchedule(
         time_t _committedBlockTimestamp, int64_t _workingBlockNumber, u256 const& _version ) const {

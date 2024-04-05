@@ -1,7 +1,8 @@
+
 #include "Debug.h"
 #include "JsonHelper.h"
 
-#include <libethereum/SkaleHost.h>
+
 #include <libskale/SkaleDebug.h>
 
 #include <jsonrpccpp/common/exception.h>
@@ -9,7 +10,14 @@
 #include <libdevcore/CommonJS.h>
 #include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
-#include <libethereum/Executive.h>
+#include <skutils/eth_utils.h>
+
+
+#ifdef HISTORIC_STATE
+
+#include <libhistoric/AlethExecutive.h>
+#include <libhistoric/AlethStandardTrace.h>
+#endif
 
 using namespace std;
 using namespace dev;
@@ -17,246 +25,277 @@ using namespace dev::rpc;
 using namespace dev::eth;
 using namespace skale;
 
-Debug::Debug( eth::Client const& _eth, SkaleDebugInterface* _debugInterface, const string& argv )
-    : m_eth( _eth ), m_debugInterface( _debugInterface ), argv_options( argv ) {}
 
-StandardTrace::DebugOptions dev::eth::debugOptions( Json::Value const& _json ) {
-    StandardTrace::DebugOptions op;
-    if ( !_json.isObject() || _json.empty() )
-        return op;
-    if ( !_json["disableStorage"].empty() )
-        op.disableStorage = _json["disableStorage"].asBool();
-    if ( !_json["disableMemory"].empty() )
-        op.disableMemory = _json["disableMemory"].asBool();
-    if ( !_json["disableStack"].empty() )
-        op.disableStack = _json["disableStack"].asBool();
-    if ( !_json["fullStorage"].empty() )
-        op.fullStorage = _json["fullStorage"].asBool();
-    return op;
+#define THROW_TRACE_JSON_EXCEPTION( __MSG__ )                            \
+    throw jsonrpc::JsonRpcException( std::string( __FUNCTION__ ) + ":" + \
+                                     std::to_string( __LINE__ ) + ":" + std::string( __MSG__ ) )
+
+
+void Debug::checkPrivilegedAccess() const {
+    if ( !m_enablePrivilegedApis ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not enabled" ) );
+    }
 }
 
+void Debug::checkHistoricStateEnabled() const {
+#ifndef HISTORIC_STATE
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is available on archive nodes only" ) );
+#endif
+}
+
+Debug::Debug( eth::Client& _eth, SkaleDebugInterface* _debugInterface, const string& argv,
+    bool _enablePrivilegedApis )
+    : m_eth( _eth ),
+      m_debugInterface( _debugInterface ),
+      m_argvOptions( argv ),
+      m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE ),
+      m_enablePrivilegedApis( _enablePrivilegedApis ) {}
+
+
 h256 Debug::blockHash( string const& _blockNumberOrHash ) const {
+    checkPrivilegedAccess();
     if ( isHash< h256 >( _blockNumberOrHash ) )
         return h256( _blockNumberOrHash.substr( _blockNumberOrHash.size() - 64, 64 ) );
     try {
         return m_eth.blockChain().numberHash( stoul( _blockNumberOrHash ) );
     } catch ( ... ) {
-        throw jsonrpc::JsonRpcException( "Invalid argument" );
+        THROW_TRACE_JSON_EXCEPTION( "Invalid argument" );
     }
 }
 
-State Debug::stateAt( std::string const& /*_blockHashOrNumber*/, int _txIndex ) const {
-    if ( _txIndex < 0 )
-        throw jsonrpc::JsonRpcException( "Negative index" );
+Json::Value Debug::debug_traceBlockByNumber( const string&
+#ifdef HISTORIC_STATE
+                                                 _blockNumber
+#endif
+    ,
+    Json::Value const&
+#ifdef HISTORIC_STATE
+        _jsonTraceConfig
+#endif
+) {
+    Json::Value ret;
+    checkHistoricStateEnabled();
+#ifdef HISTORIC_STATE
+    auto bN = jsToBlockNumber( _blockNumber );
 
-    throw logic_error( "State at is not supported in Skale state" );
-
-    //    Block block = m_eth.block(blockHash(_blockHashOrNumber));
-    //    auto const txCount = block.pending().size();
-
-    //    State state(State::Null);
-    //    if (static_cast<size_t>(_txIndex) < txCount)
-    //        createIntermediateState(state, block, _txIndex, m_eth.blockChain());
-    //    else if (static_cast<size_t>(_txIndex) == txCount)
-    //        // the final state of block (after applying rewards)
-    //        state = block.state();
-    //    else
-    //        throw jsonrpc::JsonRpcException("Transaction index " + toString(_txIndex) +
-    //                                        " out of range for block " + _blockHashOrNumber);
-
-    //    return state;
-}
-
-Json::Value Debug::traceTransaction(
-    Executive& _e, Transaction const& _t, Json::Value const& _json ) {
-    Json::Value trace;
-    StandardTrace st;
-    st.setShowMnemonics();
-    st.setOptions( debugOptions( _json ) );
-    _e.initialize( _t );
-    if ( !_e.execute() )
-        _e.go( st.onOp() );
-    _e.finalize();
-    Json::Reader().parse( st.json(), trace );
-    return trace;
-}
-
-Json::Value Debug::traceBlock( Block const& _block, Json::Value const& _json ) {
-    State s( _block.state() );
-    //    s.setRoot(_block.stateRootBeforeTx(0));
-
-    Json::Value traces( Json::arrayValue );
-    for ( unsigned k = 0; k < _block.pending().size(); k++ ) {
-        Transaction t = _block.pending()[k];
-
-        u256 const gasUsed = k ? _block.receipt( k - 1 ).cumulativeGasUsed() : 0;
-        auto const& bc = m_eth.blockChain();
-        EnvInfo envInfo( _block.info(), m_eth.blockChain().lastBlockHashes(),
-            _block.previousInfo().timestamp(), gasUsed, bc.chainID() );
-        // HACK 0 here is for gasPrice
-        Executive e( s, envInfo, m_eth.blockChain().chainParams(), 0, 0 );
-
-        eth::ExecutionResult er;
-        e.setResultRecipient( er );
-        traces.append( traceTransaction( e, t, _json ) );
+    if ( bN == LatestBlock || bN == PendingBlock ) {
+        bN = m_eth.number();
     }
-    return traces;
-}
 
-Json::Value Debug::debug_traceTransaction(
-    string const& /*_txHash*/, Json::Value const& /*_json*/ ) {
-    Json::Value ret;
-    try {
-        throw std::logic_error( "Historical state is not supported in Skale" );
-        //        Executive e(s, block, t.transactionIndex(), m_eth.blockChain());
-        //        e.setResultRecipient(er);
-        //        Json::Value trace = traceTransaction(e, t, _json);
-        //        ret["gas"] = toJS(t.gas());
-        //        ret["return"] = toHexPrefixed(er.output);
-        //        ret["structLogs"] = trace;
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
+    if ( !m_eth.isKnown( bN ) ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + _blockNumber );
     }
-    return ret;
-}
 
-Json::Value Debug::debug_traceBlock( string const& _blockRLP, Json::Value const& _json ) {
-    bytes bytes = fromHex( _blockRLP );
-    BlockHeader blockHeader( bytes );
-    return debug_traceBlockByHash( blockHeader.hash().hex(), _json );
-}
-
-// TODO Make function without "block" parameter
-Json::Value Debug::debug_traceBlockByHash(
-    string const& /*_blockHash*/, Json::Value const& _json ) {
-    Json::Value ret;
-    Block block = m_eth.latestBlock();
-    ret["structLogs"] = traceBlock( block, _json );
-    return ret;
-}
-
-// TODO Make function without "block" parameter
-Json::Value Debug::debug_traceBlockByNumber( int /*_blockNumber*/, Json::Value const& _json ) {
-    Json::Value ret;
-    Block block = m_eth.latestBlock();
-    ret["structLogs"] = traceBlock( block, _json );
-    return ret;
-}
-
-Json::Value Debug::debug_accountRangeAt( string const& _blockHashOrNumber, int _txIndex,
-    string const& /*_addressHash*/, int _maxResults ) {
-    Json::Value ret( Json::objectValue );
-
-    if ( _maxResults <= 0 )
-        throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
+    if ( bN == 0 ) {
+        THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
+    }
 
     try {
-        State const state = stateAt( _blockHashOrNumber, _txIndex );
+        return m_eth.traceBlock( bN, _jsonTraceConfig );
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
+    }
+#else
+    THROW_TRACE_JSON_EXCEPTION( "This API call is only supported on archive nodes" );
+#endif
+}
 
-        throw std::logic_error( "Addresses list is not suppoted in Skale state" );
-        //        auto const addressMap = state.addresses(h256(_addressHash), _maxResults);
+Json::Value Debug::debug_traceBlockByHash( string const&
+#ifdef HISTORIC_STATE
+                                               _blockHash
+#endif
+    ,
+    Json::Value const&
+#ifdef HISTORIC_STATE
+        _jsonTraceConfig
+#endif
+) {
+    checkHistoricStateEnabled();
 
-        //        Json::Value addressList(Json::objectValue);
-        //        for (auto const& record : addressMap.first)
-        //            addressList[toString(record.first)] = toString(record.second);
+#ifdef HISTORIC_STATE
+    h256 h = jsToFixed< 32 >( _blockHash );
 
-        //        ret["addressMap"] = addressList;
-        //        ret["nextKey"] = toString(addressMap.second);
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
-        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+    if ( !m_eth.isKnown( h ) ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown block hash" + _blockHash );
     }
 
-    return ret;
-}
+    BlockNumber bN = m_eth.numberFromHash( h );
 
-Json::Value Debug::debug_storageRangeAt( string const& _blockHashOrNumber, int _txIndex,
-    string const& /*_address*/, string const& /*_begin*/, int _maxResults ) {
-    Json::Value ret( Json::objectValue );
-    ret["complete"] = true;
-    ret["storage"] = Json::Value( Json::objectValue );
-
-    if ( _maxResults <= 0 )
-        throw jsonrpc::JsonRpcException( "Nonpositive maxResults" );
-
-    try {
-        State const state = stateAt( _blockHashOrNumber, _txIndex );
-
-        throw std::logic_error( "Obtaining of full storage is not suppoted in Skale state" );
-        //        map<h256, pair<u256, u256>> const storage(state.storage(Address(_address)));
-
-        //        // begin is inclusive
-        //        auto itBegin = storage.lower_bound(h256fromHex(_begin));
-        //        for (auto it = itBegin; it != storage.end(); ++it)
-        //        {
-        //            if (ret["storage"].size() == static_cast<unsigned>(_maxResults))
-        //            {
-        //                ret["nextKey"] = toCompactHexPrefixed(it->first, 1);
-        //                break;
-        //            }
-
-        //            Json::Value keyValue(Json::objectValue);
-        //            std::string hashedKey = toCompactHexPrefixed(it->first, 1);
-        //            keyValue["key"] = toCompactHexPrefixed(it->second.first, 1);
-        //            keyValue["value"] = toCompactHexPrefixed(it->second.second, 1);
-
-        //            ret["storage"][hashedKey] = keyValue;
-        //        }
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
-        throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+    if ( bN == 0 ) {
+        THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
     }
 
-    return ret;
-}
-
-std::string Debug::debug_preimage( std::string const& /*_hashedKey*/ ) {
-    throw std::logic_error( "Preimages do not exist in Skale state" );
-    //    h256 const hashedKey(h256fromHex(_hashedKey));
-    //    bytes const key = m_eth.state().lookupAux(hashedKey);
-
-    //    return key.empty() ? std::string() : toHexPrefixed(key);
-}
-
-Json::Value Debug::debug_traceCall( Json::Value const& _call, Json::Value const& _options ) {
-    Json::Value ret;
     try {
-        Block temp = m_eth.latestBlock();
-        TransactionSkeleton ts = toTransactionSkeleton( _call );
-        if ( !ts.from ) {
-            ts.from = Address();
+        return m_eth.traceBlock( bN, _jsonTraceConfig );
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
+    }
+#else
+    THROW_TRACE_JSON_EXCEPTION( "This API call is only supported on archive nodes" );
+#endif
+}
+
+
+Json::Value Debug::debug_traceTransaction( string const&
+#ifdef HISTORIC_STATE
+                                               _txHashStr
+#endif
+    ,
+    Json::Value const&
+#ifdef HISTORIC_STATE
+        _jsonTraceConfig
+#endif
+) {
+
+    checkHistoricStateEnabled();
+#ifdef HISTORIC_STATE
+    auto txHash = h256( _txHashStr );
+
+    LocalisedTransaction localisedTransaction = m_eth.localisedTransaction( txHash );
+
+    if ( localisedTransaction.blockHash() == h256( 0 ) ) {
+        THROW_TRACE_JSON_EXCEPTION(
+            "Can't find committed transaction with this hash:" + _txHashStr );
+    }
+
+    auto blockNumber = localisedTransaction.blockNumber();
+
+
+    if ( !m_eth.isKnown( blockNumber ) ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + to_string( blockNumber ) );
+    }
+
+    if ( blockNumber == 0 ) {
+        THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
+    }
+
+    try {
+        Json::Value tracedBlock;
+
+        tracedBlock = m_eth.traceBlock( blockNumber, _jsonTraceConfig );
+        STATE_CHECK( tracedBlock.isArray() )
+        STATE_CHECK( !tracedBlock.empty() )
+
+
+        string lowerCaseTxStr = _txHashStr;
+        for ( auto& c : lowerCaseTxStr ) {
+            c = std::tolower( static_cast< unsigned char >( c ) );
         }
-        u256 nonce = temp.transactionsFrom( ts.from );
-        u256 gas = ts.gas == Invalid256 ? m_eth.gasLimitRemaining() : ts.gas;
-        u256 gasPrice = ts.gasPrice == Invalid256 ? m_eth.gasBidPrice() : ts.gasPrice;
-        temp.mutableState().addBalance( ts.from, gas * gasPrice + ts.value );
-        Transaction transaction( ts.value, gasPrice, gas, ts.to, ts.data, nonce );
-        transaction.forceSender( ts.from );
-        eth::ExecutionResult er;
-        // HACK 0 here is for gasPrice
-        Executive e( temp, m_eth.blockChain().lastBlockHashes(), 0 );
-        e.setResultRecipient( er );
-        Json::Value trace = traceTransaction( e, transaction, _options );
-        ret["gas"] = toJS( transaction.gas() );
-        ret["return"] = toHexPrefixed( er.output );
-        ret["structLogs"] = trace;
-    } catch ( Exception const& _e ) {
-        cwarn << diagnostic_information( _e );
+
+
+        for ( Json::Value::ArrayIndex i = 0; i < tracedBlock.size(); i++ ) {
+            Json::Value& transactionTrace = tracedBlock[i];
+            STATE_CHECK( transactionTrace.isObject() );
+            STATE_CHECK( transactionTrace.isMember( "txHash" ) );
+            if ( transactionTrace["txHash"] == lowerCaseTxStr ) {
+                STATE_CHECK( transactionTrace.isMember( "result" ) );
+                return transactionTrace["result"];
+            }
+        }
+
+        THROW_TRACE_JSON_EXCEPTION( "Transaction not found in block" );
+
+    } catch ( jsonrpc::JsonRpcException& ) {
+        throw;
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
     }
-    return ret;
+#else
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
+#endif
 }
+
+Json::Value Debug::debug_traceCall( Json::Value const&
+#ifdef HISTORIC_STATE
+                                        _call
+#endif
+    ,
+    std::string const&
+#ifdef HISTORIC_STATE
+        _blockNumber
+#endif
+    ,
+    Json::Value const&
+#ifdef HISTORIC_STATE
+        _jsonTraceConfig
+#endif
+) {
+
+    Json::Value ret;
+    checkHistoricStateEnabled();
+
+#ifdef HISTORIC_STATE
+
+    try {
+        auto bN = jsToBlockNumber( _blockNumber );
+
+        if ( bN == LatestBlock || bN == PendingBlock ) {
+            bN = m_eth.number();
+        }
+
+        if ( !m_eth.isKnown( bN ) ) {
+            THROW_TRACE_JSON_EXCEPTION( "Unknown block number:" + _blockNumber );
+        }
+
+        if ( bN == 0 ) {
+            THROW_TRACE_JSON_EXCEPTION( "Block number must be more than zero" );
+        }
+
+        TransactionSkeleton ts = toTransactionSkeleton( _call );
+
+        return m_eth.traceCall(
+            ts.from, ts.value, ts.to, ts.data, ts.gas, ts.gasPrice, bN, _jsonTraceConfig );
+    } catch ( jsonrpc::JsonRpcException& ) {
+        throw;
+    } catch ( std::exception const& _e ) {
+        THROW_TRACE_JSON_EXCEPTION( _e.what() );
+    } catch ( ... ) {
+        THROW_TRACE_JSON_EXCEPTION( "Unknown server error" );
+    }
+
+#else
+    BOOST_THROW_EXCEPTION(
+        jsonrpc::JsonRpcException( "This API call is only supported on archive nodes" ) );
+#endif
+}
+
+
+Json::Value Debug::debug_accountRangeAt( string const&, int, string const&, int ) {
+    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
+}
+
+Json::Value Debug::debug_storageRangeAt( string const&, int, string const&, string const&, int ) {
+    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
+}
+
+string Debug::debug_preimage( string const& ) {
+    BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "This API call is not supported" ) );
+}
+
 
 void Debug::debug_pauseBroadcast( bool _pause ) {
+    checkPrivilegedAccess();
     m_eth.skaleHost()->pauseBroadcast( _pause );
 }
 void Debug::debug_pauseConsensus( bool _pause ) {
+    checkPrivilegedAccess();
     m_eth.skaleHost()->pauseConsensus( _pause );
 }
 void Debug::debug_forceBlock() {
+    checkPrivilegedAccess();
     m_eth.skaleHost()->forceEmptyBlock();
 }
 
-void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
+void Debug::debug_forceBroadcast( const string& _transactionHash ) {
+    checkPrivilegedAccess();
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_eth.isKnownTransaction( h ) )
@@ -271,27 +310,33 @@ void Debug::debug_forceBroadcast( const std::string& _transactionHash ) {
     }
 }
 
-std::string Debug::debug_interfaceCall( const std::string& _arg ) {
+string Debug::debug_interfaceCall( const string& _arg ) {
+    checkPrivilegedAccess();
     return m_debugInterface->call( _arg );
 }
 
-std::string Debug::debug_getVersion() {
+string Debug::debug_getVersion() {
+    checkPrivilegedAccess();
     return Version;
 }
 
-std::string Debug::debug_getArguments() {
-    return argv_options;
+string Debug::debug_getArguments() {
+    checkPrivilegedAccess();
+    return m_argvOptions;
 }
 
-std::string Debug::debug_getConfig() {
+string Debug::debug_getConfig() {
+    checkPrivilegedAccess();
     return m_eth.chainParams().getOriginalJson();
 }
 
-std::string Debug::debug_getSchainName() {
+string Debug::debug_getSchainName() {
+    checkPrivilegedAccess();
     return m_eth.chainParams().sChain.name;
 }
 
 uint64_t Debug::debug_getSnapshotCalculationTime() {
+    checkPrivilegedAccess();
     return m_eth.getSnapshotCalculationTime();
 }
 
@@ -300,6 +345,7 @@ uint64_t Debug::debug_getSnapshotHashCalculationTime() {
 }
 
 uint64_t Debug::debug_doStateDbCompaction() {
+    checkPrivilegedAccess();
     auto t1 = boost::chrono::high_resolution_clock::now();
     m_eth.doStateDbCompaction();
     auto t2 = boost::chrono::high_resolution_clock::now();
@@ -308,6 +354,7 @@ uint64_t Debug::debug_doStateDbCompaction() {
 }
 
 uint64_t Debug::debug_doBlocksDbCompaction() {
+    checkPrivilegedAccess();
     auto t1 = boost::chrono::high_resolution_clock::now();
     m_eth.doBlocksDbCompaction();
     auto t2 = boost::chrono::high_resolution_clock::now();

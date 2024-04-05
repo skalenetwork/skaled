@@ -163,7 +163,7 @@ Json::Value AdminEth::admin_eth_vmTrace(
             //            st.setShowMnemonics();
             //            e.initialize(t);
             //            if (!e.execute())
-            //                e.go(st.onOp());
+            //                e.go(st.functionToExecuteOnEachOperation());
             //            e.finalize();
             //            Json::Reader().parse(st.json(), ret);
         } catch ( Exception const& _e ) {

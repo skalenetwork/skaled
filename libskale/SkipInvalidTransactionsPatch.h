@@ -2,7 +2,7 @@
 #define SKIPINVALIDTRANSACTIONSPATCH_H
 
 #include <libethcore/BlockHeader.h>
-#include <libethereum/ChainParams.h>
+#include <libethereum/BlockChain.h>
 #include <libethereum/Interface.h>
 #include <libethereum/SchainPatch.h>
 #include <libethereum/Transaction.h>

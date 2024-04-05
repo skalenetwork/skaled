@@ -3,7 +3,7 @@
 
 #include "SchainPatchEnum.h"
 
-#include <libethereum/BlockChain.h>
+#include <libethcore/ChainOperationParams.h>
 
 #include <libdevcore/Log.h>
 
