@@ -47,6 +47,8 @@
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/lexical_cast.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/data/monomorphic.hpp>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
 
 #include <libconsensus/SkaleCommon.h>
@@ -248,7 +250,8 @@ private:
 struct JsonRpcFixture : public TestOutputHelperFixture {
     JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
                     bool _deploymentControl = true, bool _generation2 = false, 
-                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1 ) {
+                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
+                    const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
         dev::p2p::NetworkPreferences nprefs;
         ChainParams chainParams;
 
@@ -302,6 +305,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
         chainParams.nodeInfo.syncNode = _isSyncNode;
+
+        if( params.count("selfdestructStorageLimitPatchTimestamp") && stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) ) )
+            chainParams.sChain.selfdestructStorageLimitPatchTimestamp = stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) );
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -3518,9 +3524,10 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+auto selfdestructStorageLimitPatchVariants = boost::unit_test::data::make({0, 1});
 
-BOOST_AUTO_TEST_CASE( suicide_storage_limit ) {
-    JsonRpcFixture fixture;
+BOOST_DATA_TEST_CASE( suicide_storage_limit, selfdestructStorageLimitPatchVariants, patchTimestamp ) {
+    JsonRpcFixture fixture( "", true, true, false, false, false, -1, std::map<std::string, std::string>( {{"selfdestructStorageLimitPatchTimestamp", to_string(patchTimestamp)}} ) );
     dev::eth::simulateMining( *( fixture.client ), 10 );
 
     // pragma solidity ^0.8.0;
