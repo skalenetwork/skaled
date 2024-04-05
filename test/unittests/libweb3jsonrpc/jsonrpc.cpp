@@ -47,6 +47,8 @@
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/lexical_cast.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/data/monomorphic.hpp>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
 
 #include <libconsensus/SkaleCommon.h>
@@ -252,10 +254,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 ChainParams chainParams;
 
 
-JsonRpcFixture( const std::string& _config = "", bool _owner = true,
-                    bool _deploymentControl = true, bool _generation2 = false,
-                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1 ) {
-
+    JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
+                    bool _deploymentControl = true, bool _generation2 = false, 
+                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
+                    const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
 
         if ( _config != "" ) {
             if ( !_generation2 ) {
@@ -311,6 +313,9 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
         chainParams.nodeInfo.syncNode = _isSyncNode;
+
+        if( params.count("selfdestructStorageLimitPatchTimestamp") && stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) ) )
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::SelfdestructStorageLimitPatch)] = stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) );
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -795,7 +800,7 @@ BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {
 
     // Sending tx to sync node
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
-
+    
     auto pendingTransactions = fixture.client->pending();
     BOOST_REQUIRE( pendingTransactions.size() == 1);
     auto txHashFromQueue = "0x" + pendingTransactions[0].sha3().hex();
@@ -1727,7 +1732,7 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         "fffffffffffffffffffffffff16815260200191505060405180910390f3"
         "5b60003390509056fea165627a7a72305820abfa953fead48d8f657bca6"
         "57713501650734d40342585cafcf156a3fe1f41d20029";
-
+    
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
@@ -3507,7 +3512,7 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1;
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1; 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     RestrictedAddressFixture fixture( config );
