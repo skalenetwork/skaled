@@ -64,7 +64,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-static size_t rand_port = 1024 + rand() % 64000;
+static size_t rand_port = ( srand(time(nullptr)), 1024 + rand() % 64000 );
 
 static std::string const c_genesisConfigString =
     R"(
@@ -248,6 +248,12 @@ private:
 };
 
 struct JsonRpcFixture : public TestOutputHelperFixture {
+
+// chain params needs to be a field of JsonRPCFixture
+// since references to it are passed to the server
+ChainParams chainParams;
+
+
     JsonRpcFixture( const std::string& _config = "", bool _owner = true, 
                     bool _deploymentControl = true, bool _generation2 = false, 
                     bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
@@ -291,9 +297,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
-            chainParams.sChain.contractStoragePatchTimestamp = 1;
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::ContractStoragePatch)] = 1;
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::StorageDestructionPatch)] = 1;
             powPatchActivationTimestamp = time(nullptr) + 60;
-            chainParams.sChain.correctForkInPowPatchTimestamp = powPatchActivationTimestamp;       // 10 guessed seconds
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::CorrectForkInPowPatch)] = powPatchActivationTimestamp;
+            push0PatchActivationTimestamp = time(nullptr) + 10;
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = push0PatchActivationTimestamp;
             chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             chainParams.maxStorageForSelfdestruct = 64;
             // add random extra data to randomize genesis hash and get random DB path,
@@ -302,12 +311,13 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.extraData = h256::random().asBytes();
             chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
             chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+            chainParams.skaleDisableChainIdCheck = true;
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
         chainParams.nodeInfo.syncNode = _isSyncNode;
 
         if( params.count("selfdestructStorageLimitPatchTimestamp") && stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) ) )
-            chainParams.sChain.selfdestructStorageLimitPatchTimestamp = stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) );
+            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::SelfdestructStorageLimitPatch)] = stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) );
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -360,9 +370,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
         rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
-            new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
-            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager.get() ),
-            /*new rpc::AdminNet(*web3, *sessionManager), */ new rpc::Debug( *client ),
+            new rpc::Web3(),  // TODO Add version parameter here?
+            new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
+            new rpc::Debug( *client, nullptr, "", true),
             new rpc::Test( *client ) ) );
 
         //
@@ -427,6 +437,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     std::string adminSession;
     SkaleServerOverride* skale_server_connector;
     time_t powPatchActivationTimestamp;
+    time_t push0PatchActivationTimestamp;
 };
 
 struct RestrictedAddressFixture : public JsonRpcFixture {
@@ -1312,6 +1323,110 @@ BOOST_AUTO_TEST_CASE( create_opcode ) {
     BOOST_CHECK( response2 != response1 );
 }
 
+BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
+
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    fixture.client->setAuthor( fixture.account2.address() );
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+/*
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.8.2;
+
+contract Push0Test {
+    fallback() external payable {
+        assembly {
+            let t := add(9, 10)
+        }
+    }
+}
+
+then convert to yul: solc --ir p0test.sol >p0test.yul
+
+then change code:
+                {
+                    let r := add(88,99)
+                    let tmp := verbatim_0i_1o(hex"5f")
+                }
+
+then compile!
+
+*/
+    string compiled =
+        "608060405234156100135761001261003b565b5b61001b610040565b610023610031565b6101b761004382396101b781f35b6000604051905090565b600080fd5b56fe608060405261000f36600061015b565b805160208201f35b60006060905090565b6000604051905090565b6000601f19601f8301169050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b6100738261002a565b810181811067ffffffffffffffff821117156100925761009161003b565b5b80604052505050565b60006100a5610020565b90506100b1828261006a565b919050565b600067ffffffffffffffff8211156100d1576100d061003b565b5b6100da8261002a565b9050602081019050919050565b60006100f2826100b6565b6100fb8161009b565b915082825250919050565b7f7375636365737300000000000000000000000000000000000000000000000000600082015250565b600061013b60076100e7565b905061014960208201610106565b90565b600061015661012f565b905090565b6000610165610017565b809150600a6009015f505061017861014c565b9150509291505056fea2646970667358221220b3871ed09fbcbb1dac74c3cd48dafa5d097bea7c808b5ff2c16a996cf108d3c664736f6c63430008190033";
+//        "60806040523415601057600f6031565b5b60166036565b601c6027565b604c60398239604c81f35b6000604051905090565b600080fd5b56fe6080604052600a600c565b005b60636058015f505056fea2646970667358221220ee9861b869ceda6de64f2ec7ccbebf2babce54b35502a866a4193e05ae595e1f64736f6c63430008130033";
+
+    Json::Value create;
+
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "1000000";
+
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );      // deploy should succeed
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value callObject;
+
+    callObject["from"] = toJS( fixture.account2.address() );
+    callObject["to"] = contractAddress;
+
+    // first try without PushZeroPatch
+
+    txHash = fixture.rpcClient->eth_sendTransaction( callObject );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );      // exec should fail
+
+    string callResult = fixture.rpcClient->eth_call(callObject, "latest");
+    BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );              // call too
+
+    // wait for block after timestamp
+    BOOST_REQUIRE_LT( fixture.client->blockInfo(LatestBlock).timestamp(), fixture.push0PatchActivationTimestamp );
+    while( time(nullptr) < fixture.push0PatchActivationTimestamp )
+        sleep(1);
+
+    // 1st timestamp-crossing block
+    txHash = fixture.rpcClient->eth_sendTransaction( callObject );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    BOOST_REQUIRE_GE( fixture.client->blockInfo(LatestBlock).timestamp(), fixture.push0PatchActivationTimestamp );
+
+    uint64_t crossingBlockNumber = fixture.client->number();
+    (void) crossingBlockNumber;
+
+    // in the "corssing" block tx still should fail
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
+
+    // in 1st block with patch call should succeed
+    callResult = fixture.rpcClient->eth_call(callObject, "latest");
+    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
+
+    // tx should succeed too
+    txHash = fixture.rpcClient->eth_sendTransaction( callObject );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+
+#ifdef HISTORIC_STATE
+    // histoic call should fail before activation and succees after it
+
+    callResult = fixture.rpcClient->eth_call(callObject, toJS(crossingBlockNumber-1));
+    BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );
+
+    callResult = fixture.rpcClient->eth_call(callObject, toJS(crossingBlockNumber));
+    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
+#endif
+}
+
 BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     JsonRpcFixture fixture( c_genesisConfigString );
 
@@ -2052,8 +2167,8 @@ contract TestEstimateGas {
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
-                       false, &data, fixture.client->chainParams().scheduleForBlockNumber(
-                           fixture.client->number() ) ) );
+                       false, &data, fixture.client->chainParams().makeEvmSchedule(
+                       fixture.client->latestBlock().info().timestamp(), fixture.client->number() ) ) );
 
     // try to send with this gas
     estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );

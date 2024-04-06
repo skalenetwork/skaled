@@ -30,15 +30,17 @@ class SealEngineFace;
 class AlethExtVM : public ExtVMFace {
 public:
     /// Full constructor.
-    AlethExtVM( HistoricState& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
-        Address _myAddress, Address _caller, Address _origin, u256 _value, u256 _gasPrice,
-        bytesConstRef _data, bytesConstRef _code, h256 const& _codeHash, u256 const& _version,
-        unsigned _depth, bool _isCreate, bool _staticCall )
+    AlethExtVM( HistoricState& _s, EnvInfo const& _envInfo,
+        ChainOperationParams const& _chainParams, Address _myAddress, Address _caller,
+        Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data, bytesConstRef _code,
+        h256 const& _codeHash, u256 const& _version, unsigned _depth, bool _isCreate,
+        bool _staticCall )
         : ExtVMFace( _envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data,
               _code.toBytes(), _codeHash, _version, _depth, _isCreate, _staticCall ),
           m_s( _s ),
-          m_sealEngine( _sealEngine ),
-          m_evmSchedule( initEvmSchedule( envInfo().number(), _version ) ) {
+          m_chainParams( _chainParams ),
+          m_evmSchedule( initEvmSchedule(
+              _envInfo.committedBlockTimestamp(), envInfo().number(), _version ) ) {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
         // the account must be created first.
@@ -94,11 +96,15 @@ public:
     /// Hash of a block if within the last 256 blocks, or h256() otherwise.
     h256 blockHash( u256 _number ) final;
 
+    static evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex );
+
 private:
-    EVMSchedule const& initEvmSchedule( int64_t _blockNumber, u256 const& _version ) const {
+    EVMSchedule initEvmSchedule(
+        time_t _committedBlockTimestamp, int64_t _workingBlockNumber, u256 const& _version ) const {
         // If _version is latest for the block, select corresponding latest schedule.
         // Otherwise run with the latest schedule known to correspond to the _version.
-        EVMSchedule const& currentBlockSchedule = m_sealEngine.evmSchedule( _blockNumber );
+        EVMSchedule currentBlockSchedule =
+            m_chainParams.makeEvmSchedule( _committedBlockTimestamp, _workingBlockNumber );
         if ( currentBlockSchedule.accountVersion == _version )
             return currentBlockSchedule;
         else
@@ -107,8 +113,9 @@ private:
 
 
     dev::eth::HistoricState& m_s;  ///< A reference to the base state.
-    SealEngineFace const& m_sealEngine;
-    EVMSchedule const& m_evmSchedule;
+    time_t m_committedBlockTimestamp;
+    ChainOperationParams const& m_chainParams;
+    EVMSchedule const m_evmSchedule;
 };
 
 }  // namespace eth

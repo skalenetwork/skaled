@@ -1,0 +1,10 @@
+{
+    "from": "CALL.address",
+    "gas": "0x2faf080",
+    "gasUsed": "0x5bce",
+    "to": "Tracer.address",
+    "input": "0x12065fe0",
+    "output": "0x00000000000000000000000000000000000000000000000000000000000003e8",
+    "value": "0x0",
+    "type": "CALL"
+}

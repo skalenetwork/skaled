@@ -35,7 +35,9 @@
 #include <libethcore/Counter.h>
 #include <libethcore/Exceptions.h>
 #include <libskale/State.h>
-
+#ifdef HISTORIC_STATE
+#include <libhistoric/AlethStandardTrace.h>
+#endif
 #include "Account.h"
 #include "GasPricer.h"
 #include "Transaction.h"
@@ -176,6 +178,9 @@ public:
 
     // Information concerning ongoing transactions
 
+    /// Get the gas limit in this block.
+    u256 gasLimit() const { return m_currentBlock.gasLimit(); }
+
     /// Get the remaining gas limit in this block.
     u256 gasLimitRemaining() const { return m_currentBlock.gasLimit() - gasUsed(); }
 
@@ -214,9 +219,9 @@ public:
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
-
 #ifdef HISTORIC_STATE
-    ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t );
+    ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
+        std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex );
 #endif
 
 
@@ -294,6 +299,7 @@ public:
 
     /// Get the header information on the present block.
     BlockHeader const& info() const { return m_currentBlock; }
+    BlockHeader const& previousInfo() const { return m_previousBlock; }
 
     void startReadState();
 

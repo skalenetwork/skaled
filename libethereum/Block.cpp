@@ -351,7 +351,8 @@ pair< TransactionReceipts, bool > Block::sync(
                                                                     // caller if we hit the limit
 
     for ( Transaction& transaction : transactions ) {
-        transaction.checkOutExternalGas( _bc.chainParams(), _bc.number() );
+        transaction.checkOutExternalGas(
+            _bc.chainParams(), _bc.info().timestamp(), _bc.number(), false );
     }
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
@@ -484,7 +485,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
 
-                if ( SkipInvalidTransactionsPatch::isEnabled() ) {
+                if ( SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ) {
                     // Add to the user-originated transactions that we've executed.
                     m_transactions.push_back( tr );
                     m_transactionSet.insert( tr.sha3() );
@@ -508,7 +509,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
 
-            if ( !SkipInvalidTransactionsPatch::isEnabled() ||
+            if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
 
@@ -631,7 +632,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
-            const_cast< Transaction& >( tr ).checkOutExternalGas( _bc.chainParams(), _bc.number() );
+            const_cast< Transaction& >( tr ).checkOutExternalGas(
+                _bc.chainParams(), _bc.info().timestamp(), _bc.number(), false );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
@@ -762,7 +764,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
-    applyRewards( rewarded, _bc.sealEngine()->blockReward( m_currentBlock.number() ) );
+    applyRewards( rewarded,
+        _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state
@@ -792,24 +795,63 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
 
 #ifdef HISTORIC_STATE
-ExecutionResult Block::executeHistoricCall(
-    LastBlockHashesFace const& _lh, Transaction const& _t ) {
-    auto p = Permanence::Reverted;
+ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
+    std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex ) {
+    try {
+        auto onOp = OnOpFunc();
 
-    auto onOp = OnOpFunc();
+        if ( _tracer ) {
+            onOp = _tracer->functionToExecuteOnEachOperation();
+        }
 
-    if ( isSealed() )
-        BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
-    // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
-    // transaction as possible.
-    uncommitToSeal();
+        if ( isSealed() )
+            BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
-    EnvInfo const envInfo{ info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID };
-    std::pair< ExecutionResult, TransactionReceipt > resultReceipt =
-        m_state.mutableHistoricState().execute( envInfo, *m_sealEngine, _t, p, onOp );
+        // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
+        // transaction as possible.
+        uncommitToSeal();
 
-    return resultReceipt.first;
+        STATE_CHECK( _transactionIndex <= m_receipts.size() )
+
+        u256 const gasUsed =
+            _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
+
+        EnvInfo const envInfo( info(), _lh, this->previousInfo().timestamp(), gasUsed,
+            m_sealEngine->chainParams().chainID );
+
+        if ( _tracer ) {
+            try {
+                HistoricState stateBefore( m_state.mutableHistoricState() );
+
+                auto resultReceipt = m_state.mutableHistoricState().execute( envInfo,
+                    m_sealEngine->chainParams(), _t, skale::Permanence::Uncommitted, onOp );
+
+                _tracer->finalizeAndPrintTrace(
+                    resultReceipt.first, stateBefore, m_state.mutableHistoricState() );
+                // for tracing the entire block is traced therefore, we save transaction receipt
+                // as it is used for execution of the next transaction
+                m_receipts.push_back( resultReceipt.second );
+                return resultReceipt.first;
+            } catch ( std::exception& e ) {
+                throw dev::eth::VMTracingError( "Exception doing trace for transaction index:" +
+                                                std::to_string( _transactionIndex ) + ":" +
+                                                e.what() );
+            }
+        } else {
+            auto resultReceipt = m_state.mutableHistoricState().execute(
+                envInfo, m_sealEngine->chainParams(), _t, skale::Permanence::Reverted, onOp );
+            return resultReceipt.first;
+        }
+    } catch ( std::exception& e ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Could not execute historic call for transactionIndex:" +
+                                to_string( _transactionIndex ) + ":" + e.what() ) );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            std::runtime_error( "Could not execute historic call for transactionIndex:" +
+                                to_string( _transactionIndex ) + ": unknown error" ) );
+    }
 }
 #endif
 
@@ -830,7 +872,8 @@ ExecutionResult Block::execute(
     State stateSnapshot =
         _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
 
-    EnvInfo envInfo = EnvInfo( info(), _lh, gasUsed(), m_sealEngine->chainParams().chainID );
+    EnvInfo envInfo = EnvInfo(
+        info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );
 
     // "bad" transaction receipt for failed transactions
     TransactionReceipt const null_receipt =
@@ -845,7 +888,8 @@ ExecutionResult Block::execute(
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
-        resultReceipt = stateSnapshot.execute( envInfo, *m_sealEngine, _t, _p, _onOp );
+        resultReceipt =
+            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
@@ -869,7 +913,7 @@ ExecutionResult Block::execute(
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
-        if ( !SkipInvalidTransactionsPatch::isEnabled() ||
+        if ( !SkipInvalidTransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) ||
              resultReceipt.first.excepted != TransactionException::WouldNotBeInBlock ) {
             m_transactions.push_back( _t );
             m_receipts.push_back( resultReceipt.second );
@@ -914,13 +958,15 @@ void Block::updateBlockhashContract() {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
                 State state = m_state.createStateModifyCopy();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                    m_sealEngine->evmSchedule( blockNumber ).accountVersion );
+                    m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
+                        .accountVersion );
                 state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
             }
         } else {
             m_state.createContract( c_blockhashContractAddress );
             m_state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
-                m_sealEngine->evmSchedule( blockNumber ).accountVersion );
+                m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
+                    .accountVersion );
             m_state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
         }
     }
@@ -986,7 +1032,8 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
-    applyRewards( uncleBlockHeaders, _bc.sealEngine()->blockReward( m_currentBlock.number() ) );
+    applyRewards( uncleBlockHeaders,
+        _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.

@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <cctype>
 
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
@@ -38,10 +39,11 @@
 #include <libethereum/Precompiled.h>
 
 #include "Account.h"
-#include "GenesisInfo.h"
 #include "ValidationSchemes.h"
 
 #include <skutils/utils.h>
+
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace dev;
@@ -242,51 +244,17 @@ ChainParams ChainParams::loadConfig(
         if ( sChainObj.count( "multiTransactionMode" ) )
             s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-        if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
-            s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
-
-        s.contractStoragePatchTimestamp =
-            sChainObj.count( "contractStoragePatchTimestamp" ) ?
-                sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
-                0;
-
-        s.contractStorageZeroValuePatchTimestamp =
-            sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
-                sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
-                0;
-
-        s.verifyDaSigsPatchTimestamp =
-            sChainObj.count( "verifyDaSigsPatchTimestamp" ) ?
-                sChainObj.at( "verifyDaSigsPatchTimestamp" ).get_int64() :
-                0;
-
-        s.storageDestructionPatchTimestamp =
-            sChainObj.count( "storageDestructionPatchTimestamp" ) ?
-                sChainObj.at( "storageDestructionPatchTimestamp" ).get_int64() :
-                0;
-
-        s.powCheckPatchTimestamp = sChainObj.count( "powCheckPatchTimestamp" ) ?
-                                       sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
-                                       0;
-
-        s.precompiledConfigPatchTimestamp =
-            sChainObj.count( "precompiledConfigPatchTimestamp" ) ?
-                sChainObj.at( "precompiledConfigPatchTimestamp" ).get_int64() :
-                0;
-
-        s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
-                                       sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
-                                       0;
-
-        s.skipInvalidTransactionsPatchTimestamp =
-            sChainObj.count( "skipInvalidTransactionsPatchTimestamp" ) ?
-                sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
-                0;
-
-        s.correctForkInPowPatchTimestamp =
-            sChainObj.count( "correctForkInPowPatchTimestamp" ) ?
-                sChainObj.at( "correctForkInPowPatchTimestamp" ).get_int64() :
-                0;
+        // extract all "*PatchTimestamp" records
+        for ( const auto& it : sChainObj ) {
+            const string& key = it.first;
+            if ( boost::algorithm::ends_with( key, "PatchTimestamp" ) ) {
+                string patchName = boost::algorithm::erase_last_copy( key, "Timestamp" );
+                patchName[0] = toupper( patchName[0] );
+                SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
+                s._patchTimestamps[static_cast< size_t >( patchEnum )] =
+                    it.second.get_int64();  // time_t is signed
+            }                               // if
+        }                                   // for
 
         if ( sChainObj.count( "nodeGroups" ) ) {
             std::vector< NodeGroup > nodeGroups;

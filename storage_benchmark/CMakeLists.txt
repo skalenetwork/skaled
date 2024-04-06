@@ -17,6 +17,7 @@ target_link_libraries(
     ${executable_name}
     PRIVATE
         ethereum
+        skale
         historic
         skutils
         devcore

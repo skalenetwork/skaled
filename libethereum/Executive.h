@@ -102,13 +102,13 @@ private:
 class Executive {
 public:
     /// Simple constructor; executive will operate on given state, with the given environment info.
-    Executive( skale::State& _s, EnvInfo const& _envInfo, SealEngineFace const& _sealEngine,
-        const u256& _gasPrice, unsigned _level = 0, bool _readOnly = true )
+    Executive( skale::State& _s, EnvInfo const& _envInfo, ChainOperationParams const& _chainParams,
+        const u256& _gasPrice, unsigned _level, bool _readOnly = true )
         : m_s( _s ),
           m_envInfo( _envInfo ),
           m_depth( _level ),
           m_readOnly( _readOnly ),
-          m_sealEngine( _sealEngine ),
+          m_chainParams( _chainParams ),
           m_systemGasPrice( _gasPrice ) {}
 
     /** Easiest constructor.
@@ -202,9 +202,10 @@ public:
     /// Revert all changes made to the state by this execution.
     void revert();
 
-    static void verifyTransaction( Transaction const& _transaction, BlockHeader const& _blockHeader,
-        const skale::State& _state, const SealEngineFace& _sealEngine, u256 const& _gasUsed,
-        const u256& _gasPrice, const bool _allowFuture = false );
+    static void verifyTransaction( Transaction const& _transaction, time_t _committedBlockTimestamp,
+        BlockHeader const& _blockHeader, const skale::State& _state,
+        const ChainOperationParams& _chainParams, u256 const& _gasUsed, const u256& _gasPrice,
+        const bool _allowFuture = false );
 
 private:
     /// @returns false iff go() must be called (and thus a VM execution in required).
@@ -235,7 +236,7 @@ private:
     LogEntries m_logs;  ///< The log entries created by this transaction. Set by finalize().
 
     u256 m_gasCost;
-    SealEngineFace const& m_sealEngine;
+    ChainOperationParams const& m_chainParams;
     u256 m_systemGasPrice;
 
     bool m_isCreation = false;
