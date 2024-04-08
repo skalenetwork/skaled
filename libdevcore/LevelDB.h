@@ -26,8 +26,8 @@
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
-#include <shared_mutex>
 #include <secp256k1_sha256.h>
+#include <shared_mutex>
 
 namespace dev::db {
 class LevelDB : public DatabaseFace {
