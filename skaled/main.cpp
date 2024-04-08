@@ -43,6 +43,7 @@
 
 #include <json_spirit/JsonSpiritHeaders.h>
 
+#include <libdevcore/DBFactory.h>
 #include <libdevcore/FileSystem.h>
 #include <libdevcore/LevelDB.h>
 #include <libdevcore/LoggingProgramOptions.h>
@@ -1066,33 +1067,33 @@ int main( int argc, char** argv ) try {
         try {
             configPath = vm["config"].as< string >();
             if ( !fs::is_regular_file( configPath.string() ) )
-                throw "Bad config file path";
+                throw std::runtime_error( "Bad config file path" );
             configJSON = contentsString( configPath.string() );
             if ( configJSON.empty() )
-                throw "Config file probably not found";
+                throw std::runtime_error( "Config file probably not found" );
             chainParams = chainParams.loadConfig( configJSON, configPath );
             chainConfigIsSet = true;
-            // TODO avoid double-parse!!
+            // TODO avoid double-parse
             joConfig = nlohmann::json::parse( configJSON );
             chainConfigParsed = true;
             dev::eth::g_configAccesssor.reset(
                 new skutils::json_config_file_accessor( configPath.string() ) );
+            dev::db::DBFactory::setReopenPeriodMs( chainParams.sChain.levelDBReopenIntervalMs );
         } catch ( const char* str ) {
-            clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath << "\n";
+            clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath;
             return EX_USAGE;
         } catch ( const json_spirit::Error_position& err ) {
-            clog( VerbosityError, "main" ) << "error in parsing config json:\n";
+            clog( VerbosityError, "main" ) << "error in parsing config json:";
             clog( VerbosityError, "main" ) << configJSON;
             clog( VerbosityError, "main" ) << err.reason_ << " line " << err.line_;
             return EX_CONFIG;
         } catch ( const std::exception& ex ) {
-            clog( VerbosityError, "main" ) << "provided configuration is incorrect\n";
+            clog( VerbosityError, "main" ) << "provided configuration is incorrect";
             clog( VerbosityError, "main" ) << configJSON;
             clog( VerbosityError, "main" ) << nested_exception_what( ex );
             return EX_CONFIG;
         } catch ( ... ) {
-            clog( VerbosityError, "main" ) << "provided configuration is incorrect\n";
-            // cerr << "sample: \n" << genesisInfo(eth::Network::MainNetworkTest) << "\n";
+            clog( VerbosityError, "main" ) << "provided configuration is incorrect";
             clog( VerbosityError, "main" ) << configJSON;
             return EX_CONFIG;
         }

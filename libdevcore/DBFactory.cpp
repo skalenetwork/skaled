@@ -20,11 +20,9 @@
 #include "DBFactory.h"
 #include "FileSystem.h"
 #include "LevelDB.h"
-#include "MemoryDB.h"
 #include "libethcore/Exceptions.h"
 
-namespace dev {
-namespace db {
+namespace dev::db {
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
@@ -132,6 +130,18 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path ) );
+    default:
+        assert( false );
+        return {};
+    }
+}
+
+std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
+    DatabaseKind _kind, fs::path const& _path ) {
+    switch ( _kind ) {
+    case DatabaseKind::LevelDB:
+        return std::unique_ptr< DatabaseFace >( new LevelDB( _path, LevelDB::defaultReadOptions(),
+            LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_reopenPeriodMs ) );
         break;
     default:
         assert( false );
@@ -140,5 +150,6 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
 }
 
 
-}  // namespace db
-}  // namespace dev
+std::atomic< int64_t > DBFactory::s_reopenPeriodMs = -1;
+
+}  // namespace dev::db
