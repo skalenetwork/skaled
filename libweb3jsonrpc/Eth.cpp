@@ -737,7 +737,7 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
         size_t newIndex =
             m_gapCache->gappedIndexFromReal( rcp.blockNumber(), rcp.transactionIndex() );
         rcp = LocalisedTransactionReceipt( rcp, rcp.hash(), rcp.blockHash(), rcp.blockNumber(),
-            newIndex, rcp.from(), rcp.to(), rcp.gasUsed(), rcp.contractAddress() );
+            newIndex, rcp.from(), rcp.to(), rcp.gasUsed(), rcp.contractAddress(), rcp.txType() );
     }
 #endif
 
