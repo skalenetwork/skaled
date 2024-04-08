@@ -26,7 +26,7 @@
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
-#include "shared_mutex"
+#include <shared_mutex>
 #include <secp256k1_sha256.h>
 
 namespace dev::db {

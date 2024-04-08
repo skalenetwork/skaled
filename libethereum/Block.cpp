@@ -798,17 +798,17 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
     std::shared_ptr< AlethStandardTrace > _tracer, uint64_t _transactionIndex ) {
     try {
-    auto onOp = OnOpFunc();
+        auto onOp = OnOpFunc();
 
         if ( _tracer ) {
             onOp = _tracer->functionToExecuteOnEachOperation();
         }
 
 
-    if ( isSealed() )
-        BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
+        if ( isSealed() )
+            BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
-    uncommitToSeal();
+        uncommitToSeal();
 
         STATE_CHECK( _transactionIndex <= m_receipts.size() )
 
@@ -830,7 +830,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
                 // for tracing the entire block is traced therefore, we save transaction receipt
                 // as it is used for execution of the next transaction
                 m_receipts.push_back( resultReceipt.second );
-    return resultReceipt.first;
+                return resultReceipt.first;
             } catch ( std::exception& e ) {
                 throw dev::eth::VMTracingError( "Exception doing trace for transaction index:" +
                                                 std::to_string( _transactionIndex ) + ":" +
@@ -911,7 +911,7 @@ ExecutionResult Block::execute(
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
-        if ( !SkipInvalidTransactionsPatch::isEnabled() ||
+        if ( !SkipInvalidTransactionsPatch::isEnabledWhen( previousInfo().timestamp() ) ||
              resultReceipt.first.excepted != TransactionException::WouldNotBeInBlock ) {
             m_transactions.push_back( _t );
             m_receipts.push_back( resultReceipt.second );

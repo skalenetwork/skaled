@@ -1233,8 +1233,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // value needed for the call to guaranteed pass
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
-                    historicBlock.mutableState().mutableHistoricState().addBalance(
-                        _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+                historicBlock.mutableState().mutableHistoricState().addBalance(
+                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
