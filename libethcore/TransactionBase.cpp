@@ -500,12 +500,18 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
 
     MICROPROFILE_SCOPEI( "TransactionBase", "sha3", MP_KHAKI2 );
 
-    RLPStream s;
-    streamRLP( s, _sig, !isInvalid() && isReplayProtected() && _sig == WithoutSignature );
+    dev::bytes input;
+    if ( !isInvalid() ) {
+        RLPStream s;
+        streamRLP( s, _sig, !isInvalid() && isReplayProtected() && _sig == WithoutSignature );
 
-    dev::bytes input = s.out();
-    if ( m_txType != TransactionType::Legacy )
-        input.insert( input.begin(), m_txType );
+        input = s.out();
+        if ( m_txType != TransactionType::Legacy )
+            input.insert( input.begin(), m_txType );
+    } else {
+        RLP data( m_rawData );
+        input = dev::bytes( data.payload().begin(), data.payload().end() );
+    }
 
     auto ret = dev::sha3( input );
     if ( _sig == WithSignature )
