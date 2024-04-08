@@ -107,248 +107,9 @@ ChainParams ChainParams::loadConfig(
                                       params[c_skaleDisableChainIdCheck].get_bool() :
                                       false;
 
-    /// skale
     if ( obj.count( c_skaleConfig ) ) {
-        auto skaleObj = obj[c_skaleConfig].get_obj();
-
-        auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
-
-        auto nodeName = infoObj.at( "nodeName" ).get_str();
-        auto nodeID = infoObj.at( "nodeID" ).get_uint64();
-        bool syncNode = false;
-        bool archiveMode = false;
-        bool syncFromCatchup = false;
-        std::string ip, ip6, keyShareName, sgxServerUrl;
-        size_t t = 0;
-        uint64_t port = 0, port6 = 0;
-        try {
-            ip = infoObj.at( "bindIP" ).get_str();
-        } catch ( ... ) {
-        }
-        try {
-            port = infoObj.at( "basePort" ).get_int();
-        } catch ( ... ) {
-        }
-        try {
-            ip6 = infoObj.at( "bindIP6" ).get_str();
-        } catch ( ... ) {
-        }
-        try {
-            port6 = infoObj.at( "basePort6" ).get_int();
-        } catch ( ... ) {
-        }
-        try {
-            syncNode = infoObj.at( "syncNode" ).get_bool();
-        } catch ( ... ) {
-        }
-        try {
-            archiveMode = infoObj.at( "archiveMode" ).get_bool();
-        } catch ( ... ) {
-        }
-        try {
-            syncFromCatchup = infoObj.at( "syncFromCatchup" ).get_bool();
-        } catch ( ... ) {
-        }
-
-        try {
-            cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
-        } catch ( ... ) {
-        }
-        if ( cp.rotateAfterBlock_ < 0 )
-            cp.rotateAfterBlock_ = 0;
-
-        std::string ecdsaKeyName;
-        try {
-            ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
-        } catch ( ... ) {
-        }
-
-        std::array< std::string, 4 > BLSPublicKeys;
-        std::array< std::string, 4 > commonBLSPublicKeys;
-
-        try {
-            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
-
-            keyShareName = ima.at( "keyShareName" ).get_str();
-
-            t = ima.at( "t" ).get_int();
-
-            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
-            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
-            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
-            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
-
-            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
-            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
-            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
-            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-        } catch ( ... ) {
-            // all or nothing
-            if ( !keyShareName.empty() )
-                throw;
-        }
-
-        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-            static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
-            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
-
-        auto sChainObj = skaleObj.at( "sChain" ).get_obj();
-        SChain s{};
-        s.nodes.clear();
-
-        s.name = sChainObj.at( "schainName" ).get_str();
-        s.id = sChainObj.at( "schainID" ).get_uint64();
-        s.t = t;
-        if ( sChainObj.count( "schainOwner" ) ) {
-            s.owner = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
-            s.blockAuthor = dev::jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
-        }
-        if ( sChainObj.count( "blockAuthor" ) )
-            s.blockAuthor = dev::jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
-
-        s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
-                                    sChainObj.at( "snapshotIntervalSec" ).get_int() :
-                                    0;
-
-        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
-                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
-                                        3600;
-
-        s.snapshotDownloadInactiveTimeout =
-            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
-                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
-                3600;
-
-        s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
-                                     sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
-                                     0;
-
-        s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
-                                     sChainObj.at( "contractStorageLimit" ).get_int64() :
-                                     0;
-
-        s.dbStorageLimit =
-            sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
-
-
-        if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
-            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
-        }
-
-        if ( sChainObj.count( "freeContractDeployment" ) )
-            s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
-
-        if ( sChainObj.count( "multiTransactionMode" ) )
-            s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
-
-        // extract all "*PatchTimestamp" records
-        for ( const auto& it : sChainObj ) {
-            const string& key = it.first;
-            if ( boost::algorithm::ends_with( key, "PatchTimestamp" ) ) {
-                string patchName = boost::algorithm::erase_last_copy( key, "Timestamp" );
-                patchName[0] = toupper( patchName[0] );
-                SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
-                s._patchTimestamps[static_cast< size_t >( patchEnum )] =
-                    it.second.get_int64();  // time_t is signed
-            }                               // if
-        }                                   // for
-
-        if ( sChainObj.count( "nodeGroups" ) ) {
-            std::vector< NodeGroup > nodeGroups;
-            for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
-                NodeGroup nodeGroup;
-                auto nodeGroupObj = nodeGroupConf.second.get_obj();
-                if ( nodeGroupObj["bls_public_key"].is_null() )
-                    // failed dkg, skip it
-                    continue;
-
-                std::vector< GroupNode > groupNodes;
-                auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
-                for ( const auto& groupNodeConf : groupNodesObj ) {
-                    auto groupNodeConfObj = groupNodeConf.second.get_array();
-                    u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
-                    u256 id = groupNodeConfObj.at( 1 ).get_uint64();
-                    std::string publicKey = groupNodeConfObj.at( 2 ).get_str();
-                    if ( publicKey.empty() ) {
-                        BOOST_THROW_EXCEPTION( std::runtime_error( "Empty public key in config" ) );
-                    }
-                    groupNodes.push_back( { id, sChainIndex, publicKey } );
-                }
-                std::sort( groupNodes.begin(), groupNodes.end(),
-                    []( const GroupNode& lhs, const GroupNode& rhs ) {
-                        return lhs.schainIndex < rhs.schainIndex;
-                    } );
-                nodeGroup.nodes = groupNodes;
-
-                std::array< std::string, 4 > nodeGroupBlsPublicKey;
-                auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
-                nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
-                nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
-                nodeGroupBlsPublicKey[2] = nodeGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
-                nodeGroupBlsPublicKey[3] = nodeGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
-                nodeGroup.blsPublicKey = nodeGroupBlsPublicKey;
-
-                if ( !nodeGroupObj["finish_ts"].is_null() )
-                    nodeGroup.finishTs = nodeGroupObj["finish_ts"].get_uint64();
-                else
-                    nodeGroup.finishTs = uint64_t( -1 );
-                nodeGroups.push_back( nodeGroup );
-            }
-            std::sort( nodeGroups.begin(), nodeGroups.end(),
-                []( const NodeGroup& lhs, const NodeGroup& rhs ) {
-                    return lhs.finishTs < rhs.finishTs;
-                } );
-            s.nodeGroups = nodeGroups;
-        }
-
-        for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
-            auto nodeConfObj = nodeConf.get_obj();
-            sChainNode node{};
-            node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-            node.ip = nodeConfObj.at( "ip" ).get_str();
-            node.port = nodeConfObj.at( "basePort" ).get_uint64();
-            try {
-                node.ip6 = nodeConfObj.at( "ip6" ).get_str();
-            } catch ( ... ) {
-                node.ip6 = "";
-            }
-            try {
-                node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
-            } catch ( ... ) {
-                node.port6 = 0;
-            }
-            node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
-            try {
-                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
-            } catch ( ... ) {
-            }
-            if ( !keyShareName.empty() ) {
-                try {
-                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
-                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
-                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
-                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
-                } catch ( ... ) {
-                    node.blsPublicKey[0] = "";
-                    node.blsPublicKey[1] = "";
-                    node.blsPublicKey[2] = "";
-                    node.blsPublicKey[3] = "";
-                }
-            }
-            s.nodes.push_back( node );
-        }
-        cp.sChain = s;
-
-        cp.vecAdminOrigins.clear();
-        if ( infoObj.count( "adminOrigins" ) ) {
-            for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
-                std::string strOriginWildcardFilter = nodeOrigun.get_str();
-                cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
-            }
-        } else {
-            cp.vecAdminOrigins.push_back( "*" );
-        }
-    }  // if skale
+        processSkaleConfigItems( cp, obj );
+    }
 
     auto setOptionalU256Parameter = [&params]( u256& _destination, string const& _name ) {
         if ( params.count( _name ) )
@@ -404,6 +165,252 @@ ChainParams ChainParams::loadConfig(
         genesisStateStr, cp.accountStartNonce, nullptr, &cp.precompiled, _configPath );
 
     return cp;
+}
+void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject& obj ) {
+        auto skaleObj = obj[c_skaleConfig].get_obj();
+
+        auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
+
+        auto nodeName = infoObj.at( "nodeName" ).get_str();
+        auto nodeID = infoObj.at( "nodeID" ).get_uint64();
+        bool syncNode = false;
+        bool archiveMode = false;
+        bool syncFromCatchup = false;
+        string ip, ip6, keyShareName, sgxServerUrl;
+        size_t t = 0;
+        uint64_t port = 0, port6 = 0;
+        try {
+            ip = infoObj.at( "bindIP" ).get_str();
+        } catch ( ... ) {
+        }
+        try {
+            port = infoObj.at( "basePort" ).get_int();
+        } catch ( ... ) {
+        }
+        try {
+            ip6 = infoObj.at( "bindIP6" ).get_str();
+        } catch ( ... ) {
+        }
+        try {
+            port6 = infoObj.at( "basePort6" ).get_int();
+        } catch ( ... ) {
+        }
+        try {
+            syncNode = infoObj.at( "syncNode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            archiveMode = infoObj.at( "archiveMode" ).get_bool();
+        } catch ( ... ) {
+        }
+        try {
+            syncFromCatchup = infoObj.at( "syncFromCatchup" ).get_bool();
+        } catch ( ... ) {
+        }
+
+        try {
+            cp.rotateAfterBlock_ = infoObj.at( "rotateAfterBlock" ).get_int();
+        } catch ( ... ) {
+        }
+        if ( cp.rotateAfterBlock_ < 0 )
+            cp.rotateAfterBlock_ = 0;
+
+        string ecdsaKeyName;
+        try {
+            ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        } catch ( ... ) {
+        }
+
+        array< string, 4 > BLSPublicKeys;
+        array< string, 4 > commonBLSPublicKeys;
+
+        try {
+            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+
+            keyShareName = ima.at( "keyShareName" ).get_str();
+
+            t = ima.at( "t" ).get_int();
+
+            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+
+            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
+        } catch ( ... ) {
+            // all or nothing
+            if ( !keyShareName.empty() )
+                throw;
+        }
+
+        cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
+            static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName,
+            BLSPublicKeys, commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
+
+        auto sChainObj = skaleObj.at( "sChain" ).get_obj();
+        SChain s{};
+        s.nodes.clear();
+
+        s.name = sChainObj.at( "schainName" ).get_str();
+        s.id = sChainObj.at( "schainID" ).get_uint64();
+        s.t = t;
+        if ( sChainObj.count( "schainOwner" ) ) {
+            s.owner = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+            s.blockAuthor = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
+        }
+        if ( sChainObj.count( "blockAuthor" ) )
+            s.blockAuthor = jsToAddress( sChainObj.at( "blockAuthor" ).get_str() );
+
+        s.snapshotIntervalSec = sChainObj.count( "snapshotIntervalSec" ) ?
+                                    sChainObj.at( "snapshotIntervalSec" ).get_int() :
+                                    0;
+
+        s.snapshotDownloadTimeout = sChainObj.count( "snapshotDownloadTimeout" ) ?
+                                        sChainObj.at( "snapshotDownloadTimeout" ).get_int() :
+                                        3600;
+
+        s.snapshotDownloadInactiveTimeout =
+            sChainObj.count( "snapshotDownloadInactiveTimeout" ) ?
+                sChainObj.at( "snapshotDownloadInactiveTimeout" ).get_int() :
+                3600;
+
+        s.emptyBlockIntervalMs = sChainObj.count( "emptyBlockIntervalMs" ) ?
+                                     sChainObj.at( "emptyBlockIntervalMs" ).get_int() :
+                                     0;
+
+        // negative levelDBReopenIntervalMs means restarts are disabled
+        s.levelDBReopenIntervalMs = sChainObj.count( "levelDBReopenIntervalMs" ) ?
+                                        sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
+                                        c_defaultLevelDBReopenIntervalMs;
+
+        s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
+                                     sChainObj.at( "contractStorageLimit" ).get_int64() :
+                                     0;
+
+        s.dbStorageLimit =
+            sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
+
+
+        if ( sChainObj.count( "maxConsensusStorageBytes" ) ) {
+            s.consensusStorageLimit = sChainObj.at( "maxConsensusStorageBytes" ).get_int64();
+        }
+
+        if ( sChainObj.count( "freeContractDeployment" ) )
+            s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
+
+        if ( sChainObj.count( "multiTransactionMode" ) )
+            s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+        // extract all "*PatchTimestamp" records
+        for ( const auto& it : sChainObj ) {
+            const string& key = it.first;
+            if ( boost::algorithm::ends_with( key, "PatchTimestamp" ) ) {
+                string patchName = boost::algorithm::erase_last_copy( key, "Timestamp" );
+                patchName[0] = toupper( patchName[0] );
+                SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
+                s._patchTimestamps[static_cast< size_t >( patchEnum )] =
+                    it.second.get_int64();  // time_t is signed
+            }                               // if
+        }                                   // for
+
+        if ( sChainObj.count( "nodeGroups" ) ) {
+            vector< NodeGroup > nodeGroups;
+            for ( const auto& nodeGroupConf : sChainObj["nodeGroups"].get_obj() ) {
+                NodeGroup nodeGroup;
+                auto nodeGroupObj = nodeGroupConf.second.get_obj();
+                if ( nodeGroupObj["bls_public_key"].is_null() )
+                    // failed dkg, skip it
+                    continue;
+
+                vector< GroupNode > groupNodes;
+                auto groupNodesObj = nodeGroupObj["nodes"].get_obj();
+                for ( const auto& groupNodeConf : groupNodesObj ) {
+                    auto groupNodeConfObj = groupNodeConf.second.get_array();
+                    u256 sChainIndex = groupNodeConfObj.at( 0 ).get_uint64();
+                    u256 id = groupNodeConfObj.at( 1 ).get_uint64();
+                    string publicKey = groupNodeConfObj.at( 2 ).get_str();
+                    if ( publicKey.empty() ) {
+                        BOOST_THROW_EXCEPTION( runtime_error( "Empty public key in config" ) );
+                    }
+                    groupNodes.push_back( { id, sChainIndex, publicKey } );
+                }
+                sort( groupNodes.begin(), groupNodes.end(),
+                    []( const GroupNode& lhs, const GroupNode& rhs ) {
+                        return lhs.schainIndex < rhs.schainIndex;
+                    } );
+                nodeGroup.nodes = groupNodes;
+
+                array< string, 4 > nodeGroupBlsPublicKey;
+                auto nodeGroupBlsPublicKeyObj = nodeGroupObj["bls_public_key"].get_obj();
+                nodeGroupBlsPublicKey[0] = nodeGroupBlsPublicKeyObj["blsPublicKey0"].get_str();
+                nodeGroupBlsPublicKey[1] = nodeGroupBlsPublicKeyObj["blsPublicKey1"].get_str();
+                nodeGroupBlsPublicKey[2] = nodeGroupBlsPublicKeyObj["blsPublicKey2"].get_str();
+                nodeGroupBlsPublicKey[3] = nodeGroupBlsPublicKeyObj["blsPublicKey3"].get_str();
+                nodeGroup.blsPublicKey = nodeGroupBlsPublicKey;
+
+                if ( !nodeGroupObj["finish_ts"].is_null() )
+                    nodeGroup.finishTs = nodeGroupObj["finish_ts"].get_uint64();
+                else
+                    nodeGroup.finishTs = uint64_t( -1 );
+                nodeGroups.push_back( nodeGroup );
+            }
+            sort(
+                nodeGroups.begin(), nodeGroups.end(), []( const NodeGroup& lhs, const NodeGroup& rhs ) {
+                    return lhs.finishTs < rhs.finishTs;
+                } );
+            s.nodeGroups = nodeGroups;
+        }
+
+        for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+            auto nodeConfObj = nodeConf.get_obj();
+            sChainNode node{};
+            node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+            node.ip = nodeConfObj.at( "ip" ).get_str();
+            node.port = nodeConfObj.at( "basePort" ).get_uint64();
+            try {
+                node.ip6 = nodeConfObj.at( "ip6" ).get_str();
+            } catch ( ... ) {
+                node.ip6 = "";
+            }
+            try {
+                node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+            } catch ( ... ) {
+                node.port6 = 0;
+            }
+            node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
+            try {
+                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            } catch ( ... ) {
+            }
+            if ( !keyShareName.empty() ) {
+                try {
+                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                } catch ( ... ) {
+                    node.blsPublicKey[0] = "";
+                    node.blsPublicKey[1] = "";
+                    node.blsPublicKey[2] = "";
+                    node.blsPublicKey[3] = "";
+                }
+            }
+            s.nodes.push_back( node );
+        }
+        cp.sChain = s;
+
+        cp.vecAdminOrigins.clear();
+        if ( infoObj.count( "adminOrigins" ) ) {
+            for ( auto nodeOrigun : infoObj.at( "adminOrigins" ).get_array() ) {
+                string strOriginWildcardFilter = nodeOrigun.get_str();
+                cp.vecAdminOrigins.push_back( strOriginWildcardFilter );
+            }
+        } else {
+            cp.vecAdminOrigins.push_back( "*" );
+        }
 }
 
 ChainParams ChainParams::loadGenesis( string const& _json ) const {

@@ -328,6 +328,7 @@
       "emptyBlockIntervalMs": 10000,
       "pushZeroPatchTimestamp": 1,
       "multiTransactionMode": true,
+      "levelDBReopenIntervalMs": 1,
       "nodes": [
         { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1231, "schainIndex" : 1, "publicKey":""}
       ]

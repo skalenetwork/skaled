@@ -69,6 +69,9 @@ private:
 };
 
 static constexpr int64_t c_infiniteBlockNumber = std::numeric_limits< int64_t >::max();
+// default value for leveldbReopenIntervalMs is 1 day
+// negative value means reopenings are disabled
+static constexpr int64_t c_defaultLevelDBReopenIntervalMs = 24 * 60 * 60 * 1000;
 
 /// skale
 struct NodeInfo {
@@ -169,6 +172,7 @@ public:
     bool freeContractDeployment = false;
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
+    int64_t levelDBReopenIntervalMs = -1;
     size_t t = 1;
 
     // key is patch name
