@@ -65,7 +65,8 @@ OverlayDB HistoricState::openDB(
 
     try {
         clog( VerbosityTrace, "statedb" ) << "Opening state database";
-        std::unique_ptr< db::DatabaseFace > db = db::DBFactory::create( dbPaths.statePath() );
+        std::unique_ptr< db::DatabaseFace > db =
+            db::DBFactory::createHistoric( db::DatabaseKind::LevelDB, dbPaths.statePath() );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
@@ -599,6 +600,8 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
 #endif
 
     u256 const startGasUsed = _envInfo.gasUsed();
+
+
     bool const statusCode = executeTransaction( e, _t, onOp );
 
 
@@ -620,6 +623,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( globalRoot(), startGasUsed + e.gasUsed(), e.logs() );
+
     return make_pair( res, receipt );
 }
 
