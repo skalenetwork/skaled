@@ -1988,7 +1988,7 @@ int main( int argc, char** argv ) try {
 #else
         // debug interface is enabled on core node if bEnabledAPIs_debug is true
         auto pDebugFace = bEnabledAPIs_debug ?
-                              new rpc::Debug( *g_client, &debugInterface, argv_string ) :
+                              new rpc::Debug( *g_client, &debugInterface, argv_string, true ) :
                               nullptr;
 #endif
 
