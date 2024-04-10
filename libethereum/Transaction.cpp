@@ -210,7 +210,7 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, boo
             scheduleForUse = _cp.scheduleForBlockNumber( _bn );
 
 
-#ifndef HISTORIC_STATE // FIX FOR 2.3.1. Will not be needed in 2.4
+#ifndef HISTORIC_STATE  // FIX FOR 2.3.1. Will not be needed in 2.4
         // never call checkOutExternalGas with non-last block
         if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {
             ctrace << _bn << " != " << CorrectForkInPowPatch::getLastBlockNumber();
