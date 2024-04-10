@@ -95,6 +95,9 @@ public:
     Json::Value setSchainExitTime( const Json::Value& param1 ) noexcept( false );
     Json::Value eth_inspectTransaction( const std::string& param1 ) noexcept( false );
     std::string eth_sendRawTransaction( const std::string& param1 ) noexcept( false );
+    std::string eth_maxPriorityFeePerGas() noexcept( false );
+    Json::Value eth_createAccessList( const Json::Value& param1, const std::string& param2 ) noexcept( false );
+    Json::Value eth_feeHistory( const std::string& param1, const std::string& param2, const Json::Value& param3 ) noexcept( false );
     bool eth_notePassword( const std::string& param1 ) noexcept( false );
     bool db_put( const std::string& param1, const std::string& param2,
         const std::string& param3 ) noexcept( false );

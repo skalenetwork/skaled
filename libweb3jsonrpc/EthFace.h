@@ -217,12 +217,13 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_chainId", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_chainIdI );
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "eth_createAccessList", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, NULL ),
+        this->bindAndAddMethod( jsonrpc::Procedure( "eth_createAccessList",
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",
+                                    jsonrpc::JSON_OBJECT, "param2", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_createAccessListI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_feeHistory", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_ARRAY, "param1", jsonrpc::JSON_OBJECT, NULL ),
+                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
+                                    jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_ARRAY, NULL ),
             &dev::rpc::EthFace::eth_feeHistoryI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_maxPriorityFeePerGas",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
@@ -449,7 +450,7 @@ public:
             BOOST_THROW_EXCEPTION(
                 jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
         response =
-            this->eth_feeHistory( request[0u].asInt64(), request[1u].asString(), request[2u] );
+            this->eth_feeHistory( request[0u].asString(), request[1u].asString(), request[2u] );
     }
     inline virtual void eth_maxPriorityFeePerGasI(
         const Json::Value& request, Json::Value& response ) {
@@ -524,7 +525,7 @@ public:
     virtual Json::Value eth_createAccessList(
         const Json::Value& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_feeHistory(
-        int64_t param1, const std::string& param2, const Json::Value& param3 ) = 0;
+        const std::string& param1, const std::string& param2, const Json::Value& param3 ) = 0;
     virtual std::string eth_maxPriorityFeePerGas() = 0;
 };
 

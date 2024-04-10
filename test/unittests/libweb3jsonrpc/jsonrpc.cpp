@@ -2812,6 +2812,94 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 }
 
+BOOST_AUTO_TEST_CASE( eip2930RpcMethods ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 151
+    ret["params"]["chainID"] = "0x97";
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txRefill;
+    txRefill["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txRefill["from"] = senderAddress;
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 1000000;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    BOOST_REQUIRE( receipt["type"] == "0x0" );
+
+    auto accessList = fixture.rpcClient->eth_createAccessList( txRefill, "latest" );
+    BOOST_REQUIRE( accessList.isMember( "accessList" ) && accessList.isMember( "gasUsed" ) );
+    BOOST_REQUIRE( accessList["accessList"].isArray() && accessList["accessList"].size() == 0 );
+    BOOST_REQUIRE( accessList["gasUsed"].isString() );
+}
+
+BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 151
+    ret["params"]["chainID"] = "0x97";
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txRefill;
+    txRefill["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txRefill["from"] = senderAddress;
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 100000000000000000;
+    for (size_t i = 0; i < 10; ++i) {
+        // mine 10 blocks
+        string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+    }
+
+    BOOST_REQUIRE( fixture.rpcClient->eth_maxPriorityFeePerGas() == "0x0" );
+
+    auto bn = fixture.client->number();
+
+    Json::Value percentiles = Json::Value( Json::arrayValue );
+    percentiles.resize( 2 );
+    percentiles[0] = 20;
+    percentiles[1] = 80;
+
+    size_t blockCnt = 3;
+    auto feeHistory = fixture.rpcClient->eth_feeHistory( toJS( blockCnt ), "latest", percentiles );
+
+    BOOST_REQUIRE( feeHistory["oldestBlock"] == toJS( bn - blockCnt + 1 ) );
+
+    BOOST_REQUIRE( feeHistory.isMember( "baseFeePerGas" ) );
+    BOOST_REQUIRE( feeHistory["baseFeePerGas"].isArray() );
+
+    for (Json::Value::ArrayIndex i = 0; i < blockCnt; ++i) {
+        BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].isString() );
+        BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
+        BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );
+        for ( Json::Value::ArrayIndex j = 0; j < percentiles.size(); ++j ) {
+            BOOST_REQUIRE_EQUAL( feeHistory["reward"][i][j].asString(), toJS( 0 ) );
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
     string etherbase = fixture.rpcClient->eth_coinbase();

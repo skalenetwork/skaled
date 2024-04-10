@@ -916,13 +916,64 @@ Json::Value Eth::eth_createAccessList(
     return result;
 }
 
-Json::Value Eth::eth_feeHistory(
-    int64_t /*param1*/, const std::string& /*param2*/, const Json::Value& /*param3*/ ) {
-    return Json::Value( Json::objectValue );
+Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::string& _newestBlock,
+    const Json::Value& _rewardPercentiles ) {
+    try {
+        if ( !_rewardPercentiles.isArray() )
+            throw std::runtime_error( "Reward percentiles must be a list" );
+
+        for ( auto p : _rewardPercentiles ) {
+            if ( !p.isUInt() || p > 100 ) {
+                throw std::runtime_error( "Percentiles must be positive integers less then 100" );
+            }
+        }
+
+        auto blockCount = jsToU256( _blockCount );
+        auto newestBlock = jsToBlockNumber( _newestBlock );
+        if ( newestBlock == dev::eth::LatestBlock )
+            newestBlock = client()->number();
+
+        auto result = Json::Value( Json::objectValue );
+        dev::u256 oldestBlock;
+        if ( blockCount > newestBlock )
+            oldestBlock = 0;
+        else
+            oldestBlock = dev::u256( newestBlock ) - blockCount + 1;
+        result["oldestBlock"] = toJS( oldestBlock );
+
+        result["baseFeePerGas"] = Json::Value( Json::arrayValue );
+        result["gasUsedRatio"] = Json::Value( Json::arrayValue );
+        result["reward"] = Json::Value( Json::arrayValue );
+        for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
+            auto blockInfo = client()->blockInfo( client()->hashFromNumber( bn ) );
+
+            if ( blockInfo.timestamp() )
+                result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn ) ) );
+            else
+                result["baseFeePerGas"].append( toJS( 0 ) );
+
+            double gasUsedRatio = blockInfo.gasUsed().convert_to< double >() /
+                                  blockInfo.gasLimit().convert_to< double >();
+            Json::Value gasUsedRatioObj = Json::Value( Json::realValue );
+            gasUsedRatioObj = gasUsedRatio;
+            result["gasUsedRatio"].append( gasUsedRatioObj );
+
+            Json::Value reward = Json::Value( Json::arrayValue );
+            reward.resize( _rewardPercentiles.size() );
+            for ( Json::Value::ArrayIndex i = 0; i < reward.size(); ++i ) {
+                reward[i] = toJS( 0 );
+            }
+            result["reward"].append( reward );
+        }
+
+        return result;
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
 }
 
 std::string Eth::eth_maxPriorityFeePerGas() {
-    return "0x1";
+    return "0x0";
 }
 
 bool Eth::eth_submitWork( string const& _nonce, string const&, string const& _mixHash ) {
