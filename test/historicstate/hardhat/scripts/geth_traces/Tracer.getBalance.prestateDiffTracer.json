@@ -1,0 +1,12 @@
+{
+    "post": {
+        "CALL.address": {
+            "nonce": 1
+        }
+    },
+    "pre": {
+        "CALL.address": {
+            "balance": "0x0"
+        }
+    }
+}
