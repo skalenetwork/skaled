@@ -340,6 +340,17 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     initCPUUSage();
 
     doWork( false );
+
+    for ( size_t bn = 0; bn < 3800000; ++bn ) {
+        auto transactions = m_bc.transactions( m_bc.numberHash( bn ) );
+        for ( const auto& txRlp : transactions ) {
+            auto transaction = Transaction( txRlp, CheckTransaction::None, true );
+            if ( transaction.isInvalid() ) {
+                std::cout << "DISASTER: " << bn << ' ' << dev::toHexPrefixed( txRlp ) << '\n';
+                throw std::runtime_error( "Found a transaction with invalid rlp. Exiting." );
+            }
+        }
+    }
 }
 
 ImportResult Client::queueBlock( bytes const& _block, bool _isSafe ) {
