@@ -41,6 +41,7 @@
 
 #include <jsonrpccpp/client/client.h>
 #include <boost/chrono.hpp>
+#include <statsd/StatsdClient.hpp>
 
 #include <atomic>
 #include <map>
@@ -109,7 +110,8 @@ public:
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
         std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
-        const std::string& _gethURL = "", bool _broadcastEnabled = true );
+        const std::string& _gethURL = "", bool _broadcastEnabled = true,
+        std::shared_ptr< Statsd::StatsdClient > _statsd = nullptr);
     virtual ~SkaleHost();
 
     void startWorking();
@@ -222,6 +224,7 @@ private:
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;
 
+
 #ifdef DEBUG_TX_BALANCE
     std::map< dev::h256, int > sent;
     std::set< dev::h256 > arrived;
@@ -229,6 +232,8 @@ private:
     std::atomic_int total_sent, total_arrived;
 
     boost::chrono::high_resolution_clock::time_point latestBlockTime;
+
+    std::shared_ptr< Statsd::StatsdClient > m_statsd;
 
     // reject old transactions that come through broadcast
     // if current ts is much bigger than currentBlock.ts

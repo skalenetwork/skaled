@@ -58,6 +58,7 @@ using namespace std;
 #include <skutils/console_colors.h>
 #include <skutils/task_performance.h>
 #include <skutils/utils.h>
+#include <statsd/StatsdClient.hpp>
 
 using namespace dev;
 using namespace dev::eth;
@@ -252,13 +253,14 @@ void ConsensusExtImpl::terminateApplication() {
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
-    [[maybe_unused]] bool _broadcastEnabled )
+    [[maybe_unused]] bool _broadcastEnabled, std::shared_ptr< Statsd::StatsdClient > _statsd)
     : m_client( _client ),
       m_tq( _client.m_tq ),
       m_instanceMonitor( _instanceMonitor ),
       total_sent( 0 ),
       total_arrived( 0 ),
-      latestBlockTime( boost::chrono::high_resolution_clock::time_point() ) {
+      latestBlockTime( boost::chrono::high_resolution_clock::time_point()),
+      m_statsd( _statsd ) {
     try {
         m_debugHandler = [this]( const std::string& arg ) -> std::string {
             return DebugTracer_handler( arg, this->m_debugTracer );
@@ -324,6 +326,10 @@ void SkaleHost::logState() {
                          << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
                          << cc::debug( " m_tq = " ) << m_tq.status().current
                          << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
+    uint64_t to_s = total_sent;
+    uint64_t to_a = total_sent;
+    m_statsd->gauge("send_to_consensus",  to_s);
+    m_statsd->gauge("got_from_consensus",  to_a);
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
@@ -587,6 +593,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     LOG( m_debugLogger ) << "createBlock ID = #" << _blockID;
     m_debugTracer.tracepoint( "create_block" );
+    // auto metricName =  + ".block";
+    m_statsd->gauge("block", _blockID);
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain

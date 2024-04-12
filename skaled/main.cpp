@@ -102,6 +102,8 @@
 #include <skutils/url.h>
 #include <skutils/utils.h>
 
+#include <statsd/StatsdClient.hpp>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -1782,9 +1784,12 @@ int main( int argc, char** argv ) try {
         DefaultConsensusFactory cons_fact( *g_client );
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
 
+        std::shared_ptr< Statsd::StatsdClient > statsd = std::make_shared< Statsd::StatsdClient > ("localhost", 8125,
+                "skaled." + chainParams.sChain.name);
+
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
             &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,
-            !chainParams.nodeInfo.syncNode );
+            !chainParams.nodeInfo.syncNode, statsd );
         dev::eth::g_skaleHost = skaleHost;
 
         // XXX nested lambdas and strlen hacks..
