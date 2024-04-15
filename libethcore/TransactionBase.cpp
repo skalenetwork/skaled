@@ -74,6 +74,14 @@ std::vector< bytes > validateAccessListRLP( const RLP& data ) {
     return accessList;
 }
 
+dev::RLPs accessListToRLPs( const std::vector< bytes >& _accessList ) {
+    dev::RLPs accessList( _accessList.size() );
+    for ( size_t i = 0; i < _accessList.size(); ++i ) {
+        accessList[i] = RLP( _accessList[i] );
+    }
+    return accessList;
+}
+
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
     : m_nonce( _ts.nonce ),
       m_value( _ts.value ),
@@ -422,11 +430,7 @@ void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _s
         _s << "";
     _s << m_value << m_data;
 
-    dev::RLPs accessList( m_accessList.size() );
-    for ( size_t i = 0; i < m_accessList.size(); ++i ) {
-        accessList[i] = RLP( m_accessList[i] );
-    }
-    _s << accessList;
+    _s << accessListToRLPs( m_accessList );
 
     if ( _sig )
         _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
@@ -441,11 +445,7 @@ void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _s
         _s << "";
     _s << m_value << m_data;
 
-    dev::RLPs accessList( m_accessList.size() );
-    for ( size_t i = 0; i < m_accessList.size(); ++i ) {
-        accessList[i] = RLP( m_accessList[i] );
-    }
-    _s << accessList;
+    _s << accessListToRLPs( m_accessList );
 
     if ( _sig )
         _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
