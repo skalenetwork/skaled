@@ -202,11 +202,11 @@ TransactionBase TransactionBase::makeType1Transaction(
         if ( _checkSig == CheckTransaction::Everything )
             m_sender = sender();
 
-        m_txType = TransactionType::Type1;
-
         if ( rlp.itemCount() > 11 )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
+
+        m_txType = TransactionType::Type1;
 
         TransactionBase t( *this );
         return t;
@@ -271,11 +271,11 @@ TransactionBase TransactionBase::makeType2Transaction(
         if ( _checkSig == CheckTransaction::Everything )
             m_sender = sender();
 
-        m_txType = TransactionType::Type2;
-
         if ( rlp.itemCount() > 12 )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
+
+        m_txType = TransactionType::Type2;
 
         TransactionBase t( *this );
         return t;

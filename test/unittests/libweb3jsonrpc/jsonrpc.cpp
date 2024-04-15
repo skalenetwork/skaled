@@ -2642,6 +2642,10 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     // send 1 WEI from 0xc868AF52a6549c773082A334E5AE232e0Ea3B513 to 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b
     // encoded type 1 txn
     txHash = fixture.rpcClient->eth_sendRawTransaction( "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c001a01ebdc546c8b85511b7ba831f47c4981069d7af972d10b7dce2c57225cb5df6a7a055ae1e84fea41d37589eb740a0a93017a5cd0e9f10ee50f165bf4b1b4c78ddae" );
+    auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
+    BOOST_REQUIRE( pendingTransactions.isArray() && pendingTransactions.size() == 1);
+    BOOST_REQUIRE( pendingTransactions[0]["type"] == "0x1" );
+    BOOST_REQUIRE( pendingTransactions[0].isMember( "yParity" ) && pendingTransactions[0].isMember( "accessList" ) );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     // compare with txn hash from geth
@@ -2693,6 +2697,10 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     // now the same txn with accessList and increased nonce
     // [ { 'address': HexBytes( "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae" ), 'storageKeys': ( "0x0000000000000000000000000000000000000000000000000000000000000003", "0x0000000000000000000000000000000000000000000000000000000000000007" ) } ]
     txHash = fixture.rpcClient->eth_sendRawTransaction( "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b03eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c07b6ff742311b04dab760bb3bc206054332879" );
+    pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
+    BOOST_REQUIRE( pendingTransactions.isArray() && pendingTransactions.size() == 1);
+    BOOST_REQUIRE( pendingTransactions[0]["type"] == "0x1" );
+    BOOST_REQUIRE( pendingTransactions[0].isMember( "yParity" ) && pendingTransactions[0].isMember( "accessList" ) );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     // compare with txn hash from geth
@@ -2759,12 +2767,18 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251", "latest" ) == "0x16345785d8a0000" );
 
     // send 1 WEI from 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251 to 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b
-    // encoded type 1 txn
+    // encoded type 2 txn
     txHash = fixture.rpcClient->eth_sendRawTransaction( "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554ba3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
+    auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
+    BOOST_REQUIRE( pendingTransactions.isArray() && pendingTransactions.size() == 1);
+    BOOST_REQUIRE( pendingTransactions[0]["type"] == "0x2" );
+    BOOST_REQUIRE( pendingTransactions[0].isMember( "yParity" ) && pendingTransactions[0].isMember( "accessList" ) );
+    BOOST_REQUIRE( pendingTransactions[0].isMember( "maxFeePerGas" ) && pendingTransactions[0].isMember( "maxPriorityFeePerGas" ) );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     // compare with txn hash from geth
     BOOST_REQUIRE( txHash == "0x7bd586e93e3012577de4ba33e3b887baf520cbb92c5dd10996b262f9c5c8f747" );
+    std::cout << dev::toHexPrefixed( fixture.client->transactions( 3 )[0].rlp() ) << '\n';
     BOOST_REQUIRE( dev::toHexPrefixed( fixture.client->transactions( 3 )[0].rlp() ) == "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554ba3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );

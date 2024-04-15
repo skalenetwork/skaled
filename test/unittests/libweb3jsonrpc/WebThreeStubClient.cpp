@@ -810,6 +810,16 @@ bool WebThreeStubClient::eth_notePassword( const std::string& param1 ) {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+Json::Value WebThreeStubClient::eth_pendingTransactions() {
+    Json::Value p;
+    Json::Value result = this->CallMethod( "eth_pendingTransactions", p );
+    if ( result.isArray() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
 std::string WebThreeStubClient::eth_maxPriorityFeePerGas() {
     Json::Value p;
     Json::Value result = this->CallMethod( "eth_maxPriorityFeePerGas", p );

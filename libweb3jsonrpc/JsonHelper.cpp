@@ -348,6 +348,25 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
         res["v"] = toJS( _t.signature().v );
+        res["type"] = toJS( int( _t.txType() ) );
+        if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["yParity"] = res["v"].asString();
+            res["accessList"] = Json::Value( Json::arrayValue );
+            for ( const auto& d : _t.accessList() ) {
+                auto list = d.toList();
+                Json::Value accessList;
+                accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
+                accessList["storageKeys"] = Json::Value( Json::arrayValue );
+                for ( const auto& k : list[1].toList() ) {
+                    accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
+                }
+                res["accessList"].append( accessList );
+            }
+            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+                res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+            }
+        }
     }
 
     res["hash"] = toJS( _t.sha3( WithSignature ) );
