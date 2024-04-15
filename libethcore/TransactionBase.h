@@ -106,10 +106,6 @@ public:
         bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
 
-    /// Constructs a transaction from the given RLP and transaction type.
-    TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        TransactionType type );
-
     TransactionBase( TransactionBase const& ) = default;
 
     /// Checks equality of transactions.
@@ -313,12 +309,13 @@ protected:
 
 private:
     static TransactionType getTransactionType( bytesConstRef _rlp );
-    TransactionBase makeLegacyTransaction(
+    /// Constructs a transaction from the given RLP and transaction type.
+    void fillFromRlpByType( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
+        TransactionType type );
+    void fillFromRlpLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    TransactionBase makeType1Transaction(
-        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    TransactionBase makeType2Transaction(
-        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromRlpType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromRlpType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
