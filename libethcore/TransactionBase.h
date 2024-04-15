@@ -260,7 +260,7 @@ public:
 
     TransactionType txType() const { return m_txType; }
 
-    RLPs accessList() const { return m_accessList; }
+    std::vector< bytes > accessList() const { return m_accessList; }
 
     u256 maxPriorityFeePerGas() const { return m_maxPriorityFeePerGas; }
 
@@ -302,8 +302,9 @@ protected:
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
     ///< creation transaction.
     bytes m_rawData;
-    RLPs m_accessList;  ///< The access list. see more https://eips.ethereum.org/EIPS/eip-2930. Not
-                        ///< valid for legacy txns
+    std::vector< bytes > m_accessList;  ///< The access list. see more
+                                        ///< https://eips.ethereum.org/EIPS/eip-2930. Not valid for
+                                        ///< legacy txns
     u256 m_maxPriorityFeePerGas;  ///< The maximum priority fee per gas. Only valid for type2 txns
     u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
 
