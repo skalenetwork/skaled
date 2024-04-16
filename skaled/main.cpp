@@ -1746,6 +1746,9 @@ int main( int argc, char** argv ) try {
     auto instanceMonitor = make_shared< InstanceMonitor >( rotationFlagDirPath, statusAndControl );
     SkaleDebugInterface debugInterface;
 
+    std::shared_ptr< Statsd::StatsdClient > statsd = std::make_shared< Statsd::StatsdClient > ("localhost", 8125,
+        "skaled." + chainParams.sChain.name);
+
     if ( getDataDir().size() )
         Defaults::setDBPath( getDataDir() );
     if ( nodeMode == NodeMode::Full && caps.count( "eth" ) ) {
@@ -1757,13 +1760,13 @@ int main( int argc, char** argv ) try {
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
                 TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
-                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes }, statsd ) );
         } else if ( chainParams.sealEngineName == NoProof::name() ) {
             g_client.reset( new eth::Client( chainParams, ( int ) chainParams.networkID,
                 shared_ptr< GasPricer >(), snapshotManager, instanceMonitor, getDataDir(),
                 withExisting,
                 TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
-                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
+                    c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes }, statsd ) );
         } else
             BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
@@ -1783,9 +1786,6 @@ int main( int argc, char** argv ) try {
 
         DefaultConsensusFactory cons_fact( *g_client );
         setenv( "DATA_DIR", getDataDir().c_str(), 0 );
-
-        std::shared_ptr< Statsd::StatsdClient > statsd = std::make_shared< Statsd::StatsdClient > ("localhost", 8125,
-                "skaled." + chainParams.sChain.name);
 
         std::shared_ptr< SkaleHost > skaleHost = std::make_shared< SkaleHost >( *g_client,
             &cons_fact, instanceMonitor, skutils::json_config_file_accessor::g_strImaMainNetURL,

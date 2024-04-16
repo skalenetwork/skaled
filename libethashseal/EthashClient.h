@@ -44,7 +44,8 @@ public:
         boost::filesystem::path const& _dbPath = {},
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{
-            1024, 1024, 12322916, 24645833 } );
+            1024, 1024, 12322916, 24645833 },
+        std::shared_ptr< Statsd::StatsdClient > _statsd = nullptr);
     ~EthashClient();
 
     Ethash* ethash() const;

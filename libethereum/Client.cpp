@@ -130,7 +130,8 @@ Client::Client( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _l )
+    WithExisting _forceAction, TransactionQueue::Limits const& _l,
+    std::shared_ptr< Statsd::StatsdClient > _statsd)
     : Worker( "Client", 0 ),
       m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
@@ -141,7 +142,8 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
-      m_dbPath( _dbPath ) {
+      m_dbPath( _dbPath ),
+      m_statsd( _statsd ) {
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -878,6 +880,8 @@ void Client::rejigSealing() {
                 sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
                     LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
                                     << cc::num10( BlockHeader( _header, HeaderData ).number() );
+                    m_statsd->gauge("block_sealed", BlockHeader( _header, HeaderData ).number());
+                    m_statsd->increment("sealed_count");
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else

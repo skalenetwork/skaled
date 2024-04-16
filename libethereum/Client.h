@@ -44,6 +44,7 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/SealEngine.h>
 #include <libskale/State.h>
+#include <statsd/StatsdClient.hpp>
 
 #include "Block.h"
 #include "BlockChain.h"
@@ -88,7 +89,7 @@ public:
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{
-            1024, 1024, 12322916, 24645833 } );
+            1024, 1024, 12322916, 24645833 }, std::shared_ptr< Statsd::StatsdClient > = nullptr );
     /// Destructor.
     virtual ~Client();
 
@@ -550,6 +551,7 @@ protected:
     const static dev::h256 empty_str_hash;
     std::shared_ptr< InstanceMonitor > m_instanceMonitor;
     fs::path m_dbPath;
+    std::shared_ptr< Statsd::StatsdClient > m_statsd;
 
 private:
     void initHistoricGroupIndex();

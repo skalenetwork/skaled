@@ -47,9 +47,9 @@ EthashClient::EthashClient( ChainParams const& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
-    WithExisting _forceAction, TransactionQueue::Limits const& _limits )
+    WithExisting _forceAction, TransactionQueue::Limits const& _limits, std::shared_ptr< Statsd::StatsdClient > statsd )
     : Client( _params, _networkID, _gpForAdoption, _snapshotManager, _instanceMonitor, _dbPath,
-          _forceAction, _limits ) {
+          _forceAction, _limits, statsd ) {
     // will throw if we're not an Ethash seal engine.
     asEthashClient( *this );
 }

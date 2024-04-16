@@ -330,6 +330,9 @@ void SkaleHost::logState() {
     uint64_t to_a = total_sent;
     m_statsd->gauge("send_to_consensus",  to_s);
     m_statsd->gauge("got_from_consensus",  to_a);
+    m_statsd->gauge("m_transaction_cache", m_m_transaction_cache.size());
+    m_statsd->gauge("m_bcast_counter", m_bcast_counter);
+
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
