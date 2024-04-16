@@ -391,9 +391,7 @@ Json::Value Eth::eth_signTransaction( Json::Value const& _json ) {
         ts = client()->populateTransactionWithDefaults( ts );
         pair< bool, Secret > ar = m_ethAccounts.authenticate( ts );
         Transaction t( ts, ar.second );
-        RLPStream s;
-        t.streamRLP( s );
-        return toJson( t, s.out() );
+        return toJson( t, t.rlp() );
     } catch ( Exception const& ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }

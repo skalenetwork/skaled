@@ -147,12 +147,6 @@ public:
     /// @returns true if transaction is contract-creation.
     bool isCreation() const { return m_type == ContractCreation; }
 
-    /// Serialises this transaction to an RLPStream.
-    /// @throws TransactionIsUnsigned if including signature was requested but it was not
-    /// initialized
-    void streamRLP(
-        RLPStream& _s, IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const;
-
     /// @returns the RLP serialisation of this transaction.
     bytes rlp( IncludeSignature _sig = WithSignature ) const {
         RLPStream s;
@@ -308,7 +302,14 @@ protected:
     Counter< TransactionBase > c;
 
 private:
+    /// Serialises this transaction to an RLPStream.
+    /// @throws TransactionIsUnsigned if including signature was requested but it was not
+    /// initialized
+    void streamRLP(
+        RLPStream& _s, IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const;
+
     static TransactionType getTransactionType( bytesConstRef _rlp );
+
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromRlpByType( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
         TransactionType type );
