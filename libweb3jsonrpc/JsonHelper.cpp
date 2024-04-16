@@ -110,7 +110,7 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
             res["yParity"] = res["v"].asString();
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
-                auto list = d.toList();
+                auto list = RLP( d );
                 Json::Value accessList;
                 accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
                 accessList["storageKeys"] = Json::Value( Json::arrayValue );
@@ -353,7 +353,7 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
             res["yParity"] = res["v"].asString();
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
-                auto list = d.toList();
+                auto list = RLP( d );
                 Json::Value accessList;
                 accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
                 accessList["storageKeys"] = Json::Value( Json::arrayValue );
@@ -405,7 +405,7 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
             res["yParity"] = res["v"].asString();
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
-                auto list = d.toList();
+                auto list = RLP( d );
                 Json::Value accessList;
                 accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
                 accessList["storageKeys"] = Json::Value( Json::arrayValue );

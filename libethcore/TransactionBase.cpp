@@ -36,15 +36,16 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-RLPs validateAccessListRLP( const RLP& data ) {
+std::vector< bytes > validateAccessListRLP( const RLP& data ) {
     if ( !data.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                << errinfo_comment( "transaction accessList RLP must be a list" ) );
     auto rlpList = data.toList();
     if ( rlpList.empty() ) {
         // empty accessList, ignore it
-        return rlpList;
+        return {};
     }
+
 
     for ( const auto& d : rlpList ) {
         if ( !d.isList() )
@@ -65,7 +66,20 @@ RLPs validateAccessListRLP( const RLP& data ) {
                         "transaction storageKeys RLP must be a list of byte array" ) );
     }
 
-    return rlpList;
+    std::vector< bytes > accessList( rlpList.size() );
+    for ( size_t i = 0; i < rlpList.size(); ++i ) {
+        accessList[i] = rlpList.at( i ).data().toBytes();
+    }
+
+    return accessList;
+}
+
+dev::RLPs accessListToRLPs( const std::vector< bytes >& _accessList ) {
+    dev::RLPs accessList( _accessList.size() );
+    for ( size_t i = 0; i < _accessList.size(); ++i ) {
+        accessList[i] = RLP( _accessList[i] );
+    }
+    return accessList;
 }
 
 TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& _s )
@@ -401,7 +415,7 @@ void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _s
         _s << "";
     _s << m_value << m_data;
 
-    _s << m_accessList;
+    _s << accessListToRLPs( m_accessList );
 
     if ( _sig )
         _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
@@ -416,7 +430,7 @@ void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _s
         _s << "";
     _s << m_value << m_data;
 
-    _s << m_accessList;
+    _s << accessListToRLPs( m_accessList );
 
     if ( _sig )
         _s << ( u256 ) m_vrs->v << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
