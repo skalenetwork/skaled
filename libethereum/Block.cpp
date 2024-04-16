@@ -975,7 +975,6 @@ void Block::commitToSeal(
 
         dev::bytes txOutput = m_transactions[i].rlp();
         if ( m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
-            txOutput.insert( txOutput.begin(), m_transactions[i].txType() );
             RLPStream s;
             s.append( txOutput );
             txOutput = s.out();
