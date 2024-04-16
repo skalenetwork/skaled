@@ -117,11 +117,13 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         int64_t upperBound = _maxGas;
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
-        int64_t lowerBound = CorrectForkInPowPatch::isEnabledInWorkingBlock() ?
-                                 Transaction::baseGasRequired( !_dest, &_data,
-                                     bc().sealEngine()->chainParams().makeEvmSchedule(
-                                         bc().info().timestamp(), bc().number() ) ) :
-                                 Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
+        int64_t lowerBound;
+        if ( CorrectForkInPowPatch::isEnabledInWorkingBlock() )
+            lowerBound = Transaction::baseGasRequired( !_dest, &_data,
+                bc().sealEngine()->chainParams().makeEvmSchedule(
+                    bc().info().timestamp(), bc().number() ) );
+        else
+            lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
         Block latest = latestBlock();
         Block pending = preSeal();
