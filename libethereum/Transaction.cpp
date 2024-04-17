@@ -28,8 +28,8 @@
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libethereum/SchainPatch.h>
 #include <libevm/VMFace.h>
-#include <libskale/CorrectForkInPowPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -193,7 +193,8 @@ u256 Transaction::gasPrice() const {
     }
 }
 
-void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, bool _force ) {
+void Transaction::checkOutExternalGas( const ChainParams& _cp, time_t _committedBlockTimestamp,
+    uint64_t _committedBlockNumber, bool _force ) {
     u256 const& difficulty = _cp.externalGasDifficulty;
     assert( difficulty > 0 );
     if ( ( _force || !m_externalGasIsChecked ) && !isInvalid() ) {
@@ -203,18 +204,12 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, boo
         }
         u256 externalGas = ~u256( 0 ) / u256( hash ) / difficulty;
         if ( externalGas > 0 )
-            ctrace << "Mined gas: " << externalGas << endl;
+            ctrace << "Mined gas: " << externalGas;
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
-        if ( CorrectForkInPowPatch::isEnabled() )
-            scheduleForUse = _cp.scheduleForBlockNumber( _bn );
-
-        // never call checkOutExternalGas with non-last block
-        if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {
-            ctrace << _bn << " != " << CorrectForkInPowPatch::getLastBlockNumber();
-            BOOST_THROW_EXCEPTION( std::runtime_error(
-                "Internal error: checkOutExternalGas() has invalid block number" ) );
-        }
+        if ( CorrectForkInPowPatch::isEnabledWhen( _committedBlockTimestamp ) )
+            scheduleForUse = _cp.makeEvmSchedule(
+                _committedBlockTimestamp, _committedBlockNumber );  // BUG should be +1
 
         if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;

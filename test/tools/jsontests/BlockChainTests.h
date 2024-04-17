@@ -77,8 +77,8 @@ void checkJsonSectionForInvalidBlock( mObject& _blObj );
 void checkExpectedException( mObject& _blObj, Exception const& _e );
 void checkBlocks(
     TestBlock const& _blockFromFields, TestBlock const& _blockFromRlp, string const& _testname );
-bigint calculateMiningReward( u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
-    SealEngineFace const& _sealEngine );
+bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
+    ChainOperationParams const& _cp );
 json_spirit::mObject fillBCTest( json_spirit::mObject const& _input );
 void testBCTest( json_spirit::mObject const& _o );
 

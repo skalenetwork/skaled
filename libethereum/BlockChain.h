@@ -453,6 +453,10 @@ public:
         return 0;
     }
 
+    // simple thing to compare _bn-1's timestamp with ts
+    // maybe need cahing for faster operation
+    bool isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _bn ) const;
+
 private:
     static h256 chunkId( unsigned _level, unsigned _index ) {
         return h256( _index * 0xff + _level );

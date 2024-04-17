@@ -2,11 +2,21 @@
 
 using namespace dev::eth;
 
-time_t SkipInvalidTransactionsPatch::activationTimestamp;
-time_t SkipInvalidTransactionsPatch::lastBlockTimestamp;
-
-bool SkipInvalidTransactionsPatch::isEnabled() {
-    if ( activationTimestamp == 0 )
+bool SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+    dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc ) {
+    if ( _bn == 0 )
         return false;
-    return lastBlockTimestamp >= activationTimestamp;
+
+    time_t activationTimestamp = _bc.chainParams().getPatchTimestamp( getEnum() );
+
+    if ( activationTimestamp == 0 )
+        return true;
+
+    if ( _bn == dev::eth::PendingBlock )
+        return !isEnabledInWorkingBlock();
+
+    if ( _bn == dev::eth::LatestBlock )
+        _bn = _bc.number();
+
+    return !isEnabledInBlock( _bc, _bn );
 }

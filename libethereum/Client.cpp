@@ -52,20 +52,11 @@
 #include <libhistoric/TraceOptions.h>
 #endif
 
-
-#include <libskale/ContractStorageLimitPatch.h>
-#include <libskale/ContractStorageZeroValuePatch.h>
-#include <libskale/CorrectForkInPowPatch.h>
-#include <libskale/POWCheckPatch.h>
-#include <libskale/PrecompiledConfigPatch.h>
-#include <libskale/PushZeroPatch.h>
-#include <libskale/RevertableFSPatch.h>
-#include <libskale/SkipInvalidTransactionsPatch.h>
-#include <libskale/State.h>
-#include <libskale/StorageDestructionPatch.h>
+#include <libethereum/SchainPatch.h>
 #include <libskale/TotalStorageUsedPatch.h>
+
+#include <libskale/State.h>
 #include <libskale/UnsafeRegion.h>
-#include <libskale/VerifyDaSigsPatch.h>
 #include <skutils/console_colors.h>
 #include <json.hpp>
 
@@ -163,21 +154,6 @@ Client::Client( ChainParams const& _params, int _networkID,
     };
 
     init( _forceAction, _networkID );
-
-    // Set timestamps for patches
-    TotalStorageUsedPatch::g_client = this;
-    ContractStorageLimitPatch::setTimestamp( chainParams().sChain.contractStoragePatchTimestamp );
-    ContractStorageZeroValuePatch::setTimestamp(
-        chainParams().sChain.contractStorageZeroValuePatchTimestamp );
-    VerifyDaSigsPatch::setTimestamp( chainParams().sChain.verifyDaSigsPatchTimestamp );
-    RevertableFSPatch::setTimestamp( chainParams().sChain.revertableFSPatchTimestamp );
-    StorageDestructionPatch::setTimestamp( chainParams().sChain.storageDestructionPatchTimestamp );
-    POWCheckPatch::setTimestamp( chainParams().sChain.powCheckPatchTimestamp );
-    PushZeroPatch::setTimestamp( chainParams().sChain.pushZeroPatchTimestamp );
-    SkipInvalidTransactionsPatch::setTimestamp(
-        this->chainParams().sChain.skipInvalidTransactionsPatchTimestamp );
-    PrecompiledConfigPatch::setTimestamp( chainParams().sChain.precompiledConfigPatchTimestamp );
-    CorrectForkInPowPatch::setTimestamp( chainParams().sChain.correctForkInPowPatchTimestamp );
 }
 
 
@@ -337,12 +313,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         m_snapshotAgentInited = true;
     }
 
+    SchainPatch::init( chainParams() );
+    SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
+    TotalStorageUsedPatch::init( this );
     // HACK Needed to set env var for consensus
     AmsterdamFixPatch::isEnabled( *this );
-
-    // needed for checkOutExternalGas
-    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
 
     initCPUUSage();
 
@@ -613,9 +588,7 @@ size_t Client::importTransactionsAsBlock(
     sealUnconditionally( false );
     importWorkingBlock();
 
-    // this needs to be updated as soon as possible, as it's used in new transactions validation
-    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
+    SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerDetail ) << "Total unsafe time so far = "
@@ -666,7 +639,7 @@ size_t Client::syncTransactions(
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
-        cnote << "m_working.isSealed. sleeping" << endl;
+        cnote << "m_working.isSealed. sleeping";
         usleep( 1000 );
     }
 
@@ -676,18 +649,6 @@ size_t Client::syncTransactions(
 
     TransactionReceipts newPendingReceipts;
     unsigned goodReceipts;
-
-    ContractStorageLimitPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    ContractStorageZeroValuePatch::lastBlockTimestamp = blockChain().info().timestamp();
-    RevertableFSPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    StorageDestructionPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    POWCheckPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    PushZeroPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    SkipInvalidTransactionsPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    PrecompiledConfigPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockTimestamp = blockChain().info().timestamp();
-    CorrectForkInPowPatch::lastBlockNumber = blockChain().number();
-
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
@@ -1128,19 +1089,6 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 }
 #endif
 
-Block Client::latestBlock() const {
-    // TODO Why it returns not-filled block??! (see Block ctor)
-    try {
-        DEV_GUARDED( m_blockImportMutex ) { return Block( bc(), bc().currentHash(), m_state ); }
-        assert( false );
-        return Block( bc() );
-    } catch ( Exception& ex ) {
-        ex << errinfo_block( bc().block( bc().currentHash() ) );
-        onBadBlock( ex );
-        return Block( bc() );
-    }
-}
-
 void Client::flushTransactions() {
     doWork();
 }
@@ -1218,14 +1166,15 @@ h256 Client::importTransaction( Transaction const& _t ) {
         state = this->state().createStateReadOnlyCopy();
         gasBidPrice = this->gasBidPrice();
 
-        // We need to check external gas under mutex to be sure about current block bumber
+        // We need to check external gas under mutex to be sure about current block number
         // correctness
-        const_cast< Transaction& >( _t ).checkOutExternalGas( chainParams(), number() );
+        const_cast< Transaction& >( _t ).checkOutExternalGas(
+            chainParams(), bc().info().timestamp(), number(), false );
     }
 
-    Executive::verifyTransaction( _t,
+    Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        *bc().sealEngine(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
+        chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
     ImportResult res;
     if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
@@ -1295,7 +1244,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         }
 #endif
 
-        Block temp = latestBlock();
+        Block temp = preSeal();
 
         // TODO there can be race conditions between prev and next line!
         State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
@@ -1396,7 +1345,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
             Transaction tx = transactions.at( k );
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
-            tx.checkOutExternalGas( chainParams(), _blockNumber );
+            tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number(), false );
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =

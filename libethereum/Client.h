@@ -142,6 +142,10 @@ public:
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
 
+    using ClientBase::blockDetails;
+    using ClientBase::blockInfo;  // for another overload
+    using ClientBase::uncleHashes;
+
     /// Retrieve pending transactions
     Transactions pending() const override;
 
@@ -263,8 +267,6 @@ public:
 
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
-
-    Block latestBlock() const;
 
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {

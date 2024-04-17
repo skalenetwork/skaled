@@ -28,6 +28,7 @@
 
 #include <libdevcore/Common.h>
 #include <libethereum/Precompiled.h>
+#include <libethereum/SchainPatchEnum.h>
 
 #include "libethcore/Common.h"
 #include "libethcore/EVMSchedule.h"
@@ -173,16 +174,12 @@ public:
     int emptyBlockIntervalMs = -1;
     int64_t levelDBReopenIntervalMs = -1;
     size_t t = 1;
-    time_t revertableFSPatchTimestamp = 0;
-    time_t contractStoragePatchTimestamp = 0;
-    time_t contractStorageZeroValuePatchTimestamp = 0;
-    time_t verifyDaSigsPatchTimestamp = 0;
-    time_t storageDestructionPatchTimestamp = 0;
-    time_t powCheckPatchTimestamp = 0;
-    time_t precompiledConfigPatchTimestamp = 0;
-    time_t pushZeroPatchTimestamp = 0;
-    time_t skipInvalidTransactionsPatchTimestamp = 0;
-    time_t correctForkInPowPatchTimestamp = 0;
+
+    // key is patch name
+    // public - for tests, don't access it directly
+    std::vector< time_t > _patchTimestamps =
+        std::vector< time_t >( static_cast< int >( SchainPatchEnum::PatchesCount ) );
+    time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 
     SChain() {
         name = "TestChain";
@@ -210,8 +207,10 @@ private:
     u256 m_blockReward;
 
 public:
-    EVMSchedule const& scheduleForBlockNumber( u256 const& _blockNumber ) const;
+    EVMSchedule const makeEvmSchedule(
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     u256 blockReward( EVMSchedule const& _schedule ) const;
+    u256 blockReward( time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     void setBlockReward( u256 const& _newBlockReward );
     u256 maximumExtraDataSize = 1024;
     u256 accountStartNonce = 0;
@@ -257,6 +256,24 @@ public:
     u256 externalGasDifficulty = ~u256( 0 );
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
+
+    time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
+
+    bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
+        return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();
+    }
+    bigint costOfPrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
+        return precompiled.at( _a ).cost( _in, *this, _blockNumber );
+    }
+    std::pair< bool, bytes > executePrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& ) const {
+        return precompiled.at( _a ).execute( _in );
+    }
+    bool precompiledExecutionAllowedFrom(
+        Address const& _a, Address const& _from, bool _readOnly ) const {
+        return precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
+    }
 };
 
 }  // namespace eth

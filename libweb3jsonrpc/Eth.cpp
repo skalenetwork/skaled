@@ -110,29 +110,9 @@ void GappedTransactionIndexCache::ensureCached( BlockNumber _bn,
     }  // for
 }
 
-// returns true if block N can contain invalid transactions
-// returns false if this block was created with SkipInvalidTransactionsPatch and they were skipped
-bool hasPotentialInvalidTransactionsInBlock( BlockNumber _bn, const Interface& _client ) {
-    if ( _bn == 0 )
-        return false;
-
-    if ( SkipInvalidTransactionsPatch::getActivationTimestamp() == 0 )
-        return true;
-
-    if ( _bn == PendingBlock )
-        return !SkipInvalidTransactionsPatch::isEnabled();
-
-    if ( _bn == LatestBlock )
-        _bn = _client.number();
-
-    time_t prev_ts = _client.blockInfo( _bn - 1 ).timestamp();
-
-    return prev_ts < SkipInvalidTransactionsPatch::getActivationTimestamp();
-}
-
 #endif
 
-Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
+Eth::Eth( const std::string& configPath, eth::Client& _eth, eth::AccountHolder& _ethAccounts )
     : skutils::json_config_file_accessor( configPath ),
       m_eth( _eth ),
       m_ethAccounts( _ethAccounts ),
@@ -294,7 +274,8 @@ Json::Value Eth::eth_getBlockTransactionCountByHash( string const& _blockHash ) 
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = client()->numberFromHash( blockHash );
-        if ( !hasPotentialInvalidTransactionsInBlock( bn, *client() ) )
+        if ( !SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+                 bn, client()->blockChain() ) )
 #endif
             return toJS( client()->transactionCount( blockHash ) );
 #ifdef HISTORIC_STATE
@@ -313,7 +294,8 @@ Json::Value Eth::eth_getBlockTransactionCountByNumber( string const& _blockNumbe
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = jsToBlockNumber( _blockNumber );
-        if ( !hasPotentialInvalidTransactionsInBlock( bn, *client() ) )
+        if ( !SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+                 bn, client()->blockChain() ) )
 #endif
             return toJS( client()->transactionCount( jsToBlockNumber( _blockNumber ) ) );
 #ifdef HISTORIC_STATE
@@ -561,7 +543,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
 
 #ifdef HISTORIC_STATE
             BlockNumber bn = client()->numberFromHash( h );
-            if ( hasPotentialInvalidTransactionsInBlock( bn, *client() ) ) {
+            if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+                     bn, client()->blockChain() ) ) {
                 // remove invalid transactions
                 size_t index = 0;
                 Transactions::iterator newEnd = std::remove_if( transactions.begin(),
@@ -578,7 +561,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
 
 #ifdef HISTORIC_STATE
             BlockNumber bn = client()->numberFromHash( h );
-            if ( hasPotentialInvalidTransactionsInBlock( bn, *client() ) ) {
+            if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+                     bn, client()->blockChain() ) ) {
                 // remove invalid transactions
                 size_t index = 0;
                 h256s::iterator newEnd = std::remove_if( transactions.begin(), transactions.end(),
@@ -649,7 +633,8 @@ Json::Value Eth::eth_getTransactionByBlockHashAndIndex(
 
 #ifdef HISTORIC_STATE
         BlockNumber bn = client()->numberFromHash( bh );
-        if ( hasPotentialInvalidTransactionsInBlock( bn, *client() ) )
+        if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+                 bn, client()->blockChain() ) )
             try {
                 ti = m_gapCache->realIndexFromGapped( bn, ti );
             } catch ( const out_of_range& ) {
@@ -673,7 +658,8 @@ Json::Value Eth::eth_getTransactionByBlockNumberAndIndex(
         unsigned int ti = static_cast< unsigned int >( jsToInt( _transactionIndex ) );
 
 #ifdef HISTORIC_STATE
-        if ( hasPotentialInvalidTransactionsInBlock( bn, *client() ) )
+        if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+                 bn, client()->blockChain() ) )
             try {
                 ti = m_gapCache->realIndexFromGapped( bn, ti );
             } catch ( const out_of_range& ) {
@@ -728,7 +714,8 @@ LocalisedTransactionReceipt Eth::eth_getTransactionReceipt( string const& _trans
     auto rcp = cli->localisedTransactionReceipt( h );
 
 #ifdef HISTORIC_STATE
-    if ( hasPotentialInvalidTransactionsInBlock( rcp.blockNumber(), *client() ) ) {
+    if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+             rcp.blockNumber(), client()->blockChain() ) ) {
         // skip invalid
         if ( rcp.gasUsed() == 0 ) {
             m_receiptsCache.put( cacheKey, nullptr );
