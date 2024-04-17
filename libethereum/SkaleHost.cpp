@@ -328,10 +328,11 @@ void SkaleHost::logState() {
                          << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
     uint64_t to_s = total_sent;
     uint64_t to_a = total_sent;
+    uint64_t to_b = m_bcast_counter;
     m_statsd->gauge("send_to_consensus",  to_s);
     m_statsd->gauge("got_from_consensus",  to_a);
     m_statsd->gauge("m_transaction_cache", m_m_transaction_cache.size());
-    m_statsd->gauge("m_bcast_counter", m_bcast_counter);
+    m_statsd->gauge("m_bcast_counter", to_b);
 
 }
 
