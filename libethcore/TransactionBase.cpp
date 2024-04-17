@@ -253,6 +253,10 @@ TransactionBase TransactionBase::makeType2Transaction(
         m_nonce = rlp[1].toInt< u256 >();
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();
+        if ( m_maxPriorityFeePerGas > m_maxPriorityFeePerGas )
+            BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
+                                       "maxFeePerGas cannot be less than maxPriorityFeePerGas (The "
+                                       "total must be the larger of the two)" ) );
         // set m_gasPrice as SKALE ignores priority fees
         m_gasPrice = m_maxFeePerGas;
         m_gas = rlp[4].toInt< u256 >();
