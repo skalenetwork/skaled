@@ -958,7 +958,7 @@ void checkBlocks(
         BOOST_CHECK_MESSAGE( trField == trRlp,
             _testname + "transactions from  rlp and transaction from field do not match" );
         BOOST_CHECK_MESSAGE(
-            trField.rlp() == trRlp.rlp(), _testname + "transactions rlp do not match" );
+            trField.toBytes() == trRlp.toBytes(), _testname + "transactions rlp do not match" );
     }
 
     vector< TestBlock > const& unclesFromField = _blockFromFields.uncles();

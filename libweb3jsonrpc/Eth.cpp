@@ -391,7 +391,7 @@ Json::Value Eth::eth_signTransaction( Json::Value const& _json ) {
         ts = client()->populateTransactionWithDefaults( ts );
         pair< bool, Secret > ar = m_ethAccounts.authenticate( ts );
         Transaction t( ts, ar.second );  // always legacy, no prefix byte
-        return toJson( t, t.rlp() );
+        return toJson( t, t.toBytes() );
     } catch ( Exception const& ) {
         throw JsonRpcException( exceptionToErrorMessage() );
     }

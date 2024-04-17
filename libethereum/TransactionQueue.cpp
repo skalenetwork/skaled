@@ -134,7 +134,7 @@ ImportResult TransactionQueue::import(
                 //                if( t == fs->second.begin() ){
                 UpgradeGuard ul( l );
                 --m_futureSize;
-                m_futureSizeBytes -= t->second.transaction.rlp().size();
+                m_futureSizeBytes -= t->second.transaction.toBytes().size();
                 auto erasedHash = t->second.transaction.sha3();
                 LOG( m_loggerDetail ) << "Re-inserting future transaction " << erasedHash;
                 m_known.erase( erasedHash );
@@ -327,7 +327,7 @@ void TransactionQueue::insertCurrent_WITH_LOCK( std::pair< h256, Transaction > c
     inserted.first->second = handle;
     m_currentByHash[_p.first] = handle;
 #pragma GCC diagnostic pop
-    m_currentSizeBytes += t.rlp().size();
+    m_currentSizeBytes += t.toBytes().size();
 
     // Move following transactions from future to current
     makeCurrent_WITH_LOCK( t );
@@ -345,7 +345,7 @@ bool TransactionQueue::remove_WITH_LOCK( h256 const& _txHash ) {
     auto it = m_currentByAddressAndNonce.find( from );
     assert( it != m_currentByAddressAndNonce.end() );
     it->second.erase( ( *t->second ).transaction.nonce() );
-    m_currentSizeBytes -= ( *t->second ).transaction.rlp().size();
+    m_currentSizeBytes -= ( *t->second ).transaction.toBytes().size();
     m_current.erase( t->second );
     m_currentByHash.erase( t );
     if ( it->second.empty() )
@@ -382,8 +382,8 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
             *( m->second ) );  // set has only const iterators. Since we are moving out of container
                                // that's fine
         m_currentByHash.erase( t.transaction.sha3() );
-        m_currentSizeBytes -= t.transaction.rlp().size();
-        m_futureSizeBytes += t.transaction.rlp().size();
+        m_currentSizeBytes -= t.transaction.toBytes().size();
+        m_futureSizeBytes += t.transaction.toBytes().size();
         target.emplace( t.transaction.nonce(), move( t ) );
         m_current.erase( m->second );
         ++m_futureSize;
@@ -396,7 +396,7 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
         // TODO: priority queue for future transactions
         // For now just drop random chain end
         --m_futureSize;
-        m_futureSizeBytes -= m_future.begin()->second.rbegin()->second.transaction.rlp().size();
+        m_futureSizeBytes -= m_future.begin()->second.rbegin()->second.transaction.toBytes().size();
         auto erasedHash = m_future.begin()->second.rbegin()->second.transaction.sha3();
         LOG( m_loggerDetail ) << "Dropping out of bounds future transaction " << erasedHash;
         m_known.erase( erasedHash );
@@ -430,8 +430,8 @@ void TransactionQueue::makeCurrent_WITH_LOCK( Transaction const& _t ) {
                 inserted.first->second = handle;
                 m_currentByHash[( *handle ).transaction.sha3()] = handle;
 #pragma GCC diagnostic pop
-                m_futureSizeBytes -= ( *handle ).transaction.rlp().size();
-                m_currentSizeBytes += ( *handle ).transaction.rlp().size();
+                m_futureSizeBytes -= ( *handle ).transaction.toBytes().size();
+                m_currentSizeBytes += ( *handle ).transaction.toBytes().size();
                 --m_futureSize;
                 ++ft;
                 ++nonce;

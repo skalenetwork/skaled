@@ -177,9 +177,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     bytes bytes_from_json( const Json::Value& json ) {
         Transaction tx = tx_from_json( json );
-        RLPStream stream;
-        tx.streamRLP( stream );
-        return stream.out();
+        return tx.toBytes();
     }
 
     TransactionQueue* tq;
@@ -259,9 +257,6 @@ BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInv
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-
     h256 txHash = tx.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -269,7 +264,7 @@ BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInv
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -397,15 +392,12 @@ BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipI
     VrsHackedTransaction* hacked_tx = reinterpret_cast< VrsHackedTransaction* >( &tx );
     hacked_tx->resetSignature();
 
-    RLPStream stream;
-    tx.streamRLP( stream, WithSignature );
-
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -414,7 +406,7 @@ BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipI
     }
     else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
-        h256 txHash = sha3( stream.out() );
+        h256 txHash = sha3( tx.toBytes() );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
     }
 
@@ -447,9 +439,7 @@ BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipIn
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-    bytes data = stream.out();
+    bytes data = tx.toBytes();
 
     // TODO try to spoil other fields
     data[43] = 0x7f;  // spoil v
@@ -503,9 +493,6 @@ BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, 
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-
     h256 txHash = tx.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -513,7 +500,7 @@ BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, 
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -572,9 +559,6 @@ BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, 
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-
     h256 txHash = tx.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -582,7 +566,7 @@ BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, 
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -617,9 +601,6 @@ BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skip
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-
     h256 txHash = tx.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -627,7 +608,7 @@ BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skip
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -669,12 +650,9 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
     // create 1 txns in 1 block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes()}, utcTime(), 1U ) );
 
     // now our test txn
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
@@ -683,9 +661,6 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 txHash = tx2.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -693,7 +668,7 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 2U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -733,9 +708,6 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx( ts, ar.second );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-
     h256 txHash = tx.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -743,7 +715,7 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
@@ -771,7 +743,7 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     // make money
     dev::eth::simulateMining( *client, 1, senderAddress );
 
-    stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 2U );
+    stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 2U );
 
     REQUIRE_BLOCK_SIZE( 2, 1 );
     REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
@@ -810,9 +782,6 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
 
     Transaction tx1 = tx_from_json( json );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
     h256 txHash1 = tx1.sha3();
 
     // 2 txn
@@ -822,9 +791,6 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
 
     Transaction tx2 = tx_from_json( json );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 txHash2 = tx2.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -832,7 +798,7 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{stream1.out(), stream2.out()}, utcTime(), 1U ) );
+        ConsensusExtFace::transactions_vector{tx1.toBytes(), tx2.toBytes()}, utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -873,28 +839,22 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     Transaction tx1 = tx_from_json( json );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
     // 2 txn
     json["from"]  = toJS( account2.address() );
     json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
 
     Transaction tx2 = tx_from_json( json );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     // put already broadcasted txns
-    skaleHost->receiveTransaction( toJS( stream1.out() ) );
-    skaleHost->receiveTransaction( toJS( stream2.out() ) );
+    skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
+    skaleHost->receiveTransaction( toJS( tx2.toBytes() ) );
 
     sleep( 1 );         // allow broadcast thread to move them
 
     ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
 
     BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
-    BOOST_REQUIRE( proposal[0] == stream1.out() );
+    BOOST_REQUIRE( proposal[0] == tx1.toBytes() );
 }
 
 // positive test for 4 next ones
@@ -985,9 +945,6 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     Transaction tx2 = tx_from_json( json );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 txHash2 = tx2.sha3();
 
     // return it from consensus!
@@ -996,7 +953,7 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1042,9 +999,6 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     Transaction tx2 = tx_from_json( json );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 txHash2 = tx2.sha3();
 
     // return it from consensus!
@@ -1053,7 +1007,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U, 1000 ) );
+        ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1092,11 +1046,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     Transaction tx1 = tx_from_json( json );
     tx1.checkOutExternalGas( client->chainParams(), client->number() );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
     // receive it!
-    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
 
     sleep( 1 );
     BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
@@ -1109,9 +1060,6 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     Transaction tx2 = tx_from_json( json );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 txHash2 = tx2.sha3();
 
     // return it from consensus!
@@ -1120,7 +1068,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{stream2.out()}, utcTime(), 1U, 1000 ) );
+        ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1151,9 +1099,6 @@ BOOST_AUTO_TEST_CASE( transactionRace
 
     Transaction tx = tx_from_json( json );
 
-    RLPStream stream;
-    tx.streamRLP( stream );
-
     h256 txHash = tx.sha3();
 
     // 1 add tx as normal
@@ -1165,7 +1110,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
 
     // 2 get it from consensus
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1204,12 +1149,9 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
     // create 1 txns in 1 block
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes()}, utcTime(), 1U ) );
 
     // now 2 txns
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
@@ -1218,9 +1160,6 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 txHash = tx2.sha3();
 
     CHECK_NONCE_BEGIN( senderAddress );
@@ -1228,7 +1167,7 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out(), stream2.out()}, utcTime(), 2U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes(), tx2.toBytes()}, utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 2, 2 );
@@ -1284,13 +1223,10 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction tx1( ts, ar.second );
 
-    RLPStream stream1;
-    tx1.streamRLP( stream1 );
-
     h256 tx1Hash = tx1.sha3();
 
     // it will be put to "future" queue
-    skaleHost->receiveTransaction( toJS( stream1.out() ) );
+    skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
     sleep( 1 );
     ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
     // and not proposed
@@ -1301,7 +1237,7 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
 
     // simulate it coming from another node
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{stream1.out()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes()}, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_SIZE( 1, 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
@@ -1314,13 +1250,10 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
-    RLPStream stream2;
-    tx2.streamRLP( stream2 );
-
     h256 tx2Hash = tx2.sha3();
 
     // post it to queue for "realism"
-    skaleHost->receiveTransaction( toJS( stream2.out() ) );
+    skaleHost->receiveTransaction( toJS( tx2.toBytes() ) );
     sleep( 1 );
     proposal = stub->pendingTransactions( 100 );
     BOOST_REQUIRE_EQUAL(proposal.size(), 2);
@@ -1337,7 +1270,7 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
     // 3 submit nonce = 1 again!
     // it should go to proposal
     BOOST_REQUIRE_THROW(
-        skaleHost->receiveTransaction( toJS( stream1.out() ) ),
+        skaleHost->receiveTransaction( toJS( tx1.toBytes() ) ),
         dev::eth::PendingTransactionAlreadyExists
     );
     sleep( 1 );

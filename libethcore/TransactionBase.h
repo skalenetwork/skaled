@@ -148,9 +148,9 @@ public:
     bool isCreation() const { return m_type == ContractCreation; }
 
     /// @returns the RLP serialisation of this transaction.
-    bytes rlp( IncludeSignature _sig = WithSignature ) const {
+    bytes toBytes( IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const {
         RLPStream s;
-        streamRLP( s, _sig );
+        streamRLP( s, _sig, _forEip155hash );
         bytes output = s.out();
         if ( m_txType != TransactionType::Legacy )
             output.insert( output.begin(), m_txType );
