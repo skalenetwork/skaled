@@ -95,7 +95,7 @@ TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& 
         sign( _s );
 }
 
-void TransactionBase::fillFromRlpLegacy(
+void TransactionBase::fillFromBytesLegacy(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     RLP const rlp( _rlpData );
     try {
@@ -169,7 +169,7 @@ void TransactionBase::fillFromRlpLegacy(
     }
 }
 
-void TransactionBase::fillFromRlpType1(
+void TransactionBase::fillFromBytesType1(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
@@ -230,7 +230,7 @@ void TransactionBase::fillFromRlpType1(
     }
 }
 
-void TransactionBase::fillFromRlpType2(
+void TransactionBase::fillFromBytesType2(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
@@ -294,17 +294,17 @@ void TransactionBase::fillFromRlpType2(
     }
 }
 
-void TransactionBase::fillFromRlpByType(
+void TransactionBase::fillFromBytesByType(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, TransactionType type ) {
     switch ( type ) {
     case TransactionType::Legacy:
-        fillFromRlpLegacy( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type1:
-        fillFromRlpType1( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesType1( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type2:
-        fillFromRlpType2( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesType2( _rlpData, _checkSig, _allowInvalid );
         break;
     default:
         BOOST_THROW_EXCEPTION(
@@ -326,7 +326,7 @@ TransactionBase::TransactionBase(
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         TransactionType txnType = getTransactionType( _rlpData );
-        fillFromRlpByType( _rlpData, _checkSig, _allowInvalid, txnType );
+        fillFromBytesByType( _rlpData, _checkSig, _allowInvalid, txnType );
     } catch ( ... ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -538,4 +538,11 @@ u256 TransactionBase::gas() const {
 
 u256 TransactionBase::nonPowGas() const {
     return m_gas;
+}
+
+bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
+    if ( _rlp.isList() )
+        return _rlp.data();
+    else
+        return _rlp.payload();
 }

@@ -312,12 +312,14 @@ private:
     static TransactionType getTransactionType( bytesConstRef _rlp );
 
     /// Constructs a transaction from the given RLP and transaction type.
-    void fillFromRlpByType( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        TransactionType type );
-    void fillFromRlpLegacy(
+    void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
+        bool _allowInvalid, TransactionType type );
+    void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    void fillFromRlpType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    void fillFromRlpType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromBytesType1(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromBytesType2(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
@@ -355,6 +357,8 @@ inline std::ostream& operator<<( std::ostream& _out, TransactionBase const& _t )
     _out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
     return _out;
 }
+
+extern bytesConstRef bytesRefFromTransactionRlp( const RLP& _rlp );
 
 }  // namespace eth
 }  // namespace dev
