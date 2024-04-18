@@ -551,6 +551,17 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
+        u256 baseFeePerGas;
+        try {
+            baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) );
+        } catch ( std::invalid_argument& _e ) {
+            cdebug << "Cannot get gas price for block " << _blockHash;
+            cdebug << _e.what();
+            // set default gasPrice
+            // probably the price was rotated out as we are asking the price for the old block
+            baseFeePerGas = client()->gasBidPrice();
+        }
+
         if ( _includeTransactions ) {
             Transactions transactions = client()->transactions( h );
 
@@ -567,8 +578,7 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             }
 #endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine(),
-                client()->gasBidPrice( client()->numberFromHash( h ) ) );
+                client()->uncleHashes( h ), transactions, client()->sealEngine(), baseFeePerGas );
         } else {
             h256s transactions = client()->transactionHashes( h );
 
@@ -585,8 +595,7 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             }
 #endif
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
-                client()->uncleHashes( h ), transactions, client()->sealEngine(),
-                client()->gasBidPrice( client()->numberFromHash( h ) ) );
+                client()->uncleHashes( h ), transactions, client()->sealEngine(), baseFeePerGas );
         }
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -599,6 +608,17 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
+        u256 baseFeePerGas;
+        try {
+            baseFeePerGas = client()->gasBidPrice( h );
+        } catch ( std::invalid_argument& _e ) {
+            cdebug << "Cannot get gas price for block " << h;
+            cdebug << _e.what();
+            // set default gasPrice
+            // probably the price was rotated out as we are asking the price for the old block
+            baseFeePerGas = client()->gasBidPrice();
+        }
+
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
         return eth_getBlockByHash( "0x" + bh.hex(), _includeTransactions );
@@ -609,11 +629,11 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( _includeTransactions )
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), client()->transactions( h ), client()->sealEngine(),
-                client()->gasBidPrice( h ) );
+                baseFeePerGas );
         else
             return toJson( client()->blockInfo( h ), client()->blockDetails( h ),
                 client()->uncleHashes( h ), client()->transactionHashes( h ),
-                client()->sealEngine(), client()->gasBidPrice( h ) );
+                client()->sealEngine(), baseFeePerGas );
 #endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
