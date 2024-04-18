@@ -3642,9 +3642,11 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+auto selfdestructVariants = boost::unit_test::data::make({string("0"), string("1")});
 
-BOOST_AUTO_TEST_CASE( suicide_storage_limit ) {
-    JsonRpcFixture fixture;
+BOOST_DATA_TEST_CASE( suicide_storage_limit, selfdestructVariants, selfdestructPatch ) {
+    JsonRpcFixture fixture( "", true, true, false, false, false, -1,
+                           {{"selfdestructStorageLimitPatchTimestamp", selfdestructPatch}} );
     dev::eth::simulateMining( *( fixture.client ), 10 );
 
     // pragma solidity ^0.8.0;
@@ -3714,7 +3716,10 @@ BOOST_AUTO_TEST_CASE( suicide_storage_limit ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txSuicide );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     Json::Value suicideReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE_EQUAL( suicideReceipt["status"], string( "0x0" ) );
+    if(selfdestructPatch == "1")
+        BOOST_REQUIRE_EQUAL( suicideReceipt["status"], string( "0x0" ) );
+    else
+        BOOST_REQUIRE_EQUAL( suicideReceipt["status"], string( "0x1" ) );
 
     // 3 free 1
     Json::Value txFree;
@@ -3726,10 +3731,17 @@ BOOST_AUTO_TEST_CASE( suicide_storage_limit ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txFree );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     Json::Value freeReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE_EQUAL( freeReceipt["status"], string( "0x1" ) );
-    BOOST_REQUIRE_EQUAL( fixture.client->state().storageUsed( contract ), 64 );
 
-    // 4 suicide should succeed
+    if(selfdestructPatch == "1"){
+        BOOST_REQUIRE_EQUAL( freeReceipt["status"], string( "0x1" ) );
+        BOOST_REQUIRE_EQUAL( fixture.client->state().storageUsed( contract ), 64 );
+    }
+    else{
+        BOOST_REQUIRE_EQUAL( freeReceipt["status"], string( "0x1" ) );
+        BOOST_REQUIRE_EQUAL( fixture.client->state().storageUsed( contract ), 0 );
+    }
+
+    // 4 suicide should succeed or ignored
     txHash = fixture.rpcClient->eth_sendTransaction( txSuicide );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     suicideReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );

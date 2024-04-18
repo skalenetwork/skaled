@@ -239,13 +239,19 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
             std::vector< unsigned > matchingBlocksVector = bc().withBlockBloom( i, end, begin );
             matchingBlocks.insert( matchingBlocksVector.begin(), matchingBlocksVector.end() );
         }
-    else
+    else {
         // if it is a range filter, we want to get all logs from all blocks in given range
+        if ( end >= begin && end - begin >= 2000 )
+            BOOST_THROW_EXCEPTION( TooBigResponse() );
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
+    }
 
-    for ( auto n : matchingBlocks )
+    for ( auto n : matchingBlocks ) {
         prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
+        if ( ret.size() > 10000 && !_f.isRangeFilter() )
+            BOOST_THROW_EXCEPTION( TooBigResponse() );
+    }
 
     reverse( ret.begin(), ret.end() );
     return ret;
