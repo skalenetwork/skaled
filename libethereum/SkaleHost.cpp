@@ -431,9 +431,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     m_debugTracer.tracepoint( "fetch_transactions" );
 
     int counter = 0;
+    BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
     Transactions txns = m_tq.topTransactionsSync(
-        _limit, [this, &to_delete, &counter]( const Transaction& tx ) -> bool {
+        _limit, [this, &to_delete, &counter, &latestInfo]( const Transaction& tx ) -> bool {
             if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
                 return false;
 
@@ -444,11 +445,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
                 try {
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
-                    Executive::verifyTransaction( tx,
-                        static_cast< const Interface& >( m_client )
-                            .blockInfo( LatestBlock )
-                            .timestamp(),
-                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
+                    Executive::verifyTransaction( tx, latestInfo.timestamp(), latestInfo,
                         m_client.state().createStateReadOnlyCopy(), m_client.chainParams(), 0,
                         getGasPrice(), isMtmEnabled );
                 } catch ( const exception& ex ) {
@@ -629,6 +626,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     // HACK this is for not allowing new transactions in tq between deletion and block creation!
     // TODO decouple SkaleHost and Client!!!
     size_t n_succeeded;
+
+    BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -654,8 +654,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // TODO clear occasionally this cache?!
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
                 Transaction t = m_m_transaction_cache.at( sha.asArray() );
-                t.checkOutExternalGas( m_client.chainParams(),
-                    m_client.blockInfo( LatestBlock ).timestamp(), m_client.number(), true );
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), true );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
@@ -669,8 +669,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // ).detach();
             } else {
                 Transaction t( data, CheckTransaction::Everything, true );
-                t.checkOutExternalGas( m_client.chainParams(),
-                    m_client.blockInfo( LatestBlock ).timestamp(), m_client.number(), false );
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn";
                 m_debugTracer.tracepoint( "import_consensus_born" );
