@@ -537,6 +537,8 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
 
     if ( !_json["gasPrice"].empty() )
         ret.gasPrice = jsToU256( _json["gasPrice"].asString() );
+    else if ( !_json["maxFeePerGas"].empty() )
+        ret.gasPrice = jsToU256( _json["maxFeePerGas"].asString() );
 
     if ( !_json["data"].empty() )  // ethereum.js has preconstructed the data array
         ret.data = jsToBytes( _json["data"].asString(), OnFailed::Throw );
