@@ -1017,11 +1017,8 @@ void Block::commitToSeal(
         receipt( i ).streamRLP( receiptrlp );
         receiptsMap.insert( std::make_pair( k.out(), receiptrlp.out() ) );
 
-        RLPStream txrlp;
-        m_transactions[i].streamRLP( txrlp );
-        dev::bytes txOutput = txrlp.out();
+        dev::bytes txOutput = m_transactions[i].toBytes();
         if ( m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
-            txOutput.insert( txOutput.begin(), m_transactions[i].txType() );
             RLPStream s;
             s.append( txOutput );
             txOutput = s.out();

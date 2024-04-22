@@ -524,7 +524,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                 m_m_transaction_cache[sha.asArray()] = txn;
             }
 
-            out_vector.push_back( txn.rlp() );
+            out_vector.push_back( txn.toBytes() );
 
             ++total_sent;
 
@@ -895,7 +895,7 @@ void SkaleHost::broadcastFunc() {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
-                        std::string rlp = toJS( txn.rlp() );
+                        std::string rlp = toJS( txn.toBytes() );
                         std::string h = toJS( txn.sha3() );
                         //
                         std::string strPerformanceQueueName = "bc/broadcast";
@@ -998,7 +998,7 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
-    m_broadcaster->broadcast( toJS( _txn.rlp() ) );
+    m_broadcaster->broadcast( toJS( _txn.toBytes() ) );
 }
 
 void SkaleHost::noteNewTransactions() {}

@@ -95,7 +95,7 @@ TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& 
         sign( _s );
 }
 
-TransactionBase TransactionBase::makeLegacyTransaction(
+void TransactionBase::fillFromBytesLegacy(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     RLP const rlp( _rlpData );
     try {
@@ -155,9 +155,6 @@ TransactionBase TransactionBase::makeLegacyTransaction(
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
         // XXX Strange "catch"-s %)
-
-        TransactionBase t( *this );
-        return t;
     } catch ( Exception& _e ) {
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
@@ -168,13 +165,11 @@ TransactionBase TransactionBase::makeLegacyTransaction(
             throw;
         else {
             cwarn << _e.what();
-            TransactionBase t( *this );
-            return t;
         }
     }
 }
 
-TransactionBase TransactionBase::makeType1Transaction(
+void TransactionBase::fillFromBytesType1(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
@@ -221,9 +216,6 @@ TransactionBase TransactionBase::makeType1Transaction(
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
 
         m_txType = TransactionType::Type1;
-
-        TransactionBase t( *this );
-        return t;
     } catch ( Exception& _e ) {
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
@@ -234,13 +226,11 @@ TransactionBase TransactionBase::makeType1Transaction(
             throw;
         else {
             cwarn << _e.what();
-            TransactionBase t( *this );
-            return t;
         }
     }
 }
 
-TransactionBase TransactionBase::makeType2Transaction(
+void TransactionBase::fillFromBytesType2(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
@@ -294,9 +284,6 @@ TransactionBase TransactionBase::makeType2Transaction(
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
 
         m_txType = TransactionType::Type2;
-
-        TransactionBase t( *this );
-        return t;
     } catch ( Exception& _e ) {
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
@@ -307,23 +294,21 @@ TransactionBase TransactionBase::makeType2Transaction(
             throw;
         else {
             cwarn << _e.what();
-            TransactionBase t( *this );
-            return t;
         }
     }
 }
 
-TransactionBase::TransactionBase(
+void TransactionBase::fillFromBytesByType(
     bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, TransactionType type ) {
     switch ( type ) {
     case TransactionType::Legacy:
-        *this = makeLegacyTransaction( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type1:
-        *this = makeType1Transaction( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesType1( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type2:
-        *this = makeType2Transaction( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesType2( _rlpData, _checkSig, _allowInvalid );
         break;
     default:
         BOOST_THROW_EXCEPTION(
@@ -345,7 +330,7 @@ TransactionBase::TransactionBase(
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         TransactionType txnType = getTransactionType( _rlpData );
-        *this = TransactionBase( _rlpData, _checkSig, _allowInvalid, txnType );
+        fillFromBytesByType( _rlpData, _checkSig, _allowInvalid, txnType );
     } catch ( ... ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -557,4 +542,11 @@ u256 TransactionBase::gas() const {
 
 u256 TransactionBase::nonPowGas() const {
     return m_gas;
+}
+
+bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
+    if ( _rlp.isList() )
+        return _rlp.data();
+    else
+        return _rlp.payload();
 }

@@ -455,11 +455,7 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     Transactions res;
     for ( unsigned i = 0; i < b[1].itemCount(); i++ ) {
         auto txRlp = b[1][i];
-        if ( txRlp.isList() )
-            // means Legacy transaction
-            res.emplace_back( txRlp.data(), CheckTransaction::Cheap, true );
-        else
-            res.emplace_back( txRlp.payload(), CheckTransaction::Cheap, true );
+        res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true );
     }
     return res;
 }
