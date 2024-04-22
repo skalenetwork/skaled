@@ -422,7 +422,7 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // Don't need to check the transaction signature (CheckTransaction::None) since it
     // will be checked as a part of transaction import
-    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None,
+    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     return toJS( client()->importTransaction( t ) );
 }

@@ -1739,8 +1739,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                 Transaction t( d,
                     ( _ir & ImportRequirements::TransactionSignatures ) ?
                         CheckTransaction::Everything :
-                        CheckTransaction::None,
-                    EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+                        CheckTransaction::None, false,
+                    EIP1559TransactionsPatch::isEnabledWhen( h.timestamp() ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs
