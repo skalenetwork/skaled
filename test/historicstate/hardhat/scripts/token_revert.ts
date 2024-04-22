@@ -141,15 +141,6 @@ async function waitUntilNextBlock() {
 
 }
 
-function CHECK(result: any): void {
-    if (!result) {
-        const message: string = `Check failed ${result}`
-        console.log(message);
-        throw message;
-    }
-
-
-}
 
 async function getBlockTrace(blockNumber: number): Promise<String> {
 
@@ -278,15 +269,7 @@ const EXECUTE2_FUNCTION_NAME = "mint2";
 const EXECUTE3_FUNCTION_NAME = "readableRevert";
 
 
-const TEST_DEPLOY_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".deploy.callTracer.json";
-
 const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".callTracer.json";
-
-const TEST_CONTRACT_EXECUTE2_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE2_FUNCTION_NAME + ".callTracer.json";
-
-const TEST_CONTRACT_EXECUTE3_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE3_FUNCTION_NAME + ".callTracer.json";
-
-const TEST_TRANSFER_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + ".transfer.callTracer.json";
 
 
 
@@ -374,35 +357,6 @@ async function executeTransferAndThenERC20TransferInSingleBlock(deployedContract
     return mintReceipt.hash!;
 
 }
-
-async function executeMint2(deployedContract: any): Promise<string> {
-
-
-    const mint2Receipt = await deployedContract[EXECUTE2_FUNCTION_NAME](1000, {
-        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call,
-    });
-
-    expect(mint2Receipt.blockNumber).not.to.be.null;
-
-
-    return mint2Receipt.hash!;
-
-}
-
-
-async function executeRevert(deployedContract: any): Promise<string> {
-
-    const revertReceipt = await deployedContract[EXECUTE3_FUNCTION_NAME](1000, {
-        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call,
-    });
-
-    expect(revertReceipt.blockNumber).not.to.be.null;
-
-
-    return revertReceipt.hash!;
-
-}
-
 
 async function verifyCallTraceAgainstGethTrace(_fileName: string) {
 
