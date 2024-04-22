@@ -42,7 +42,7 @@ contract ERC20Custom {
         _symbol = tokenSymbol;
         _decimals = 18;
 
-        _mint(tx.origin, 1000);
+        _mint(tx.origin, 10);
     }
 
     function mint(address account, uint256 amount) external returns (bool) {

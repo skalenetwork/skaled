@@ -7,6 +7,7 @@ import {expect} from "chai";
 import * as path from 'path';
 import {int, string} from "hardhat/internal/core/params/argumentTypes";
 import internal from "node:stream";
+import exp from "node:constants";
 
 const OWNER_ADDRESS: string = "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6";
 const CALL_ADDRESS: string = "0xCe5c7ca85F8cB94FA284a303348ef42ADD23f5e7";
@@ -332,15 +333,15 @@ async function executeTransferAndThenERC20TransferInSingleBlock(deployedContract
 
     let currentNonce: int = await sendMoneyWithoutConfirmation();
 
-    const mintReceipt = await deployedContract[EXECUTE_FUNCTION_NAME](CALL_ADDRESS, 2000, {
+    const receipt = await deployedContract[EXECUTE_FUNCTION_NAME](CALL_ADDRESS, 11, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
 
-    expect(mintReceipt.blockNumber).not.to.be.null;
+    expect(receipt.blockNumber).not.to.be.null;
 
 
-    const trace: string = await getBlockTrace(mintReceipt.blockNumber);
+    const trace: string = await getBlockTrace(receipt.blockNumber);
 
 
     expect(Array.isArray(trace));
@@ -350,7 +351,7 @@ async function executeTransferAndThenERC20TransferInSingleBlock(deployedContract
         expect(trace.length == 2);
     }
 
-    return mintReceipt.hash!;
+    return receipt.hash!;
 
 }
 
@@ -405,9 +406,12 @@ async function main(): Promise<void> {
     const deployHash = deployedContract.deployTransaction.hash;
     DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
 
-    const firstMintHash: string = await executeTransferAndThenERC20TransferInSingleBlock(deployedContract);
+    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
+    const failedTransferHash: string = await executeTransferAndThenERC20TransferInSingleBlock(deployedContract);
 
-    await getAndPrintCommittedTransactionTrace(firstMintHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
+    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
+
+    await getAndPrintCommittedTransactionTrace(failedTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
