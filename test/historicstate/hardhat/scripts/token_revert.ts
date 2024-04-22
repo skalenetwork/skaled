@@ -143,15 +143,6 @@ async function waitUntilNextBlock() {
 }
 
 
-async function getBlockTrace(blockNumber: number): Promise<String> {
-
-    const blockStr = "0x" + blockNumber.toString(16);
-    //trace both empty tracer and no tracer
-    let trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr]);
-    trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, {}]);
-
-    return trace;
-}
 
 const TEST_CONTRACT_NAME = "ERC20Custom";
 
@@ -191,6 +182,16 @@ function sleep(ms: number) {
 async function writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName: string, traceResult: string) {
     writeFileSync(SKALE_TRACES_DIR + _traceFileName, traceResult);
     await replaceAddressesWithSymbolicNames(_traceFileName);
+}
+
+async function getBlockTrace(blockNumber: number): Promise<String> {
+
+    const blockStr = "0x" + blockNumber.toString(16);
+    //trace both empty tracer and no tracer
+    let trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr]);
+    trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, getTraceJsonOptions(CALL_TRACER)]);
+
+    return trace;
 }
 
 async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: string, _skaleFileName: string): Promise<String> {
@@ -270,7 +271,7 @@ const EXECUTE_FUNCTION_NAME = "transfer";
 const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".callTracer.json";
 
 
-async function sendMoneyWithoutConfirmation(): Promise<int> {
+async function sendERCTransferWithoutConfirmation(deployedContract: any): Promise<int> {
     // Generate a new wallet
     const newWallet = generateNewWallet();
 
@@ -285,7 +286,9 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
     const tx = {
         to: newWallet.address,
         value: hre.ethers.utils.parseEther("0.1"),
-        nonce: currentNonce
+        nonce: currentNonce,
+        data: deployedContract.interface.encodeFunctionData(EXECUTE_FUNCTION_NAME, [
+        CALL_ADDRESS, 3])
     };
 
     // Send the transaction and wait until it is submitted ot the queue
@@ -300,40 +303,15 @@ async function sendMoneyWithoutConfirmation(): Promise<int> {
     return currentNonce;
 }
 
-async function sendTransferWithConfirmation(): Promise<string> {
-    // Generate a new wallet
-    const newWallet = generateNewWallet();
-
-    await sleep(3000);  // Sleep for 1000 milliseconds (1 second)
-
-    // Get the first signer from Hardhat's local network
-    const [signer] = await hre.ethers.getSigners();
-
-    const currentNonce = await signer.getTransactionCount();
-
-    // Define the transaction
-    const tx = {
-        to: "0x388C818CA8B9251b393131C08a736A67ccB19297",
-        value: hre.ethers.utils.parseEther("0.1"),
-    };
-
-    // Send the transaction and wait until it is submitted ot the queue
-    const txResponse = await signer.sendTransaction(tx);
-    const txReceipt = await txResponse.wait();
-
-    console.log(`Submitted a tx to send 0.1 ETH to ${newWallet.address}`);
-
-    return txReceipt.transactionHash!;
-}
 
 
-async function executeTransferAndThenERC20TransferInSingleBlock(deployedContract: any): Promise<string> {
+async function executeERC20TransferAndThenERC20TransferInSingleBlock(deployedContract: any): Promise<string> {
 
     console.log("Doing two transactions in a block")
 
-    let currentNonce: int = await sendMoneyWithoutConfirmation();
+    let currentNonce: int = await sendERCTransferWithoutConfirmation(deployedContract);
 
-    const receipt = await deployedContract[EXECUTE_FUNCTION_NAME](CALL_ADDRESS, 11, {
+    const receipt = await deployedContract[EXECUTE_FUNCTION_NAME](CALL_ADDRESS, 5, {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
@@ -343,13 +321,14 @@ async function executeTransferAndThenERC20TransferInSingleBlock(deployedContract
 
     const trace: string = await getBlockTrace(receipt.blockNumber);
 
-
     expect(Array.isArray(trace));
 
     // the array should have two elements
     if (hre.network.name != "geth") {
         expect(trace.length == 2);
     }
+
+    console.log("Trace:" + JSON.stringify(trace));
 
     return receipt.hash!;
 
@@ -406,13 +385,16 @@ async function main(): Promise<void> {
     const deployHash = deployedContract.deployTransaction.hash;
     DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
 
-    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
-    const failedTransferHash: string = await executeTransferAndThenERC20TransferInSingleBlock(deployedContract);
+    sleep(10000);
 
     await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
+    const failedTransferHash: string = await executeERC20TransferAndThenERC20TransferInSingleBlock(deployedContract);
+
+
 
     await getAndPrintCommittedTransactionTrace(failedTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
+    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
 }
