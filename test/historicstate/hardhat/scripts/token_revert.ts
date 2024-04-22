@@ -285,11 +285,9 @@ async function sendERCTransferWithoutConfirmation(deployedContract: any): Promis
     // Define the transaction
     const tx = {
         to: deployedContract.address,
-        value: hre.ethers.utils.parseEther("0.1"),
         gasLimit: 2100000,
         nonce: currentNonce,
-        data: deployedContract.interface.encodeFunctionData(EXECUTE_FUNCTION_NAME, [
-        CALL_ADDRESS, 3])
+        data: deployedContract.interface.encodeFunctionData(EXECUTE_FUNCTION_NAME, [CALL_ADDRESS, 10])
     };
 
     // Send the transaction and wait until it is submitted ot the queue
@@ -312,7 +310,8 @@ async function executeERC20TransferAndThenERC20TransferInSingleBlock(deployedCon
 
     let currentNonce: int = await sendERCTransferWithoutConfirmation(deployedContract);
 
-    const receipt = await deployedContract[EXECUTE_FUNCTION_NAME](CALL_ADDRESS, 5, {
+
+    const receipt = await deployedContract[EXECUTE_FUNCTION_NAME]( CALL_ADDRESS, 1,  {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce + 1,
     });
@@ -326,7 +325,7 @@ async function executeERC20TransferAndThenERC20TransferInSingleBlock(deployedCon
 
     // the array should have two elements
     if (hre.network.name != "geth") {
-        expect(trace.length == 2);
+        expect(trace.length).equal(2);
     }
 
     console.log("Trace:" + JSON.stringify(trace[0]));
