@@ -106,10 +106,6 @@ public:
         bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
         : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
 
-    /// Constructs a transaction from the given RLP and transaction type.
-    TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        TransactionType type );
-
     TransactionBase( TransactionBase const& ) = default;
 
     /// Checks equality of transactions.
@@ -151,16 +147,10 @@ public:
     /// @returns true if transaction is contract-creation.
     bool isCreation() const { return m_type == ContractCreation; }
 
-    /// Serialises this transaction to an RLPStream.
-    /// @throws TransactionIsUnsigned if including signature was requested but it was not
-    /// initialized
-    void streamRLP(
-        RLPStream& _s, IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const;
-
     /// @returns the RLP serialisation of this transaction.
-    bytes rlp( IncludeSignature _sig = WithSignature ) const {
+    bytes toBytes( IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const {
         RLPStream s;
-        streamRLP( s, _sig );
+        streamRLP( s, _sig, _forEip155hash );
         bytes output = s.out();
         if ( m_txType != TransactionType::Legacy )
             output.insert( output.begin(), m_txType );
@@ -313,12 +303,22 @@ protected:
     Counter< TransactionBase > c;
 
 private:
+    /// Serialises this transaction to an RLPStream.
+    /// @throws TransactionIsUnsigned if including signature was requested but it was not
+    /// initialized
+    void streamRLP(
+        RLPStream& _s, IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const;
+
     static TransactionType getTransactionType( bytesConstRef _rlp );
-    TransactionBase makeLegacyTransaction(
+
+    /// Constructs a transaction from the given RLP and transaction type.
+    void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
+        bool _allowInvalid, TransactionType type );
+    void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    TransactionBase makeType1Transaction(
+    void fillFromBytesType1(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    TransactionBase makeType2Transaction(
+    void fillFromBytesType2(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
@@ -357,6 +357,8 @@ inline std::ostream& operator<<( std::ostream& _out, TransactionBase const& _t )
     _out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
     return _out;
 }
+
+extern bytesConstRef bytesRefFromTransactionRlp( const RLP& _rlp );
 
 }  // namespace eth
 }  // namespace dev

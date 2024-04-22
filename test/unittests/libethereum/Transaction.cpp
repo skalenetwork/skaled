@@ -124,9 +124,7 @@ BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected,
     Transaction tx( txRlp, CheckTransaction::None );
     tx.checkChainId( 1234, true );  // any chain ID is accepted for not replay protected tx
 
-    RLPStream txRlpStream;
-    tx.streamRLP( txRlpStream );
-    BOOST_REQUIRE( txRlpStream.out() == txRlp );
+    BOOST_REQUIRE( tx.toBytes() == txRlp );
 
     txRlp = fromHex(
             "0x01f8ce8504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018e0358ac3958"
@@ -207,9 +205,8 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
         "8827f497375ae5c8a0795eb0b4f36fe712af5e6a8447802c9eb0913a2add86174552bf2e4b0e183feb" );
     RLPStream rlpStream;
     auto tx = Transaction( txRlp1, CheckTransaction::None );
-    tx.streamRLP( rlpStream, IncludeSignature::WithSignature );
-    auto txRlp = rlpStream.out();
-    BOOST_REQUIRE( txRlp != txRlp1 );
+    auto txBytes = tx.toBytes(IncludeSignature::WithSignature);
+    BOOST_REQUIRE( txBytes != txRlp1 );
 
     txRlp1 = fromHex(
         "0x02f8df890a0000000000000117808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9"
@@ -218,11 +215,9 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
         "0000000000000000000000000000000000000000000000000780a0912e3aad5af05008d3a282d2a76dc975d234"
         "4eb34e2500c924a58ccfdc9dbeb4a04afcffcb5d1897df030d45a7eeb3ceb7c7e6fe368fc47865156b4899de32"
         "01c7" );
-    RLPStream rlpStream1;
     tx = Transaction( txRlp1, CheckTransaction::None );
-    tx.streamRLP( rlpStream1, IncludeSignature::WithSignature );
-    txRlp = rlpStream.out();
-    BOOST_REQUIRE( txRlp != txRlp1 );
+    txBytes = tx.toBytes(IncludeSignature::WithSignature);
+    BOOST_REQUIRE( txBytes != txRlp1 );
 }
 
 BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
@@ -234,9 +229,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
     tx.checkChainId( 1, false );
     BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
 
-    RLPStream txRlpStream;
-    tx.streamRLP( txRlpStream );
-    BOOST_REQUIRE( txRlpStream.out() == txRlp );
+    auto txBytes = tx.toBytes(IncludeSignature::WithSignature);
+    BOOST_REQUIRE( txBytes == txRlp );
 
     txRlp = fromHex(
         "0x01f8c38197018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de"
@@ -247,8 +241,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
     tx = Transaction( txRlp, CheckTransaction::None );
     tx.checkChainId( 151, false );
     BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
-
-    BOOST_REQUIRE( tx.rlp() == txRlp );
+    
+    BOOST_REQUIRE( tx.toBytes() == txRlp );
 
     txRlp = fromHex(
         "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
@@ -259,8 +253,8 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
     tx = Transaction( txRlp, CheckTransaction::None );
     tx.checkChainId( 151, false );
     BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
-
-    BOOST_REQUIRE( tx.rlp() == txRlp );
+    
+    BOOST_REQUIRE( tx.toBytes() == txRlp );
 }
 
 BOOST_AUTO_TEST_CASE( accessList ) {
@@ -468,9 +462,8 @@ BOOST_AUTO_TEST_CASE( GettingSignatureForUnsignedTransactionThrows,
 BOOST_AUTO_TEST_CASE( StreamRLPWithSignatureForUnsignedTransactionThrows ) {
     Transaction tx(
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
-    RLPStream s;
     BOOST_REQUIRE_THROW(
-        tx.streamRLP( s, IncludeSignature::WithSignature, false ), TransactionIsUnsigned );
+        tx.toBytes( IncludeSignature::WithSignature ), TransactionIsUnsigned );
 }
 
 BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
