@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE( TransactionGasRequired,
                      "cf52d85ecec934c6f46ea3e96d6355eb8ccde261e1e419885761a0234565f6d227d8eba0937b0"
                      "f03cb25f83aeb24c13b7a39a9ef6e80c1ea272a3c" ),
             CheckTransaction::None );
-    BOOST_CHECK_EQUAL( tr.baseGasRequired( FrontierSchedule ), 14 * 68 + 21000 );
+    BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 
     tr = Transaction (
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE( TransactionGasRequired,
                      "23927f0e208494bd1fd8876597899d72025167fed902e9c1c417ddd8639bb7b4a02a63ea48f7e"
                      "94df3a40c4a840ba98da02f13817acb5fe137d40f632e6c8ed367" ),
             CheckTransaction::None );
-    BOOST_CHECK_EQUAL( tr.baseGasRequired( FrontierSchedule ), 14 * 68 + 21000 );
+    BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 }
 
