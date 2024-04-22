@@ -389,7 +389,8 @@ BlockDetails ClientBase::blockDetails( h256 _hash ) const {
 
 Transaction ClientBase::transaction( h256 _transactionHash ) const {
     // allow invalid!
-    return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true );
+    return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionHash ) const {
@@ -402,15 +403,16 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
     RLP b( bl );
     if ( _i < b[1].itemCount() )
         // allow invalid
-        return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true );
+        return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     else
         return Transaction();
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, unsigned _i ) const {
     // allow invalid
-    Transaction t =
-        Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true );
+    Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
@@ -422,8 +424,8 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
     std::pair< h256, unsigned > tl = bc().transactionLocation( _transactionHash );
     // allow invalid
-    Transaction t =
-        Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap, true );
+    Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap,
+        true, EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
     u256 gasUsed = tr.cumulativeGasUsed();
     if ( tl.second > 0 )
@@ -455,7 +457,8 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     Transactions res;
     for ( unsigned i = 0; i < b[1].itemCount(); i++ ) {
         auto txRlp = b[1][i];
-        res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true );
+        res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     }
     return res;
 }

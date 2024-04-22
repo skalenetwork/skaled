@@ -1018,7 +1018,8 @@ void Block::commitToSeal(
         receiptsMap.insert( std::make_pair( k.out(), receiptrlp.out() ) );
 
         dev::bytes txOutput = m_transactions[i].toBytes();
-        if ( m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
+        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
+             m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
             RLPStream s;
             s.append( txOutput );
             txOutput = s.out();

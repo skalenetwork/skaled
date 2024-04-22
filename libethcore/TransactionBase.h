@@ -98,13 +98,13 @@ public:
           m_type( ContractCreation ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false );
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
-        : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
+    explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false )
+        : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled ) {}
 
     TransactionBase( TransactionBase const& ) = default;
 

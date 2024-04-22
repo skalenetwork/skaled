@@ -26,6 +26,7 @@
 #include "Transaction.h"
 #include <libdevcore/Log.h>
 #include <libethcore/Exceptions.h>
+#include <libethereum/SchainPatch.h>
 
 #include <list>
 #include <thread>
@@ -94,7 +95,8 @@ void TransactionQueue::HandleDestruction() {
 ImportResult TransactionQueue::import(
     bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
     try {
-        Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything );
+        Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
         return import( t, _ik, _isFuture );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;

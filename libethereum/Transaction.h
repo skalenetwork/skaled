@@ -107,12 +107,12 @@ public:
         u256 const& _nonce = Invalid256 );
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction(
-        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false );
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit Transaction( bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
+        bool _eip1559Enabled = false );
 
     Transaction( Transaction const& ) = default;
 

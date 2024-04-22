@@ -332,7 +332,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         return h256();
     }
 
-    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
 
     h256 sha = transaction.sha3();
 
@@ -668,7 +669,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
                 // ).detach();
             } else {
-                Transaction t( data, CheckTransaction::Everything, true );
+                Transaction t( data, CheckTransaction::Everything, true,
+                    EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
                 t.checkOutExternalGas(
                     m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
                 out_txns.push_back( t );

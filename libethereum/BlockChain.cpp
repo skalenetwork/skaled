@@ -1736,9 +1736,11 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
         for ( RLP const& tr : r[1] ) {
             bytesConstRef d = bytesRefFromTransactionRlp( tr );
             try {
-                Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
-                                      CheckTransaction::Everything :
-                                      CheckTransaction::None );
+                Transaction t( d,
+                    ( _ir & ImportRequirements::TransactionSignatures ) ?
+                        CheckTransaction::Everything :
+                        CheckTransaction::None,
+                    EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs

@@ -410,8 +410,8 @@ Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
 
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
-        return toJson(
-            Transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::Everything ) );
+        return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),
+            CheckTransaction::Everything, EIP1559TransactionsPatch::isEnabledInWorkingBlock() ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -422,7 +422,8 @@ Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
 string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // Don't need to check the transaction signature (CheckTransaction::None) since it
     // will be checked as a part of transaction import
-    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
+    Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     return toJS( client()->importTransaction( t ) );
 }
 

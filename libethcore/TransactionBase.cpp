@@ -326,11 +326,15 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
 }
 
 TransactionBase::TransactionBase(
-    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled ) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
-        TransactionType txnType = getTransactionType( _rlpData );
-        fillFromBytesByType( _rlpData, _checkSig, _allowInvalid, txnType );
+        if ( _eip1559Enabled ) {
+            TransactionType txnType = getTransactionType( _rlpData );
+            fillFromBytesByType( _rlpData, _checkSig, _allowInvalid, txnType );
+        } else {
+            fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
+        }
     } catch ( ... ) {
         m_type = Type::Invalid;
         RLPStream s;
