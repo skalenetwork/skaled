@@ -109,6 +109,10 @@ ChainParams ChainParams::loadConfig(
     cp.maxStorageForSelfdestruct = params.count( "maxStorageForSelfdestruct" ) ?
                                        params.at( "maxStorageForSelfdestruct" ).get_int64() :
                                        -1;
+    cp.getLogsBlocksLimit =
+        params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
+    cp.getLogsRecordsLimit =
+        params.count( "getLogsRecordsLimit" ) ? params.at( "getLogsRecordsLimit" ).get_int() : -1;
 
     if ( obj.count( c_skaleConfig ) ) {
         processSkaleConfigItems( cp, obj );

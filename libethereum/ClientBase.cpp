@@ -241,15 +241,16 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         }
     else {
         // if it is a range filter, we want to get all logs from all blocks in given range
-        if ( end >= begin && end - begin >= 2000 )
+        if ( begin >= end && begin - end >= bc().chainParams().getLogsBlocksLimit )
             BOOST_THROW_EXCEPTION( TooBigResponse() );
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
     }
 
+    int recordsLimit = bc().chainParams().getLogsRecordsLimit;
     for ( auto n : matchingBlocks ) {
         prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
-        if ( ret.size() > 10000 && !_f.isRangeFilter() )
+        if ( ret.size() > recordsLimit && !_f.isRangeFilter() )
             BOOST_THROW_EXCEPTION( TooBigResponse() );
     }
 
