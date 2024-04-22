@@ -3030,7 +3030,7 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
 
     // Set chainID = 151
     ret["params"]["chainID"] = "0x97";
-    time_t eip1559PatchActivationTimestamp = time(nullptr) + 8;
+    time_t eip1559PatchActivationTimestamp = time(nullptr) + 5;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
 
     Json::FastWriter fastWriter;
@@ -3072,7 +3072,7 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
     for (Json::Value::ArrayIndex i = 0; i < blockCnt; ++i) {
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].isString() );
         std::string estimatedBaseFeePerGas = EIP1559TransactionsPatch::isEnabledWhen(
-                    fixture.client->blockInfo( i ).timestamp() ) ? toJS( fixture.client->blockInfo( i ).timestamp() ) : toJS( 0 );
+                    fixture.client->blockInfo( bn - i ).timestamp() ) ? toJS( fixture.client->gasBidPrice( bn - i ) ) : toJS( 0 );
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].asString() == estimatedBaseFeePerGas );
         BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
         BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );
