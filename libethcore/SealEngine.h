@@ -57,8 +57,9 @@ public:
     virtual void verify( Strictness _s, BlockHeader const& _bi,
         BlockHeader const& _parent = BlockHeader(), bytesConstRef _block = bytesConstRef() ) const;
     /// Additional verification for transactions in blocks.
-    virtual void verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
-        BlockHeader const& _header, u256 const& _gasUsed ) const;
+    static void verifyTransaction( ChainOperationParams const& _chainParams,
+        ImportRequirements::value _ir, TransactionBase const& _t, time_t _committedBlockTimestamp,
+        BlockHeader const& _header, u256 const& _gasUsed );
     /// Don't forget to call Super::populateFromParent when subclassing & overriding.
     virtual void populateFromParent( BlockHeader& _bi, BlockHeader const& _parent ) const;
 
@@ -93,8 +94,10 @@ public:
         setChainParams( _params );
         return this;
     }
-    virtual EVMSchedule const& evmSchedule( u256 const& _blockNumber ) const = 0;
-    virtual u256 blockReward( u256 const& _blockNumber ) const = 0;
+    virtual EVMSchedule evmSchedule(
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const = 0;
+    virtual u256 blockReward(
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const = 0;
 
     virtual bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
         return m_params.precompiled.count( _a ) != 0 &&
@@ -135,8 +138,10 @@ public:
     void onSealGenerated( std::function< void( bytes const& ) > const& _f ) override {
         m_onSealGenerated = _f;
     }
-    EVMSchedule const& evmSchedule( u256 const& _blockNumber ) const override;
-    u256 blockReward( u256 const& _blockNumber ) const override;
+    EVMSchedule evmSchedule(
+        time_t _committedBlockTimestamp, u256 const& _blockNumber ) const override;
+    u256 blockReward(
+        time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const override;
 
 protected:
     std::function< void( bytes const& s ) > m_onSealGenerated;

@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE( TransactionGasRequired,
                  "79f984b031ba048b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353a0ef"
                  "ffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c804" ),
         CheckTransaction::None );
-    BOOST_CHECK_EQUAL( tr.baseGasRequired( FrontierSchedule ), 14 * 68 + 21000 );
+    BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 
     tr = Transaction (

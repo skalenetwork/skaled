@@ -32,8 +32,7 @@
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 #include <libskale/OverlayFS.h>
-#include <libskale/RevertableFSPatch.h>
-#include <libskale/PrecompiledConfigPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include <secp256k1_sha256.h>
 

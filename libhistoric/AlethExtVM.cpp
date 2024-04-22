@@ -56,7 +56,7 @@ void goOnOffloadedStack( AlethExecutive& _e, OnOpFunc const& _onOp ) {
                 _e.go( _onOp );
             } catch ( ... ) {
                 exception = boost::current_exception();  // Catch all exceptions to be rethrown in
-                                                         // parent thread.
+                // parent thread.
             }
         }
     }.join();
@@ -77,15 +77,24 @@ void go( unsigned _depth, AlethExecutive& _e, OnOpFunc const& _onOp ) {
         _e.go( _onOp );
 }
 
-evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex ) noexcept {
-    switch ( ex ) {
+}  // anonymous namespace
+
+
+evmc_status_code AlethExtVM::transactionExceptionToEvmcStatusCode( TransactionException _ex ) {
+    switch ( _ex ) {
     case TransactionException::None:
         return EVMC_SUCCESS;
 
     case TransactionException::RevertInstruction:
         return EVMC_REVERT;
 
+    case TransactionException::OutOfGasIntrinsic:
+        return EVMC_OUT_OF_GAS;
+
     case TransactionException::OutOfGas:
+        return EVMC_OUT_OF_GAS;
+
+    case TransactionException::OutOfGasBase:
         return EVMC_OUT_OF_GAS;
 
     case TransactionException::BadInstruction:
@@ -97,19 +106,20 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
     case TransactionException::StackUnderflow:
         return EVMC_STACK_UNDERFLOW;
 
-    case TransactionException ::BadJumpDestination:
+    case TransactionException::BadJumpDestination:
         return EVMC_BAD_JUMP_DESTINATION;
+
+    case TransactionException::InvalidContractDeployer:
+        return EVMC_CONTRACT_VALIDATION_FAILURE;
 
     default:
         return EVMC_FAILURE;
     }
 }
 
-}  // anonymous namespace
-
 
 CallResult AlethExtVM::call( CallParameters& _p ) {
-    dev::eth::AlethExecutive e{ m_s, envInfo(), m_sealEngine, depth + 1 };
+    dev::eth::AlethExecutive e{ m_s, envInfo(), m_chainParams, depth + 1 };
     if ( !e.call( _p, gasPrice, origin ) ) {
         go( depth, e, _p.onOp );
         e.accrueSubState( sub );
@@ -133,7 +143,7 @@ void AlethExtVM::setStore( u256 _n, u256 _v ) {
 
 CreateResult AlethExtVM::create( u256 _endowment, u256& io_gas, bytesConstRef _code,
     Instruction _op, u256 _salt, OnOpFunc const& _onOp ) {
-    AlethExecutive e{ m_s, envInfo(), m_sealEngine, depth + 1 };
+    AlethExecutive e{ m_s, envInfo(), m_chainParams, depth + 1 };
     bool result = false;
     if ( _op == Instruction::CREATE )
         result = e.createOpcode( myAddress, _endowment, gasPrice, io_gas, _code, origin );
@@ -167,7 +177,7 @@ h256 AlethExtVM::blockHash( u256 _number ) {
     if ( _number >= currentNumber || _number < ( std::max< u256 >( 256, currentNumber ) - 256 ) )
         return h256();
 
-    if ( currentNumber < m_sealEngine.chainParams().experimentalForkBlock + 256 ) {
+    if ( currentNumber < m_chainParams.experimentalForkBlock + 256 ) {
         h256 const parentHash = envInfo().header().parentHash();
         h256s const lastHashes = envInfo().lastHashes().precedingHashes( parentHash );
 
@@ -182,6 +192,6 @@ h256 AlethExtVM::blockHash( u256 _number ) {
 
     ExecutionResult res;
     std::tie( res, std::ignore ) =
-        m_s.execute( envInfo(), m_sealEngine, tx, skale::Permanence::Reverted );
+        m_s.execute( envInfo(), m_chainParams, tx, skale::Permanence::Reverted );
     return h256( res.output );
 }

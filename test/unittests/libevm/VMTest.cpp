@@ -17,6 +17,7 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <libethereum/SchainPatch.h>
 #include <libethereum/LastBlockHashesFace.h>
 #include <libevm/EVMC.h>
 #include <libevm/LegacyVM.h>
@@ -55,7 +56,7 @@ public:
     virtual ~Create2TestFixture() { state.releaseWriteLock(); }
 
     void testCreate2worksInConstantinople() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
@@ -66,7 +67,7 @@ public:
     void testCreate2isInvalidBeforeConstantinople() {
         se.reset( ChainParams( genesisInfo( Network::ByzantiumTest ) ).createSealEngine() );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
@@ -75,7 +76,7 @@ public:
     void testCreate2succeedsIfAddressHasEther() {
         state.addBalance( expectedAddress, 1 * ether );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
@@ -86,7 +87,7 @@ public:
     void testCreate2doesntChangeContractIfAddressExists() {
         state.setCode( expectedAddress, bytes{inputData}, 0 );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
@@ -96,7 +97,7 @@ public:
     void testCreate2isForbiddenInStaticCall() {
         staticCall = true;
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), DisallowedStateChange );
@@ -109,7 +110,7 @@ public:
         state.createContract( expectedAddress );
         state.setStorage( expectedAddress, 1, 1 );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
@@ -127,7 +128,7 @@ public:
         state.createContract( expectedAddress );
         state.setStorage( expectedAddress, 1, 1 );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         vm->exec( gas, extVm, OnOpFunc{} );
@@ -136,7 +137,7 @@ public:
     }
 
     void testCreate2costIncludesInitCodeHashing() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( inputData ), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         uint64_t gasBefore = 0;
@@ -174,7 +175,7 @@ public:
     State state = State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -219,7 +220,7 @@ public:
     }
 
     void testExtcodehashWorksInConstantinople() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             extAddress.ref(), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
@@ -228,7 +229,7 @@ public:
     }
 
     void testExtcodehashHasCorrectCost() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             extAddress.ref(), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         bigint gasBefore;
@@ -250,7 +251,7 @@ public:
     void testExtCodeHashisInvalidBeforeConstantinople() {
         se.reset( ChainParams( genesisInfo( Network::ByzantiumTest ) ).createSealEngine() );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             extAddress.ref(), ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
@@ -260,7 +261,7 @@ public:
         Address addressWithEmptyCode{KeyPair::create().address()};
         state.addBalance( addressWithEmptyCode, 1 * ether );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             addressWithEmptyCode.ref(), ref( code ), sha3( code ), version, depth, isCreate,
             staticCall );
 
@@ -273,7 +274,7 @@ public:
     void testExtCodeHashOfNonExistentAccount() {
         Address addressNonExisting{0x1234};
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             addressNonExisting.ref(), ref( code ), sha3( code ), version, depth, isCreate,
             staticCall );
 
@@ -285,7 +286,7 @@ public:
     void testExtCodeHashOfPrecomileZeroBalance() {
         Address addressPrecompile{0x1};
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             addressPrecompile.ref(), ref( code ), sha3( code ), version, depth, isCreate,
             staticCall );
 
@@ -298,7 +299,7 @@ public:
         Address addressPrecompile{0x1};
         state.addBalance( addressPrecompile, 1 * ether );
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             addressPrecompile.ref(), ref( code ), sha3( code ), version, depth, isCreate,
             staticCall );
 
@@ -319,7 +320,7 @@ public:
         bytes extAddressPrefixed =
             bytes{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc} + extAddress.ref();
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice,
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
             ref( extAddressPrefixed ), ref( code ), sha3( code ), version, depth, isCreate,
             staticCall );
 
@@ -335,7 +336,7 @@ public:
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -425,7 +426,7 @@ public:
         state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
         bytes const code = fromHex( _codeStr );
-        ExtVM extVm( state, envInfo, *se, to, from, from, value, gasPrice, inputData, ref( code ),
+        ExtVM extVm( state, envInfo, se->chainParams(), to, from, from, value, gasPrice, inputData, ref( code ),
             sha3( code ), version, depth, isCreate, staticCall );
 
         u256 gasBefore = gas;
@@ -443,7 +444,7 @@ public:
     State state = State( 0 ).createStateModifyCopy();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -472,7 +473,7 @@ public:
     explicit ChainIDTestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
     void testChainIDWorksInIstanbul() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
@@ -481,7 +482,7 @@ public:
     }
 
     void testChainIDHasCorrectCost() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         bigint gasBefore;
@@ -504,7 +505,7 @@ public:
         se.reset( ChainParams( genesisInfo( Network::ConstantinopleFixTest ) ).createSealEngine() );
         version = ConstantinopleFixSchedule.accountVersion;
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( code ), sha3( code ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
@@ -517,7 +518,7 @@ public:
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -551,14 +552,14 @@ public:
     explicit BalanceFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
     void testSelfBalanceWorksInIstanbul() {
-        ExtVM extVmSelfBalance( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVmSelfBalance( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref retSelfBalance = vm->exec( gas, extVmSelfBalance, OnOpFunc{} );
 
         BOOST_REQUIRE_EQUAL( fromBigEndian< u256 >( retSelfBalance ), 1 * ether );
 
-        ExtVM extVmBalance( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVmBalance( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
 
         owning_bytes_ref retBalance = vm->exec( gas, extVmBalance, OnOpFunc{} );
@@ -568,7 +569,7 @@ public:
     }
 
     void testSelfBalanceHasCorrectCost() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
 
         bigint gasBefore;
@@ -588,7 +589,7 @@ public:
     }
 
     void testBalanceHasCorrectCost() {
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( codeBalance ), sha3( codeBalance ), version, depth, isCreate, staticCall );
 
         bigint gasBefore;
@@ -611,7 +612,7 @@ public:
         se.reset( ChainParams( genesisInfo( Network::ConstantinopleFixTest ) ).createSealEngine() );
         version = ConstantinopleFixSchedule.accountVersion;
 
-        ExtVM extVm( state, envInfo, *se, address, address, address, value, gasPrice, {},
+        ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
             ref( codeSelfBalance ), sha3( codeSelfBalance ), version, depth, isCreate, staticCall );
 
         BOOST_REQUIRE_THROW( vm->exec( gas, extVm, OnOpFunc{} ), BadInstruction );
@@ -624,7 +625,7 @@ public:
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -646,6 +647,47 @@ public:
     bytes codeBalance = fromHex( "3380318060005260206000f35050" );
 
     std::unique_ptr< VMFace > vm;
+};
+
+class InstructionTestFixture : public TestOutputHelperFixture {
+public:
+    InstructionTestFixture() : vm{new LegacyVM()} {
+        ChainParams cp( genesisInfo( Network::IstanbulTest ) );
+        cp.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = 1;
+        SchainPatch::init(cp);
+
+        se.reset(cp.createSealEngine());
+        envInfo = std::make_unique<EnvInfo> ( blockHeader, lastBlockHashes, 1, 0, cp.chainID );
+
+        state.addBalance( address, 1 * ether );
+    }
+
+    void testCode( std::string const& _codeStr ) {
+
+        bytes const code = fromHex( _codeStr );
+
+        ExtVM extVm( state, *envInfo, se->chainParams(), address, address, address, value, gasPrice, {},
+                    ref( code ), sha3( code ), version, depth, isCreate, staticCall );
+
+        owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
+    }
+
+    BlockHeader blockHeader{initBlockHeader()};
+    LastBlockHashes lastBlockHashes;
+    Address address{KeyPair::create().address()};
+    State state{0};
+    std::unique_ptr< SealEngineFace > se;
+    std::unique_ptr<EnvInfo> envInfo;
+
+    u256 value = 0;
+    u256 gasPrice = 1;
+    u256 version = IstanbulSchedule.accountVersion;
+    int depth = 0;
+    bool isCreate = false;
+    bool staticCall = false;
+    u256 gas = 1000000;
+
+    std::unique_ptr< LegacyVM > vm;
 };
 
 class LegacyVMBalanceFixture : public BalanceFixture {
@@ -855,6 +897,18 @@ BOOST_AUTO_TEST_CASE( LegacyVMSelfBalanceisInvalidBeforeIstanbul,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     testSelfBalanceisInvalidBeforeIstanbul();
 }
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( InstructionSuite, InstructionTestFixture )
+
+BOOST_AUTO_TEST_CASE( Push0 ) {
+    string code = "5f";
+    BOOST_REQUIRE_NO_THROW( this->testCode(code) );
+    u256s stack = vm->stack();
+    BOOST_REQUIRE_EQUAL(stack.size(), 1);
+    BOOST_REQUIRE_EQUAL(stack[0], u256());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()

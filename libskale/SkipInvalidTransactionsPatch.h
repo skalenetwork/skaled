@@ -2,7 +2,7 @@
 #define SKIPINVALIDTRANSACTIONSPATCH_H
 
 #include <libethcore/BlockHeader.h>
-#include <libethereum/ChainParams.h>
+#include <libethereum/BlockChain.h>
 #include <libethereum/Interface.h>
 #include <libethereum/SchainPatch.h>
 #include <libethereum/Transaction.h>
@@ -32,21 +32,24 @@ class Client;
 // Transactions are removed from Transaction Queue as usually.
 
 // TODO better start to apply patches from 1st block after timestamp, not second
+
 class SkipInvalidTransactionsPatch : public SchainPatch {
 public:
-    static bool isEnabled();
-
-    static void setTimestamp( time_t _activationTimestamp ) {
-        activationTimestamp = _activationTimestamp;
-        printInfo( __FILE__, _activationTimestamp );
+    static SchainPatchEnum getEnum() { return SchainPatchEnum::SkipInvalidTransactionsPatch; }
+    static bool isEnabledInWorkingBlock() { return isPatchEnabledInWorkingBlock( getEnum() ); }
+    static bool isEnabledWhen( time_t _committedBlockTimestamp ) {
+        return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );
     }
-
-    static time_t getActivationTimestamp() { return activationTimestamp; }
-
-private:
-    friend class dev::eth::Client;
-    static time_t activationTimestamp;
-    static time_t lastBlockTimestamp;
+    static bool isEnabledInBlock(
+        const dev::eth::BlockChain& _bc, dev::eth::BlockNumber _bn = dev::eth::PendingBlock ) {
+        time_t timestamp = _bc.chainParams().getPatchTimestamp( getEnum() );
+        return _bc.isPatchTimestampActiveInBlockNumber( timestamp, _bn );
+    }
+    // returns true if block N can contain invalid transactions
+    // returns false if this block was created with SkipInvalidTransactionsPatch and they were
+    // skipped
+    static bool hasPotentialInvalidTransactionsInBlock(
+        dev::eth::BlockNumber _bn, const dev::eth::BlockChain& _bc );
 };
 
 #endif  // SKIPINVALIDTRANSACTIONSPATCH_H

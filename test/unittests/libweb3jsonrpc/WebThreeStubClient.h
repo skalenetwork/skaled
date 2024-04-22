@@ -157,7 +157,7 @@ public:
     Json::Value debug_storageRangeAt( const std::string& param1, int param2,
         const std::string& param3, const std::string& param4, int param5 ) noexcept( false );
     std::string debug_preimage( const std::string& param1 ) noexcept( false );
-    Json::Value debug_traceBlockByNumber( int param1, const Json::Value& param2 ) noexcept( false );
+    Json::Value debug_traceBlockByNumber( const std::string &  param1, const Json::Value& param2 ) noexcept( false );
     Json::Value debug_traceBlockByHash(
         const std::string& param1, const Json::Value& param2 ) noexcept( false );
     Json::Value debug_traceCall( const Json::Value& param1, const std::string& param2,

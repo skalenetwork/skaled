@@ -17,6 +17,7 @@ target_link_libraries(
     ${executable_name}
     PRIVATE
         ethereum
+        skale
         historic
         skutils
         devcore
@@ -25,7 +26,7 @@ target_link_libraries(
         "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
     )
 
-#target_include_directories(evm_benchmark PRIVATE ../utils)
+target_include_directories(${executable_name} PRIVATE ../utils ${SKUTILS_INCLUDE_DIRS})
 
 #if(MINIUPNPC)
 #    target_compile_definitions(evm_benchmark PRIVATE ETH_MINIUPNPC)
