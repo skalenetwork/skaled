@@ -187,9 +187,9 @@ async function writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName:
 async function getBlockTrace(blockNumber: number): Promise<String> {
 
     const blockStr = "0x" + blockNumber.toString(16);
-    //trace both empty tracer and no tracer
-    let trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr]);
-    trace = await ethers.provider.send('debug_traceBlockByNumber', [blockStr, getTraceJsonOptions(CALL_TRACER)]);
+    const params  : any = [blockStr, await getTraceJsonOptions(CALL_TRACER)];
+    console.log(params);
+    const trace : any  = await ethers.provider.send('debug_traceBlockByNumber', params);
 
     return trace;
 }
@@ -284,8 +284,9 @@ async function sendERCTransferWithoutConfirmation(deployedContract: any): Promis
 
     // Define the transaction
     const tx = {
-        to: newWallet.address,
+        to: deployedContract.address,
         value: hre.ethers.utils.parseEther("0.1"),
+        gasLimit: 2100000,
         nonce: currentNonce,
         data: deployedContract.interface.encodeFunctionData(EXECUTE_FUNCTION_NAME, [
         CALL_ADDRESS, 3])
@@ -328,7 +329,8 @@ async function executeERC20TransferAndThenERC20TransferInSingleBlock(deployedCon
         expect(trace.length == 2);
     }
 
-    console.log("Trace:" + JSON.stringify(trace));
+    console.log("Trace:" + JSON.stringify(trace[0]));
+    console.log("Trace:" + JSON.stringify(trace[1]));
 
     return receipt.hash!;
 
@@ -389,8 +391,6 @@ async function main(): Promise<void> {
 
     await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
     const failedTransferHash: string = await executeERC20TransferAndThenERC20TransferInSingleBlock(deployedContract);
-
-
 
     await getAndPrintCommittedTransactionTrace(failedTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
