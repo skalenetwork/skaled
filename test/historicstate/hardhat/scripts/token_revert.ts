@@ -264,13 +264,9 @@ async function readJSONFile(fileName: string): Promise<object> {
     });
 }
 
-const EXECUTE_FUNCTION_NAME = "mint";
-const EXECUTE2_FUNCTION_NAME = "mint2";
-const EXECUTE3_FUNCTION_NAME = "readableRevert";
-
+const EXECUTE_FUNCTION_NAME = "transfer";
 
 const TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME = TEST_CONTRACT_NAME + "." + EXECUTE_FUNCTION_NAME + ".callTracer.json";
-
 
 
 async function sendMoneyWithoutConfirmation(): Promise<int> {
