@@ -537,15 +537,18 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             return Json::Value( Json::nullValue );
 
         u256 baseFeePerGas;
-        try {
-            baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) );
-        } catch ( std::invalid_argument& _e ) {
-            cdebug << "Cannot get gas price for block " << _blockHash;
-            cdebug << _e.what();
-            // set default gasPrice
-            // probably the price was rotated out as we are asking the price for the old block
-            baseFeePerGas = client()->gasBidPrice();
-        }
+        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h ).timestamp() ) )
+            try {
+                baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) );
+            } catch ( std::invalid_argument& _e ) {
+                cdebug << "Cannot get gas price for block " << h;
+                cdebug << _e.what();
+                // set default gasPrice
+                // probably the price was rotated out as we are asking the price for the old block
+                baseFeePerGas = client()->gasBidPrice();
+            }
+        else
+            baseFeePerGas = 0;
 
         if ( _includeTransactions ) {
             Transactions transactions = client()->transactions( h );
@@ -596,15 +599,18 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
             return Json::Value( Json::nullValue );
 
         u256 baseFeePerGas;
-        try {
-            baseFeePerGas = client()->gasBidPrice( h );
-        } catch ( std::invalid_argument& _e ) {
-            cdebug << "Cannot get gas price for block " << h;
-            cdebug << _e.what();
-            // set default gasPrice
-            // probably the price was rotated out as we are asking the price for the old block
-            baseFeePerGas = client()->gasBidPrice();
-        }
+        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h ).timestamp() ) )
+            try {
+                baseFeePerGas = client()->gasBidPrice( h );
+            } catch ( std::invalid_argument& _e ) {
+                cdebug << "Cannot get gas price for block " << h;
+                cdebug << _e.what();
+                // set default gasPrice
+                // probably the price was rotated out as we are asking the price for the old block
+                baseFeePerGas = client()->gasBidPrice();
+            }
+        else
+            baseFeePerGas = 0;
 
 #ifdef HISTORIC_STATE
         h256 bh = client()->hashFromNumber( h );
@@ -957,7 +963,7 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
         for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
             auto blockInfo = client()->blockInfo( client()->hashFromNumber( bn ) );
 
-            if ( blockInfo.timestamp() )
+            if ( EIP1559TransactionsPatch::isEnabledWhen( blockInfo.timestamp() ) )
                 result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn ) ) );
             else
                 result["baseFeePerGas"].append( toJS( 0 ) );

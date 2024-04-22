@@ -29,6 +29,7 @@
 #include <libethcore/KeyManager.h>
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
+#include <libethereum/SchainPatch.h>
 #include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
 #include <libskale/httpserveroverride.h>
@@ -3029,6 +3030,8 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
 
     // Set chainID = 151
     ret["params"]["chainID"] = "0x97";
+    time_t eip1559PatchActivationTimestamp = time(nullptr) + 8;
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -3058,7 +3061,7 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
     percentiles[0] = 20;
     percentiles[1] = 80;
 
-    size_t blockCnt = 3;
+    size_t blockCnt = 7;
     auto feeHistory = fixture.rpcClient->eth_feeHistory( toJS( blockCnt ), "latest", percentiles );
 
     BOOST_REQUIRE( feeHistory["oldestBlock"] == toJS( bn - blockCnt + 1 ) );
@@ -3068,6 +3071,9 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
 
     for (Json::Value::ArrayIndex i = 0; i < blockCnt; ++i) {
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].isString() );
+        std::string estimatedBaseFeePerGas = EIP1559TransactionsPatch::isEnabledWhen(
+                    fixture.client->blockInfo( i ).timestamp() ) ? toJS( fixture.client->blockInfo( i ).timestamp() ) : toJS( 0 );
+        BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].asString() == estimatedBaseFeePerGas );
         BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
         BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );
         for ( Json::Value::ArrayIndex j = 0; j < percentiles.size(); ++j ) {
