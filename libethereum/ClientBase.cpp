@@ -412,7 +412,8 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, unsigned _i ) const {
     // allow invalid
-    Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true, EIP1559TransactionsPatch::isEnabledWhen( blockInfo( _blockHash ).timestamp() ) );
+    Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
+        EIP1559TransactionsPatch::isEnabledWhen( blockInfo( _blockHash ).timestamp() ) );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
