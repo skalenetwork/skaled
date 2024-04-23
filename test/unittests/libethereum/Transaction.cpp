@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE( TransactionGasRequired,
                      "000000000000000000000000000000000000000000000000000000000000780a08ae3a721ee02"
                      "cf52d85ecec934c6f46ea3e96d6355eb8ccde261e1e419885761a0234565f6d227d8eba0937b0"
                      "f03cb25f83aeb24c13b7a39a9ef6e80c1ea272a3c" ),
-            CheckTransaction::None );
+            CheckTransaction::None, false, true );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE( TransactionGasRequired,
                      "0000003a0000000000000000000000000000000000000000000000000000000000000000780a0"
                      "23927f0e208494bd1fd8876597899d72025167fed902e9c1c417ddd8639bb7b4a02a63ea48f7e"
                      "94df3a40c4a840ba98da02f13817acb5fe137d40f632e6c8ed367" ),
-            CheckTransaction::None );
+            CheckTransaction::None, false, true );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( HomesteadSchedule ), 14 * 68 + 21000 );
     BOOST_CHECK_EQUAL( tr.baseGasRequired( IstanbulSchedule ), 14 * 16 + 21000 );
 }
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
         "000003a0000000000000000000000000000000000000000000000000000000000000000780a08d795591e0eb53"
         "fb374a804ba3f73cf291069549d62316219811c3f7fb8cfad0a07e9d0bd7fabc8f74475624c912b5334dc49224"
         "b1dede6c802d52a35254bfc457" );
-    tx = Transaction( txRlp, CheckTransaction::None );  // shouldn't throw
+    tx = Transaction( txRlp, CheckTransaction::None, false, true );  // shouldn't throw
 
     // recipient RLP is 0xc0 (empty list)
     txRlp = fromHex(
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
         "000003a0000000000000000000000000000000000000000000000000000000000000000780a08d795591e0eb53"
         "fb374a804ba3f73cf291069549d62316219811c3f7fb8cfad0a07e9d0bd7fabc8f74475624c912b5334dc49224"
         "b1dede6c802d52a35254bfc457" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None ), InvalidTransactionFormat );
+    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 
     txRlp = fromHex(
         "0x02f8c38197808504a817c8008504a817c80082753080018e0358ac39584bc98a7c979f984b03f85bf85994de"
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
         "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0c8"
         "029a8b702d54c79ef18b557e755a1bfd8a4afcfcf31813790df34a6f740a95a00ceb8fdf611b4c9ff8d007d2a5"
         "44bc4bfae0e97a03e32b1c8b8208c82cebcafb" );
-    tx = Transaction( txRlp, CheckTransaction::None );  // shouldn't throw
+    tx = Transaction( txRlp, CheckTransaction::None, false, true );  // shouldn't throw
 
     // recipient RLP is 0xc0 (empty list)
     txRlp = fromHex(
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE( TransactionWithEmptyRecepient ) {
         "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0c8"
         "029a8b702d54c79ef18b557e755a1bfd8a4afcfcf31813790df34a6f740a95a00ceb8fdf611b4c9ff8d007d2a5"
         "44bc4bfae0e97a03e32b1c8b8208c82cebcafb" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None ), InvalidTransactionFormat );
+    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
 BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected, 
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected,
             "0000000000000000000000000000000000000000000000000003a000000000000000000000000000000000"
             "0000000000000000000000000000000701a0a3b1de6f2958e1e34db86438bba310637f2e799fe9768a143a"
             "d87e47c33d1e6ca00e04ef9fe6bb01176c5a4c5bf4a070662478a320eaaff2895d17451c8d61d472" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false ), dev::BadCast );
+    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), dev::BadCast );
 
     txRlp = fromHex(
             "0x02f8d5808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b"
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE( TransactionNotReplayProtected,
             "000000000000000000000000000000000000000000000780a023927f0e208494bd1fd8876597899d720251"
             "67fed902e9c1c417ddd8639bb7b4a02a63ea48f7e94df3a40c4a840ba98da02f13817acb5fe137d40f632e"
             "6c8ed367" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false ), dev::BadCast );
+    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), dev::BadCast );
 }
 
 BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit, 
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit,
         "000000000000000000000000000000000000000000000000000000000003a00000000000000000000000000000"
         "00000000000000000000000000000000000701a0e236de02b843139aebfce593d680c06ce79cfd2f2e7f9dcac9"
         "fe23b38060591aa0734952245446ad42e47ec996c9a7b02973cbc8dd944c9622714416b2bef122f4" );
-    tx1 = Transaction{txRlp1, CheckTransaction::None};
+    tx1 = Transaction{txRlp1, CheckTransaction::None, false, true};
     tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
 
     txRlp1 = fromHex(
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDMax64Bit,
         "00000000000000000000000000000000000000000000000780a0b62465e633b565f2f3632125b452d8df66d4f6"
         "b48b58f59da6201234e3f9ce75a0467f18ca2b64f3642cb37e7d5470bbac5fbc62c66b23a0ff955b994803fcf3"
         "74" );
-    tx1 = Transaction{txRlp1, CheckTransaction::None};
+    tx1 = Transaction{txRlp1, CheckTransaction::None, false, true};
     tx1.checkChainId( std::numeric_limits< uint64_t >::max(), false );
 }
 
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
         "0000000000000000000000000000000000000780a0e108b83ed5e1b701b249970e61d9ae409eb6870af96f1a9d"
         "8827f497375ae5c8a0795eb0b4f36fe712af5e6a8447802c9eb0913a2add86174552bf2e4b0e183feb" );
     RLPStream rlpStream;
-    auto tx = Transaction( txRlp1, CheckTransaction::None );
+    auto tx = Transaction( txRlp1, CheckTransaction::None, false, true );
     auto txBytes = tx.toBytes(IncludeSignature::WithSignature);
     BOOST_REQUIRE( txBytes != txRlp1 );
 
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE( TransactionChainIDBiggerThan64Bit ) {
         "0000000000000000000000000000000000000000000000000780a0912e3aad5af05008d3a282d2a76dc975d234"
         "4eb34e2500c924a58ccfdc9dbeb4a04afcffcb5d1897df030d45a7eeb3ceb7c7e6fe368fc47865156b4899de32"
         "01c7" );
-    tx = Transaction( txRlp1, CheckTransaction::None );
+    tx = Transaction( txRlp1, CheckTransaction::None, false, true );
     txBytes = tx.toBytes(IncludeSignature::WithSignature);
     BOOST_REQUIRE( txBytes != txRlp1 );
 }
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0b0"
         "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
         "07b6ff742311b04dab760bb3bc206054332879" );
-    tx = Transaction( txRlp, CheckTransaction::None );
+    tx = Transaction( txRlp, CheckTransaction::None, false, true );
     tx.checkChainId( 151, false );
     BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
     
@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE( TransactionReplayProtected ) {
         "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
         "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
         "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
-    tx = Transaction( txRlp, CheckTransaction::None );
+    tx = Transaction( txRlp, CheckTransaction::None, false, true );
     tx.checkChainId( 151, false );
     BOOST_REQUIRE_THROW( tx.checkChainId( 123, false ), InvalidSignature );
     
@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         "3eaf481958e22fc39bd1d526eb9255be1e6625614f02ca939e51c3d7e64bcaa05f675640c04bb050d27bd1f39c"
         "07b6ff742311b04dab760bb3bc206054332879" );
     Transaction tx;
-    BOOST_REQUIRE_NO_THROW( tx = Transaction( txRlp, CheckTransaction::None ) );
+    BOOST_REQUIRE_NO_THROW( tx = Transaction( txRlp, CheckTransaction::None, false, true ) );
     BOOST_REQUIRE( tx.accessList().size() == 1 );
 
     // empty accessList
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c001a01ebdc5"
         "46c8b85511b7ba831f47c4981069d7af972d10b7dce2c57225cb5df6a7a055ae1e84fea41d37589eb740a0a930"
         "17a5cd0e9f10ee50f165bf4b1b4c78ddae" );
-    BOOST_REQUIRE_NO_THROW( tx = Transaction( txRlp, CheckTransaction::None ) );
+    BOOST_REQUIRE_NO_THROW( tx = Transaction( txRlp, CheckTransaction::None, false, true ) );
     BOOST_REQUIRE( tx.accessList().size() == 0 );
 
     // no accessList
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180c080a025fffe"
         "aafed61a15aefd1be5ccbd19e3fe07d0088b06ab6ad960d0f6c382d8cea02e255bf1a7de0a75ccec6d00bcc367"
         "1af06ca9641fc02024a9d6b28f9b01307b" );
-    BOOST_REQUIRE_NO_THROW( tx = Transaction( txRlp, CheckTransaction::None ) );
+    BOOST_REQUIRE_NO_THROW( tx = Transaction( txRlp, CheckTransaction::None, false, true ) );
     BOOST_REQUIRE( tx.accessList().size() == 0 );
 
     // change empty accessList 0xc0 to empty array 0x80
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE( accessList ) {
         "0x01f8678197808504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b01808001a01ebdc5"
         "46c8b85511b7ba831f47c4981069d7af972d10b7dce2c57225cb5df6a7a055ae1e84fea41d37589eb740a0a930"
         "17a5cd0e9f10ee50f165bf4b1b4c78ddae" );
-    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None ), InvalidTransactionFormat );
+    BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
 BOOST_AUTO_TEST_CASE( ExecutionResultOutput, 
