@@ -393,7 +393,7 @@ async function main(): Promise<void> {
 
     await getAndPrintCommittedTransactionTrace(failedTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
-    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
+    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq( 0);
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
 }

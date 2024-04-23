@@ -1,20 +1,20 @@
 {
     "post": {
         "0x0000000000000000000000000000000000000000": {
-            "balance": "0x3d69d9"
+            "balance": "0x21bf6e560"
         },
         "OWNER.address": {
-            "balance": "0x10f08c21e44d69a7a96",
-            "nonce": 9
+            "balance": "0xc9f2c9ccfda35c33ba3fd1aa0",
+            "nonce": 360
         }
     },
     "pre": {
         "0x0000000000000000000000000000000000000000": {
-            "balance": "0x3c474e"
+            "balance": "0x7d2b7500"
         },
         "OWNER.address": {
-            "balance": "0x10f08c229bfb4db5c42",
-            "nonce": 8
+            "balance": "0xc9f2c9ccfda35c33d42c88b00",
+            "nonce": 359
         }
     }
 }
