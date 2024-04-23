@@ -82,7 +82,7 @@ contract ERC20Custom {
     }
 
     function transfer(address recipient, uint256 amount) public virtual returns (bool) {
-        _transfer(msg.sender, recipient, amount);
+        this._transfer1();
         return true;
     }
 
@@ -117,6 +117,9 @@ contract ERC20Custom {
             _allowances[msg.sender][spender] - subtractedValue
         );
         return true;
+    }
+
+    function _transfer1() public {
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {

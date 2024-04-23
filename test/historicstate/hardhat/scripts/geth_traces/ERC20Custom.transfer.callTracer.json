@@ -1,7 +1,7 @@
 {
     "from": "OWNER.address",
-    "gas": "0xcb49",
-    "gasUsed": "0xcb49",
+    "gas": "0x5539",
+    "gasUsed": "0x5539",
     "to": "ERC20Custom.address",
     "input": "0xa9059cbb000000000000000000000000ce5c7ca85f8cb94fa284a303348ef42add23f5e70000000000000000000000000000000000000000000000000000000000000001",
     "error": "out of gas",

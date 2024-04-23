@@ -53,7 +53,7 @@ async function replaceAddressesWithSymbolicNames(_traceFileName: string) {
 
 async function getTraceJsonOptions(_tracer: string): Promise<object> {
     if (_tracer == DEFAULT_TRACER) {
-        return {};
+        return {disableStack: true};
     }
 
     if (_tracer == PRESTATEDIFF_TRACER) {
@@ -187,7 +187,7 @@ async function writeTraceFileReplacingAddressesWithSymbolicNames(_traceFileName:
 async function getBlockTrace(blockNumber: number): Promise<String> {
 
     const blockStr = "0x" + blockNumber.toString(16);
-    const params  : any = [blockStr, await getTraceJsonOptions(CALL_TRACER)];
+    const params  : any = [blockStr, await getTraceJsonOptions(DEFAULT_TRACER)];
     console.log(params);
     const trace : any  = await ethers.provider.send('debug_traceBlockByNumber', params);
 
@@ -198,6 +198,9 @@ async function getAndPrintCommittedTransactionTrace(hash: string, _tracer: strin
     globalCallCount++;
 
     let traceOptions = await getTraceJsonOptions(_tracer);
+
+
+
 
     console.log("Calling debug_traceTransaction to generate " + _skaleFileName);
 
@@ -312,7 +315,7 @@ async function executeERC20Transfer(deployedContract: any): Promise<string> {
     const currentNonce = await signer.getTransactionCount();
 
     const receipt = await deployedContract[EXECUTE_FUNCTION_NAME]( CALL_ADDRESS, 1,  {
-        gasLimit: 0xcb49, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+        gasLimit: 0x6139, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce
     });
 
