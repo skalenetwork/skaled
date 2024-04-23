@@ -231,7 +231,6 @@ void LegacyVM::interpretCases() {
         //
 
         CASE( CREATE2 ) {
-
             if ( !m_schedule->haveCreate2 ) {
                 ON_OP();
                 throwBadInstruction();
