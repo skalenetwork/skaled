@@ -304,16 +304,15 @@ async function sendERCTransferWithoutConfirmation(deployedContract: any): Promis
 
 async function executeERC20Transfer(deployedContract: any): Promise<string> {
 
-    console.log("Doing two transactions in a block")
+    console.log("Doing transfer revert")
 
     // Get the first signer from Hardhat's local network
     const [signer] = await hre.ethers.getSigners();
 
-
     const currentNonce = await signer.getTransactionCount();
 
     const receipt = await deployedContract[EXECUTE_FUNCTION_NAME]( CALL_ADDRESS, 1,  {
-        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+        gasLimit: 52041, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce
     });
 
