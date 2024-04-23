@@ -315,7 +315,7 @@ async function executeERC20Transfer(deployedContract: any): Promise<string> {
     const currentNonce = await signer.getTransactionCount();
 
     const receipt = await deployedContract[EXECUTE_FUNCTION_NAME]( CALL_ADDRESS, 1,  {
-        gasLimit: 0x6139, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
+        gasLimit: 0x6239, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
         nonce: currentNonce
     });
 
