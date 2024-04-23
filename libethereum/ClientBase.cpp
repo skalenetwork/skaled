@@ -464,7 +464,8 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     for ( unsigned i = 0; i < b[1].itemCount(); i++ ) {
         auto txRlp = b[1][i];
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
-            EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+            EIP1559TransactionsPatch::isEnabledWhen(
+                blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp() ) );
     }
     return res;
 }
