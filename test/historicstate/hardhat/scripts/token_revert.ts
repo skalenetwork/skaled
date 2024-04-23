@@ -324,13 +324,9 @@ async function executeERC20Transfer(deployedContract: any): Promise<string> {
 
     expect(Array.isArray(trace));
 
-    // the array should have two elements
-    if (hre.network.name != "geth") {
-        expect(trace.length).equal(2);
-    }
+    expect(trace.length).equal(1);
 
     console.log("Trace:" + JSON.stringify(trace[0]));
-    console.log("Trace:" + JSON.stringify(trace[1]));
 
     return receipt.hash!;
 
