@@ -52,6 +52,13 @@ void CallTracePrinter::printContractTransactionTrace(
     // call trace on the top Solidity function call in the stack
     // this will also recursively call printTrace on nested calls if exist
     topFunctionCall->printTrace( _jsonTrace, _statePost, 0, m_trace.getOptions() );
+
+    // for the top function the gas limit that geth prints is the transaction gas limit
+    // and not the gas limit given to the top level function, which is smaller because of 21000
+    // transaction cost and potentially eth transfer cost
+    _jsonTrace["gas"] =
+        AlethStandardTrace::toGethCompatibleCompactHexPrefixed( m_trace.getGasLimit() );
+
     // handle the case of a transaction that deploys a contract
     // in this case geth prints transaction input data as input
     // end prints to as newly created contract address
