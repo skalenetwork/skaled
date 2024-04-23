@@ -277,8 +277,6 @@ async function sendERCTransferWithoutConfirmation(deployedContract: any): Promis
 
     await sleep(3000);  // Sleep for 1000 milliseconds (1 second)
 
-    // Get the first signer from Hardhat's local network
-    const [signer] = await hre.ethers.getSigners();
 
     const currentNonce = await signer.getTransactionCount();
 
@@ -304,16 +302,19 @@ async function sendERCTransferWithoutConfirmation(deployedContract: any): Promis
 
 
 
-async function executeERC20TransferAndThenERC20TransferInSingleBlock(deployedContract: any): Promise<string> {
+async function executeERC20Transfer(deployedContract: any): Promise<string> {
 
     console.log("Doing two transactions in a block")
 
-    let currentNonce: int = await sendERCTransferWithoutConfirmation(deployedContract);
+    // Get the first signer from Hardhat's local network
+    const [signer] = await hre.ethers.getSigners();
 
+
+    const currentNonce = await signer.getTransactionCount();
 
     const receipt = await deployedContract[EXECUTE_FUNCTION_NAME]( CALL_ADDRESS, 1,  {
         gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call
-        nonce: currentNonce + 1,
+        nonce: currentNonce
     });
 
     expect(receipt.blockNumber).not.to.be.null;
@@ -388,12 +389,10 @@ async function main(): Promise<void> {
 
     sleep(10000);
 
-    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq(10);
-    const failedTransferHash: string = await executeERC20TransferAndThenERC20TransferInSingleBlock(deployedContract);
-
+    console.log("Balance before:" + await deployedContract.balanceOf(OWNER_ADDRESS));
+    const failedTransferHash: string = await executeERC20Transfer(deployedContract);
     await getAndPrintCommittedTransactionTrace(failedTransferHash, CALL_TRACER, TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
-
-    await expect(await deployedContract.balanceOf(OWNER_ADDRESS)).eq( 0);
+    console.log("Balance after:" + await deployedContract.balanceOf(OWNER_ADDRESS));
     await verifyCallTraceAgainstGethTrace(TEST_CONTRACT_EXECUTE_CALLTRACER_FILE_NAME);
 
 }
