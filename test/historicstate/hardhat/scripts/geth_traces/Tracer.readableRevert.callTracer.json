@@ -1,35 +1,35 @@
 {
+    "from": "OWNER.address",
+    "gas": "0x200b20",
+    "gasUsed": "0x70ff",
+    "to": "Tracer.address",
+    "input": "0x7f29c39400000000000000000000000000000000000000000000000000000000000003e8",
+    "output": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014494e53554646494349454e542042414c414e4345000000000000000000000000",
+    "error": "execution reverted",
+    "revertReason": "INSUFFICIENT BALANCE",
     "calls": [
         {
-            "error": "execution reverted",
             "from": "Tracer.address",
-            "gas": "0x1f3084",
-            "gasUsed": "0x484",
+            "gas": "0x1f3655",
+            "gasUsed": "0x1c8",
+            "to": "Tracer.address",
             "input": "0x92954362",
             "output": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000017546869732066756e6374696f6e20726576657274656421000000000000000000",
+            "error": "execution reverted",
             "revertReason": "This function reverted!",
-            "to": "Tracer.address",
             "type": "STATICCALL"
         },
         {
-            "error": "execution reverted",
             "from": "Tracer.address",
-            "gas": "0x1f1e7f",
-            "gasUsed": "0x574",
+            "gas": "0x1f28cc",
+            "gasUsed": "0x2b8",
+            "to": "Tracer.address",
             "input": "0x8bfe44ff",
             "output": "0xcf47918100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
-            "to": "Tracer.address",
+            "error": "execution reverted",
             "type": "STATICCALL"
         }
     ],
-    "error": "execution reverted",
-    "from": "OWNER.address",
-    "gas": "0x1fb708",
-    "gasUsed": "0x7b73",
-    "input": "0x7f29c39400000000000000000000000000000000000000000000000000000000000003e8",
-    "output": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014494e53554646494349454e542042414c414e4345000000000000000000000000",
-    "revertReason": "INSUFFICIENT BALANCE",
-    "to": "Tracer.address",
-    "type": "CALL",
-    "value": "0x0"
+    "value": "0x0",
+    "type": "CALL"
 }

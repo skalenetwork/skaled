@@ -1,6 +1,6 @@
 {
-    "failed": false,
     "gas": 21000,
+    "failed": false,
     "returnValue": "",
     "structLogs": []
 }

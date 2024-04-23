@@ -1,10 +1,10 @@
 {
-    "error": "execution reverted",
     "from": "OWNER.address",
-    "gas": "0x1fb708",
-    "gasUsed": "0x10fd7",
-    "input": "0xa0712d6800000000000000000000000000000000000000000000000000000000000003e8",
+    "gas": "0x200b20",
+    "gasUsed": "0x1221b",
     "to": "Tracer.address",
-    "type": "CALL",
-    "value": "0x0"
+    "input": "0xa0712d6800000000000000000000000000000000000000000000000000000000000003e8",
+    "error": "execution reverted",
+    "value": "0x0",
+    "type": "CALL"
 }
