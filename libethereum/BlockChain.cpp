@@ -1740,7 +1740,9 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                     ( _ir & ImportRequirements::TransactionSignatures ) ?
                         CheckTransaction::Everything :
                         CheckTransaction::None,
-                    false, EIP1559TransactionsPatch::isEnabledWhen( h.timestamp() ) );
+                    false,
+                    EIP1559TransactionsPatch::isEnabledWhen(
+                        this->info( numberHash( h.number() - 1 ) ).timestamp() ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs
