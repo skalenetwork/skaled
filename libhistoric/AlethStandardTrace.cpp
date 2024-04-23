@@ -317,12 +317,6 @@ void AlethStandardTrace::recordInstructionIsExecuted( uint64_t _pc, Instruction 
     STATE_CHECK( _voidExt )
     STATE_CHECK( !m_isFinalized )
 
-    // geth trace does not record in the trace instructions that are
-    // reverted by out of gas
-    if (_gasRemaining < _gasOpGas) {
-        return;
-    }
-
     // remove const qualifier since we need to set tracing values in AlethExtVM
     AlethExtVM& ext = ( AlethExtVM& ) ( *_voidExt );
     auto vm = dynamic_cast< LegacyVM const* >( _vm );
