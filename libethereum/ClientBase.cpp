@@ -391,7 +391,8 @@ Transaction ClientBase::transaction( h256 _transactionHash ) const {
     // allow invalid!
     auto tl = bc().transactionLocation( _transactionHash );
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
-        EIP1559TransactionsPatch::isEnabledWhen( blockInfo( tl.first ).timestamp() ) );
+        EIP1559TransactionsPatch::isEnabledWhen(
+            blockInfo( numberFromHash( tl.first ) - 1 ).timestamp() ) );
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionHash ) const {
@@ -405,7 +406,8 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
     if ( _i < b[1].itemCount() )
         // allow invalid
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
-            EIP1559TransactionsPatch::isEnabledWhen( blockInfo( _blockHash ).timestamp() ) );
+            EIP1559TransactionsPatch::isEnabledWhen(
+                blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp() ) );
     else
         return Transaction();
 }
@@ -413,7 +415,8 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, unsigned _i ) const {
     // allow invalid
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
-        EIP1559TransactionsPatch::isEnabledWhen( blockInfo( _blockHash ).timestamp() ) );
+        EIP1559TransactionsPatch::isEnabledWhen(
+            blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp() ) );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
@@ -425,8 +428,10 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
     std::pair< h256, unsigned > tl = bc().transactionLocation( _transactionHash );
     // allow invalid
-    Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap,
-        true, EIP1559TransactionsPatch::isEnabledWhen( blockInfo( tl.first ).timestamp() ) );
+    Transaction t =
+        Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap, true,
+            EIP1559TransactionsPatch::isEnabledWhen(
+                blockInfo( numberFromHash( tl.first ) - 1 ).timestamp() ) );
     TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
     u256 gasUsed = tr.cumulativeGasUsed();
     if ( tl.second > 0 )

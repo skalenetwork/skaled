@@ -538,7 +538,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             return Json::Value( Json::nullValue );
 
         u256 baseFeePerGas;
-        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h ).timestamp() ) )
+        if ( EIP1559TransactionsPatch::isEnabledWhen(
+                 client()->blockInfo( client()->numberFromHash( h ) - 1 ).timestamp() ) )
             try {
                 baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) );
             } catch ( std::invalid_argument& _e ) {
@@ -600,7 +601,7 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
             return Json::Value( Json::nullValue );
 
         u256 baseFeePerGas;
-        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h ).timestamp() ) )
+        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h - 1 ).timestamp() ) )
             try {
                 baseFeePerGas = client()->gasBidPrice( h );
             } catch ( std::invalid_argument& _e ) {
@@ -962,7 +963,7 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
         result["gasUsedRatio"] = Json::Value( Json::arrayValue );
         result["reward"] = Json::Value( Json::arrayValue );
         for ( auto bn = newestBlock; bn > oldestBlock - 1; --bn ) {
-            auto blockInfo = client()->blockInfo( client()->hashFromNumber( bn ) );
+            auto blockInfo = client()->blockInfo( bn - 1 );
 
             if ( EIP1559TransactionsPatch::isEnabledWhen( blockInfo.timestamp() ) )
                 result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn ) ) );
