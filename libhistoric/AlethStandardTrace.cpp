@@ -207,7 +207,6 @@ void AlethStandardTrace::setTopFunctionCall(
 
 void AlethStandardTrace::recordFunctionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
-
     // note that m_gas remaining can be less than m_opGas. This happens in case
     // of out of gas revert
     STATE_CHECK( m_currentlyExecutingFunctionCall )
