@@ -3097,7 +3097,7 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
     percentiles[0] = 20;
     percentiles[1] = 80;
 
-    size_t blockCnt = 7;
+    size_t blockCnt = 9;
     auto feeHistory = fixture.rpcClient->eth_feeHistory( toJS( blockCnt ), "latest", percentiles );
 
     BOOST_REQUIRE( feeHistory["oldestBlock"] == toJS( bn - blockCnt + 1 ) );
@@ -3108,7 +3108,7 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
     for (Json::Value::ArrayIndex i = 0; i < blockCnt; ++i) {
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].isString() );
         std::string estimatedBaseFeePerGas = EIP1559TransactionsPatch::isEnabledWhen(
-                    fixture.client->blockInfo( bn - i ).timestamp() ) ? toJS( fixture.client->gasBidPrice( bn - i ) ) : toJS( 0 );
+                    fixture.client->blockInfo( bn - i - 1 ).timestamp() ) ? toJS( fixture.client->gasBidPrice( bn - i ) ) : toJS( 0 );
         BOOST_REQUIRE( feeHistory["baseFeePerGas"][i].asString() == estimatedBaseFeePerGas );
         BOOST_REQUIRE_GT( feeHistory["gasUsedRatio"][i].asDouble(), 0 );
         BOOST_REQUIRE_GT( 1, feeHistory["gasUsedRatio"][i].asDouble() );

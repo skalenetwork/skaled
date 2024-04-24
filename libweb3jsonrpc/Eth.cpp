@@ -966,7 +966,7 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
             auto blockInfo = client()->blockInfo( bn - 1 );
 
             if ( EIP1559TransactionsPatch::isEnabledWhen( blockInfo.timestamp() ) )
-                result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn ) ) );
+                result["baseFeePerGas"].append( toJS( client()->gasBidPrice( bn - 1 ) ) );
             else
                 result["baseFeePerGas"].append( toJS( 0 ) );
 
