@@ -596,6 +596,10 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
         if ( !_json["gasPrice"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
+    } else if ( _json.HasMember( "maxFeePerGas" ) ) {
+        if ( !_json["maxFeePerGas"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        ret.gasPrice = jsToU256( _json["maxFeePerGas"].GetString() );
     }
 
     if ( _json.HasMember( "code" ) ) {
