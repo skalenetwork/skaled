@@ -130,4 +130,10 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
  */
 DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
 
+/*
+ * Purpose: passing both tx origin and tx sender into ConfigController 
+ * Version introduced: 3.19.0
+ */
+DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
+
 #endif  // SCHAINPATCH_H
