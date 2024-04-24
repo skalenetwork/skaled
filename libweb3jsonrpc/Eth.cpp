@@ -48,6 +48,7 @@ using namespace dev::rpc;
 
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
+const u256 MAX_BLOCK_RANGE = 1024;
 
 #ifdef HISTORIC_STATE
 
@@ -946,7 +947,7 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
             }
         }
 
-        auto blockCount = jsToU256( _blockCount );
+        auto blockCount = std::min( jsToU256( _blockCount ), MAX_BLOCK_RANGE );
         auto newestBlock = jsToBlockNumber( _newestBlock );
         if ( newestBlock == dev::eth::LatestBlock )
             newestBlock = client()->number();
@@ -954,7 +955,7 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
         auto result = Json::Value( Json::objectValue );
         dev::u256 oldestBlock;
         if ( blockCount > newestBlock )
-            oldestBlock = 0;
+            oldestBlock = 1;
         else
             oldestBlock = dev::u256( newestBlock ) - blockCount + 1;
         result["oldestBlock"] = toJS( oldestBlock );
