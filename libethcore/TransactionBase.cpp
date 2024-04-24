@@ -416,6 +416,8 @@ void TransactionBase::streamLegacyTransaction(
 
 void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const {
     _s.appendList( ( _sig ? 3 : 0 ) + 8 );
+    if ( !m_chainId.has_value() )
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
     _s << *m_chainId << m_nonce << m_gasPrice << m_gas;
     if ( m_type == MessageCall )
         _s << m_receiveAddress;
@@ -431,6 +433,8 @@ void TransactionBase::streamType1Transaction( RLPStream& _s, IncludeSignature _s
 
 void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _sig ) const {
     _s.appendList( ( _sig ? 3 : 0 ) + 9 );
+    if ( !m_chainId.has_value() )
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat() );
     _s << *m_chainId << m_nonce << m_maxPriorityFeePerGas << m_maxFeePerGas << m_gas;
     if ( m_type == MessageCall )
         _s << m_receiveAddress;
