@@ -219,6 +219,9 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     unsigned begin = min( bc().number() + 1, ( unsigned ) _f.latest() );
     unsigned end = min( bc().number(), min( begin, ( unsigned ) _f.earliest() ) );
 
+    if ( begin >= end && begin - end >= bc().chainParams().getLogsBlocksLimit )
+        BOOST_THROW_EXCEPTION( TooBigResponse() );
+
     // Handle pending transactions differently as they're not on the block chain.
     if ( begin > bc().number() ) {
         Block temp = postSeal();
@@ -241,17 +244,12 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
         }
     else {
         // if it is a range filter, we want to get all logs from all blocks in given range
-        if ( begin >= end && begin - end >= bc().chainParams().getLogsBlocksLimit )
-            BOOST_THROW_EXCEPTION( TooBigResponse() );
         for ( unsigned i = end; i <= begin; i++ )
             matchingBlocks.insert( i );
     }
 
-    int recordsLimit = bc().chainParams().getLogsRecordsLimit;
     for ( auto n : matchingBlocks ) {
         prependLogsFromBlock( _f, bc().numberHash( n ), BlockPolarity::Live, ret );
-        if ( ret.size() > recordsLimit && !_f.isRangeFilter() )
-            BOOST_THROW_EXCEPTION( TooBigResponse() );
     }
 
     reverse( ret.begin(), ret.end() );

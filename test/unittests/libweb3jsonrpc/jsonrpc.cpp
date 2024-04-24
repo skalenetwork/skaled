@@ -318,8 +318,6 @@ ChainParams chainParams;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::SelfdestructStorageLimitPatch)] = stoi( params.at( "selfdestructStorageLimitPatchTimestamp" ) );
         if( params.count("getLogsBlocksLimit") && stoi( params.at( "getLogsBlocksLimit" ) ) )
             chainParams.getLogsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
-        if( params.count("getLogsRecordsLimit") && stoi( params.at( "getLogsRecordsLimit" ) ) )
-            chainParams.getLogsRecordsLimit = stoi( params.at( "getLogsRecordsLimit" ) );
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -2123,8 +2121,7 @@ contract Logger{
 // limit on getLogs output
 BOOST_AUTO_TEST_CASE( getLogs_limit ) {
     JsonRpcFixture fixture( "", true, true, false, false, false, -1,
-    {{"getLogsBlocksLimit", "10"},
-    {"getLogsRecordsLimit", "10"}} );
+    {{"getLogsBlocksLimit", "10"}} );
 
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
@@ -2181,13 +2178,13 @@ contract Logger{
     // 1 10 blocks
     BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
 
-    // 2 11 blocks
-    req["toBlock"] = 11;
-    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
-
-    // with topics
+    // 2 with topics
     req["address"] = contractAddress;
     BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
+
+    // 3 11 blocks
+    req["toBlock"] = 11;
+    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
 }
 
 BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {

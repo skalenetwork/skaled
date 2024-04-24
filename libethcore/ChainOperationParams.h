@@ -258,7 +258,6 @@ public:
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
     int64_t maxStorageForSelfdestruct = -1;
     int getLogsBlocksLimit = -1;
-    int getLogsRecordsLimit = -1;
 
     time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
 
