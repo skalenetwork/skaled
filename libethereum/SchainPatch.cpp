@@ -29,7 +29,7 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
     else if ( _patchName == "SkipInvalidTransactionsPatch" )
         return SchainPatchEnum::SkipInvalidTransactionsPatch;
     else if ( _patchName == "VerifyBlsSyncPatch" )
-            return SchainPatchEnum::VerifyBlsSyncPatch;
+        return SchainPatchEnum::VerifyBlsSyncPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -59,7 +59,7 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
     case SchainPatchEnum::SelfdestructStorageLimitPatch:
         return "SelfdestructStorageLimitPatch";
     case SchainPatchEnum::VerifyBlsSyncPatch:
-            return "VerifyBlsSyncPatch";
+        return "VerifyBlsSyncPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );

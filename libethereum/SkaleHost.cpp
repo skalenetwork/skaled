@@ -82,7 +82,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
-            m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
@@ -91,9 +91,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
-    // does nothing for a sync node
-        if ( !m_client.chainParams().nodeInfo.syncNode )
-            this->fillPublicKeyInfo( *consensus_engine_ptr );
+    this->fillPublicKeyInfo( *consensus_engine_ptr );
 
     this->fillRotationHistory( *consensus_engine_ptr );
 
@@ -181,8 +179,9 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    if ( ecdsaPublicKeys->size() && ecdsaPublicKeys->at( 0 ).size() && blsPublicKeys.size() &&
-         blsPublicKeys[0]->at( 0 ).size() )
+    if ( ecdsaPublicKeys->size() && ecdsaPublicKeys->at( 0 ).size() &&
+         ( ( blsPublicKeys.size() && blsPublicKeys[0]->at( 0 ).size() ) ||
+             m_client.chainParams().nodeInfo.syncNode ) )
         consensus.setPublicKeyInfo( ecdsaPublicKeys, blsPublicKeysPtr, t, n );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
