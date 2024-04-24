@@ -451,7 +451,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     return LocalisedTransactionReceipt( tr, t.sha3(), tl.first, numberFromHash( tl.first ),
         tl.second, t.isInvalid() ? dev::Address( 0 ) : t.from(),
         t.isInvalid() ? dev::Address( 0 ) : t.to(), gasUsed, contractAddress, int( t.txType() ),
-        t.gasPrice() );
+        t.isInvalid() ? 0 : t.gasPrice() );
 }
 
 pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transactionHash ) const {
