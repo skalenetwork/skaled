@@ -2160,7 +2160,7 @@ contract Logger{
     t["to"] = contractAddress;
     t["gas"] = "99000";
 
-    for(int i=0; i<10; ++i){
+    for(int i=0; i<11; ++i){
 
         std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
         BOOST_REQUIRE( !txHash.empty() );
@@ -2172,7 +2172,7 @@ contract Logger{
     // ask for logs
     Json::Value req;
     req["fromBlock"] = 1;
-    req["toBlock"] = 10;
+    req["toBlock"] = 11;
     req["topics"] = Json::Value(Json::arrayValue);
 
     // 1 10 blocks
@@ -2183,7 +2183,7 @@ contract Logger{
     BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
 
     // 3 11 blocks
-    req["toBlock"] = 11;
+    req["toBlock"] = 12;
     BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
 
     // 4 filter
