@@ -81,6 +81,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
+    patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
+            m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
@@ -89,9 +91,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
-
-    this->fillPublicKeyInfo( *consensus_engine_ptr );
-
+    // does nothing for a sync node
+        if ( !m_client.chainParams().nodeInfo.syncNode )
+            this->fillPublicKeyInfo( *consensus_engine_ptr );
 
     this->fillRotationHistory( *consensus_engine_ptr );
 

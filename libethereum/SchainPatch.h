@@ -130,4 +130,9 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
  */
 DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
 
+/*
+ * Enable bls signatures verification for sync node
+ */
+DEFINE_AMNESIC_PATCH( VerifyBlsSyncPatch );
+
 #endif  // SCHAINPATCH_H
