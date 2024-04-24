@@ -541,7 +541,7 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
         if ( EIP1559TransactionsPatch::isEnabledWhen(
                  client()->blockInfo( client()->numberFromHash( h ) - 1 ).timestamp() ) )
             try {
-                baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) );
+                baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) - 1 );
             } catch ( std::invalid_argument& _e ) {
                 cdebug << "Cannot get gas price for block " << h;
                 cdebug << _e.what();
@@ -603,7 +603,7 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         u256 baseFeePerGas;
         if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h - 1 ).timestamp() ) )
             try {
-                baseFeePerGas = client()->gasBidPrice( h );
+                baseFeePerGas = client()->gasBidPrice( h - 1 );
             } catch ( std::invalid_argument& _e ) {
                 cdebug << "Cannot get gas price for block " << h;
                 cdebug << _e.what();

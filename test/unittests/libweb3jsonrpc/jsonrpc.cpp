@@ -2854,6 +2854,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x1" );
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -2964,6 +2965,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x0" );
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
 
     // send 1 WEI from 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251 to 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b
     // encoded type 2 txn
@@ -2999,6 +3001,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );

@@ -226,6 +226,7 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
         res["revertReason"] = strRevertReason;
 
     res["type"] = toJS( _t.txType() );
+    res["effectiveGasPrice"] = toJS( _t.effectiveGasPrice() );
     return res;
 }
 
@@ -331,6 +332,7 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     }
 
     ADD_FIELD_TO_RAPIDJSON( res, "type", toJS( _t.txType() ), allocator );
+    ADD_FIELD_TO_RAPIDJSON( res, "effectiveGasPrice", toJS( _t.effectiveGasPrice() ), allocator );
 
     return res;
 }
