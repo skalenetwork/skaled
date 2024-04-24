@@ -355,18 +355,6 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
     return true;
 }
 
-LocalisedLogEntries ClientBase::peekWatch( unsigned _watchId ) const {
-    Guard l( x_filtersWatches );
-
-    //	LOG(m_loggerWatch) << "peekWatch" << _watchId;
-    auto& w = m_watches.at( _watchId );
-    //	LOG(m_loggerWatch) << "lastPoll updated to " <<
-    // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-    if ( w.lastPoll != chrono::system_clock::time_point::max() )
-        w.lastPoll = chrono::system_clock::now();
-    return w.get_changes();
-}
-
 LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {
     Guard l( x_filtersWatches );
     LocalisedLogEntries ret;

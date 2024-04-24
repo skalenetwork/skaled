@@ -2185,6 +2185,11 @@ contract Logger{
     // 3 11 blocks
     req["toBlock"] = 11;
     BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
+
+    // 4 filter
+    string filterId = fixture.rpcClient->eth_newFilter( req );
+    BOOST_REQUIRE_THROW( Json::Value res = fixture.rpcClient->eth_getFilterLogs(filterId), std::exception );
+    BOOST_REQUIRE_NO_THROW( Json::Value res = fixture.rpcClient->eth_getFilterChanges(filterId) );
 }
 
 BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {
