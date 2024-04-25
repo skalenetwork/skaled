@@ -28,6 +28,7 @@
 #include <libdevcore/microprofile.h>
 #include <libethashseal/Ethash.h>
 #include <libethcore/CommonJS.h>
+#include <libethereum/SchainPatch.h>
 #include <libevm/LegacyVM.h>
 #include <libevm/VMFactory.h>
 
@@ -468,7 +469,13 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
-                bytes in = isAddressWhitelistedCallData( m_ext->caller );
+                bytes in;
+                if ( FlexibleDeploymentPatch::isEnabledWhen(
+                         m_envInfo.committedBlockTimestamp() ) ) {
+                    in = isAddressWhitelistedCallData( m_ext->caller, m_ext->origin );
+                } else {
+                    in = isAddressWhitelistedCallData( m_ext->caller );
+                }
                 unique_ptr< CallParameters > deploymentCallParams(
                     new CallParameters( SystemAddress, c_configControllerContractAddress,
                         c_configControllerContractAddress, 0, 0, m_gas,
