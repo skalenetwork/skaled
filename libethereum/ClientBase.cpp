@@ -212,6 +212,9 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     unsigned begin = min( bc().number() + 1, ( unsigned ) _f.latest() );
     unsigned end = min( bc().number(), min( begin, ( unsigned ) _f.earliest() ) );
 
+    if ( begin >= end && begin - end > bc().chainParams().getLogsBlocksLimit )
+        BOOST_THROW_EXCEPTION( TooBigResponse() );
+
     // Handle pending transactions differently as they're not on the block chain.
     if ( begin > bc().number() ) {
         Block temp = postSeal();
@@ -341,18 +344,6 @@ bool ClientBase::uninstallWatch( unsigned _i ) {
             m_filters.erase( fit );
         }
     return true;
-}
-
-LocalisedLogEntries ClientBase::peekWatch( unsigned _watchId ) const {
-    Guard l( x_filtersWatches );
-
-    //	LOG(m_loggerWatch) << "peekWatch" << _watchId;
-    auto& w = m_watches.at( _watchId );
-    //	LOG(m_loggerWatch) << "lastPoll updated to " <<
-    // chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
-    if ( w.lastPoll != chrono::system_clock::time_point::max() )
-        w.lastPoll = chrono::system_clock::now();
-    return w.get_changes();
 }
 
 LocalisedLogEntries ClientBase::checkWatch( unsigned _watchId ) {

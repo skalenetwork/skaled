@@ -107,5 +107,8 @@ DEV_SIMPLE_EXCEPTION( FailedToDownloadDaoForkBlockHeader );
 DEV_SIMPLE_EXCEPTION( AccountLocked );
 DEV_SIMPLE_EXCEPTION( TransactionRefused );
 DEV_SIMPLE_EXCEPTION( UnknownAccount );
+
+DEV_SIMPLE_EXCEPTION( TooBigResponse );
+
 }  // namespace eth
 }  // namespace dev

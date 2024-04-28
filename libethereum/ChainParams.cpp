@@ -104,6 +104,8 @@ ChainParams ChainParams::loadConfig(
     cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
                                       params[c_skaleDisableChainIdCheck].get_bool() :
                                       false;
+    cp.getLogsBlocksLimit =
+        params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
 
 
     if ( obj.count( c_skaleConfig ) ) {

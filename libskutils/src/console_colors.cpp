@@ -1185,12 +1185,12 @@ std::string duration2string( std::chrono::nanoseconds time ) {
 }
 
 std::string time2string(
-    std::time_t tt, uint64_t nMicroSeconds, bool isUTC, bool isColored /*= true*/ ) {
+    std::time_t tt, uint64_t nMicroSeconds, bool isUTC, bool isColored /*= false*/ ) {
     std::lock_guard< std::mutex > lock( g_libcall_mutex );
     struct std::tm aTm = isUTC ? ( *std::gmtime( &tt ) ) : ( *std::localtime( &tt ) );
     return time2string( aTm, nMicroSeconds, isColored );
 }
-std::string time2string( const std::tm& aTm, uint64_t nMicroSeconds, bool isColored /*= true*/ ) {
+std::string time2string( const std::tm& aTm, uint64_t nMicroSeconds, bool isColored /*= false*/ ) {
     const std::tm& effective_tm = aTm;
     std::stringstream ss;
     ss << std::setfill( '0' );
@@ -1255,7 +1255,7 @@ inline time_t clock_2_time_t( const typename clock_type_t::time_point& ptTime ) 
 }
 
 std::string time2string( const default_clock_t::time_point& ptTime, bool isUTC,
-    bool isDaysInsteadOfYMD, bool isColored /*= true*/ ) {
+    bool isDaysInsteadOfYMD, bool isColored /*= false*/ ) {
     std::stringstream ss;
     typedef std::chrono::duration< int,
         std::ratio_multiply< std::chrono::hours::period, std::ratio< 24 > >::type >
@@ -1363,7 +1363,7 @@ std::string time2string( const default_clock_t::time_point& ptTime, bool isUTC,
     std::string s = ss.str();
     return s;
 }
-std::string now2string( bool isUTC, bool isDaysInsteadOfYMD, bool isColored /*= true*/ ) {
+std::string now2string( bool isUTC, bool isDaysInsteadOfYMD, bool isColored /*= false*/ ) {
     default_clock_t::time_point ptTimeNow = default_clock_t::now();
     std::string s = time2string( ptTimeNow, isUTC, isDaysInsteadOfYMD, isColored );
     return s;

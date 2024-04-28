@@ -830,7 +830,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     //  function f(uint a) returns(uint d) { return a * 7; }
     // }
 
-    string compiled =
+    string compiled = 
         "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
         "608060405260043610603f576000357c01000000000000000000000000"
         "00000000000000000000000000000000900463ffffffff168063b3de64"
@@ -2012,8 +2012,8 @@ contract TestEstimateGas {
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
-                       false, &data, fixture.client->chainParams().scheduleForBlockNumber(
-                           fixture.client->number() ) ) );
+                       false, &data, fixture.client->chainParams().makeEvmSchedule(
+                       fixture.client->latestBlock().info().timestamp(), fixture.client->number() ) ) );
 
     // try to send with this gas
     estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );
@@ -3354,7 +3354,7 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1; 
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1;
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     RestrictedAddressFixture fixture( config );
