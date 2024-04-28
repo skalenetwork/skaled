@@ -487,11 +487,9 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strTx = t.toString();
-        std::string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
-                             cc::warn( strRevertReason ) + cc::error( ", with call arguments: " ) +
-                             cc::j( strTx ) + cc::error( ", and using " ) +
-                             cc::info( "blockNumber" ) + cc::error( "=" ) +
-                             cc::bright( blockNumber );
+        std::string strOut = "Error message from eth_call(): " + strRevertReason +
+                             ", with call arguments: " + strTx +
+                             ", and using blockNumber=" + blockNumber;
         cerror << strOut;
         throw std::logic_error( strRevertReason );
     }
@@ -820,6 +818,10 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
 Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
     try {
         return toJson( client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
+    } catch ( const TooBigResponse& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+            "Log response size exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -837,6 +839,10 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
         return toJson( client()->logs( toLogFilter( _json ) ) );
+    } catch ( const TooBigResponse& ) {
+        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+            "Log response size exceeded. Maximum allowed number of requested blocks is " +
+                to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
