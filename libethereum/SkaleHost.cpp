@@ -332,9 +332,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         return h256();
     }
 
-    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None,
+    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
-
     h256 sha = transaction.sha3();
 
     //

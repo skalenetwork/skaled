@@ -528,8 +528,9 @@ void TransactionQueue::verifierBody() {
         }  // block
 
         try {
-            Transaction t( work.transaction, CheckTransaction::Cheap );  // Signature will be
-                                                                         // checked later
+            Transaction t( work.transaction, CheckTransaction::Cheap, false,
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock() );  // Signature will be
+                                                                        // checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );
         } catch ( ... ) {

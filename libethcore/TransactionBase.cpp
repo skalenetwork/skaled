@@ -208,14 +208,14 @@ void TransactionBase::fillFromBytesType1(
         if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
             BOOST_THROW_EXCEPTION( InvalidSignature() );
 
+        m_txType = TransactionType::Type1;
+
         if ( _checkSig == CheckTransaction::Everything )
             m_sender = sender();
 
         if ( rlp.itemCount() > 11 )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
-
-        m_txType = TransactionType::Type1;
     } catch ( Exception& _e ) {
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
@@ -276,14 +276,14 @@ void TransactionBase::fillFromBytesType2(
         if ( _checkSig >= CheckTransaction::Cheap && !m_vrs->isValid() )
             BOOST_THROW_EXCEPTION( InvalidSignature() );
 
+        m_txType = TransactionType::Type2;
+
         if ( _checkSig == CheckTransaction::Everything )
             m_sender = sender();
 
         if ( rlp.itemCount() > 12 )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                    << errinfo_comment( "too many fields in the transaction RLP" ) );
-
-        m_txType = TransactionType::Type2;
     } catch ( Exception& _e ) {
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
