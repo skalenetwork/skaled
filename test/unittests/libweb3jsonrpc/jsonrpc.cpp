@@ -254,7 +254,8 @@ ChainParams chainParams;
 
 JsonRpcFixture( const std::string& _config = "", bool _owner = true,
                     bool _deploymentControl = true, bool _generation2 = false,
-                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1 ) {
+                    bool _mtmEnabled = false, bool _isSyncNode = false, int _emptyBlockIntervalMs = -1,
+                    const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
 
 
         if ( _config != "" ) {
@@ -307,6 +308,9 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
             chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
             chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
             chainParams.skaleDisableChainIdCheck = true;
+
+            if( params.count("getLogsBlocksLimit") && stoi( params.at( "getLogsBlocksLimit" ) ) )
+                chainParams.getLogsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
         }
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
         chainParams.nodeInfo.syncNode = _isSyncNode;
@@ -2108,6 +2112,77 @@ contract Logger{
     logs = fixture.rpcClient->eth_getLogs(t);
     BOOST_REQUIRE(logs.isArray());
     BOOST_REQUIRE_EQUAL(logs.size(), 24);
+}
+
+// limit on getLogs output
+BOOST_AUTO_TEST_CASE( getLogs_limit ) {
+    JsonRpcFixture fixture( "", true, true, false, false, false, -1,
+                           {{"getLogsBlocksLimit", "10"}} );
+
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    /*
+ // SPDX-License-Identifier: None
+pragma solidity ^0.8;
+contract Logger{
+    event DummyEvent(uint256, uint256);
+    fallback() external payable {
+        for(uint i=0; i<100; ++i)
+            emit DummyEvent(block.number, i);
+    }
+}
+*/
+
+    string bytecode = "6080604052348015600e575f80fd5b5060c080601a5f395ff3fe60806040525f5b6064811015604f577f90778767414a5c844b9d35a8745f67697ee3b8c2c3f4feafe5d9a3e234a5a3654382604051603d9291906067565b60405180910390a18060010190506006565b005b5f819050919050565b6061816051565b82525050565b5f60408201905060785f830185605a565b60836020830184605a565b939250505056fea264697066735822122040208e35f2706dd92c17579466ab671c308efec51f558a755ea2cf81105ab22964736f6c63430008190033";
+
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
+
+    // generate 10 blocks 10 logs each
+
+    Json::Value t;
+    t["from"] = toJS( fixture.coinbase.address() );
+    t["value"] = jsToDecimal( "0" );
+    t["to"] = contractAddress;
+    t["gas"] = "99000";
+
+    for(int i=0; i<11; ++i){
+
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !txHash.empty() );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+        BOOST_REQUIRE_EQUAL(receipt["status"], "0x1");
+    }
+
+    // ask for logs
+    Json::Value req;
+    req["fromBlock"] = 1;
+    req["toBlock"] = 11;
+    req["topics"] = Json::Value(Json::arrayValue);
+
+    // 1 10 blocks
+    BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
+
+    // 2 with topics
+    req["address"] = contractAddress;
+    BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
+
+    // 3 11 blocks
+    req["toBlock"] = 12;
+    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
+
+    // 4 filter
+    string filterId = fixture.rpcClient->eth_newFilter( req );
+    BOOST_REQUIRE_THROW( Json::Value res = fixture.rpcClient->eth_getFilterLogs(filterId), std::exception );
+    BOOST_REQUIRE_NO_THROW( Json::Value res = fixture.rpcClient->eth_getFilterChanges(filterId) );
 }
 
 BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {

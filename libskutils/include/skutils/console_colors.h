@@ -438,12 +438,13 @@ extern bool string2duration( const std::string& s, std::chrono::duration< uint64
     const std::chrono::seconds& seconds = std::chrono::seconds::zero() );
 extern std::string duration2string( std::chrono::nanoseconds time );
 extern std::string time2string(
-    std::time_t tt, uint64_t nMicroSeconds, bool isUTC = false, bool isColored = true );
-extern std::string time2string( const std::tm& aTm, uint64_t nMicroSeconds, bool isColored = true );
+    std::time_t tt, uint64_t nMicroSeconds, bool isUTC = false, bool isColored = false );
+extern std::string time2string(
+    const std::tm& aTm, uint64_t nMicroSeconds, bool isColored = false );
 extern std::string time2string( const default_clock_t::time_point& ptTime, bool isUTC = false,
-    bool isDaysInsteadOfYMD = false, bool isColored = true );
+    bool isDaysInsteadOfYMD = false, bool isColored = false );
 extern std::string now2string(
-    bool isUTC = false, bool isDaysInsteadOfYMD = false, bool isColored = true );
+    bool isUTC = false, bool isDaysInsteadOfYMD = false, bool isColored = false );
 extern std::string jsNow2string( bool isUTC = true );
 
 inline std::string c() {
