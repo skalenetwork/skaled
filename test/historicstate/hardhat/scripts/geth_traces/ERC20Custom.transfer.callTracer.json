@@ -1,0 +1,21 @@
+{
+    "calls": [
+        {
+            "error": "out of gas",
+            "from": "ERC20Custom.address",
+            "gas": "0x51",
+            "gasUsed": "0x30d",
+            "input": "0x53bb9b8a",
+            "to": "ERC20Custom.address",
+            "type": "CALL"
+        }
+    ],
+    "error": "out of gas",
+    "from": "OWNER.address",
+    "gas": "0x6239",
+    "gasUsed": "0x6239",
+    "input": "0xa9059cbb000000000000000000000000ce5c7ca85f8cb94fa284a303348ef42add23f5e70000000000000000000000000000000000000000000000000000000000000001",
+    "to": "ERC20Custom.address",
+    "type": "CALL",
+    "value": "0x0"
+}

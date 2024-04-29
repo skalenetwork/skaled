@@ -207,7 +207,8 @@ void AlethStandardTrace::setTopFunctionCall(
 
 void AlethStandardTrace::recordFunctionReturned(
     evmc_status_code _status, const vector< uint8_t >& _returnData, uint64_t _gasUsed ) {
-    STATE_CHECK( getLastOpRecord()->m_gasRemaining >= getLastOpRecord()->m_opGas )
+    // note that m_gas remaining can be less than m_opGas. This happens in case
+    // of out of gas revert
     STATE_CHECK( m_currentlyExecutingFunctionCall )
     STATE_CHECK( !m_isFinalized )
 
@@ -347,7 +348,6 @@ shared_ptr< OpExecutionRecord > AlethStandardTrace::createOpExecutionRecord( uin
     } else if ( opName == "SHA3" ) {
         opName = "KECCAK256";
     }
-
 
     auto executionRecord = std::make_shared< OpExecutionRecord >( ext.depth, _inst,
         ( uint64_t ) _gasRemaining, ( uint64_t ) _gasOpGas, _pc, ext.sub.refunds, opName );

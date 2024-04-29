@@ -358,8 +358,7 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             throw;
 #ifdef HISTORIC_STATE
         } catch ( VMTracingError const& _e ) {
-            cwarn << "Tracing error: " << *boost::get_error_info< errinfo_evmcStatusCode >( _e )
-                  << ")";
+            cerr << "VM tracing error:" << _e.message;
             revert();
             throw;
 #endif

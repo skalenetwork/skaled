@@ -231,25 +231,29 @@ void LegacyVM::interpretCases() {
         //
 
         CASE( CREATE2 ) {
+            if ( !m_schedule->haveCreate2 ) {
+                ON_OP();
+                throwBadInstruction();
+            }
+            if ( m_ext->staticCall ) {
+                ON_OP();
+                throwDisallowedStateChange();
+            }
+
             // for CREATE and CREATE2 we call ON_OP in caseCreate, since it calculates
             // correct gas cost
-            // ON_OP();
-            if ( !m_schedule->haveCreate2 )
-                throwBadInstruction();
-            if ( m_ext->staticCall )
-                throwDisallowedStateChange();
-
             m_bounce = &LegacyVM::caseCreate;
         }
         BREAK
 
         CASE( CREATE ) {
+            if ( m_ext->staticCall ) {
+                ON_OP();
+                throwDisallowedStateChange();
+            }
+
             // for CREATE and CREATE2 we call ON_OP in caseCreate, since it calculates
             // correct gas cost
-            // ON_OP();
-            if ( m_ext->staticCall )
-                throwDisallowedStateChange();
-
             m_bounce = &LegacyVM::caseCreate;
         }
         BREAK
