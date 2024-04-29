@@ -1,0 +1,10 @@
+{
+    "from": "OWNER.address",
+    "gas": "0x200b20",
+    "gasUsed": "0x1221b",
+    "to": "Tracer.address",
+    "input": "0xa0712d6800000000000000000000000000000000000000000000000000000000000003e8",
+    "error": "execution reverted",
+    "value": "0x0",
+    "type": "CALL"
+}
