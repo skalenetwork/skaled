@@ -114,7 +114,6 @@ public:
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
     bool uninstallWatch( unsigned _watchId ) override;
-    LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
 
     using Interface::blockDetails;
