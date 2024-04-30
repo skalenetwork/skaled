@@ -767,20 +767,28 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
 
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
-        nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
-        nlohmann::json joValue =
-            skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
-        std::string strValue = skutils::tools::trim_copy(
-            joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
+        if ( rawName.find( "commonBLSPublicKey" ) != std::string::npos ) {
+            auto pos = rawName.find( "commonBLSPublicKey" );
+            size_t idx = rawName[pos + std::string( "commonBLSPublicKey" ).size()] - '0';
+            auto imaBLSPublicKey = g_skaleHost->getIMABLSPublicKey();
+            bytes response = toBigEndian( dev::u256( imaBLSPublicKey[idx] ) );
+            return { true, response };
+        } else {
+            nlohmann::json joConfig = g_configAccesssor->getConfigJSON();
+            nlohmann::json joValue =
+                skutils::json_config_file_accessor::stat_extract_at_path( joConfig, rawName );
+            std::string strValue = skutils::tools::trim_copy(
+                joValue.is_string() ? joValue.get< std::string >() : joValue.dump() );
 
-        // dev::u256 uValue( strValue.c_str() );
-        dev::u256 uValue = stat_parse_u256_hex_or_dec( strValue );
-        // std::cout << "------------ Loaded config var \""
-        //          << rawName << "\" value is " << uValue
-        //          << "\n";
+            // dev::u256 uValue( strValue.c_str() );
+            dev::u256 uValue = stat_parse_u256_hex_or_dec( strValue );
+            // std::cout << "------------ Loaded config var \""
+            //          << rawName << "\" value is " << uValue
+            //          << "\n";
 
-        bytes response = toBigEndian( uValue );
-        return { true, response };
+            bytes response = toBigEndian( uValue );
+            return { true, response };
+        }
     } catch ( std::exception& ex ) {
         std::string strError = ex.what();
         if ( strError.empty() )
