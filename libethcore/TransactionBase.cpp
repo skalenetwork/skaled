@@ -36,11 +36,13 @@ using namespace std;
 using namespace dev;
 using namespace dev::eth;
 
-std::vector< bytes > validateAccessListRLP( const RLP& data ) {
-    if ( !data.isList() )
+const size_t MAX_ACCESS_LIST_COUNT = 16;
+
+std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
+    if ( !_data.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
                                << errinfo_comment( "transaction accessList RLP must be a list" ) );
-    auto rlpList = data.toList();
+    auto rlpList = _data.toList();
     if ( rlpList.empty() ) {
         // empty accessList, ignore it
         return {};
@@ -65,6 +67,10 @@ std::vector< bytes > validateAccessListRLP( const RLP& data ) {
                     InvalidTransactionFormat() << errinfo_comment(
                         "transaction storageKeys RLP must be a list of byte array" ) );
     }
+
+    if ( rlpList.size() > MAX_ACCESS_LIST_COUNT )
+        BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
+                               << errinfo_comment( "The number of access lists is too large." ) );
 
     std::vector< bytes > accessList( rlpList.size() );
     for ( size_t i = 0; i < rlpList.size(); ++i ) {
@@ -298,9 +304,9 @@ void TransactionBase::fillFromBytesType2(
     }
 }
 
-void TransactionBase::fillFromBytesByType(
-    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, TransactionType type ) {
-    switch ( type ) {
+void TransactionBase::fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
+    bool _allowInvalid, TransactionType _type ) {
+    switch ( _type ) {
     case TransactionType::Legacy:
         fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         break;

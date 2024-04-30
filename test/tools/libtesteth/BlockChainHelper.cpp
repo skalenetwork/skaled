@@ -122,7 +122,7 @@ void TestBlock::setState( State const& _state ) {
 void TestBlock::addTransaction( TestTransaction const& _tr ) {
     m_testTransactions.push_back( _tr );
     if ( m_transactionQueue.import( _tr.transaction().toBytes() ) != ImportResult::Success )
-        cnote << TestOutputHelper::get().testName() + " Test block failed importing transaction\n";
+        cnote << TestOutputHelper::get().testName() + " Test block failed importing transaction";
     recalcBlockHeaderBytes();
 }
 

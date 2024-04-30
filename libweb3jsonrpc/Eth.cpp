@@ -956,7 +956,10 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
             }
         }
 
-        auto blockCount = std::min( jsToU256( _blockCount ), MAX_BLOCK_RANGE );
+        auto blockCount = jsToU256( _blockCount );
+        if ( blockCount > MAX_BLOCK_RANGE )
+            throw std::runtime_error( "Max block range reached. Please try smaller blockCount." );
+
         auto newestBlock = jsToBlockNumber( _newestBlock );
         if ( newestBlock == dev::eth::LatestBlock )
             newestBlock = client()->number();
