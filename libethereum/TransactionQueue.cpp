@@ -133,7 +133,6 @@ ImportResult TransactionQueue::import(
 
             // if transaction found:
             if ( t != fs->second.end() ) {
-                //                if( t == fs->second.begin() ){
                 UpgradeGuard ul( l );
                 --m_futureSize;
                 m_futureSizeBytes -= t->second.transaction.toBytes().size();
@@ -143,7 +142,6 @@ ImportResult TransactionQueue::import(
                 fs->second.erase( t->second.transaction.nonce() );
                 if ( fs->second.empty() )
                     m_future.erase( fs );
-                //                }
             }  // if found
         }      // if fs->second
 

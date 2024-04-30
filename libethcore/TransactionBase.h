@@ -313,7 +313,7 @@ private:
 
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-        bool _allowInvalid, TransactionType type );
+        bool _allowInvalid, TransactionType _type );
     void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
     void fillFromBytesType1(
