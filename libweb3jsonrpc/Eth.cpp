@@ -601,12 +601,14 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         if ( !client()->isKnown( h ) )
             return Json::Value( Json::nullValue );
 
+        BlockNumber bn = ( h == LatestBlock || h == PendingBlock ) ? client()->number() : h;
+
         u256 baseFeePerGas;
-        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( h - 1 ).timestamp() ) )
+        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
             try {
-                baseFeePerGas = client()->gasBidPrice( h - 1 );
+                baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
-                cdebug << "Cannot get gas price for block " << h;
+                cdebug << "Cannot get gas price for block " << bn;
                 cdebug << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
