@@ -184,7 +184,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
              m_client.chainParams().nodeInfo.syncNode ) )
         consensus.setPublicKeyInfo( ecdsaPublicKeys, blsPublicKeysPtr, t, n );
 } catch ( ... ) {
-    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
+    std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
 
 
