@@ -768,8 +768,18 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
         if ( rawName.find( "commonBLSPublicKey" ) != std::string::npos ) {
-            auto pos = rawName.find( "commonBLSPublicKey" );
-            size_t idx = rawName[pos + std::string( "commonBLSPublicKey" ).size()] - '0';
+            char c = rawName.back();
+            size_t idx;
+            if ( c == '0' )
+                idx = 0;
+            else if ( c == '1' )
+                idx = 1;
+            else if ( c == '2' )
+                idx = 2;
+            else if ( c == '3' )
+                idx = 3;
+            else
+                std::cout << "UNKNOWN INDEX AT " << rawName << '\n';
             auto imaBLSPublicKey = g_skaleHost->getIMABLSPublicKey();
             bytes response = toBigEndian( dev::u256( imaBLSPublicKey[idx] ) );
             return { true, response };
