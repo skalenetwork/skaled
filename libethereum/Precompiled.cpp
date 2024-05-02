@@ -760,7 +760,6 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     try {
         size_t lengthName;
         std::string rawName;
-        std::cout << "REQUEST: " << rawName << '\n';
         convertBytesToString( _in, 0, rawName, lengthName );
         if ( !stat_is_accessible_json_path( rawName ) )
             throw std::runtime_error(
@@ -779,10 +778,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
                 idx = 2;
             else if ( c == '3' )
                 idx = 3;
-            else
-                std::cout << "UNKNOWN INDEX AT " << rawName << '\n';
             auto imaBLSPublicKey = g_skaleHost->getIMABLSPublicKey();
-            std::cout << "RESPONSE: " << dev::u256( imaBLSPublicKey[idx] ) << '\n';
             bytes response = toBigEndian( dev::u256( imaBLSPublicKey[idx] ) );
             return { true, response };
         } else {
