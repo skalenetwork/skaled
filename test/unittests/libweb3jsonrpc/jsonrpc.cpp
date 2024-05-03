@@ -2190,22 +2190,31 @@ BOOST_AUTO_TEST_CASE( getLogs_blockHash ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
 
+    string latestHash = fixture.rpcClient->eth_getBlockByNumber("latest", false)["hash"].asString();
+
     Json::Value req;
     req["blockHash"] = "xyz";
+    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
+
+    req["blockHash"] = Json::Value(Json::arrayValue);
     BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
 
     req["fromBlock"] = 1;
     req["toBlock"] = 1;
     BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
 
+    req["blockHash"] = latestHash;
+    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
+
     req.removeMember("fromBlock");
     req.removeMember("toBlock");
-    req["blockHash"] = "0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b";
     BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
 
-    string hash = fixture.rpcClient->eth_getBlockByNumber("latest", false)["hash"].asString();
-    req["blockHash"] = hash;
-    BOOST_REQUIRE_NO_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req) );
+    req["blockHash"] = "0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b";
+    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
+
+    req["blockHash"] = "";
+    BOOST_REQUIRE_THROW( Json::Value logs = fixture.rpcClient->eth_getLogs(req), std::exception );
 }
 
 BOOST_AUTO_TEST_CASE( estimate_gas_low_gas_txn ) {

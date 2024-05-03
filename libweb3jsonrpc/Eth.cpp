@@ -844,9 +844,13 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
                 BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
                     "fromBlock and toBlock are not allowed if blockHash is present" ) );
             string strHash = _json["blockHash"].asString();
+            if ( strHash.empty() )
+                throw std::invalid_argument( "blockHash cannot be an empty string" );
             uint64_t number = m_eth.numberFromHash( jsToFixed< 32 >( strHash ) );
             if ( number == PendingBlock )
-                return toJson( LocalisedLogEntries() );
+                BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+                    "A block with this hash does not exist in the database. If this is an old "
+                    "block, try connecting to an archive node" ) );
             filter.withEarliest( number );
             filter.withLatest( number );
         }
