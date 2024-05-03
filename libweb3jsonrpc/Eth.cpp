@@ -860,7 +860,8 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
             uint64_t number = m_eth.numberFromHash( jsToFixed< 32 >( strHash ) );
             if ( number == PendingBlock )
                 return toJson( LocalisedLogEntries() );
-            filter.withEarliest( number ).withLatest( number );
+            filter.withEarliest( number );
+            filter.withLatest( number );
         }
         return toJson( client()->logs( filter ) );
     } catch ( const TooBigResponse& ) {
