@@ -182,7 +182,8 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     if ( ecdsaPublicKeys->size() && ecdsaPublicKeys->at( 0 ).size() &&
          ( ( blsPublicKeys.size() && blsPublicKeys[0]->at( 0 ).size() ) ||
              m_client.chainParams().nodeInfo.syncNode ) )
-        consensus.setPublicKeyInfo( ecdsaPublicKeys, blsPublicKeysPtr, t, n );
+        consensus.setPublicKeyInfo(
+            ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().nodeInfo.syncNode );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
