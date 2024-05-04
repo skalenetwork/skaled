@@ -259,7 +259,7 @@ void Client::populateNewChainStateFromGenesis() {
 
 void Client::initStateFromDiskOrGenesis() {
 #ifdef HISTORIC_STATE
-    // Check if If the historic state databases do not yet exist
+    // Check if the historic state databases do not yet exist
     bool historicStateExists = fs::exists(
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif

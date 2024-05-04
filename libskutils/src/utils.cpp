@@ -1026,7 +1026,7 @@ void md5::update( std::ifstream& stream ) {
     }
 }
 void md5::finalize() {
-    // MD5 finalization. Ends an MD5 message-digest operation, writing the the message digest and
+    // MD5 finalization. Ends an MD5 message-digest operation, writing the message digest and
     // zeroizing the context.
     unsigned char bits[8];
     unsigned int index, padLen;

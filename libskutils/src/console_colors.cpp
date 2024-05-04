@@ -406,7 +406,7 @@ const char* json_prefix( nlohmann::json::value_t vt ) {
         { nlohmann::json::value_t::number_float, control::foreground::_cyan_ },    // number value
                                                                                  // (floating-point)
         { nlohmann::json::value_t::discarded,
-            control::foreground::_red_ },  // discarded by the the parser callback function
+            control::foreground::_red_ },  // discarded by the parser callback function
     };
     map_json_prefixes_by_type_t::const_iterator itFind = g_map.find( vt );
     const char* s = ( itFind != g_map.end() ) ? itFind->second : reset();
