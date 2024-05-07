@@ -20,14 +20,17 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::ContractStorageZeroValuePatch;
     else if ( _patchName == "PushZeroPatch" )
         return SchainPatchEnum::PushZeroPatch;
-    else if ( _patchName == "VerifyDaSigsPatch" )
-        return SchainPatchEnum::VerifyDaSigsPatch;
     else if ( _patchName == "ContractStoragePatch" )
         return SchainPatchEnum::ContractStoragePatch;
     else if ( _patchName == "StorageDestructionPatch" )
         return SchainPatchEnum::StorageDestructionPatch;
     else if ( _patchName == "SkipInvalidTransactionsPatch" )
         return SchainPatchEnum::SkipInvalidTransactionsPatch;
+    // consesus-related patches
+    else if ( _patchName == "VerifyDaSigsPatch" )
+        return SchainPatchEnum::VerifyDaSigsPatch;
+    else if ( _patchName == "FastConsensusPatch" )
+        return SchainPatchEnum::FastConsensusPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -46,8 +49,6 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ContractStorageZeroValuePatch";
     case SchainPatchEnum::PushZeroPatch:
         return "PushZeroPatch";
-    case SchainPatchEnum::VerifyDaSigsPatch:
-        return "VerifyDaSigsPatch";
     case SchainPatchEnum::ContractStoragePatch:
         return "ContractStoragePatch";
     case SchainPatchEnum::StorageDestructionPatch:
@@ -56,6 +57,11 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "SkipInvalidTransactionsPatch";
     case SchainPatchEnum::SelfdestructStorageLimitPatch:
         return "SelfdestructStorageLimitPatch";
+    // consensus-related patches
+    case SchainPatchEnum::VerifyDaSigsPatch:
+        return "VerifyDaSigsPatch";
+    case SchainPatchEnum::FastConsensusPatch:
+        return "FastConsensusPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );

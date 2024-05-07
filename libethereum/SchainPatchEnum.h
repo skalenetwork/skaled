@@ -11,11 +11,13 @@ enum class SchainPatchEnum {
     CorrectForkInPowPatch,
     ContractStorageZeroValuePatch,
     PushZeroPatch,
-    VerifyDaSigsPatch,
     ContractStoragePatch,
     StorageDestructionPatch,
     SkipInvalidTransactionsPatch,
     SelfdestructStorageLimitPatch,
+    // consensus related patches
+    VerifyDaSigsPatch,
+    FastConsensusPatch,
     PatchesCount
 };
 
