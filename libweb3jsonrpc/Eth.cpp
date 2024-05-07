@@ -871,11 +871,29 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
 
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
-        return toJson( client()->logs( toLogFilter( _json ) ) );
+        LogFilter filter = toLogFilter( _json );
+        if ( !_json["blockHash"].isNull() ) {
+            if ( !_json["fromBlock"].isNull() || !_json["toBlock"].isNull() )
+                BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+                    "fromBlock and toBlock are not allowed if blockHash is present" ) );
+            string strHash = _json["blockHash"].asString();
+            if ( strHash.empty() )
+                throw std::invalid_argument( "blockHash cannot be an empty string" );
+            uint64_t number = m_eth.numberFromHash( jsToFixed< 32 >( strHash ) );
+            if ( number == PendingBlock )
+                BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
+                    "A block with this hash does not exist in the database. If this is an old "
+                    "block, try connecting to an archive node" ) );
+            filter.withEarliest( number );
+            filter.withLatest( number );
+        }
+        return toJson( client()->logs( filter ) );
     } catch ( const TooBigResponse& ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS,
             "Log response size exceeded. Maximum allowed number of requested blocks is " +
                 to_string( this->client()->chainParams().getLogsBlocksLimit ) ) );
+    } catch ( const JsonRpcException& ) {
+        throw;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
