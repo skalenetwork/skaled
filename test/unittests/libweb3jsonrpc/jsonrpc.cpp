@@ -2896,6 +2896,120 @@ BOOST_AUTO_TEST_CASE( deploy_controller_generation2 ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
+BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
+
+    // pragma solidity ^0.8.9;
+
+    // contract ConfigController {
+    //     bool public freeContractDeployment = false;
+
+    //     function isAddressWhitelisted(address addr) external view returns (bool) {
+    //         return freeContractDeployment;
+    //     }
+
+    //     function isAddressWhitelisted(address sender, address origin) 
+    //         external view returns (bool) {
+    //         return freeContractDeployment;
+    //     }
+
+    //     function setFreeContractDeployment() external {
+    //         freeContractDeployment = true;
+    //     }
+    // }
+
+    string configControllerV2 = 
+            "0x608060405234801561001057600080fd5b506004361061004c576000"
+            "3560e01c806313f44d1014610051578063a2306c4f14610081578063b3"
+            "1fd4e61461009f578063f7e2a91b146100cf575b600080fd5b61006b60"
+            "04803603810190610066919061019a565b6100d9565b60405161007891"
+            "906101e2565b60405180910390f35b6100896100f1565b604051610096"
+            "91906101e2565b60405180910390f35b6100b960048036038101906100"
+            "b491906101fd565b610102565b6040516100c691906101e2565b604051"
+            "80910390f35b6100d761011b565b005b60008060009054906101000a90"
+            "0460ff169050919050565b60008054906101000a900460ff1681565b60"
+            "008060009054906101000a900460ff16905092915050565b6001600080"
+            "6101000a81548160ff021916908315150217905550565b600080fd5b60"
+            "0073ffffffffffffffffffffffffffffffffffffffff82169050919050"
+            "565b60006101678261013c565b9050919050565b6101778161015c565b"
+            "811461018257600080fd5b50565b6000813590506101948161016e565b"
+            "92915050565b6000602082840312156101b0576101af610137565b5b60"
+            "006101be84828501610185565b91505092915050565b60008115159050"
+            "919050565b6101dc816101c7565b82525050565b600060208201905061"
+            "01f760008301846101d3565b92915050565b6000806040838503121561"
+            "021457610213610137565b5b600061022285828601610185565b925050"
+            "602061023385828601610185565b915050925092905056fea264697066"
+            "73582212200d0a9423308153222b80b5b50861993fb06e77a92aba37af"
+            "6c7fc23105a7138264736f6c634300080b0033";
+
+    std::string _config = c_genesisGeneration2ConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    ret["accounts"]["0xD2002000000000000000000000000000000000d2"]["code"] = configControllerV2;
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+
+    JsonRpcFixture fixture(config, false, false, true );
+    Address senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+
+    // contract test {
+    //  function f(uint a) returns(uint d) { return a * 7; }
+    // }
+
+    string compiled =
+            "6080604052341561000f57600080fd5b60b98061001d6000396000f300"
+            "608060405260043610603f576000357c01000000000000000000000000"
+            "00000000000000000000000000000000900463ffffffff168063b3de64"
+            "8b146044575b600080fd5b3415604e57600080fd5b606a600480360381"
+            "019080803590602001909291905050506080565b604051808281526020"
+            "0191505060405180910390f35b60006007820290509190505600a16562"
+            "7a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb9"
+            "8fb480406fc2728a960029";
+
+
+    Json::Value deployContractWithoutRoleTx;
+    deployContractWithoutRoleTx["from"] = senderAddress.hex();
+    deployContractWithoutRoleTx["code"] = compiled;
+    deployContractWithoutRoleTx["gas"] = "1000000";
+    deployContractWithoutRoleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+
+    string txHash = fixture.rpcClient->eth_sendTransaction( deployContractWithoutRoleTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
+
+    Json::Value code =
+            fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString() == "0x" );
+
+    // Allow deploy by calling setFreeContractDeployment()
+    Json::Value grantDeployerRoleTx;
+    grantDeployerRoleTx["data"] = "0xf7e2a91b";
+    grantDeployerRoleTx["from"] = senderAddress.hex();
+    grantDeployerRoleTx["to"] = "0xD2002000000000000000000000000000000000D2";
+    grantDeployerRoleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    grantDeployerRoleTx["gas"] = toJS( "1000000" );
+    txHash = fixture.rpcClient->eth_sendTransaction( grantDeployerRoleTx );
+    BOOST_REQUIRE( !txHash.empty() );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value deployContractTx;
+    deployContractTx["from"] = senderAddress.hex();
+    deployContractTx["code"] = compiled;
+    deployContractTx["gas"] = "1000000";
+    deployContractTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+
+    txHash = fixture.rpcClient->eth_sendTransaction( deployContractTx );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
+    BOOST_REQUIRE( !receipt["contractAddress"].isNull() );
+    code = fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
+}
+
 BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
     JsonRpcFixture fixture(c_genesisGeneration2ConfigString, false, false, true);
 

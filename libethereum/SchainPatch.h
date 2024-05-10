@@ -131,7 +131,7 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
 
 /*
- * Purpose: passing both tx origin and tx sender into ConfigController 
+ * Purpose: passing both transaction origin and sender to the ConfigController contract
  * Version introduced: 3.19.0
  */
 DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
