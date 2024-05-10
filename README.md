@@ -10,13 +10,13 @@
 
 [![Discord](https://img.shields.io/discord/534485763354787851.svg)](https://discord.gg/vvUtWJB)
 
-Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecocystem, including EVM, Solidity, Metamask and Truffle. It uses [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for [SKALE blockchains](https://skale.space/technology).
+Skaled is SKALE Proof-Of-Stake blockchain client, compatible with ETH ecosystem, including EVM, Solidity, Metamask and Truffle. It uses the [SKALE BFT Consensus engine](https://github.com/skalenetwork/skale-consensus).  It is currently actively developed and maintained by SKALE Labs, and intended to be used for [SKALE blockchains](https://skale.space/technology).
 
 The SKALE network supports an unlimited number of independent blockchains with zero gas fees, instant finality, and high transaction throughput. SKALE is the first live blockchain with Linear Scaling. As more nodes join the network, the capacity of the network also grows.
 
 ## Forklessness
 
-Skaled is forkless, meaning that blockchain a linear chain (and not a tree of forks as with ETH 1.0). Every block is provably finalized within finite time.
+Skaled is forkless, meaning that blockchain a linear chain (and not a tree of forks as with ETH 1.0). Every block is provably finalized within a finite time.
 
 
 ## Asynchronous block production
@@ -29,7 +29,7 @@ Skaled is the only provably secure ETH compatible PoS client. Security is proven
 
 ## Survivability
 
-The network is assumed to bef fully asynchronous meaning that there is no upper limit for the packet delivery time. In case of a temporarily network split, the protocol can wait indefinitely long until the split is resolved and then resume normal block production.
+The network is assumed to bef fully asynchronous meaning that there is no upper limit for the packet delivery time. In case of a temporary network split, the protocol can wait indefinitely long until the split is resolved and then resume normal block production.
 
 ##  Historic origins
 
