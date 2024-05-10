@@ -226,10 +226,15 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     array< string, 4 > BLSPublicKeys;
     array< string, 4 > commonBLSPublicKeys;
 
-    if ( !syncNode )
-        try {
-            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+    try {
+        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
+        commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+        commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+        commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+        commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
+
+        if ( !syncNode ) {
             keyShareName = ima.at( "keyShareName" ).get_str();
 
             t = ima.at( "t" ).get_int();
@@ -238,26 +243,13 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
             BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
             BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
-
-            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
-            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
-            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
-            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-        } catch ( ... ) {
-            // all or nothing
-            if ( !keyShareName.empty() )
-                throw;
         }
-    else
-        try {
-            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
-            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
-            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
-            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
-            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-        } catch ( ... ) {
-        }
+    } catch ( ... ) {
+        // all or nothing
+        if ( !syncNode && !keyShareName.empty() )
+            throw;
+    }
 
     cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName, BLSPublicKeys,
