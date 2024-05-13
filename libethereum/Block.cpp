@@ -1017,11 +1017,16 @@ void Block::commitToSeal(
         receipt( i ).streamRLP( receiptrlp );
         receiptsMap.insert( std::make_pair( k.out(), receiptrlp.out() ) );
 
-        RLPStream txrlp;
-        m_transactions[i].streamRLP( txrlp );
-        transactionsMap.insert( std::make_pair( k.out(), txrlp.out() ) );
+        dev::bytes txOutput = m_transactions[i].toBytes();
+        if ( EIP1559TransactionsPatch::isEnabledInWorkingBlock() &&
+             m_transactions[i].txType() != dev::eth::TransactionType::Legacy ) {
+            RLPStream s;
+            s.append( txOutput );
+            txOutput = s.out();
+        }
+        transactionsMap.insert( std::make_pair( k.out(), txOutput ) );
 
-        txs.appendRaw( txrlp.out() );
+        txs.appendRaw( txOutput );
     }
 
     txs.swapOut( m_currentTxs );

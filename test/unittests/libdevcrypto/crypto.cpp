@@ -119,10 +119,10 @@ BOOST_AUTO_TEST_CASE( keypairs ) {
         p.address() == Address( fromHex( "8a40bfaa73256b60764c1bf40675a99083efb075" ) ) );
     eth::Transaction t( 1000, 0, 0, h160( fromHex( "944400f4b88ac9589a0f17ed4671da26bddb668b" ) ),
         {}, 0, p.secret() );
-    auto rlp = t.rlp( eth::WithoutSignature );
+    auto rlp = t.toBytes( eth::WithoutSignature );
     auto expectedRlp = "dc80808094944400f4b88ac9589a0f17ed4671da26bddb668b8203e880";
     BOOST_CHECK_EQUAL( toHex( rlp ), expectedRlp );
-    rlp = t.rlp( eth::WithSignature );
+    rlp = t.toBytes( eth::WithSignature );
     auto expectedRlp2 =
         "f85f80808094944400f4b88ac9589a0f17ed4671da26bddb668b8203e8801ca0bd2402a510c9c9afddf2a3f63c"
         "869573bd257475bea91d6f164638134a3386d6a0609ad9775fd2715e6a359c627e9338478e4adba65dd0dc6ef2"
