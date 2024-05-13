@@ -2898,20 +2898,19 @@ BOOST_AUTO_TEST_CASE( deploy_controller_generation2 ) {
 
 BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
 
+    // Inserting ConfigController mockup into config and enabling flexibleDeploymentPatch.
+    // ConfigController mockup contract: 
+    
     // pragma solidity ^0.8.9;
-
     // contract ConfigController {
     //     bool public freeContractDeployment = false;
-
     //     function isAddressWhitelisted(address addr) external view returns (bool) {
     //         return false;
     //     }
-
     //     function isDeploymentAllowed(address origin, address sender) 
     //         external view returns (bool) {
     //         return freeContractDeployment;
     //     }
-
     //     function setFreeContractDeployment() external {
     //         freeContractDeployment = true;
     //     }
@@ -2967,6 +2966,7 @@ BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
             "8fb480406fc2728a960029";
 
 
+    // Trying to deploy contract without permission
     Json::Value deployContractWithoutRoleTx;
     deployContractWithoutRoleTx["from"] = senderAddress.hex();
     deployContractWithoutRoleTx["code"] = compiled;
@@ -2983,7 +2983,7 @@ BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
             fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
 
-    // Allow deploy by calling setFreeContractDeployment()
+    // Allow to deploy by calling setFreeContractDeployment()
     Json::Value grantDeployerRoleTx;
     grantDeployerRoleTx["data"] = "0xf7e2a91b";
     grantDeployerRoleTx["from"] = senderAddress.hex();
@@ -2994,6 +2994,7 @@ BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
     BOOST_REQUIRE( !txHash.empty() );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
+    // Deploying with permission
     Json::Value deployContractTx;
     deployContractTx["from"] = senderAddress.hex();
     deployContractTx["code"] = compiled;
