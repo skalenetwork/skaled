@@ -52,7 +52,8 @@ public:
     }
 
     u256 ask( Block const& ) const override { return m_weiPerRef * m_refsPerBlock / m_gasPerBlock; }
-    u256 bid( TransactionPriority _p = TransactionPriority::Medium ) const override {
+    u256 bid( unsigned = dev::eth::LatestBlock,
+        TransactionPriority _p = TransactionPriority::Medium ) const override {
         return m_octiles[( int ) _p] > 0 ? m_octiles[( int ) _p] :
                                            ( m_weiPerRef * m_refsPerBlock / m_gasPerBlock );
     }

@@ -347,10 +347,10 @@ public:
                     t.sign( s );
                     cout << t.sha3() << ": ";
                     if ( isFile ) {
-                        writeFile( i + ".signed", toHex( t.rlp() ) );
+                        writeFile( i + ".signed", toHex( t.toBytes() ) );
                         cout << i + ".signed" << endl;
                     } else
-                        cout << toHex( t.rlp() ) << endl;
+                        cout << toHex( t.toBytes() ) << endl;
                 } catch ( Exception& ex ) {
                     cerr << "Invalid transaction: " << ex.what() << endl;
                 }

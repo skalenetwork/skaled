@@ -16,6 +16,7 @@ enum class SchainPatchEnum {
     StorageDestructionPatch,
     SkipInvalidTransactionsPatch,
     SelfdestructStorageLimitPatch,
+    EIP1559TransactionsPatch,
     FlexibleDeploymentPatch,
     PatchesCount
 };

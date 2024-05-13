@@ -114,7 +114,6 @@ public:
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) override;
     bool uninstallWatch( unsigned _watchId ) override;
-    LocalisedLogEntries peekWatch( unsigned _watchId ) const override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
 
     using Interface::blockDetails;
@@ -165,7 +164,7 @@ public:
     ImportResult injectBlock( bytes const& _block ) override;
 
     u256 gasLimitRemaining() const override;
-    u256 gasBidPrice() const override { return DefaultGasPrice; }
+    u256 gasBidPrice( unsigned = dev::eth::LatestBlock ) const override { return DefaultGasPrice; }
 
     /// Get the block author
     Address author() const override;

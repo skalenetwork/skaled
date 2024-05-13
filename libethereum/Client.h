@@ -157,7 +157,9 @@ public:
     /// Get the remaining gas limit in this block.
     u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
     /// Get the gas bid price
-    u256 gasBidPrice() const override { return m_gp->bid(); }
+    u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const override {
+        return m_gp->bid( _blockNumber );
+    }
 
     // [PRIVATE API - only relevant for base clients, not available in general]
     /// Get the block.

@@ -84,7 +84,7 @@ typedef json_spirit::Value_type jsonVType;
 class ZeroGasPricer : public eth::GasPricer {
 protected:
     u256 ask( eth::Block const& ) const override { return 0; }
-    u256 bid( eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
+    u256 bid( unsigned = dev::eth::LatestBlock, eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
         return 0;
     }
 };

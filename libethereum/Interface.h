@@ -154,13 +154,6 @@ public:
         fnClientWatchHandlerMulti_t fnOnNewChanges = fnClientWatchHandlerMulti_t(),
         bool isWS = false ) = 0;
     virtual bool uninstallWatch( unsigned _watchId ) = 0;
-    LocalisedLogEntries peekWatchSafe( unsigned _watchId ) const {
-        try {
-            return peekWatch( _watchId );
-        } catch ( ... ) {
-            return LocalisedLogEntries();
-        }
-    }
     LocalisedLogEntries checkWatchSafe( unsigned _watchId ) {
         try {
             return checkWatch( _watchId );
@@ -168,7 +161,6 @@ public:
             return LocalisedLogEntries();
         }
     }
-    virtual LocalisedLogEntries peekWatch( unsigned _watchId ) const = 0;
     virtual LocalisedLogEntries checkWatch( unsigned _watchId ) = 0;
 
     // [BLOCK QUERY API]
@@ -242,7 +234,7 @@ public:
     /// Get the remaining gas limit in this block.
     virtual u256 gasLimitRemaining() const = 0;
     // Get the gas bidding price
-    virtual u256 gasBidPrice() const = 0;
+    virtual u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const = 0;
 
     /// Get some information on the block queue.
     virtual SyncStatus syncStatus() const = 0;
@@ -328,7 +320,6 @@ public:
     }
 
     LocalisedLogEntries check() { return m_c ? m_c->checkWatch( m_id ) : LocalisedLogEntries(); }
-    LocalisedLogEntries peek() { return m_c ? m_c->peekWatch( m_id ) : LocalisedLogEntries(); }
     LocalisedLogEntries logs() const { return m_c->logs( m_id ); }
 
 private:
