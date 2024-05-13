@@ -122,7 +122,7 @@ public:
 
     dev::h256 receiveTransaction( std::string );
 
-    dev::u256 getGasPrice() const;
+    dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom() const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;

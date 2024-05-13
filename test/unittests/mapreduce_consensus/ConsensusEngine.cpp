@@ -305,7 +305,7 @@ public:
         assert( buffer.empty() );
 
         for ( const Transaction& txn : txns ) {
-            buffer.push_back( txn.rlp() );
+            buffer.push_back( txn.toBytes() );
         }  // for
 
         m_transactionsCond.notify_one();

@@ -65,6 +65,8 @@ using skale::BaseState;
 using skale::State;
 using namespace skale::error;
 
+extern bytesConstRef bytesRefFromTransactionRlp( const RLP& _rlp );
+
 #define ETH_TIMED_IMPORTS 1
 
 namespace {
@@ -761,8 +763,10 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
-            extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+            auto txBytes = bytesRefFromTransactionRlp( *it );
+            extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
                 ( db::Slice ) dev::ref( ta.rlp() ) );
+
             ++ta.index;
         }
     }
@@ -1730,11 +1734,15 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
          ( ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures ) ) {
         MICROPROFILE_SCOPEI( "BlockChain", "check txns", MP_ROSYBROWN );
         for ( RLP const& tr : r[1] ) {
-            bytesConstRef d = tr.data();
+            bytesConstRef d = bytesRefFromTransactionRlp( tr );
             try {
-                Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
-                                      CheckTransaction::Everything :
-                                      CheckTransaction::None );
+                Transaction t( d,
+                    ( _ir & ImportRequirements::TransactionSignatures ) ?
+                        CheckTransaction::Everything :
+                        CheckTransaction::None,
+                    false,
+                    EIP1559TransactionsPatch::isEnabledWhen(
+                        this->info( numberHash( h.number() - 1 ) ).timestamp() ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs

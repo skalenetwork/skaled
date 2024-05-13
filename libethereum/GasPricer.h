@@ -41,7 +41,8 @@ public:
     virtual ~GasPricer() = default;
 
     virtual u256 ask( Block const& ) const = 0;
-    virtual u256 bid( TransactionPriority _p = TransactionPriority::Medium ) const = 0;
+    virtual u256 bid( unsigned _blockNumber = dev::eth::LatestBlock,
+        TransactionPriority _p = TransactionPriority::Medium ) const = 0;
 
     virtual void update( BlockChain const& ) {}
 };
@@ -56,7 +57,10 @@ public:
 
     u256 ask() const { return m_ask; }
     u256 ask( Block const& ) const override { return m_ask; }
-    u256 bid( TransactionPriority = TransactionPriority::Medium ) const override { return m_bid; }
+    u256 bid( unsigned = dev::eth::LatestBlock,
+        TransactionPriority = TransactionPriority::Medium ) const override {
+        return m_bid;
+    }
 
 private:
     u256 m_ask = DefaultGasPrice;

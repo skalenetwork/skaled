@@ -60,9 +60,9 @@ Json::Value toJson( BlockHeader const& _bi, SealEngineFace* _face = nullptr );
 Json::Value toJson(
     Transaction const& _t, std::pair< h256, unsigned > _location, BlockNumber _blockNumber );
 Json::Value toJson( BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us,
-    Transactions const& _ts, SealEngineFace* _face = nullptr );
+    Transactions const& _ts, SealEngineFace* _face = nullptr, u256 _gasPrice = 0 );
 Json::Value toJson( BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us,
-    TransactionHashes const& _ts, SealEngineFace* _face = nullptr );
+    TransactionHashes const& _ts, SealEngineFace* _face = nullptr, u256 _gasPrice = 0 );
 Json::Value toJson( TransactionSkeleton const& _t );
 Json::Value toJson( Transaction const& _t );
 Json::Value toJson( Transaction const& _t, bytes const& _rlp );
