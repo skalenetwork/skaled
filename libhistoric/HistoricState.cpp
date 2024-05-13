@@ -45,7 +45,7 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_nonExistingAccountsCache( _s.m_nonExistingAccountsCache ),
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
-      blockCommitTimeMs( _s.blockCommitTimeMs ) {}
+      m_blockCommitTimeMs( _s.m_blockCommitTimeMs ) {}
 
 OverlayDB HistoricState::openDB(
     fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -138,7 +138,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_unrevertablyTouched = _s.m_unrevertablyTouched;
     m_accountStartNonce = _s.m_accountStartNonce;
-    blockCommitTimeMs = _s.blockCommitTimeMs;
+    m_blockCommitTimeMs = _s.m_blockCommitTimeMs;
     return *this;
 }
 
@@ -205,14 +205,14 @@ void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
     m_unchangedCacheEntries.clear();
     boost::chrono::high_resolution_clock::time_point historicStateFinish =
         boost::chrono::high_resolution_clock::now();
-    blockCommitTimeMs += boost::chrono::duration_cast< boost::chrono::milliseconds >(
+    m_blockCommitTimeMs += boost::chrono::duration_cast< boost::chrono::milliseconds >(
         historicStateFinish - historicStateStart )
-                             .count();
+                               .count();
 }
 
 uint64_t HistoricState::getBlockCommitTime() {
-    uint64_t retVal = blockCommitTimeMs;
-    blockCommitTimeMs = 0;
+    uint64_t retVal = m_blockCommitTimeMs;
+    m_blockCommitTimeMs = 0;
     return retVal;
 }
 

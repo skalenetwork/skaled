@@ -713,9 +713,8 @@ size_t Client::syncTransactions(
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
 
-    ctrace << cc::debug( "Processed " ) << cc::size10( newPendingReceipts.size() )
-           << cc::debug( " transactions in " ) << cc::size10( timer.elapsed() * 1000 )
-           << cc::debug( "(" ) << ( bool ) m_syncTransactionQueue << cc::debug( ")" );
+    ctrace << "Processed " << newPendingReceipts.size() << " transactions in "
+           << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue << ")";
 
 #ifdef HISTORIC_STATE
     LOG( m_logger ) << "HSCT: "
