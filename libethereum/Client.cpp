@@ -717,6 +717,10 @@ size_t Client::syncTransactions(
            << cc::debug( " transactions in " ) << cc::size10( timer.elapsed() * 1000 )
            << cc::debug( "(" ) << ( bool ) m_syncTransactionQueue << cc::debug( ")" );
 
+    if ( chainParams().nodeInfo.syncNode )
+        LOG( m_logger ) << "HSCT: "
+                        << m_working.mutableState().mutableHistoricState().getBlockCommitTime();
+
     return goodReceipts;
 }
 
