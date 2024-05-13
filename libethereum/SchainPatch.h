@@ -139,6 +139,5 @@ DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
  * Enable bls signatures verification for sync node
  */
 DEFINE_AMNESIC_PATCH( VerifyBlsSyncPatch );
-=======
 
 #endif  // SCHAINPATCH_H
