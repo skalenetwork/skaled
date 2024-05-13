@@ -472,7 +472,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 bytes in;
                 if ( FlexibleDeploymentPatch::isEnabledWhen(
                          m_envInfo.committedBlockTimestamp() ) ) {
-                    in = isAddressWhitelistedCallData( m_ext->caller, m_ext->origin );
+                    in = isDeploymentAllowedCallData( m_ext->origin, m_ext->caller );
                 } else {
                     in = isAddressWhitelistedCallData( m_ext->caller );
                 }

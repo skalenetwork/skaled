@@ -109,10 +109,22 @@ std::string formatBalance( bigint const& _b ) {
 }
 
 bytes isAddressWhitelistedCallData( Address const& _deployer ) {
+    // Forming calldata for isAddressWhitelisted call on ConfigController smart contract:
+    // 13f44d1 - selector of isAddressWhitelisted function
+    // 000000000000000000000000 - 12-byte offset for sender address
+    // _deployer - 20-byte sender address
+
     return fromHex( "13f44d10000000000000000000000000" + _deployer.hex() );
 }
 
 bytes isDeploymentAllowedCallData( Address const& _origin, Address const& _deployer ) {
+    // Forming calldata for isDeploymentAllowed call on ConfigController smart contract:
+    // d0f557f4 - selector of isDeploymentAllowed function
+    // 000000000000000000000000 - 12-byte offset for origin address
+    // _origin - 20-byte origin address
+    // 000000000000000000000000 - 12-byte offset for sender address
+    // _deployer - 20-byte sender address
+
     return fromHex( "d0f557f4000000000000000000000000" + _origin.hex() +
                     "000000000000000000000000" + _deployer.hex() );
 }
