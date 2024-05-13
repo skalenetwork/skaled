@@ -62,7 +62,7 @@ extern const Address c_configControllerContractAddress;
 bytes isAddressWhitelistedCallData( Address const& _deployer );
 
 /// Formatting call data for deployment control contract, considering tx origin
-bytes isAddressWhitelistedCallData( Address const& _deployer, Address const& _origin );
+bytes isDeploymentAllowedCallData( Address const& _origin, Address const& _deployer );
 
 /// Formatting call data for multitransaction contract
 bytes getMultitransactionCallData();

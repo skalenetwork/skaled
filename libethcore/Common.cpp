@@ -112,9 +112,9 @@ bytes isAddressWhitelistedCallData( Address const& _deployer ) {
     return fromHex( "13f44d10000000000000000000000000" + _deployer.hex() );
 }
 
-bytes isAddressWhitelistedCallData( Address const& _deployer, Address const& _origin ) {
-    return fromHex( "b31fd4e6000000000000000000000000" + _deployer.hex() +
-                    "000000000000000000000000" + _origin.hex() );
+bytes isDeploymentAllowedCallData( Address const& _origin, Address const& _deployer ) {
+    return fromHex( "d0f557f4000000000000000000000000" + _origin.hex() +
+                    "000000000000000000000000" + _deployer.hex() );
 }
 
 bytes getMultitransactionCallData() {
