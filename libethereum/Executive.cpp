@@ -469,17 +469,18 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
-                bytes in;
+                // Checking whether deployment is allowed via ConfigController contract
+                bytes calldata;
                 if ( FlexibleDeploymentPatch::isEnabledWhen(
                          m_envInfo.committedBlockTimestamp() ) ) {
-                    in = isDeploymentAllowedCallData( m_ext->origin, m_ext->caller );
+                    calldata = isDeploymentAllowedCallData( m_ext->origin, m_ext->caller );
                 } else {
-                    in = isAddressWhitelistedCallData( m_ext->caller );
+                    calldata = isAddressWhitelistedCallData( m_ext->caller );
                 }
                 unique_ptr< CallParameters > deploymentCallParams(
                     new CallParameters( SystemAddress, c_configControllerContractAddress,
                         c_configControllerContractAddress, 0, 0, m_gas,
-                        bytesConstRef( in.data(), in.size() ), {} ) );
+                        bytesConstRef( calldata.data(), calldata.size() ), {} ) );
                 auto deploymentCallResult = m_ext->call( *deploymentCallParams );
                 auto deploymentCallOutput = dev::toHex( deploymentCallResult.output );
                 if ( !deploymentCallOutput.empty() && u256( deploymentCallOutput ) == 0 ) {
