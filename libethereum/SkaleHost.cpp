@@ -723,6 +723,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                                    skaledTimeFinish - skaledTimeStart )
                                    .count();
     }
+
     latestBlockTime = skaledTimeFinish;
     LOG( m_debugLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
