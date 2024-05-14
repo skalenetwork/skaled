@@ -44,7 +44,8 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_unchangedCacheEntries( _s.m_unchangedCacheEntries ),
       m_nonExistingAccountsCache( _s.m_nonExistingAccountsCache ),
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
-      m_accountStartNonce( _s.m_accountStartNonce ) {}
+      m_accountStartNonce( _s.m_accountStartNonce ),
+      m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ) {}
 
 OverlayDB HistoricState::openDB(
     fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -65,7 +66,8 @@ OverlayDB HistoricState::openDB(
 
     try {
         clog( VerbosityTrace, "statedb" ) << "Opening state database";
-        std::unique_ptr< db::DatabaseFace > db = db::DBFactory::create( dbPaths.statePath() );
+        std::unique_ptr< db::DatabaseFace > db =
+            db::DBFactory::createHistoric( db::DatabaseKind::LevelDB, dbPaths.statePath() );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
@@ -136,6 +138,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_unrevertablyTouched = _s.m_unrevertablyTouched;
     m_accountStartNonce = _s.m_accountStartNonce;
+    m_totalTimeSpentInStateCommitsPerBlock = _s.m_totalTimeSpentInStateCommitsPerBlock;
     return *this;
 }
 
@@ -193,11 +196,20 @@ void HistoricState::clearCacheIfTooLarge() const {
 }
 
 void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
+    auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
     m_state.db()->commit();
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
+    auto historicStateFinish = dev::db::LevelDB::getCurrentTimeMs();
+    m_totalTimeSpentInStateCommitsPerBlock += historicStateFinish - historicStateStart;
+}
+
+uint64_t HistoricState::getAndResetBlockCommitTime() {
+    uint64_t retVal = m_totalTimeSpentInStateCommitsPerBlock;
+    m_totalTimeSpentInStateCommitsPerBlock = 0;
+    return retVal;
 }
 
 
@@ -599,6 +611,8 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
 #endif
 
     u256 const startGasUsed = _envInfo.gasUsed();
+
+
     bool const statusCode = executeTransaction( e, _t, onOp );
 
 
@@ -620,6 +634,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
         _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( globalRoot(), startGasUsed + e.gasUsed(), e.logs() );
+
     return make_pair( res, receipt );
 }
 

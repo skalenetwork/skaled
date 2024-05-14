@@ -26,10 +26,10 @@
 #include <leveldb/write_batch.h>
 #include <boost/filesystem.hpp>
 
+#include "shared_mutex"
 #include <secp256k1_sha256.h>
 
-namespace dev {
-namespace db {
+namespace dev::db {
 class LevelDB : public DatabaseFace {
 public:
     static leveldb::ReadOptions defaultReadOptions();
@@ -41,7 +41,7 @@ public:
     explicit LevelDB( boost::filesystem::path const& _path,
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
-        leveldb::Options _dbOptions = defaultDBOptions() );
+        leveldb::Options _dbOptions = defaultDBOptions(), int64_t _reopenPeriodMs = -1 );
 
     ~LevelDB();
 
@@ -71,6 +71,7 @@ public:
     static std::atomic< uint64_t > g_keyDeletesStats;
     // count of the keys that are scheduled to be deleted but are not yet deleted
     static std::atomic< uint64_t > g_keysToBeDeletedStats;
+    static uint64_t getCurrentTimeMs();
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
@@ -79,8 +80,51 @@ private:
     leveldb::Options m_options;
     boost::filesystem::path const m_path;
 
+    // periodic reopen is disabled by default
+    int64_t m_reopenPeriodMs = -1;
+    uint64_t m_lastDBOpenTimeMs;
+    mutable std::shared_mutex m_dbMutex;
+
+
     static const size_t BATCH_CHUNK_SIZE;
+
+    class SharedDBGuard {
+        const LevelDB& m_levedlDB;
+
+
+    public:
+        explicit SharedDBGuard( const LevelDB& _levedDB ) : m_levedlDB( _levedDB ) {
+            if ( m_levedlDB.m_reopenPeriodMs < 0 )
+                return;
+            m_levedlDB.m_dbMutex.lock_shared();
+        }
+
+
+        ~SharedDBGuard() {
+            if ( m_levedlDB.m_reopenPeriodMs < 0 )
+                return;
+            m_levedlDB.m_dbMutex.unlock_shared();
+        }
+    };
+
+    class ExclusiveDBGuard {
+        LevelDB& m_levedlDB;
+
+    public:
+        ExclusiveDBGuard( LevelDB& _levedDB ) : m_levedlDB( _levedDB ) {
+            if ( m_levedlDB.m_reopenPeriodMs < 0 )
+                return;
+            m_levedlDB.m_dbMutex.lock();
+        }
+
+        ~ExclusiveDBGuard() {
+            if ( m_levedlDB.m_reopenPeriodMs < 0 )
+                return;
+            m_levedlDB.m_dbMutex.unlock();
+        }
+    };
+    void openDBInstanceUnsafe();
+    void reopenDataBaseIfNeeded();
 };
 
-}  // namespace db
-}  // namespace dev
+}  // namespace dev::db

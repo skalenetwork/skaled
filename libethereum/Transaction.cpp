@@ -124,6 +124,18 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionException con
     case TransactionException::InvalidContractDeployer:
         _out << "InvalidContractDeployer";
         break;
+    case TransactionException::RevertInstruction:
+        _out << "RevertInstruction";
+        break;
+    case TransactionException::InvalidZeroSignatureFormat:
+        _out << "InvalidZeroSignatureFormat";
+        break;
+    case TransactionException::AddressAlreadyUsed:
+        _out << "AddressAlreadyUsed";
+        break;
+    case TransactionException::WouldNotBeInBlock:
+        _out << "WouldNotBeInBlock";
+        break;
     default:
         _out << "Unknown";
         break;
@@ -197,12 +209,15 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, boo
         if ( CorrectForkInPowPatch::isEnabled() )
             scheduleForUse = _cp.scheduleForBlockNumber( _bn );
 
+
+#ifndef HISTORIC_STATE  // FIX FOR 2.3.1. Will not be needed in 2.4
         // never call checkOutExternalGas with non-last block
         if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {
             ctrace << _bn << " != " << CorrectForkInPowPatch::getLastBlockNumber();
             BOOST_THROW_EXCEPTION( std::runtime_error(
                 "Internal error: checkOutExternalGas() has invalid block number" ) );
         }
+#endif
 
         if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;

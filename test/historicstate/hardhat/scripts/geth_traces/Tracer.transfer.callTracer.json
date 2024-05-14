@@ -1,0 +1,9 @@
+{
+    "from": "OWNER.address",
+    "gas": "0x5208",
+    "gasUsed": "0x5208",
+    "to": "0x388c818ca8b9251b393131c08a736a67ccb19297",
+    "input": "0x",
+    "value": "0x16345785d8a0000",
+    "type": "CALL"
+}

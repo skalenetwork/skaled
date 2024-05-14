@@ -56,7 +56,7 @@ void goOnOffloadedStack( AlethExecutive& _e, OnOpFunc const& _onOp ) {
                 _e.go( _onOp );
             } catch ( ... ) {
                 exception = boost::current_exception();  // Catch all exceptions to be rethrown in
-                                                         // parent thread.
+                // parent thread.
             }
         }
     }.join();
@@ -77,15 +77,24 @@ void go( unsigned _depth, AlethExecutive& _e, OnOpFunc const& _onOp ) {
         _e.go( _onOp );
 }
 
-evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex ) noexcept {
-    switch ( ex ) {
+}  // anonymous namespace
+
+
+evmc_status_code AlethExtVM::transactionExceptionToEvmcStatusCode( TransactionException _ex ) {
+    switch ( _ex ) {
     case TransactionException::None:
         return EVMC_SUCCESS;
 
     case TransactionException::RevertInstruction:
         return EVMC_REVERT;
 
+    case TransactionException::OutOfGasIntrinsic:
+        return EVMC_OUT_OF_GAS;
+
     case TransactionException::OutOfGas:
+        return EVMC_OUT_OF_GAS;
+
+    case TransactionException::OutOfGasBase:
         return EVMC_OUT_OF_GAS;
 
     case TransactionException::BadInstruction:
@@ -97,15 +106,16 @@ evmc_status_code transactionExceptionToEvmcStatusCode( TransactionException ex )
     case TransactionException::StackUnderflow:
         return EVMC_STACK_UNDERFLOW;
 
-    case TransactionException ::BadJumpDestination:
+    case TransactionException::BadJumpDestination:
         return EVMC_BAD_JUMP_DESTINATION;
+
+    case TransactionException::InvalidContractDeployer:
+        return EVMC_CONTRACT_VALIDATION_FAILURE;
 
     default:
         return EVMC_FAILURE;
     }
 }
-
-}  // anonymous namespace
 
 
 CallResult AlethExtVM::call( CallParameters& _p ) {

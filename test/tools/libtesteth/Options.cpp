@@ -205,7 +205,8 @@ Options::Options( int argc, const char** argv ) {
             auto arg = std::string{argv[++i]};
             Json::Value value;
             Json::Reader().parse( arg, value );
-            jsontraceOptions = debugOptions( value );
+            StandardTrace::DebugOptions op;
+            jsontraceOptions = op;
         } else if ( arg == "--filltests" )
             filltests = true;
         else if ( arg == "--fillchain" )
