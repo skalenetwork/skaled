@@ -109,7 +109,7 @@ std::string formatBalance( bigint const& _b ) {
 }
 
 bytes isAddressWhitelistedCallData( Address const& _deployer ) {
-    // Generating calldata for isAddressWhitelisted call to ConfigController smart contract:
+    // Generating calldata for isAddressWhitelisted contract call:
     // 13f44d1 - selector of isAddressWhitelisted function
     // 000000000000000000000000 - 12-byte offset for sender address
     // _deployer - 20-byte sender address
@@ -118,7 +118,7 @@ bytes isAddressWhitelistedCallData( Address const& _deployer ) {
 }
 
 bytes isDeploymentAllowedCallData( Address const& _origin, Address const& _deployer ) {
-    // Generating calldata for isDeploymentAllowed call to ConfigController smart contract:
+    // Generating calldata for isDeploymentAllowed contract call:
     // d0f557f4 - selector of isDeploymentAllowed function
     // 000000000000000000000000 - 12-byte offset for origin address
     // _origin - 20-byte origin address
