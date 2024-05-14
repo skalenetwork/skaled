@@ -718,7 +718,7 @@ size_t Client::syncTransactions(
 
 #ifdef HISTORIC_STATE
     LOG( m_logger ) << "HSCT: "
-                    << m_working.mutableState().mutableHistoricState().getBlockCommitTime();
+                    << m_working.mutableState().mutableHistoricState().getAndResetBlockCommitTime();
 #endif
     return goodReceipts;
 }

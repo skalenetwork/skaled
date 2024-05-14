@@ -45,7 +45,7 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_nonExistingAccountsCache( _s.m_nonExistingAccountsCache ),
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
-      m_blockCommitTimeMs( _s.m_blockCommitTimeMs ) {}
+      m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ) {}
 
 OverlayDB HistoricState::openDB(
     fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -138,7 +138,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
     m_unrevertablyTouched = _s.m_unrevertablyTouched;
     m_accountStartNonce = _s.m_accountStartNonce;
-    m_blockCommitTimeMs = _s.m_blockCommitTimeMs;
+    m_totalTimeSpentInStateCommitsPerBlock = _s.m_totalTimeSpentInStateCommitsPerBlock;
     return *this;
 }
 
@@ -196,23 +196,19 @@ void HistoricState::clearCacheIfTooLarge() const {
 }
 
 void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
-    boost::chrono::high_resolution_clock::time_point historicStateStart =
-        boost::chrono::high_resolution_clock::now();
+    auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
     m_state.db()->commit();
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
-    boost::chrono::high_resolution_clock::time_point historicStateFinish =
-        boost::chrono::high_resolution_clock::now();
-    m_blockCommitTimeMs += boost::chrono::duration_cast< boost::chrono::milliseconds >(
-        historicStateFinish - historicStateStart )
-                               .count();
+    auto historicStateFinish = dev::db::LevelDB::getCurrentTimeMs();
+    m_totalTimeSpentInStateCommitsPerBlock += historicStateFinish - historicStateStart;
 }
 
-uint64_t HistoricState::getBlockCommitTime() {
-    uint64_t retVal = m_blockCommitTimeMs;
-    m_blockCommitTimeMs = 0;
+uint64_t HistoricState::getAndResetBlockCommitTime() {
+    uint64_t retVal = m_totalTimeSpentInStateCommitsPerBlock;
+    m_totalTimeSpentInStateCommitsPerBlock = 0;
     return retVal;
 }
 

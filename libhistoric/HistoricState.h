@@ -296,7 +296,7 @@ public:
 
     void setRootFromDB();
 
-    uint64_t getBlockCommitTime();
+    uint64_t getAndResetBlockCommitTime();
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -348,7 +348,7 @@ private:
     AddressHash commitExternalChangesIntoTrieDB(
         AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
 
-    uint64_t m_blockCommitTimeMs = 0;
+    uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );
