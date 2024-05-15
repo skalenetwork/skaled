@@ -101,7 +101,7 @@ static std::string const c_genesisConfigString =
             "basePort": )"+std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
-            "ecdsaKeyName": "NEK:fa112"
+            "testSignatures": true
         },
         "sChain": {
             "schainName": "TestChain",

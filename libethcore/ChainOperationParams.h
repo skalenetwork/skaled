@@ -90,6 +90,7 @@ public:
     bool syncNode;
     bool archiveMode;
     bool syncFromCatchup;
+    bool testSignatures;
 
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
@@ -107,7 +108,8 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
-        bool _syncNode = false, bool _archiveMode = false, bool _syncFromCatchup = false ) {
+        bool _syncNode = false, bool _archiveMode = false, bool _syncFromCatchup = false,
+        bool _testSignatures = true ) {
         name = _name;
         id = _id;
         ip = _ip;
@@ -122,6 +124,7 @@ public:
         syncNode = _syncNode;
         archiveMode = _archiveMode;
         syncFromCatchup = _syncFromCatchup;
+        testSignatures = _testSignatures;
     }
 };
 
