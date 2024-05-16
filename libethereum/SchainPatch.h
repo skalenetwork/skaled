@@ -140,4 +140,10 @@ DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
  */
 DEFINE_AMNESIC_PATCH( VerifyBlsSyncPatch );
 
+/*
+ * Purpose: passing both transaction origin and sender to the ConfigController contract
+ * Version introduced: 3.19.0
+ */
+DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
+
 #endif  // SCHAINPATCH_H
