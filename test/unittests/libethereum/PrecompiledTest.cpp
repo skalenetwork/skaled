@@ -1619,7 +1619,7 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
       "basePort": 1234,
       "logLevel": "trace",
       "logLevelProposal": "trace",
-      "ecdsaKeyName": "NEK:fa112",
+      "testSignatures": true,
       "wallets": {
         "ima": {
             "n": 1
