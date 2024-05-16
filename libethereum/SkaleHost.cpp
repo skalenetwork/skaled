@@ -334,8 +334,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         return h256();
     }
 
-    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
-
+    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     h256 sha = transaction.sha3();
 
     //
@@ -526,7 +526,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                 m_m_transaction_cache[sha.asArray()] = txn;
             }
 
-            out_vector.push_back( txn.rlp() );
+            out_vector.push_back( txn.toBytes() );
 
             ++total_sent;
 
@@ -670,7 +670,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
                 // ).detach();
             } else {
-                Transaction t( data, CheckTransaction::Everything, true );
+                Transaction t( data, CheckTransaction::Everything, true,
+                    EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
                 t.checkOutExternalGas(
                     m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
                 out_txns.push_back( t );
@@ -897,7 +898,7 @@ void SkaleHost::broadcastFunc() {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
-                        std::string rlp = toJS( txn.rlp() );
+                        std::string rlp = toJS( txn.toBytes() );
                         std::string h = toJS( txn.sha3() );
                         //
                         std::string strPerformanceQueueName = "bc/broadcast";
@@ -938,8 +939,10 @@ void SkaleHost::broadcastFunc() {
     m_broadcaster->stopService();
 }
 
-u256 SkaleHost::getGasPrice() const {
-    return m_consensus->getPriceForBlockId( m_client.number() );
+u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
+    if ( _blockNumber == dev::eth::LatestBlock )
+        _blockNumber = m_client.number();
+    return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
 u256 SkaleHost::getBlockRandom() const {
@@ -998,7 +1001,7 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
-    m_broadcaster->broadcast( toJS( _txn.rlp() ) );
+    m_broadcaster->broadcast( toJS( _txn.toBytes() ) );
 }
 
 void SkaleHost::noteNewTransactions() {}

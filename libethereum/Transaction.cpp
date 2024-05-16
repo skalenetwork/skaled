@@ -164,11 +164,13 @@ Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256&
     const bytes& _data, const u256& _nonce )
     : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {}
 
-Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid )
-    : TransactionBase( _rlpData, _checkSig, _allowInvalid ) {}
+Transaction::Transaction(
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled )
+    : TransactionBase( _rlpData, _checkSig, _allowInvalid, _eip1559Enabled ) {}
 
-Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid )
-    : Transaction( &_rlp, _checkSig, _allowInvalid ) {}
+Transaction::Transaction(
+    const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled )
+    : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled ) {}
 
 bool Transaction::hasExternalGas() const {
     if ( !m_externalGasIsChecked ) {

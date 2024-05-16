@@ -26,11 +26,14 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::StorageDestructionPatch;
     else if ( _patchName == "SkipInvalidTransactionsPatch" )
         return SchainPatchEnum::SkipInvalidTransactionsPatch;
-    // consesus-related patches
     else if ( _patchName == "VerifyDaSigsPatch" )
         return SchainPatchEnum::VerifyDaSigsPatch;
     else if ( _patchName == "FastConsensusPatch" )
         return SchainPatchEnum::FastConsensusPatch;
+    else if ( _patchName == "EIP1559TransactionsPatch" )
+        return SchainPatchEnum::EIP1559TransactionsPatch;
+    else if ( _patchName == "FlexibleDeploymentPatch" )
+        return SchainPatchEnum::FlexibleDeploymentPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -57,11 +60,14 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "SkipInvalidTransactionsPatch";
     case SchainPatchEnum::SelfdestructStorageLimitPatch:
         return "SelfdestructStorageLimitPatch";
-    // consensus-related patches
     case SchainPatchEnum::VerifyDaSigsPatch:
         return "VerifyDaSigsPatch";
     case SchainPatchEnum::FastConsensusPatch:
         return "FastConsensusPatch";
+    case SchainPatchEnum::EIP1559TransactionsPatch:
+        return "EIP1559TransactionsPatch";
+    case SchainPatchEnum::FlexibleDeploymentPatch:
+        return "FlexibleDeploymentPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );

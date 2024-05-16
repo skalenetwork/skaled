@@ -9,6 +9,7 @@ dev::u256 ConsensusGasPricer::ask( dev::eth::Block const& ) const {
     return bid();
 }
 
-dev::u256 ConsensusGasPricer::bid( dev::eth::TransactionPriority /*_p*/ ) const {
-    return m_skaleHost.getGasPrice();
+dev::u256 ConsensusGasPricer::bid(
+    unsigned _blockNumber, dev::eth::TransactionPriority /*_p*/ ) const {
+    return m_skaleHost.getGasPrice( _blockNumber );
 }

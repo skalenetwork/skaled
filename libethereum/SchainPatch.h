@@ -130,4 +130,15 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
  */
 DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
 
+/*
+ * Enable restriction on contract storage size, when it's doing selfdestruct
+ */
+DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
+
+/*
+ * Purpose: passing both transaction origin and sender to the ConfigController contract
+ * Version introduced: 3.19.0
+ */
+DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
+
 #endif  // SCHAINPATCH_H
