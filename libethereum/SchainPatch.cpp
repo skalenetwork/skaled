@@ -20,14 +20,16 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::ContractStorageZeroValuePatch;
     else if ( _patchName == "PushZeroPatch" )
         return SchainPatchEnum::PushZeroPatch;
-    else if ( _patchName == "VerifyDaSigsPatch" )
-        return SchainPatchEnum::VerifyDaSigsPatch;
     else if ( _patchName == "ContractStoragePatch" )
         return SchainPatchEnum::ContractStoragePatch;
     else if ( _patchName == "StorageDestructionPatch" )
         return SchainPatchEnum::StorageDestructionPatch;
     else if ( _patchName == "SkipInvalidTransactionsPatch" )
         return SchainPatchEnum::SkipInvalidTransactionsPatch;
+    else if ( _patchName == "VerifyDaSigsPatch" )
+        return SchainPatchEnum::VerifyDaSigsPatch;
+    else if ( _patchName == "FastConsensusPatch" )
+        return SchainPatchEnum::FastConsensusPatch;
     else if ( _patchName == "EIP1559TransactionsPatch" )
         return SchainPatchEnum::EIP1559TransactionsPatch;
     else if ( _patchName == "VerifyBlsSyncPatch" )
@@ -52,8 +54,6 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ContractStorageZeroValuePatch";
     case SchainPatchEnum::PushZeroPatch:
         return "PushZeroPatch";
-    case SchainPatchEnum::VerifyDaSigsPatch:
-        return "VerifyDaSigsPatch";
     case SchainPatchEnum::ContractStoragePatch:
         return "ContractStoragePatch";
     case SchainPatchEnum::StorageDestructionPatch:
@@ -62,6 +62,10 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "SkipInvalidTransactionsPatch";
     case SchainPatchEnum::SelfdestructStorageLimitPatch:
         return "SelfdestructStorageLimitPatch";
+    case SchainPatchEnum::VerifyDaSigsPatch:
+        return "VerifyDaSigsPatch";
+    case SchainPatchEnum::FastConsensusPatch:
+        return "FastConsensusPatch";
     case SchainPatchEnum::EIP1559TransactionsPatch:
         return "EIP1559TransactionsPatch";
     case SchainPatchEnum::VerifyBlsSyncPatch:

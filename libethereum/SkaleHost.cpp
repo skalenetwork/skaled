@@ -81,6 +81,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
+    patchTimeStamps["fastConsensusPatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 
