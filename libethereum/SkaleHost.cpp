@@ -83,6 +83,8 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
     patchTimeStamps["fastConsensusPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
+    patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
@@ -91,9 +93,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
-
     this->fillPublicKeyInfo( *consensus_engine_ptr );
-
 
     this->fillRotationHistory( *consensus_engine_ptr );
 
@@ -145,13 +145,15 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
 }
 
 void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) const try {
+    if ( m_client.chainParams().nodeInfo.testSignatures )
+        // no keys in tests
+        return;
+
     const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        if ( node.publicKey.size() == 0 )
-            return;  // just don't do anything
         ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
     }
 
@@ -159,15 +161,15 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
         std::vector< std::string > public_key_share( 4 );
         if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
-            public_key_share[0] = node.blsPublicKey[0];
-            public_key_share[1] = node.blsPublicKey[1];
-            public_key_share[2] = node.blsPublicKey[2];
-            public_key_share[3] = node.blsPublicKey[3];
+            public_key_share[0] = node.blsPublicKey.at( 0 );
+            public_key_share[1] = node.blsPublicKey.at( 1 );
+            public_key_share[2] = node.blsPublicKey.at( 2 );
+            public_key_share[3] = node.blsPublicKey.at( 3 );
         } else {
-            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys[0];
-            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys[1];
-            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys[2];
-            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys[3];
+            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 0 );
+            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 1 );
+            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 2 );
+            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 3 );
         }
 
         blsPublicKeys.push_back(
@@ -181,11 +183,10 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    if ( ecdsaPublicKeys->size() && ecdsaPublicKeys->at( 0 ).size() && blsPublicKeys.size() &&
-         blsPublicKeys[0]->at( 0 ).size() )
-        consensus.setPublicKeyInfo( ecdsaPublicKeys, blsPublicKeysPtr, t, n );
+    consensus.setPublicKeyInfo(
+        ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().nodeInfo.syncNode );
 } catch ( ... ) {
-    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
+    std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
 
 
@@ -195,8 +196,9 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
     std::map< uint64_t, std::vector< uint64_t > > historicNodeGroups;
     auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
-        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey[0],
-            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3] };
+        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey.at( 0 ),
+            nodeGroup.blsPublicKey.at( 1 ), nodeGroup.blsPublicKey.at( 2 ),
+            nodeGroup.blsPublicKey.at( 3 ) };
         previousBLSKeys[nodeGroup.finishTs] = commonBLSPublicKey;
         std::vector< uint64_t > nodes;
         // add ecdsa keys info and historic groups info

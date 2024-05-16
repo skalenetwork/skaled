@@ -217,40 +217,40 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     if ( cp.rotateAfterBlock_ < 0 )
         cp.rotateAfterBlock_ = 0;
 
-    string ecdsaKeyName;
+    bool testSignatures = false;
     try {
-        ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        testSignatures = infoObj.at( "testSignatures" ).get_bool();
     } catch ( ... ) {
     }
 
+    string ecdsaKeyName;
     array< string, 4 > BLSPublicKeys;
     array< string, 4 > commonBLSPublicKeys;
+    if ( !testSignatures ) {
+        ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-    try {
         js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
-
-        keyShareName = ima.at( "keyShareName" ).get_str();
-
-        t = ima.at( "t" ).get_int();
-
-        BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
-        BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
-        BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
-        BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
 
         commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
         commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
         commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
         commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-    } catch ( ... ) {
-        // all or nothing
-        if ( !keyShareName.empty() )
-            throw;
+
+        if ( !syncNode ) {
+            keyShareName = ima.at( "keyShareName" ).get_str();
+
+            t = ima.at( "t" ).get_int();
+
+            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+        }
     }
 
     cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName, BLSPublicKeys,
-        commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
+        commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup, testSignatures };
 
     auto sChainObj = skaleObj.at( "sChain" ).get_obj();
     SChain s{};

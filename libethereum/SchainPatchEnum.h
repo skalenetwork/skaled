@@ -18,6 +18,7 @@ enum class SchainPatchEnum {
     VerifyDaSigsPatch,
     FastConsensusPatch,
     EIP1559TransactionsPatch,
+    VerifyBlsSyncPatch,
     FlexibleDeploymentPatch,
     PatchesCount
 };

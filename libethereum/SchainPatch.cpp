@@ -32,6 +32,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::FastConsensusPatch;
     else if ( _patchName == "EIP1559TransactionsPatch" )
         return SchainPatchEnum::EIP1559TransactionsPatch;
+    else if ( _patchName == "VerifyBlsSyncPatch" )
+        return SchainPatchEnum::VerifyBlsSyncPatch;
     else if ( _patchName == "FlexibleDeploymentPatch" )
         return SchainPatchEnum::FlexibleDeploymentPatch;
     else
@@ -66,6 +68,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "FastConsensusPatch";
     case SchainPatchEnum::EIP1559TransactionsPatch:
         return "EIP1559TransactionsPatch";
+    case SchainPatchEnum::VerifyBlsSyncPatch:
+        return "VerifyBlsSyncPatch";
     case SchainPatchEnum::FlexibleDeploymentPatch:
         return "FlexibleDeploymentPatch";
     default:

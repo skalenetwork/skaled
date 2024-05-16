@@ -164,7 +164,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
-            { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Required } },
+            { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaLogsSearch",
                 { { js::bool_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaContractCall",
@@ -222,6 +222,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "syncNode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "syncFromCatchup", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "testSignatures", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     std::string keyShareName = "";
@@ -268,7 +269,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
             { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } },
         []( const string& _key ) {
             // function fow allowing fields
