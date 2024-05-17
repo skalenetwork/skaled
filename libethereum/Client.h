@@ -142,6 +142,10 @@ public:
     /// Blocks until all pending transactions have been processed.
     void flushTransactions() override;
 
+    using ClientBase::blockDetails;
+    using ClientBase::blockInfo;  // for another overload
+    using ClientBase::uncleHashes;
+
     /// Retrieve pending transactions
     Transactions pending() const override;
 
@@ -153,7 +157,9 @@ public:
     /// Get the remaining gas limit in this block.
     u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
     /// Get the gas bid price
-    u256 gasBidPrice() const override { return m_gp->bid(); }
+    u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const override {
+        return m_gp->bid( _blockNumber );
+    }
 
     // [PRIVATE API - only relevant for base clients, not available in general]
     /// Get the block.
@@ -263,8 +269,6 @@ public:
 
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
-
-    Block latestBlock() const;
 
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {

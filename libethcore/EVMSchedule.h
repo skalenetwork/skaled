@@ -46,6 +46,7 @@ struct EVMSchedule {
     bool haveExtcodehash = false;
     bool haveChainID = false;
     bool haveSelfbalance = false;
+    bool havePush0 = false;
     std::array< unsigned, 8 > tierStepGas;
     unsigned expGas = 10;
     unsigned expByteGas = 10;
@@ -93,7 +94,6 @@ struct EVMSchedule {
 };
 
 static const EVMSchedule DefaultSchedule = EVMSchedule();
-static const EVMSchedule FrontierSchedule = EVMSchedule( false, false, 21000 );
 static const EVMSchedule HomesteadSchedule = EVMSchedule( true, true, 53000 );
 
 static const EVMSchedule EIP150Schedule = [] {
@@ -122,12 +122,6 @@ static const EVMSchedule ByzantiumSchedule = [] {
     schedule.haveReturnData = true;
     schedule.haveStaticCall = true;
     schedule.blockRewardOverwrite = { 3 * ether };
-    return schedule;
-}();
-
-static const EVMSchedule EWASMSchedule = [] {
-    EVMSchedule schedule = ByzantiumSchedule;
-    schedule.maxCodeSize = std::numeric_limits< unsigned >::max();
     return schedule;
 }();
 
@@ -173,60 +167,6 @@ static const EVMSchedule ExperimentalSchedule = [] {
     schedule.blockhashGas = 800;
     return schedule;
 }();
-
-static const EVMSchedule SkaleSchedule_base = [] {
-    EVMSchedule schedule = ConstantinopleSchedule;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_16k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 16;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_32k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 32;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_64k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 64;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_128k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 128;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_256k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 256;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_512k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 512;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_1024k = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = 1024 * 1024;
-    return schedule;
-}();
-
-static const EVMSchedule SkaleSchedule_Unlimited = [] {
-    EVMSchedule schedule = SkaleSchedule_base;
-    schedule.maxCodeSize = std::numeric_limits< unsigned >::max();
-    return schedule;
-}();
-
 
 inline EVMSchedule const& latestScheduleForAccountVersion( u256 const& _version ) {
     if ( _version == 0 )

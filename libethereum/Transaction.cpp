@@ -28,8 +28,8 @@
 #include <libdevcore/vector_ref.h>
 #include <libdevcrypto/Common.h>
 #include <libethcore/Exceptions.h>
+#include <libethereum/SchainPatch.h>
 #include <libevm/VMFace.h>
-#include <libskale/CorrectForkInPowPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -164,11 +164,13 @@ Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256&
     const bytes& _data, const u256& _nonce )
     : TransactionBase( _value, _gasPrice, _gas, _data, _nonce ) {}
 
-Transaction::Transaction( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid )
-    : TransactionBase( _rlpData, _checkSig, _allowInvalid ) {}
+Transaction::Transaction(
+    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled )
+    : TransactionBase( _rlpData, _checkSig, _allowInvalid, _eip1559Enabled ) {}
 
-Transaction::Transaction( const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid )
-    : Transaction( &_rlp, _checkSig, _allowInvalid ) {}
+Transaction::Transaction(
+    const bytes& _rlp, CheckTransaction _checkSig, bool _allowInvalid, bool _eip1559Enabled )
+    : Transaction( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled ) {}
 
 bool Transaction::hasExternalGas() const {
     if ( !m_externalGasIsChecked ) {
@@ -193,7 +195,8 @@ u256 Transaction::gasPrice() const {
     }
 }
 
-void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, bool _force ) {
+void Transaction::checkOutExternalGas( const ChainParams& _cp, time_t _committedBlockTimestamp,
+    uint64_t _committedBlockNumber, bool _force ) {
     u256 const& difficulty = _cp.externalGasDifficulty;
     assert( difficulty > 0 );
     if ( ( _force || !m_externalGasIsChecked ) && !isInvalid() ) {
@@ -203,21 +206,12 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, boo
         }
         u256 externalGas = ~u256( 0 ) / u256( hash ) / difficulty;
         if ( externalGas > 0 )
-            ctrace << "Mined gas: " << externalGas << endl;
+            ctrace << "Mined gas: " << externalGas;
 
         EVMSchedule scheduleForUse = ConstantinopleSchedule;
-        if ( CorrectForkInPowPatch::isEnabled() )
-            scheduleForUse = _cp.scheduleForBlockNumber( _bn );
-
-
-#ifndef HISTORIC_STATE  // FIX FOR 2.3.1. Will not be needed in 2.4
-        // never call checkOutExternalGas with non-last block
-        if ( _bn != CorrectForkInPowPatch::getLastBlockNumber() ) {
-            ctrace << _bn << " != " << CorrectForkInPowPatch::getLastBlockNumber();
-            BOOST_THROW_EXCEPTION( std::runtime_error(
-                "Internal error: checkOutExternalGas() has invalid block number" ) );
-        }
-#endif
+        if ( CorrectForkInPowPatch::isEnabledWhen( _committedBlockTimestamp ) )
+            scheduleForUse = _cp.makeEvmSchedule(
+                _committedBlockTimestamp, _committedBlockNumber );  // BUG should be +1
 
         if ( externalGas >= baseGasRequired( scheduleForUse ) )
             m_externalGas = externalGas;
