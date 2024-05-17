@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <cctype>
 
 #include <json_spirit/JsonSpiritHeaders.h>
 #include <libdevcore/JsonUtils.h>
@@ -38,10 +39,11 @@
 #include <libethereum/Precompiled.h>
 
 #include "Account.h"
-#include "GenesisInfo.h"
 #include "ValidationSchemes.h"
 
 #include <skutils/utils.h>
+
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace dev;
@@ -104,7 +106,8 @@ ChainParams ChainParams::loadConfig(
     cp.skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
                                       params[c_skaleDisableChainIdCheck].get_bool() :
                                       false;
-
+    cp.getLogsBlocksLimit =
+        params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
 
     if ( obj.count( c_skaleConfig ) ) {
         processSkaleConfigItems( cp, obj );
@@ -214,40 +217,40 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     if ( cp.rotateAfterBlock_ < 0 )
         cp.rotateAfterBlock_ = 0;
 
-    string ecdsaKeyName;
+    bool testSignatures = false;
     try {
-        ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+        testSignatures = infoObj.at( "testSignatures" ).get_bool();
     } catch ( ... ) {
     }
 
+    string ecdsaKeyName;
     array< string, 4 > BLSPublicKeys;
     array< string, 4 > commonBLSPublicKeys;
+    if ( !testSignatures ) {
+        ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-    try {
         js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
-
-        keyShareName = ima.at( "keyShareName" ).get_str();
-
-        t = ima.at( "t" ).get_int();
-
-        BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
-        BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
-        BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
-        BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
 
         commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
         commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
         commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
         commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
-    } catch ( ... ) {
-        // all or nothing
-        if ( !keyShareName.empty() )
-            throw;
+
+        if ( !syncNode ) {
+            keyShareName = ima.at( "keyShareName" ).get_str();
+
+            t = ima.at( "t" ).get_int();
+
+            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+        }
     }
 
     cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, keyShareName, BLSPublicKeys,
-        commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup };
+        commonBLSPublicKeys, syncNode, archiveMode, syncFromCatchup, testSignatures };
 
     auto sChainObj = skaleObj.at( "sChain" ).get_obj();
     SChain s{};
@@ -303,50 +306,17 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     if ( sChainObj.count( "multiTransactionMode" ) )
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
-    if ( sChainObj.count( "revertableFSPatchTimestamp" ) )
-        s.revertableFSPatchTimestamp = sChainObj.at( "revertableFSPatchTimestamp" ).get_int64();
-
-    s.contractStoragePatchTimestamp =
-        sChainObj.count( "contractStoragePatchTimestamp" ) ?
-            sChainObj.at( "contractStoragePatchTimestamp" ).get_int64() :
-            0;
-
-    s.contractStorageZeroValuePatchTimestamp =
-        sChainObj.count( "contractStorageZeroValuePatchTimestamp" ) ?
-            sChainObj.at( "contractStorageZeroValuePatchTimestamp" ).get_int64() :
-            0;
-
-    s.verifyDaSigsPatchTimestamp = sChainObj.count( "verifyDaSigsPatchTimestamp" ) ?
-                                       sChainObj.at( "verifyDaSigsPatchTimestamp" ).get_int64() :
-                                       0;
-
-    s.storageDestructionPatchTimestamp =
-        sChainObj.count( "storageDestructionPatchTimestamp" ) ?
-            sChainObj.at( "storageDestructionPatchTimestamp" ).get_int64() :
-            0;
-
-    s.powCheckPatchTimestamp = sChainObj.count( "powCheckPatchTimestamp" ) ?
-                                   sChainObj.at( "powCheckPatchTimestamp" ).get_int64() :
-                                   0;
-
-    s.precompiledConfigPatchTimestamp =
-        sChainObj.count( "precompiledConfigPatchTimestamp" ) ?
-            sChainObj.at( "precompiledConfigPatchTimestamp" ).get_int64() :
-            0;
-
-    s.pushZeroPatchTimestamp = sChainObj.count( "pushZeroPatchTimestamp" ) ?
-                                   sChainObj.at( "pushZeroPatchTimestamp" ).get_int64() :
-                                   0;
-
-    s.skipInvalidTransactionsPatchTimestamp =
-        sChainObj.count( "skipInvalidTransactionsPatchTimestamp" ) ?
-            sChainObj.at( "skipInvalidTransactionsPatchTimestamp" ).get_int64() :
-            0;
-
-    s.correctForkInPowPatchTimestamp =
-        sChainObj.count( "correctForkInPowPatchTimestamp" ) ?
-            sChainObj.at( "correctForkInPowPatchTimestamp" ).get_int64() :
-            0;
+    // extract all "*PatchTimestamp" records
+    for ( const auto& it : sChainObj ) {
+        const string& key = it.first;
+        if ( boost::algorithm::ends_with( key, "PatchTimestamp" ) ) {
+            string patchName = boost::algorithm::erase_last_copy( key, "Timestamp" );
+            patchName[0] = toupper( patchName[0] );
+            SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
+            s._patchTimestamps[static_cast< size_t >( patchEnum )] =
+                it.second.get_int64();  // time_t is signed
+        }                               // if
+    }                                   // for
 
     if ( sChainObj.count( "nodeGroups" ) ) {
         vector< NodeGroup > nodeGroups;

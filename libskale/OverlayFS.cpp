@@ -23,8 +23,8 @@
  */
 
 #include "OverlayFS.h"
-#include "RevertableFSPatch.h"
 #include <libdevcrypto/Hash.h>
+#include <libethereum/SchainPatch.h>
 #include <secp256k1_sha256.h>
 #include <fstream>
 

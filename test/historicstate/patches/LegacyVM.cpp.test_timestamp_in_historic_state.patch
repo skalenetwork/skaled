@@ -1,0 +1,28 @@
+Subject: [PATCH] 1583 Fix crash because of unknown name
+---
+Index: libevm/LegacyVM.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/libevm/LegacyVM.cpp b/libevm/LegacyVM.cpp
+--- a/libevm/LegacyVM.cpp	(revision a1daeb278f2d38c308366ebfdd39963b939cef90)
++++ b/libevm/LegacyVM.cpp	(date 1712249617890)
+@@ -1360,9 +1360,14 @@
+         // we need to increment program counter only by one since
+         // the value is not read from program code as in PUSH1
+         CASE( PUSH0 ) {
+-            if ( !m_schedule->havePush0 ) {
+-                throwBadInstruction();
+-            }
++
++            cerr << ":::::" << m_schedule->havePush0 << endl;
++            cerr << ":::::" << m_schedule->havePush0 << endl;
++            cerr << "Have push0:::::" << m_schedule->havePush0 << endl;
++            cerr << "Have push0:::::" << m_schedule->havePush0 << endl;
++            cerr << ":::::" << m_schedule->havePush0 << endl;
++            cerr << ":::::" << m_schedule->havePush0 << endl;
++
+             ON_OP();
+             updateIOGas();
+             m_SPP[0] = 0;

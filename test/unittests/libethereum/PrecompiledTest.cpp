@@ -32,8 +32,7 @@
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
 #include <libskale/OverlayFS.h>
-#include <libskale/RevertableFSPatch.h>
-#include <libskale/PrecompiledConfigPatch.h>
+#include <libethereum/SchainPatch.h>
 
 #include <secp256k1_sha256.h>
 
@@ -1620,7 +1619,7 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
       "basePort": 1234,
       "logLevel": "trace",
       "logLevelProposal": "trace",
-      "ecdsaKeyName": "NEK:fa112",
+      "testSignatures": true,
       "wallets": {
         "ima": {
             "n": 1

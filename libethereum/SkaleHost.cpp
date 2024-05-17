@@ -47,7 +47,6 @@ using namespace std;
 #include <libethereum/CommonNet.h>
 #include <libethereum/Executive.h>
 #include <libethereum/TransactionQueue.h>
-#include <libskale/VerifyDaSigsPatch.h>
 
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -81,8 +80,11 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     std::map< std::string, std::uint64_t > patchTimeStamps;
 
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
-        VerifyDaSigsPatch::getVerifyDaSigsPatchTimestamp();
-
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
+    patchTimeStamps["fastConsensusPatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
+    patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
+        m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
@@ -91,9 +93,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
-
     this->fillPublicKeyInfo( *consensus_engine_ptr );
-
 
     this->fillRotationHistory( *consensus_engine_ptr );
 
@@ -145,13 +145,15 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
 }
 
 void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) const try {
+    if ( m_client.chainParams().nodeInfo.testSignatures )
+        // no keys in tests
+        return;
+
     const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
 
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        if ( node.publicKey.size() == 0 )
-            return;  // just don't do anything
         ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
     }
 
@@ -159,15 +161,15 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
         std::vector< std::string > public_key_share( 4 );
         if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
-            public_key_share[0] = node.blsPublicKey[0];
-            public_key_share[1] = node.blsPublicKey[1];
-            public_key_share[2] = node.blsPublicKey[2];
-            public_key_share[3] = node.blsPublicKey[3];
+            public_key_share[0] = node.blsPublicKey.at( 0 );
+            public_key_share[1] = node.blsPublicKey.at( 1 );
+            public_key_share[2] = node.blsPublicKey.at( 2 );
+            public_key_share[3] = node.blsPublicKey.at( 3 );
         } else {
-            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys[0];
-            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys[1];
-            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys[2];
-            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys[3];
+            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 0 );
+            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 1 );
+            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 2 );
+            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 3 );
         }
 
         blsPublicKeys.push_back(
@@ -181,11 +183,10 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
     size_t n = m_client.chainParams().sChain.nodes.size();
     size_t t = ( 2 * n + 1 ) / 3;
 
-    if ( ecdsaPublicKeys->size() && ecdsaPublicKeys->at( 0 ).size() && blsPublicKeys.size() &&
-         blsPublicKeys[0]->at( 0 ).size() )
-        consensus.setPublicKeyInfo( ecdsaPublicKeys, blsPublicKeysPtr, t, n );
+    consensus.setPublicKeyInfo(
+        ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().nodeInfo.syncNode );
 } catch ( ... ) {
-    std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
+    std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
 
 
@@ -195,8 +196,9 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
     std::map< uint64_t, std::vector< uint64_t > > historicNodeGroups;
     auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
     for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
-        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey[0],
-            nodeGroup.blsPublicKey[1], nodeGroup.blsPublicKey[2], nodeGroup.blsPublicKey[3] };
+        std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey.at( 0 ),
+            nodeGroup.blsPublicKey.at( 1 ), nodeGroup.blsPublicKey.at( 2 ),
+            nodeGroup.blsPublicKey.at( 3 ) };
         previousBLSKeys[nodeGroup.finishTs] = commonBLSPublicKey;
         std::vector< uint64_t > nodes;
         // add ecdsa keys info and historic groups info
@@ -334,8 +336,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         return h256();
     }
 
-    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None );
-
+    Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     h256 sha = transaction.sha3();
 
     //
@@ -433,9 +435,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     m_debugTracer.tracepoint( "fetch_transactions" );
 
     int counter = 0;
+    BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
     Transactions txns = m_tq.topTransactionsSync(
-        _limit, [this, &to_delete, &counter]( const Transaction& tx ) -> bool {
+        _limit, [this, &to_delete, &counter, &latestInfo]( const Transaction& tx ) -> bool {
             if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
                 return false;
 
@@ -446,9 +449,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
                 try {
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
-                    Executive::verifyTransaction( tx,
-                        static_cast< const Interface& >( m_client ).blockInfo( LatestBlock ),
-                        m_client.state().createStateReadOnlyCopy(), *m_client.sealEngine(), 0,
+                    Executive::verifyTransaction( tx, latestInfo.timestamp(), latestInfo,
+                        m_client.state().createStateReadOnlyCopy(), m_client.chainParams(), 0,
                         getGasPrice(), isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
@@ -526,7 +528,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                 m_m_transaction_cache[sha.asArray()] = txn;
             }
 
-            out_vector.push_back( txn.rlp() );
+            out_vector.push_back( txn.toBytes() );
 
             ++total_sent;
 
@@ -628,6 +630,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     // HACK this is for not allowing new transactions in tq between deletion and block creation!
     // TODO decouple SkaleHost and Client!!!
     size_t n_succeeded;
+
+    BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
+
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -653,7 +658,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             // TODO clear occasionally this cache?!
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
                 Transaction t = m_m_transaction_cache.at( sha.asArray() );
-                t.checkOutExternalGas( m_client.chainParams(), m_client.number(), true );
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), true );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
@@ -666,8 +672,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
                 // ).detach();
             } else {
-                Transaction t( data, CheckTransaction::Everything, true );
-                t.checkOutExternalGas( m_client.chainParams(), m_client.number() );
+                Transaction t( data, CheckTransaction::Everything, true,
+                    EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn";
                 m_debugTracer.tracepoint( "import_consensus_born" );
@@ -893,7 +901,7 @@ void SkaleHost::broadcastFunc() {
                     if ( !m_broadcastPauseFlag ) {
                         MICROPROFILE_SCOPEI(
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
-                        std::string rlp = toJS( txn.rlp() );
+                        std::string rlp = toJS( txn.toBytes() );
                         std::string h = toJS( txn.sha3() );
                         //
                         std::string strPerformanceQueueName = "bc/broadcast";
@@ -909,8 +917,8 @@ void SkaleHost::broadcastFunc() {
                         m_broadcaster->broadcast( rlp );
                     }
                 } catch ( const std::exception& ex ) {
-                    cwarn << "BROADCAST EXCEPTION CAUGHT" << endl;
-                    cwarn << ex.what() << endl;
+                    cwarn << "BROADCAST EXCEPTION CAUGHT";
+                    cwarn << ex.what();
                 }  // catch
 
             }  // if
@@ -934,8 +942,10 @@ void SkaleHost::broadcastFunc() {
     m_broadcaster->stopService();
 }
 
-u256 SkaleHost::getGasPrice() const {
-    return m_consensus->getPriceForBlockId( m_client.number() );
+u256 SkaleHost::getGasPrice( unsigned _blockNumber ) const {
+    if ( _blockNumber == dev::eth::LatestBlock )
+        _blockNumber = m_client.number();
+    return m_consensus->getPriceForBlockId( _blockNumber );
 }
 
 u256 SkaleHost::getBlockRandom() const {
@@ -994,7 +1004,7 @@ void SkaleHost::forceEmptyBlock() {
 }
 
 void SkaleHost::forcedBroadcast( const Transaction& _txn ) {
-    m_broadcaster->broadcast( toJS( _txn.rlp() ) );
+    m_broadcaster->broadcast( toJS( _txn.toBytes() ) );
 }
 
 void SkaleHost::noteNewTransactions() {}

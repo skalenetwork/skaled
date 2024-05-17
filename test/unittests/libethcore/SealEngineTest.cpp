@@ -61,15 +61,15 @@ BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidBeforeExperimental,
 
     header.setNumber( 1 );
 
-    ethash.SealEngineFace::verifyTransaction(
-        ImportRequirements::TransactionSignatures, tx, header, 0 );  // check that it doesn't throw
+    SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures,
+                                       tx, 1, header, 0 );  // check that it doesn't throw
 }
 
 BOOST_AUTO_TEST_CASE( UnsignedTransactionIsValidInExperimental ) {
     header.setNumber( 0x1010 );
 
-    ethash.SealEngineFace::verifyTransaction(
-        ImportRequirements::TransactionSignatures, tx, header, 0 );  // check that it doesn't throw
+    SealEngineFace::verifyTransaction( params, ImportRequirements::TransactionSignatures,
+                                       tx, 1, header, 0 );  // check that it doesn't throw
 }
 
 BOOST_AUTO_TEST_SUITE_END()

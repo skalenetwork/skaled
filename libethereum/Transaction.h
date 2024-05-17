@@ -107,12 +107,12 @@ public:
         u256 const& _nonce = Invalid256 );
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction(
-        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false );
 
     /// Constructs a transaction from the given RLP.
-    explicit Transaction(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit Transaction( bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
+        bool _eip1559Enabled = false );
 
     Transaction( Transaction const& ) = default;
 
@@ -122,7 +122,8 @@ public:
 
     u256 gasPrice() const;
 
-    void checkOutExternalGas( const ChainParams& _cp, uint64_t _bn, bool _force = false );
+    void checkOutExternalGas( const ChainParams& _cp, time_t _committedBlockTimestamp,
+        uint64_t _committedBlockNumber, bool _force );
 
     void ignoreExternalGas() {
         m_externalGasIsChecked = true;
