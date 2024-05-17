@@ -71,6 +71,7 @@ public:
     static std::atomic< uint64_t > g_keyDeletesStats;
     // count of the keys that are scheduled to be deleted but are not yet deleted
     static std::atomic< uint64_t > g_keysToBeDeletedStats;
+    static uint64_t getCurrentTimeMs();
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
@@ -123,7 +124,6 @@ private:
         }
     };
     void openDBInstanceUnsafe();
-    uint64_t getCurrentTimeMs();
     void reopenDataBaseIfNeeded();
 };
 

@@ -50,7 +50,7 @@ def add_ether_to_account(address, amount):
         return
 
     # Unlock the default account (coinbase)
-    coinbase = w3.eth.coinbase
+    coinbase = w3.eth.accounts[0]
     w3.geth.personal.unlock_account(coinbase, '', 0)
 
     # Convert Ether to Wei
