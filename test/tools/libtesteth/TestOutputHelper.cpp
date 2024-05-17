@@ -20,7 +20,7 @@
  * Fixture class for boost output when running testeth
  */
 
-#include <libskale/CorrectForkInPowPatch.h>
+#include <libethereum/SchainPatch.h>
 #include <libethashseal/Ethash.h>
 #include <libethcore/BasicAuthority.h>
 #include <test/tools/libtesteth/Options.h>
@@ -103,8 +103,6 @@ void TestOutputHelper::printTestExecStats() {
 }
 TestOutputHelperFixture::TestOutputHelperFixture() {
     TestOutputHelper::get().initTest();
-    CorrectForkInPowPatch::lastBlockTimestamp = 1;
-    CorrectForkInPowPatch::lastBlockNumber = 0;
 }
 
 TestOutputHelperFixture::~TestOutputHelperFixture() {

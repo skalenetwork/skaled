@@ -53,8 +53,8 @@ void executeGasPricerTest( string const& name, double _etherPrice, double _block
     BOOST_CHECK_MESSAGE( abs( gp.ask( Block( Block::Null ) ) - _expectedAsk ) < 100000000,
         "ASK Got: " + toString( gp.ask( Block( Block::Null ) ) ) +
             " Expected: " + toString( _expectedAsk ) );
-    BOOST_CHECK_MESSAGE( abs( gp.bid( _txPrio ) - _expectedBid ) < 100000000,
-        "BID Got: " + toString( gp.bid( _txPrio ) ) + " Expected: " + toString( _expectedBid ) );
+    BOOST_CHECK_MESSAGE( abs( gp.bid( dev::eth::LatestBlock, _txPrio ) - _expectedBid ) < 100000000,
+        "BID Got: " + toString( gp.bid( dev::eth::LatestBlock, _txPrio ) ) + " Expected: " + toString( _expectedBid ) );
 }
 }  // namespace test
 }  // namespace dev

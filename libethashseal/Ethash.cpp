@@ -130,18 +130,6 @@ void Ethash::verify( Strictness _s, BlockHeader const& _bi, BlockHeader const& _
     }
 }
 
-void Ethash::verifyTransaction( ImportRequirements::value _ir, TransactionBase const& _t,
-    BlockHeader const& _header, u256 const& _startGasUsed ) const {
-    SealEngineFace::verifyTransaction( _ir, _t, _header, _startGasUsed );
-
-    if ( _ir & ImportRequirements::TransactionSignatures ) {
-        if ( _header.number() >= chainParams().EIP158ForkBlock ) {
-            uint64_t chainID = chainParams().chainID;
-            _t.checkChainId( chainID, chainParams().skaleDisableChainIdCheck );
-        }  // if
-    }
-}
-
 u256 Ethash::childGasLimit( BlockHeader const& _bi, u256 const& _gasFloorTarget ) const {
     u256 gasFloorTarget = _gasFloorTarget == Invalid256 ? 3141562 : _gasFloorTarget;
     u256 gasLimit = _bi.gasLimit();

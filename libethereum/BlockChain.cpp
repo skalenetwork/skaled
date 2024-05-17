@@ -40,6 +40,7 @@
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieHash.h>
 #include <libdevcore/microprofile.h>
+#include <libethashseal/Ethash.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 
@@ -63,6 +64,8 @@ namespace fs = boost::filesystem;
 using skale::BaseState;
 using skale::State;
 using namespace skale::error;
+
+extern bytesConstRef bytesRefFromTransactionRlp( const RLP& _rlp );
 
 #define ETH_TIMED_IMPORTS 1
 
@@ -172,24 +175,6 @@ unsigned c_maxCacheSize = 1024 * 1024 * 64;
 
 /// Min size, below which we don't bother flushing it.
 unsigned c_minCacheSize = 1024 * 1024 * 32;
-
-bool hasPotentialInvalidTransactionsInBlock( BlockNumber _bn, const BlockChain& _bc ) {
-    if ( _bn == 0 )
-        return false;
-
-    if ( SkipInvalidTransactionsPatch::getActivationTimestamp() == 0 )
-        return true;
-
-    if ( _bn == PendingBlock )
-        return !SkipInvalidTransactionsPatch::isEnabled();
-
-    if ( _bn == LatestBlock )
-        _bn = _bc.number();
-
-    time_t prev_ts = _bc.info( _bc.numberHash( _bn - 1 ) ).timestamp();
-
-    return prev_ts < SkipInvalidTransactionsPatch::getActivationTimestamp();
-}
 
 string BlockChain::getChainDirName( const ChainParams& _cp ) {
     return toHex( BlockHeader( _cp.genesisBlock() ).hash().ref().cropped( 0, 4 ) );
@@ -370,7 +355,8 @@ std::pair< h256, unsigned > BlockChain::transactionLocation( h256 const& _transa
 
     auto blockNumber = this->number( ta.blockHash );
 
-    if ( !hasPotentialInvalidTransactionsInBlock( blockNumber, *this ) )
+    if ( !SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
+             blockNumber, *this ) )
         return std::make_pair( ta.blockHash, ta.index );
 
     // rest is for blocks with possibility of invalid transactions
@@ -777,8 +763,10 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         for ( RLP::iterator it = txns_rlp.begin(); it != txns_rlp.end(); ++it ) {
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
-            extrasWriteBatch.insert( toSlice( sha3( ( *it ).data() ), ExtraTransactionAddress ),
+            auto txBytes = bytesRefFromTransactionRlp( *it );
+            extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
                 ( db::Slice ) dev::ref( ta.rlp() ) );
+
             ++ta.index;
         }
     }
@@ -1101,7 +1089,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
 }
 
 void BlockChain::rescue( State const& /*_state*/ ) {
-    clog( VerbosityInfo, "BlockChain" ) << "Rescuing database..." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "Rescuing database...";
     throw std::logic_error( "Rescueing is not implemented" );
 
     unsigned u = 1;
@@ -1116,8 +1104,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    clog( VerbosityInfo, "BlockChain" )
-        << cc::debug( "Finding last likely block number..." ) << endl;
+    clog( VerbosityInfo, "BlockChain" ) << cc::debug( "Finding last likely block number..." );
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
         clog( VerbosityInfo, "BlockChain" ) << " " << m << flush;
@@ -1126,7 +1113,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         else
             u = m;
     }
-    clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "  lowest is " << l;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
         clog( VerbosityInfo, "BlockChain" )
@@ -1145,7 +1132,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         } catch ( ... ) {
         }
     }
-    clog( VerbosityInfo, "BlockChain" ) << "OK." << endl;
+    clog( VerbosityInfo, "BlockChain" ) << "OK.";
     rewind( l );
 }
 
@@ -1747,12 +1734,18 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
          ( ImportRequirements::TransactionBasic | ImportRequirements::TransactionSignatures ) ) {
         MICROPROFILE_SCOPEI( "BlockChain", "check txns", MP_ROSYBROWN );
         for ( RLP const& tr : r[1] ) {
-            bytesConstRef d = tr.data();
+            bytesConstRef d = bytesRefFromTransactionRlp( tr );
             try {
-                Transaction t( d, ( _ir & ImportRequirements::TransactionSignatures ) ?
-                                      CheckTransaction::Everything :
-                                      CheckTransaction::None );
-                m_sealEngine->verifyTransaction( _ir, t, h, 0 );  // the gasUsed vs
+                Transaction t( d,
+                    ( _ir & ImportRequirements::TransactionSignatures ) ?
+                        CheckTransaction::Everything :
+                        CheckTransaction::None,
+                    false,
+                    EIP1559TransactionsPatch::isEnabledWhen(
+                        this->info( numberHash( h.number() - 1 ) ).timestamp() ) );
+                Ethash::verifyTransaction( chainParams(), _ir, t,
+                    this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
+                    0 );  // the gasUsed vs
                 // blockGasLimit is checked
                 // later in enact function
                 res.transactions.push_back( t );
@@ -1775,4 +1768,19 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
 unsigned BlockChain::chainStartBlockNumber() const {
     auto const value = m_extrasDB->lookup( c_sliceChainStart );
     return value.empty() ? 0 : number( h256( value, h256::FromBinary ) );
+}
+
+bool BlockChain::isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _bn ) const {
+    if ( _bn == 0 || _ts == 0 )
+        return false;
+
+    if ( _bn == LatestBlock )
+        _bn = number();
+
+    if ( _bn == PendingBlock )
+        _bn = number() + 1;
+
+    time_t prev_ts = this->info( this->numberHash( _bn - 1 ) ).timestamp();
+
+    return prev_ts >= _ts;
 }

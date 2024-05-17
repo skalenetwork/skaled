@@ -17,7 +17,13 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "ValidationSchemes.h"
+
+#include <libethereum/SchainPatchEnum.h>
+
 #include <libdevcore/JsonUtils.h>
+
+#include <boost/algorithm/string.hpp>
+
 #include <string>
 
 using namespace std;
@@ -158,7 +164,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
-            { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Required } },
+            { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaLogsSearch",
                 { { js::bool_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaContractCall",
@@ -216,6 +222,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "syncNode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "syncFromCatchup", { { js::bool_type }, JsonFieldPresence::Optional } },
+            { "testSignatures", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } } } );
 
     std::string keyShareName = "";
@@ -254,7 +261,6 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "contractStoragePatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
@@ -263,22 +269,19 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "revertableFSPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "contractStorageZeroValuePatchTimestamp",
-                { { js::int_type }, JsonFieldPresence::Optional } },
-            { "verifyDaSigsPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "storageDestructionPatchTimestamp",
-                { { js::int_type }, JsonFieldPresence::Optional } },
-            { "powCheckPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "pushZeroPatchTimestamp", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } },
-            { "skipInvalidTransactionsPatchTimestamp",
-                { { js::int_type }, JsonFieldPresence::Optional } },
-            { "precompiledConfigPatchTimestamp",
-                { { js::int_type }, JsonFieldPresence::Optional } },
-            { "correctForkInPowPatchTimestamp",
-                { { js::int_type }, JsonFieldPresence::Optional } } } );
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } },
+        []( const string& _key ) {
+            // function fow allowing fields
+            // exception means bad name
+            try {
+                string patchName = boost::algorithm::erase_last_copy( _key, "Timestamp" );
+                patchName[0] = toupper( patchName[0] );
+                getEnumForPatchName( patchName );
+                return true;
+            } catch ( const std::out_of_range& ) {
+                return false;
+            }
+        } );
 
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {
