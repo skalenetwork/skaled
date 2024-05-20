@@ -263,7 +263,7 @@ void LevelDB::reopenDataBaseIfNeeded() {
 
         auto startTimeMs = getCurrentTimeMs();
 
-        while (getCurrentTimeMs() >= startTimeMs + FORCE_CLOSE_TIME_MS) {
+        while (getCurrentTimeMs() <= startTimeMs + FORCE_CLOSE_TIME_MS) {
             cleanOldSnapsUnsafe(FORCE_CLOSE_TIME_MS);
         }
 
