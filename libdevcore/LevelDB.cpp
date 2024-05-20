@@ -19,6 +19,7 @@
 
 
 #include "LevelDB.h"
+#include "LevelDBSnap.h"
 #include "Assertions.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
@@ -30,6 +31,8 @@ namespace dev::db {
 unsigned c_maxOpenLeveldbFiles = 25;
 
 const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
+const size_t LevelDB::MAX_OLD_SNAPS_LIFETIME_MS = 10000;
+const size_t LevelDB::FORCE_CLOSE_TIME_MS = 3000;
 
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
@@ -144,6 +147,7 @@ void LevelDB::openDBInstanceUnsafe() {
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
+    m_dbIdentifier++;
     cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
@@ -248,6 +252,29 @@ void LevelDB::reopenDataBaseIfNeeded() {
 
     if ( currentTimeMs - m_lastDBOpenTimeMs >= ( uint64_t ) m_reopenPeriodMs ) {
         ExclusiveDBGuard lock( *this );
+
+
+        // we need to close all snaps created for  this database
+        // we wait for FORCE_TIME_MS, hoping that all eth_calls complete nicely
+        // after that we close snapshots forcefully. This means that
+        // eth_calls that take more than FORCE_TIME_MS will return exception
+        // note that in the previous release eth_calls would fail immediately, so
+        // the new behavior is much nicer
+
+        auto startTimeMs = getCurrentTimeMs();
+
+        while (getCurrentTimeMs() >= startTimeMs + FORCE_CLOSE_TIME_MS) {
+            cleanOldSnapsUnsafe(FORCE_CLOSE_TIME_MS);
+        }
+
+        if (oldSnaps.empty()) {
+            // there are still open snaps. Close all of them not waiting for
+            // eth_calls to complete by passing 0 as wait time
+            cleanOldSnapsUnsafe(0);
+        }
+
+        LDB_CHECK(oldSnaps.empty());
+
         // releasing unique pointer will cause database destructor to be called that will close db
         m_db.reset();
         // now open db while holding the exclusive lock
@@ -383,6 +410,50 @@ void LevelDB::doCompaction() const {
     m_db->CompactRange( nullptr, nullptr );
 }
 
+
+void LevelDB::createBlockSnap( uint64_t _blockId ) {
+    SharedDBGuard lock( *this );
+
+    auto newSnapHandle = m_db->GetSnapshot();
+    LDB_CHECK(newSnapHandle);
+    auto newSnap = std::make_shared<LevelDBSnap>(
+        _blockId, newSnapHandle,
+        m_dbIdentifier);
+    LDB_CHECK(newSnap);
+
+    {
+        std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
+        auto oldSnap = m_lastBlockSnap;
+        m_lastBlockSnap = newSnap;
+        oldSnaps.emplace( oldSnap->getObjectId(), oldSnap );
+    }
+
+    // we clean unneeded old snaps that no-one used or that exist for more that max
+    // lifetime we give for eth_calls to complete
+    cleanOldSnapsUnsafe( MAX_OLD_SNAPS_LIFETIME_MS );
+}
+
+
+// this function should be called while holding database reopen lock
+void LevelDB::cleanOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
+    std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
+
+    //now we iterate over oldSnaps closing the ones that are not more in use
+    auto currentTimeMs = getCurrentTimeMs();
+    // Iterate and delete entries with even values
+    for (auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
+        if ( it->second.use_count() == 1 ||  // no one using this snap anymore except this map
+             it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  //  old
+        {
+            it->second->close( m_db, m_dbIdentifier );
+            it = oldSnaps.erase(it); // Erase returns the iterator to the next element
+        } else {
+            ++it; // Only increment if not erasing
+        }
+    }
+}
+
+
 std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
 std::atomic< uint64_t > LevelDB::g_keyDeletesStats = 0;
 
@@ -390,4 +461,12 @@ uint64_t LevelDB::getKeyDeletesStats() {
     return g_keyDeletesStats;
 }
 
+
+
+
+
+
+
 }  // namespace dev::db
+
+

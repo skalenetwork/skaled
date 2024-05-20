@@ -29,7 +29,17 @@
 #include <secp256k1_sha256.h>
 #include <shared_mutex>
 
+#define LDB_CHECK( _EXPRESSION_ )                                                              \
+    if ( !( _EXPRESSION_ ) ) {                                                                 \
+        auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " +           \
+                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );             \
+        BOOST_THROW_EXCEPTION(DatabaseError() << errinfo_comment( __msg__ ));   \
+    }
+
 namespace dev::db {
+
+class LevelDBSnap;
+
 class LevelDB : public DatabaseFace {
 public:
     static leveldb::ReadOptions defaultReadOptions();
@@ -65,6 +75,13 @@ public:
 
     void doCompaction() const;
 
+    void createBlockSnap(uint64_t _blockId);
+
+    std::shared_ptr<LevelDBSnap> getLastBlockSnap(uint64_t _blockId);
+
+    void closeSnap(LevelDBSnap& _snap);
+
+
     // Return the total count of key deletes  since the start
     static uint64_t getKeyDeletesStats();
     // count of the keys that were deleted since the start of skaled
@@ -75,6 +92,9 @@ public:
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
+    // this identify is guaranteed to be unique for each m_db reference
+    // so it can be used to compare to references
+    std::atomic<uint64_t> m_dbIdentifier = 0;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
@@ -85,8 +105,18 @@ private:
     uint64_t m_lastDBOpenTimeMs;
     mutable std::shared_mutex m_dbMutex;
 
+    // old snaps contains snap objects for older blocks
+    // these objects are alive untils the
+    // corresponding eth_calls complete
+    std::map<std::uint64_t , std::shared_ptr<LevelDBSnap>> oldSnaps;
+    std::shared_ptr<LevelDBSnap> m_lastBlockSnap;
+    // mutex to protect oldSnaps and m_lastBlockSnap;
+    std::shared_mutex m_snapMutex;
+
 
     static const size_t BATCH_CHUNK_SIZE;
+    static const size_t MAX_OLD_SNAPS_LIFETIME_MS;
+    static const size_t FORCE_CLOSE_TIME_MS;
 
     class SharedDBGuard {
         const LevelDB& m_levedlDB;
@@ -125,6 +155,7 @@ private:
     };
     void openDBInstanceUnsafe();
     void reopenDataBaseIfNeeded();
+    void cleanOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs );
 };
 
 }  // namespace dev::db
