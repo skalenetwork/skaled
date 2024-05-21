@@ -342,19 +342,14 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
     return arrayCommonPublicKey;
 }
 
-unsigned getBlockToDownladSnapshot( const dev::eth::sChainNode& nodeInfo ) {
-    std::string blockNumber_url = std::string( "http://" ) + std::string( nodeInfo.ip ) +
-                                  std::string( ":" ) +
-                                  ( nodeInfo.port + 3 ).convert_to< std::string >();
-
+unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
     clog( VerbosityInfo, "getBlockToDownladSnapshot" )
-        << cc::notice( "Asking node " ) << cc::p( nodeInfo.sChainIndex.str() ) << ' '
-        << cc::notice( blockNumber_url ) << cc::notice( " for latest snapshot block number." );
+        << "Asking node " << ' ' << nodeUrl << " for latest snapshot block number.";
 
-    unsigned blockNumber = getLatestSnapshotBlockNumber( blockNumber_url );
+    unsigned blockNumber = getLatestSnapshotBlockNumber( nodeUrl );
     clog( VerbosityInfo, "getBlockToDownladSnapshot" )
-        << cc::notice( "Latest Snapshot Block Number" ) + cc::debug( " is: " )
-        << cc::p( std::to_string( blockNumber ) ) << " (from " << blockNumber_url << ")";
+        << std::string( "Latest Snapshot Block Number is: " ) << std::to_string( blockNumber )
+        << " (from " << nodeUrl << ")";
 
     return blockNumber;
 }
@@ -471,56 +466,70 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     return false;
 }
 
+bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManager,
+    const ChainParams& chainParams, const std::array< std::string, 4 >& arrayCommonPublicKey,
+    const std::string& urlToDownloadSnapshotFrom, bool isRegularSnapshot ) {
+    unsigned blockNumber = 0;
+    if ( isRegularSnapshot )
+        blockNumber = getBlockToDownladSnapshot( urlToDownloadSnapshotFrom );
+
+    std::unique_ptr< SnapshotHashAgent > snapshotHashAgent(
+        new SnapshotHashAgent( chainParams, arrayCommonPublicKey, urlToDownloadSnapshotFrom ) );
+
+    libff::init_alt_bn128_params();
+    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
+    std::vector< std::string > listUrlsToDownload;
+    std::tie( listUrlsToDownload, votedHash ) =
+        voteForSnapshotHash( snapshotHashAgent, blockNumber );
+
+    if ( listUrlsToDownload.empty() ) {
+        if ( !isRegularSnapshot )
+            return true;
+        clog( VerbosityWarning, "downloadAndProccessSnapshot" )
+            << std::string( "No nodes to download from - will skip " ) << urlToDownloadSnapshotFrom;
+        return false;
+    }
+
+    bool successfullDownload = checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
+    if ( successfullDownload )
+        return successfullDownload;
+
+    successfullDownload = tryDownloadSnapshot( snapshotManager, chainParams, listUrlsToDownload,
+        votedHash, blockNumber, isRegularSnapshot );
+
+    return successfullDownload;
+}
+
 void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
-    const ChainParams& chainParams, bool requireSnapshotMajority,
-    const std::string& ipToDownloadSnapshotFrom, bool isRegularSnapshot ) {
+    const ChainParams& chainParams, const std::string& urlToDownloadSnapshotFrom,
+    bool isRegularSnapshot ) {
     std::array< std::string, 4 > arrayCommonPublicKey =
         getBLSPublicKeyToVerifySnapshot( chainParams );
 
     bool successfullDownload = false;
 
-    for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
-        try {
-            if ( !requireSnapshotMajority &&
-                 std::string( chainParams.sChain.nodes[idx].ip ) != ipToDownloadSnapshotFrom )
-                continue;
+    if ( !urlToDownloadSnapshotFrom.empty() )
+        successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
+            arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot );
+    else {
+        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
+            try {
+                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
+                    continue;
 
-            if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
-                continue;
+                std::string nodeUrl =
+                    std::string( "http://" ) + std::string( chainParams.sChain.nodes[idx].ip ) +
+                    std::string( ":" ) +
+                    ( chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
 
-            unsigned blockNumber = 0;
-            if ( isRegularSnapshot )
-                blockNumber = getBlockToDownladSnapshot( chainParams.sChain.nodes[idx] );
-
-            std::unique_ptr< SnapshotHashAgent > snapshotHashAgent( new SnapshotHashAgent(
-                chainParams, arrayCommonPublicKey, ipToDownloadSnapshotFrom ) );
-
-            libff::init_alt_bn128_params();
-            std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
-            std::vector< std::string > listUrlsToDownload;
-            std::tie( listUrlsToDownload, votedHash ) =
-                voteForSnapshotHash( snapshotHashAgent, blockNumber );
-
-            if ( listUrlsToDownload.empty() ) {
-                if ( !isRegularSnapshot )
-                    return;
+                successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
+                    arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
+            } catch ( std::exception& ex ) {
                 clog( VerbosityWarning, "downloadAndProccessSnapshot" )
-                    << cc::warn( "No nodes to download from - will skip " + std::to_string( idx ) );
-                continue;
-            }
-
-            successfullDownload =
-                checkLocalSnapshot( snapshotManager, blockNumber, votedHash.first );
-            if ( successfullDownload )
-                break;
-
-            successfullDownload = tryDownloadSnapshot( snapshotManager, chainParams,
-                listUrlsToDownload, votedHash, blockNumber, isRegularSnapshot );
-        } catch ( std::exception& ex ) {
-            clog( VerbosityWarning, "downloadAndProccessSnapshot" )
-                << cc::warn( "Exception while trying to set up snapshot: " )
-                << cc::warn( dev::nested_exception_what( ex ) );
-        }  // for blockNumber_url
+                    << cc::warn( "Exception while trying to set up snapshot: " )
+                    << cc::warn( dev::nested_exception_what( ex ) );
+            }  // for blockNumber_url
+    }
 
     if ( !successfullDownload ) {
         throw std::runtime_error( "FATAL: tried to download snapshot from everywhere!" );
@@ -1580,11 +1589,9 @@ int main( int argc, char** argv ) try {
         downloadSnapshotFlag = true;
     }
 
-    bool requireSnapshotMajority = true;
-    std::string ipToDownloadSnapshotFrom = "";
+    std::string urlToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
-        requireSnapshotMajority = false;
-        ipToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
+        urlToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
@@ -1613,26 +1620,18 @@ int main( int argc, char** argv ) try {
         statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
         statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
 
-        if ( !ipToDownloadSnapshotFrom.empty() &&
-             std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-                 [&ipToDownloadSnapshotFrom]( const dev::eth::sChainNode& node ) {
-                     return node.ip == ipToDownloadSnapshotFrom;
-                 } ) == chainParams.sChain.nodes.end() )
-            throw std::runtime_error(
-                "ipToDownloadSnapshotFrom provided is incorrect - no such node in schain" );
-
         std::unique_ptr< std::lock_guard< SharedSpace > > sharedSpace_lock;
         if ( sharedSpace )
             sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
 
         try {
             if ( !downloadGenesisForSyncNode )
-                downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
-                    ipToDownloadSnapshotFrom, true );
+                downloadAndProccessSnapshot(
+                    snapshotManager, chainParams, urlToDownloadSnapshotFrom, true );
             else {
                 try {
-                    downloadAndProccessSnapshot( snapshotManager, chainParams,
-                        requireSnapshotMajority, ipToDownloadSnapshotFrom, false );
+                    downloadAndProccessSnapshot(
+                        snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
                     snapshotManager->restoreSnapshot( 0 );
                 } catch ( SnapshotManager::SnapshotAbsent& ) {
                     clog( VerbosityWarning, "main" )
@@ -1649,8 +1648,8 @@ int main( int argc, char** argv ) try {
                     << cc::warn( "Will sleep for 60 seconds before downloading 0 snapshot" );
                 sleep( 60 );
 
-                downloadAndProccessSnapshot( snapshotManager, chainParams, requireSnapshotMajority,
-                    ipToDownloadSnapshotFrom, false );
+                downloadAndProccessSnapshot(
+                    snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
             }
 
         } catch ( std::exception& ) {
