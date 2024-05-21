@@ -1595,13 +1595,14 @@ int main( int argc, char** argv ) try {
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-        std::vector< std::string > volumes = { BlockChain::getChainDirName( chainParams ),
+        std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( chainParams ),
             "filestorage", "prices_" + chainParams.nodeInfo.id.str() + ".db",
             "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+        std::vector< std::string > archiveVolumes = {};
         if ( chainParams.nodeInfo.archiveMode )
-            volumes.insert( volumes.end(), { "historic_roots", "historic_state" } );
-        snapshotManager.reset( new SnapshotManager(
-            chainParams, getDataDir(), volumes, sharedSpace ? sharedSpace->getPath() : "" ) );
+            archiveVolumes.insert( archiveVolumes.end(), { "historic_roots", "historic_state" } );
+        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(), coreVolumes,
+            archiveVolumes, sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
     bool downloadGenesisForSyncNode = false;

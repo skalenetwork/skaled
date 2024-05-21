@@ -153,11 +153,12 @@ public:
 
 public:
     SnapshotManager( const dev::eth::ChainParams& _chainParams,
-        const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes,
+        const boost::filesystem::path& _dataDir, const std::vector< std::string >& _coreVolumes,
+        const std::vector< std::string >& _archiveVolumes = {},
         const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
-    boost::filesystem::path makeOrGetDiff( unsigned _toBlock );
+    boost::filesystem::path makeOrGetDiff( unsigned _toBlock, bool _forArchiveNode = false );
     void importDiff( unsigned _toBlock );
     boost::filesystem::path getDiffPath( unsigned _toBlock );
     void removeSnapshot( unsigned _blockNumber );
@@ -179,7 +180,9 @@ public:
 
 private:
     boost::filesystem::path data_dir;
-    std::vector< std::string > volumes;
+    std::vector< std::string > coreVolumes;
+    std::vector< std::string > archiveVolumes;
+    std::vector< std::string > allVolumes;
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
 
