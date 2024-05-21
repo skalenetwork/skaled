@@ -33,11 +33,11 @@
 #include <skutils/rest_call.h>
 #include <libff/common/profiling.hpp>
 
-SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
+SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     const std::array< std::string, 4 >& common_public_key,
     const std::string& ipToDownloadSnapshotFrom )
-    : chain_params_( chain_params ),
-      n_( chain_params.sChain.nodes.size() ),
+    : chainParams_( chainParams ),
+      n_( chainParams.sChain.nodes.size() ),
       ipToDownloadSnapshotFrom_( ipToDownloadSnapshotFrom ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
@@ -63,20 +63,20 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
 
 void SnapshotHashAgent::readPublicKeyFromConfig() {
     this->common_public_key_.X.c0 =
-        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
     this->common_public_key_.X.c1 =
-        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
     this->common_public_key_.Y.c0 =
-        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
     this->common_public_key_.Y.c1 =
-        libff::alt_bn128_Fq( chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
     this->common_public_key_.Z = libff::alt_bn128_Fq2::one();
 }
 
 size_t SnapshotHashAgent::verifyAllData() const {
     size_t verified = 0;
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
+        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
             continue;
         }
 
@@ -114,7 +114,7 @@ bool SnapshotHashAgent::voteForHash() {
     const std::lock_guard< std::mutex > lock( this->hashes_mutex );
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
+        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
             continue;
         }
 
@@ -136,7 +136,7 @@ bool SnapshotHashAgent::voteForHash() {
             std::vector< size_t > idx;
             std::vector< libff::alt_bn128_G1 > signatures;
             for ( size_t i = 0; i < this->n_; ++i ) {
-                if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
+                if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
                     continue;
                 }
 
@@ -185,13 +185,13 @@ bool SnapshotHashAgent::voteForHash() {
 
                 libff::alt_bn128_G2 common_public_key_from_config;
                 common_public_key_from_config.X.c0 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+                    this->chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
                 common_public_key_from_config.X.c1 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+                    this->chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
                 common_public_key_from_config.Y.c0 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+                    this->chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
                 common_public_key_from_config.Y.c1 = libff::alt_bn128_Fq(
-                    this->chain_params_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+                    this->chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
                 common_public_key_from_config.Z = libff::alt_bn128_Fq2::one();
                 std::cout << "NEW BLS COMMON PUBLIC KEY:\n";
                 common_public_key_from_config.print_coordinates();
@@ -227,9 +227,9 @@ bool SnapshotHashAgent::voteForHash() {
             return true;
         }
     } else {
-        size_t nodeIdx = std::distance( this->chain_params_.sChain.nodes.begin(),
-            std::find_if( this->chain_params_.sChain.nodes.begin(),
-                this->chain_params_.sChain.nodes.end(), [this]( const dev::eth::sChainNode& node ) {
+        size_t nodeIdx = std::distance( this->chainParams_.sChain.nodes.begin(),
+            std::find_if( this->chainParams_.sChain.nodes.begin(),
+                this->chainParams_.sChain.nodes.end(), [this]( const dev::eth::sChainNode& node ) {
                     return node.ip == ipToDownloadSnapshotFrom_;
                 } ) );
 
@@ -255,15 +255,15 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     std::vector< std::thread > threads;
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chain_params_.nodeInfo.id == this->chain_params_.sChain.nodes[i].id ) {
+        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
             continue;
         }
 
         threads.push_back( std::thread( [this, i, block_number]() {
             try {
                 jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient(
-                    "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
-                    ( this->chain_params_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
+                    "http://" + this->chainParams_.sChain.nodes[i].ip + ':' +
+                    ( this->chainParams_.sChain.nodes[i].port + 3 ).convert_to< std::string >() );
                 SkaleClient skaleClient( *jsonRpcClient );
 
                 Json::Value joSignatureResponse;
@@ -272,7 +272,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 } catch ( jsonrpc::JsonRpcException& ex ) {
                     cerror << "WARNING "
                            << "Error while trying to get snapshot signature from "
-                           << this->chain_params_.sChain.nodes[i].ip << " : " << ex.what();
+                           << this->chainParams_.sChain.nodes[i].ip << " : " << ex.what();
                     delete jsonRpcClient;
                     return;
                 }
@@ -291,8 +291,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
                     std::string str_hash = joSignatureResponse["hash"].asString();
                     cnote << "Received snapshot hash from "
-                          << "http://" + this->chain_params_.sChain.nodes[i].ip + ':' +
-                                 ( this->chain_params_.sChain.nodes[i].port + 3 )
+                          << "http://" + this->chainParams_.sChain.nodes[i].ip + ':' +
+                                 ( this->chainParams_.sChain.nodes[i].port + 3 )
                                      .convert_to< std::string >()
                           << " : " << str_hash << '\n';
 
@@ -335,7 +335,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     bool result = false;
 
-    if ( !AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ) {
+    if ( !AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chainParams_ ) ) {
         // keep only nodes from majorityNodesIds
         auto majorityNodesIds = AmsterdamFixPatch::majorityNodesIds();
         dev::h256 common_hash;  // should be same everywhere!
@@ -343,7 +343,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             if ( !this->is_received_[pos] )
                 continue;
 
-            u256 id = this->chain_params_.sChain.nodes[pos].id;
+            u256 id = this->chainParams_.sChain.nodes[pos].id;
             bool good = majorityNodesIds.end() !=
                         std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
             if ( !good )
@@ -382,9 +382,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodes_to_download_snapshot_from_ ) {
         std::string ret_value =
-            std::string( "http://" ) + std::string( this->chain_params_.sChain.nodes[idx].ip ) +
+            std::string( "http://" ) + std::string( this->chainParams_.sChain.nodes[idx].ip ) +
             std::string( ":" ) +
-            ( this->chain_params_.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+            ( this->chainParams_.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
         ret.push_back( ret_value );
     }
 
@@ -396,7 +396,7 @@ std::pair< dev::h256, libff::alt_bn128_G1 > SnapshotHashAgent::getVotedHash() co
         throw std::invalid_argument( "Hash is empty" );
     }
 
-    if ( AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chain_params_ ) ) {
+    if ( AmsterdamFixPatch::snapshotHashCheckingEnabled( this->chainParams_ ) ) {
         if ( this->voted_hash_.second == libff::alt_bn128_G1::zero() ||
              !this->voted_hash_.second.is_well_formed() ) {
             throw std::invalid_argument( "Signature is not well formed" );

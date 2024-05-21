@@ -1588,15 +1588,13 @@ int main( int argc, char** argv ) try {
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-        // auto mostRecentBlocksDBPath = (getDataDir() / ( "blocks_" + chainParams.nodeInfo.id.str()
-        // + ".db" )) / "1.db";
-
-        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(),
-            { BlockChain::getChainDirName( chainParams ), "filestorage",
-                "prices_" + chainParams.nodeInfo.id.str() + ".db",
-                "blocks_" + chainParams.nodeInfo.id.str() + ".db"/*,
-                mostRecentBlocksDBPath.string()*/ },
-            sharedSpace ? sharedSpace->getPath() : "" ) );
+        std::vector< std::string > volumes = { BlockChain::getChainDirName( chainParams ),
+            "filestorage", "prices_" + chainParams.nodeInfo.id.str() + ".db",
+            "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+        if ( chainParams.nodeInfo.archiveMode )
+            volumes.insert( volumes.end(), { "historic_roots", "historic_state" } );
+        snapshotManager.reset( new SnapshotManager(
+            chainParams, getDataDir(), volumes, sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
     bool downloadGenesisForSyncNode = false;

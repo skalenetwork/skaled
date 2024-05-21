@@ -30,7 +30,7 @@ public:
 
     void terminate();
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
+    dev::h256 getSnapshotHash( unsigned _blockNumber, bool _forArchiveNode ) const;
     uint64_t getBlockTimestampFromSnapshot( unsigned _blockNumber ) const;
     int64_t getLatestSnapshotBlockNumer() const { return this->last_snapshoted_block_with_hash; }
     uint64_t getSnapshotCalculationTime() const { return this->snapshot_calculation_time_ms; }

@@ -152,7 +152,7 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const dev::eth::ChainParams& _chain_params,
+    SnapshotManager( const dev::eth::ChainParams& _chainParams,
         const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes,
         const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
@@ -167,7 +167,7 @@ public:
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
+    dev::h256 getSnapshotHash( unsigned _blockNumber, bool _forArchiveNode = false ) const;
     std::pair< int, int > getLatestSnapshots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
@@ -183,10 +183,11 @@ private:
     boost::filesystem::path snapshots_dir;
     boost::filesystem::path diffs_dir;
 
-    static const std::string snapshot_hash_file_name;
-    mutable std::mutex hash_file_mutex;
+    static const std::string snapshotHashFileName;
+    static const std::string partialSnapshotHashFileName;
+    mutable std::mutex hashFileMutex;
 
-    dev::eth::ChainParams chain_params;
+    dev::eth::ChainParams chainParams;
 
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );

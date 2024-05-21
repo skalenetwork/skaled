@@ -300,8 +300,8 @@ public:
     // set exiting time for node rotation
     void setSchainExitTime( uint64_t _timestamp ) const;
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber ) const {
-        return m_snapshotAgent->getSnapshotHash( _blockNumber );
+    dev::h256 getSnapshotHash( unsigned _blockNumber, bool _forArchiveNode = false ) const {
+        return m_snapshotAgent->getSnapshotHash( _blockNumber, _forArchiveNode );
     }
 
     uint64_t getBlockTimestampFromSnapshot( unsigned _blockNumber ) const {

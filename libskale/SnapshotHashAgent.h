@@ -65,7 +65,7 @@ public:
 
 class SnapshotHashAgent {
 public:
-    SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
+    SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
         const std::array< std::string, 4 >& common_public_key,
         const std::string& ipToDownloadSnapshotFrom );
 
@@ -76,7 +76,7 @@ public:
     friend class dev::test::SnapshotHashAgentTest;
 
 private:
-    dev::eth::ChainParams chain_params_;
+    dev::eth::ChainParams chainParams_;
     unsigned n_;
     std::string ipToDownloadSnapshotFrom_;
     std::shared_ptr< libBLS::Bls > bls_;

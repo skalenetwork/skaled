@@ -156,12 +156,12 @@ void SnapshotAgent::terminate() {
     }
 }
 
-dev::h256 SnapshotAgent::getSnapshotHash( unsigned _blockNumber ) const {
+dev::h256 SnapshotAgent::getSnapshotHash( unsigned _blockNumber, bool _forArchiveNode ) const {
     if ( _blockNumber > this->last_snapshoted_block_with_hash && _blockNumber != 0 )
         return dev::h256();
 
     try {
-        dev::h256 res = this->m_snapshotManager->getSnapshotHash( _blockNumber );
+        dev::h256 res = this->m_snapshotManager->getSnapshotHash( _blockNumber, _forArchiveNode );
         return res;
     } catch ( const SnapshotManager::SnapshotAbsent& ) {
         return dev::h256();

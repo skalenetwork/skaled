@@ -119,8 +119,8 @@ public:
 
         std::vector< size_t > ret;
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
-            if ( this->hashAgent_->chain_params_.nodeInfo.id ==
-                 this->hashAgent_->chain_params_.sChain.nodes[i].id ) {
+            if ( this->hashAgent_->chainParams_.nodeInfo.id ==
+                 this->hashAgent_->chainParams_.sChain.nodes[i].id ) {
                 continue;
             }
 
