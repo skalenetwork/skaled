@@ -362,8 +362,7 @@ voteForSnapshotHash(
     try {
         listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber );
         clog( VerbosityInfo, "voteForSnapshotHash" )
-            << cc::notice( "Got urls to download snapshot from " )
-            << cc::p( std::to_string( listUrlsToDownload.size() ) ) << cc::notice( " nodes " );
+            << "Got urls to download snapshot from " << listUrlsToDownload.size() << " nodes ";
 
         if ( listUrlsToDownload.size() == 0 )
             return { listUrlsToDownload, votedHash };
@@ -387,16 +386,17 @@ bool checkLocalSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager, un
             dev::h256 calculated_hash = snapshotManager->getSnapshotHash( blockNumber );
 
             if ( calculated_hash == votedHash ) {
-                clog( VerbosityInfo, "checkLocalSnapshot" ) << cc::notice(
-                    "Will delete all snapshots except" + std::to_string( blockNumber ) );
+                clog( VerbosityInfo, "checkLocalSnapshot" )
+                    << std::string( "Will delete all snapshots except " )
+                    << std::to_string( blockNumber );
                 snapshotManager->cleanupButKeepSnapshot( blockNumber );
                 snapshotManager->restoreSnapshot( blockNumber );
-                std::cout << cc::success( "Snapshot restore success for block " )
-                          << cc::u( to_string( blockNumber ) ) << std::endl;
+                clog( VerbosityInfo, "checkLocalSnapshot" )
+                    << "Snapshot restore success for block " << std::to_string( blockNumber );
                 return true;
             } else {
                 clog( VerbosityWarning, "checkLocalSnapshot" )
-                    << cc::warn( "Snapshot is present locally but its hash is different" );
+                    << "Snapshot is present locally but its hash is different";
             }
         }  // if present
     } catch ( const std::exception& ex ) {
@@ -412,7 +412,7 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
     const std::pair< dev::h256, libff::alt_bn128_G1 >& votedHash, unsigned blockNumber,
     bool isRegularSnapshot ) {
     clog( VerbosityInfo, "tryDownloadSnapshot" )
-        << cc::notice( "Will cleanup data dir and snapshots dir if needed" );
+        << "Will cleanup data dir and snapshots dir if needed";
     if ( isRegularSnapshot )
         snapshotManager->cleanup();
 
@@ -445,8 +445,8 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
                 successfullDownload = true;
                 if ( isRegularSnapshot ) {
                     snapshotManager->restoreSnapshot( blockNumber );
-                    std::cout << "Snapshot restore success for block " << to_string( blockNumber )
-                              << std::endl;
+                    clog( VerbosityInfo, "tryDownloadSnapshot" )
+                        << "Snapshot restore success for block " << to_string( blockNumber );
                 }
                 return successfullDownload;
             } else {
@@ -486,7 +486,7 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
         if ( !isRegularSnapshot )
             return true;
         clog( VerbosityWarning, "downloadAndProccessSnapshot" )
-            << std::string( "No nodes to download from - will skip " ) << urlToDownloadSnapshotFrom;
+            << "No nodes to download from - will skip " << urlToDownloadSnapshotFrom;
         return false;
     }
 
@@ -526,8 +526,8 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
             } catch ( std::exception& ex ) {
                 clog( VerbosityWarning, "downloadAndProccessSnapshot" )
-                    << cc::warn( "Exception while trying to set up snapshot: " )
-                    << cc::warn( dev::nested_exception_what( ex ) );
+                    << "Exception while trying to set up snapshot: "
+                    << dev::nested_exception_what( ex );
             }  // for blockNumber_url
     }
 
@@ -1645,7 +1645,7 @@ int main( int argc, char** argv ) try {
             } catch ( SnapshotManager::SnapshotAbsent& ex ) {
                 // sleep before send skale_getSnapshot again - will receive error
                 clog( VerbosityInfo, "main" )
-                    << cc::warn( "Will sleep for 60 seconds before downloading 0 snapshot" );
+                    << std::string( "Will sleep for 60 seconds before downloading 0 snapshot" );
                 sleep( 60 );
 
                 downloadAndProccessSnapshot(
@@ -1654,7 +1654,7 @@ int main( int argc, char** argv ) try {
 
         } catch ( std::exception& ) {
             std::throw_with_nested( std::runtime_error(
-                cc::error( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );
+                std::string( " Fatal error in downloadAndProccessSnapshot! Will exit " ) ) );
         }
 
     }  // if --download-snapshot
