@@ -35,10 +35,10 @@
 
 SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     const std::array< std::string, 4 >& common_public_key,
-    const std::string& ipToDownloadSnapshotFrom )
+    const std::string& urlToDownloadSnapshotFrom )
     : chainParams_( chainParams ),
       n_( chainParams.sChain.nodes.size() ),
-      ipToDownloadSnapshotFrom_( ipToDownloadSnapshotFrom ) {
+      urlToDownloadSnapshotFrom_( urlToDownloadSnapshotFrom ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
     this->public_keys_.resize( n_ );
@@ -107,7 +107,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
 bool SnapshotHashAgent::voteForHash() {
     std::map< dev::h256, size_t > map_hash;
 
-    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 && ipToDownloadSnapshotFrom_.empty() ) {
+    if ( 3 * this->verifyAllData() < 2 * this->n_ + 1 && urlToDownloadSnapshotFrom_.empty() ) {
         return false;
     }
 
@@ -122,7 +122,7 @@ bool SnapshotHashAgent::voteForHash() {
     }
 
     std::map< dev::h256, size_t >::iterator it;
-    if ( ipToDownloadSnapshotFrom_.empty() ) {
+    if ( urlToDownloadSnapshotFrom_.empty() ) {
         it = std::find_if(
             map_hash.begin(), map_hash.end(), [this]( const std::pair< dev::h256, size_t > p ) {
                 return 3 * p.second > 2 * this->n_;
@@ -154,13 +154,11 @@ bool SnapshotHashAgent::voteForHash() {
                     libBLS::ThresholdUtils::LagrangeCoeffs( idx, ( 2 * this->n_ + 1 ) / 3 );
                 common_signature = this->bls_->SignatureRecover( signatures, lagrange_coeffs );
             } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
-                cerror << cc::error(
-                              "Exception while recovering common signature from other skaleds: " )
-                       << cc::warn( ex.what() ) << std::endl;
+                cerror << "Exception while recovering common signature from other skaleds: "
+                       << ex.what();
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-                cerror << cc::error(
-                              "Exception while recovering common signature from other skaleds: " )
-                       << cc::warn( ex.what() ) << std::endl;
+                cerror << "Exception while recovering common signature from other skaleds: "
+                       << ex.what();
             }
 
             bool is_verified = false;
@@ -171,17 +169,14 @@ bool SnapshotHashAgent::voteForHash() {
                     std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                     common_signature, this->common_public_key_ );
             } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-                cerror << cc::error(
-                              "Exception while verifying common signature from other skaleds: " )
-                       << cc::warn( ex.what() ) << std::endl;
+                cerror << "Exception while verifying common signature from other skaleds: "
+                       << ex.what();
             }
 
             if ( !is_verified ) {
-                cerror << cc::error(
-                              "Common BLS signature wasn't verified, probably using incorrect "
-                              "common public key specified in command line. Trying again with "
-                              "common public key from config" )
-                       << std::endl;
+                cerror << "Common BLS signature wasn't verified, probably using incorrect "
+                          "common public key specified in command line. Trying again with "
+                          "common public key from config";
 
                 libff::alt_bn128_G2 common_public_key_from_config;
                 common_public_key_from_config.X.c0 = libff::alt_bn128_Fq(
@@ -200,23 +195,17 @@ bool SnapshotHashAgent::voteForHash() {
                         std::make_shared< std::array< uint8_t, 32 > >( ( *it ).first.asArray() ),
                         common_signature, common_public_key_from_config );
                 } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
-                    cerror
-                        << cc::error(
-                               "Exception while verifying common signature from other skaleds: " )
-                        << cc::warn( ex.what() ) << std::endl;
+                    cerror << "Exception while verifying common signature from other skaleds: "
+                           << ex.what();
                 }
 
                 if ( !is_verified ) {
-                    cerror << cc::error(
-                                  "Common BLS signature wasn't verified, snapshot will not be "
-                                  "downloaded. Try to backup node manually using skale-node-cli." )
-                           << std::endl;
+                    cerror << "Common BLS signature wasn't verified, snapshot will not be "
+                              "downloaded. Try to backup node manually using skale-node-cli.";
                     return false;
                 } else {
-                    cnote << cc::info(
-                                 "Common BLS signature was verified with common public key "
-                                 "from config." )
-                          << std::endl;
+                    cnote << "Common BLS signature was verified with common public key "
+                             "from config.";
                     this->common_public_key_ = common_public_key_from_config;
                 }
             }
@@ -230,7 +219,7 @@ bool SnapshotHashAgent::voteForHash() {
         size_t nodeIdx = std::distance( this->chainParams_.sChain.nodes.begin(),
             std::find_if( this->chainParams_.sChain.nodes.begin(),
                 this->chainParams_.sChain.nodes.end(), [this]( const dev::eth::sChainNode& node ) {
-                    return node.ip == ipToDownloadSnapshotFrom_;
+                    return node.ip.find( urlToDownloadSnapshotFrom_ ) != std::string::npos;
                 } ) );
 
         dev::h256 requiredHashValue = this->hashes_[nodeIdx];
@@ -321,10 +310,8 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                     delete jsonRpcClient;
                 }
             } catch ( std::exception& ex ) {
-                cerror
-                    << cc::error(
-                           "Exception while collecting snapshot signatures from other skaleds: " )
-                    << cc::warn( ex.what() ) << std::endl;
+                cerror << "Exception while collecting snapshot signatures from other skaleds: "
+                       << ex.what();
             }
         } ) );
     }
@@ -366,11 +353,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         try {
             result = this->voteForHash();
         } catch ( SnapshotHashAgentException& ex ) {
-            cerror << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
-                   << cc::warn( ex.what() ) << std::endl;
+            cerror << "Exception while voting for snapshot hash from other skaleds: " << ex.what();
         } catch ( std::exception& ex ) {
-            cerror << cc::error( "Exception while voting for snapshot hash from other skaleds: " )
-                   << cc::warn( ex.what() ) << std::endl;
+            cerror << "Exception while voting for snapshot hash from other skaleds: " << ex.what();
         }  // catch
 
     if ( !result ) {
