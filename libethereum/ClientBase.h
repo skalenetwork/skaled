@@ -116,6 +116,14 @@ public:
     bool uninstallWatch( unsigned _watchId ) override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
 
+
+    using Interface::blockDetails;
+    using Interface::blockInfo;  // for another overload
+    using Interface::transactionHashes;
+    using Interface::uncle;
+    using Interface::uncleCount;
+    using Interface::uncleHashes;
+
     h256 hashFromNumber( BlockNumber _number ) const override;
     BlockNumber numberFromHash( h256 _blockHash ) const override;
     int compareBlockHashes( h256 _h1, h256 _h2 ) const override;
@@ -136,7 +144,6 @@ public:
         return transactions( hashFromNumber( _block ) );
     }
     TransactionHashes transactionHashes( h256 _blockHash ) const override;
-    using Interface::uncle;
     BlockHeader uncle( h256 _blockHash, unsigned _i ) const override;
     UncleHashes uncleHashes( h256 _blockHash ) const override;
     unsigned transactionCount( h256 _blockHash ) const override;
@@ -147,7 +154,6 @@ public:
         }
         return transactionCount( hashFromNumber( _block ) );
     }
-    using Interface::uncleCount;
     unsigned uncleCount( h256 _blockHash ) const override;
     unsigned number() const override;
     h256s pendingHashes() const override;
