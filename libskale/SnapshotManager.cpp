@@ -65,7 +65,7 @@ SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
     coreVolumes = _coreVolumes;
     archiveVolumes = _archiveVolumes;
 
-    allVolumes.resize( coreVolumes.size() + archiveVolumes.size() );
+    allVolumes.reserve( coreVolumes.size() + archiveVolumes.size() );
     allVolumes.insert( allVolumes.end(), coreVolumes.begin(), coreVolumes.end() );
     allVolumes.insert( allVolumes.end(), archiveVolumes.begin(), archiveVolumes.end() );
 

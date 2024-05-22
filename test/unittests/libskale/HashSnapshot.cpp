@@ -40,7 +40,7 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest {
 public:
-    SnapshotHashAgentTest( ChainParams& _chainParams, const std::string& ipToDownloadSnapshotFrom ) {
+    SnapshotHashAgentTest( ChainParams& _chainParams, const std::string& urlToDownloadSnapshotFrom ) {
         std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
@@ -84,9 +84,9 @@ public:
 
         this->secret_as_is = keys.first;
 
-        isSnapshotMajorityRequired = !ipToDownloadSnapshotFrom.empty();
+        isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
-        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, ipToDownloadSnapshotFrom ) );
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
@@ -510,9 +510,14 @@ BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
     }
     chainParams.nodeInfo.id = 3;
 
-    chainParams.sChain.nodes[3].ip = "123.45.67.89";
+    chainParams.sChain.nodes[0].ip = "123.45.68.89";
+    chainParams.sChain.nodes[1].ip = "123.45.87.89";
+    chainParams.sChain.nodes[2].ip = "123.45.77.89";
 
-    SnapshotHashAgentTest test_agent( chainParams, chainParams.sChain.nodes[3].ip );
+    chainParams.sChain.nodes[3].ip = "123.45.67.89";
+    std::string url = chainParams.sChain.nodes[3].ip + std::string( ":1234" );
+
+    SnapshotHashAgentTest test_agent( chainParams, url );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();

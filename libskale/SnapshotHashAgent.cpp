@@ -219,7 +219,7 @@ bool SnapshotHashAgent::voteForHash() {
         size_t nodeIdx = std::distance( this->chainParams_.sChain.nodes.begin(),
             std::find_if( this->chainParams_.sChain.nodes.begin(),
                 this->chainParams_.sChain.nodes.end(), [this]( const dev::eth::sChainNode& node ) {
-                    return node.ip.find( urlToDownloadSnapshotFrom_ ) != std::string::npos;
+                    return urlToDownloadSnapshotFrom_.find( node.ip ) != std::string::npos;
                 } ) );
 
         dev::h256 requiredHashValue = this->hashes_[nodeIdx];
