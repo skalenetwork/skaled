@@ -107,7 +107,6 @@ ChainParams ChainParams::loadConfig(
     cp.getLogsBlocksLimit =
         params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
 
-
     if ( obj.count( c_skaleConfig ) ) {
         processSkaleConfigItems( cp, obj );
     }

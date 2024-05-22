@@ -132,7 +132,7 @@ bool hasPotentialInvalidTransactionsInBlock( BlockNumber _bn, const Interface& _
 
 #endif
 
-Eth::Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts )
+Eth::Eth( const std::string& configPath, eth::Client& _eth, eth::AccountHolder& _ethAccounts )
     : skutils::json_config_file_accessor( configPath ),
       m_eth( _eth ),
       m_ethAccounts( _ethAccounts ),

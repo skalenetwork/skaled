@@ -43,7 +43,7 @@ class KeyPair;
 namespace eth {
 class AccountHolder;
 struct TransactionSkeleton;
-class Interface;
+class Client;
 class LocalisedTransactionReceipt;
 }  // namespace eth
 }  // namespace dev
@@ -135,7 +135,7 @@ std::string exceptionToErrorMessage();
  */
 class Eth : public dev::rpc::EthFace, public skutils::json_config_file_accessor {
 public:
-    Eth( const std::string& configPath, eth::Interface& _eth, eth::AccountHolder& _ethAccounts );
+    Eth( const std::string& configPath, eth::Client& _eth, eth::AccountHolder& _ethAccounts );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{ RPCModule{ "eth", "1.0" } };
@@ -220,9 +220,9 @@ public:
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
 
 protected:
-    eth::Interface* client() { return &m_eth; }
+    eth::Client* client() { return &m_eth; }
 
-    eth::Interface& m_eth;
+    eth::Client& m_eth;
     eth::AccountHolder& m_ethAccounts;
 
     // a cache that maps the call request to the pair of response string and block number

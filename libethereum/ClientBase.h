@@ -92,7 +92,7 @@ public:
     /// @param _callback Optional callback function for progress reporting
     std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-        GasEstimationCallback const& _callback ) override;
+        GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
 
     u256 balanceAt( Address _a ) const override;
     u256 countAt( Address _a ) const override;
@@ -136,6 +136,7 @@ public:
         return transactions( hashFromNumber( _block ) );
     }
     TransactionHashes transactionHashes( h256 _blockHash ) const override;
+    using Interface::uncle;
     BlockHeader uncle( h256 _blockHash, unsigned _i ) const override;
     UncleHashes uncleHashes( h256 _blockHash ) const override;
     unsigned transactionCount( h256 _blockHash ) const override;
@@ -146,6 +147,7 @@ public:
         }
         return transactionCount( hashFromNumber( _block ) );
     }
+    using Interface::uncleCount;
     unsigned uncleCount( h256 _blockHash ) const override;
     unsigned number() const override;
     h256s pendingHashes() const override;
