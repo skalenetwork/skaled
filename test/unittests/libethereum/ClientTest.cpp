@@ -39,7 +39,7 @@ using namespace dev::test;
 using namespace dev::p2p;
 namespace fs = boost::filesystem;
 
-static size_t rand_port = 1024 + rand() % 64000;
+static size_t rand_port = ( srand(time(nullptr)), 1024 + rand() % 64000 );
 
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";

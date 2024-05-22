@@ -62,7 +62,7 @@ using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
 
-static size_t rand_port = 1024 + rand() % 64000;
+static size_t rand_port = ( srand(time(nullptr)), 1024 + rand() % 64000 );
 
 static std::string const c_genesisConfigString =
     R"(
