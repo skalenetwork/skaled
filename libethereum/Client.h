@@ -293,8 +293,9 @@ public:
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
         uint64_t _timestamp = ( uint64_t ) utcTime() );
 
-    boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
-        return m_snapshotAgent->createSnapshotFile( _blockNumber );
+    boost::filesystem::path createSnapshotFile(
+        unsigned _blockNumber, bool _forArchiveNode = false ) {
+        return m_snapshotAgent->createSnapshotFile( _blockNumber, _forArchiveNode );
     }
 
     // set exiting time for node rotation

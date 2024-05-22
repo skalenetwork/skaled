@@ -33,6 +33,7 @@
 #include <libethcore/CommonJS.h>
 
 #include <jsonrpccpp/common/exception.h>
+#include <libethereum/SchainPatch.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
 #include <skutils/console_colors.h>
@@ -40,10 +41,8 @@
 
 #include <boost/algorithm/string.hpp>
 
-//#include <nlohmann/json.hpp>
 #include <json.hpp>
 
-//#include <jsonrpccpp/client.h>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
 #include <libconsensus/exceptions/InvalidStateException.h>
@@ -150,9 +149,6 @@ size_t g_nMaxChunckSize = 100 * 1024 * 1024;
 // '{"jsonrpc":"2.0","method":"skale_getSnapshot","params":{ "blockNumber": "latest" },"id":73}'
 //
 nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, Client& client ) {
-    // std::cout << cc::attention( "------------ " ) << cc::info( "skale_getSnapshot" ) <<
-    // cc::normal( " call with " ) << cc::j( joRequest ) << "\n";
-
     std::lock_guard< std::mutex > lock( m_snapshot_mutex );
     nlohmann::json joResponse = nlohmann::json::object();
 
@@ -162,6 +158,10 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         joResponse["error"] = "Invalid snapshot block number requested - it might be deleted.";
         return joResponse;
     }
+
+    bool forArchiveNode = false;
+    if ( ArchiveNodeSnapshotsPatch::isEnabledInWorkingBlock() )
+        forArchiveNode = joRequest["forArchiveNode"].get< bool >();
 
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 ) {
@@ -194,7 +194,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     }
 
     try {
-        currentSnapshotPath = client.createSnapshotFile( blockNumber );
+        currentSnapshotPath = client.createSnapshotFile( blockNumber, forArchiveNode );
     } catch ( ... ) {
         if ( m_shared_space )
             m_shared_space->unlock();
@@ -235,11 +235,8 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         } ) );
     }
 
-    //
-    //
     size_t sizeOfFile = fs::file_size( currentSnapshotPath );
-    //
-    //
+
     joResponse["dataSize"] = sizeOfFile;
     joResponse["maxAllowedChunkSize"] = g_nMaxChunckSize;
     return joResponse;

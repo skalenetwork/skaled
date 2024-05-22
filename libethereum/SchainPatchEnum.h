@@ -20,6 +20,7 @@ enum class SchainPatchEnum {
     EIP1559TransactionsPatch,
     VerifyBlsSyncPatch,
     FlexibleDeploymentPatch,
+    ArchiveNodeSnapshotsPatch,
     PatchesCount
 };
 

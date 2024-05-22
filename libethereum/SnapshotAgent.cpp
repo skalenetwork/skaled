@@ -137,10 +137,12 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
     }  // if thread
 }
 
-boost::filesystem::path SnapshotAgent::createSnapshotFile( unsigned _blockNumber ) {
+boost::filesystem::path SnapshotAgent::createSnapshotFile(
+    unsigned _blockNumber, bool _forArchiveNode ) {
     if ( _blockNumber > this->getLatestSnapshotBlockNumer() && _blockNumber != 0 )
         throw std::invalid_argument( "Too new snapshot requested" );
-    boost::filesystem::path path = m_snapshotManager->makeOrGetDiff( _blockNumber );
+    boost::filesystem::path path =
+        m_snapshotManager->makeOrGetDiff( _blockNumber, _forArchiveNode );
     // TODO Make constant 2 configurable
     m_snapshotManager->leaveNLastDiffs( 2 );
     return path;
