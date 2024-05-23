@@ -376,7 +376,8 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
         // random port
-        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025;
+        // +3 because rand() seems to be called effectively simultaneously here and in "static" section - thus giving same port for consensus
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
         std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
