@@ -60,15 +60,15 @@
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
 
-class ConsensusHost;
+
 class SnapshotManager;
 
 namespace dev {
 namespace eth {
 class Client;
-class DownloadMan;
 
-enum ClientWorkState { Active = 0, Deleting, Deleted };
+
+enum ClientWorkState { Active = 0 };
 
 struct ActivityReport {
     unsigned ticks = 0;
@@ -214,15 +214,6 @@ public:
         if ( wouldSeal() )
             startSealing();
     }
-    /// Review option for the sealer.
-    bytes sealOption( std::string const& _name ) const { return sealEngine()->option( _name ); }
-    /// Set option for the sealer.
-    bool setSealOption( std::string const& _name, bytes const& _value ) {
-        auto ret = sealEngine()->setOption( _name, _value );
-        if ( wouldSeal() )
-            startSealing();
-        return ret;
-    }
 
     /// Start sealing.
     void startSealing() override;
@@ -244,11 +235,6 @@ public:
     /// Get the seal engine.
     SealEngineFace* sealEngine() const override { return bc().sealEngine(); }
 
-    // Debug stuff:
-
-    DownloadMan const* downloadMan() const;
-    /// Clears pending transactions. Just for debug use.
-    void clearPending();
     /// Retries all blocks with unknown parents.
     void retryUnknown() { m_bq.retryAllUnknown(); }
     /// Get a report of activity.
@@ -261,11 +247,6 @@ public:
     void setExtraData( bytes const& _extraData ) { m_extraData = _extraData; }
     /// Rescue the chain.
     void rescue() { bc().rescue( m_state ); }
-
-    std::unique_ptr< StateImporterFace > createStateImporter() {
-        throw std::logic_error( "createStateImporter is not implemented" );
-        //        return dev::eth::createStateImporter(m_state);
-    }
 
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
@@ -534,8 +515,6 @@ protected:
     Handler<> m_bqReady;
 
     bool m_wouldSeal = false;          ///< True if we /should/ be sealing.
-    bool m_wouldButShouldnot = false;  ///< True if the last time we called rejigSealing wouldSeal()
-                                       ///< was true but sealer's shouldSeal() was false.
 
     mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
     ///< When did we last both doing GC on the watches?
@@ -583,8 +562,6 @@ private:
     // which group corresponds to the current block timestamp on this node
     unsigned historicGroupIndex = 0;
 
-public:
-    FILE* performance_fd;
 
 protected:
     // generic watch

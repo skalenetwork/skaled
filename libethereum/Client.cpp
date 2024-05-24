@@ -417,42 +417,6 @@ void Client::doneWorking() {
     }
 }
 
-void Client::executeInMainThread( function< void() > const& _function ) {
-    DEV_WRITE_GUARDED( x_functionQueue )
-    m_functionQueue.push( _function );
-    m_signalled.notify_all();
-}
-
-void Client::clearPending() {
-    DEV_WRITE_GUARDED( x_postSeal ) {
-        if ( !m_postSeal.pending().size() )
-            return;
-        m_tq.clear();
-        DEV_READ_GUARDED( x_preSeal )
-        m_postSeal = m_preSeal;
-    }
-
-    startSealing();
-    h256Hash changeds;
-    noteChanged( changeds );
-}
-
-void Client::appendFromNewPending(
-    TransactionReceipt const& _receipt, h256Hash& io_changed, h256 _sha3 ) {
-    Guard l( x_filtersWatches );
-    io_changed.insert( PendingChangedFilter );
-    m_specialFilters.at( PendingChangedFilter ).push_back( _sha3 );
-    for ( pair< h256 const, InstalledFilter >& i : m_filters ) {
-        // acceptable number.
-        auto m = i.second.filter.matches( _receipt );
-        if ( m.size() ) {
-            // filter catches them
-            for ( LogEntry const& l : m )
-                i.second.changes_.push_back( LocalisedLogEntry( l ) );
-            io_changed.insert( i.first );
-        }
-    }
-}
 
 void Client::appendFromBlock( h256 const& _block, BlockPolarity _polarity, h256Hash& io_changed ) {
     // TODO: more precise check on whether the txs match.
@@ -629,6 +593,7 @@ size_t Client::importTransactionsAsBlock(
     assert( false );
     return 0;
 }
+
 
 size_t Client::syncTransactions(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp,
@@ -810,7 +775,6 @@ void Client::startSealing() {
 void Client::rejigSealing() {
     if ( ( wouldSeal() || remoteActive() ) && !isMajorSyncing() ) {
         if ( sealEngine()->shouldSeal( this ) ) {
-            m_wouldButShouldnot = false;
 
             LOG( m_loggerDetail ) << cc::notice( "Rejigging seal engine..." );
             DEV_WRITE_GUARDED( x_working ) {
@@ -858,15 +822,14 @@ void Client::rejigSealing() {
                        << " " << cc::warn( "#" ) << cc::num10( m_sealingInfo.number() );
                 sealEngine()->generateSeal( m_sealingInfo );
             }
-        } else
-            m_wouldButShouldnot = true;
+        }
     }
     if ( !m_wouldSeal )
         sealEngine()->cancelGeneration();
 }
 
 void Client::sealUnconditionally( bool submitToBlockChain ) {
-    m_wouldButShouldnot = false;
+
 
     LOG( m_loggerDetail ) << cc::notice( "Rejigging seal engine..." );
     DEV_WRITE_GUARDED( x_working ) {
@@ -1250,7 +1213,6 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         Block temp = preSeal();
 
         // TODO there can be race conditions between prev and next line!
-        State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         // if the user did not specify transaction gas limit, we give transaction block gas
         // limit of gas

@@ -457,12 +457,11 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
 
     if ( bN == LatestBlock || bN == PendingBlock ) {
         bN = client()->number();
+    } else {
+        if (!client()->isKnown(bN)) {
+            throw std::logic_error("Unknown block number:" + blockNumber);
+        }
     }
-
-    if ( !client()->isKnown( bN ) ) {
-        throw std::logic_error( "Unknown block number:" + blockNumber );
-    }
-
 
     key = t.toString().append( to_string( bN ) );
 
