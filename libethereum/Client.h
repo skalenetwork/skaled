@@ -155,7 +155,7 @@ public:
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
     /// Get the remaining gas limit in this block.
-    u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
+    u256 gasLimitRemaining() const override { return m_postSeal->gasLimitRemaining(); }
     /// Get the gas bid price
     u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const override {
         return m_gp->bid( _blockNumber );
@@ -168,7 +168,7 @@ public:
     /// Get the object representing the current state of Ethereum.
     dev::eth::Block postState() const {
         ReadGuard l( x_postSeal );
-        return m_postSeal;
+        return *m_postSeal;
     }
     /// Get the object representing the current canonical blockchain.
     BlockChain const& blockChain() const { return bc(); }
@@ -384,8 +384,14 @@ protected:
 
     Block postSeal() const override {
         ReadGuard l( x_postSeal );
+        return *m_postSeal;
+    }
+
+    std::shared_ptr<Block> postSealPointer() const {
+        ReadGuard l( x_postSeal );
         return m_postSeal;
     }
+
     void prepareForTransaction() override;
 
     /// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -493,7 +499,7 @@ protected:
     mutable SharedMutex x_preSeal;   ///< Lock on m_preSeal.
     std::shared_ptr<Block> m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.
-    Block m_postSeal;  ///< The state of the client which we're sealing (i.e. it'll have all the
+    std::shared_ptr<Block> m_postSeal;  ///< The state of the client which we're sealing (i.e. it'll have all the
                        ///< rewards added).
     mutable SharedMutex x_working;  ///< Lock on m_working.
     Block m_working;  ///< The state of the client which we're sealing (i.e. it'll have all the

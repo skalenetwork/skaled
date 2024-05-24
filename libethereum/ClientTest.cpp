@@ -61,7 +61,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
 
     Transactions transactions;
     DEV_READ_GUARDED( x_postSeal )
-    transactions = m_postSeal.pending();
+    transactions = m_postSeal->pending();
     block.resetCurrent( _timestamp );
 
     DEV_WRITE_GUARDED( x_preSeal )
@@ -75,7 +75,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
     DEV_WRITE_GUARDED( x_working )
     m_working = block;
     DEV_READ_GUARDED( x_postSeal )
-    m_postSeal = block;
+    m_postSeal = make_shared<Block>(block);
 
     onPostStateChanged();
 }

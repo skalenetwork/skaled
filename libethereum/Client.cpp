@@ -128,7 +128,6 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
-      m_postSeal( chainParams().accountStartNonce ) ,
       m_working( chainParams().accountStartNonce ),
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
@@ -141,6 +140,7 @@ Client::Client( ChainParams const& _params, int _networkID,
 {
 
     m_preSeal = make_shared<Block>( chainParams().accountStartNonce );
+    m_postSeal = make_shared<Block>( chainParams().accountStartNonce );
 
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
@@ -274,7 +274,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
 
     m_preSeal = std::make_shared<Block>(bc().genesisBlock( m_state ));
 
-    m_postSeal = *m_preSeal;
+    m_postSeal = std::make_shared<Block>(*m_preSeal);
 
     m_bq.setChain( bc() );
 
@@ -398,7 +398,7 @@ void Client::startedWorking() {
             DEV_WRITE_GUARDED( x_working )
             m_working = *m_preSeal;
             DEV_WRITE_GUARDED( x_postSeal )
-            m_postSeal = *m_preSeal;
+            m_postSeal = make_shared<Block>(*m_preSeal);
         }
     }
 }
@@ -415,7 +415,7 @@ void Client::doneWorking() {
             DEV_WRITE_GUARDED( x_working )
             m_working = *m_preSeal;
             DEV_WRITE_GUARDED( x_postSeal )
-            m_postSeal = *m_preSeal;
+            m_postSeal = std::make_shared<Block>(*m_preSeal);
         }
     }
 }
@@ -634,7 +634,7 @@ size_t Client::syncTransactions(
 
     DEV_READ_GUARDED( x_working )
     DEV_WRITE_GUARDED( x_postSeal )
-    m_postSeal = m_working;
+    m_postSeal = std::make_shared<Block>(m_working);
 
     // Tell farm about new transaction (i.e. restart mining).
     onPostStateChanged();
@@ -697,7 +697,7 @@ void Client::restartMining() {
     m_state = m_state.createNewCopyWithLocks();
     preChanged = newPreMine.sync( bc(), m_state );
 
-    if ( preChanged || m_postSeal.author() != m_preSeal->author() ) {
+    if ( preChanged || m_postSeal->author() != m_preSeal->author() ) {
         {
             auto tmp = std::make_shared<Block>(newPreMine);
             // m_preSeal needs to be locked for short period of time since it is used in eth_call
@@ -707,15 +707,16 @@ void Client::restartMining() {
         DEV_WRITE_GUARDED( x_working )
         m_working = newPreMine;
         DEV_READ_GUARDED( x_postSeal )
-        if ( !m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash() )
-            for ( auto const& t : m_postSeal.pending() ) {
+        if ( !m_postSeal->isSealed() || m_postSeal->info().hash() != newPreMine.info().parentHash() )
+            for ( auto const& t : m_postSeal->pending() ) {
                 LOG( m_loggerDetail ) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import( t, IfDropped::Retry );
                 if ( ir != ImportResult::Success )
                     onTransactionQueueReady();
             }
-        DEV_READ_GUARDED( x_working ) DEV_WRITE_GUARDED( x_postSeal ) m_postSeal = m_working;
+        DEV_READ_GUARDED( x_working ) DEV_WRITE_GUARDED( x_postSeal )
+        m_postSeal = make_shared<Block>(m_working);
 
         onPostStateChanged();
     }
@@ -734,7 +735,9 @@ void Client::resetState() {
 
     DEV_WRITE_GUARDED( x_working )
     m_working = newPreMine;
-    DEV_READ_GUARDED( x_working ) DEV_WRITE_GUARDED( x_postSeal ) m_postSeal = m_working;
+    DEV_READ_GUARDED( x_working )
+    DEV_WRITE_GUARDED( x_postSeal )
+    m_postSeal = make_shared<Block>(m_working);
 
     onPostStateChanged();
     onTransactionQueueReady();
@@ -815,7 +818,7 @@ void Client::rejigSealing() {
             }
             DEV_READ_GUARDED( x_working ) {
                 DEV_WRITE_GUARDED( x_postSeal )
-                m_postSeal = m_working;
+                m_postSeal = make_shared<Block>(m_working);
                 m_sealingInfo = m_working.info();
             }
 
@@ -873,7 +876,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     }
     DEV_READ_GUARDED( x_working ) {
         DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_working;
+        m_postSeal = make_shared<Block>(m_working);
         m_sealingInfo = m_working.info();
     }
 
@@ -920,7 +923,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             }
         }
         DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_working;
+        m_postSeal = make_shared<Block>(m_working);
     }
 }
 
@@ -1109,7 +1112,7 @@ bool Client::submitSealed( bytes const& _header ) {
                 return false;
         }
         DEV_WRITE_GUARDED( x_postSeal )
-        m_postSeal = m_working;
+        m_postSeal = make_shared<Block>(m_working);
         newBlock = m_working.blockData();
     }
 
