@@ -57,7 +57,7 @@ ClientTest::~ClientTest() {
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
     Block block( chainParams().accountStartNonce );
     DEV_READ_GUARDED( x_preSeal )
-    block = m_preSeal;
+    block = *m_preSeal;
 
     Transactions transactions;
     DEV_READ_GUARDED( x_postSeal )
@@ -65,7 +65,7 @@ void ClientTest::modifyTimestamp( int64_t _timestamp ) {
     block.resetCurrent( _timestamp );
 
     DEV_WRITE_GUARDED( x_preSeal )
-    m_preSeal = block;
+    m_preSeal = std::make_shared<Block>(block);
 
     auto& lastHashes = bc().lastBlockHashes();
     assert( bc().currentHash() == block.info().parentHash() );

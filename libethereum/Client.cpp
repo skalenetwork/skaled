@@ -128,8 +128,7 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
-      m_preSeal( chainParams().accountStartNonce ),
-      m_postSeal( chainParams().accountStartNonce ),
+      m_postSeal( chainParams().accountStartNonce ) ,
       m_working( chainParams().accountStartNonce ),
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
@@ -140,6 +139,9 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE )
 #endif
 {
+
+    m_preSeal = make_shared<Block>( chainParams().accountStartNonce );
+
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     create_lock_file_or_fail( m_dbPath );
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -270,9 +272,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
     // just take the root from the genesis block.
 
-    m_preSeal = bc().genesisBlock( m_state );
+    m_preSeal = std::make_shared<Block>(bc().genesisBlock( m_state ));
 
-    m_postSeal = m_preSeal;
+    m_postSeal = *m_preSeal;
 
     m_bq.setChain( bc() );
 
@@ -391,12 +393,12 @@ void Client::startedWorking() {
 
     DEV_GUARDED( m_blockImportMutex ) {
         DEV_WRITE_GUARDED( x_preSeal )
-        m_preSeal.sync( bc() );
+        m_preSeal->sync( bc() );
         DEV_READ_GUARDED( x_preSeal ) {
             DEV_WRITE_GUARDED( x_working )
-            m_working = m_preSeal;
+            m_working = *m_preSeal;
             DEV_WRITE_GUARDED( x_postSeal )
-            m_postSeal = m_preSeal;
+            m_postSeal = *m_preSeal;
         }
     }
 }
@@ -407,12 +409,13 @@ void Client::doneWorking() {
 
     DEV_GUARDED( m_blockImportMutex ) {
         DEV_WRITE_GUARDED( x_preSeal )
-        m_preSeal.sync( bc() );
+        STATE_CHECK(m_preSeal);
+        m_preSeal->sync( bc() );
         DEV_READ_GUARDED( x_preSeal ) {
             DEV_WRITE_GUARDED( x_working )
-            m_working = m_preSeal;
+            m_working = *m_preSeal;
             DEV_WRITE_GUARDED( x_postSeal )
-            m_postSeal = m_preSeal;
+            m_postSeal = *m_preSeal;
         }
     }
 }
@@ -687,15 +690,20 @@ void Client::restartMining() {
     bool preChanged = false;
     Block newPreMine( chainParams().accountStartNonce );
     DEV_READ_GUARDED( x_preSeal )
-    newPreMine = m_preSeal;
+    STATE_CHECK(m_preSeal)
+    newPreMine = *m_preSeal;
 
     // TODO: use m_postSeal to avoid re-evaluating our own blocks.
     m_state = m_state.createNewCopyWithLocks();
     preChanged = newPreMine.sync( bc(), m_state );
 
-    if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
-        DEV_WRITE_GUARDED( x_preSeal )
-        m_preSeal = newPreMine;
+    if ( preChanged || m_postSeal.author() != m_preSeal->author() ) {
+        {
+            auto tmp = std::make_shared<Block>(newPreMine);
+            // m_preSeal needs to be locked for short period of time since it is used in eth_call
+            DEV_WRITE_GUARDED(x_preSeal)
+            m_preSeal = tmp;
+        }
         DEV_WRITE_GUARDED( x_working )
         m_working = newPreMine;
         DEV_READ_GUARDED( x_postSeal )
@@ -719,8 +727,10 @@ void Client::restartMining() {
 
 void Client::resetState() {
     Block newPreMine( chainParams().accountStartNonce );
-    DEV_READ_GUARDED( x_preSeal )
-    newPreMine = m_preSeal;
+    {
+        DEV_READ_GUARDED(x_preSeal)
+        newPreMine = *m_preSeal;
+    }
 
     DEV_WRITE_GUARDED( x_working )
     m_working = newPreMine;
@@ -1210,21 +1220,25 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         }
 #endif
 
-        Block temp = preSeal();
+
+        // we use shared pointer here so that the block is not copied all the time
+        auto temp = preSealPointer();
+
+        STATE_CHECK(temp);
 
         // TODO there can be race conditions between prev and next line!
-        u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
+        u256 nonce = max< u256 >( temp->transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         // if the user did not specify transaction gas limit, we give transaction block gas
         // limit of gas
-        u256 gasLimit = _gasLimit == Invalid256 ? temp.gasLimit() : _gasLimit;
+        u256 gasLimit = _gasLimit == Invalid256 ? temp->gasLimit() : _gasLimit;
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
         t.forceChainId( chainParams().chainID );
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-        ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
+            temp->mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+        ret = temp->execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
                         << boost::current_exception_diagnostic_information() << std::endl;

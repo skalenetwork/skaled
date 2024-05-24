@@ -196,11 +196,11 @@ public:
 
     Address author() const override {
         ReadGuard l( x_preSeal );
-        return m_preSeal.author();
+        return m_preSeal->author();
     }
     void setAuthor( Address const& _us ) override {
         DEV_WRITE_GUARDED( x_preSeal )
-        m_preSeal.setAuthor( _us );
+        m_preSeal->setAuthor( _us );
         restartMining();
     }
 
@@ -374,8 +374,14 @@ protected:
     /// Works properly with LatestBlock and PendingBlock.
     Block preSeal() const override {
         ReadGuard l( x_preSeal );
+        return *m_preSeal;
+    }
+
+    std::shared_ptr<Block> preSealPointer() const {
+        ReadGuard l( x_preSeal );
         return m_preSeal;
     }
+
     Block postSeal() const override {
         ReadGuard l( x_postSeal );
         return m_postSeal;
@@ -485,7 +491,7 @@ protected:
 
     skale::State m_state;            ///< Acts as the central point for the state.
     mutable SharedMutex x_preSeal;   ///< Lock on m_preSeal.
-    Block m_preSeal;                 ///< The present state of the client.
+    std::shared_ptr<Block> m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.
     Block m_postSeal;  ///< The state of the client which we're sealing (i.e. it'll have all the
                        ///< rewards added).
