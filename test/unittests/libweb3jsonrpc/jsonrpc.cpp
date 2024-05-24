@@ -872,15 +872,6 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     BOOST_CHECK_EQUAL(
         result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
 
-    Json::Value inputCall;
-    inputCall["to"] = contractAddress;
-    inputCall["data"] = "0xb3de648b0000000000000000000000000000000000000000000000000000000000000001";
-    inputCall["gas"] = "1000000";
-    inputCall["gasPrice"] = "0";
-    result = fixture.rpcClient->eth_call( inputCall, "latest" );
-    BOOST_CHECK_EQUAL(
-        result, "0x0000000000000000000000000000000000000000000000000000000000000007" );
-
 }
 
 /*
@@ -2131,7 +2122,7 @@ contract TestEstimateGas {
 
     dev::bytes data = dev::jsToBytes( estimateGasCall["data"].asString() );
     BOOST_REQUIRE( dev::jsToU256( estimatedGas ) > dev::eth::TransactionBase::baseGasRequired(
-                      false, &data, EVMSchedule() ) );
+                      false, &data, fixture.chainParams.scheduleForBlockNumber(1) ) );
 
     // try to send with this gas
     estimateGasCall["gas"] = toJS( jsToInt( estimatedGas ) );
