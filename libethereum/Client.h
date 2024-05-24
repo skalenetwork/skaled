@@ -198,16 +198,13 @@ public:
         ReadGuard l( x_preSeal );
         return m_preSeal->author();
     }
+
     void setAuthor( Address const& _us ) override {
         DEV_WRITE_GUARDED( x_preSeal )
         m_preSeal->setAuthor( _us );
         restartMining();
     }
 
-    /// Type of sealers available for this seal engine.
-    strings sealers() const { return sealEngine()->sealers(); }
-    /// Current sealer in use.
-    std::string sealer() const { return sealEngine()->sealer(); }
     /// Change sealer.
     void setSealer( std::string const& _id ) {
         sealEngine()->setSealer( _id );
@@ -245,11 +242,6 @@ public:
     }
     /// Set the extra data that goes into sealed blocks.
     void setExtraData( bytes const& _extraData ) { m_extraData = _extraData; }
-    /// Rescue the chain.
-    void rescue() { bc().rescue( m_state ); }
-
-    /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
-    void executeInMainThread( std::function< void() > const& _function );
 
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {
@@ -665,6 +657,15 @@ public:
 #endif
     void initStateFromDiskOrGenesis();
     void populateNewChainStateFromGenesis();
+
+    u256 fastBalanceAt( Address _a ) const;
+    u256 fastCountAt( Address _a ) const;
+    u256 fastStateAt( Address _a, u256 _l ) const;
+    bytes fastCodeAt( Address _a ) const;
+    h256 fastCodeHashAt( Address _a ) const;
+    std::map< h256, std::pair< u256, u256 > > fastStorageAt( Address _a ) const;
+    Address fastAuthor() const;
+
 };
 
 }  // namespace eth

@@ -131,7 +131,7 @@ string Eth::eth_protocolVersion() {
 }
 
 string Eth::eth_coinbase() {
-    return toJS( client()->author() );
+    return toJS( client()->fastAuthor() );
 }
 
 string Eth::eth_hashrate() {
@@ -178,10 +178,10 @@ string Eth::eth_getBalance( string const& _address, string const&
             return toJS( client()->historicStateBalanceAt(
                 jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
         } else {
-            return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+            return toJS( client()->fastBalanceAt( jsToAddress( _address ) ) );
         }
 #else
-        return toJS( client()->balanceAt( jsToAddress( _address ) ) );
+        return toJS( client()->fastBalanceAt( jsToAddress( _address ) ) );
 #endif
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -205,7 +205,7 @@ string Eth::eth_getStorageAt( string const& _address, string const& _position,
         }
 #endif
         return toJS( toCompactBigEndian(
-            client()->stateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
+            client()->fastStateAt( jsToAddress( _address ), jsToU256( _position ) ), 32 ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -237,12 +237,7 @@ Json::Value Eth::eth_pendingTransactions() {
     // Return list of transaction that being sent by local accounts
     Transactions ours;
     for ( Transaction const& pending : client()->pending() ) {
-        // for ( Address const& account : m_ethAccounts.allAccounts() ) {
-        //    if ( pending.sender() == account ) {
         ours.push_back( pending );
-        //        break;
-        //    }
-        //}
     }
 
     return toJson( ours );
@@ -343,7 +338,7 @@ string Eth::eth_getCode( string const& _address, string const&
                 jsToAddress( _address ), jsToBlockNumber( _blockNumber ) ) );
         }
 #endif
-        return toJS( client()->codeAt( jsToAddress( _address ) ) );
+        return toJS( client()->fastCodeAt( jsToAddress( _address ) ) );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
@@ -898,13 +893,6 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     }
 }
 
-// Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
-//    try {
-//        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
-//    } catch ( ... ) {
-//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-//    }
-//}
 
 Json::Value Eth::eth_getWork() {
     try {

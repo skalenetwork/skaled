@@ -222,16 +222,16 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
 }
 
 void Client::populateNewChainStateFromGenesis() {
-#ifdef HISTORIC_STATE
+
     m_state = m_state.createStateModifyCopy();
     m_state.populateFrom( bc().chainParams().genesisState );
+#ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlock( 0 );
     m_state.mutableHistoricState().db().commit();
-    m_state.releaseWriteLock();
-#else
-    m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
-    m_state = m_state.createNewCopyWithLocks();
 #endif
+    // the write lock is usually released in the destructor of m_state
+    // but here the object is long lived
+    m_state.releaseWriteLock();
 }
 
 
@@ -1490,3 +1490,38 @@ bytes Client::historicStateCodeAt( Address _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().code( _a );
 }
 #endif
+
+u256 Client::fastBalanceAt( Address _a ) const {
+    auto state = postSealPointer()->mutableState().createStateReadOnlyCopy();
+    return state.balance( _a );
+}
+
+u256 Client::fastCountAt( Address _a ) const {
+    auto state = postSealPointer()->mutableState().createStateReadOnlyCopy();
+    return latestBlock().transactionsFrom( _a );
+}
+
+u256 Client::fastStateAt( Address _a, u256 _l ) const {
+    auto state = postSealPointer()->mutableState().createStateReadOnlyCopy();
+    return state.storage( _a, _l );
+}
+
+bytes Client::fastCodeAt( Address _a ) const {
+    auto state = postSealPointer()->mutableState().createStateReadOnlyCopy();
+    return latestBlock().code( _a );
+}
+
+h256 Client::fastCodeHashAt( Address _a ) const {
+    auto state = postSealPointer()->mutableState().createStateReadOnlyCopy();
+    return latestBlock().codeHash( _a );
+}
+
+map< h256, pair< u256, u256 > > Client::fastStorageAt( Address _a ) const {
+    auto state = postSealPointer()->mutableState().createStateReadOnlyCopy();
+    return latestBlock().storage( _a );
+}
+
+
+Address Client::fastAuthor() const  {
+    return preSealPointer()->author();
+}
