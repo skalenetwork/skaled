@@ -212,7 +212,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     unsigned begin = min( bc().number() + 1, ( unsigned ) _f.latest() );
     unsigned end = min( bc().number(), min( begin, ( unsigned ) _f.earliest() ) );
 
-    if ( begin >= end && begin - end > (unsigned) bc().chainParams().getLogsBlocksLimit )
+    if ( begin >= end && begin - end > ( unsigned ) bc().chainParams().getLogsBlocksLimit )
         BOOST_THROW_EXCEPTION( TooBigResponse() );
 
     // Handle pending transactions differently as they're not on the block chain.
