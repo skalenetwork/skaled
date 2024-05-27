@@ -257,6 +257,7 @@ public:
     u256 externalGasDifficulty = ~u256( 0 );
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
+    int getLogsBlocksLimit = -1;
 };
 
 }  // namespace eth
