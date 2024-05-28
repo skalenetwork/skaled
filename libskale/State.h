@@ -42,7 +42,7 @@
 #include "OverlayDB.h"
 #include "OverlayFS.h"
 #include <libdevcore/DBImpl.h>
-#include <libdevcore/LevelDBSnap.h>
+
 
 namespace std {
 template <>
@@ -158,26 +158,6 @@ using ChangeLog = std::vector< Change >;
  * The changelog is managed by savepoint(), rollback() and commit() methods.
  */
 class State {
-
-    // this class locks read lock only if the state is not snap
-    // snaps do not need locking
-    class SharedDBGuard {
-        const State& m_state;
-    public:
-        explicit SharedDBGuard( const State& _state ) : m_state( _state ) {
-            if ( m_state.m_levelDBSnap )
-                return;
-            m_state.x_db_ptr->lock_shared();
-        }
-
-
-        ~SharedDBGuard() {
-            if ( m_state.m_levelDBSnap )
-                return;
-            m_state.x_db_ptr->unlock_shared();
-        }
-    };
-
 public:
     using AddressMap = std::map< dev::h256, dev::Address >;
 
@@ -382,11 +362,6 @@ public:
     /// No one can change state while returned object exists.
     State createStateReadOnlyCopy() const;
 
-
-    // create State read-only copy based on snap.
-    // this copy does not require any locking for state reads
-    State createStateSnapCopy(std::shared_ptr<dev::db::LevelDBSnap> &_snap) const;
-
     /// Create State copy to modify data.
     State createStateModifyCopy() const;
 
@@ -426,7 +401,7 @@ public:
 
 
 private:
-    void clearCachesAndUpdateToLatestVersion();
+    void updateToLatestVersion();
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
@@ -478,8 +453,6 @@ private:
 public:
     bool checkVersion() const;
 
-    void useLevelDBSnap( std::shared_ptr<dev::db::LevelDBSnap> &_snap);
-
 #ifdef HISTORIC_STATE
     void populateHistoricStateFromSkaleState();
     void populateHistoricStateBatchFromSkaleState(
@@ -523,8 +496,6 @@ private:
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
 
-    std::shared_ptr<dev::db::LevelDBSnap> m_levelDBSnap;
-
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;
 
@@ -545,8 +516,6 @@ public:
         return pDB;
     }
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
-
-
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

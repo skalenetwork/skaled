@@ -22,6 +22,9 @@
 #include "Assertions.h"
 #include "LevelDB.h"
 
+const leveldb::Snapshot* dev::db::LevelDBSnap::getSnapHandle() const {
+    return m_snap;
+}
 
 using std::string, std::runtime_error;
 
@@ -82,6 +85,9 @@ uint64_t LevelDBSnap::getObjectId() const {
 std::atomic<uint64_t> LevelDBSnap::objectCounter = 0;
 uint64_t LevelDBSnap::getCreationTimeMs() const {
     return m_creationTimeMs;
+}
+std::shared_mutex& LevelDBSnap::getCloseMutex()  {
+    return m_closeMutex;
 }
 
 

@@ -57,6 +57,12 @@ public:
 
     std::string lookup( Slice _key ) const override;
     bool exists( Slice _key ) const override;
+
+    std::string lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) const;
+    bool exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap ) const;
+
+
+
     void insert( Slice _key, Slice _value ) override;
     void kill( Slice _key ) override;
 

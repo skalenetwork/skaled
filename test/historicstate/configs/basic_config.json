@@ -317,7 +317,6 @@
       "collectionQueueSize": 2,
       "collectionDuration": 10,
       "transactionQueueSize": 100,
-      "testSignatures":  true,
       "maxOpenLeveldbFiles": 25
     },
     "sChain":

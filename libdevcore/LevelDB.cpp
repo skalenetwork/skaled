@@ -163,13 +163,23 @@ LevelDB::~LevelDB() {
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
+    return lookup(_key, nullptr);
+}
+
+std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap ) const {
     leveldb::Slice const key( _key.data(), _key.size() );
     std::string value;
 
     leveldb::Status status;
     {
         SharedDBGuard readLock( *this );
-        status = m_db->Get( m_readOptions, key, &value );
+
+        auto readOptions = m_readOptions;
+        if (_snap) {
+            readOptions.snapshot = _snap->getSnapHandle();
+        }
+
+        status = m_db->Get( readOptions, key, &value );
     }
     if ( status.IsNotFound() )
         return std::string();
@@ -179,12 +189,32 @@ std::string LevelDB::lookup( Slice _key ) const {
 }
 
 bool LevelDB::exists( Slice _key ) const {
+    return exists(_key, nullptr);
+}
+
+
+
+bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) const {
     std::string value;
     leveldb::Slice const key( _key.data(), _key.size() );
     leveldb::Status status;
     {
         SharedDBGuard lock( *this );
-        status = m_db->Get( m_readOptions, key, &value );
+        auto readOptions = m_readOptions;
+
+
+
+        if (_snap) {
+            readOptions.snapshot = _snap->getSnapHandle();
+            // make sure snap is not concurrently closed while used
+            // this could cause segfault
+            _snap->getCloseMutex().lock_shared();
+        }
+        status = m_db->Get( readOptions, key, &value );
+
+        if (_snap) {
+            _snap->getCloseMutex().unlock_shared();
+        }
     }
     if ( status.IsNotFound() )
         return false;
@@ -192,6 +222,8 @@ bool LevelDB::exists( Slice _key ) const {
     checkStatus( status );
     return true;
 }
+
+
 
 void LevelDB::insert( Slice _key, Slice _value ) {
     leveldb::Slice const key( _key.data(), _key.size() );

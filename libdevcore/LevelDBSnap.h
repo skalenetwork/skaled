@@ -45,18 +45,27 @@ public:
     // close this snapshot. Use after close will cause an exception
     void close(std::unique_ptr< leveldb::DB >& _parentDB, uint64_t  _parentDBIdentifier);
 
+
+    std::shared_mutex& getCloseMutex();
+
     virtual ~LevelDBSnap();
 
 
 private:
-    // block id immediately after which this snap is taken
+
     std::atomic<bool> m_isClosed = false;
+    // this mutex prevents concurrent close of
+    // shapshots that are currently in use
+
+    std::shared_mutex m_closeMutex;
+
     const uint64_t m_blockId;
     const leveldb::Snapshot* m_snap = nullptr;
     uint64_t m_creationTimeMs;
     // LevelDB identifier for which this snapShot has been // created
     // this is used to match snaps to leveldb handles
     uint64_t m_parentLevelDBId;
+
 
 public:
     uint64_t getCreationTimeMs() const;
@@ -67,6 +76,7 @@ private:
 
 public:
     uint64_t getObjectId() const;
+    const leveldb::Snapshot* getSnapHandle() const;
 };
 
 }  // namespace dev::db

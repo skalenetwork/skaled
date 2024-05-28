@@ -60,15 +60,15 @@
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
 
-
+class ConsensusHost;
 class SnapshotManager;
 
 namespace dev {
 namespace eth {
 class Client;
+class DownloadMan;
 
-
-enum ClientWorkState { Active = 0 };
+enum ClientWorkState { Active = 0, Deleting, Deleted };
 
 struct ActivityReport {
     unsigned ticks = 0;
@@ -155,7 +155,7 @@ public:
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
     /// Get the remaining gas limit in this block.
-    u256 gasLimitRemaining() const override { return m_postSeal->gasLimitRemaining(); }
+    u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
     /// Get the gas bid price
     u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const override {
         return m_gp->bid( _blockNumber );
@@ -168,7 +168,7 @@ public:
     /// Get the object representing the current state of Ethereum.
     dev::eth::Block postState() const {
         ReadGuard l( x_postSeal );
-        return *m_postSeal;
+        return m_postSeal;
     }
     /// Get the object representing the current canonical blockchain.
     BlockChain const& blockChain() const { return bc(); }
@@ -196,20 +196,32 @@ public:
 
     Address author() const override {
         ReadGuard l( x_preSeal );
-        return m_preSeal->author();
+        return m_preSeal.author();
     }
-
     void setAuthor( Address const& _us ) override {
         DEV_WRITE_GUARDED( x_preSeal )
-        m_preSeal->setAuthor( _us );
+        m_preSeal.setAuthor( _us );
         restartMining();
     }
 
+    /// Type of sealers available for this seal engine.
+    strings sealers() const { return sealEngine()->sealers(); }
+    /// Current sealer in use.
+    std::string sealer() const { return sealEngine()->sealer(); }
     /// Change sealer.
     void setSealer( std::string const& _id ) {
         sealEngine()->setSealer( _id );
         if ( wouldSeal() )
             startSealing();
+    }
+    /// Review option for the sealer.
+    bytes sealOption( std::string const& _name ) const { return sealEngine()->option( _name ); }
+    /// Set option for the sealer.
+    bool setSealOption( std::string const& _name, bytes const& _value ) {
+        auto ret = sealEngine()->setOption( _name, _value );
+        if ( wouldSeal() )
+            startSealing();
+        return ret;
     }
 
     /// Start sealing.
@@ -232,6 +244,11 @@ public:
     /// Get the seal engine.
     SealEngineFace* sealEngine() const override { return bc().sealEngine(); }
 
+    // Debug stuff:
+
+    DownloadMan const* downloadMan() const;
+    /// Clears pending transactions. Just for debug use.
+    void clearPending();
     /// Retries all blocks with unknown parents.
     void retryUnknown() { m_bq.retryAllUnknown(); }
     /// Get a report of activity.
@@ -242,6 +259,16 @@ public:
     }
     /// Set the extra data that goes into sealed blocks.
     void setExtraData( bytes const& _extraData ) { m_extraData = _extraData; }
+    /// Rescue the chain.
+    void rescue() { bc().rescue( m_state ); }
+
+    std::unique_ptr< StateImporterFace > createStateImporter() {
+        throw std::logic_error( "createStateImporter is not implemented" );
+        //        return dev::eth::createStateImporter(m_state);
+    }
+
+    /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
+    void executeInMainThread( std::function< void() > const& _function );
 
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() {
@@ -366,24 +393,12 @@ protected:
     /// Works properly with LatestBlock and PendingBlock.
     Block preSeal() const override {
         ReadGuard l( x_preSeal );
-        return *m_preSeal;
-    }
-
-    std::shared_ptr<Block> preSealPointer() const {
-        ReadGuard l( x_preSeal );
         return m_preSeal;
     }
-
     Block postSeal() const override {
-        ReadGuard l( x_postSeal );
-        return *m_postSeal;
-    }
-
-    std::shared_ptr<Block> postSealPointer() const {
         ReadGuard l( x_postSeal );
         return m_postSeal;
     }
-
     void prepareForTransaction() override;
 
     /// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -489,9 +504,9 @@ protected:
 
     skale::State m_state;            ///< Acts as the central point for the state.
     mutable SharedMutex x_preSeal;   ///< Lock on m_preSeal.
-    std::shared_ptr<Block> m_preSeal;                 ///< The present state of the client.
+    Block m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.
-    std::shared_ptr<Block> m_postSeal;  ///< The state of the client which we're sealing (i.e. it'll have all the
+    Block m_postSeal;  ///< The state of the client which we're sealing (i.e. it'll have all the
                        ///< rewards added).
     mutable SharedMutex x_working;  ///< Lock on m_working.
     Block m_working;  ///< The state of the client which we're sealing (i.e. it'll have all the
@@ -519,6 +534,8 @@ protected:
     Handler<> m_bqReady;
 
     bool m_wouldSeal = false;          ///< True if we /should/ be sealing.
+    bool m_wouldButShouldnot = false;  ///< True if the last time we called rejigSealing wouldSeal()
+                                       ///< was true but sealer's shouldSeal() was false.
 
     mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
     ///< When did we last both doing GC on the watches?
@@ -566,6 +583,8 @@ private:
     // which group corresponds to the current block timestamp on this node
     unsigned historicGroupIndex = 0;
 
+public:
+    FILE* performance_fd;
 
 protected:
     // generic watch
@@ -657,15 +676,6 @@ public:
 #endif
     void initStateFromDiskOrGenesis();
     void populateNewChainStateFromGenesis();
-
-    u256 fastBalanceAt( Address _a ) const;
-    u256 fastCountAt( Address _a ) const;
-    u256 fastStateAt( Address _a, u256 _l ) const;
-    bytes fastCodeAt( Address _a ) const;
-    h256 fastCodeHashAt( Address _a ) const;
-    std::map< h256, std::pair< u256, u256 > > fastStorageAt( Address _a ) const;
-    Address fastAuthor() const;
-
 };
 
 }  // namespace eth

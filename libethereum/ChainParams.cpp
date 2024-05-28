@@ -229,19 +229,6 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     if ( !testSignatures ) {
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-
-        if (infoObj.count("wallets") == 0) {
-            BOOST_THROW_EXCEPTION(std::runtime_error("No wallets section in config "
-                                                     "and testSignature is not set"));
-        }
-
-        auto infoObj2 = infoObj.at("ima").get_obj();
-
-        if (infoObj.count("ima") == 0) {
-            BOOST_THROW_EXCEPTION(std::runtime_error("No wallets/ima section in config"));
-        }
-
-
         js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
         commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
