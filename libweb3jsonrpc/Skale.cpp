@@ -364,7 +364,8 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     dev::eth::ChainParams chainParams = this->m_client.chainParams();
-    if ( chainParams.nodeInfo.keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() )
+    if ( !chainParams.nodeInfo.syncNode && ( chainParams.nodeInfo.keyShareName.empty() ||
+                                               chainParams.nodeInfo.sgxServerUrl.empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
@@ -373,118 +374,129 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 
     try {
-        dev::h256 snapshot_hash = this->m_client.getSnapshotHash( blockNumber, false );
-        if ( !snapshot_hash )
+        dev::h256 snapshotHash = this->m_client.getSnapshotHash( blockNumber, false );
+        if ( !snapshotHash )
             throw std::runtime_error(
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
-        std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
-        skutils::url u( sgxServerURL );
-
-        nlohmann::json joCall = nlohmann::json::object();
-        joCall["jsonrpc"] = "2.0";
-        joCall["method"] = "blsSignMessageHash";
-        if ( u.scheme() == "zmq" )
-            joCall["type"] = "BLSSignReq";
-        nlohmann::json obj = nlohmann::json::object();
-
-        obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
-        obj["messageHash"] = snapshot_hash.hex();
-        obj["n"] = chainParams.sChain.nodes.size();
-        obj["t"] = chainParams.sChain.t;
-
-        auto it = std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-            [chainParams]( const dev::eth::sChainNode& schain_node ) {
-                return schain_node.id == chainParams.nodeInfo.id;
-            } );
-        assert( it != chainParams.sChain.nodes.end() );
-        dev::eth::sChainNode schain_node = *it;
-
-        joCall["params"] = obj;
-
-        // TODO deduplicate with SkaleHost!
-        std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
-        if ( sgx_cert_path.empty() )
-            sgx_cert_path = "/skale_node_data/sgx_certs/";
-        else if ( sgx_cert_path[sgx_cert_path.length() - 1] != '/' )
-            sgx_cert_path += '/';
-
-        const char* sgx_cert_filename = getenv( "SGX_CERT_FILE" );
-        if ( sgx_cert_filename == nullptr )
-            sgx_cert_filename = "sgx.crt";
-
-        const char* sgx_key_filename = getenv( "SGX_KEY_FILE" );
-        if ( sgx_key_filename == nullptr )
-            sgx_key_filename = "sgx.key";
-
-        skutils::http::SSL_client_options ssl_options;
-        ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
-        ssl_options.client_key = sgx_cert_path + sgx_key_filename;
-
-        skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
-        cli.optsSSL_ = ssl_options;
-        bool fl = cli.open( sgxServerURL );
-        if ( !fl ) {
-            clog( VerbosityError, "skale_getSnapshotSignature" )
-                << cc::fatal( "FATAL:" )
-                << cc::error( " Exception while trying to connect to sgx server: " )
-                << cc::warn( "connection refused" ) << std::endl;
-        }
-
-        skutils::rest::data_t d;
-        while ( true ) {
-            clog( VerbosityInfo, "skale_getSnapshotSignature" )
-                << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
-            d = cli.call( joCall );
-            if ( d.ei_.et_ != skutils::http::common_network_exception::error_type::et_no_error ) {
-                if ( d.ei_.et_ == skutils::http::common_network_exception::error_type::et_unknown ||
-                     d.ei_.et_ == skutils::http::common_network_exception::error_type::et_fatal ) {
-                    clog( VerbosityError, "skale_getSnapshotSignature" )
-                        << cc::error( "ERROR:" )
-                        << cc::error( " Exception while trying to connect to sgx server: " )
-                        << cc::error( " error with connection: " ) << cc::info( " retrying... " )
-                        << std::endl;
-                } else {
-                    clog( VerbosityError, "skale_getSnapshotSignature" )
-                        << cc::error( "ERROR:" )
-                        << cc::error( " Exception while trying to connect to sgx server: " )
-                        << cc::error( " error with ssl certificates " )
-                        << cc::error( d.ei_.strError_ ) << std::endl;
-                }
-            } else {
-                break;
-            }
-        }
-
-        if ( d.empty() ) {
-            static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-            clog( VerbosityError, "skale_getSnapshotSignature" )
-                << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
-                << std::endl;
-            throw std::runtime_error( g_strErrMsg );
-        }
-
-        nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
-        nlohmann::json joResponse =
-            ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
-        clog( VerbosityInfo, "skale_getSnapshotSignature" )
-            << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
-        if ( joResponse["status"] != 0 ) {
-            throw std::runtime_error(
-                "SGX Server call to blsSignMessageHash returned non-zero status" );
-        }
-        std::string signature_with_helper = joResponse["signatureShare"].get< std::string >();
-
-        std::vector< std::string > splited_string;
-        splited_string = boost::split(
-            splited_string, signature_with_helper, []( char c ) { return c == ':'; } );
-
         nlohmann::json joSignature = nlohmann::json::object();
+        if ( !chainParams.nodeInfo.syncNode ) {
+            std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+            skutils::url u( sgxServerURL );
 
-        joSignature["X"] = splited_string[0];
-        joSignature["Y"] = splited_string[1];
-        joSignature["helper"] = splited_string[3];
-        joSignature["hash"] = snapshot_hash.hex();
+            nlohmann::json joCall = nlohmann::json::object();
+            joCall["jsonrpc"] = "2.0";
+            joCall["method"] = "blsSignMessageHash";
+            if ( u.scheme() == "zmq" )
+                joCall["type"] = "BLSSignReq";
+            nlohmann::json obj = nlohmann::json::object();
+
+            obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
+            obj["messageHash"] = snapshotHash.hex();
+            obj["n"] = chainParams.sChain.nodes.size();
+            obj["t"] = chainParams.sChain.t;
+
+            auto it =
+                std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
+                    [chainParams]( const dev::eth::sChainNode& schain_node ) {
+                        return schain_node.id == chainParams.nodeInfo.id;
+                    } );
+            assert( it != chainParams.sChain.nodes.end() );
+            dev::eth::sChainNode schain_node = *it;
+
+            joCall["params"] = obj;
+
+            // TODO deduplicate with SkaleHost!
+            std::string sgx_cert_path =
+                getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
+            if ( sgx_cert_path.empty() )
+                sgx_cert_path = "/skale_node_data/sgx_certs/";
+            else if ( sgx_cert_path[sgx_cert_path.length() - 1] != '/' )
+                sgx_cert_path += '/';
+
+            const char* sgx_cert_filename = getenv( "SGX_CERT_FILE" );
+            if ( sgx_cert_filename == nullptr )
+                sgx_cert_filename = "sgx.crt";
+
+            const char* sgx_key_filename = getenv( "SGX_KEY_FILE" );
+            if ( sgx_key_filename == nullptr )
+                sgx_key_filename = "sgx.key";
+
+            skutils::http::SSL_client_options ssl_options;
+            ssl_options.client_cert = sgx_cert_path + sgx_cert_filename;
+            ssl_options.client_key = sgx_cert_path + sgx_key_filename;
+
+            skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
+            cli.optsSSL_ = ssl_options;
+            bool fl = cli.open( sgxServerURL );
+            if ( !fl ) {
+                clog( VerbosityError, "skale_getSnapshotSignature" )
+                    << cc::fatal( "FATAL:" )
+                    << cc::error( " Exception while trying to connect to sgx server: " )
+                    << cc::warn( "connection refused" ) << std::endl;
+            }
+
+            skutils::rest::data_t d;
+            while ( true ) {
+                clog( VerbosityInfo, "skale_getSnapshotSignature" )
+                    << cc::ws_tx( ">>> SGX call >>>" ) << " " << cc::j( joCall ) << std::endl;
+                d = cli.call( joCall );
+                if ( d.ei_.et_ !=
+                     skutils::http::common_network_exception::error_type::et_no_error ) {
+                    if ( d.ei_.et_ ==
+                             skutils::http::common_network_exception::error_type::et_unknown ||
+                         d.ei_.et_ ==
+                             skutils::http::common_network_exception::error_type::et_fatal ) {
+                        clog( VerbosityError, "skale_getSnapshotSignature" )
+                            << cc::error( "ERROR:" )
+                            << cc::error( " Exception while trying to connect to sgx server: " )
+                            << cc::error( " error with connection: " )
+                            << cc::info( " retrying... " ) << std::endl;
+                    } else {
+                        clog( VerbosityError, "skale_getSnapshotSignature" )
+                            << cc::error( "ERROR:" )
+                            << cc::error( " Exception while trying to connect to sgx server: " )
+                            << cc::error( " error with ssl certificates " )
+                            << cc::error( d.ei_.strError_ ) << std::endl;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if ( d.empty() ) {
+                static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
+                clog( VerbosityError, "skale_getSnapshotSignature" )
+                    << cc::error( "!!! SGX call error !!!" ) << " " << cc::error( g_strErrMsg )
+                    << std::endl;
+                throw std::runtime_error( g_strErrMsg );
+            }
+
+            nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+            nlohmann::json joResponse =
+                ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
+            clog( VerbosityInfo, "skale_getSnapshotSignature" )
+                << cc::ws_rx( "<<< SGX call <<<" ) << " " << cc::j( joResponse ) << std::endl;
+            if ( joResponse["status"] != 0 ) {
+                throw std::runtime_error(
+                    "SGX Server call to blsSignMessageHash returned non-zero status" );
+            }
+            std::string signature_with_helper = joResponse["signatureShare"].get< std::string >();
+
+            std::vector< std::string > splidString;
+            splidString = boost::split(
+                splidString, signature_with_helper, []( char c ) { return c == ':'; } );
+
+            joSignature["X"] = splidString.at( 0 );
+            joSignature["Y"] = splidString.at( 1 );
+            joSignature["helper"] = splidString.at( 3 );
+        } else {
+            joSignature["X"] = "1";
+            joSignature["Y"] = "2";
+            joSignature["helper"] = "1";
+        }
+
+        joSignature["hash"] = snapshotHash.hex();
 
         std::string strSignature = joSignature.dump();
         Json::Value response;

@@ -93,7 +93,7 @@ public:
         this->hashAgent_->hashes_ = snapshot_hashes;
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
-            this->hashAgent_->is_received_[i] = true;
+            this->hashAgent_->isReceived_[i] = true;
             this->hashAgent_->public_keys_[i] =
                 this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = libBLS::Bls::Signing(
@@ -115,7 +115,7 @@ public:
         }
 
         if ( isSnapshotMajorityRequired )
-            return this->hashAgent_->nodes_to_download_snapshot_from_;
+            return this->hashAgent_->nodesToDownloadSnapshotFrom_;
 
         std::vector< size_t > ret;
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {

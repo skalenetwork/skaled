@@ -348,8 +348,8 @@ unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
 
     unsigned blockNumber = getLatestSnapshotBlockNumber( nodeUrl );
     clog( VerbosityInfo, "getBlockToDownladSnapshot" )
-        << std::string( "Latest Snapshot Block Number is: " ) << std::to_string( blockNumber )
-        << " (from " << nodeUrl << ")";
+        << std::string( "Latest Snapshot Block Number is: " ) << blockNumber << " (from " << nodeUrl
+        << ")";
 
     return blockNumber;
 }
@@ -1592,6 +1592,8 @@ int main( int argc, char** argv ) try {
     std::string urlToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
         urlToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
+        clog( VerbosityInfo, "main" )
+            << "Manually set url to download snapshot from: " << urlToDownloadSnapshotFrom;
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {

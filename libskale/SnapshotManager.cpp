@@ -155,8 +155,14 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 
     UnsafeRegion::lock ur_lock;
 
+    std::vector< std::string > volumes;
+    if ( chainParams.nodeInfo.archiveMode && _blockNumber == 0 )
+        volumes = coreVolumes;
+    else
+        volumes = allVolumes;
+
     int dummy_counter = 0;
-    for ( const string& vol : allVolumes ) {
+    for ( const string& vol : volumes ) {
         if ( fs::exists( data_dir / vol ) ) {
             if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
                 throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
@@ -702,22 +708,24 @@ void SnapshotManager::computeAllVolumesHash(
             std::throw_with_nested( SnapshotManager::CannotCreate( hashFile ) );
         }
 
-        // archive blocks
-        for ( auto& content : contents ) {
-            if ( content.leaf().string().find( "archive" ) == std::string::npos )
-                continue;
-            this->computeDatabaseHash( content, ctx );
-        }
+        if ( _blockNumber > 0 ) {
+            // archive blocks
+            for ( auto& content : contents ) {
+                if ( content.leaf().string().find( "archive" ) == std::string::npos )
+                    continue;
+                this->computeDatabaseHash( content, ctx );
+            }
 
-        // historic dbs
-        this->computeDatabaseHash(
-            this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[0] /
-                dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-            ctx );
-        this->computeDatabaseHash(
-            this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[1] /
-                dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-            ctx );
+            // historic dbs
+            this->computeDatabaseHash(
+                this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[0] /
+                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+                ctx );
+            this->computeDatabaseHash(
+                this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[1] /
+                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+                ctx );
+        }
     }
 }
 
@@ -734,7 +742,13 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     int dummy_counter = 0;
 
-    for ( const auto& volume : allVolumes ) {
+    std::vector< std::string > volumes;
+    if ( chainParams.nodeInfo.archiveMode && _blockNumber == 0 )
+        volumes = coreVolumes;
+    else
+        volumes = allVolumes;
+
+    for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "false" );
@@ -749,7 +763,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     this->computeAllVolumesHash( _blockNumber, &ctx, is_checking );
 
-    for ( const auto& volume : allVolumes ) {
+    for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
             ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "true" );
