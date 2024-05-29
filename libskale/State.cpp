@@ -36,8 +36,6 @@
 #include <libethereum/Defaults.h>
 #include <libethereum/StateImporter.h>
 
-#include "ContractStorageLimitPatch.h"
-
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
 
@@ -45,8 +43,7 @@
 #include <skutils/eth_utils.h>
 
 #include <libethereum/BlockDetails.h>
-#include <libskale/RevertableFSPatch.h>
-#include <libskale/StorageDestructionPatch.h>
+#include <libethereum/SchainPatch.h>
 
 namespace fs = boost::filesystem;
 
@@ -359,7 +356,7 @@ std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
-               << *m_storedVersion << endl;
+               << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -441,7 +438,7 @@ eth::Account* State::account( Address const& _address ) {
 
         if ( !checkVersion() ) {
             cerror << "Current state version is " << m_currentVersion << " but stored version is "
-                   << *m_storedVersion << endl;
+                   << *m_storedVersion;
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
 
@@ -510,7 +507,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     m_db_ptr->kill( address );
                     m_db_ptr->killAuxiliary( address, Auxiliary::CODE );
 
-                    if ( StorageDestructionPatch::isEnabled() ) {
+                    if ( StorageDestructionPatch::isEnabledInWorkingBlock() ) {
                         clearStorage( address );
                     }
 
@@ -669,7 +666,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     const Address& _contract ) const {
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
-               << *m_storedVersion << endl;
+               << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
 
@@ -689,7 +686,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
         }
     }
 
-    cdebug << "Self-destruct cleared values:" << storage.size() << endl;
+    cdebug << "Self-destruct cleared values:" << storage.size();
 
     return storage;
 }
@@ -896,7 +893,7 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
-            if ( ContractStorageLimitPatch::isEnabled() ) {
+            if ( ContractStoragePatch::isEnabledInWorkingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
                 account.setStorage( change.key, change.value );
@@ -925,7 +922,7 @@ void State::rollback( size_t _savepoint ) {
         m_changeLog.pop_back();
     }
     clearFileStorageCache();
-    if ( !ContractStorageLimitPatch::isEnabled() ) {
+    if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
 }
@@ -1008,16 +1005,17 @@ bool State::empty() const {
 }
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
-    SealEngineFace const& _sealEngine, Transaction const& _t, Permanence _p,
+    eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
     OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
-    Executive e( *this, _envInfo, _sealEngine, 0, 0, _p != Permanence::Committed );
+    // TODO Not sure that 1st 0 as timestamp is acceptable here
+    Executive e( *this, _envInfo, _chainParams, 0, 0, _p != Permanence::Committed );
     ExecutionResult res;
     e.setResultRecipient( res );
 
-    bool isCacheEnabled = RevertableFSPatch::isEnabled();
+    bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
     resetOverlayFS( isCacheEnabled );
 
     auto onOp = _onOp;
@@ -1058,14 +1056,14 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         // shaLastTx.hex() << "\n";
 
         TransactionReceipt receipt =
-            _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+            _envInfo.number() >= _chainParams.byzantiumForkBlock ?
                 TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
         m_fs_ptr->commit();
 
-        removeEmptyAccounts = _envInfo.number() >= _sealEngine.chainParams().EIP158ForkBlock;
+        removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -1077,7 +1075,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 
     TransactionReceipt receipt =
-        _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
+        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     receipt.setRevertReason( strRevertReason );

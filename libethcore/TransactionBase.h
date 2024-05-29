@@ -40,6 +40,8 @@ enum IncludeSignature {
 
 enum class CheckTransaction { None, Cheap, Everything };
 
+enum TransactionType { Legacy, Type1, Type2 };
+
 /// Encodes a transaction, ready to be exported to or freshly imported from RLP.
 class TransactionBase {
 public:
@@ -96,13 +98,13 @@ public:
           m_type( ContractCreation ) {}
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytesConstRef _rlp, CheckTransaction _checkSig, bool _allowInvalid = false );
+    explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false );
 
     /// Constructs a transaction from the given RLP.
-    explicit TransactionBase(
-        bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false )
-        : TransactionBase( &_rlp, _checkSig, _allowInvalid ) {}
+    explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
+        bool _allowInvalid = false, bool _eip1559Enabled = false )
+        : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled ) {}
 
     TransactionBase( TransactionBase const& ) = default;
 
@@ -145,17 +147,14 @@ public:
     /// @returns true if transaction is contract-creation.
     bool isCreation() const { return m_type == ContractCreation; }
 
-    /// Serialises this transaction to an RLPStream.
-    /// @throws TransactionIsUnsigned if including signature was requested but it was not
-    /// initialized
-    void streamRLP(
-        RLPStream& _s, IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const;
-
     /// @returns the RLP serialisation of this transaction.
-    bytes rlp( IncludeSignature _sig = WithSignature ) const {
+    bytes toBytes( IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const {
         RLPStream s;
-        streamRLP( s, _sig );
-        return s.out();
+        streamRLP( s, _sig, _forEip155hash );
+        bytes output = s.out();
+        if ( m_txType != TransactionType::Legacy )
+            output.insert( output.begin(), m_txType );
+        return output;
     }
 
     /// @returns the SHA3 hash of the RLP serialisation of this transaction.
@@ -249,6 +248,14 @@ public:
 
     bool isInvalid() const { return m_type == Type::Invalid; }
 
+    TransactionType txType() const { return m_txType; }
+
+    std::vector< bytes > accessList() const { return m_accessList; }
+
+    u256 maxPriorityFeePerGas() const { return m_maxPriorityFeePerGas; }
+
+    u256 maxFeePerGas() const { return m_maxFeePerGas; }
+
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
         bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es );
@@ -285,8 +292,38 @@ protected:
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
     ///< creation transaction.
     bytes m_rawData;
+    std::vector< bytes > m_accessList;  ///< The access list. see more
+                                        ///< https://eips.ethereum.org/EIPS/eip-2930. Not valid for
+                                        ///< legacy txns
+    u256 m_maxPriorityFeePerGas;  ///< The maximum priority fee per gas. Only valid for type2 txns
+    u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
+
+    TransactionType m_txType = TransactionType::Legacy;
 
     Counter< TransactionBase > c;
+
+private:
+    /// Serialises this transaction to an RLPStream.
+    /// @throws TransactionIsUnsigned if including signature was requested but it was not
+    /// initialized
+    void streamRLP(
+        RLPStream& _s, IncludeSignature _sig = WithSignature, bool _forEip155hash = false ) const;
+
+    static TransactionType getTransactionType( bytesConstRef _rlp );
+
+    /// Constructs a transaction from the given RLP and transaction type.
+    void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
+        bool _allowInvalid, TransactionType _type );
+    void fillFromBytesLegacy(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromBytesType1(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromBytesType2(
+        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+
+    void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
+    void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
+    void streamType2Transaction( RLPStream& _s, IncludeSignature _sig ) const;
 
 public:
     mutable int64_t verifiedOn = -1;  // on which block it was imported
@@ -320,6 +357,8 @@ inline std::ostream& operator<<( std::ostream& _out, TransactionBase const& _t )
     _out << "<-" << _t.safeSender().abridged() << " #" << _t.nonce() << "}";
     return _out;
 }
+
+extern bytesConstRef bytesRefFromTransactionRlp( const RLP& _rlp );
 
 }  // namespace eth
 }  // namespace dev

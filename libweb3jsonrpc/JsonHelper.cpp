@@ -95,7 +95,8 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
         res["from"] = toJS( _t.safeSender() );
         res["gas"] = toJS( _t.gas() );
-        res["gasPrice"] = toJS( _t.gasPrice() );
+        if ( _t.txType() != dev::eth::TransactionType::Type2 )
+            res["gasPrice"] = toJS( _t.gasPrice() );
         res["nonce"] = toJS( _t.nonce() );
         res["value"] = toJS( _t.value() );
         res["blockHash"] = toJS( _location.first );
@@ -105,17 +106,38 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
                                             toJS( 27 + _t.signature().v );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
+        res["type"] = toJS( int( _t.txType() ) );
+        if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["yParity"] = toJS( _t.signature().v );
+            res["accessList"] = Json::Value( Json::arrayValue );
+            for ( const auto& d : _t.accessList() ) {
+                auto list = RLP( d );
+                Json::Value accessList;
+                accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
+                accessList["storageKeys"] = Json::Value( Json::arrayValue );
+                for ( const auto& k : list[1].toList() ) {
+                    accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
+                }
+                res["accessList"].append( accessList );
+            }
+            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+                res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
+            }
+        }
     }
     return res;
 }
 
 Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
-    UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face ) {
+    UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face, u256 _gasPrice ) {
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
+        if ( _gasPrice > 0 )
+            res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
         res["transactions"] = Json::Value( Json::arrayValue );
@@ -127,12 +149,14 @@ Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
 }
 
 Json::Value toJson( dev::eth::BlockHeader const& _bi, BlockDetails const& _bd,
-    UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face ) {
+    UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face, u256 _gasPrice ) {
     Json::Value res = toJson( _bi, _face );
     if ( _bi ) {
         res["totalDifficulty"] = toJS( _bd.totalDifficulty );
         res["size"] = toJS( _bd.blockSizeBytes );
         res["uncles"] = Json::Value( Json::arrayValue );
+        if ( _gasPrice > 0 )
+            res["baseFeePerGas"] = toJS( _gasPrice );
         for ( h256 h : _us )
             res["uncles"].append( toJS( h ) );
         res["transactions"] = Json::Value( Json::arrayValue );
@@ -162,7 +186,7 @@ Json::Value toJson( dev::eth::TransactionReceipt const& _t ) {
     res["gasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["bloom"] = toJS( _t.bloom() );
     res["log"] = dev::toJson( _t.log() );
-    //
+
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() )
         res["revertReason"] = strRevertReason;
@@ -181,28 +205,29 @@ Json::Value toJson( dev::eth::LocalisedTransactionReceipt const& _t ) {
     res["blockNumber"] = toJS( _t.blockNumber() );
     res["cumulativeGasUsed"] = toJS( _t.cumulativeGasUsed() );
     res["gasUsed"] = toJS( _t.gasUsed() );
-    //
+
     // The "contractAddress" field must be null for all types of trasactions but contract deployment
     // ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
-    //
     dev::Address contractAddress = _t.contractAddress();
     if ( contractAddress == dev::Address( 0 ) )
         res["contractAddress"] = Json::Value::nullRef;
     else
         res["contractAddress"] = toJS( contractAddress );
-    //
-    //
+
     res["logs"] = dev::toJson( _t.localisedLogs() );
     res["logsBloom"] = toJS( _t.bloom() );
     if ( _t.hasStatusCode() )
         res["status"] = toString0x< uint8_t >( _t.statusCode() );  // toString( _t.statusCode() );
     else
         res["stateRoot"] = toJS( _t.stateRoot() );
-    //
+
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() )
         res["revertReason"] = strRevertReason;
+
+    res["type"] = toJS( _t.txType() );
+    res["effectiveGasPrice"] = toJS( _t.effectiveGasPrice() );
     return res;
 }
 
@@ -283,18 +308,16 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     ADD_FIELD_TO_RAPIDJSON( res, "blockNumber", toJS( _t.blockNumber() ), allocator );
     ADD_FIELD_TO_RAPIDJSON( res, "cumulativeGasUsed", toJS( _t.cumulativeGasUsed() ), allocator );
     ADD_FIELD_TO_RAPIDJSON( res, "gasUsed", toJS( _t.gasUsed() ), allocator );
-    //
+
     // The "contractAddress" field must be null for all types of trasactions but contract deployment
     // ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
-    //
     dev::Address contractAddress = _t.contractAddress();
     if ( contractAddress == dev::Address( 0 ) )
         res.AddMember( "contractAddress", rapidjson::Value(), allocator );
     else
         ADD_FIELD_TO_RAPIDJSON( res, "contractAddress", toJS( contractAddress ), allocator );
-    //
-    //
+
     res.AddMember( "logs", dev::toRapidJson( _t.localisedLogs(), allocator ), allocator );
     ADD_FIELD_TO_RAPIDJSON( res, "logsBloom", toJS( _t.bloom() ), allocator );
     if ( _t.hasStatusCode() ) {
@@ -303,12 +326,14 @@ rapidjson::Document toRapidJson( dev::eth::LocalisedTransactionReceipt const& _t
     } else {
         ADD_FIELD_TO_RAPIDJSON( res, "stateRoot", toJS( _t.stateRoot() ), allocator );
     }
-    //
 
     std::string strRevertReason = _t.getRevertReason();
     if ( !strRevertReason.empty() ) {
         ADD_FIELD_TO_RAPIDJSON( res, "revertReason", strRevertReason, allocator );
     }
+
+    ADD_FIELD_TO_RAPIDJSON( res, "type", toJS( _t.txType() ), allocator );
+    ADD_FIELD_TO_RAPIDJSON( res, "effectiveGasPrice", toJS( _t.effectiveGasPrice() ), allocator );
 
     return res;
 }
@@ -319,13 +344,33 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.to() );
         res["from"] = toJS( _t.from() );
         res["gas"] = toJS( _t.gas() );
-        res["gasPrice"] = toJS( _t.gasPrice() );
+        if ( _t.txType() != dev::eth::TransactionType::Type2 )
+            res["gasPrice"] = toJS( _t.gasPrice() );
         res["value"] = toJS( _t.value() );
         res["data"] = toJS( _t.data(), 32 );
         res["nonce"] = toJS( _t.nonce() );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
         res["v"] = toJS( _t.signature().v );
+        res["type"] = toJS( int( _t.txType() ) );
+        if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["yParity"] = toJS( _t.signature().v );
+            res["accessList"] = Json::Value( Json::arrayValue );
+            for ( const auto& d : _t.accessList() ) {
+                auto list = RLP( d );
+                Json::Value accessList;
+                accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
+                accessList["storageKeys"] = Json::Value( Json::arrayValue );
+                for ( const auto& k : list[1].toList() ) {
+                    accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
+                }
+                res["accessList"].append( accessList );
+            }
+            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+                res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
+            }
+        }
     }
 
     res["hash"] = toJS( _t.sha3( WithSignature ) );
@@ -359,6 +404,25 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
                                             toJS( 27 + _t.signature().v );
         res["r"] = toJS( _t.signature().r.hex() );
         res["s"] = toJS( _t.signature().s.hex() );
+        res["type"] = toJS( int( _t.txType() ) );
+        if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["yParity"] = toJS( _t.signature().v );
+            res["accessList"] = Json::Value( Json::arrayValue );
+            for ( const auto& d : _t.accessList() ) {
+                auto list = RLP( d );
+                Json::Value accessList;
+                accessList["address"] = dev::toHexPrefixed( list[0].toBytes() );
+                accessList["storageKeys"] = Json::Value( Json::arrayValue );
+                for ( const auto& k : list[1].toList() ) {
+                    accessList["storageKeys"].append( dev::toHexPrefixed( k.toBytes() ) );
+                }
+                res["accessList"].append( accessList );
+            }
+            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+                res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+            }
+        }
     }
     return res;
 }
@@ -477,12 +541,17 @@ TransactionSkeleton toTransactionSkeleton( Json::Value const& _json ) {
 
     if ( !_json["gasPrice"].empty() )
         ret.gasPrice = jsToU256( _json["gasPrice"].asString() );
-
-    if ( !_json["data"].empty() )  // ethereum.js has preconstructed the data array
-        ret.data = jsToBytes( _json["data"].asString(), OnFailed::Throw );
+    else if ( !_json["maxFeePerGas"].empty() )
+        ret.gasPrice = jsToU256( _json["maxFeePerGas"].asString() );
 
     if ( !_json["code"].empty() )
         ret.data = jsToBytes( _json["code"].asString(), OnFailed::Throw );
+
+    if ( !_json["data"].empty() )
+        ret.data = jsToBytes( _json["data"].asString(), OnFailed::Throw );
+
+    if ( !_json["input"].empty() )
+        ret.data = jsToBytes( _json["input"].asString(), OnFailed::Throw );
 
     if ( !_json["nonce"].empty() )
         ret.nonce = jsToU256( _json["nonce"].asString() );
@@ -529,19 +598,28 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
         if ( !_json["gasPrice"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.gasPrice = jsToU256( _json["gasPrice"].GetString() );
-    }
-
-    if ( _json.HasMember( "data" ) ) {  // ethereum.js has preconstructed
-                                        // the data array
-        if ( !_json["data"].IsString() )
+    } else if ( _json.HasMember( "maxFeePerGas" ) ) {
+        if ( !_json["maxFeePerGas"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
-        ret.data = jsToBytes( _json["data"].GetString(), OnFailed::Throw );
+        ret.gasPrice = jsToU256( _json["maxFeePerGas"].GetString() );
     }
 
     if ( _json.HasMember( "code" ) ) {
         if ( !_json["code"].IsString() )
             throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
         ret.data = jsToBytes( _json["code"].GetString(), OnFailed::Throw );
+    }
+
+    if ( _json.HasMember( "data" ) ) {
+        if ( !_json["data"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        ret.data = jsToBytes( _json["data"].GetString(), OnFailed::Throw );
+    }
+
+    if ( _json.HasMember( "input" ) ) {
+        if ( !_json["input"].IsString() )
+            throw jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS );
+        ret.data = jsToBytes( _json["input"].GetString(), OnFailed::Throw );
     }
 
     if ( _json.HasMember( "nonce" ) ) {
@@ -552,37 +630,6 @@ TransactionSkeleton rapidJsonToTransactionSkeleton( rapidjson::Value const& _jso
 
     return ret;
 }
-/*
-dev::eth::LogFilter toLogFilter( Json::Value const& _json ) {
-    dev::eth::LogFilter filter;
-    if ( !_json.isObject() || _json.empty() )
-        return filter;
-
-    // check only !empty. it should throw exceptions if input params are incorrect
-    if ( !_json["fromBlock"].empty() )
-        filter.withEarliest( jsToFixed< 32 >( _json["fromBlock"].asString() ) );
-    if ( !_json["toBlock"].empty() )
-        filter.withLatest( jsToFixed< 32 >( _json["toBlock"].asString() ) );
-    if ( !_json["address"].empty() ) {
-        if ( _json["address"].isArray() )
-            for ( auto i : _json["address"] )
-                filter.address( jsToAddress( i.asString() ) );
-        else
-            filter.address( jsToAddress( _json["address"].asString() ) );
-    }
-    if ( !_json["topics"].empty() )
-        for ( unsigned i = 0; i < _json["topics"].size(); i++ ) {
-            if ( _json["topics"][i].isArray() ) {
-                for ( auto t : _json["topics"][i] )
-                    if ( !t.isNull() )
-                        filter.topic( i, jsToFixed< 32 >( t.asString() ) );
-            } else if ( !_json["topics"][i].isNull() )  // if it is anything else then string, it
-                                                        // should and will fail
-                filter.topic( i, jsToFixed< 32 >( _json["topics"][i].asString() ) );
-        }
-    return filter;
-}
-*/
 
 // TODO: this should be removed once we decide to remove backward compatibility with old log filters
 dev::eth::LogFilter toLogFilter( Json::Value const& _json )  // commented to avoid warning.

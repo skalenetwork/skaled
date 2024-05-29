@@ -16,7 +16,7 @@
 */
 
 #include "LegacyVM.h"
-#include "libskale/PushZeroPatch.h"
+#include <libethereum/SchainPatch.h>
 
 using namespace std;
 using namespace dev;
@@ -1374,7 +1374,7 @@ void LegacyVM::interpretCases() {
         // we need to increment program counter only by one since
         // the value is not read from program code as in PUSH1
         CASE( PUSH0 ) {
-            if ( !PushZeroPatch::isEnabled() ) {
+            if ( !m_schedule->havePush0 ) {
                 throwBadInstruction();
             }
             ON_OP();

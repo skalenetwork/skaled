@@ -231,8 +231,8 @@ public:
         auto b = block( _hash );
         RLP rlp( b );
         h256s ret;
-        for ( auto t : rlp[1] )
-            ret.push_back( sha3( t.data() ) );
+        for ( auto d : rlp[1] )
+            ret.push_back( sha3( bytesRefFromTransactionRlp( d ) ) );
         return ret;
     }
     TransactionHashes transactionHashes() const { return transactionHashes( currentHash() ); }
@@ -319,7 +319,7 @@ public:
     /// none given) & index. Thread-safe.
     bytes transaction( h256 const& _blockHash, unsigned _i ) const {
         bytes b = block( _blockHash );
-        return RLP( b )[1][_i].data().toBytes();
+        return bytesRefFromTransactionRlp( RLP( b )[1][_i] ).toBytes();
     }
     bytes transaction( unsigned _i ) const { return transaction( currentHash(), _i ); }
 
@@ -328,7 +328,7 @@ public:
         bytes b = block( _blockHash );
         std::vector< bytes > ret;
         for ( auto const& i : RLP( b )[1] )
-            ret.push_back( i.data().toBytes() );
+            ret.push_back( bytesRefFromTransactionRlp( i ).toBytes() );
         return ret;
     }
     std::vector< bytes > transactions() const { return transactions( currentHash() ); }
@@ -452,6 +452,10 @@ public:
         }
         return 0;
     }
+
+    // simple thing to compare _bn-1's timestamp with ts
+    // maybe need cahing for faster operation
+    bool isPatchTimestampActiveInBlockNumber( time_t _ts, BlockNumber _bn ) const;
 
 private:
     static h256 chunkId( unsigned _level, unsigned _index ) {

@@ -116,7 +116,6 @@ public:
     bool uninstallWatch( unsigned _watchId ) override;
     LocalisedLogEntries checkWatch( unsigned _watchId ) override;
 
-
     using Interface::blockDetails;
     using Interface::blockInfo;  // for another overload
     using Interface::transactionHashes;
@@ -160,14 +159,12 @@ public:
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
 
-    EVMSchedule evmSchedule() const override {
-        return sealEngine()->evmSchedule( pendingInfo().number() );
-    }
+    EVMSchedule evmSchedule() const override;
 
     ImportResult injectBlock( bytes const& _block ) override;
 
     u256 gasLimitRemaining() const override;
-    u256 gasBidPrice() const override { return DefaultGasPrice; }
+    u256 gasBidPrice( unsigned = dev::eth::LatestBlock ) const override { return DefaultGasPrice; }
 
     /// Get the block author
     Address author() const override;
@@ -224,7 +221,7 @@ protected:
 
 private:
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
-        Address const& _from, Address const& _destination, u256 const& _value,
+        Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
         u256 const& _gasPrice, bytes const& _data );
 };
 

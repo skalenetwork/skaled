@@ -57,10 +57,12 @@ std::string dev::jsonTypeAsString( json_spirit::Value_type _type ) {
 }
 
 void dev::requireJsonFields( json_spirit::mObject const& _o, std::string const& _config,
-    std::map< std::string, JsonFieldOptions > const& _validationMap ) {
+    std::map< std::string, JsonFieldOptions > const& _validationMap,
+    std::function< bool( const std::string& ) > _callbackForUnexpected ) {
     // check for unexpected fiedls
     for ( auto const& field : _o ) {
-        if ( !_validationMap.count( field.first ) ) {
+        // _callbackForUnexpected allows to accept ertain unexpected fields
+        if ( !_validationMap.count( field.first ) && !_callbackForUnexpected( field.first ) ) {
             std::string const comment =
                 "Unexpected field '" + field.first + "' in config: " + _config;
             cerror << comment << "\n"
