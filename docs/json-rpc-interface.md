@@ -2,22 +2,114 @@
 
 # JSON-RPC Interface Compatibility 
 
-| Method                                  |       Status        | Comments                                                                      |
-|:--------------------------------------- |:-------------------:|:----------------------------------------------------------------------------- |
-| web3_clientVersion                      |      Supported      |                                                                               |
-| web3_sha3                               |      Supported      |                                                                               |
-| net_version                             |      Supported      | Returns ChainID from config.json.                                             |
-| net_listening                           |      Supported      |                                                                               |
-| net_peerCount                           | Partially supported | Always returns 0                                                              |
-| eth_protocolVersion                     |      Supported      |                                                                               |
-| eth_syncing                             |      Supported      |                                                                               |
-| eth_coinbase                            |      Supported      | Returns sChainOwner address from config.json (it is used as coinbase address) |
-| eth_mining                              | Partially supported | There is no mining for SKALE s-chains, always returns false                   |
-| eth_hashrate                            | Partially supported | There is no hashrate for SKALE s-chains, always returns 0                     |
-| eth_gasPrice                            |      Supported      | Gas price is dynamically adjusted from 1000 wei and above as load grows       |
-| eth_accounts                            |      Supported      |                                                                               |
-| eth_blockNumber                         |      Supported      |                                                                               |
-| eth_getBalance                          | Partially supported | Second parameter is ignored and always set to "latest"                        |
+## `web3_*` Methods
+
+### `web3_clientVersion`
+Returns detailed `skaled` version
+### Parameters
+None
+### Returns
+`String` representing exact build of `skaled`
+
+Example: "skaled/3.19.0+commit.859d742c/linux/gnu9.5.0/debug"
+
+### `web3_sha3`
+Returns `sha3` (`keccak256`) hash of input data
+### Parameters
+1. Input data represented as a "0x"-prefixed hex `String`
+### Returns
+Output data represented as a "0x"-prefixed hex `String` (32 bytes)
+
+## `net_*` Methods
+
+### `net_version`
+Returns chainID from config.json
+### Parameters
+None
+### Returns
+Decimal number as `String`
+
+### `net_listening`
+Returns `true`
+### Parameters
+None
+### Returns
+Boolean literal `true`
+
+### `net_peerCount`
+Returns 0
+### Parameters
+None
+### Returns
+`String` value "0x0"
+
+## `eth_*` Methods
+
+### `eth_protocolVersion`
+Returns `0x3f`
+### Parameters
+None
+### Returns
+`String` value "0x3f"
+
+### `eth_syncing`
+Returns `false`
+### Parameters
+None
+### Returns
+Boolean literal `false`
+
+### `eth_coinbase`
+Returns sChainOwner address from config.json (it is used as coinbase address)
+### Parameters
+None
+### Returns
+"0x"-prefixed hex `String` (20 bytes)
+
+### `eth_mining`
+Returns `false`
+### Parameters
+None
+### Returns
+Boolean literal `false`
+
+### `eth_hashrate`
+There is no hashrate for SKALE s-chains, always returns 0
+### Parameters
+None
+### Returns
+Boolean `String` literal "0x0"
+
+### `eth_gasPrice`
+Returns current minimum gas price needed for transaction to be accepted into the Transaction Queue. Gas price is dynamically adjusted from 100k wei and above as load grows
+### Parameters
+None
+### Returns
+"0x"-prefixed hex `String` representing current gas price
+
+### `eth_accounts`
+Get list of accounts with locally-stored private keys
+### Parameters
+None
+### Returns
+`Array` of "0x"-prefixed hex `String`s, 20 bytes each
+
+### `eth_blockNumber`
+Returns the number of most recent block
+### Parameters
+None
+### Returns
+"0x"-prefixed hex `String` representing block number
+
+### `eth_getBalance`
+Returns the balance of the account of given address.
+### Parameters
+1. Address: "0x"-prefixed hex `String`, 20 bytes
+2. Block number: `String` that is either 
+### Returns
+"0x"-prefixed hex `String` representing block number
+
+|                           | Partially supported | Second parameter is ignored and always set to "latest"                        |
 | eth_getStorageAt                        | Partially supported | Third parameter is ignored and always set to "latest"                         |
 | eth_getTransactionCount                 | Partially supported | Second parameter is ignored and always set to "latest"                        |
 | eth_getBlockTransactionCountByHash      |      Supported      |                                                                               |
@@ -53,17 +145,12 @@
 | eth_submitWork                          |    Not supported    |                                                                               |
 | eth_submitHashrate                      |      Supported      |                                                                               |
 | eth_getProof                            |    Not supported    |                                                                               |
-| db_putString                            |    Not supported    |                                                                               |
-| db_getString                            |    Not supported    |                                                                               |
-| db_putHex                               |    Not supported    |                                                                               |
-| db_getHex                               |    Not supported    |                                                                               |
-| shh_version                             |    Not supported    |                                                                               |
-| shh_post                                |    Not supported    |                                                                               |
-| shh_newIdentity                         |    Not supported    |                                                                               |
-| shh_hasIdentity                         |    Not supported    |                                                                               |
-| shh_newGroup                            |    Not supported    |                                                                               |
-| shh_addToGroup                          |    Not supported    |                                                                               |
-| shh_newFilter                           |    Not supported    |                                                                               |
-| shh_uninstallFilter                     |    Not supported    |                                                                               |
-| shh_getFilterChanges                    |    Not supported    |                                                                               |
-| shh_getMessages                         |    Not supported    |                                                                               |
+
+## `personal_*` Methods
+Not supported
+
+## `db_*` Methods
+Not supported
+
+## `shh_*` Methods
+Not supported
