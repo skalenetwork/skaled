@@ -78,7 +78,7 @@ There is no hashrate for SKALE s-chains, always returns 0
 ### Parameters
 None
 ### Returns
-Boolean `String` literal "0x0"
+`String` literal "0x0"
 
 ### `eth_gasPrice`
 Returns current minimum gas price needed for transaction to be accepted into the Transaction Queue. Gas price is dynamically adjusted from 100k wei and above as load grows
@@ -105,10 +105,10 @@ None
 Returns the balance of the account of given address
 ### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes
-2. Block number: `String` that is interprered differently for normal and historic builds:
-Noramal build: parameter ignored, latest balance is always returted.
+2. Block number: `String` that is interpreted differently for normal and historic builds:
+Normal build: parameter ignored, latest balance is always returned.
 Historic build:
- - "latest" or "pending" - latest balance is returted;
+ - "latest" or "pending" - latest balance is returned;
  - "earliest" - balance before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
 ### Returns
@@ -119,21 +119,49 @@ Returns the value from a storage position at a given account
 ### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Position: `String` representation of an integer storage position, either decimal or "0x"-prefixed hexadecimal;
-3. Block number: `String` that is interprered differently for normal and historic builds:
-Noramal build: parameter ignored, latest value is always returted.
+3. Block number: `String` that is interpreted differently for normal and historic builds:
+Normal build: parameter ignored, latest value is always returned.
 Historic build:
- - "latest" or "pending" - latest value is returted;
+ - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
- - `String` representation of and integer block number, either decimal or "0x"-prefixed hexadecimal.
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
 ### Returns
 "0x"-prefixed hex `String` (32 bytes)
 
-| eth_getTransactionCount                 | Partially supported | Second parameter is ignored and always set to "latest"                        |
-| eth_getBlockTransactionCountByHash      |      Supported      |                                                                               |
-| eth_getBlockTransactionCountByNumber    |      Supported      |                                                                               |
-| eth_getUncleCountByBlockHash            |      Supported      | There are no uncles in SKALE s-chains                                         |
-| eth_getUncleCountByBlockNumber          |      Supported      | There are no uncles in SKALE s-chains                                         |
-| eth_getCode                             | Partially supported | Second parameter is ignored and always set to "latest"                        |
+## `eth_getTransactionCount`
+Returns the number of transactions sent from an address.
+### Parameters
+1. Address: "0x"-prefixed hex `String`, 20 bytes;
+2. Block number: `String` that is interpreted differently for normal and historic builds:
+Normal build: parameter ignored, latest value is always returned.
+Historic build:
+ - "latest" or "pending" - latest value is returned;
+ - "earliest" - value before block 1 is returned;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
+### Returns
+"0x"-prefixed hex `String` representing transaction count
+
+eth_getBlockTransactionCountByHash
+eth_getBlockTransactionCountByNumber
+
+eth_getUncleCountByBlockHash
+eth_getUncleCountByBlockNumber
+### Returns
+`String` literal "0x0"
+
+## `eth_getCode`
+Returns code at a given address
+### Parameters
+1. Address: "0x"-prefixed hex `String`, 20 bytes;
+2. Block number: `String` that is interpreted differently for normal and historic builds:
+Normal build: parameter ignored, latest value is always returned.
+Historic build:
+ - "latest" or "pending" - latest value is returned;
+ - "earliest" - value before block 1 is returned;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
+### Returns
+"0x"-prefixed hex `String`
+
 | eth_sign                                |    Not supported    |                                                                               |
 | eth_sendTransaction                     |      Supported      |                                                                               |
 | eth_sendRawTransaction                  |      Supported      |                                                                               |
