@@ -102,15 +102,32 @@ None
 "0x"-prefixed hex `String` representing block number
 
 ### `eth_getBalance`
-Returns the balance of the account of given address.
+Returns the balance of the account of given address
 ### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes
-2. Block number: `String` that is either 
+2. Block number: `String` that is interprered differently for normal and historic builds:
+Noramal build: parameter ignored, latest balance is always returted.
+Historic build:
+ - "latest" or "pending" - latest balance is returted;
+ - "earliest" - balance before block 1 is returned;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
 ### Returns
-"0x"-prefixed hex `String` representing block number
+"0x"-prefixed hex `String` representing balance in wei
 
-|                           | Partially supported | Second parameter is ignored and always set to "latest"                        |
-| eth_getStorageAt                        | Partially supported | Third parameter is ignored and always set to "latest"                         |
+## `eth_getStorageAt`
+Returns the value from a storage position at a given account
+### Parameters
+1. Address: "0x"-prefixed hex `String`, 20 bytes;
+2. Position: `String` representation of an integer storage position, either decimal or "0x"-prefixed hexadecimal;
+3. Block number: `String` that is interprered differently for normal and historic builds:
+Noramal build: parameter ignored, latest value is always returted.
+Historic build:
+ - "latest" or "pending" - latest value is returted;
+ - "earliest" - value before block 1 is returned;
+ - `String` representation of and integer block number, either decimal or "0x"-prefixed hexadecimal.
+### Returns
+"0x"-prefixed hex `String` (32 bytes)
+
 | eth_getTransactionCount                 | Partially supported | Second parameter is ignored and always set to "latest"                        |
 | eth_getBlockTransactionCountByHash      |      Supported      |                                                                               |
 | eth_getBlockTransactionCountByNumber    |      Supported      |                                                                               |
