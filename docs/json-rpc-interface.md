@@ -162,8 +162,23 @@ Historic build:
 ### Returns
 "0x"-prefixed hex `String`
 
-| eth_sign                                |    Not supported    |                                                                               |
-| eth_sendTransaction                     |      Supported      |                                                                               |
+## `eth_sign`
+Not supported
+
+## `eth_sendTransaction`
+Creates new transaction from the provided fields, signs it with specified `from` address and submits it to the Transaction Queue
+### Parameters
+ - "from"
+ - "to"
+ - "value"
+ - "gas"
+ - "gasPrice"
+ - "maxFeePerGas"
+ - "code"
+ - "data"
+ - "input"
+ - "nonce"
+
 | eth_sendRawTransaction                  |      Supported      |                                                                               |
 | eth_call                                | Partially supported | Second parameter is ignored and always set to "latest"                        |
 | eth_estimateGas                         |      Supported      | But does not use binary search                                                |
