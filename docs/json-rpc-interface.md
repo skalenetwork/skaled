@@ -178,10 +178,33 @@ Creates new transaction from the provided fields, signs it with the specified `f
  - "code": OPTIONAL same as "data";
  - "data": OPTIONAL "0x"-prefixed hex `String` OR "0x" OR "" OR null; defaults to empty;
  - "input": OPTIONAL same as "data";
- - "nonce": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR null; defaults to current nonce of the sender OR maximum nonce of the sender's transactions in the Transaction Queue (if omitted or null).
+ - "nonce": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR null; defaults to current nonce of the sender OR maximum nonce of the sender's transactions in the Transaction Queue if it is larger (default is applied if omitted or null).
+### Returns
+ "0x"-prefixed hex `String`, 32 bytes - hash of the transaction.
+ If transaction was attributed to a proxy account, empty hash is returned.
 
-| eth_sendRawTransaction                  |      Supported      |                                                                               |
-| eth_call                                | Partially supported | Second parameter is ignored and always set to "latest"                        |
+ TODO What the heck is proxy account?
+
+## `eth_sendRawTransaction`
+Submit pre-signed transaction into the Transaction Queue
+### Parameters
+1. "0x"-prefixed hex `String` - transaction bytes.
+### Returns
+"0x"-prefixed hex `String`, 32 bytes - hash of the transaction.
+
+## `eth_call`
+Execute read-only contract call
+### Parameters
+1. Same object as in `eth_sendTransaction`. TODO Find out if decimal literals are allowed in ETH
+2. Block number: `String` that is interpreted differently for normal and historic builds:
+Normal build: parameter ignored, latest value is always returned.
+Historic build:
+ - "latest" or "pending" - latest value is returned;
+ - "earliest" - value before block 1 is returned;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal: the `State` after executing of the specified block is used to execute call.
+### Returns
+"0x"-prefixed hex `String` or "0x", call result
+
 | eth_estimateGas                         |      Supported      | But does not use binary search                                                |
 | eth_getBlockByHash                      |      Supported      | Old blocks are "rotated out"                                                  |
 | eth_getBlockByNumber                    |      Supported      | Raises "block not found" error if block is "rotated out"                      |
