@@ -3226,6 +3226,8 @@ BOOST_AUTO_TEST_CASE( eip1559RpcMethods ) {
             BOOST_REQUIRE_EQUAL( feeHistory["reward"][i][j].asString(), toJS( 0 ) );
         }
     }
+
+    BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_feeHistory( blockCnt, "latest", percentiles ) );
 }
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {

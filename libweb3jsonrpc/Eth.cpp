@@ -962,7 +962,7 @@ Json::Value Eth::eth_createAccessList(
     return result;
 }
 
-Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::string& _newestBlock,
+Json::Value Eth::eth_feeHistory( dev::u256 _blockCount, const std::string& _newestBlock,
     const Json::Value& _rewardPercentiles ) {
     try {
         if ( !_rewardPercentiles.isArray() )
@@ -974,8 +974,7 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
             }
         }
 
-        auto blockCount = jsToU256( _blockCount );
-        if ( blockCount > MAX_BLOCK_RANGE )
+        if ( _blockCount > MAX_BLOCK_RANGE )
             throw std::runtime_error( "Max block range reached. Please try smaller blockCount." );
 
         auto newestBlock = jsToBlockNumber( _newestBlock );
@@ -984,10 +983,10 @@ Json::Value Eth::eth_feeHistory( const std::string& _blockCount, const std::stri
 
         auto result = Json::Value( Json::objectValue );
         dev::u256 oldestBlock;
-        if ( blockCount > newestBlock )
+        if ( _blockCount > newestBlock )
             oldestBlock = 1;
         else
-            oldestBlock = dev::u256( newestBlock ) - blockCount + 1;
+            oldestBlock = dev::u256( newestBlock ) - _blockCount + 1;
         result["oldestBlock"] = toJS( oldestBlock );
 
         result["baseFeePerGas"] = Json::Value( Json::arrayValue );

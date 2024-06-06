@@ -219,7 +219,7 @@ public:
     virtual Json::Value eth_createAccessList(
         const Json::Value& param1, const std::string& param2 ) override;
     virtual Json::Value eth_feeHistory(
-        const std::string& param1, const std::string& param2, const Json::Value& param3 ) override;
+        dev::u256 param1, const std::string& param2, const Json::Value& param3 ) override;
     virtual std::string eth_maxPriorityFeePerGas() override;
 
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
