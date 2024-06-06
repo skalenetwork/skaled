@@ -166,18 +166,19 @@ Historic build:
 Not supported
 
 ## `eth_sendTransaction`
-Creates new transaction from the provided fields, signs it with specified `from` address and submits it to the Transaction Queue
+Creates new transaction from the provided fields, signs it with the specified `from` address and submits it to the Transaction Queue
 ### Parameters
- - "from"
- - "to"
- - "value"
- - "gas"
- - "gasPrice"
- - "maxFeePerGas"
- - "code"
- - "data"
- - "input"
- - "nonce"
+1. JSON object with the following fields:
+ - "from": OPTIONAL "0x"-prefixed hex `String`, 20 bytes OR null; if omitted or null, personal account with the largest balance is used;
+ - "to": OPTIONAL "0x"-prefixed hex `String`, 20 bytes OR "0x" OR null; omitted/null/""/"0x" means contract creation;
+ - "value": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR "" OR "0x" OR null; defaults to 0;
+ - "gas": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR null; defaults to 90000 if omitted or null;
+ - "gasPrice": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR null; defaults to eth_gasPrice() if omitted or null;
+ - "maxFeePerGas": OPTOPNAL same as "gasPrice", used if "gasPrice" is absent or null;
+ - "code": OPTIONAL same as "data";
+ - "data": OPTIONAL "0x"-prefixed hex `String` OR "0x" OR "" OR null; defaults to empty;
+ - "input": OPTIONAL same as "data";
+ - "nonce": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR null; defaults to current nonce of the sender OR maximum nonce of the sender's transactions in the Transaction Queue (if omitted or null).
 
 | eth_sendRawTransaction                  |      Supported      |                                                                               |
 | eth_call                                | Partially supported | Second parameter is ignored and always set to "latest"                        |
