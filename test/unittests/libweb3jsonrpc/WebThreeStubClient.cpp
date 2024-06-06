@@ -841,7 +841,7 @@ Json::Value WebThreeStubClient::eth_createAccessList( const Json::Value& param1,
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
-#include <iostream>
+
 Json::Value WebThreeStubClient::eth_feeHistory( const Json::Value& param1, const std::string& param2, const Json::Value& param3 ) {
     Json::Value p;
     if ( param1.isString() )
