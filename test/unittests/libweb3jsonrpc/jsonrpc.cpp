@@ -380,7 +380,8 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
         serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
         // random port
-        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025;
+        // +3 because rand() seems to be called effectively simultaneously here and in "static" section - thus giving same port for consensus
+        serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = std::rand() % 64000 + 1025 + 3;
         std::cout << "PORT: " << serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ << std::endl;
         skale_server_connector = new SkaleServerOverride( chainParams, client.get(), serverOpts );
         rpcServer->addConnector( skale_server_connector );
@@ -846,7 +847,7 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     //     }
     // }
 
-    string compiled = 
+    string compiled =
         "608060405234801561001057600080fd5b506101ef8061002060003"
         "96000f3fe608060405234801561001057600080fd5b506004361061"
         "00365760003560e01c8063552410771461003b578063b3de648b146"
@@ -4075,7 +4076,7 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1;
+    ret["skaleConfig"]["sChain"]["revertableFSPatchTimestamp"] = 1; 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
     RestrictedAddressFixture fixture( config );
