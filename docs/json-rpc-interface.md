@@ -205,19 +205,107 @@ Historic build:
 ### Returns
 "0x"-prefixed hex `String` or "0x", call result
 
-| eth_estimateGas                         |      Supported      | But does not use binary search                                                |
-| eth_getBlockByHash                      |      Supported      | Old blocks are "rotated out"                                                  |
-| eth_getBlockByNumber                    |      Supported      | Raises "block not found" error if block is "rotated out"                      |
-| eth_getTransactionByHash                |      Supported      |                                                                               |
-| eth_getTransactionByBlockHashAndIndex   |      Supported      |                                                                               |
+## `eth_estimateGas`
+Execute transaction on a temporary state without committing to DB and return gas usage
+### Parameters
+1. Same object as in `eth_sendTransaction`.
+2. OPTIONAL Ignored
+### Returns
+"0x"-prefixed hex `String`, gas estimate
+
+## `eth_getBlockByHash`
+Return details about block
+### Parameters
+1. Block hash: "0x"-prefixed hex `String`, 32 bytes
+2. Include transactions: boolean literal - true/false
+### Returns
+`null` if block is absent or rotated out.
+Otherwise - object with the following fields:
+TODO add descriptions
+ - "hash"
+ - "parentHash"
+ - "sha3Uncles"
+ - "author"
+ - "stateRoot"
+ - "transactionsRoot"
+ - "receiptsRoot"
+ - "number"
+ - "gasUsed"
+ - "gasLimit"
+ - "extraData"
+ - "logsBloom"
+ - "timestamp"
+ - "miner"
+ - "nonce"
+ - "seedHash"
+ - "mixHash"
+ - "boundary"
+ - "difficulty"
+ - "totalDifficulty"
+ - "size"
+ - "uncles"
+ - "baseFeePerGas"
+ - "transactions" TODO document skipping of invalid
+
+## `eth_getBlockByNumber`
+Return details about block
+### Parameters
+1. Block number:
+ - "latest" or "pending" - latest value is returned;
+ - "earliest" - value before block 1 is returned;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
+2. Include transactions: boolean literal - true/false
+### Returns
+Same as `eth_getBlockByHash`
+### Exceptions
+TODO Check that it Raises "block not found" error if block is "rotated out"
+
+## `eth_getTransactionByHash`
+Return details about transaction
+### Parameters
+1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
+### Returns
+`null` if transaction not found.
+Otherwise, object with the following fields:
+TODO describe
+ - "blockHash"
+ - "blockNumber"
+ - "from"
+ - "gas"
+ - "gasPrice"
+ - "hash"
+ - "input"
+ - "nonce"
+ - "to"
+ - "transactionIndex"
+ - "value"
+ - "v"
+ - "r"
+ - "s"
+ - "type"
+ - "yParity"
+ - "accessList"
+ - "maxPriorityFeePerGas"
+ - "maxFeePerGas"
+
+## `eth_getTransactionByBlockHashAndIndex`
+Return details about transaction
+### Parameters
+1. Block hash: "0x"-prefixed hex `String`, 32 bytes
+2. Transaction index: either decimal or "0x"-prefixed hexadecimal `String`
+### Returns
+Same as `eth_getTransactionByHash`
+
 | eth_getTransactionByBlockNumberAndIndex |      Supported      |                                                                               |
+
 | eth_getTransactionReceipt               |      Supported      |                                                                               |
+
 | eth_getUncleByBlockHashAndIndex         |      Supported      | There are no uncles in SKALE s-chains                                         |
 | eth_getUncleByBlockNumberAndIndex       |      Supported      | There are no uncles in SKALE s-chains                                         |
-| eth_getCompilers                        |    Not supported    |                                                                               |
-| eth_compileSolidity                     |    Not supported    |                                                                               |
-| eth_compileLLL                          |    Not supported    |                                                                               |
-| eth_compileSerpent                      |    Not supported    |                                                                               |
+
+## `eth_compile*` and `eth_getCompilers`
+Not supported
+
 | eth_newFilter                           | Partially supported | Ignores logs that originated from blocks that were "rotated out"              |
 | eth_newBlockFilter                      |      Supported      |                                                                               |
 | eth_newPendingTransactionFilter         |      Supported      |                                                                               |
