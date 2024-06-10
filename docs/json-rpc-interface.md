@@ -148,8 +148,17 @@ Historic build:
 eth_getBlockTransactionCountByHash
 eth_getBlockTransactionCountByNumber
 
-eth_getUncleCountByBlockHash
-eth_getUncleCountByBlockNumber
+### `eth_getUncleCountByBlockHash`
+#### Parameters
+1. Block hash: "0x"-prefixed hex `String`, 32 bytes
+#### Returns
+`String` literal "0x0"
+
+### `eth_getUncleCountByBlockNumber`
+#### Parameters
+1. Block number:
+ - "earliest", "latest", or "pending";
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
 #### Returns
 `String` literal "0x0"
 
@@ -487,6 +496,25 @@ Weird legacy method
 
 ### `eth_getProof`
 Not supported
+
+### `eth_unregister`
+### `eth_unsubscribe`
+### `eth_chainId`
+### `eth_feeHistory`
+### `eth_fetchQueuedTransactions`
+### `eth_flush`
+### `eth_createAccessList`
+### `eth_getBlockTransactionCountByHash`
+### `eth_getBlockTransactionCountByNumber`
+### `eth_getFilterChangesEx`
+### `eth_getStorageRoot`
+### `eth_inspectTransaction`
+### `eth_maxPriorityFeePerGas`
+### `eth_notePassword`
+### `eth_pendingTransactions`
+### `eth_register`
+### `eth_signTransaction`
+### `eth_subscribe`
 
 ## `personal_*` Methods
 Not supported
