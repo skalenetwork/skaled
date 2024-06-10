@@ -1,6 +1,10 @@
 <!-- SPDX-License-Identifier: (GPL-3.0-only OR CC-BY-4.0) -->
 
-# JSON-RPC Interface Compatibility 
+# JSON-RPC Interface Specification
+
+This doc describes all supported JSON-RPC methods, their parameters and return values.
+
+This doc does NOT describe all possible erroneous situations.
 
 ## `web3_*` Methods
 
@@ -296,23 +300,80 @@ Return details about transaction
 ### Returns
 Same as `eth_getTransactionByHash`
 
-| eth_getTransactionByBlockNumberAndIndex |      Supported      |                                                                               |
+## `eth_getTransactionByBlockNumberAndIndex`
+Return details about transaction
+### Parameters
+1. Block number:
+ - "latest" or "pending" - latest block is used;
+ - "earliest" - block 0;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+3. Transaction index: either decimal or "0x"-prefixed hexadecimal `String`
+### Returns
+Same as `eth_getTransactionByHash`
 
-| eth_getTransactionReceipt               |      Supported      |                                                                               |
+## `eth_getTransactionReceipt`
+Get transaction receipt
+### Parameters
+1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
+### Returns
+`null` if transaction not mined.
+Otherwise - object with the following fields:
+TODO descrition
+ - "from"
+ - "to"
+ - "transactionHash"
+ - "transactionIndex"
+ - "blockHash"
+ - "blockNumber"
+ - "cumulativeGasUsed"
+ - "gasUsed"
+ - "contractAddress"
+ - "logs"
+ - "logsBloom"
+ - "status"
+ - "revertReason" OPTIONAL
+ - "type"
+ - "effectiveGasPrice"
 
-| eth_getUncleByBlockHashAndIndex         |      Supported      | There are no uncles in SKALE s-chains                                         |
-| eth_getUncleByBlockNumberAndIndex       |      Supported      | There are no uncles in SKALE s-chains                                         |
+## `eth_getUncleByBlockHashAndIndex`
+Return `null`
+### Parameters
+1. Block hash: "0x"-prefixed hex `String`, 32 bytes
+2. Uncle index: either decimal or "0x"-prefixed hexadecimal `String`
+### Returns
+`null`
+
+## `eth_getUncleByBlockNumberAndIndex`
+Return `null`
+### Parameters
+1. Block number:
+ - "latest" or "pending" - latest block;
+ - "earliest" - block 0;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+3. Uncle index: either decimal or "0x"-prefixed hexadecimal `String`
+### Returns
+`null`
 
 ## `eth_compile*` and `eth_getCompilers`
 Not supported
 
-| eth_newFilter                           | Partially supported | Ignores logs that originated from blocks that were "rotated out"              |
+## `eth_newFilter`
+Creates new logs (events) filter and returns it's ID
+Ignores logs that originated from blocks that were "rotated out"
+### Parameters
+1. Object:
+ - "fromBlock"
+ - "toBlock"
+ - "address"
+ - "topics"
+
 | eth_newBlockFilter                      |      Supported      |                                                                               |
 | eth_newPendingTransactionFilter         |      Supported      |                                                                               |
 | eth_uninstallFilter                     |      Supported      |                                                                               |
 | eth_getFilterChanges                    |      Supported      |                                                                               |
 | eth_getFilterLogs                       |      Supported      |                                                                               |
 | eth_getLogs                             | Partially supported | Ignores logs that originated from blocks that were "rotated out"              |
+
 | eth_getWork                             |      Supported      |                                                                               |
 | eth_submitWork                          |    Not supported    |                                                                               |
 | eth_submitHashrate                      |      Supported      |                                                                               |
