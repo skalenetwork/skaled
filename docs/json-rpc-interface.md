@@ -461,10 +461,32 @@ Same as `eth_getFilterChanges`
 #### Exceptions
 Throws `INVALID_PARAMS` if block does not exist, if response size is exceeded, or `fromBlock` or `toBlock` are present together with `blockHash`
 
-| eth_getWork                             |      Supported      |                                                                               |
-| eth_submitWork                          |    Not supported    |                                                                               |
-| eth_submitHashrate                      |      Supported      |                                                                               |
-| eth_getProof                            |    Not supported    |                                                                               |
+### `eth_getWork`
+Returns three magic hashes
+#### Parameters
+None
+#### Returns
+`Array` of three "0x"-prefixed hex `String`s, 32 bytes each
+
+### `eth_submitWork`
+Weird legacy method
+#### Parameters
+1. nonce: decimal or "0x"-prefixed hexadecimal number, 8 bytes;
+2. powHash: decimal or "0x"-prefixed hexadecimal number, 32 bytes;
+3. mixDigest: decimal or "0x"-prefixed hexadecimal number, 32 bytes.
+#### Returns
+`true`
+
+### `eth_submitHashrate`
+Weird legacy method
+#### Parameters
+1. hashrate: decimal or "0x"-prefixed hexadecimal number, 32 bytes;
+2. miner id: decimal or "0x"-prefixed hexadecimal number, 32 bytes.
+#### Returns
+`true`
+
+### `eth_getProof`
+Not supported
 
 ## `personal_*` Methods
 Not supported
