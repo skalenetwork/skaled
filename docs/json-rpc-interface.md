@@ -562,8 +562,24 @@ Get number of transactions in a block
 Same as `eth_getFilterChanges`
 
 ### `eth_getStorageRoot`
+Get account's `storageRoot` (according to Yellow Paper)
+#### Parameters
+1. Address: "0x"-prefixed hex `String`, 20 bytes;
+2. Block number:
+ - "latest" or "pending" - latest value is returned;
+ - "earliest" - value before block 1 is returned;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal - value after execution of specified block is returned.
+#### Returns
+"0x"-prefixed hex `String` (32 bytes). If account cannot be found - `sha3( rlp( "" ) )` is returned
+
 ### `eth_inspectTransaction`
+
 ### `eth_maxPriorityFeePerGas`
+#### Parameters
+None
+#### Returns
+"0x0"
+
 ### `eth_notePassword`
 ### `eth_pendingTransactions`
 ### `eth_signTransaction`
