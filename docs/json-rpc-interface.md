@@ -588,19 +588,21 @@ Parse binary transaction into fields
 1. Raw transaction: "0x"-prefixed hex `String`
 #### Returns
 Object:
- - "data"
+ - "to"
  - "from"
  - "gas"
  - "gasPrice"
- - "hash"
+ - "value"
+ - "data" 
  - "nonce"
  - "r"
  - "s"
- - "sighash"
- - "to"
- - "type"
  - "v"
- - "value"
+ - "type"
+ - "yParity"
+ - "accessList"
+ - "maxPriorityFeePerGas"
+ - "maxFeePerGas"
 
 ### `eth_maxPriorityFeePerGas`
 #### Parameters
@@ -634,36 +636,30 @@ Sign transaction using stored private key and make raw transaction
 #### Returns
 Object:
  - "raw": "0x"-prefixed hex `String`;
- - "tx": object:
-   - "to"
-   - "from"
-   - "gas"
-   - "gasPrice"
-   - "value"
-   - "data" 
-   - "nonce"
-   - "r"
-   - "s"
-   - "v"
-   - "type"
-   - "yParity"
-   - "accessList"
-   - "maxPriorityFeePerGas"
-   - "maxFeePerGas"
+ - "tx": same as in `eth_inspectTransaction`
 
 ### `eth_subscribe`
-Works in WS, unsupported through HTTP(S)
+HTTP(S): unsupported, always throws exception
+
+WS(S): subscribe for new events/transactions/blocks/stats
 #### Parameters
-1. Object
-#### Exceptions
-Always throws exception
+1. `String` subscription type:
+ - "logs";
+ - "newPendingTransactions";
+ - "newHeads";
+ - "skaleStats".
+2. Used only when type="logs": object, format is the same as in `eth_newFilter`
+#### Returns
+"0x"-prefixed hex `String` - subscription id
 
 ### `eth_unsubscribe`
-Works in WS, unsupported through HTTP(S)
+HTTP(S): unsupported, always throws exception
+
+WS(S): unsubscribe from events/transactions/blocks/stats (see `eth_subscribe`)
 #### Parameters
-1. Object
-#### Exceptions
-Always throws exception
+1. id: decimal or "0x"-prefixed hexadecimal number `String` OR number literal - previously obtained through `eth_subscribe`
+#### Returns
+None
 
 ## `personal_*` Methods
 Not supported
