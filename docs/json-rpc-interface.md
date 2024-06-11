@@ -367,12 +367,13 @@ Return `null`
 Not supported
 
 ### `eth_newFilter`
-Creates new logs (events) filter and returns it's ID
 
 | Variability |   |
 |-----|-----------|
 | ETH | Same |
 | Historic | Same |
+
+Creates new logs (events) filter and returns it's ID
 
 #### Parameters
 1. Object:
@@ -511,9 +512,6 @@ Remove proxy account
 #### Returns
 `true` if account was found and removed, `false` otherwise
 
-### `eth_unsubscribe`
-Not supported
-
 ### `eth_chainId`
 Returns chainID from config.json as hex string
 #### Parameters
@@ -562,7 +560,15 @@ Get number of transactions in a block
 Same as `eth_getFilterChanges`
 
 ### `eth_getStorageRoot`
+
+| Variability |   |
+|-----|-----------|
+| ETH | Unsupported both in Ethereum and in SKALE |
+| Historic | Supported |
+
 Get account's `storageRoot` (according to Yellow Paper)
+Noramal node - call always throws exception.
+Historic node - see below.
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Block number:
@@ -573,6 +579,28 @@ Get account's `storageRoot` (according to Yellow Paper)
 "0x"-prefixed hex `String` (32 bytes). If account cannot be found - `sha3( rlp( "" ) )` is returned
 
 ### `eth_inspectTransaction`
+| Variability |   |
+|-----|-----------|
+| ETH | Unsupported |
+| Historic | Same |
+Parse binary transaction into fields
+#### Parameters
+1. Raw transaction: "0x"-prefixed hex `String`
+#### Returns
+Object:
+ - "data"
+ - "from"
+ - "gas"
+ - "gasPrice"
+ - "hash"
+ - "nonce"
+ - "r"
+ - "s"
+ - "sighash"
+ - "to"
+ - "type"
+ - "v"
+ - "value"
 
 ### `eth_maxPriorityFeePerGas`
 #### Parameters
@@ -581,9 +609,61 @@ None
 "0x0"
 
 ### `eth_notePassword`
+Weird legacy method
+#### Parameters
+1. `String` - ignored
+#### Returns
+`false`
+
 ### `eth_pendingTransactions`
+Get transaction queue
+#### Parameters
+None
+#### Returns
+ - "to"
+ - "from"
+ - "gas"
+ - "gasPrice"
+ - "value"
+ - "data"
+
 ### `eth_signTransaction`
+Sign transaction using stored private key and make raw transaction
+#### Parameters
+1. Object same as `eth_sendTransaction`
+#### Returns
+Object:
+ - "raw": "0x"-prefixed hex `String`;
+ - "tx": object:
+   - "to"
+   - "from"
+   - "gas"
+   - "gasPrice"
+   - "value"
+   - "data" 
+   - "nonce"
+   - "r"
+   - "s"
+   - "v"
+   - "type"
+   - "yParity"
+   - "accessList"
+   - "maxPriorityFeePerGas"
+   - "maxFeePerGas"
+
 ### `eth_subscribe`
+Works in WS, unsupported through HTTP(S)
+#### Parameters
+1. Object
+#### Exceptions
+Always throws exception
+
+### `eth_unsubscribe`
+Works in WS, unsupported through HTTP(S)
+#### Parameters
+1. Object
+#### Exceptions
+Always throws exception
 
 ## `personal_*` Methods
 Not supported
