@@ -316,7 +316,7 @@ Return details about transaction
  - "latest" or "pending" - latest block is used;
  - "earliest" - block 0;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
-3. Transaction index: either decimal or "0x"-prefixed hexadecimal `String`
+2. Transaction index: either decimal or "0x"-prefixed hexadecimal `String`
 #### Returns
 Same as `eth_getTransactionByHash`
 
@@ -497,22 +497,75 @@ Weird legacy method
 ### `eth_getProof`
 Not supported
 
+### `eth_register`
+Add proxy account, whatever that can mean
+#### Parameters
+1. Address: "0x"-prefixed hex `String`, 20 bytes
+#### Returns
+"0x"-prefixed hex `String` - id of added account
+
 ### `eth_unregister`
+Remove proxy account
+#### Parameters
+1. id: decimal or "0x"-prefixed hexadecimal number, previously obtained through `eth_register`
+#### Returns
+`true` if account was found and removed, `false` otherwise
+
 ### `eth_unsubscribe`
+Not supported
+
 ### `eth_chainId`
+Returns chainID from config.json as hex string
+#### Parameters
+None
+#### Returns
+"0x"-prefixed hex `String`
+
 ### `eth_feeHistory`
 ### `eth_fetchQueuedTransactions`
+
 ### `eth_flush`
+Weird mystery method. Probably it will mine a block with PoW
+#### Parameters
+None
+#### Returns
+`true`
+
 ### `eth_createAccessList`
+Returns empy access list
+#### Parameters
+1. Transaction object same as in `eth_sendTransaction`;
+2. `String` block hash or number (ignored).
+#### Returns
+Object:
+ - "accessList" - empty list;
+ - "gasUsed" - "0x" prefixed hex `String` - result of `eth_estimateGas`.
+
 ### `eth_getBlockTransactionCountByHash`
+Get number of transactions in a block
+#### Parameters
+1. Block hash: "0x"-prefixed hex `String`, 32 bytes
+#### Returns
+"0x"-prefixed hex `String`
+
 ### `eth_getBlockTransactionCountByNumber`
+Get number of transactions in a block
+#### Parameters
+1. Block number:
+ - "latest" or "pending" - latest block is used;
+ - "earliest" - block 0;
+ - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+#### Returns
+"0x"-prefixed hex `String`
+
 ### `eth_getFilterChangesEx`
+Same as `eth_getFilterChanges`
+
 ### `eth_getStorageRoot`
 ### `eth_inspectTransaction`
 ### `eth_maxPriorityFeePerGas`
 ### `eth_notePassword`
 ### `eth_pendingTransactions`
-### `eth_register`
 ### `eth_signTransaction`
 ### `eth_subscribe`
 
