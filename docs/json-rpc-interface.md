@@ -652,6 +652,52 @@ WS(S): subscribe for new events/transactions/blocks/stats
 #### Returns
 "0x"-prefixed hex `String` - subscription id
 
+#### Events format
+Depending on the type of subscription, different data is pushed back to the client when requested event happens.
+1. type="logs":
+```
+{
+"jsonrpc":"2.0",
+"method":"eth_subscription",
+"params":{
+    "result":{
+        "address":"0x"-prefixed hex `String`, 20 bytes,
+        "blockHash":"0x"-prefixed hex `String`, 32 bytes,
+        "blockNumber":"0x"-prefixed hex `String`,
+        "data":"0x"-prefixed hex `String`,
+        "logIndex": integer literal,
+        "topics": array of "0x"-prefixed hex `String`s, 32 bytes each,
+        "transactionHash":"0x"-prefixed hex `String`, 32 bytes,
+        "transactionIndex": integer literal
+    },
+    "subscription": "0x"-prefixed hex `String`, subscription id
+    }
+}
+```
+2. type="newHeads"
+```
+{
+"jsonrpc":"2.0",
+"method":"eth_subscription",
+"params":{
+    "result": see `eth_getBlockByHash`, includeTransactions=false,
+    "subscription": "0x"-prefixed hex `String`, subscription id
+    }
+}
+```
+
+3. type="newPendingTransactions"
+```
+{
+"jsonrpc":"2.0",
+"method":"eth_subscription",
+"params":{
+    "result": "0x"-prefixed hex `String`, 32 bytes - transaction hash,
+    "subscription": "0x"-prefixed hex `String`, subscription id
+    }
+}
+```
+
 ### `eth_unsubscribe`
 HTTP(S): unsupported, always throws exception
 
