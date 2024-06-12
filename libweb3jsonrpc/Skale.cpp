@@ -591,7 +591,8 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 namespace snapshot {
 
 bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
-    fn_progress_t onProgress, bool isBinaryDownload, std::string* pStrErrorDescription ) {
+    fn_progress_t onProgress, bool isBinaryDownload, std::string* pStrErrorDescription,
+    bool forArchiveNode ) {
     if ( pStrErrorDescription )
         pStrErrorDescription->clear();
     std::ofstream f;
@@ -645,6 +646,7 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         joIn["method"] = "skale_getSnapshot";
         nlohmann::json joParams = nlohmann::json::object();
         joParams["blockNumber"] = block_number;
+        joParams["forArchiveNode"] = forArchiveNode;
         joIn["params"] = joParams;
         skutils::rest::data_t d = cli.call( joIn );
         if ( !d.err_s_.empty() ) {
