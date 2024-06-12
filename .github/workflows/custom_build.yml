@@ -43,6 +43,9 @@ jobs:
       cmake_options: ${{ github.event.inputs.cmake_options }}
       build_type: ${{ github.event.inputs.build_type }}
       node_type: Core
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   historic_build:
     if: github.event.inputs.skaled_type == 'Historic' || github.event.inputs.skaled_type == 'All'
@@ -53,3 +56,6 @@ jobs:
       cmake_options: ${{ github.event.inputs.cmake_options }}
       build_type: ${{ github.event.inputs.build_type }}
       node_type: Historic
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
