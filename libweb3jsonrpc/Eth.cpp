@@ -602,7 +602,8 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
         BlockNumber bn = ( h == LatestBlock || h == PendingBlock ) ? client()->number() : h;
 
         u256 baseFeePerGas;
-        if ( EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
+        if ( bn > 0 &&
+             EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
             try {
                 baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
