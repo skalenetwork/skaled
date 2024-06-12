@@ -715,3 +715,40 @@ Not supported
 
 ## `shh_*` Methods
 Not supported
+
+## Internal Methods
+### setSchainExitTime
+### skale_protocolVersion
+### skale_receiveTransaction
+### skale_shutdownInstance
+### skale_getSnapshot
+### skale_downloadSnapshotFragment
+### skale_getSnapshotSignature
+### skale_getLatestSnapshotBlockNumber
+### skale_getLatestBlockNumber
+### skale_getDBUsage
+### oracle_submitRequest
+### oracle_checkResult
+### debug_accountRangeAt
+### debug_traceTransaction
+### debug_storageRangeAt
+### debug_preimage
+### debug_traceBlockByNumber
+### debug_traceBlockByHash
+### debug_traceCall
+### debug_getFutureTransactions
+
+## Private Methods
+### debug_pauseConsensus
+### debug_pauseBroadcast
+### debug_forceBlock
+### debug_forceBroadcast
+### debug_interfaceCall
+### debug_getVersion
+### debug_getArguments
+### debug_getConfig
+### debug_getSchainName
+### debug_getSnapshotCalculationTime
+### debug_getSnapshotHashCalculationTime
+### debug_doStateDbCompaction
+### debug_doBlocksDbCompaction
