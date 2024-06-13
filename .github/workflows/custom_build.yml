@@ -42,7 +42,7 @@ jobs:
       branch_name: ${{ github.event.inputs.branch_name }}
       cmake_options: ${{ github.event.inputs.cmake_options }}
       build_type: ${{ github.event.inputs.build_type }}
-      node_type: Core
+      node_type: core
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -55,7 +55,7 @@ jobs:
       branch_name: ${{ github.event.inputs.branch_name }}
       cmake_options: ${{ github.event.inputs.cmake_options }}
       build_type: ${{ github.event.inputs.build_type }}
-      node_type: Historic
+      node_type: historic
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
