@@ -6,6 +6,8 @@ This doc describes all supported JSON-RPC methods, their parameters and return v
 
 This doc does NOT describe all possible erroneous situations.
 
+Parameters marked as `OPTIONAL` are optional, otherwise they are required!
+
 ## `web3_*` Methods
 
 ### `web3_clientVersion`
