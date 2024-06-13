@@ -198,7 +198,9 @@ Returns the balance of the account of given address
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes
 2. Block number: `String` that is interpreted differently for normal and historic builds:
+
 Normal build: parameter ignored, latest balance is always returned.
+
 Historic build:
  - "latest" or "pending" - latest balance is returned;
  - "earliest" - balance before block 1 is returned;
@@ -235,7 +237,9 @@ Returns the number of transactions sent from an address.
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Block number: `String` that is interpreted differently for normal and historic builds:
+
 Normal build: parameter ignored, latest value is always returned.
+
 Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
@@ -313,8 +317,8 @@ Historic build:
 ### `eth_sign`
 | Compatibility |   |
 |-----|-----------|
-| Core vs ETH | Not supported |
-| Historic vs ETH | Not supported |
+| Core vs ETH | Not supported in SKALE|
+| Historic vs ETH | Not supported in SKALE |
 
 Not supported
 
@@ -589,11 +593,11 @@ Creates new logs (events) filter and returns it's ID
 #### Parameters
 1. Object:
  - "fromBlock" OPTIONAL defaults to "earliest" with values:
-  - "earliest", "latest" or "pending";
-  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+   - "earliest", "latest" or "pending";
+   - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
  - "toBlock" OPTIONAL defaults to "pending" with values:
-  - "earliest", "latest" or "pending";
-  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+   - "earliest", "latest" or "pending";
+   - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
  - "address" OPTIONAL: "0x"-prefixed hex `String`, 20 bytes;
  - "topics" OPTIONAL: `Array`, see https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_newfilter
 #### Returns
@@ -699,11 +703,11 @@ Same as `eth_getFilterLogs`, but doesn't require filter creation
 
 1. Object:
  - "fromBlock" OPTIONAL defaults to "earliest" with values:
-  - "earliest", "latest" or "pending";
-  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+   - "earliest", "latest" or "pending";
+   - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
  - "toBlock" OPTIONAL defaults to "pending" with values:
-  - "earliest", "latest" or "pending";
-  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
+   - "earliest", "latest" or "pending";
+   - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
  - "address" OPTIONAL: "0x"-prefixed hex `String`, 20 bytes;
  - "topics" OPTIONAL: `Array`, see https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_newfilter
  - "blockHash" OPTIONAL: "0x"-prefixed hex `String`, 32 bytes; if this field is present, then `fromBlock` and `toBlock` are not allowed.
