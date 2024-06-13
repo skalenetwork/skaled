@@ -219,7 +219,9 @@ Returns the value from a storage position at a given account
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Position: `String` representation of an integer storage position, either decimal or "0x"-prefixed hexadecimal;
 3. Block number: `String` that is interpreted differently for normal and historic builds:
+
 Normal build: parameter ignored, latest value is always returned.
+
 Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
@@ -306,7 +308,9 @@ Returns code at a given address
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Block number: `String` that is interpreted differently for normal and historic builds:
+
 Normal build: parameter ignored, latest value is always returned.
+
 Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
@@ -383,7 +387,9 @@ Execute read-only contract call
 #### Parameters
 1. Same object as in `eth_sendTransaction`. TODO Find out if decimal literals are allowed in ETH
 2. Block number: `String` that is interpreted differently for normal and historic builds:
+
 Normal build: parameter ignored, latest value is always returned.
+
 Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
@@ -416,32 +422,34 @@ Return details about block
 2. Include transactions: boolean literal - true/false
 #### Returns
 `null` if block is absent or rotated out.
+
 Otherwise - object with the following fields:
-TODO add descriptions
- - "hash"
- - "parentHash"
- - "sha3Uncles"
- - "author"
- - "stateRoot"
- - "transactionsRoot"
- - "receiptsRoot"
- - "number"
- - "gasUsed"
- - "gasLimit"
- - "extraData"
- - "logsBloom"
- - "timestamp"
- - "miner"
- - "nonce"
- - "seedHash"
- - "mixHash"
- - "boundary"
- - "difficulty"
- - "totalDifficulty"
- - "size"
- - "uncles"
- - "baseFeePerGas"
- - "transactions" TODO document skipping of invalid
+ - "hash": "0x"-prefixed hex `String`, 32 bytes;
+ - "parentHash": "0x"-prefixed hex `String`, 32 bytes;
+ - "sha3Uncles": "0x"-prefixed hex `String`, 32 bytes;
+ - "author": "0x"-prefixed hex `String`, 20 bytes - address of schainOwner;
+ - "stateRoot": "0x"-prefixed hex `String`, 32 bytes;
+ - "transactionsRoot": "0x"-prefixed hex `String`, 32 bytes;
+ - "receiptsRoot": "0x"-prefixed hex `String`, 32 bytes;
+ - "number": decimal literal;
+ - "gasUsed": decimal literal;
+ - "gasLimit": decimal literal;
+ - "extraData": `String` "0x736b616c65" ("skale" in ASCII);
+ - "logsBloom": "0x"-prefixed hex `String`, 256 bytes;
+ - "timestamp": decimal literal;
+ - "miner": same as `author`;
+ - "nonce": `String` "0x0000000000000000";
+ - "seedHash": `String` "0x0000000000000000000000000000000000000000000000000000000000000000", 32 bytes;
+ - "mixHash": `String` "0x0000000000000000000000000000000000000000000000000000000000000000", 32 bytes;
+ - "boundary": `String` "0x0000000000000000000000000000000000000000000000000000000000000000", 32 bytes;
+ - "difficulty": decimal literal 0;
+ - "totalDifficulty": decimal literal 0;
+ - "size": decimal literal;
+ - "uncles": empty arra;
+ - "baseFeePerGas": "0x"-prefixed hex `String`, gas price in block, field is present only if EIP-1559 is enabled; for rotated out old blocks this field is set to latest gasPrice;
+ - "transactions": array of transaction hashes ("0x"-prefixed hex `String`s, 32 bytes) OR detaled transactions info (same as in `eth_getTransactionByHash`) if 2nd argument was `true`;
+ 
+TODO document skipping of invalid
 
 ### `eth_getBlockByNumber`
 | Compatibility |   |
@@ -472,27 +480,27 @@ Return details about transaction
 1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
 #### Returns
 `null` if transaction not found.
+
 Otherwise, object with the following fields:
-TODO describe
- - "blockHash"
- - "blockNumber"
- - "from"
- - "gas"
- - "gasPrice"
- - "hash"
- - "input"
- - "nonce"
- - "to"
- - "transactionIndex"
- - "value"
- - "v"
- - "r"
- - "s"
- - "type"
- - "yParity"
- - "accessList"
- - "maxPriorityFeePerGas"
- - "maxFeePerGas"
+ - "blockHash": "0x"-prefixed hex `String`, 32 bytes;
+ - "blockNumber": decimal literal;
+ - "from": "0x"-prefixed hex `String`, 20 bytes;
+ - "gas": decimal literal;
+ - "gasPrice": decimal literal;
+ - "hash": "0x"-prefixed hex `String`, 32 bytes;
+ - "input": "0x"-prefixed hex `String` OR "0x" if there is no input;
+ - "nonce": decimal literal;
+ - "to": "0x"-prefixed hex `String`, 20 bytes OR `null` if contract creation;
+ - "transactionIndex": decimal literal;
+ - "value": decimal literal;
+ - "v": "0x"-prefixed hex `String`;
+ - "r": "0x"-prefixed hex `String`, 32 bytes;
+ - "s": "0x"-prefixed hex `String`, 32 bytes;
+ - "type": "0x"-prefixed hex `String`: "0x0", "0x1", or "0x2";
+ - "yParity": "0x"-prefixed hex `String` (present in `type 1` and `type 2`);
+ - "accessList": present in `type 1` and `type 2`;
+ - "maxPriorityFeePerGas": "0x"-prefixed hex `String` (present in `type 2` only);
+ - "maxFeePerGas": "0x"-prefixed hex `String` (present in `type 2` only);
 
 ### `eth_getTransactionByBlockHashAndIndex`
 | Compatibility |   |
@@ -534,23 +542,23 @@ Get transaction receipt
 1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
 #### Returns
 `null` if transaction not mined.
+
 Otherwise - object with the following fields:
-TODO descrition
- - "from"
- - "to"
- - "transactionHash"
- - "transactionIndex"
- - "blockHash"
- - "blockNumber"
- - "cumulativeGasUsed"
- - "gasUsed"
- - "contractAddress"
- - "logs"
- - "logsBloom"
- - "status"
- - "revertReason" OPTIONAL
- - "type"
- - "effectiveGasPrice"
+ - "from": "0x"-prefixed hex `String`, 20 bytes;
+ - "to": "0x"-prefixed hex `String`, 32 bytes (contains all 0s if contract deployment);
+ - "transactionHash": "0x"-prefixed hex `String`, 32 bytes;
+ - "transactionIndex": decimal literal;
+ - "blockHash": "0x"-prefixed hex `String`, 32 bytes;
+ - "blockNumber": decimal literal;
+ - "cumulativeGasUsed": decimal literal;
+ - "gasUsed": decimal literal;
+ - "contractAddress": "0x"-prefixed hex `String`, 20 bytes if deployment OR `null` if not;
+ - "logs": `Array`;
+ - "logsBloom": "0x"-prefixed hex `String`, 256 bytes;
+ - "status": `String` "0x0" or "0x1";
+ - "revertReason" OPTIONAL: `String`;
+ - "type": "0x"-prefixed hex `String`: "0x0", "0x1", or "0x2";
+ - "effectiveGasPrice": "0x"-prefixed hex `String`.
 
 ### `eth_getUncleByBlockHashAndIndex`
 | Compatibility |   |
@@ -875,22 +883,7 @@ Parse binary transaction into fields
 #### Parameters
 1. Raw transaction: "0x"-prefixed hex `String`
 #### Returns
-Object:
- - "to"
- - "from"
- - "gas"
- - "gasPrice"
- - "value"
- - "data" 
- - "nonce"
- - "r"
- - "s"
- - "v"
- - "type"
- - "yParity"
- - "accessList"
- - "maxPriorityFeePerGas"
- - "maxFeePerGas"
+Object, see `eth_getTransactionByHash`
 
 ### `eth_maxPriorityFeePerGas`
 #### Parameters
@@ -910,23 +903,7 @@ Get transaction queue
 #### Parameters
 None
 #### Returns
- - "to"
- - "from"
- - "gas"
- - "gasPrice"
- - "value"
- - "data"
- - "nonce"
- - "r"
- - "s"
- - "v"
- - "type"
- - "yParity"
- - "accessList"
- - "maxPriorityFeePerGas"
- - "maxFeePerGas"
- - "hash"
- - "sighash"
+`Array` of `Object`s, see `eth_getTransactionByHash`. `sighash` equals to `hash`
 
 ### `eth_subscribe`
 HTTP(S): unsupported, always throws exception
@@ -1051,23 +1028,7 @@ Get future transaction queue
 #### Parameters
 None
 #### Returns
- - "to"
- - "from"
- - "gas"
- - "gasPrice"
- - "value"
- - "data"
- - "nonce"
- - "r"
- - "s"
- - "v"
- - "type"
- - "yParity"
- - "accessList"
- - "maxPriorityFeePerGas"
- - "maxFeePerGas"
- - "hash"
- - "sighash"
+See `eth_pendingTransactions`
 
 ## Debug Methods
 Enabled by special flag only
