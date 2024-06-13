@@ -38,7 +38,7 @@ jobs:
       BUILD_TYPE: ${{ inputs.build_type }}
     steps:
       - name: Prepare workflow variables
-        if: inputs.node_type != 'Historic'
+        if: inputs.node_type != 'historic'
         run: |
           [[ $BUILD_TYPE = "Debug" ]] && export VERSION_SUFFIX=debug || export VERSION_SUFFIX=release
           export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
@@ -46,7 +46,7 @@ jobs:
           export CMAKE_OPTS="${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
       - name: Prepare workflow variables (historic)
-        if: inputs.node_type == 'Historic'
+        if: inputs.node_type == 'historic'
         run: |
           [[ $BUILD_TYPE = "Debug" ]] && export VERSION_SUFFIX=debug || export VERSION_SUFFIX=release
           export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX-historic
@@ -164,5 +164,5 @@ jobs:
         uses: actions/upload-artifact@v2
         if: ${{ always() }}
         with:
-          name: skaled
+          name: skaled-${{ inputs.node_type }}
           path: ./build/skaled/skaled
