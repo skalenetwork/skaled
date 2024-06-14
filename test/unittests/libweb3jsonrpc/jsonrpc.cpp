@@ -3134,6 +3134,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["accessList"].isArray() );
     BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+
+    BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_getBlockByNumber( "0x0", false ) );
 }
 
 BOOST_AUTO_TEST_CASE( eip2930RpcMethods ) {
