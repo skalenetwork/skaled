@@ -7,6 +7,7 @@
 
 #include "ModularServer.h"
 
+#include <libdevcore/CommonJS.h>
 #include <libethereum/TransactionReceipt.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 
@@ -222,8 +223,7 @@ public:
                                     jsonrpc::JSON_OBJECT, "param2", jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_createAccessListI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_feeHistory", jsonrpc::PARAMS_BY_POSITION,
-                                    jsonrpc::JSON_OBJECT, "param1", jsonrpc::JSON_STRING, "param2",
-                                    jsonrpc::JSON_STRING, "param3", jsonrpc::JSON_ARRAY, NULL ),
+                                    jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::EthFace::eth_feeHistoryI );
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_maxPriorityFeePerGas",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
@@ -449,8 +449,12 @@ public:
         if ( !request.isArray() || request.size() != 3 )
             BOOST_THROW_EXCEPTION(
                 jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
-        response =
-            this->eth_feeHistory( request[0u].asString(), request[1u].asString(), request[2u] );
+        if ( !request[0u].isString() && !request[0u].isUInt() )
+            BOOST_THROW_EXCEPTION(
+                jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+        auto blockCount = request[0u].isString() ? dev::jsToU256( request[0u].asString() ) :
+                                                   dev::u256( request[0u].asUInt() );
+        response = this->eth_feeHistory( blockCount, request[1u].asString(), request[2u] );
     }
     inline virtual void eth_maxPriorityFeePerGasI(
         const Json::Value& request, Json::Value& response ) {
@@ -525,7 +529,7 @@ public:
     virtual Json::Value eth_createAccessList(
         const Json::Value& param1, const std::string& param2 ) = 0;
     virtual Json::Value eth_feeHistory(
-        const std::string& param1, const std::string& param2, const Json::Value& param3 ) = 0;
+        dev::u256 param1, const std::string& param2, const Json::Value& param3 ) = 0;
     virtual std::string eth_maxPriorityFeePerGas() = 0;
 };
 
