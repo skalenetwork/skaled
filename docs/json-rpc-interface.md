@@ -773,7 +773,7 @@ Not supported
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
-Add proxy account, whatever that can mean
+Add proxy account
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes
 #### Returns
