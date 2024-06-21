@@ -23,12 +23,17 @@
 #include "LevelDB.h"
 
 const leveldb::Snapshot* dev::db::LevelDBSnap::getSnapHandle() const {
+    LDB_CHECK(!m_isClosed)
     return m_snap;
 }
 
 using std::string, std::runtime_error;
 
 namespace dev::db {
+
+bool LevelDBSnap::isClosed() const {
+    return m_isClosed;
+}
 
 
 LevelDBSnap::LevelDBSnap(
@@ -92,7 +97,9 @@ uint64_t LevelDBSnap::getCreationTimeMs() const {
     return m_creationTimeMs;
 }
 std::unique_ptr<std::shared_lock<std::shared_mutex>> LevelDBSnap::lockToPreventConcurrentClose()  {
-    return std::make_unique<std::shared_lock<std::shared_mutex>>( m_usageMutex );
+    // we are trying to use the snap, so it should not be closed
+    LDB_CHECK(!m_isClosed);
+    auto result =  std::make_unique<std::shared_lock<std::shared_mutex>>( m_usageMutex );
 }
 
 

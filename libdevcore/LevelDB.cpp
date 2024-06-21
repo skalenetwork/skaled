@@ -172,15 +172,18 @@ std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _sn
 
         auto readOptions = m_readOptions;
 
-        std::unique_ptr<std::shared_lock<std::shared_mutex>> snapshotUseLock;
         if (_snap) {
-            readOptions.snapshot = _snap->getSnapHandle();
-            // create as shared lock on snap use mutex that will be unlocked on function exit
-            // this make sure snap is not concurrently closed while used
-            snapshotUseLock = _snap->lockToPreventConcurrentClose();
-        }
 
-        status = m_db->Get( readOptions, key, &value );
+            // read from snap
+            readOptions.snapshot = _snap->getSnapHandle();
+            // this make sure snap is not concurrently closed while used in Get()
+            auto snapshotUseLock = _snap->lockToPreventConcurrentClose();
+            LDB_CHECK(!_snap->isClosed())
+            status = m_db->Get( readOptions, key, &value );
+        } else {
+            // read from live DB
+            status = m_db->Get( readOptions, key, &value );
+        }
     }
     if ( status.IsNotFound() )
         return std::string();
@@ -203,15 +206,17 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
         SharedDBGuard lock( *this );
         auto readOptions = m_readOptions;
 
-        std::unique_ptr<std::shared_lock<std::shared_mutex>> snapshotClosePreventionLock;
         if (_snap) {
+            // read from snap
             readOptions.snapshot = _snap->getSnapHandle();
-            // create as shared lock on snap close mutex that will be unlocked on function exit
-            // this make sure snap is not concurrently closed while used
-            snapshotClosePreventionLock = _snap->lockToPreventConcurrentClose();
+            // this make sure snap is not concurrently closed while used in Get()
+            auto snapshotUseLock = _snap->lockToPreventConcurrentClose();
+            status = m_db->Get( readOptions, key, &value );
+        } else {
+            // read from live DB
+            status = m_db->Get( readOptions, key, &value );
         }
 
-        status = m_db->Get( readOptions, key, &value );
     }
     if ( status.IsNotFound() )
         return false;

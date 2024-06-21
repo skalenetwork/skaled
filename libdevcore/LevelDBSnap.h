@@ -55,6 +55,7 @@ public:
     uint64_t getObjectId() const;
 
     const leveldb::Snapshot* getSnapHandle() const;
+    bool isClosed() const;
 
 private:
 
