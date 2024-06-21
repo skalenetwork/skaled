@@ -211,6 +211,7 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
             readOptions.snapshot = _snap->getSnapHandle();
             // this make sure snap is not concurrently closed while used in Get()
             auto snapshotUseLock = _snap->lockToPreventConcurrentClose();
+            LDB_CHECK(!_snap->isClosed())
             status = m_db->Get( readOptions, key, &value );
         } else {
             // read from live DB
