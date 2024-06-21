@@ -166,19 +166,8 @@ std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _sn
     leveldb::Slice const key( _key.data(), _key.size() );
     std::string value;
 
-    leveldb::Status status;
-    {
-        SharedDBGuard readLock( *this );
+    auto status = getValue( m_readOptions, key, value, _snap );
 
-        auto readOptions = m_readOptions;
-
-        if (_snap) {
-            status = getFromSnap( readOptions, key, value, _snap );
-        } else {
-            // read from live DB
-            status = m_db->Get( readOptions, key, &value );
-        }
-    }
     if ( status.IsNotFound() )
         return std::string();
 
@@ -190,24 +179,12 @@ bool LevelDB::exists( Slice _key ) const {
     return exists(_key, nullptr);
 }
 
-
-
 bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) const {
     std::string value;
     leveldb::Slice const key( _key.data(), _key.size() );
-    leveldb::Status status;
-    {
-        SharedDBGuard lock( *this );
-        auto readOptions = m_readOptions;
 
-        if (_snap) {
-            status = getFromSnap( readOptions, key, value, _snap );
-        } else {
-            // read from live DB
-            status = m_db->Get( readOptions, key, &value );
-        }
+    auto status = getValue( m_readOptions, key, value, _snap );
 
-    }
     if ( status.IsNotFound() )
         return false;
 
@@ -215,14 +192,19 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
     return true;
 }
 
-leveldb::Status LevelDB::getFromSnap( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
-    string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
-    LDB_CHECK(_snap);
-    _readOptions.snapshot = _snap->getSnapHandle();
-    // this make sure snap is not concurrently closed while used in Get()
-    auto snapUseLock = _snap->lockToPreventConcurrentClose();
-    LDB_CHECK( !_snap->isClosed() )
-    return m_db->Get( _readOptions, _key, &_value );
+leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions,
+    const leveldb::Slice& _key,
+    std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
+    SharedDBGuard lock( *this );
+    if (_snap) {
+        _readOptions.snapshot = _snap->getSnapHandle();
+        // this make sure snap is not concurrently closed while used in Get()
+        auto snapUseLock = _snap->lockToPreventConcurrentClose();
+        LDB_CHECK( !_snap->isClosed() )
+        return m_db->Get( _readOptions, _key, &_value );
+    } else {
+        return m_db->Get( _readOptions, _key, &_value );
+    }
 }
 
 void LevelDB::insert( Slice _key, Slice _value ) {
