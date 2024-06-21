@@ -466,9 +466,8 @@ void LevelDB::cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
     // now we iterate over snaps closing the ones that are not more in use
     auto currentTimeMs = getCurrentTimeMs();
     for ( auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
-        auto snap = it->second;
-        if ( snap.use_count() == 1 ||  // no one using this snap anymore except this map
-             snap->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  {
+        if ( it->second.use_count() == 1 ||  // no one using this snap anymore except this map
+             it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  {
             it->second->close( m_db, m_dbIdentifier );
             it = oldSnaps.erase( it );  // Erase returns the iterator to the next element
         } else {
