@@ -173,7 +173,7 @@ std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _sn
         auto readOptions = m_readOptions;
 
         if (_snap) {
-            status = getFromSnap( _snap, value, key, readOptions );
+            status = getFromSnap( readOptions, key, value, _snap );
         } else {
             // read from live DB
             status = m_db->Get( readOptions, key, &value );
@@ -201,7 +201,7 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
         auto readOptions = m_readOptions;
 
         if (_snap) {
-            status = getFromSnap( _snap, value, key, readOptions );
+            status = getFromSnap( readOptions, key, value, _snap );
         } else {
             // read from live DB
             status = m_db->Get( readOptions, key, &value );
@@ -215,8 +215,8 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
     return true;
 }
 
-leveldb::Status LevelDB::getFromSnap( const std::shared_ptr< LevelDBSnap >& _snap, string& _value,
-    const leveldb::Slice& _key, leveldb::ReadOptions _readOptions ) const {
+leveldb::Status LevelDB::getFromSnap( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
+    string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     LDB_CHECK(_snap);
     _readOptions.snapshot = _snap->getSnapHandle();
     // this make sure snap is not concurrently closed while used in Get()

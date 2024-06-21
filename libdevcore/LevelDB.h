@@ -165,8 +165,8 @@ private:
     void openDBInstanceUnsafe();
     void reopenDataBaseIfNeeded();
     void cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs );
-    leveldb::Status getFromSnap( const std::shared_ptr< LevelDBSnap >& _snap, std::string& _value,
-        const leveldb::Slice& _key, leveldb::ReadOptions _readOptions ) const;
+    leveldb::Status getFromSnap( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
+        std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
 };
 
 }  // namespace dev::db
