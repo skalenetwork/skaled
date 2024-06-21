@@ -116,7 +116,7 @@ private:
     // corresponding eth_calls complete
     std::map<std::uint64_t , std::shared_ptr<LevelDBSnap>> oldSnaps;
     std::shared_ptr<LevelDBSnap> m_lastBlockSnap;
-    // mutex to protect oldSnaps and m_lastBlockSnap;
+    // mutex to protect snaps and m_lastBlockSnap;
     std::shared_mutex m_snapMutex;
 
 
@@ -167,6 +167,7 @@ private:
     void cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs );
     leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
         std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    void closeAllOpenSnapsUnsafe();
 };
 
 }  // namespace dev::db

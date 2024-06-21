@@ -19,8 +19,8 @@
 
 
 #include "LevelDB.h"
-#include "LevelDBSnap.h"
 #include "Assertions.h"
+#include "LevelDBSnap.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
@@ -159,10 +159,10 @@ LevelDB::~LevelDB() {
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
-    return lookup(_key, nullptr);
+    return lookup( _key, nullptr );
 }
 
-std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap ) const {
+std::string LevelDB::lookup( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     leveldb::Slice const key( _key.data(), _key.size() );
     std::string value;
 
@@ -176,10 +176,10 @@ std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _sn
 }
 
 bool LevelDB::exists( Slice _key ) const {
-    return exists(_key, nullptr);
+    return exists( _key, nullptr );
 }
 
-bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) const {
+bool LevelDB::exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     std::string value;
     leveldb::Slice const key( _key.data(), _key.size() );
 
@@ -192,11 +192,10 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
     return true;
 }
 
-leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions,
-    const leveldb::Slice& _key,
+leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
     std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     SharedDBGuard lock( *this );
-    if (_snap) {
+    if ( _snap ) {
         _readOptions.snapshot = _snap->getSnapHandle();
         // this make sure snap is not concurrently closed while used in Get()
         auto snapUseLock = _snap->lockToPreventConcurrentClose();
@@ -267,33 +266,46 @@ void LevelDB::reopenDataBaseIfNeeded() {
     if ( currentTimeMs - m_lastDBOpenTimeMs >= ( uint64_t ) m_reopenPeriodMs ) {
         ExclusiveDBGuard lock( *this );
 
-
-        // we need to close all snaps created for  this database
-        // we wait for FORCE_TIME_MS, hoping that all eth_calls complete nicely
-        // after that we close snapshots forcefully. This means that
-        // eth_calls that take more than FORCE_TIME_MS will return exception
-        // note that in the previous release eth_calls would fail immediately, so
-        // the new behavior is much nicer
-
-        auto startTimeMs = getCurrentTimeMs();
-
-        while (getCurrentTimeMs() <= startTimeMs + FORCE_SNAP_CLOSE_TIME_MS ) {
-            cleanUnusedOldSnapsUnsafe( FORCE_SNAP_CLOSE_TIME_MS );
-        }
-
-        if (oldSnaps.empty()) {
-            // there are still open snaps. Close all of them not waiting for
-            // eth_calls to complete by passing 0 as wait time
-            cleanUnusedOldSnapsUnsafe( 0 );
-        }
-
-        LDB_CHECK(oldSnaps.empty());
+        // before we reopen a database, we need to close all open snaps
+        closeAllOpenSnapsUnsafe();
 
         // releasing unique pointer will cause database destructor to be called that will close db
         m_db.reset();
         // now open db while holding the exclusive lock
         openDBInstanceUnsafe();
     }
+}
+void LevelDB::closeAllOpenSnapsUnsafe() {
+    auto startTimeMs = getCurrentTimeMs();
+
+    if ( m_lastBlockSnap ) {
+        // move current snap block to old snaps so all snaps can be cleaned in a single function
+        oldSnaps.emplace( m_lastBlockSnap->getObjectId(), m_lastBlockSnap );
+        m_lastBlockSnap = nullptr;
+    }
+
+    while (
+        getCurrentTimeMs() <= startTimeMs + FORCE_SNAP_CLOSE_TIME_MS && !oldSnaps.empty() ) {
+        // when LevelDB is reopened we need to close all
+        // all snap handles created for  this database
+        // a snaps is used if  used its shared pointer reference count is more than 1
+        // here we wait for FORCE_TIME_MS, hoping that all eth_calls complete nicely
+        // and all snaps becomes unused
+        cleanUnusedOldSnapsUnsafe( FORCE_SNAP_CLOSE_TIME_MS );
+        usleep( 1000 );
+    }
+
+
+    // now if there are still unclosed steps we will close them forcefully
+        // this means that the corresponding eth_calls will return and error
+
+        if ( !oldSnaps.empty() ) {
+            // there are still open snaps. Close all of them not waiting for
+            // eth_calls to complete by passing 0 as wait time
+            cleanUnusedOldSnapsUnsafe( 0 );
+        }
+
+        LDB_CHECK( oldSnaps.empty() );
 }
 
 void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
@@ -429,11 +441,10 @@ void LevelDB::createBlockSnap( uint64_t _blockId ) {
     SharedDBGuard lock( *this );
 
     auto newSnapHandle = m_db->GetSnapshot();
-    LDB_CHECK(newSnapHandle);
-    auto newSnap = std::make_shared<LevelDBSnap>(
-        _blockId, newSnapHandle,
-        m_dbIdentifier);
-    LDB_CHECK(newSnap);
+    LDB_CHECK( newSnapHandle );
+    auto newSnap = std::make_shared< LevelDBSnap >( _blockId,
+        newSnapHandle, m_dbIdentifier );
+    LDB_CHECK( newSnap );
 
     {
         std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
@@ -452,16 +463,16 @@ void LevelDB::createBlockSnap( uint64_t _blockId ) {
 void LevelDB::cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
     std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
 
-    //now we iterate over oldSnaps closing the ones that are not more in use
+    // now we iterate over snaps closing the ones that are not more in use
     auto currentTimeMs = getCurrentTimeMs();
-    for (auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
-        if ( it->second.use_count() == 1 ||  // no one using this snap anymore except this map
-             it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  //  old
-        {
+    for ( auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
+        auto snap = it->second;
+        if ( snap.use_count() == 1 ||  // no one using this snap anymore except this map
+             snap->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  {
             it->second->close( m_db, m_dbIdentifier );
-            it = oldSnaps.erase(it); // Erase returns the iterator to the next element
+            it = oldSnaps.erase( it );  // Erase returns the iterator to the next element
         } else {
-            ++it; // Only increment if not erasing
+            ++it;  // Only increment if not erasing
         }
     }
 }
@@ -475,11 +486,4 @@ uint64_t LevelDB::getKeyDeletesStats() {
 }
 
 
-
-
-
-
-
 }  // namespace dev::db
-
-
