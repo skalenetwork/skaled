@@ -30,10 +30,6 @@ namespace dev::db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
 
-const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
-const size_t LevelDB::MAX_OLD_SNAPS_LIFETIME_MS = 10000;
-const size_t LevelDB::FORCE_CLOSE_TIME_MS = 3000;
-
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
     return leveldb::Slice( _slice.data(), _slice.size() );
@@ -296,14 +292,14 @@ void LevelDB::reopenDataBaseIfNeeded() {
 
         auto startTimeMs = getCurrentTimeMs();
 
-        while (getCurrentTimeMs() <= startTimeMs + FORCE_CLOSE_TIME_MS) {
-            cleanOldSnapsUnsafe(FORCE_CLOSE_TIME_MS);
+        while (getCurrentTimeMs() <= startTimeMs + FORCE_SNAP_CLOSE_TIME_MS ) {
+            cleanUnusedOldSnapsUnsafe( FORCE_SNAP_CLOSE_TIME_MS );
         }
 
         if (oldSnaps.empty()) {
             // there are still open snaps. Close all of them not waiting for
             // eth_calls to complete by passing 0 as wait time
-            cleanOldSnapsUnsafe(0);
+            cleanUnusedOldSnapsUnsafe( 0 );
         }
 
         LDB_CHECK(oldSnaps.empty());
@@ -463,12 +459,12 @@ void LevelDB::createBlockSnap( uint64_t _blockId ) {
 
     // we clean unneeded old snaps that no-one used or that exist for more that max
     // lifetime we give for eth_calls to complete
-    cleanOldSnapsUnsafe( MAX_OLD_SNAPS_LIFETIME_MS );
+    cleanUnusedOldSnapsUnsafe( OLD_SNAP_LIFETIME_MS );
 }
 
 
 // this function should be called while holding database reopen lock
-void LevelDB::cleanOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
+void LevelDB::cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
     std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
 
     //now we iterate over oldSnaps closing the ones that are not more in use

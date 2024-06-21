@@ -120,9 +120,12 @@ private:
     std::shared_mutex m_snapMutex;
 
 
-    static const size_t BATCH_CHUNK_SIZE;
-    static const size_t MAX_OLD_SNAPS_LIFETIME_MS;
-    static const size_t FORCE_CLOSE_TIME_MS;
+    static constexpr size_t BATCH_CHUNK_SIZE = 10000;
+    // time after an existing old snap will be closed if no-one is using it
+    static const size_t OLD_SNAP_LIFETIME_MS = 10000;
+    // time after an existing old snap will be closed it is used in eth_call
+    // this will cause the eth_call to return an error
+    static const size_t FORCE_SNAP_CLOSE_TIME_MS = 3000;
 
     class SharedDBGuard {
         const LevelDB& m_levedlDB;
@@ -161,7 +164,7 @@ private:
     };
     void openDBInstanceUnsafe();
     void reopenDataBaseIfNeeded();
-    void cleanOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs );
+    void cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs );
 };
 
 }  // namespace dev::db
