@@ -99,8 +99,6 @@ uint64_t LevelDBSnap::getCreationTimeMs() const {
 std::unique_ptr<std::shared_lock<std::shared_mutex>> LevelDBSnap::lockToPreventConcurrentClose()  {
     // we are trying to use the snap, so it should not be closed
     LDB_CHECK(!m_isClosed);
-    auto result =  std::make_unique<std::shared_lock<std::shared_mutex>>( m_usageMutex );
-}
-
-
+    return std::make_unique<std::shared_lock<std::shared_mutex>>( m_usageMutex );
+};
 }  // namespace dev::db

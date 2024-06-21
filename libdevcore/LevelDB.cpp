@@ -173,13 +173,7 @@ std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _sn
         auto readOptions = m_readOptions;
 
         if (_snap) {
-
-            // read from snap
-            readOptions.snapshot = _snap->getSnapHandle();
-            // this make sure snap is not concurrently closed while used in Get()
-            auto snapshotUseLock = _snap->lockToPreventConcurrentClose();
-            LDB_CHECK(!_snap->isClosed())
-            status = m_db->Get( readOptions, key, &value );
+            status = getFromSnap( _snap, value, key, status, readOptions );
         } else {
             // read from live DB
             status = m_db->Get( readOptions, key, &value );
@@ -207,12 +201,7 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
         auto readOptions = m_readOptions;
 
         if (_snap) {
-            // read from snap
-            readOptions.snapshot = _snap->getSnapHandle();
-            // this make sure snap is not concurrently closed while used in Get()
-            auto snapshotUseLock = _snap->lockToPreventConcurrentClose();
-            LDB_CHECK(!_snap->isClosed())
-            status = m_db->Get( readOptions, key, &value );
+            status = getFromSnap( _snap, value, key, status, readOptions );
         } else {
             // read from live DB
             status = m_db->Get( readOptions, key, &value );
@@ -226,7 +215,17 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
     return true;
 }
 
-
+leveldb::Status& LevelDB::getFromSnap( const std::shared_ptr< LevelDBSnap >& _snap, string& value,
+    const leveldb::Slice& key, leveldb::Status& status,
+    leveldb::ReadOptions& readOptions ) const {
+    LDB_CHECK(_snap);
+    readOptions.snapshot = _snap->getSnapHandle();
+    // this make sure snap is not concurrently closed while used in Get()
+    auto snapshotUseLock = _snap->lockToPreventConcurrentClose();
+    LDB_CHECK( !_snap->isClosed() )
+    status = m_db->Get( readOptions, key, &value );
+    return status;
+}
 
 void LevelDB::insert( Slice _key, Slice _value ) {
     leveldb::Slice const key( _key.data(), _key.size() );
