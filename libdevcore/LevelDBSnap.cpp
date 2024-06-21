@@ -65,6 +65,11 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
         return;
     }
 
+    // do an exclusive lock on the usage mutex
+    // this to make the snap is not being used in a levelb call
+
+    std::unique_lock<std::shared_mutex>  lock( m_usageMutex );
+
     _parentDB->ReleaseSnapshot( this->m_snap );
     m_snap = nullptr;
 }
@@ -86,8 +91,8 @@ std::atomic<uint64_t> LevelDBSnap::objectCounter = 0;
 uint64_t LevelDBSnap::getCreationTimeMs() const {
     return m_creationTimeMs;
 }
-std::shared_mutex& LevelDBSnap::getCloseMutex()  {
-    return m_closeMutex;
+std::unique_ptr<std::shared_lock<std::shared_mutex>> LevelDBSnap::lockToPreventConcurrentClose()  {
+    return std::make_unique<std::shared_lock<std::shared_mutex>>( m_usageMutex );
 }
 
 

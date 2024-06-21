@@ -175,8 +175,13 @@ std::string LevelDB::lookup( Slice _key, const std::shared_ptr<LevelDBSnap>& _sn
         SharedDBGuard readLock( *this );
 
         auto readOptions = m_readOptions;
+
+        std::unique_ptr<std::shared_lock<std::shared_mutex>> snapshotUseLock;
         if (_snap) {
             readOptions.snapshot = _snap->getSnapHandle();
+            // create as shared lock on snap use mutex that will be unlocked on function exit
+            // this make sure snap is not concurrently closed while used
+            snapshotUseLock = _snap->lockToPreventConcurrentClose();
         }
 
         status = m_db->Get( readOptions, key, &value );
@@ -202,19 +207,15 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr<LevelDBSnap>& _snap  ) c
         SharedDBGuard lock( *this );
         auto readOptions = m_readOptions;
 
-
-
+        std::unique_ptr<std::shared_lock<std::shared_mutex>> snapshotClosePreventionLock;
         if (_snap) {
             readOptions.snapshot = _snap->getSnapHandle();
-            // make sure snap is not concurrently closed while used
-            // this could cause segfault
-            _snap->getCloseMutex().lock_shared();
+            // create as shared lock on snap close mutex that will be unlocked on function exit
+            // this make sure snap is not concurrently closed while used
+            snapshotClosePreventionLock = _snap->lockToPreventConcurrentClose();
         }
-        status = m_db->Get( readOptions, key, &value );
 
-        if (_snap) {
-            _snap->getCloseMutex().unlock_shared();
-        }
+        status = m_db->Get( readOptions, key, &value );
     }
     if ( status.IsNotFound() )
         return false;
@@ -472,7 +473,6 @@ void LevelDB::cleanOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
 
     //now we iterate over oldSnaps closing the ones that are not more in use
     auto currentTimeMs = getCurrentTimeMs();
-    // Iterate and delete entries with even values
     for (auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
         if ( it->second.use_count() == 1 ||  // no one using this snap anymore except this map
              it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  //  old
