@@ -1,4 +1,5 @@
 ## `skale_*` Methods
+
 ### skale_protocolVersion
 Returns "0.2"
 
@@ -53,3 +54,7 @@ Returns `chainParams.sChain.name`
 ### debug_getSnapshotHashCalculationTime
 ### debug_doStateDbCompaction
 ### debug_doBlocksDbCompaction
+
+## Other Methods
+### setSchainExitTime
+### debug_getFutureTransactions
