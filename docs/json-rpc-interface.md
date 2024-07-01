@@ -16,10 +16,11 @@ Parameters marked as `OPTIONAL` are optional, otherwise they are required!
 | Core vs ETH | Mostly same |
 | Historic vs ETH | Mostly same |
 
-Returns detailed `skaled` version
+#### Description
+Get detailed `skaled` version
 #### Parameters
 None
-#### Returns
+#### Return format
 `String` representing exact build of `skaled`
 
 Example: "skaled/3.19.0+commit.859d742c/linux/gnu9.5.0/debug"
@@ -30,10 +31,11 @@ Example: "skaled/3.19.0+commit.859d742c/linux/gnu9.5.0/debug"
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Returns `sha3` (`keccak256`) hash of input data
+#### Description
+Get `sha3` (`keccak256`) hash of input data
 #### Parameters
 1. Input data represented as a "0x"-prefixed hex `String`
-#### Returns
+#### Return format
 Output data represented as a "0x"-prefixed hex `String` (32 bytes)
 
 ## `net_*` Methods
@@ -44,10 +46,11 @@ Output data represented as a "0x"-prefixed hex `String` (32 bytes)
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Returns chainID from config.json
 #### Parameters
 None
-#### Returns
+#### Return format
 Decimal number as `String`
 
 ### `net_listening`
@@ -56,10 +59,11 @@ Decimal number as `String`
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Returns `true`
 #### Parameters
 None
-#### Returns
+#### Return format
 Boolean literal `true`
 
 ### `net_peerCount`
@@ -68,10 +72,11 @@ Boolean literal `true`
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
 Returns 0
 #### Parameters
 None
-#### Returns
+#### Return format
 `String` value "0x0"
 
 ## `eth_*` Methods
@@ -82,10 +87,11 @@ None
 | Core vs ETH | SKALE uses hex, ETH uses dec |
 | Historic vs ETH | SKALE uses hex, ETH uses dec |
 
+#### Description
 Returns `0x3f`
 #### Parameters
 None
-#### Returns
+#### Return format
 `String` value "0x3f"
 
 ### `eth_syncing`
@@ -93,6 +99,9 @@ None
 |-----|-----------|
 | Core vs ETH | SKALE uses dec, ETH uses hex |
 | Historic vs ETH | SKALE uses dec, ETH uses hex |
+
+#### Description
+Get node's sync status.
 
 If node has all up-to-date blocks - returns `false`.
 
@@ -103,7 +112,7 @@ If it's behind others and is catching up - retuns object:
 
 #### Parameters
 None
-#### Returns
+#### Return format
 Boolean literal `false`
 
 ### `eth_coinbase`
@@ -112,10 +121,11 @@ Boolean literal `false`
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Returns sChainOwner address from config.json (it is used as coinbase address)
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` (20 bytes)
 
 ### `eth_chainId`
@@ -124,10 +134,11 @@ None
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Returns chainID from config.json as hex string
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x"-prefixed hex `String`
 
 ### `eth_mining`
@@ -136,10 +147,11 @@ None
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
 Returns `false`
 #### Parameters
 None
-#### Returns
+#### Return format
 Boolean literal `false`
 
 ### `eth_hashrate`
@@ -148,10 +160,11 @@ Boolean literal `false`
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
 There is no hashrate for SKALE s-chains, always returns 0
 #### Parameters
 None
-#### Returns
+#### Return format
 `String` literal "0x0"
 
 ### `eth_gasPrice`
@@ -160,10 +173,11 @@ None
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Returns current minimum gas price needed for transaction to be accepted into the Transaction Queue. Gas price is dynamically adjusted from 100k wei and above as load grows
+#### Description
+Get current minimum gas price needed for transaction to be accepted into the Transaction Queue. Gas price is dynamically adjusted from 100k wei and above as load grows
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` representing current gas price
 
 ### `eth_accounts`
@@ -172,10 +186,11 @@ None
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Get list of accounts with locally-stored private keys
 #### Parameters
 None
-#### Returns
+#### Return format
 `Array` of "0x"-prefixed hex `String`s, 20 bytes each
 
 ### `eth_blockNumber`
@@ -184,10 +199,11 @@ None
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Returns the number of most recent block
+#### Description
+Get the number of most recent block
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` representing block number
 
 ### `eth_getBalance`
@@ -196,7 +212,8 @@ None
 | Core vs ETH | SKALE ignores block number |
 | Historic vs ETH | Same |
 
-Returns the balance of the account of given address
+#### Description
+Get the balance of the account of given address
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes
 2. Block number: `String` that is interpreted differently for normal and historic builds:
@@ -207,7 +224,7 @@ Historic build:
  - "latest" or "pending" - latest balance is returned;
  - "earliest" - balance before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` representing balance in wei
 
 ### `eth_getStorageAt`
@@ -216,7 +233,8 @@ Historic build:
 | Core vs ETH | SKALE ignores block number |
 | Historic vs ETH | Same |
 
-Returns the value from a storage position at a given account
+#### Description
+Get the value from a storage position at a given account
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Position: `String` representation of an integer storage position, either decimal or "0x"-prefixed hexadecimal;
@@ -228,7 +246,7 @@ Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` (32 bytes)
 
 ### `eth_getTransactionCount`
@@ -237,7 +255,8 @@ Historic build:
 | Core vs ETH | SKALE ignores block number |
 | Historic vs ETH | Same |
 
-Returns the number of transactions sent from an address.
+#### Description
+Get the number of transactions sent from an address.
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Block number: `String` that is interpreted differently for normal and historic builds:
@@ -248,7 +267,7 @@ Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` representing transaction count
 
 
@@ -258,9 +277,11 @@ Historic build:
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
+Get number of transactions in a block
 #### Parameters
 1. Block hash: "0x"-prefixed hex `String`, 32 bytes
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` representing transaction count
 
 ### `eth_getBlockTransactionCountByNumber`
@@ -269,11 +290,13 @@ Historic build:
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
+Get number of transactions in a block
 #### Parameters
 1. Block number:
  - "earliest", "latest", or "pending";
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` representing transaction count
 
 ### `eth_getUncleCountByBlockHash`
@@ -282,9 +305,12 @@ Historic build:
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
+Always returns 0.
+
 #### Parameters
 1. Block hash: "0x"-prefixed hex `String`, 32 bytes
-#### Returns
+#### Return format
 `String` literal "0x0"
 
 ### `eth_getUncleCountByBlockNumber`
@@ -293,11 +319,14 @@ Historic build:
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
+Always returns 0.
+
 #### Parameters
 1. Block number:
  - "earliest", "latest", or "pending";
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
-#### Returns
+#### Return format
 `String` literal "0x0"
 
 ### `eth_getCode`
@@ -306,7 +335,8 @@ Historic build:
 | Core vs ETH | SKALE ignores block number |
 | Historic vs ETH | Same |
 
-Returns code at a given address
+#### Description
+Get code at a given address
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
 2. Block number: `String` that is interpreted differently for normal and historic builds:
@@ -317,7 +347,7 @@ Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String`
 
 ### `eth_sign`
@@ -326,6 +356,7 @@ Historic build:
 | Core vs ETH | Not supported in SKALE|
 | Historic vs ETH | Not supported in SKALE |
 
+#### Description
 Not supported
 
 ### `eth_signTransaction`
@@ -334,10 +365,11 @@ Not supported
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Sign transaction using stored private key and make raw transaction
 #### Parameters
 1. Object same as `eth_sendTransaction`
-#### Returns
+#### Return format
 Object:
  - "raw": "0x"-prefixed hex `String`;
  - "tx": same as in `eth_inspectTransaction`
@@ -348,7 +380,8 @@ Object:
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Creates new transaction from the provided fields, signs it with the specified `from` address and submits it to the Transaction Queue
+#### Description
+Create new transaction from the provided fields, sign it with the specified `from` address and submit it to the Transaction Queue
 #### Parameters
 1. JSON object with the following fields:
  - "from": OPTIONAL "0x"-prefixed hex `String`, 20 bytes OR null; if omitted or null, personal account with the largest balance is used;
@@ -361,7 +394,7 @@ Creates new transaction from the provided fields, signs it with the specified `f
  - "data": OPTIONAL "0x"-prefixed hex `String` OR "0x" OR "" OR null; defaults to empty;
  - "input": OPTIONAL same as "data";
  - "nonce": OPTIONAL decimal `String` OR "0x"-prefixed hexadecimal `String` OR integer literal OR null; defaults to current nonce of the sender OR maximum nonce of the sender's transactions in the Transaction Queue if it is larger (default is applied if omitted or null).
-#### Returns
+#### Return format
  "0x"-prefixed hex `String`, 32 bytes - hash of the transaction.
  If transaction was attributed to a proxy account, empty hash is returned.
 
@@ -371,10 +404,11 @@ Creates new transaction from the provided fields, signs it with the specified `f
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Submit pre-signed transaction into the Transaction Queue
 #### Parameters
 1. "0x"-prefixed hex `String` - transaction bytes.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String`, 32 bytes - hash of the transaction.
 
 ### `eth_call`
@@ -383,6 +417,7 @@ Submit pre-signed transaction into the Transaction Queue
 | Core vs ETH | SKALE ignores block number |
 | Historic vs ETH | Same |
 
+#### Description
 Execute read-only contract call
 #### Parameters
 1. Same object as in `eth_sendTransaction`. TODO Find out if decimal literals are allowed in ETH
@@ -394,7 +429,7 @@ Historic build:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal: the `State` after executing of the specified block is used to execute call.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` or "0x", call result
 
 ### `eth_estimateGas`
@@ -403,11 +438,12 @@ Historic build:
 | Core vs ETH | SKALE ignores block number |
 | Historic vs ETH | SKALE ignores block number |
 
+#### Description
 Execute transaction on a temporary state without committing to DB and return gas usage
 #### Parameters
 1. Same object as in `eth_sendTransaction`.
 2. OPTIONAL Ignored
-#### Returns
+#### Return format
 "0x"-prefixed hex `String`, gas estimate
 
 ### `eth_getBlockByHash`
@@ -416,11 +452,12 @@ Execute transaction on a temporary state without committing to DB and return gas
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Return details about block
+#### Description
+Get details about block
 #### Parameters
 1. Block hash: "0x"-prefixed hex `String`, 32 bytes
 2. Include transactions: boolean literal - true/false
-#### Returns
+#### Return format
 `null` if block is absent or rotated out.
 
 Otherwise - object with the following fields:
@@ -457,14 +494,15 @@ TODO document skipping of invalid
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Return details about block
+#### Description
+Get details about block
 #### Parameters
 1. Block number:
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal.
 2. Include transactions: boolean literal - true/false
-#### Returns
+#### Return format
 Same as `eth_getBlockByHash`
 #### Exceptions
 Raises "block not found" error if block is "rotated out"
@@ -475,10 +513,11 @@ Raises "block not found" error if block is "rotated out"
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Return details about transaction
+#### Description
+Get details about transaction
 #### Parameters
 1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
-#### Returns
+#### Return format
 `null` if transaction not found.
 
 Otherwise, object with the following fields:
@@ -508,11 +547,12 @@ Otherwise, object with the following fields:
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Return details about transaction
+#### Description
+Get details about transaction
 #### Parameters
 1. Block hash: "0x"-prefixed hex `String`, 32 bytes
 2. Transaction index: either decimal or "0x"-prefixed hexadecimal `String`
-#### Returns
+#### Return format
 Same as `eth_getTransactionByHash`
 
 ### `eth_getTransactionByBlockNumberAndIndex`
@@ -521,14 +561,15 @@ Same as `eth_getTransactionByHash`
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Return details about transaction
+#### Description
+Get details about transaction
 #### Parameters
 1. Block number:
  - "latest" or "pending" - latest block is used;
  - "earliest" - block 0;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
 2. Transaction index: either decimal or "0x"-prefixed hexadecimal `String`
-#### Returns
+#### Return format
 Same as `eth_getTransactionByHash`
 
 ### `eth_getTransactionReceipt`
@@ -537,10 +578,11 @@ Same as `eth_getTransactionByHash`
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Get transaction receipt
 #### Parameters
 1. Transaction hash: "0x"-prefixed hex `String`, 32 bytes
-#### Returns
+#### Return format
 `null` if transaction not mined.
 
 Otherwise - object with the following fields:
@@ -566,11 +608,12 @@ Otherwise - object with the following fields:
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
 Return `null`
 #### Parameters
 1. Block hash: "0x"-prefixed hex `String`, 32 bytes
 2. Uncle index: either decimal or "0x"-prefixed hexadecimal `String`
-#### Returns
+#### Return format
 `null`
 
 ### `eth_getUncleByBlockNumberAndIndex`
@@ -579,6 +622,7 @@ Return `null`
 | Core vs ETH | Compatible, but makes no sense in SKALE |
 | Historic vs ETH | Compatible, but makes no sense in SKALE |
 
+#### Description
 Return `null`
 #### Parameters
 1. Block number:
@@ -586,7 +630,7 @@ Return `null`
  - "earliest" - block 0;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
 3. Uncle index: either decimal or "0x"-prefixed hexadecimal `String`
-#### Returns
+#### Return format
 `null`
 
 ### `eth_newFilter`
@@ -596,7 +640,8 @@ Return `null`
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
-Creates new logs (events) filter and returns it's ID
+#### Description
+Create new logs (events) filter and return it's ID
 
 #### Parameters
 1. Object:
@@ -608,7 +653,7 @@ Creates new logs (events) filter and returns it's ID
    - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
  - "address" OPTIONAL: "0x"-prefixed hex `String`, 20 bytes;
  - "topics" OPTIONAL: `Array`, see https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_newfilter
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` - ID of the filter
 #### Notes
 Any non-WS filter is deleted if it's not being polled for 20 seconds
@@ -619,10 +664,11 @@ Any non-WS filter is deleted if it's not being polled for 20 seconds
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Create filter for monitoring new blocks and returns it's ID
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` - ID of the filter
 
 ### `eth_newPendingTransactionFilter`
@@ -631,10 +677,11 @@ None
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Create filter for monitoring new transactins and returns it's ID
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` - ID of the filter
 
 ### `eth_uninstallFilter`
@@ -643,10 +690,11 @@ None
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Remove previously created filter
 #### Parameters
 1. Decimal or "0x"-prefixed hex `String` - ID of the filter
-#### Returns
+#### Return format
 `true` if filter was successfully found and uninstalled, `false` if it's not found
 
 ### `eth_getFilterChanges`
@@ -655,11 +703,13 @@ Remove previously created filter
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Get changes in filter results since previous call (or filter creation)
+
 Ignores logs that originated from blocks that were "rotated out"
 #### Parameters
 1.  Decimal or "0x"-prefixed hex `String` - ID of the filter
-#### Returns
+#### Return format
 `Array` of changes (can be empty).
 
 For a block filter, array items are block hashes.
@@ -691,10 +741,11 @@ If a block is removed from the DB due to block rotation, it doesn't affect this 
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Get all events matching a filter
 #### Parameters
 1.  Decimal or "0x"-prefixed hex `String` - ID of the filter
-#### Returns
+#### Return format
 Same as `eth_getFilterChanges`
 TODO Compare
 #### Exceptions
@@ -706,6 +757,7 @@ Throws `INVALID_PARAMS` if filter cannot be found or if response size is exceede
 | Core vs ETH | Same |
 | Historic vs ETH | Same |
 
+#### Description
 Same as `eth_getFilterLogs`, but doesn't require filter creation
 #### Parameters
 
@@ -719,7 +771,7 @@ Same as `eth_getFilterLogs`, but doesn't require filter creation
  - "address" OPTIONAL: "0x"-prefixed hex `String`, 20 bytes;
  - "topics" OPTIONAL: `Array`, see https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_newfilter
  - "blockHash" OPTIONAL: "0x"-prefixed hex `String`, 32 bytes; if this field is present, then `fromBlock` and `toBlock` are not allowed.
-#### Returns
+#### Return format
 Same as `eth_getFilterChanges`
 #### Exceptions
 Throws `INVALID_PARAMS` if block does not exist, if response size is exceeded, or `fromBlock` or `toBlock` are present together with `blockHash`
@@ -733,10 +785,11 @@ Not supported
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Returns three magic hashes
 #### Parameters
 None
-#### Returns
+#### Return format
 `Array` of three "0x"-prefixed hex `String`s, 32 bytes each
 
 ### `eth_submitWork`
@@ -749,7 +802,7 @@ None
 1. nonce: decimal or "0x"-prefixed hexadecimal number, 8 bytes;
 2. powHash: decimal or "0x"-prefixed hexadecimal number, 32 bytes;
 3. mixDigest: decimal or "0x"-prefixed hexadecimal number, 32 bytes.
-#### Returns
+#### Return format
 `true`
 
 ### `eth_submitHashrate`
@@ -761,10 +814,11 @@ None
 #### Parameters
 1. hashrate: decimal or "0x"-prefixed hexadecimal number, 32 bytes;
 2. miner id: decimal or "0x"-prefixed hexadecimal number, 32 bytes.
-#### Returns
+#### Return format
 `true`
 
 ### `eth_getProof`
+#### Description
 Not supported
 
 ### `eth_register`
@@ -773,10 +827,11 @@ Not supported
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Add proxy account
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` - id of added account
 
 ### `eth_unregister`
@@ -785,10 +840,11 @@ Add proxy account
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Remove proxy account
 #### Parameters
 1. id: decimal or "0x"-prefixed hexadecimal number, previously obtained through `eth_register`
-#### Returns
+#### Return format
 `true` if account was found and removed, `false` otherwise
 
 ### `eth_feeHistory`
@@ -800,10 +856,11 @@ Remove proxy account
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Probably it will mine a block with PoW
 #### Parameters
 None
-#### Returns
+#### Return format
 `true`
 
 ### `eth_createAccessList`
@@ -811,7 +868,7 @@ Returns empty access list
 #### Parameters
 1. Transaction object same as in `eth_sendTransaction`;
 2. `String` block hash or number (ignored).
-#### Returns
+#### Return format
 Object:
  - "accessList" - empty list;
  - "gasUsed" - "0x" prefixed hex `String` - result of `eth_estimateGas`.
@@ -822,10 +879,11 @@ Object:
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Get number of transactions in a block
 #### Parameters
 1. Block hash: "0x"-prefixed hex `String`, 32 bytes
-#### Returns
+#### Return format
 "0x"-prefixed hex `String`
 
 ### `eth_getBlockTransactionCountByNumber`
@@ -834,13 +892,14 @@ Get number of transactions in a block
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Get number of transactions in a block
 #### Parameters
 1. Block number:
  - "latest" or "pending" - latest block is used;
  - "earliest" - block 0;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
-#### Returns
+#### Return format
 "0x"-prefixed hex `String`
 
 ### `eth_getFilterChangesEx`
@@ -849,6 +908,7 @@ Get number of transactions in a block
 | Core vs ETH | Unknown |
 | Historic vs ETH | Unknown |
 
+#### Description
 Same as `eth_getFilterChanges`
 
 ### `eth_getStorageRoot`
@@ -858,8 +918,11 @@ Same as `eth_getFilterChanges`
 | Core vs ETH | Unsupported in both |
 | Historic vs ETH | Supported in Historic, unsupported in ETH |
 
+#### Description
 Get account's `storageRoot` (according to Yellow Paper)
+
 Noramal node - call always throws exception.
+
 Historic node - see below.
 #### Parameters
 1. Address: "0x"-prefixed hex `String`, 20 bytes;
@@ -867,7 +930,7 @@ Historic node - see below.
  - "latest" or "pending" - latest value is returned;
  - "earliest" - value before block 1 is returned;
  - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal - value after execution of specified block is returned.
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` (32 bytes). If account cannot be found - `sha3( rlp( "" ) )` is returned
 
 ### `eth_inspectTransaction`
@@ -877,32 +940,35 @@ Historic node - see below.
 | Core vs ETH |  Unsupported in ETH |
 | Historic vs ETH | Unsupported in ETH |
 
+#### Description
 Parse binary transaction into fields
 #### Parameters
 1. Raw transaction: "0x"-prefixed hex `String`
-#### Returns
+#### Return format
 Object, see `eth_getTransactionByHash`
 
 ### `eth_maxPriorityFeePerGas`
 #### Parameters
 None
-#### Returns
+#### Return format
 "0x0"
 
 ### `eth_notePassword`
 #### Parameters
 1. `String` - ignored
-#### Returns
+#### Return format
 `false`
 
 ### `eth_pendingTransactions`
+#### Description
 Get transaction queue
 #### Parameters
 None
-#### Returns
+#### Return format
 `Array` of `Object`s, see `eth_getTransactionByHash`. `sighash` equals to `hash`
 
 ### `eth_subscribe`
+#### Description
 HTTP(S): unsupported, always throws exception
 
 WS(S): subscribe for new events/transactions/blocks/stats
@@ -913,7 +979,7 @@ WS(S): subscribe for new events/transactions/blocks/stats
  - "newHeads";
  - "skaleStats".
 2. Used only when type="logs": object, format is the same as in `eth_newFilter`
-#### Returns
+#### Return format
 "0x"-prefixed hex `String` - subscription id
 
 #### Events format
@@ -963,12 +1029,13 @@ Depending on the type of subscription, different data is pushed back to the clie
 ```
 
 ### `eth_unsubscribe`
+#### Description
 HTTP(S): unsupported, always throws exception
 
 WS(S): unsubscribe from events/transactions/blocks/stats (see `eth_subscribe`)
 #### Parameters
 1. id: decimal or "0x"-prefixed hexadecimal number `String` OR number literal - previously obtained through `eth_subscribe`
-#### Returns
+#### Return format
 None
 
 ## `personal_*` Methods
@@ -980,29 +1047,34 @@ Not supported
 ## `shh_*` Methods
 Not supported
 
-## Non-standard Methods
-### setSchainExitTime
-### oracle_submitRequest
-### oracle_checkResult
-
+## Debug Methods
 ### debug_accountRangeAt
+#### Description
 Not supported, always throws
 
 ### debug_traceTransaction
 ### debug_storageRangeAt
+#### Description
 Not supported, always throws
 
 ### debug_preimage
+#### Description
 Not supported, always throws
 
 ### debug_traceBlockByNumber
 ### debug_traceBlockByHash
 ### debug_traceCall
 
-### debug_getFutureTransactions
+
+## Non-standard Methods
+### oracle_submitRequest
+### oracle_checkResult
+
+#### Description
 Get future transaction queue
 #### Parameters
 None
-#### Returns
+#### Return format
+#### Description
 See `eth_pendingTransactions`
 
