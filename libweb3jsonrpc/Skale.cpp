@@ -160,7 +160,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     }
 
     bool forArchiveNode = false;
-    if ( ArchiveNodeSnapshotsPatch::isEnabledInWorkingBlock() )
+    if ( client.chainParams().nodeInfo.archiveMode )
         forArchiveNode = joRequest["forArchiveNode"].get< bool >();
 
     // exit if too early
