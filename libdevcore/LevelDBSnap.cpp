@@ -33,10 +33,10 @@ bool LevelDBSnap::isClosed() const {
 
 LevelDBSnap::LevelDBSnap(
     uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBIdentifier )
-    : m_blockId( _blockId ), m_snap( _snap ), m_parentLevelDBId( _parentLevelDBIdentifier ) {
+    : m_blockId( _blockId ), m_snap( _snap ), m_parentDBInstanceId( _parentLevelDBIdentifier ) {
     LDB_CHECK( m_snap )
     m_creationTimeMs = LevelDB::getCurrentTimeMs();
-    m_objectId = objectCounter.fetch_add( 1 );
+    m_instanceId = objectCounter.fetch_add( 1 );
 }
 
 
@@ -54,7 +54,7 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
     LDB_CHECK( _parentDB );
     LDB_CHECK( m_snap );
     // sanity check. We should use the same DB referencr that was used to open this snap
-    if ( _parentDBIdentifier != m_parentLevelDBId ) {
+    if ( _parentDBIdentifier != m_parentDBInstanceId ) {
         // this should never happen, since it means that we are attempting to close snapshot
         // after its parent database is closed due to reopen
         // normally we close all snapshots before reopenining the databasew
@@ -79,8 +79,8 @@ LevelDBSnap::~LevelDBSnap() {
 }
 
 
-uint64_t LevelDBSnap::getObjectId() const {
-    return m_objectId;
+uint64_t LevelDBSnap::getInstanceId() const {
+    return m_instanceId;
 }
 
 std::atomic< uint64_t > LevelDBSnap::objectCounter = 0;

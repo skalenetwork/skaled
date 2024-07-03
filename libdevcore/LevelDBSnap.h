@@ -47,7 +47,7 @@ public:
 
     virtual ~LevelDBSnap();
 
-    uint64_t getObjectId() const;
+    uint64_t getInstanceId() const;
 
     bool isClosed() const;
 
@@ -56,7 +56,7 @@ public:
 
 private:
     std::atomic< bool > m_isClosed = false;
-    // this mutex is shared=locked everytime a LevedLB API call is done on the
+    // this mutex is shared=locked everytime a LevedLB API read call is done on the
     // snapshot, and unique-locked when the snapshot is to be closed
     // This is to prevent closing snapshot handle while concurrently executing a LevelDB call
     std::shared_mutex m_usageMutex;
@@ -66,8 +66,8 @@ private:
     uint64_t m_creationTimeMs;
     // LevelDB identifier for which this snapShot has been // created
     // this is used to match snaps to leveldb handles
-    uint64_t m_parentLevelDBId;
-    uint64_t m_objectId;
+    uint64_t m_parentDBInstanceId; // unique id of the leveldb object for which this snap was created
+    uint64_t m_instanceId; // unique id of this snap object instance
     static std::atomic< uint64_t > objectCounter;
 };
 
