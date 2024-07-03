@@ -260,22 +260,26 @@ void LevelDB::reopenDataBaseIfNeeded() {
     auto currentTimeMs = getCurrentTimeMs();
 
     if ( currentTimeMs - m_lastDBOpenTimeMs >= ( uint64_t ) m_reopenPeriodMs ) {
-        ExclusiveDBGuard lock( *this );
-
-        // before we reopen a database, we need to close all open snaps
-        closeAllOpenSnapsUnsafe();
-
-        // releasing unique pointer will cause database destructor to be called that will close db
-        m_db.reset();
-        // now open db while holding the exclusive lock
-        openDBInstanceUnsafe();
+        reopen();
     }
+}
+void LevelDB::reopen() {
+    ExclusiveDBGuard lock( *this );
+
+    // before we reopen a database, we need to close all open snaps
+    closeAllOpenSnapsUnsafe();
+
+    // releasing unique pointer will cause database destructor to be called that will close db
+    LDB_CHECK(m_db);
+    m_db.reset();
+    // now open db while holding the exclusive lock
+    this->openDBInstanceUnsafe();
 }
 void LevelDB::closeAllOpenSnapsUnsafe() {
     auto startTimeMs = getCurrentTimeMs();
 
     if ( m_lastBlockSnap ) {
-        // move current snap block to old snaps so all snaps can be cleaned in a single function
+        // move current last block snap to old snaps so all snaps can be cleaned in a single function
         oldSnaps.emplace( m_lastBlockSnap->getInstanceId(), m_lastBlockSnap );
         m_lastBlockSnap = nullptr;
     }
@@ -464,6 +468,7 @@ void LevelDB::cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
     for ( auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
         if ( it->second.use_count() == 1 ||  // no one using this snap anymore except this map
              it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  {
+            // close the snap
             it->second->close( m_db, m_currentDBInstanceId );
             it = oldSnaps.erase( it );  // Erase returns the iterator to the next element
         } else {

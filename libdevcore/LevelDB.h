@@ -168,6 +168,7 @@ private:
     leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
         std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
     void closeAllOpenSnapsUnsafe();
+    void reopen();
 };
 
 }  // namespace dev::db
