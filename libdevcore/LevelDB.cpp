@@ -269,10 +269,10 @@ void LevelDB::reopen() {
     // before we reopen a database, we need to close all open snaps
     // this can take up to FORCE_SNAP_CLOSE_TIME_MS
     // since we are trying to give time to eth_calls to complete nicely
-    // this mean that block processing is delayed by several seconds
+    // this mean that block processing maybe delayed by up to FORCE_SNAP_CLOSE_TIME_MS
     // each time a database is reopen
-    // note that currently the database is only reopen on the
-    // historic state where snaps are not used anyway
+    // note that currently the database is only reopened on the
+    // historic state where snaps are not used anyway, so the above delay will not happen
     m_snapManager.closeAllOpenSnaps( m_db, m_dbInstanceId );
 
     // releasing unique pointer will cause database destructor to be called that will close db
