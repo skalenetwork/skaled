@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "LevelDBSnapManager.h"
 #include "db.h"
 
 #include <leveldb/db.h>
@@ -96,7 +97,7 @@ private:
     std::unique_ptr< leveldb::DB > m_db;
     // this identify is guaranteed to be unique for each m_db reference
     // so it can be used to compare to references
-    std::atomic<uint64_t> m_currentDBInstanceId = 0;
+    std::atomic<uint64_t> m_dbInstanceId = 0;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
@@ -107,21 +108,13 @@ private:
     uint64_t m_lastDBOpenTimeMs;
     mutable std::shared_mutex m_dbMutex;
 
-    // old snaps contains snap objects for older blocks
-    // these objects are alive untils the
-    // corresponding eth_calls complete
-    std::map<std::uint64_t , std::shared_ptr<LevelDBSnap>> oldSnaps;
-    std::shared_ptr<LevelDBSnap> m_lastBlockSnap;
-    // mutex to protect snaps and m_lastBlockSnap;
-    std::shared_mutex m_snapMutex;
+    LevelDBSnapManager m_snapManager;
+
+
 
 
     static constexpr size_t BATCH_CHUNK_SIZE = 10000;
-    // time after an existing old snap will be closed if no-one is using it
-    static const size_t OLD_SNAP_LIFETIME_MS = 10000;
-    // time after an existing old snap will be closed it is used in eth_call
-    // this will cause the eth_call to return an error
-    static const size_t FORCE_SNAP_CLOSE_TIME_MS = 3000;
+
 
     class SharedDBGuard {
         const LevelDB& m_levedlDB;
@@ -160,10 +153,8 @@ private:
     };
     void openDBInstanceUnsafe();
     void reopenDataBaseIfNeeded();
-    void cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs );
     leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
         std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
-    void closeAllOpenSnapsUnsafe();
     void reopen();
 };
 
