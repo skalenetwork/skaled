@@ -90,9 +90,8 @@ void* ZmqBroadcaster::server_socket() const {
     if ( !m_zmq_server_socket ) {
         m_zmq_server_socket = zmq_socket( m_zmq_context, ZMQ_PUB );
 
-        val = 16;
+        int val = 16;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
-
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
