@@ -38,15 +38,10 @@ class LevelDB;
 // after processing of a particular block id.
 class LevelDBSnap {
 public:
-    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap,
-        uint64_t _parentLevelDBId );
-    uint64_t getParentLevelDBId() const;
+    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBId );
 
     // close this snapshot. Use after close will cause an exception
-    void close(std::unique_ptr< leveldb::DB >& _parentDB, uint64_t  _parentDBIdentifier);
-
-
-    std::unique_ptr<std::shared_lock<std::shared_mutex>> lockToPreventConcurrentClose();
+    void close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBIdentifier );
 
     uint64_t getCreationTimeMs() const;
 
@@ -54,12 +49,13 @@ public:
 
     uint64_t getObjectId() const;
 
-    const leveldb::Snapshot* getSnapHandle() const;
     bool isClosed() const;
 
-private:
+    leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions,
+        const leveldb::Slice& _key, std::string& _value );
 
-    std::atomic<bool> m_isClosed = false;
+private:
+    std::atomic< bool > m_isClosed = false;
     // this mutex is shared=locked everytime a LevedLB API call is done on the
     // snapshot, and unique-locked when the snapshot is to be closed
     // This is to prevent closing snapshot handle while concurrently executing a LevelDB call
@@ -72,9 +68,7 @@ private:
     // this is used to match snaps to leveldb handles
     uint64_t m_parentLevelDBId;
     uint64_t m_objectId;
-    static std::atomic<uint64_t> objectCounter;
-
-
+    static std::atomic< uint64_t > objectCounter;
 };
 
 }  // namespace dev::db

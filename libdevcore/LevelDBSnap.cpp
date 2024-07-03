@@ -22,11 +22,6 @@
 #include "Assertions.h"
 #include "LevelDB.h"
 
-const leveldb::Snapshot* dev::db::LevelDBSnap::getSnapHandle() const {
-    LDB_CHECK(!m_isClosed)
-    return m_snap;
-}
-
 using std::string, std::runtime_error;
 
 namespace dev::db {
@@ -41,12 +36,9 @@ LevelDBSnap::LevelDBSnap(
     : m_blockId( _blockId ), m_snap( _snap ), m_parentLevelDBId( _parentLevelDBIdentifier ) {
     LDB_CHECK( m_snap )
     m_creationTimeMs = LevelDB::getCurrentTimeMs();
-    m_objectId = objectCounter.fetch_add(1);
+    m_objectId = objectCounter.fetch_add( 1 );
 }
 
-uint64_t LevelDBSnap::getParentLevelDBId() const {
-    return m_parentLevelDBId;
-}
 
 // close LevelDB snap. This will happen when all eth_calls using this snap
 // complete, so it is not needed anymore
@@ -73,8 +65,7 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
     // do an exclusive lock on the usage mutex
     // this to make the snap is not being used in a levelb call
 
-    std::unique_lock<std::shared_mutex>  lock( m_usageMutex );
-
+    std::unique_lock< std::shared_mutex > lock( m_usageMutex );
     _parentDB->ReleaseSnapshot( this->m_snap );
     m_snap = nullptr;
 }
@@ -92,13 +83,19 @@ uint64_t LevelDBSnap::getObjectId() const {
     return m_objectId;
 }
 
-std::atomic<uint64_t> LevelDBSnap::objectCounter = 0;
+std::atomic< uint64_t > LevelDBSnap::objectCounter = 0;
 uint64_t LevelDBSnap::getCreationTimeMs() const {
     return m_creationTimeMs;
 }
-std::unique_ptr<std::shared_lock<std::shared_mutex>> LevelDBSnap::lockToPreventConcurrentClose()  {
-    // we are trying to use the snap, so it should not be closed
-    LDB_CHECK(!m_isClosed);
-    return std::make_unique<std::shared_lock<std::shared_mutex>>( m_usageMutex );
-};
+
+leveldb::Status LevelDBSnap::getValue( const std::unique_ptr< leveldb::DB >& _db,
+    leveldb::ReadOptions _readOptions, const leveldb::Slice& _key, std::string& _value ) {
+    LDB_CHECK( _db );
+    // this make sure snap is not concurrently closed while used in Get()
+    std::make_unique< std::shared_lock< std::shared_mutex > >( m_usageMutex );
+    LDB_CHECK( !isClosed() )
+    _readOptions.snapshot = m_snap;
+    return _db->Get( _readOptions, _key, &_value );
+}
+
 }  // namespace dev::db

@@ -143,7 +143,7 @@ void LevelDB::openDBInstanceUnsafe() {
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
-    m_dbIdentifier++;
+    m_currentDBInstanceId++;
     cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
@@ -196,11 +196,7 @@ leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions, const leve
     std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     SharedDBGuard lock( *this );
     if ( _snap ) {
-        _readOptions.snapshot = _snap->getSnapHandle();
-        // this make sure snap is not concurrently closed while used in Get()
-        auto snapUseLock = _snap->lockToPreventConcurrentClose();
-        LDB_CHECK( !_snap->isClosed() )
-        return m_db->Get( _readOptions, _key, &_value );
+        return _snap->getValue(m_db, _readOptions, _key, _value);
     } else {
         return m_db->Get( _readOptions, _key, &_value );
     }
@@ -443,7 +439,7 @@ void LevelDB::createBlockSnap( uint64_t _blockId ) {
     auto newSnapHandle = m_db->GetSnapshot();
     LDB_CHECK( newSnapHandle );
     auto newSnap = std::make_shared< LevelDBSnap >( _blockId,
-        newSnapHandle, m_dbIdentifier );
+        newSnapHandle, m_currentDBInstanceId );
     LDB_CHECK( newSnap );
 
     {
@@ -468,7 +464,7 @@ void LevelDB::cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
     for ( auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
         if ( it->second.use_count() == 1 ||  // no one using this snap anymore except this map
              it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs )  {
-            it->second->close( m_db, m_dbIdentifier );
+            it->second->close( m_db, m_currentDBInstanceId );
             it = oldSnaps.erase( it );  // Erase returns the iterator to the next element
         } else {
             ++it;  // Only increment if not erasing

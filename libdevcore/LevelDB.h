@@ -100,7 +100,7 @@ private:
     std::unique_ptr< leveldb::DB > m_db;
     // this identify is guaranteed to be unique for each m_db reference
     // so it can be used to compare to references
-    std::atomic<uint64_t> m_dbIdentifier = 0;
+    std::atomic<uint64_t> m_currentDBInstanceId = 0;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
