@@ -280,6 +280,7 @@ void LevelDB::closeAllOpenSnapsUnsafe() {
 
     if ( m_lastBlockSnap ) {
         // move current last block snap to old snaps so all snaps can be cleaned in a single function
+        std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
         oldSnaps.emplace( m_lastBlockSnap->getInstanceId(), m_lastBlockSnap );
         m_lastBlockSnap = nullptr;
     }
@@ -457,12 +458,14 @@ void LevelDB::createBlockSnap( uint64_t _blockId ) {
     // lifetime we give for eth_calls to complete
     cleanUnusedOldSnapsUnsafe( OLD_SNAP_LIFETIME_MS );
 }
+const std::shared_ptr< LevelDBSnap >& LevelDB::getLastBlockSnap() const {
+    return m_lastBlockSnap;
+}
 
 
 // this function should be called while holding database reopen lock
 void LevelDB::cleanUnusedOldSnapsUnsafe( uint64_t _maxSnapLifetimeMs ) {
     std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
-
     // now we iterate over snaps closing the ones that are not more in use
     auto currentTimeMs = getCurrentTimeMs();
     for ( auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {

@@ -83,11 +83,6 @@ public:
 
     void createBlockSnap(uint64_t _blockId);
 
-    std::shared_ptr<LevelDBSnap> getLastBlockSnap(uint64_t _blockId);
-
-    void closeSnap(LevelDBSnap& _snap);
-
-
     // Return the total count of key deletes  since the start
     static uint64_t getKeyDeletesStats();
     // count of the keys that were deleted since the start of skaled
@@ -95,6 +90,7 @@ public:
     // count of the keys that are scheduled to be deleted but are not yet deleted
     static std::atomic< uint64_t > g_keysToBeDeletedStats;
     static uint64_t getCurrentTimeMs();
+    const std::shared_ptr< LevelDBSnap >& getLastBlockSnap() const;
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
