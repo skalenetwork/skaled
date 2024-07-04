@@ -203,7 +203,8 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock, bool 
 
     stringstream volumes_cat;
 
-    std::vector< std::string > volumes = _forArchiveNode ? allVolumes : coreVolumes;
+    std::vector< std::string > volumes =
+        ( _forArchiveNode && _toBlock > 0 ) ? allVolumes : coreVolumes;
     for ( auto it = volumes.begin(); it != volumes.end(); ++it ) {
         const string& vol = *it;
         if ( it + 1 != volumes.end() )
@@ -716,6 +717,7 @@ void SnapshotManager::computeAllVolumesHash(
                 this->computeDatabaseHash( content, ctx );
             }
 
+#ifdef HISTORIC_STATE
             // historic dbs
             this->computeDatabaseHash(
                 this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[0] /
@@ -725,6 +727,7 @@ void SnapshotManager::computeAllVolumesHash(
                 this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[1] /
                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
                 ctx );
+#endif
         }
     }
 }

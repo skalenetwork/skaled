@@ -1602,7 +1602,9 @@ int main( int argc, char** argv ) try {
             "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
         std::vector< std::string > archiveVolumes = {};
         if ( chainParams.nodeInfo.archiveMode )
+#ifdef HISTORIC_STATE
             archiveVolumes.insert( archiveVolumes.end(), { "historic_roots", "historic_state" } );
+#endif
         snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(), coreVolumes,
             archiveVolumes, sharedSpace ? sharedSpace->getPath() : "" ) );
     }
