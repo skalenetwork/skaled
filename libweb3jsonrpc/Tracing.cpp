@@ -1,6 +1,8 @@
 #include "Tracing.h"
 
+#include <libethcore/CommonJS.h>
 #include <libethereum/Client.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 
 #ifdef HISTORIC_STATE
 
@@ -31,7 +33,6 @@ Tracing::Tracing( eth::Client& _eth, const string& argv )
       m_blockTraceCache( MAX_BLOCK_TRACES_CACHE_ITEMS, MAX_BLOCK_TRACES_CACHE_SIZE ) {}
 
 h256 Tracing::blockHash( string const& _blockNumberOrHash ) const {
-    checkPrivilegedAccess();
     if ( isHash< h256 >( _blockNumberOrHash ) )
         return h256( _blockNumberOrHash.substr( _blockNumberOrHash.size() - 64, 64 ) );
     try {
