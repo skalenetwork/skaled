@@ -1602,7 +1602,7 @@ int main( int argc, char** argv ) try {
     bool downloadGenesisForSyncNode = false;
     if ( chainParams.nodeInfo.syncNode ) {
         auto bc = BlockChain( chainParams, getDataDir() );
-        if ( bc.number() == 0 ) {
+        if ( bc.number() == 0 && chainParams.sChain.snapshotIntervalSec > 0 ) {
             downloadSnapshotFlag = true;
             if ( chainParams.nodeInfo.syncFromCatchup ) {
                 downloadGenesisForSyncNode = true;
