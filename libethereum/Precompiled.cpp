@@ -60,7 +60,6 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
-std::shared_ptr< skale::OverlayFS > g_overlayFS;
 
 };  // namespace eth
 };  // namespace dev
@@ -87,7 +86,7 @@ PrecompiledPricer const& PrecompiledRegistrar::pricer( std::string const& _name 
 
 namespace {
 
-ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in, skale::OverlayFS* ) {
     struct {
         h256 hash;
         h256 v;
@@ -115,15 +114,15 @@ ETH_REGISTER_PRECOMPILED( ecrecover )( bytesConstRef _in ) {
     return { true, {} };
 }
 
-ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( sha256 )( bytesConstRef _in, skale::OverlayFS* ) {
     return { true, dev::sha256( _in ).asBytes() };
 }
 
-ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( ripemd160 )( bytesConstRef _in, skale::OverlayFS* ) {
     return { true, h256( dev::ripemd160( _in ), h256::AlignRight ).asBytes() };
 }
 
-ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( identity )( bytesConstRef _in, skale::OverlayFS* ) {
     MICROPROFILE_SCOPEI( "VM", "identity", MP_RED );
     return { true, _in.toBytes() };
 }
@@ -150,7 +149,7 @@ bigint parseBigEndianRightPadded( bytesConstRef _in, bigint const& _begin, bigin
     return ret;
 }
 
-ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( modexp )( bytesConstRef _in, skale::OverlayFS* ) {
     bigint const baseLength( parseBigEndianRightPadded( _in, 0, 32 ) );
     bigint const expLength( parseBigEndianRightPadded( _in, 32, 32 ) );
     bigint const modLength( parseBigEndianRightPadded( _in, 64, 32 ) );
@@ -209,7 +208,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( modexp )
     return multComplexity( maxLength ) * max< bigint >( adjustedExpLength, 1 ) / 20;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in, skale::OverlayFS* ) {
     return dev::crypto::alt_bn128_G1_add( _in );
 }
 
@@ -218,7 +217,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_add )
     return _blockNumber < _chainParams.istanbulForkBlock ? 500 : 150;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in, skale::OverlayFS* ) {
     return dev::crypto::alt_bn128_G1_mul( _in );
 }
 
@@ -227,7 +226,7 @@ ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
     return _blockNumber < _chainParams.istanbulForkBlock ? 40000 : 6000;
 }
 
-ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in, skale::OverlayFS* ) {
     return dev::crypto::alt_bn128_pairing_product( _in );
 }
 
@@ -281,7 +280,7 @@ boost::filesystem::path getFileStorageDir( const Address& _address ) {
 }
 
 // TODO: check file name and file existance
-ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -297,14 +296,14 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
-            g_overlayFS->createDirectory( fsDirectoryPath.string() );
+            _overlayFS->createDirectory( fsDirectoryPath.string() );
         }
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
                 "createFile() failed because _hash extension is not allowed" );
         }
-        g_overlayFS->createFile( ( fsFilePath / filePath.filename() ).string(), fileSize );
+        _overlayFS->createFile( ( fsFilePath / filePath.filename() ).string(), fileSize );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -322,7 +321,7 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -349,7 +348,7 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
         const _byte_* data =
             _in.cropped( 128 + filenameBlocksCount * UINT256_SIZE, dataLength ).data();
 
-        g_overlayFS->writeChunk( filePath.string(), position, dataLength, data );
+        _overlayFS->writeChunk( filePath.string(), position, dataLength, data );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -367,7 +366,7 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     MICROPROFILE_SCOPEI( "VM", "readChunk", MP_ORANGERED );
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
@@ -418,7 +417,7 @@ ETH_REGISTER_PRECOMPILED( readChunk )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -451,7 +450,7 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -462,8 +461,8 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
 
-        g_overlayFS->deleteFile( filePath.string() );
-        g_overlayFS->deleteFile( filePath.string() + "._hash" );
+        _overlayFS->deleteFile( filePath.string() );
+        _overlayFS->deleteFile( filePath.string() + "._hash" );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -481,7 +480,7 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -491,7 +490,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
         const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
-        g_overlayFS->createDirectory( absolutePath.string() );
+        _overlayFS->createDirectory( absolutePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -509,7 +508,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -525,8 +524,8 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
 
         const std::string absolutePathStr = absolutePath.string();
 
-        g_overlayFS->deleteFile( absolutePathStr + "._hash" );
-        g_overlayFS->deleteDirectory( absolutePath.string() );
+        _overlayFS->deleteFile( absolutePathStr + "._hash" );
+        _overlayFS->deleteDirectory( absolutePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -544,7 +543,7 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -560,7 +559,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
             throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
         }
 
-        g_overlayFS->calculateFileHash( filePath.string() );
+        _overlayFS->calculateFileHash( filePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -579,7 +578,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in, skale::OverlayFS* ) {
     try {
         if ( !g_configAccesssor )
             throw std::runtime_error( "Config accessor was not initialized" );
@@ -794,7 +793,7 @@ static std::pair< std::string, unsigned > parseHistoricFieldRequest( std::string
  * so one should pass the following as calldata:
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in, skale::OverlayFS* ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -851,7 +850,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableUint256 )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in, skale::OverlayFS* ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -905,7 +904,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableAddress )( bytesConstRef _in ) {
  * so one should pass the following as calldata
  * toBytes( input.length + toBytes(input) )
  */
-ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in, skale::OverlayFS* ) {
     try {
         size_t lengthName;
         std::string rawName;
@@ -957,7 +956,7 @@ ETH_REGISTER_PRECOMPILED( getConfigVariableString )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef /*_in*/ ) {
+ETH_REGISTER_PRECOMPILED( fnReserved0x16 )( bytesConstRef /*_in*/, skale::OverlayFS* ) {
     u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
@@ -973,7 +972,7 @@ static dev::u256 stat_s2a( const std::string& saIn ) {
     return u;
 }
 
-ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in, skale::OverlayFS* ) {
     try {
         dev::u256 uValue;
         uValue = 0;
@@ -1035,7 +1034,7 @@ ETH_REGISTER_PRECOMPILED( getConfigPermissionFlag )( bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
+ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef, skale::OverlayFS* ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );
@@ -1056,7 +1055,7 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
+ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in, skale::OverlayFS* ) {
     /*
         try {
             auto rawAddress = _in.cropped( 0, 20 ).toBytes();
@@ -1086,7 +1085,7 @@ ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
+ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef, skale::OverlayFS* ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );

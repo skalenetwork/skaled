@@ -332,9 +332,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             bytes output;
             bool success;
             // dev::eth::g_state = m_s.delegateWrite();
-            dev::eth::g_overlayFS = m_s.fs();
-            tie( success, output ) =
-                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+            tie( success, output ) = m_chainParams.executePrecompiled(
+                _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
             // m_s = dev::eth::g_state.delegateWrite();
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };

@@ -1246,7 +1246,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     auto& skaleHost = fixture.skaleHost;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getBlockRandom" );
-    auto res = exec( bytesConstRef() );
+    auto res = exec( bytesConstRef(), nullptr );
     u256 blockRandom = skaleHost->getBlockRandom();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
@@ -1258,7 +1258,7 @@ BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
     auto& skaleHost = fixture.skaleHost;
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
-    auto res = exec( bytesConstRef() );
+    auto res = exec( bytesConstRef(), nullptr );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getIMABLSPublicKey();
     BOOST_REQUIRE( res.first );
     BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
