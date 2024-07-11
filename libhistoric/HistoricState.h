@@ -157,7 +157,7 @@ public:
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair< ExecutionResult, TransactionReceipt > execute( EnvInfo const& _envInfo,
-        SealEngineFace const& _sealEngine, Transaction const& _t,
+        eth::ChainOperationParams const& _chainParams, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
 
 

@@ -57,7 +57,7 @@ namespace _detail {
 // cache for transaction index mapping
 class GappedTransactionIndexCache {
 public:
-    GappedTransactionIndexCache( size_t _cacheSize, const dev::eth::Interface& _client )
+    GappedTransactionIndexCache( size_t _cacheSize, const dev::eth::Client& _client )
         : client( _client ), cacheSize( _cacheSize ) {
         assert( _cacheSize > 0 );
     }
@@ -116,7 +116,7 @@ private:
 private:
     mutable std::shared_mutex mtx;
 
-    const dev::eth::Interface& client;
+    const dev::eth::Client& client;
     const size_t cacheSize;
 
     enum { UNDEFINED = ( size_t ) -1 };
@@ -216,6 +216,11 @@ public:
     virtual Json::Value eth_subscribe( Json::Value const& _transaction ) override;
     virtual Json::Value eth_unsubscribe( Json::Value const& _transaction ) override;
     virtual Json::Value setSchainExitTime( Json::Value const& _transaction ) override;
+    virtual Json::Value eth_createAccessList(
+        const Json::Value& param1, const std::string& param2 ) override;
+    virtual Json::Value eth_feeHistory(
+        dev::u256 param1, const std::string& param2, const Json::Value& param3 ) override;
+    virtual std::string eth_maxPriorityFeePerGas() override;
 
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
 

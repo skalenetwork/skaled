@@ -102,7 +102,8 @@ json_spirit::mObject FillTransactionTest( json_spirit::mObject const& _o ) {
                     Exception() << errinfo_comment( TestOutputHelper::get().testName() +
                                                     "transaction from RLP signature is invalid" ) );
 
-            se->verifyTransaction( ImportRequirements::Everything, txFromFields, bh, 0 );
+            // TODO Remove SealEngine from tests too!
+            se->verifyTransaction( se->chainParams(), ImportRequirements::Everything, txFromFields, 0, bh, 0 );
             if ( expectSection.count( "sender" ) > 0 ) {
                 string expectSender = toString( expectSection["sender"].get_str() );
                 BOOST_CHECK_MESSAGE( toString( txFromFields.sender() ) == expectSender,
@@ -160,7 +161,8 @@ void TestTransactionTest( json_spirit::mObject const& _o ) {
             RLP rlp( stream );
             txFromRlp = Transaction( rlp.data(), CheckTransaction::Everything );
             bool onExperimentalAndZeroSig = onExperimental && txFromRlp.hasZeroSignature();
-            se->verifyTransaction( ImportRequirements::Everything, txFromRlp, bh, 0 );
+            // TODO Remove SealEngine from tests too!
+            se->verifyTransaction( se->chainParams(), ImportRequirements::Everything, txFromRlp, 0, bh, 0 );
             if ( !( txFromRlp.signature().isValid() || onExperimentalAndZeroSig ) )
                 BOOST_THROW_EXCEPTION(
                     Exception() << errinfo_comment( testname +

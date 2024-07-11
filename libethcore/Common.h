@@ -58,8 +58,11 @@ extern const bytes c_blockhashContractCode;
 /// Address of the special contract for deployment control
 extern const Address c_configControllerContractAddress;
 
-/// Formatting call data for deployment control contract
+/// Generating call data for deployment control contract
 bytes isAddressWhitelistedCallData( Address const& _deployer );
+
+/// Generating calldata for deployment control contract, considering tx origin
+bytes isDeploymentAllowedCallData( Address const& _origin, Address const& _deployer );
 
 /// Formatting call data for multitransaction contract
 bytes getMultitransactionCallData();

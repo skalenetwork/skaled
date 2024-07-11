@@ -97,9 +97,6 @@ void* ZmqBroadcaster::server_socket() const {
         val = 60000;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
-
-        val = 16;
-        zmq_setsockopt( m_zmq_server_socket, ZMQ_RCVHWM, &val, sizeof( val ) );
         val = 16;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
@@ -136,9 +133,6 @@ void* ZmqBroadcaster::client_socket() const {
 
         value = 16;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_RCVHWM, &value, sizeof( value ) );
-        value = 16;
-        zmq_setsockopt( m_zmq_client_socket, ZMQ_SNDHWM, &value, sizeof( value ) );
-
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
@@ -254,6 +248,8 @@ void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
 
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
+        clog( dev::VerbosityWarning, "zmq-broadcaster" )
+            << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
         throw std::runtime_error( "Zmq can't send data" );
     }
 }

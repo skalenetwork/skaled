@@ -131,17 +131,19 @@ struct CallParameters {
 
 class EnvInfo {
 public:
-    EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh, u256 const& _gasUsed,
-        u256 const& _chainID )
-        : m_headerInfo( _current ),
+    EnvInfo( BlockHeader const& _working, LastBlockHashesFace const& _lh,
+        time_t _committedBlockTimestamp, u256 const& _gasUsed, u256 const& _chainID )
+        : m_headerInfo( _working ),
           m_lastHashes( _lh ),
+          m_committedBlockTimestamp( _committedBlockTimestamp ),
           m_gasUsed( _gasUsed ),
           m_chainID( _chainID ) {}
     // Constructor with custom gasLimit - used in some synthetic scenarios like eth_estimateGas RPC
     // method
-    EnvInfo( BlockHeader const& _current, LastBlockHashesFace const& _lh, u256 const& _gasUsed,
-        u256 const& _gasLimit, u256 const& _chainID )
-        : EnvInfo( _current, _lh, _gasUsed, _chainID ) {
+    EnvInfo( BlockHeader const& _working, LastBlockHashesFace const& _lh,
+        time_t _committedBlockTimestamp, u256 const& _gasUsed, u256 const& _gasLimit,
+        u256 const& _chainID )
+        : EnvInfo( _working, _lh, _committedBlockTimestamp, _gasUsed, _chainID ) {
         m_headerInfo.setGasLimit( _gasLimit );
     }
 
@@ -153,12 +155,14 @@ public:
     u256 const& difficulty() const { return m_headerInfo.difficulty(); }
     u256 const& gasLimit() const { return m_headerInfo.gasLimit(); }
     LastBlockHashesFace const& lastHashes() const { return m_lastHashes; }
+    time_t committedBlockTimestamp() const { return m_committedBlockTimestamp; }
     u256 const& gasUsed() const { return m_gasUsed; }
     u256 const& chainID() const { return m_chainID; }
 
 private:
     BlockHeader m_headerInfo;
     LastBlockHashesFace const& m_lastHashes;
+    time_t m_committedBlockTimestamp;
     u256 m_gasUsed;
     u256 m_chainID;
 };
