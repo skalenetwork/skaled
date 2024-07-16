@@ -194,8 +194,11 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) 
 
 leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
     std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
-    SharedDBGuard lock( *this ); // protect so db is not reopened during getValue() call
+    SharedDBGuard lock( *this ); // protect so db is not reopened during get call
     if ( _snap ) {
+        // sanity check to make sure that the snap was created for this particular
+        // db handle
+        LDB_CHECK(m_dbReopenId == _snap->getParentDbReopenId())
         return _snap->getValue(m_db, _readOptions, _key, _value);
     } else {
         return m_db->Get( _readOptions, _key, &_value );

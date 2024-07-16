@@ -32,8 +32,8 @@ bool LevelDBSnap::isClosed() const {
 
 
 LevelDBSnap::LevelDBSnap(
-    uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBIdentifier )
-    : m_blockId( _blockId ), m_snap( _snap ), m_parentDBInstanceId( _parentLevelDBIdentifier ) {
+    uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId )
+    : m_blockId( _blockId ), m_snap( _snap ), m_parentDBReopenId( _parentLevelDBReopenId ) {
     LDB_CHECK( m_snap )
     m_creationTimeMs = LevelDB::getCurrentTimeMs();
     m_instanceId = objectCounter.fetch_add( 1 );
@@ -43,7 +43,7 @@ LevelDBSnap::LevelDBSnap(
 // close LevelDB snap. This will happen when all eth_calls using this snap
 // complete, so it is not needed anymore
 // reopen the DB
-void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBIdentifier ) {
+void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBReopenId ) {
     auto isClosed = m_isClosed.exchange( true );
     if ( isClosed ) {
         // this should never happen
@@ -53,11 +53,11 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
 
     LDB_CHECK( _parentDB );
     LDB_CHECK( m_snap );
-    // sanity check. We should use the same DB referencr that was used to open this snap
-    if ( _parentDBIdentifier != m_parentDBInstanceId ) {
+    // sanity check. We should use the same DB handle that was used to open this snap
+    if ( _parentDBReopenId != m_parentDBReopenId ) {
         // this should never happen, since it means that we are attempting to close snapshot
         // after its parent database is closed due to reopen
-        // normally we close all snapshots before reopenining the databasew
+        // normally we close all snapshots before reopenining the database
         cwarn << "Closing the snapshot after the database is closed";
         return;
     }
@@ -96,6 +96,9 @@ leveldb::Status LevelDBSnap::getValue( const std::unique_ptr< leveldb::DB >& _db
     LDB_CHECK( !isClosed() )
     _readOptions.snapshot = m_snap;
     return _db->Get( _readOptions, _key, &_value );
+}
+uint64_t LevelDBSnap::getParentDbReopenId() const {
+    return m_parentDBReopenId;
 }
 
 }  // namespace dev::db

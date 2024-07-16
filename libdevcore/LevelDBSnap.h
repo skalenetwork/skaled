@@ -38,10 +38,10 @@ class LevelDB;
 // after processing of a particular block id.
 class LevelDBSnap {
 public:
-    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBId );
+    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId );
 
     // close this snapshot. Use after close will cause an exception
-    void close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBIdentifier );
+    void close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBReopenId );
 
     uint64_t getCreationTimeMs() const;
 
@@ -66,7 +66,16 @@ private:
     uint64_t m_creationTimeMs;
     // LevelDB identifier for which this snapShot has been // created
     // this is used to match snaps to leveldb handles
-    uint64_t m_parentDBInstanceId; // unique id of the leveldb object for which this snap was created
+    // the reopen id of the parent database handle. When a database is reopened
+    // the database handle and all snap handles are invalidated
+    // we use this field to make sure that we never use a stale snap handle for which
+    // the database handle already does not exist
+    uint64_t m_parentDBReopenId;
+
+public:
+    uint64_t getParentDbReopenId() const;
+
+private:
     uint64_t m_instanceId; // unique id of this snap object instance
     static std::atomic< uint64_t > objectCounter;
 };
