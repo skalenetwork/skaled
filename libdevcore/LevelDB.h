@@ -98,6 +98,7 @@ private:
     // this is incremented each time this LevelDB instance is reopened
     // we reopen states LevelDB every day on archive nodes to avoid
     // meta file getting too large
+    // in other cases LevelDB is never reopened to this stays zero
     std::atomic<uint64_t> m_dbReopenId = 0;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
