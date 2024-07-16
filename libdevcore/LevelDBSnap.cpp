@@ -30,7 +30,7 @@ bool LevelDBSnap::isClosed() const {
     return m_isClosed;
 }
 
-
+// construct a snap object that can be used to read snapshot of a state
 LevelDBSnap::LevelDBSnap(
     uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId )
     : m_blockId( _blockId ), m_snap( _snap ), m_parentDBReopenId( _parentLevelDBReopenId ) {
@@ -44,37 +44,34 @@ LevelDBSnap::LevelDBSnap(
 // complete, so it is not needed anymore
 // reopen the DB
 void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBReopenId ) {
-    auto isClosed = m_isClosed.exchange( true );
-    if ( isClosed ) {
+    // do an write lock to make sure all on-going read calls from this snap complete before
+    // this to make the snap is not being used in a levelb call
+    std::unique_lock< std::shared_mutex > lock( m_usageMutex );
+    if ( m_isClosed ) {
         // this should never happen
-        cwarn << "Close called twice on a snap";
+        // we use cerr here since close may be called during late stages of
+        // skaled exit where logging is not available
+        std::cerr << "Close called twice on a snap" << std::endl;
         return;
     }
+
+    m_isClosed = true;
 
     LDB_CHECK( _parentDB );
     LDB_CHECK( m_snap );
     // sanity check. We should use the same DB handle that was used to open this snap
-    if ( _parentDBReopenId != m_parentDBReopenId ) {
-        // this should never happen, since it means that we are attempting to close snapshot
-        // after its parent database is closed due to reopen
-        // normally we close all snapshots before reopenining the database
-        cwarn << "Closing the snapshot after the database is closed";
-        return;
-    }
-
+    LDB_CHECK( _parentDBReopenId == m_parentDBReopenId );
     // do an exclusive lock on the usage mutex
     // this to make the snap is not being used in a levelb call
-
-    std::unique_lock< std::shared_mutex > lock( m_usageMutex );
-    _parentDB->ReleaseSnapshot( this->m_snap );
+    _parentDB->ReleaseSnapshot( m_snap );
     m_snap = nullptr;
 }
 LevelDBSnap::~LevelDBSnap() {
-    // LevelDB should be closed before releasing it, otherwise
+    // LevelDB should be closed before releasing it otherwise we leak a handle
     // we use cerr here since destructor may be called during late stages of
     // skaled exit where logging is not available
     if ( !m_isClosed ) {
-        std::cerr << "LevelDB warning: destroying active snap" << std::endl;
+        std::cerr << "LevelDB error: destroying active snap. This will leak a handle" << std::endl;
     }
 }
 
@@ -84,15 +81,17 @@ uint64_t LevelDBSnap::getInstanceId() const {
 }
 
 std::atomic< uint64_t > LevelDBSnap::objectCounter = 0;
+
 uint64_t LevelDBSnap::getCreationTimeMs() const {
     return m_creationTimeMs;
 }
 
+// this is used primary in eth_calls
 leveldb::Status LevelDBSnap::getValue( const std::unique_ptr< leveldb::DB >& _db,
     leveldb::ReadOptions _readOptions, const leveldb::Slice& _key, std::string& _value ) {
     LDB_CHECK( _db );
-    // this make sure snap is not concurrently closed while used in Get()
-    std::make_unique< std::shared_lock< std::shared_mutex > >( m_usageMutex );
+    // lock to make sure snap is not concurrently closed while reading from it
+    std::shared_lock< std::shared_mutex > lock( m_usageMutex );
     LDB_CHECK( !isClosed() )
     _readOptions.snapshot = m_snap;
     return _db->Get( _readOptions, _key, &_value );

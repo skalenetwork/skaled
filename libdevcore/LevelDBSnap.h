@@ -38,32 +38,39 @@ class LevelDB;
 // after processing of a particular block id.
 class LevelDBSnap {
 public:
-    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId );
+
+    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId);
 
     // close this snapshot. Use after close will cause an exception
     void close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBReopenId );
 
-    uint64_t getCreationTimeMs() const;
-
     virtual ~LevelDBSnap();
-
-    uint64_t getInstanceId() const;
-
-    bool isClosed() const;
 
     leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions,
         const leveldb::Slice& _key, std::string& _value );
 
+    uint64_t getInstanceId() const;
+
+    uint64_t getParentDbReopenId() const;
+
+    uint64_t getCreationTimeMs() const;
+
+    bool isClosed() const;
+
 private:
+
+    const uint64_t m_blockId;
+
+    const leveldb::Snapshot* m_snap = nullptr;
+
     std::atomic< bool > m_isClosed = false;
     // this mutex is shared=locked everytime a LevedLB API read call is done on the
     // snapshot, and unique-locked when the snapshot is to be closed
     // This is to prevent closing snapshot handle while concurrently executing a LevelDB call
     std::shared_mutex m_usageMutex;
 
-    const uint64_t m_blockId;
-    const leveldb::Snapshot* m_snap = nullptr;
     uint64_t m_creationTimeMs;
+
     // LevelDB identifier for which this snapShot has been // created
     // this is used to match snaps to leveldb handles
     // the reopen id of the parent database handle. When a database is reopened
@@ -72,11 +79,8 @@ private:
     // the database handle already does not exist
     uint64_t m_parentDBReopenId;
 
-public:
-    uint64_t getParentDbReopenId() const;
+    std::atomic<uint64_t> m_instanceId; // unique id of this snap object instance
 
-private:
-    uint64_t m_instanceId; // unique id of this snap object instance
     static std::atomic< uint64_t > objectCounter;
 };
 
