@@ -120,6 +120,7 @@ public:
     using Interface::blockInfo;  // for another overload
     using Interface::transactionHashes;
     using Interface::uncle;
+    using Interface::uncleCount;
     using Interface::uncleHashes;
 
     h256 hashFromNumber( BlockNumber _number ) const override;
@@ -152,7 +153,6 @@ public:
         }
         return transactionCount( hashFromNumber( _block ) );
     }
-    using Interface::uncleCount;
     unsigned uncleCount( h256 _blockHash ) const override;
     unsigned number() const override;
     h256s pendingHashes() const override;
