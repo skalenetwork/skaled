@@ -143,7 +143,7 @@ void LevelDB::openDBInstanceUnsafe() {
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
-    m_dbInstanceId++;
+    m_dbReopenId++;
     cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
@@ -273,7 +273,7 @@ void LevelDB::reopen() {
     // each time a database is reopen
     // note that currently the database is only reopened on the
     // historic state where snaps are not used anyway, so the above delay will not happen
-    m_snapManager.closeAllOpenSnaps( m_db, m_dbInstanceId );
+    m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
 
     // releasing unique pointer will cause database destructor to be called that will close db
     LDB_CHECK(m_db);
@@ -413,7 +413,7 @@ void LevelDB::doCompaction() const {
 
 void LevelDB::createBlockSnap( uint64_t _blockId ) {
     SharedDBGuard lock( *this );
-    m_snapManager.addSnapForBlock( _blockId, m_db, m_dbInstanceId );
+    m_snapManager.addSnapForBlock( _blockId, m_db, m_dbReopenId );
 }
 
 const std::shared_ptr< LevelDBSnap >& LevelDB::getLastBlockSnap() const {
