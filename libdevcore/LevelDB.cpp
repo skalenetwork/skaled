@@ -194,7 +194,7 @@ bool LevelDB::exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) 
 
 leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
     std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during getValue() call
     if ( _snap ) {
         return _snap->getValue(m_db, _readOptions, _key, _value);
     } else {
@@ -207,7 +207,7 @@ void LevelDB::insert( Slice _key, Slice _value ) {
     leveldb::Slice const value( _value.data(), _value.size() );
     leveldb::Status status;
     {
-        SharedDBGuard lock( *this );
+        SharedDBGuard lock( *this ); // protect so db is not reopened during Put() call
         status = m_db->Put( m_writeOptions, key, value );
     }
     checkStatus( status );
@@ -237,7 +237,7 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     }
     leveldb::Status status;
     {
-        SharedDBGuard lock( *this );
+        SharedDBGuard lock( *this ); // protect so db is not reopened during Write() call
         status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
     }
     // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes
@@ -284,7 +284,7 @@ void LevelDB::reopen() {
 
 void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     cwarn << "Iterating over the entire LevelDB database: " << this->m_path;
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during iteration
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -302,7 +302,7 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
 void LevelDB::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     cnote << "Iterating over the LevelDB prefix: " << _prefix;
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so DB is not reopened during iteration
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -320,7 +320,7 @@ void LevelDB::forEachWithPrefix(
 }
 
 h256 LevelDB::hashBase() const {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during iteration
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -348,7 +348,7 @@ h256 LevelDB::hashBase() const {
 }
 
 h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during iteration
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -372,7 +372,7 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
 }
 
 bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during iteration
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -406,18 +406,18 @@ bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashe
 }
 
 void LevelDB::doCompaction() const {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during compaction
     m_db->CompactRange( nullptr, nullptr );
 }
 
 
 void LevelDB::createBlockSnap( uint64_t _blockId ) {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened during snap creation
     m_snapManager.addSnapForBlock( _blockId, m_db, m_dbReopenId );
 }
 
 const std::shared_ptr< LevelDBSnap >& LevelDB::getLastBlockSnap() const {
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this ); // protect so db is not reopened when while we get snap
     return m_snapManager.getLastBlockSnap();
 }
 
