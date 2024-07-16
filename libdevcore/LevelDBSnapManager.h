@@ -50,11 +50,11 @@ public:
 
     void closeAllOpenSnaps(std::unique_ptr< leveldb::DB >& _db, uint64_t  _dbInstanceId);
 
-private:
-
     // this function should be called while holding database reopen lock
-    uint64_t cleanUnusedOldSnaps(
-        std::unique_ptr< leveldb::DB >& _db, uint64_t  _dbInstanceId, uint64_t _maxSnapLifetimeMs );
+    uint64_t garbageCollectUnusedOldSnaps(
+        std::unique_ptr< leveldb::DB >& _db, uint64_t _dbReopenId, uint64_t _maxSnapLifetimeMs );
+
+private:
 
     // old snaps contains snap objects for older blocks
     // these objects are alive untils the
@@ -70,6 +70,7 @@ private:
     // this will cause the eth_call to return an error
     static const size_t FORCE_SNAP_CLOSE_TIME_MS = 3000;
 
+    void createNewSnap( uint64_t _blockId, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
 };
 
 }  // namespace dev::db

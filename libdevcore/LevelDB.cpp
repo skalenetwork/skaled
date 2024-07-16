@@ -268,15 +268,11 @@ void LevelDB::reopenDataBaseIfNeeded() {
 }
 void LevelDB::reopen() {
     ExclusiveDBGuard lock( *this );
-
-    // before we reopen a database, we need to close all open snaps
-    // this can take up to FORCE_SNAP_CLOSE_TIME_MS
-    // since we are trying to give time to eth_calls to complete nicely
-    // this mean that block processing maybe delayed by up to FORCE_SNAP_CLOSE_TIME_MS
-    // each time a database is reopen
-    // note that currently the database is only reopened on the
-    // historic state where snaps are not used anyway, so the above delay will not happen
-    m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
+    // close all current snaps by passing max lifetime as zero
+    auto aliveSnaps =
+        m_snapManager.garbageCollectUnusedOldSnaps(m_db, m_dbReopenId,
+            0);
+    LDB_CHECK(aliveSnaps == 0);
 
     // releasing unique pointer will cause database destructor to be called that will close db
     LDB_CHECK(m_db);
