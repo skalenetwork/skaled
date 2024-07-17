@@ -46,7 +46,7 @@ public:
     LevelDBSnapManager() {};
 
     void addSnapForBlock(
-        uint64_t _blockID, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
+        uint64_t _blockNumber, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
 
     void closeAllOpenSnaps(std::unique_ptr< leveldb::DB >& _db, uint64_t  _dbInstanceId);
 

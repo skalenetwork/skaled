@@ -34,7 +34,7 @@
     if ( !( _EXPRESSION_ ) ) {                                                                 \
         auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " +           \
                        std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );             \
-        BOOST_THROW_EXCEPTION(DatabaseError() << errinfo_comment( __msg__ ));   \
+        BOOST_THROW_EXCEPTION(dev::db::DatabaseError() << errinfo_comment( __msg__ ));   \
     }
 
 namespace dev::db {
@@ -82,7 +82,7 @@ public:
 
     void doCompaction() const;
 
-    void createBlockSnap(uint64_t _blockId);
+    void createBlockSnap(uint64_t _blockNumber );
 
     // Return the total count of key deletes  since the start
     static uint64_t getKeyDeletesStats();

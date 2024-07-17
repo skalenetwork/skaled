@@ -410,9 +410,9 @@ void LevelDB::doCompaction() const {
 }
 
 
-void LevelDB::createBlockSnap( uint64_t _blockId ) {
+void LevelDB::createBlockSnap( uint64_t _blockNumber ) {
     SharedDBGuard lock( *this ); // protect so db is not reopened during snap creation
-    m_snapManager.addSnapForBlock( _blockId, m_db, m_dbReopenId );
+    m_snapManager.addSnapForBlock( _blockNumber, m_db, m_dbReopenId );
 }
 
 const std::shared_ptr< LevelDBSnap >& LevelDB::getLastBlockSnap() const {

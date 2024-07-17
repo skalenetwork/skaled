@@ -74,9 +74,9 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
 
 // this will be called from EVM processing thread just after the block is processed
 void LevelDBSnapManager::addSnapForBlock(
-    uint64_t _blockId, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId ) {
+    uint64_t _blockNumber, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId ) {
 
-    createNewSnap( _blockId, _db, _dbInstanceId );
+    createNewSnap( _blockNumber, _db, _dbInstanceId );
 
     // we garbage-collect  unused old snaps that no-one used or that exist for more that max
     // lifetime we give for eth_calls to complete
@@ -101,7 +101,9 @@ void LevelDBSnapManager::createNewSnap(
 
         auto oldSnap = m_lastBlockSnap;
         m_lastBlockSnap = newSnap;
-        oldSnaps.emplace( oldSnap->getInstanceId(), oldSnap );
+        if (oldSnap) {
+            oldSnaps.emplace( oldSnap->getInstanceId(), oldSnap );
+        }
 }
 const std::shared_ptr< LevelDBSnap >& LevelDBSnapManager::getLastBlockSnap() const {
     // read lock briefly to make no snap is concurrently created.

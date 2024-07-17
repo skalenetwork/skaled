@@ -1202,3 +1202,8 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
     }
     return _out;
 }
+
+void State::createReadOnlyStateDBSnap(uint64_t _blockNumber) {
+    LDB_CHECK(m_orig_db);
+    m_orig_db->createBlockSnap(_blockNumber);
+}

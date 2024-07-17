@@ -313,6 +313,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         m_snapshotAgentInited = true;
     }
 
+    // when we start, we create a read only State DB snap to be used in eth calls
+    // after that, new snaps are created after each block is processed
+
+    m_state.createReadOnlyStateDBSnap(number());
+
     SchainPatch::init( chainParams() );
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
     TotalStorageUsedPatch::init( this );

@@ -400,6 +400,8 @@ public:
     };  // only for tests
 
 
+    void createReadOnlyStateDBSnap(uint64_t _blockNumber);
+
 private:
     void updateToLatestVersion();
 
