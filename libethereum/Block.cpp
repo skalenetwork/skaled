@@ -868,7 +868,8 @@ ExecutionResult Block::execute(
     // startRead() is called
     // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
     State stateSnapshot =
-        _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() : m_state;
+        _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() :
+                                     m_state.createReadOnlySnapBasedCopy();
 
     EnvInfo envInfo = EnvInfo(
         info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );

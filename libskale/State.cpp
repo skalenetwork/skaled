@@ -967,6 +967,19 @@ State State::createStateModifyCopyAndPassLock() {
     }
 }
 
+State State::createReadOnlySnapBasedCopy() {
+    State stateCopy = State( *this );
+    // get the snap for the latest block
+    LDB_CHECK(m_orig_db);
+    stateCopy.m_snap = m_orig_db->getLastBlockSnap();
+    LDB_CHECK(stateCopy.m_snap)
+    // the state does not use any locking since it is based on db snapshot
+    stateCopy.m_db_write_lock = boost::none;
+    stateCopy.m_db_read_lock = boost::none;
+    return stateCopy;
+
+}
+
 void State::releaseWriteLock() {
     m_db_write_lock = boost::none;
 }

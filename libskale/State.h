@@ -368,6 +368,8 @@ public:
     /// Create State copy to modify data and pass writing lock to it
     State createStateModifyCopyAndPassLock();
 
+    /// Create State copy based on LevedlDB snaps that does not use any locking
+    State createReadOnlySnapBasedCopy();
 
     void releaseWriteLock();
 
@@ -497,6 +499,8 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+    // if the state is based on a LevelDB snap, the istance of the snap goes here
+    std::shared_ptr<dev::db::LevelDBSnap> m_snap = nullptr;
 
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;
