@@ -1254,8 +1254,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 
         Block temp = preSeal();
 
-        // TODO there can be race conditions between prev and next line!
-        State readStateForLock = temp.mutableState().createStateReadOnlyCopy();
+
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         // if the user did not specify transaction gas limit, we give transaction block gas
         // limit of gas

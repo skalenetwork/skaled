@@ -71,10 +71,8 @@ async function deployTestContract(): Promise<object> {
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
-
-    const Tracer = await ethers.getContractFactory("Tracer");
-    const tracer = await Tracer.attach(deployedTestContract.address);
-    let result = await tracer.mint2(1000);
+    const tracer = await factory.attach(deployedTestContract.address);
+    let result = await tracer.callStatic.mint2(1000);
 
     console.log("Got result");
 
