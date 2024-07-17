@@ -71,6 +71,15 @@ async function deployTestContract(): Promise<object> {
     const hash = deployedTestContract.deployTransaction.hash;
     console.log(`Contract deployed to ${deployedTestContract.address} at block ${deployBlockNumber.toString(16)} tx hash ${hash}`);
 
+
+    const Tracer = await ethers.getContractFactory("Tracer");
+    const tracer = await Tracer.attach(deployedTestContract.address);
+    let result = await tracer.mint2(1000);
+
+    console.log("Got result");
+
+    console.log(result);
+
     return deployedTestContract;
 
 }
@@ -185,7 +194,14 @@ async function executeRevert(deployedContract: any): Promise<string> {
 async function main(): Promise<void> {
 
     let deployedContract = await deployTestContract();
+
+
+
+
+
     DEPLOYED_CONTRACT_ADDRESS_LOWER_CASE = deployedContract.address.toString().toLowerCase();
+
+
 
     while (true) {
 
@@ -194,7 +210,7 @@ async function main(): Promise<void> {
         const secondTransferHash: string = await sendTransferWithConfirmation();
 
 
-        const secondMintHash: string = await    executeMintCall(deployedContract);
+        const secondMintHash: string = await executeMintCall(deployedContract);
 
 
         const revertHash: string = await executeRevert(deployedContract);
