@@ -54,9 +54,6 @@ extern skale::State g_state;
 
 struct ChainOperationParams;
 
-// using PrecompiledExecutor =
-//     std::function< std::pair< bool, bytes >( bytesConstRef _in, skale::OverlayFS* _overlayFS ) >;
-
 // allow call both with overlayFS and without it
 class PrecompiledExecutor {
 public:
@@ -116,6 +113,7 @@ private:
     static PrecompiledRegistrar* s_this;
 };
 
+// ignore _overlayFS param and call registered function with 1 parameter
 // TODO: unregister on unload with a static object.
 #define ETH_REGISTER_PRECOMPILED( Name )                                                          \
     static std::pair< bool, bytes > __eth_registerPrecompiledFunction##Name( bytesConstRef _in ); \
