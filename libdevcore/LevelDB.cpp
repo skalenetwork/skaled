@@ -198,8 +198,10 @@ leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions, const leve
     if ( _snap ) {
         // sanity check to make sure that the snap was created for this particular
         // db handle
-        LDB_CHECK(m_dbReopenId == _snap->getParentDbReopenId())
+        LDB_CHECK(m_dbReopenId == _snap->getParentDbReopenId());
+        std::cerr << "here" << std::endl;
         return _snap->getValue(m_db, _readOptions, _key, _value);
+
     } else {
         return m_db->Get( _readOptions, _key, &_value );
     }

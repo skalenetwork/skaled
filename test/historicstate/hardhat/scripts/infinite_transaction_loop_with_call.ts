@@ -160,17 +160,11 @@ async function executeTransferAndThenTestContractMintInSingleBlock(deployedContr
 
 }
 
-async function executeMint2(deployedContract: any): Promise<string> {
+async function executeMintCall(deployedContract: any): Promise<string> {
 
+    const result = await deployedContract.mint2(1000);
 
-    const mint2Receipt = await deployedContract[EXECUTE2_FUNCTION_NAME](1000, {
-        gasLimit: 2100000, // this is just an example value; you'll need to set an appropriate gas limit for your specific function call,
-    });
-
-    expect(mint2Receipt.blockNumber).not.to.be.null;
-
-
-    return mint2Receipt.hash!;
+    console.log("Executed mint2 call");
 
 }
 
@@ -200,7 +194,7 @@ async function main(): Promise<void> {
         const secondTransferHash: string = await sendTransferWithConfirmation();
 
 
-        const secondMintHash: string = await executeMint2(deployedContract);
+        const secondMintHash: string = await    executeMintCall(deployedContract);
 
 
         const revertHash: string = await executeRevert(deployedContract);
