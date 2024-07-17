@@ -4094,8 +4094,6 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
     transactionCallObject["data"] = "0xf38fb65b";
 
-    // fixture.rpcClient->eth_estimateGas( transactionCallObject );
-
     TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
     ts = fixture.client->populateTransactionWithDefaults( ts );
     pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
