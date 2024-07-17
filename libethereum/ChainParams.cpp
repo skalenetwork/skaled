@@ -227,10 +227,20 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     array< string, 4 > BLSPublicKeys;
     array< string, 4 > commonBLSPublicKeys;
     if ( !testSignatures ) {
+
+        if (infoObj.count("ecdsaKeyName") == 0) {
+            throw std::runtime_error(
+                "No ecdsaKeyName in config, and testSignatures is not set to true");
+        }
+
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+        if (infoObj.count("wallets") == 0) {
+            throw std::runtime_error(
+                "No wallets section in test config, and testSignatures is not set to true");
+        }
 
+        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
         commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
         commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
         commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
