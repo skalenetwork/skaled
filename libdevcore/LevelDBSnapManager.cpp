@@ -37,6 +37,8 @@ namespace dev::db {
 // this function returns the size of oldSnaps after cleanup
 uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
     std::unique_ptr< leveldb::DB >& _db, uint64_t _dbReopenId, uint64_t _maxSnapLifetimeMs ) {
+
+
     std::vector< std::shared_ptr< LevelDBSnap > > unusedOldSnaps;
 
     uint64_t mapSizeAfterCleanup;
@@ -52,8 +54,10 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
             if ( it->second.use_count() == 1 ||
                  it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs ) {
                 // erase this snap from the map
-                it = oldSnaps.erase( it );
+                // note that push back needs to happen before erase since erase will
+                // destroy the snap object if there ar no more references
                 unusedOldSnaps.push_back( it->second );
+                it = oldSnaps.erase( it );
             } else {
                 ++it;  // Only increment if not erasing
             }
@@ -67,7 +71,6 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
         LDB_CHECK(snap);
         snap->close(_db, _dbReopenId);
     }
-
     return mapSizeAfterCleanup;
 }
 

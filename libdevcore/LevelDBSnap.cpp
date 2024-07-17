@@ -48,10 +48,7 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
     // this to make the snap is not being used in a levelb call
     std::unique_lock< std::shared_mutex > lock( m_usageMutex );
     if ( m_isClosed ) {
-        // this should never happen
-        // we use cerr here since close may be called during late stages of
-        // skaled exit where logging is not available
-        std::cerr << "Close called twice on a snap" << std::endl;
+        cerror << "Close called twice on a snap" << std::endl;
         return;
     }
 
@@ -67,11 +64,8 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
     m_snap = nullptr;
 }
 LevelDBSnap::~LevelDBSnap() {
-    // LevelDB should be closed before releasing it otherwise we leak a handle
-    // we use cerr here since destructor may be called during late stages of
-    // skaled exit where logging is not available
     if ( !m_isClosed ) {
-        std::cerr << "LevelDB error: destroying active snap. This will leak a handle" << std::endl;
+        cerror << "LevelDB error: destroying active snap. This will leak a handle" << std::endl;
     }
 }
 
