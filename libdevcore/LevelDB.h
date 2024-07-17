@@ -34,7 +34,7 @@
     if ( !( _EXPRESSION_ ) ) {                                                                 \
         auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " +           \
                        std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );             \
-        BOOST_THROW_EXCEPTION(dev::db::DatabaseError() << errinfo_comment( __msg__ ));   \
+        BOOST_THROW_EXCEPTION(dev::db::DatabaseError() << dev::errinfo_comment( __msg__ ));   \
     }
 
 namespace dev::db {

@@ -3,6 +3,7 @@
 
 #include "batched_io.h"
 
+#include <libdevcore/DBImpl.h>
 #include <libdevcore/LevelDB.h>
 
 #include <shared_mutex>
@@ -37,14 +38,14 @@ private:
     }
 
 public:
-    void open( std::shared_ptr< dev::db::DatabaseFace > _db ) { m_db = _db; }
-    bool is_open() const { return !!m_db; }
-    void insert( dev::db::Slice _key, dev::db::Slice _value ) {
+    virtual void open( std::shared_ptr< dev::db::DatabaseFace > _db ) { m_db = _db; }
+    virtual bool is_open() const { return !!m_db; }
+    virtual void insert( dev::db::Slice _key, dev::db::Slice _value ) override{
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
         m_batch->insert( _key, _value );
     }
-    void kill( dev::db::Slice _key ) {
+    virtual void kill( dev::db::Slice _key ) override {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
         m_batch->kill( _key );
@@ -79,9 +80,57 @@ public:
     virtual ~batched_db();
 
 protected:
-    void recover() { /*nothing*/
-    }
+    virtual void recover() { /*nothing*/ }
 };
+
+class read_only_snap_based_batched_db : public batched_db {
+private:
+    std::shared_ptr< dev::db::DBImpl > m_db;
+    std::shared_ptr< dev::db::LevelDBSnap > m_snap;
+
+public:
+
+    read_only_snap_based_batched_db( );
+
+    read_only_snap_based_batched_db( std::shared_ptr< dev::db::DBImpl > _db,
+        std::shared_ptr< dev::db::LevelDBSnap > _snap ) {
+        LDB_CHECK(_db);
+        LDB_CHECK(_snap);
+        m_db = _db;
+        m_snap = _snap;
+    }
+    virtual bool is_open() const override { return !!m_db; }
+    virtual void insert( dev::db::Slice, dev::db::Slice ) override {
+        // do nothing
+    }
+    virtual void kill( dev::db::Slice )  override{
+        // do nothing
+    }
+    virtual void revert() override {
+        // do nothing
+    }
+    virtual void commit( const std::string& ) override{
+        // do nothing
+    }
+
+    // readonly
+    virtual std::string lookup( dev::db::Slice _key ) const  override{ return m_db->lookup( _key, m_snap ); }
+    virtual bool exists( dev::db::Slice _key ) const override { return m_db->exists( _key, m_snap ); }
+    virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) >  ) const override{
+        throw std::runtime_error("Function not implemented");
+    }
+
+    virtual void forEachWithPrefix(
+        std::string& , std::function< bool( dev::db::Slice, dev::db::Slice ) >  ) const override {
+        throw std::runtime_error("Function not implemented");
+    }
+
+    virtual ~read_only_snap_based_batched_db();
+
+protected:
+    virtual void recover() override { /*nothing*/ }
+};
+
 
 class db_splitter {
 private:
@@ -116,8 +165,7 @@ private:
             std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const;
 
     protected:
-        virtual void recover() { /* nothing */
-        }
+        virtual void recover() { /* nothing */ }
     };
 };
 
