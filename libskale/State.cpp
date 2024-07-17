@@ -1066,7 +1066,10 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
-
+        // since we committed changes corresponding to a particular block
+        // we need to create a new readonly snap
+        LDB_CHECK(m_orig_db);
+        m_orig_db->createBlockSnap(_envInfo.number());
         break;
     }
     case Permanence::Uncommitted:
