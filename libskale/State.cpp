@@ -978,10 +978,8 @@ State State::createReadOnlySnapBasedCopy() {
     stateCopy.m_db_write_lock = boost::none;
     stateCopy.m_db_read_lock = boost::none;
     stateCopy.x_db_ptr = nullptr;
-
-
     stateCopy.m_db_ptr = make_shared< OverlayDB >(
-        make_unique< batched_io::read_only_snap_based_batched_db >( m_orig_db, m_snap ) );
+        make_unique< batched_io::read_only_snap_based_batched_db >( stateCopy.m_orig_db, stateCopy.m_snap ) );
     return stateCopy;
 }
 

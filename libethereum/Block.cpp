@@ -864,9 +864,6 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
-    // HACK! TODO! Permanence::Reverted should be passed ONLY from Client::call - because there
-    // startRead() is called
-    // TODO add here startRead! (but it clears cache - so write in Client::call() is ignored...
     State stateSnapshot =
         _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() :
                                      m_state.createReadOnlySnapBasedCopy();
