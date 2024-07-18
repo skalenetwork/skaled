@@ -968,7 +968,7 @@ State State::createStateModifyCopyAndPassLock() {
 }
 
 State State::createReadOnlySnapBasedCopy() {
-    State stateCopy = State( *this );
+    State stateCopy = *this ;
     // get the snap for the latest block
     LDB_CHECK( m_orig_db );
     stateCopy.m_orig_db = m_orig_db;
