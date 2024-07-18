@@ -159,6 +159,26 @@ using ChangeLog = std::vector< Change >;
  */
 class State {
 public:
+
+    class SharedDBGuard {
+        const State& m_state;
+
+
+    public:
+        explicit SharedDBGuard( const State& _state ) : m_state( _state ) {
+            if (m_state.isReadOnlySnapBasedState)
+                return;
+            m_state.x_db_ptr->lock_shared();
+        }
+
+        ~SharedDBGuard() {
+            if (m_state.isReadOnlySnapBasedState)
+                return;
+            m_state.x_db_ptr->unlock_shared();
+        }
+    };
+
+
     using AddressMap = std::map< dev::h256, dev::Address >;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -502,6 +522,8 @@ private:
     // if the state is based on a LevelDB snap, the istance of the snap goes here
     std::shared_ptr<dev::db::LevelDBSnap> m_snap = nullptr;
 
+    bool isReadOnlySnapBasedState = false;
+
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;
 
@@ -522,7 +544,9 @@ public:
         return pDB;
     }
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
-};
+
+        void clearAllCaches();
+    };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );
 

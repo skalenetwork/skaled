@@ -353,7 +353,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
-    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    SharedDBGuard lock(*this);
     if ( !checkVersion() ) {
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion;
@@ -434,7 +434,7 @@ eth::Account* State::account( Address const& _address ) {
     // Populate basic info.
     bytes stateBack;
     {
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        SharedDBGuard lock(*this);
 
         if ( !checkVersion() ) {
             cerror << "Current state version is " << m_currentVersion << " but stored version is "
@@ -657,7 +657,7 @@ void State::kill( Address _addr ) {
 
 
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
-    boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+    SharedDBGuard lock(*this);
     return storage_WITHOUT_LOCK( _contract );
 }
 
@@ -709,7 +709,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             return memoryIterator->second;
 
         // Not in the storage cache - go to the DB.
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        SharedDBGuard lock(*this);
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -767,7 +767,7 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
             return memoryPtr->second;
         }
 
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        SharedDBGuard lock(*this);
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -825,7 +825,7 @@ bytes const& State::code( Address const& _addr ) const {
     if ( a->code().empty() ) {
         // Load the code from the backend.
         eth::Account* mutableAccount = const_cast< eth::Account* >( a );
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        SharedDBGuard lock(*this);
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
@@ -928,15 +928,19 @@ void State::rollback( size_t _savepoint ) {
 }
 
 void State::updateToLatestVersion() {
+    clearAllCaches();
+
+    {
+        SharedDBGuard lock(*this);
+        m_currentVersion = *m_storedVersion;
+    }
+}
+
+void State::clearAllCaches() {
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
-
-    {
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
-        m_currentVersion = *m_storedVersion;
-    }
 }
 
 State State::createStateReadOnlyCopy() const {
@@ -969,6 +973,8 @@ State State::createStateModifyCopyAndPassLock() {
 
 State State::createReadOnlySnapBasedCopy() {
     State stateCopy = *this ;
+    stateCopy.isReadOnlySnapBasedState = true;
+    stateCopy.clearAllCaches();
     // get the snap for the latest block
     LDB_CHECK( m_orig_db );
     stateCopy.m_orig_db = m_orig_db;
@@ -1010,7 +1016,7 @@ bool State::connected() const {
 bool State::empty() const {
     if ( m_cache.empty() ) {
         if ( m_db_ptr ) {
-            boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+            SharedDBGuard lock(*this);
             if ( m_db_ptr->empty() ) {
                 return true;
             }
@@ -1154,7 +1160,8 @@ dev::s256 State::storageUsed( const dev::Address& _addr ) const {
 }
 
 bool State::checkVersion() const {
-    return *m_storedVersion == m_currentVersion;
+    // snap based state does not use version checks
+    return isReadOnlySnapBasedState || *m_storedVersion == m_currentVersion;
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
