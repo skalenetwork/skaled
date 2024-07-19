@@ -152,7 +152,7 @@ Block& Block::operator=( Block const& _s ) {
 // as well as raw bytes
 Block Block::getCopyForEthCalls() const {
     Block copy(Null);
-    copy.m_state = m_state;
+    copy.m_state = m_state.createReadOnlySnapBasedCopy();
     copy.m_author = m_author;
     copy.m_sealEngine = m_sealEngine;
     copy.m_committedToSeal = false;
@@ -885,7 +885,7 @@ ExecutionResult Block::execute(
 
     State stateSnapshot =
         _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() :
-                                     m_state.createReadOnlySnapBasedCopy();
+                                     m_state;
 
     EnvInfo envInfo = EnvInfo(
         info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );

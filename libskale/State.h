@@ -166,13 +166,16 @@ public:
 
     public:
         explicit SharedDBGuard( const State& _state ) : m_state( _state ) {
-            if (m_state.isReadOnlySnapBasedState)
+            if (m_state.m_isReadOnlySnapBasedState)
                 return;
+            if (!m_state.x_db_ptr) {
+                throw std::logic_error("Null pointer in SharedDBGuard");
+            };
             m_state.x_db_ptr->lock_shared();
         }
 
         ~SharedDBGuard() {
-            if (m_state.isReadOnlySnapBasedState)
+            if (m_state.m_isReadOnlySnapBasedState)
                 return;
             m_state.x_db_ptr->unlock_shared();
         }
@@ -413,7 +416,7 @@ public:
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
     dev::s256 storageUsedTotal() const {
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        SharedDBGuard(*this);
         return m_db_ptr->storageUsed();
     }
 
@@ -519,10 +522,9 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
-    // if the state is based on a LevelDB snap, the istance of the snap goes here
+    // if the state is based on a LevelDB snap, the instance of the snap goes here
     std::shared_ptr<dev::db::LevelDBSnap> m_snap = nullptr;
-
-    bool isReadOnlySnapBasedState = false;
+    bool m_isReadOnlySnapBasedState = false;
 
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;

@@ -254,7 +254,7 @@ State::State( const State& _s )
         m_db_read_lock.emplace( *x_db_ptr );
     }
     if ( _s.m_db_write_lock ) {
-        std::logic_error( "Can't copy locked for writing state object" );
+        throw std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
@@ -266,8 +266,11 @@ State::State( const State& _s )
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+    m_snap = _s.m_snap;
+    m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+
 }
 
 State& State::operator=( const State& _s ) {
@@ -276,7 +279,7 @@ State& State::operator=( const State& _s ) {
         m_db_read_lock.emplace( *x_db_ptr );
     }
     if ( _s.m_db_write_lock ) {
-        std::logic_error( "Can't copy locked for writing state object" );
+        throw std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
@@ -294,6 +297,8 @@ State& State::operator=( const State& _s ) {
     m_historicState = _s.m_historicState;
 #endif
     m_fs_ptr = _s.m_fs_ptr;
+    m_snap = _s.m_snap;
+    m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
 
     return *this;
 }
@@ -943,7 +948,9 @@ void State::clearAllCaches() {
     m_nonExistingAccountsCache.clear();
 }
 
+
 State State::createStateReadOnlyCopy() const {
+    LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
@@ -951,6 +958,7 @@ State State::createStateReadOnlyCopy() const {
 }
 
 State State::createStateModifyCopy() const {
+    LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = State( *this );
     stateCopy.m_db_write_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
@@ -958,6 +966,7 @@ State State::createStateModifyCopy() const {
 }
 
 State State::createStateModifyCopyAndPassLock() {
+    LDB_CHECK(!m_isReadOnlySnapBasedState);
     if ( m_db_write_lock ) {
         boost::upgrade_lock< boost::shared_mutex > lock;
         lock.swap( *m_db_write_lock );
@@ -972,8 +981,9 @@ State State::createStateModifyCopyAndPassLock() {
 }
 
 State State::createReadOnlySnapBasedCopy() const {
+    LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = *this ;
-    stateCopy.isReadOnlySnapBasedState = true;
+    stateCopy.m_isReadOnlySnapBasedState = true;
     stateCopy.clearAllCaches();
     // get the snap for the latest block
     LDB_CHECK( m_orig_db );
@@ -991,10 +1001,12 @@ State State::createReadOnlySnapBasedCopy() const {
 
 
 void State::releaseWriteLock() {
+    LDB_CHECK(!m_isReadOnlySnapBasedState);
     m_db_write_lock = boost::none;
 }
 
 State State::createNewCopyWithLocks() {
+    LDB_CHECK(!m_isReadOnlySnapBasedState);
     State copy;
     if ( m_db_write_lock )
         copy = createStateModifyCopyAndPassLock();
@@ -1070,13 +1082,10 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
-        // TODO: review logic|^
 
-        h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
-                                     // dev::eth::WithoutSignature );
+        h256 shaLastTx = _t.sha3();
+
         this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
-        // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
-        // shaLastTx.hex() << "\n";
 
         TransactionReceipt receipt =
             _envInfo.number() >= _chainParams.byzantiumForkBlock ?
@@ -1161,7 +1170,7 @@ dev::s256 State::storageUsed( const dev::Address& _addr ) const {
 
 bool State::checkVersion() const {
     // snap based state does not use version checks
-    return isReadOnlySnapBasedState || *m_storedVersion == m_currentVersion;
+    return m_isReadOnlySnapBasedState || *m_storedVersion == m_currentVersion;
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
