@@ -93,7 +93,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
-    auto state = createStateReadOnlyCopy();
+    auto state = createStateCopyWithReadLock();
     totalStorageUsed_ = state.storageUsedTotal();
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
@@ -127,7 +127,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_historicState( _accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs )
 #endif
 {
-    auto state = createStateReadOnlyCopy();
+    auto state = createStateCopyWithReadLock();
     totalStorageUsed_ = state.storageUsedTotal();
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
@@ -253,9 +253,6 @@ State::State( const State& _s )
     if ( _s.m_db_read_lock ) {
         m_db_read_lock.emplace( *x_db_ptr );
     }
-    if ( _s.m_db_write_lock ) {
-        throw std::logic_error( "Can't copy locked for writing state object" );
-    }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
     m_storedVersion = _s.m_storedVersion;
@@ -277,9 +274,6 @@ State& State::operator=( const State& _s ) {
     x_db_ptr = _s.x_db_ptr;
     if ( _s.m_db_read_lock ) {
         m_db_read_lock.emplace( *x_db_ptr );
-    }
-    if ( _s.m_db_write_lock ) {
-        throw std::logic_error( "Can't copy locked for writing state object" );
     }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
@@ -495,10 +489,10 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
         removeEmptyAccounts();
 
     {
-        if ( !m_db_write_lock ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToNotLockedStateObject() );
-        }
-        boost::upgrade_to_unique_lock< boost::shared_mutex > lock( *m_db_write_lock );
+
+        LDB_CHECK(!m_isReadOnlySnapBasedState);
+
+        boost::unique_lock< boost::shared_mutex > lock( *x_db_ptr );
         if ( !checkVersion() ) {
             BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
         }
@@ -949,7 +943,7 @@ void State::clearAllCaches() {
 }
 
 
-State State::createStateReadOnlyCopy() const {
+State State::createStateCopyWithReadLock() const {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
@@ -957,28 +951,13 @@ State State::createStateReadOnlyCopy() const {
     return stateCopy;
 }
 
-State State::createStateModifyCopy() const {
+State State::createStateCopyAndUpdateVersion() const {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = State( *this );
-    stateCopy.m_db_write_lock.emplace( *stateCopy.x_db_ptr );
     stateCopy.updateToLatestVersion();
     return stateCopy;
 }
 
-State State::createStateModifyCopyAndPassLock() {
-    LDB_CHECK(!m_isReadOnlySnapBasedState);
-    if ( m_db_write_lock ) {
-        boost::upgrade_lock< boost::shared_mutex > lock;
-        lock.swap( *m_db_write_lock );
-        m_db_write_lock = boost::none;
-        State stateCopy = State( *this );
-        stateCopy.m_db_write_lock = boost::upgrade_lock< boost::shared_mutex >();
-        stateCopy.m_db_write_lock->swap( lock );
-        return stateCopy;
-    } else {
-        return createStateModifyCopy();
-    }
-}
 
 State State::createReadOnlySnapBasedCopy() const {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
@@ -991,7 +970,6 @@ State State::createReadOnlySnapBasedCopy() const {
     stateCopy.m_snap = m_orig_db->getLastBlockSnap();
     LDB_CHECK( stateCopy.m_snap )
     // the state does not use any locking since it is based on db snapshot
-    stateCopy.m_db_write_lock = boost::none;
     stateCopy.m_db_read_lock = boost::none;
     stateCopy.x_db_ptr = nullptr;
     stateCopy.m_db_ptr = make_shared< OverlayDB >(
@@ -1000,18 +978,10 @@ State State::createReadOnlySnapBasedCopy() const {
 }
 
 
-void State::releaseWriteLock() {
-    LDB_CHECK(!m_isReadOnlySnapBasedState);
-    m_db_write_lock = boost::none;
-}
-
 State State::createNewCopyWithLocks() {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
     State copy;
-    if ( m_db_write_lock )
-        copy = createStateModifyCopyAndPassLock();
-    else
-        copy = State( *this );
+    copy = State( *this );
     if ( m_db_read_lock )
         copy.m_db_read_lock.emplace( *copy.x_db_ptr );
     copy.updateToLatestVersion();

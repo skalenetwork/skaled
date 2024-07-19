@@ -229,7 +229,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 }
 
 void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _miningReward ) {
-    State pre = _pre.createStateReadOnlyCopy(), post = _post.createStateReadOnlyCopy();
+    State pre = _pre.createStateCopyWithReadLock(), post = _post.createStateCopyWithReadLock();
     bigint preBalance = 0;
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
@@ -250,7 +250,7 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
     assert( m_envInfo );
 
     bool removeEmptyAccounts = false;
-    State initialState = _preState.createStateModifyCopy();
+    State initialState = _preState.createStateCopyAndUpdateVersion();
     initialState.addBalance( _env.author(), 0 );  // imitate mining reward
     ExecOutput out( std::make_pair(
         eth::ExecutionResult(), eth::TransactionReceipt( h256(), u256(), eth::LogEntries() ) ) );
@@ -373,7 +373,7 @@ void ImportTest::importState(
         validation::validateAccountMaskObj( accountMaskJson );
     }
     std::string jsondata = json_spirit::write_string( ( json_spirit::mValue ) o, false );
-    _state.createStateModifyCopy().populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
+    _state.createStateCopyAndUpdateVersion().populateFrom(jsonToAccountMap(jsondata, 0, &o_mask ) );
 }
 
 void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
@@ -488,7 +488,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
 
 int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    State stateExpect = _stateExpect.createStateReadOnlyCopy(), statePost = _statePost.createStateReadOnlyCopy();
+    State stateExpect = _stateExpect.createStateCopyWithReadLock(), statePost = _statePost.createStateCopyWithReadLock();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \

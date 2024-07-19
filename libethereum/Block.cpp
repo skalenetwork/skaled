@@ -182,8 +182,8 @@ void Block::resetCurrent( int64_t _timestamp ) {
     performIrregularModifications();
     updateBlockhashContract();
 
-    //    if ( !m_state.checkVersion() )
-    m_state = m_state.createNewCopyWithLocks();
+
+    m_state = m_state.createStateCopyAndUpdateVersion();
 }
 
 SealEngineFace* Block::sealEngine() const {
@@ -467,7 +467,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
 
-    m_state = m_state.createStateModifyCopyAndPassLock();  // mainly for debugging
+    m_state = m_state.createStateCopyAndUpdateVersion();  // mainly for debugging
     TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
     if ( vecMissing ) {
         assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
@@ -537,22 +537,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                     ++count_bad;
             }
 
-            //
-            // Debug only, related SKALE-2814 partial catchup testing
-            //
-            // if ( i == 3 ) {
-            // std::cout << "\n\n"
-            //          << cc::warn( "--- EXITING AS CRASH EMULATION AT TX# " ) << cc::num10( i )
-            //          << cc::warn( " with hash " ) << cc::info( tr.sha3().hex() ) << "\n\n\n";
-            // std::cout.flush();
-            //_exit( 200 );
-            //}
-
 
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
-            // throw;
-            // just ignore invalid transactions
             clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
@@ -561,7 +548,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
 #endif
 
-    m_state.releaseWriteLock();
     return make_tuple( receipts, receipts.size() - count_bad );
 }
 
@@ -599,7 +585,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     sync( _bc, _block.info.parentHash(), BlockHeader() );
     resetCurrent();
 
-    m_state = m_state.createStateModifyCopy();
+    m_state = m_state.createStateCopyAndUpdateVersion();
 
 #if ETH_TIMED_ENACTMENTS
     syncReset = t.elapsed();
@@ -799,16 +785,6 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
-    //    // Hash the state trie and check against the state_root hash in m_currentBlock.
-    //    if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() &&
-    //        m_currentBlock.stateRoot() != globalRoot())
-    //    {
-    //        auto r = globalRoot();
-    //        m_state.db().rollback();  // TODO: API in State for this?
-    //        BOOST_THROW_EXCEPTION(
-    //            InvalidStateRoot() << Hash256RequirementError(m_currentBlock.stateRoot(), r));
-    //    }
-
     return tdIncrease;
 }
 
@@ -883,8 +859,12 @@ ExecutionResult Block::execute(
     // transaction as possible.
     uncommitToSeal();
 
+
+    // if we are processing the block, m_state is already write-locked
+    // by the outer function. Otherwise, we need to do write-lock ourselves
+    // since the
     State stateSnapshot =
-        _p != Permanence::Reverted ? m_state.createStateModifyCopyAndPassLock() :
+        _p != Permanence::Reverted ? m_state.createStateCopyAndUpdateVersion() :
                                      m_state;
 
     EnvInfo envInfo = EnvInfo(
@@ -936,7 +916,7 @@ ExecutionResult Block::execute(
         }
     }
     if ( _p == Permanence::Committed || _p == Permanence::Uncommitted ) {
-        m_state = stateSnapshot.createStateModifyCopyAndPassLock();
+        m_state = stateSnapshot.createStateCopyAndUpdateVersion();
     }
 
     return resultReceipt.first;
@@ -971,7 +951,7 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                State state = m_state.createStateModifyCopy();
+                State state = m_state.createStateCopyAndUpdateVersion();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                         .accountVersion );
@@ -1120,7 +1100,7 @@ bool Block::sealBlock( bytesConstRef _header ) {
 }
 
 void Block::startReadState() {
-    m_state = m_state.createStateReadOnlyCopy();
+    m_state = m_state.createStateCopyWithReadLock();
 }
 
 h256 Block::stateRootBeforeTx( unsigned _i ) const {

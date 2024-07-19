@@ -843,7 +843,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().createStateModifyCopy();
+        auto wr_state = client->state().createStateCopyAndUpdateVersion();
         wr_state.addBalance( fixture.account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
         wr_state.commit();
     }
@@ -1079,7 +1079,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().createStateModifyCopy();
+        auto wr_state = client->state().createStateCopyAndUpdateVersion();
         wr_state.addBalance( fixture.account2.address(), 1 * ether );
         wr_state.commit();
     }

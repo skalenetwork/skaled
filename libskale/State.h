@@ -154,6 +154,7 @@ using ChangeLog = std::vector< Change >;
  *
  * Any atomic change to any account is registered and appended in the changelog.
  * In case some changes must be reverted, the changes are popped from the
+ * In case some changes must be reverted, the changes are popped from the
  * changelog and undone. For possible atomic changes list @see Change::Kind.
  * The changelog is managed by savepoint(), rollback() and commit() methods.
  */
@@ -379,22 +380,17 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    /// Create State copy to get access to data.
-    /// Different copies can be safely used in different threads
-    /// but single object is not thread safe.
-    /// No one can change state while returned object exists.
-    State createStateReadOnlyCopy() const;
+    /// Create State copy with read locked state db
+    /// since the lock the db is unlocked
+
+    State createStateCopyWithReadLock() const;
 
     /// Create State copy to modify data.
-    State createStateModifyCopy() const;
-
-    /// Create State copy to modify data and pass writing lock to it
-    State createStateModifyCopyAndPassLock();
+    State createStateCopyAndUpdateVersion() const;
 
     /// Create State copy based on LevedlDB snaps that does not use any locking
     State createReadOnlySnapBasedCopy() const;
 
-    void releaseWriteLock();
 
     State createNewCopyWithLocks();
 
@@ -491,7 +487,6 @@ private:
     enum Auxiliary { CODE = 1 };
 
     boost::optional< boost::shared_lock< boost::shared_mutex > > m_db_read_lock;
-    boost::optional< boost::upgrade_lock< boost::shared_mutex > > m_db_write_lock;
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.

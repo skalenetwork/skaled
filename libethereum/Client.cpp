@@ -224,11 +224,10 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
 
 void Client::populateNewChainStateFromGenesis() {
 #ifdef HISTORIC_STATE
-    m_state = m_state.createStateModifyCopy();
+    m_state = m_state.createStateCopyAndUpdateVersion();
     m_state.populateFrom( bc().chainParams().genesisState );
     m_state.mutableHistoricState().saveRootForBlock( 0 );
     m_state.mutableHistoricState().db().commit();
-    m_state.releaseWriteLock();
 #else
     m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
     m_state = m_state.createNewCopyWithLocks();
@@ -1085,7 +1084,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         // blockByNumber is only used for reads
 
-        auto readState = m_state.createStateReadOnlyCopy();
+        auto readState = m_state.createStateCopyWithReadLock();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed
@@ -1174,7 +1173,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     u256 gasBidPrice;
 
     DEV_GUARDED( m_blockImportMutex ) {
-        state = this->state().createStateReadOnlyCopy();
+        state = this->state().createStateCopyWithReadLock();
         gasBidPrice = this->gasBidPrice();
 
         // We need to check external gas under mutex to be sure about current block number

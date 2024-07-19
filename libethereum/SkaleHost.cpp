@@ -449,9 +449,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
                 try {
                     bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
-                    Executive::verifyTransaction( tx, latestInfo.timestamp(), latestInfo,
-                        m_client.state().createStateReadOnlyCopy(), m_client.chainParams(), 0,
-                        getGasPrice(), isMtmEnabled );
+                    Executive::verifyTransaction(tx, latestInfo.timestamp(), latestInfo,
+                                                 m_client.state().createStateCopyWithReadLock(), m_client.chainParams(), 0,
+                                                 getGasPrice(), isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
                         clog( VerbosityInfo, "skale-host" )
