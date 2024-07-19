@@ -1172,15 +1172,13 @@ h256 Client::importTransaction( Transaction const& _t ) {
     State state;
     u256 gasBidPrice;
 
-    DEV_GUARDED( m_blockImportMutex ) {
-        state = this->state().createStateCopyWithReadLock();
-        gasBidPrice = this->gasBidPrice();
+    state = this->state().createReadOnlySnapBasedCopy();
+    gasBidPrice = this->gasBidPrice();
 
-        // We need to check external gas under mutex to be sure about current block number
-        // correctness
-        const_cast< Transaction& >( _t ).checkOutExternalGas(
+    // We need to check external gas under mutex to be sure about current block number
+    // correctness
+    const_cast< Transaction& >( _t ).checkOutExternalGas(
             chainParams(), bc().info().timestamp(), number(), false );
-    }
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
