@@ -391,9 +391,6 @@ public:
     /// Create State copy based on LevedlDB snaps that does not use any locking
     State createReadOnlySnapBasedCopy() const;
 
-
-    State createNewCopyWithLocks();
-
     /**
      * @brief connected returns true if state is connected to database
      */

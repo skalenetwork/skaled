@@ -643,8 +643,6 @@ size_t Client::syncTransactions(
 ) {
     assert( m_skaleHost );
 
-    // HACK remove block verification and put it directly in blockchain!!
-    // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
         cnote << "m_working.isSealed. sleeping";
         usleep( 1000 );
@@ -663,7 +661,7 @@ size_t Client::syncTransactions(
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, vecMissing );
-        m_state = m_state.createNewCopyWithLocks();
+        m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
         m_state.mutableHistoricState().setRoot(
@@ -731,8 +729,7 @@ void Client::restartMining() {
     DEV_READ_GUARDED( x_preSeal )
     newPreMine = m_preSeal;
 
-    // TODO: use m_postSeal to avoid re-evaluating our own blocks.
-    m_state = m_state.createNewCopyWithLocks();
+    m_state = m_state.createStateCopyAndClearCaches();
     preChanged = newPreMine.sync( bc(), m_state );
 
     if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
@@ -777,15 +774,8 @@ void Client::setSchainExitTime( uint64_t _timestamp ) const {
 }
 
 void Client::onChainChanged( ImportRoute const& _ir ) {
-    //  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks( _ir.deadBlocks, changeds );
-
-    // this should be already done in SkaleHost::createBlock()
-    //    for ( auto const& t : _ir.goodTranactions ) {
-    //        LOG( m_loggerDetail ) << "Safely dropping transaction " << t.sha3();
-    //        m_tq.dropGood( t );
-    //    }
 
     onNewBlocks( _ir.liveBlocks, changeds );
     if ( !isMajorSyncing() )

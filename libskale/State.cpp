@@ -935,17 +935,6 @@ State State::createReadOnlySnapBasedCopy() const {
     return stateCopy;
 }
 
-
-State State::createNewCopyWithLocks() {
-    LDB_CHECK(!m_isReadOnlySnapBasedState);
-    State copy;
-    copy = State( *this );
-    if ( m_db_read_lock )
-        copy.m_db_read_lock.emplace( *copy.x_db_ptr );
-    copy.clearCaches();
-    return copy;
-}
-
 bool State::connected() const {
     if ( m_db_ptr ) {
         return m_db_ptr->connected();
