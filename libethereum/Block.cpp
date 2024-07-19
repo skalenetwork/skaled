@@ -148,13 +148,17 @@ Block& Block::operator=( Block const& _s ) {
 
 // make a lightweight copy for eth_call.
 // we only copy the fields we need for eth_call
+// in particular we do not copy receipts and transactions
+// as well as raw bytes
 Block Block::getCopyForEthCalls() {
     Block copy(Null);
     copy.m_state = m_state;
     copy.m_author = m_author;
     copy.m_sealEngine = m_sealEngine;
     copy.m_committedToSeal = false;
+    copy.m_precommit = m_state;
     copy.m_currentBlock = m_currentBlock;
+    copy.m_previousBlock = m_previousBlock;
     return copy;
 };
 

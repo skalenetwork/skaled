@@ -1253,7 +1253,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         }
 #endif
 
-        Block temp = preSeal();
+        Block temp = getLatestBlockCopyForEthCall();
 
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         // if the user did not specify transaction gas limit, we give transaction block gas
