@@ -114,7 +114,7 @@ void mine( BlockHeader& _bi, SealEngineFace* _sealer, bool _verify ) {
 
 void simulateMining( Client& client, size_t numBlocks, const dev::Address &address ) {
     const auto balanceBefore = client.balanceAt( address );
-    State state = client.state().createStateCopyAndUpdateVersion();
+    State state = client.state().createStateCopyAndClearCaches();
     u256 reward = 0;
     for ( size_t blockNumber = 0; blockNumber < numBlocks; ++blockNumber ) {
         reward += client.sealEngine()->blockReward( 1, blockNumber );

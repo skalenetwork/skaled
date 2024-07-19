@@ -68,8 +68,6 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
     dev::s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
-      m_storedVersion( make_shared< size_t >( 0 ) ),
-      m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
       contractStorageLimit_( _contractStorageLimit )
@@ -117,8 +115,6 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
-      m_storedVersion( make_shared< size_t >( 0 ) ),
-      m_currentVersion( *m_storedVersion ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
       contractStorageLimit_( _contractStorageLimit )
@@ -255,8 +251,6 @@ State::State( const State& _s )
     }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
-    m_storedVersion = _s.m_storedVersion;
-    m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
@@ -277,8 +271,6 @@ State& State::operator=( const State& _s ) {
     }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
-    m_storedVersion = _s.m_storedVersion;
-    m_currentVersion = _s.m_currentVersion;
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
     m_nonExistingAccountsCache = _s.m_nonExistingAccountsCache;
@@ -353,11 +345,6 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 
 std::unordered_map< Address, u256 > State::addresses() const {
     SharedDBGuard lock(*this);
-    if ( !checkVersion() ) {
-        cerror << "Current state version is " << m_currentVersion << " but stored version is "
-               << *m_storedVersion;
-        BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
-    }
 
     std::unordered_map< Address, u256 > addresses;
     for ( auto const& h160StringPair : m_db_ptr->accounts() ) {
@@ -435,12 +422,6 @@ eth::Account* State::account( Address const& _address ) {
     {
         SharedDBGuard lock(*this);
 
-        if ( !checkVersion() ) {
-            cerror << "Current state version is " << m_currentVersion << " but stored version is "
-                   << *m_storedVersion;
-            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
-        }
-
         stateBack = asBytes( m_db_ptr->lookup( _address ) );
     }
     if ( stateBack.empty() ) {
@@ -493,9 +474,6 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
         LDB_CHECK(!m_isReadOnlySnapBasedState);
 
         boost::unique_lock< boost::shared_mutex > lock( *x_db_ptr );
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToWriteToStateInThePast() );
-        }
 
         for ( auto const& addressAccountPair : m_cache ) {
             const Address& address = addressAccountPair.first;
@@ -534,8 +512,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
             }
         }
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
-        m_db_ptr->commit( std::to_string( ++*m_storedVersion ) );
-        m_currentVersion = *m_storedVersion;
+        m_db_ptr->commit();
     }
 
 
@@ -663,11 +640,6 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
 
 std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     const Address& _contract ) const {
-    if ( !checkVersion() ) {
-        cerror << "Current state version is " << m_currentVersion << " but stored version is "
-               << *m_storedVersion;
-        BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
-    }
 
     std::map< h256, std::pair< u256, u256 > > storage;
     for ( auto const& addressValuePair : m_db_ptr->storage( _contract ) ) {
@@ -709,9 +681,6 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
 
         // Not in the storage cache - go to the DB.
         SharedDBGuard lock(*this);
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
-        }
         u256 value = m_db_ptr->lookup( _id, _key );
         acc->setStorageCache( _key, value );
         return value;
@@ -767,9 +736,6 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
         }
 
         SharedDBGuard lock(*this);
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
-        }
         u256 value = m_db_ptr->lookup( _contract, _key );
         acc->setStorageCache( _key, value );
         return value;
@@ -825,9 +791,6 @@ bytes const& State::code( Address const& _addr ) const {
         // Load the code from the backend.
         eth::Account* mutableAccount = const_cast< eth::Account* >( a );
         SharedDBGuard lock(*this);
-        if ( !checkVersion() ) {
-            BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
-        }
         mutableAccount->noteCode( m_db_ptr->lookupAuxiliary( _addr, Auxiliary::CODE ) );
         eth::CodeSizeCache::instance().store( a->codeHash(), a->code().size() );
     }
@@ -926,13 +889,8 @@ void State::rollback( size_t _savepoint ) {
     }
 }
 
-void State::updateToLatestVersion() {
+void State::clearCaches() {
     clearAllCaches();
-
-    {
-        SharedDBGuard lock(*this);
-        m_currentVersion = *m_storedVersion;
-    }
 }
 
 void State::clearAllCaches() {
@@ -947,14 +905,14 @@ State State::createStateCopyWithReadLock() const {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = State( *this );
     stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
-    stateCopy.updateToLatestVersion();
+    stateCopy.clearCaches();
     return stateCopy;
 }
 
-State State::createStateCopyAndUpdateVersion() const {
+State State::createStateCopyAndClearCaches() const {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
     State stateCopy = State( *this );
-    stateCopy.updateToLatestVersion();
+    stateCopy.clearCaches();
     return stateCopy;
 }
 
@@ -984,7 +942,7 @@ State State::createNewCopyWithLocks() {
     copy = State( *this );
     if ( m_db_read_lock )
         copy.m_db_read_lock.emplace( *copy.x_db_ptr );
-    copy.updateToLatestVersion();
+    copy.clearCaches();
     return copy;
 }
 
@@ -1138,10 +1096,6 @@ dev::s256 State::storageUsed( const dev::Address& _addr ) const {
     }
 }
 
-bool State::checkVersion() const {
-    // snap based state does not use version checks
-    return m_isReadOnlySnapBasedState || *m_storedVersion == m_currentVersion;
-}
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
     _out << cc::debug( "--- Cache ---" ) << std::endl;

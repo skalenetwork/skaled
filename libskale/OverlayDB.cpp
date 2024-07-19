@@ -168,7 +168,7 @@ void OverlayDB::commitStorageValues() {
 }
 
 
-void OverlayDB::commit( const std::string& _debugCommitId ) {
+void OverlayDB::commit( ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
@@ -208,7 +208,7 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
             }
 
             try {
-                m_db_face->commit( "OverlayDB_commit_" + _debugCommitId );
+                m_db_face->commit( "OverlayDB_commit");
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {

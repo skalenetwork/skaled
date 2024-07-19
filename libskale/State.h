@@ -386,7 +386,7 @@ public:
     State createStateCopyWithReadLock() const;
 
     /// Create State copy to modify data.
-    State createStateCopyAndUpdateVersion() const;
+    State createStateCopyAndClearCaches() const;
 
     /// Create State copy based on LevedlDB snaps that does not use any locking
     State createReadOnlySnapBasedCopy() const;
@@ -424,7 +424,7 @@ public:
     void createReadOnlyStateDBSnap(uint64_t _blockNumber);
 
 private:
-    void updateToLatestVersion();
+    void clearCaches();
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
@@ -474,7 +474,6 @@ private:
     };
 
 public:
-    bool checkVersion() const;
 
 #ifdef HISTORIC_STATE
     void populateHistoricStateFromSkaleState();
@@ -491,10 +490,7 @@ private:
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
-    // TODO Implement DB-registry, remove it!
     std::shared_ptr< dev::db::DBImpl > m_orig_db;
-    std::shared_ptr< size_t > m_storedVersion;
-    size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
                                                                             ///< This stores the
                                                                             ///< states of each

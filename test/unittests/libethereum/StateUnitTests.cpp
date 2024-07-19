@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( Basic,
 BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
     Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
     State state( 0 );
-    State s = state.createStateCopyAndUpdateVersion();
+    State s = state.createStateCopyAndClearCaches();
     s.createContract( addr );
     uint8_t codeData[] = {'c', 'o', 'd', 'e'};
     u256 version = 123;
@@ -66,7 +66,7 @@ public:
         }
 
         // create accounts in the state
-        State writer = state.createStateCopyAndUpdateVersion();
+        State writer = state.createStateCopyAndClearCaches();
         for ( auto const& hashAndAddr : hashToAddress )
             writer.addBalance( hashAndAddr.second, 100 );
         writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );

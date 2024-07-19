@@ -183,7 +183,7 @@ void Block::resetCurrent( int64_t _timestamp ) {
     updateBlockhashContract();
 
 
-    m_state = m_state.createStateCopyAndUpdateVersion();
+    m_state = m_state.createStateCopyAndClearCaches();
 }
 
 SealEngineFace* Block::sealEngine() const {
@@ -347,9 +347,7 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         ret = true;
     }
 #endif
-    // m_state = m_state.startNew();
     resetCurrent( m_currentBlock.timestamp() );
-    assert( m_state.checkVersion() );
     return ret;
 }
 
@@ -467,7 +465,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
 
-    m_state = m_state.createStateCopyAndUpdateVersion();  // mainly for debugging
+    m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
     TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
     if ( vecMissing ) {
         assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
@@ -585,7 +583,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     sync( _bc, _block.info.parentHash(), BlockHeader() );
     resetCurrent();
 
-    m_state = m_state.createStateCopyAndUpdateVersion();
+    m_state = m_state.createStateCopyAndClearCaches();
 
 #if ETH_TIMED_ENACTMENTS
     syncReset = t.elapsed();
@@ -864,7 +862,7 @@ ExecutionResult Block::execute(
     // by the outer function. Otherwise, we need to do write-lock ourselves
     // since the
     State stateSnapshot =
-        _p != Permanence::Reverted ? m_state.createStateCopyAndUpdateVersion() :
+        _p != Permanence::Reverted ? m_state.createStateCopyAndClearCaches() :
                                      m_state;
 
     EnvInfo envInfo = EnvInfo(
@@ -916,7 +914,7 @@ ExecutionResult Block::execute(
         }
     }
     if ( _p == Permanence::Committed || _p == Permanence::Uncommitted ) {
-        m_state = stateSnapshot.createStateCopyAndUpdateVersion();
+        m_state = stateSnapshot.createStateCopyAndClearCaches();
     }
 
     return resultReceipt.first;
@@ -951,7 +949,7 @@ void Block::updateBlockhashContract() {
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {
-                State state = m_state.createStateCopyAndUpdateVersion();
+                State state = m_state.createStateCopyAndClearCaches();
                 state.setCode( c_blockhashContractAddress, bytes( c_blockhashContractCode ),
                     m_sealEngine->evmSchedule( this->m_previousBlock.timestamp(), blockNumber )
                         .accountVersion );

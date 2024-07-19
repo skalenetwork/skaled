@@ -72,7 +72,7 @@ public:
 
     // commit key-value pairs in storage
     void commitStorageValues();
-    void commit( const std::string& _debugCommitId );
+    void commit( );
     void rollback();
     void clearDB();
     bool connected() const;

@@ -224,7 +224,7 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
 
 void Client::populateNewChainStateFromGenesis() {
 #ifdef HISTORIC_STATE
-    m_state = m_state.createStateCopyAndUpdateVersion();
+    m_state = m_state.createStateCopyAndClearCaches();
     m_state.populateFrom( bc().chainParams().genesisState );
     m_state.mutableHistoricState().saveRootForBlock( 0 );
     m_state.mutableHistoricState().db().commit();
