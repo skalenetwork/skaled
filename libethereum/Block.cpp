@@ -150,7 +150,7 @@ Block& Block::operator=( Block const& _s ) {
 // we only copy the fields we need for eth_call
 // in particular we do not copy receipts and transactions
 // as well as raw bytes
-Block Block::getCopyForEthCalls() {
+Block Block::getCopyForEthCalls() const {
     Block copy(Null);
     copy.m_state = m_state;
     copy.m_author = m_author;

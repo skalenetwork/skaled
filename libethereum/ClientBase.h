@@ -87,7 +87,6 @@ public:
     virtual ~ClientBase() {}
 
     u256 balanceAt( Address _a ) const override;
-    u256 countAt( Address _a ) const override;
     u256 stateAt( Address _a, u256 _l ) const override;
     bytes codeAt( Address _a ) const override;
     h256 codeHashAt( Address _a ) const override;

@@ -389,7 +389,7 @@ public:
     State createStateModifyCopyAndPassLock();
 
     /// Create State copy based on LevedlDB snaps that does not use any locking
-    State createReadOnlySnapBasedCopy();
+    State createReadOnlySnapBasedCopy() const;
 
     void releaseWriteLock();
 

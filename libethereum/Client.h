@@ -451,7 +451,7 @@ namespace dev {
                 return m_preSeal;
             }
 
-            Block getLatestBlockCopyForEthCall() {
+            Block getLatestBlockCopyForEthCall()  const {
                 ReadGuard l(x_preSeal);
                 return m_preSeal.getCopyForEthCalls();
             }
@@ -762,6 +762,8 @@ namespace dev {
             void initStateFromDiskOrGenesis();
 
             void populateNewChainStateFromGenesis();
+
+            u256 countAt( Address _a ) const override;
 
         private:
             std::pair<bool, ExecutionResult> estimateGasStep(int64_t _gas, Block &_latestBlock,

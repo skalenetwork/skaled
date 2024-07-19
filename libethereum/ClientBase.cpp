@@ -85,9 +85,7 @@ u256 ClientBase::balanceAt( Address _a ) const {
     return latestBlock().balance( _a );
 }
 
-u256 ClientBase::countAt( Address _a ) const {
-    return latestBlock().transactionsFrom( _a );
-}
+
 
 u256 ClientBase::stateAt( Address _a, u256 _l ) const {
     return latestBlock().storage( _a, _l );

@@ -1614,3 +1614,8 @@ std::pair< bool, ExecutionResult > Client::estimateGasStep( int64_t _gas, Block&
         return make_pair( true, executionResult );
     }
 }
+
+
+u256 Client::countAt( Address _a ) const {
+    return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().getNonce( _a );
+}

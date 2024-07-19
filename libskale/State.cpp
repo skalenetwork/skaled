@@ -971,7 +971,7 @@ State State::createStateModifyCopyAndPassLock() {
     }
 }
 
-State State::createReadOnlySnapBasedCopy() {
+State State::createReadOnlySnapBasedCopy() const {
     State stateCopy = *this ;
     stateCopy.isReadOnlySnapBasedState = true;
     stateCopy.clearAllCaches();
