@@ -145,6 +145,21 @@ Block& Block::operator=( Block const& _s ) {
     return *this;
 }
 
+
+// make a lightweight copy for eth_call.
+// we only copy the fields we need for eth_call
+Block Block::getCopyForEthCalls() {
+    Block copy(Null);
+    copy.m_state = m_state;
+    copy.m_author = m_author;
+    copy.m_sealEngine = m_sealEngine;
+    copy.m_committedToSeal = false;
+    copy.m_currentBlock = m_currentBlock;
+    return copy;
+};
+
+
+
 void Block::resetCurrent( int64_t _timestamp ) {
     m_transactions.clear();
     m_receipts.clear();

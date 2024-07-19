@@ -1224,8 +1224,9 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
     ExecutionResult ret;
     try {
 #ifdef HISTORIC_STATE
-        Block historicBlock = blockByNumber( _blockNumber );
+
         if ( _blockNumber < bc().number() ) {
+            Block historicBlock = blockByNumber( _blockNumber );
             // historic state
             try {
                 u256 nonce = historicBlock.mutableState().mutableHistoricState().getNonce( _from );
@@ -1253,7 +1254,6 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
 #endif
 
         Block temp = preSeal();
-
 
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         // if the user did not specify transaction gas limit, we give transaction block gas

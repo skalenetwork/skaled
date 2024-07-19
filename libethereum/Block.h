@@ -112,6 +112,8 @@ public:
     /// Copy state object.
     Block& operator=( Block const& _s );
 
+    Block getCopyForEthCalls();
+
     /// Get the author address for any transactions we do and rewards we get.
     Address author() const { return m_author; }
 

@@ -395,6 +395,12 @@ protected:
         ReadGuard l( x_preSeal );
         return m_preSeal;
     }
+
+    Block getLatestBlockCopyForEthCall() {
+        ReadGuard l( x_preSeal );
+        return m_preSeal.getCopyForEthCalls();
+    }
+
     Block postSeal() const override {
         ReadGuard l( x_postSeal );
         return m_postSeal;
