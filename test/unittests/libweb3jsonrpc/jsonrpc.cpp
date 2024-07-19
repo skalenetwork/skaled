@@ -37,7 +37,6 @@
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include "genesisGeneration2Config.h"
-// SKALE#include <libweb3jsonrpc/AdminNet.h>
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
@@ -316,21 +315,11 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         chainParams.sChain.multiTransactionMode = _mtmEnabled;
         chainParams.nodeInfo.syncNode = _isSyncNode;
 
-        //        web3.reset( new WebThreeDirect(
-        //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
-        //            true ) );
-
         auto monitor = make_shared< InstanceMonitor >("test");
 
         setenv("DATA_DIR", tempDir.path().c_str(), 1);
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
-
-        //        client.reset(
-        //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-        //            GasPricer >(),
-        //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
-        //                1024} ) );
 
         client->setAuthor( coinbase.address() );
 
@@ -478,18 +467,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_gasPrice ) {
     BOOST_CHECK_EQUAL( gasPrice, toJS( 20 * dev::eth::shannon ) );
 }
 
-// SKALE disabled
-// BOOST_AUTO_TEST_CASE(jsonrpc_isListening)
-//{
-//    web3->startNetwork();
-//    bool listeningOn = rpcClient->net_listening();
-//    BOOST_CHECK_EQUAL(listeningOn, web3->isNetworkStarted());
-//
-//    web3->stopNetwork();
-//    bool listeningOff = rpcClient->net_listening();
-//    BOOST_CHECK_EQUAL(listeningOff, web3->isNetworkStarted());
-//}
-
 BOOST_AUTO_TEST_CASE( jsonrpc_accounts,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     JsonRpcFixture fixture;
@@ -516,22 +493,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     BOOST_CHECK_GE( numberAfter, number + 1 );
     BOOST_CHECK_EQUAL( numberAfter, fixture.client->number() );
 }
-
-// SKALE disabled
-// BOOST_AUTO_TEST_CASE(jsonrpc_peerCount)
-//{
-//    auto peerCount = jsToU256(rpcClient->net_peerCount());
-//    BOOST_CHECK_EQUAL(web3->peerCount(), peerCount);
-//}
-
-// BOOST_AUTO_TEST_CASE(jsonrpc_setListening)
-//{
-//    rpcClient->admin_net_start(adminSession);
-//    BOOST_CHECK_EQUAL(web3->isNetworkStarted(), true);
-//
-//    rpcClient->admin_net_stop(adminSession);
-//    BOOST_CHECK_EQUAL(web3->isNetworkStarted(), false);
-//}
 
 BOOST_AUTO_TEST_CASE( jsonrpc_netVersion )
 {
@@ -588,7 +549,6 @@ BOOST_AUTO_TEST_CASE( eth_sendTransaction ) {
     BOOST_CHECK_EQUAL( jsToDecimal( balanceString ), "0" );
 
     dev::eth::simulateMining( *( fixture.client ), 1 );
-    //    BOOST_CHECK_EQUAL(client->blockByNumber(LatestBlock).author(), address);
     balance = fixture.client->balanceAt( address );
     balanceString = fixture.rpcClient->eth_getBalance( toJS( address ), "latest" );
 
@@ -920,179 +880,6 @@ BOOST_AUTO_TEST_CASE( simple_contract ) {
     res = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( res["status"], string( "0x1" ) );
 }
-
-/*
-// As block rotation is not exact now - let's use approximate comparisons
-#define REQUIRE_APPROX_EQUAL(a, b) BOOST_REQUIRE(4*(a) > 3*(b) && 4*(a) < 5*(b))
-
-BOOST_AUTO_TEST_CASE( logs_range, *boost::unit_test::disabled() ) {
-    JsonRpcFixture fixture;
-    dev::eth::simulateMining( *( fixture.client ), 1 );
-
-
-//pragma solidity >=0.4.10 <0.7.0;
-
-//contract Logger{
-//    fallback() external payable {
-//        log2(bytes32(block.number+1), bytes32(block.number), "dimalit");
-//    }
-//}
-
-    string bytecode =
-        "6080604052348015600f57600080fd5b50607d80601d6000396000f3fe60806040527f64696d616c69740000000000000000000000000000000000000000000000000043600102600143016001026040518082815260200191505060405180910390a200fea2646970667358221220ecafb98cd573366a37976cb7a4489abe5389d1b5989cd7b7136c8eb0c5ba0b5664736f6c63430006000033";
-
-    Json::Value create;
-    create["code"] = bytecode;
-    create["gas"] = "180000";  // TODO or change global default of 90000?
-
-    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-
-    // -> blockNumber = 2 (1 for bootstrapAll, 1 for deploy)
-
-    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
-    string contractAddress = deployReceipt["contractAddress"].asString();
-
-    Json::Value filterObj;
-    filterObj["address"] = contractAddress;
-    filterObj["fromBlock"] = "0x1";
-    string filterId = fixture.rpcClient->eth_newFilter( filterObj );
-
-    Json::Value res = fixture.rpcClient->eth_getFilterLogs(filterId);
-    BOOST_REQUIRE(res.isArray());
-    BOOST_REQUIRE_EQUAL(res.size(), 0);
-    res = fixture.rpcClient->eth_getFilterChanges(filterId);
-    BOOST_REQUIRE(res.isArray());
-    BOOST_REQUIRE_EQUAL(res.size(), 0);
-
-    // need blockNumber==2+255 afterwards
-    for(int i=0; i<255; ++i){
-        Json::Value t;
-        t["from"] = toJS( fixture.coinbase.address() );
-        t["value"] = jsToDecimal( "0" );
-        t["to"] = contractAddress;
-        t["gas"] = "99000";
-
-        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
-        BOOST_REQUIRE( !txHash.empty() );
-
-        dev::eth::mineTransaction( *( fixture.client ), 1 );
-    }
-    BOOST_REQUIRE_EQUAL(fixture.client->number(), 2 + 255);
-
-    // ask for logs
-    Json::Value t;
-    t["fromBlock"] = 0;         // really 3
-    t["toBlock"] = 251;
-    t["address"] = contractAddress;
-    Json::Value logs = fixture.rpcClient->eth_getLogs(t);
-    BOOST_REQUIRE(logs.isArray());
-    BOOST_REQUIRE_EQUAL(logs.size(), 249);
-
-    // check logs
-    for(size_t i=0; i<logs.size(); ++i){
-        u256 block = dev::jsToU256( logs[(int)i]["topics"][0].asString() );
-        BOOST_REQUIRE_EQUAL(block, i+3);
-    }// for
-
-    string nonexisting = "0x20"; string nonexisting_hash = logs[0x20-1]["blockHash"].asString();
-
-    // add 255 more blocks
-    string lastHash;
-    for(int i=0; i<255; ++i){
-        Json::Value t;
-        t["from"] = toJS( fixture.coinbase.address() );
-        t["value"] = jsToDecimal( "0" );
-        t["to"] = contractAddress;
-        t["gas"] = "99000";
-
-        lastHash = fixture.rpcClient->eth_sendTransaction( t );
-        BOOST_REQUIRE( !lastHash.empty() );
-
-        dev::eth::mineTransaction( *( fixture.client ), 1 );
-    }
-    BOOST_REQUIRE_EQUAL(fixture.client->number(), 512);
-
-    // ask for logs
-    t["toBlock"] = 512;
-    logs = fixture.rpcClient->eth_getLogs(t);
-    BOOST_REQUIRE(logs.isArray());
-    REQUIRE_APPROX_EQUAL(logs.size(), 256+64);
-
-    // and filter
-    res = fixture.rpcClient->eth_getFilterChanges(filterId);
-    BOOST_REQUIRE_EQUAL(res.size(), 255+255);     // NB!! we had pending here, but then they disappeared!
-    res = fixture.rpcClient->eth_getFilterLogs(filterId);
-    REQUIRE_APPROX_EQUAL(res.size(), 256+64);
-
-    ///////////////// OTHER CALLS //////////////////
-    // HACK this may return DIFFERENT block! because of undeterministic block rotation!
-    string existing = "0x1df"; string existing_hash = logs[256+64-1-1-32]["blockHash"].asString();
-    //cerr << logs << endl;
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
-    BOOST_REQUIRE_EQUAL(res["number"], existing);
-    BOOST_REQUIRE(res["transactions"].isArray() && res["transactions"].size() == 1);
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByNumber(nonexisting, true), jsonrpc::JsonRpcException);
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByHash(existing_hash, false));
-    REQUIRE_APPROX_EQUAL(dev::eth::jsToBlockNumber(res["number"].asCString()), dev::eth::jsToBlockNumber(existing));
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockByHash(nonexisting_hash, true), jsonrpc::JsonRpcException);
-
-    //
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByNumber(existing));
-    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByNumber(nonexisting), jsonrpc::JsonRpcException);
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockTransactionCountByHash(existing_hash));
-    BOOST_REQUIRE_EQUAL(res.asString(), "0x1");
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getBlockTransactionCountByHash(nonexisting_hash), jsonrpc::JsonRpcException);
-
-    //
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockNumber(existing));
-    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockNumber(nonexisting), jsonrpc::JsonRpcException);
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getUncleCountByBlockHash(existing_hash));
-    BOOST_REQUIRE_EQUAL(res.asString(), "0x0");
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleCountByBlockHash(nonexisting_hash), jsonrpc::JsonRpcException);
-
-    //
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(existing, "0x0"));
-    BOOST_REQUIRE_EQUAL(res["blockNumber"], existing);
-    // HACK disabled for undeterminism BOOST_REQUIRE_EQUAL(res["blockHash"], existing_hash);
-    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex(nonexisting, "0x0"), jsonrpc::JsonRpcException);
-
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(existing_hash, "0x0"));
-    // HACK disabled for undeterminism BOOST_REQUIRE_EQUAL(res["blockNumber"], existing);
-    BOOST_REQUIRE_EQUAL(res["blockHash"], existing_hash);
-    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getTransactionByBlockHashAndIndex(nonexisting_hash, "0x0"), jsonrpc::JsonRpcException);
-
-    //
-
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockNumberAndIndex(existing, "0x0"), jsonrpc::JsonRpcException);
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockNumberAndIndex(nonexisting, "0x0"), jsonrpc::JsonRpcException);
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockHashAndIndex(existing_hash, "0x0"), jsonrpc::JsonRpcException);
-    BOOST_REQUIRE_THROW(fixture.rpcClient->eth_getUncleByBlockHashAndIndex(nonexisting_hash, "0x0"), jsonrpc::JsonRpcException);
-
-    //
-
-    BOOST_REQUIRE_THROW(res = fixture.rpcClient->eth_getTransactionByHash(deployHash), jsonrpc::JsonRpcException);
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionByHash(lastHash));
-    BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
-
-    BOOST_REQUIRE_THROW(res = fixture.rpcClient->eth_getTransactionReceipt(deployHash), jsonrpc::JsonRpcException);
-    BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getTransactionReceipt(lastHash));
-    BOOST_REQUIRE_EQUAL(res["transactionHash"], lastHash);
-    BOOST_REQUIRE_EQUAL(res["blockNumber"], "0x200");
-    BOOST_REQUIRE_EQUAL(res["to"], contractAddress);
-}
-*/
 
 BOOST_AUTO_TEST_CASE( deploy_contract_from_owner ) {
     JsonRpcFixture fixture( c_genesisConfigString );
@@ -1605,76 +1392,6 @@ BOOST_AUTO_TEST_CASE( web3_sha3,
     BOOST_CHECK_EQUAL(
         "0xc6888fa159d67f77c2f3d7a402e199802766bd7e8d4d1ecd2274fc920265d56a", result );
 }
-
-// SKALE disabled
-// BOOST_AUTO_TEST_CASE(debugAccountRangeAtFinalBlockState)
-//{
-//    // mine to get some balance at coinbase
-//    dev::eth::mine(*(client), 1);
-
-//    // send transaction to have non-emtpy block
-//    Address receiver = Address::random();
-//    Json::Value tx;
-//    tx["from"] = toJS(coinbase.address());
-//    tx["value"] = toJS(10);
-//    tx["to"] = toJS(receiver);
-//    tx["gas"] = toJS(EVMSchedule().txGas);
-//    tx["gasPrice"] = toJS(10 * dev::eth::szabo);
-//    string txHash = rpcClient->eth_sendTransaction(tx);
-//    BOOST_REQUIRE(!txHash.empty());
-
-//    dev::eth::mineTransaction(*(client), 1);
-
-//    string receiverHash = toString(sha3(receiver));
-
-//    // receiver doesn't exist in the beginning of the 2nd block
-//    Json::Value result = rpcClient->debug_accountRangeAt("2", 0, "0", 100);
-//    BOOST_CHECK(!result["addressMap"].isMember(receiverHash));
-
-//    // receiver exists in the end of the 2nd block
-//    result = rpcClient->debug_accountRangeAt("2", 1, "0", 100);
-//    BOOST_CHECK(result["addressMap"].isMember(receiverHash));
-//    BOOST_CHECK_EQUAL(result["addressMap"][receiverHash], toString(receiver));
-//}
-
-// SKALE disabled
-// BOOST_AUTO_TEST_CASE(debugStorageRangeAtFinalBlockState)
-//{
-//    // mine to get some balance at coinbase
-//    dev::eth::mine(*(client), 1);
-
-//    // pragma solidity ^0.4.22;
-//    // contract test
-//    //{
-//    //    uint hello = 7;
-//    //}
-//    string initCode =
-//        "608060405260076000553415601357600080fd5b60358060206000396000"
-//        "f3006080604052600080fd00a165627a7a7230582006db0551577963b544"
-//        "3e9501b4b10880e186cff876cd360e9ad6e4181731fcdd0029";
-
-//    Json::Value tx;
-//    tx["code"] = initCode;
-//    tx["from"] = toJS(coinbase.address());
-//    string txHash = rpcClient->eth_sendTransaction(tx);
-
-//    dev::eth::mineTransaction(*(client), 1);
-
-//    Json::Value receipt = rpcClient->eth_getTransactionReceipt(txHash);
-//    string contractAddress = receipt["contractAddress"].asString();
-
-//    // contract doesn't exist in the beginning of the 2nd block
-//    Json::Value result = rpcClient->debug_storageRangeAt("2", 0, contractAddress, "0", 100);
-//    BOOST_CHECK(result["storage"].empty());
-
-//    // contracts exists in the end of the 2nd block
-//    result = rpcClient->debug_storageRangeAt("2", 1, contractAddress, "0", 100);
-//    BOOST_CHECK(!result["storage"].empty());
-//    string keyHash = toJS(sha3(u256{0}));
-//    BOOST_CHECK(!result["storage"][keyHash].empty());
-//    BOOST_CHECK_EQUAL(result["storage"][keyHash]["key"].asString(), "0x00");
-//    BOOST_CHECK_EQUAL(result["storage"][keyHash]["value"].asString(), "0x07");
-//}
 
 BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
     JsonRpcFixture fixture( c_genesisConfigString );
@@ -3734,52 +3451,6 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 }
 
 // TODO: Enable for multitransaction mode checking
-
-// BOOST_AUTO_TEST_CASE( check_multitransaction_mode ) {
-//     auto _config = c_genesisConfigString;
-//     Json::Value ret;
-//     Json::Reader().parse( _config, ret );
-//     /* Test contract
-//         pragma solidity ^0.8.9;
-//         contract Test {
-//             function isMTMEnabled() external pure returns (bool) {
-//                 return true;
-//             }
-//         }
-//     */
-//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906069565b60405180910390f35b60006001905090565b60008115159050919050565b6063816050565b82525050565b6000602082019050607c6000830184605c565b9291505056fea26469706673582212208d89ce57f69b9b53e8f0808cbaa6fa8fd21a495ab92d0b48b6e47d903989835464736f6c63430008090033";
-//     Json::FastWriter fastWriter;
-//     std::string config = fastWriter.write( ret );
-//     JsonRpcFixture fixture( config );
-//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
-//     BOOST_REQUIRE( mtm );
-// }
-
-// BOOST_AUTO_TEST_CASE( check_multitransaction_mode_false ) {
-//     auto _config = c_genesisConfigString;
-//     Json::Value ret;
-//     Json::Reader().parse( _config, ret );
-//     /* Test contract
-//         pragma solidity ^0.8.9;
-//         contract Test {
-//             function isMTMEnabled() external pure returns (bool) {
-//                 return false;
-//             }
-//         }
-//     */
-//     ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["code"] = "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063bad0396e14602d575b600080fd5b60336047565b604051603e91906065565b60405180910390f35b600090565b60008115159050919050565b605f81604c565b82525050565b6000602082019050607860008301846058565b9291505056fea2646970667358221220c88541a65627d63d4b0cc04094bc5b2154a2700c97677dcd5de2ee2a27bed58564736f6c63430008090033";
-//     Json::FastWriter fastWriter;
-//     std::string config = fastWriter.write( ret );
-//     JsonRpcFixture fixture( config );
-//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
-//     BOOST_REQUIRE( !mtm );
-// }
-
-// BOOST_AUTO_TEST_CASE( check_multitransaction_mode_empty ) {
-//     JsonRpcFixture fixture( c_genesisConfigString );
-//     bool mtm = fixture.client->checkMultitransactionMode(fixture.client->state(), fixture.client->gasBidPrice());
-//     BOOST_REQUIRE( !mtm );
-// }
 
 // historic node shall ignore invalid transactions in block
 BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {

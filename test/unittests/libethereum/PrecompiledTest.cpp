@@ -1796,66 +1796,6 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     BOOST_REQUIRE( !res.first );
 }
 
-// temporary merge tests for getConfigVariable
-// because of the specifics in test design
-//BOOST_AUTO_TEST_CASE( getConfigVariableAddress ) {
-//    ChainParams chainParams;
-//    chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
-//    chainParams.sealEngineName = NoProof::name();
-//    chainParams.allowFutureBlocks = true;
-
-//    dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
-
-//    std::unique_ptr<dev::eth::Client> client;
-//    dev::TransientDirectory m_tmpDir;
-//    auto monitor = make_shared< InstanceMonitor >("test");
-//    setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-//    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
-//        shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
-
-//    client->injectSkaleHost();
-//    client->startWorking();
-
-//    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
-
-//    ClientTest* testClient = asClientTest( client.get() );
-
-//    testClient->mineBlocks( 1 );
-//    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
-//    dev::eth::g_skaleHost = testClient->skaleHost();
-
-//    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableAddress" );
-
-//    std::string input = stringToHex( "skaleConfig.sChain.nodes.0.owner" );
-//    bytes in = fromHex( numberToHex( 32 ) + input );
-//    auto res = exec( bytesConstRef( in.data(), in.size() ) );
-
-//    BOOST_REQUIRE( res.first );
-//    BOOST_REQUIRE( res.second == fromHex("0x23bbe8db4e347b4e8c937c1c8350e4b5ed33adb3db69cbdb7a38e1f40a1b82fe") );
-
-//    input = stringToHex( "skaleConfig.sChain.nodes.0.id" );
-//    input = input.substr(0, 58); // remove 0s in the end
-
-//    in = fromHex( numberToHex( 29 ) + input );
-//    res = exec( bytesConstRef( in.data(), in.size() ) );
-
-//    BOOST_REQUIRE( !res.first );
-
-//    input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
-//    input = input.substr(0, 76); // remove 0s in the end
-//    in = fromHex( numberToHex( 38 ) + input );
-//    res = exec( bytesConstRef( in.data(), in.size() ) );
-
-//    BOOST_REQUIRE( !res.first );
-
-//    input = stringToHex( "skaleConfig.sChain.nodes.0.unknownField" );
-//    input = input.substr(0, 78); // remove 0s in the end
-//    in = fromHex( numberToHex( 39 ) + input );
-//    res = exec( bytesConstRef( in.data(), in.size() ) );
-
-//    BOOST_REQUIRE( !res.first );
-//}
-
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
         ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
