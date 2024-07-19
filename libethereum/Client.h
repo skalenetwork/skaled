@@ -452,8 +452,8 @@ namespace dev {
             }
 
             Block getLatestBlockCopyForEthCall()  const {
-                ReadGuard l(x_preSeal);
-                return m_preSeal.getCopyForEthCalls();
+                ReadGuard l(x_postSeal);
+                return m_postSeal.getCopyForEthCalls();
             }
 
             Block postSeal() const override {

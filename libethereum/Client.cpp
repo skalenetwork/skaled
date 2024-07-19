@@ -1533,8 +1533,8 @@ std::pair< u256, ExecutionResult > Client::estimateGas( Address const& _from, u2
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
-        Block latest = latestBlock();
-        Block pending = preSeal();
+        Block latest = getLatestBlockCopyForEthCall();
+        Block pending = latest;
 
         if ( upperBound > pending.info().gasLimit() ) {
             upperBound = pending.info().gasLimit().convert_to< int64_t >();
