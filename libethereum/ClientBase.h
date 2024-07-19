@@ -86,11 +86,7 @@ public:
     ClientBase() {}
     virtual ~ClientBase() {}
 
-    u256 balanceAt( Address _a ) const override;
-    u256 stateAt( Address _a, u256 _l ) const override;
-    bytes codeAt( Address _a ) const override;
-    h256 codeHashAt( Address _a ) const override;
-    std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
+
 
     LocalisedLogEntries logs( unsigned _watchId ) const override;
     LocalisedLogEntries logs( LogFilter const& _filter ) const override;

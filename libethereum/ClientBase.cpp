@@ -81,27 +81,7 @@ ImportResult ClientBase::injectBlock( bytes const& _block ) {
     return bc().attemptImport( _block, preSeal().mutableState() ).first;
 }
 
-u256 ClientBase::balanceAt( Address _a ) const {
-    return latestBlock().balance( _a );
-}
 
-
-
-u256 ClientBase::stateAt( Address _a, u256 _l ) const {
-    return latestBlock().storage( _a, _l );
-}
-
-bytes ClientBase::codeAt( Address _a ) const {
-    return latestBlock().code( _a );
-}
-
-h256 ClientBase::codeHashAt( Address _a ) const {
-    return latestBlock().codeHash( _a );
-}
-
-map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
-    return latestBlock().storage( _a );
-}
 
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs( unsigned _watchId ) const {

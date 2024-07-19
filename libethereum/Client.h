@@ -764,6 +764,12 @@ namespace dev {
             void populateNewChainStateFromGenesis();
 
             u256 countAt( Address _a ) const override;
+            u256 balanceAt( Address _a ) const override;
+            u256 stateAt( Address _a, u256 _l ) const override;
+            bytes codeAt( Address _a ) const override;
+            h256 codeHashAt( Address _a ) const override;
+            std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
+
 
         private:
             std::pair<bool, ExecutionResult> estimateGasStep(int64_t _gas, Block &_latestBlock,

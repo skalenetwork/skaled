@@ -1619,3 +1619,23 @@ std::pair< bool, ExecutionResult > Client::estimateGasStep( int64_t _gas, Block&
 u256 Client::countAt( Address _a ) const {
     return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().getNonce( _a );
 }
+
+u256 Client::balanceAt( Address _a ) const {
+    return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().balance( _a );
+}
+
+u256 Client::stateAt( Address _a, u256 _l ) const {
+    return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().storage( _a, _l );
+}
+
+bytes Client::codeAt( Address _a ) const {
+    return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().code( _a );
+}
+
+h256 Client::codeHashAt( Address _a ) const {
+    return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().codeHash( _a );
+}
+
+map< h256, pair< u256, u256 > > Client::storageAt( Address _a ) const {
+    return getLatestBlockCopyForEthCall().state().createReadOnlySnapBasedCopy().storage( _a );
+}
