@@ -420,7 +420,7 @@ Submit pre-signed transaction into the Transaction Queue
 #### Description
 Execute read-only contract call
 #### Parameters
-1. Same object as in `eth_sendTransaction`. TODO Find out if decimal literals are allowed in ETH
+1. Same object as in `eth_sendTransaction`.
 2. Block number: `String` that is interpreted differently for normal and historic builds:
 
 Normal build: parameter ignored, latest value is always returned.
@@ -485,8 +485,6 @@ Otherwise - object with the following fields:
  - "uncles": empty arra;
  - "baseFeePerGas": "0x"-prefixed hex `String`, gas price in block, field is present only if EIP-1559 is enabled; for rotated out old blocks this field is set to latest gasPrice;
  - "transactions": array of transaction hashes ("0x"-prefixed hex `String`s, 32 bytes) OR detaled transactions info (same as in `eth_getTransactionByHash`) if 2nd argument was `true`;
- 
-TODO document skipping of invalid
 
 ### `eth_getBlockByNumber`
 | Compatibility |   |
@@ -717,7 +715,6 @@ For a block filter, array items are block hashes.
 For a transaction filter, array items are transaction hashes.
 
 For an event filter, array items are objects with the following fields:
-TODO description
  - "data"
  - "address"
  - "topics"
@@ -747,7 +744,6 @@ Get all events matching a filter
 1.  Decimal or "0x"-prefixed hex `String` - ID of the filter
 #### Return format
 Same as `eth_getFilterChanges`
-TODO Compare
 #### Exceptions
 Throws `INVALID_PARAMS` if filter cannot be found or if response size is exceeded
 
@@ -921,7 +917,7 @@ Same as `eth_getFilterChanges`
 #### Description
 Get account's `storageRoot` (according to Yellow Paper)
 
-Noramal node - call always throws exception.
+Normal node - call always throws exception.
 
 Historic node - see below.
 #### Parameters
@@ -1070,11 +1066,4 @@ Not supported, always throws
 ### oracle_submitRequest
 ### oracle_checkResult
 
-#### Description
-Get future transaction queue
-#### Parameters
-None
-#### Return format
-#### Description
-See `eth_pendingTransactions`
 
