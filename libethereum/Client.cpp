@@ -223,6 +223,11 @@ void Client::injectSkaleHost( std::shared_ptr< SkaleHost > _skaleHost ) {
 }
 
 void Client::populateNewChainStateFromGenesis() {
+    // make sure no block processing happens while we are
+    // initing the state. This is probably never going to happen anyway
+    // since block processing happens very early in Client init
+    // but better safe than sorry
+    DEV_GUARDED(m_blockImportMutex)
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateCopyAndClearCaches();
     m_state.populateFrom( bc().chainParams().genesisState );
