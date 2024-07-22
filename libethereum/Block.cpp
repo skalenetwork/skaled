@@ -146,11 +146,11 @@ Block& Block::operator=( Block const& _s ) {
 }
 
 
-// make a lightweight copy for eth_call.
+// make a lightweight read only copy
 // we only copy the fields we need for eth_call
 // in particular we do not copy receipts and transactions
 // as well as raw bytes
-Block Block::getCopyForEthCalls() const {
+Block Block::getReadOnlyCopy() const {
     Block copy(Null);
     copy.m_state = m_state.createReadOnlySnapBasedCopy();
     copy.m_author = m_author;
@@ -1097,9 +1097,6 @@ bool Block::sealBlock( bytesConstRef _header ) {
     return true;
 }
 
-void Block::startReadState() {
-    m_state = m_state.createStateCopyWithReadLock();
-}
 
 h256 Block::stateRootBeforeTx( unsigned _i ) const {
     _i = min< unsigned >( _i, m_transactions.size() );

@@ -1114,8 +1114,7 @@ TransactionSkeleton Client::populateTransactionWithDefaults( TransactionSkeleton
     // value used by geth and testrpc.
     const u256 defaultTransactionGas = 90000;
     if ( ret.nonce == Invalid256 ) {
-        Block block = postSeal();
-        block.startReadState();
+        Block block = getReadOnlyLatestBlockCopy();
         ret.nonce = max< u256 >( block.transactionsFrom( ret.from ), m_tq.maxNonce( ret.from ) );
     }
     if ( ret.gasPrice == Invalid256 )
@@ -1246,7 +1245,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         }
 #endif
 
-        Block temp = getLatestBlockCopyForEthCall();
+        Block temp = getReadOnlyLatestBlockCopy();
 
         u256 nonce = max< u256 >( temp.transactionsFrom( _from ), m_tq.maxNonce( _from ) );
         // if the user did not specify transaction gas limit, we give transaction block gas
@@ -1524,7 +1523,7 @@ std::pair< u256, ExecutionResult > Client::estimateGas( Address const& _from, u2
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
-        Block latest = getLatestBlockCopyForEthCall();
+        Block latest = getReadOnlyLatestBlockCopy();
         Block pending = latest;
 
         if ( upperBound > pending.info().gasLimit() ) {
@@ -1606,25 +1605,25 @@ std::pair< bool, ExecutionResult > Client::estimateGasStep( int64_t _gas, Block&
 }
 
 u256 Client::countAt( Address _a ) const {
-    return getLatestBlockCopyForEthCall().state().getNonce( _a );
+    return getReadOnlyLatestBlockCopy().state().getNonce( _a );
 }
 
 u256 Client::balanceAt( Address _a ) const {
-    return getLatestBlockCopyForEthCall().state().balance( _a );
+    return getReadOnlyLatestBlockCopy().state().balance( _a );
 }
 
 u256 Client::stateAt( Address _a, u256 _l ) const {
-    return getLatestBlockCopyForEthCall().state().storage( _a, _l );
+    return getReadOnlyLatestBlockCopy().state().storage( _a, _l );
 }
 
 bytes Client::codeAt( Address _a ) const {
-    return getLatestBlockCopyForEthCall().state().code( _a );
+    return getReadOnlyLatestBlockCopy().state().code( _a );
 }
 
 h256 Client::codeHashAt( Address _a ) const {
-    return getLatestBlockCopyForEthCall().state().codeHash( _a );
+    return getReadOnlyLatestBlockCopy().state().codeHash( _a );
 }
 
 map< h256, pair< u256, u256 > > Client::storageAt( Address _a ) const {
-    return getLatestBlockCopyForEthCall().state().storage( _a );
+    return getReadOnlyLatestBlockCopy().state().storage( _a );
 }

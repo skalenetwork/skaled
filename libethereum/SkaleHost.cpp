@@ -415,7 +415,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     MICROPROFILE_SCOPEI( "SkaleHost", "pendingTransactions", MP_LAWNGREEN );
 
 
-    _stateRoot = dev::h256::Arith( this->m_client.latestBlock().info().stateRoot() );
+    _stateRoot = dev::h256::Arith( m_client.getReadOnlyLatestBlockCopy().info().stateRoot() );
 
     h256Hash to_delete;
 

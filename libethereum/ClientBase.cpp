@@ -466,7 +466,6 @@ bool ClientBase::isKnownTransaction( h256 const& _blockHash, unsigned _i ) const
 
 Block ClientBase::latestBlock() const {
     Block res = postSeal();
-    res.startReadState();
     return res;
 }
 
