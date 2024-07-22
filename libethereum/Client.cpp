@@ -229,13 +229,16 @@ void Client::populateNewChainStateFromGenesis() {
     m_state.mutableHistoricState().saveRootForBlock( 0 );
     m_state.mutableHistoricState().db().commit();
 #else
-    m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
-    m_state = m_state.createNewCopyWithLocks();
+    m_state.populateFrom( bc().chainParams().genesisState );
+    m_state = m_state.createStateCopyAndClearCaches();
 #endif
 }
 
 
 void Client::initStateFromDiskOrGenesis() {
+    // write lock so transactions are not processed while state initialized
+    // state initialization happens very early at client init but better safe than sorry
+    DEV_WRITE_GUARDED( x_working);
 #ifdef HISTORIC_STATE
     // Check if If the historic state databases do not yet exist
     bool historicStateExists = fs::exists(
@@ -266,12 +269,7 @@ void Client::initStateFromDiskOrGenesis() {
 void Client::init( WithExisting _forceAction, u256 _networkId ) {
     DEV_TIMED_FUNCTION_ABOVE( 500 );
     m_networkId = _networkId;
-
     initStateFromDiskOrGenesis();
-
-    // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
-    // just take the root from the genesis block.
-
     m_preSeal = bc().genesisBlock( m_state );
 
     m_postSeal = m_preSeal;
@@ -281,11 +279,11 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds( 30 );
     m_tqReady = m_tq.onReady( [=]() {
         this->onTransactionQueueReady();
-    } );  // TODO: should read m_tq->onReady(thisThread, syncTransactionQueue);
+    } );
     m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
     m_bqReady = m_bq.onReady( [=]() {
         this->onBlockQueueReady();
-    } );  // TODO: should read m_bq->onReady(thisThread, syncBlockQueue);
+    } );
     m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
