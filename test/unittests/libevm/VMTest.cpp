@@ -53,7 +53,7 @@ class Create2TestFixture : public TestOutputHelperFixture {
 public:
     explicit Create2TestFixture( VMFace* _vm ) : vm{_vm} { state.addBalance( address, 1 * ether ); }
 
-    virtual ~Create2TestFixture() { state.releaseWriteLock(); }
+    virtual ~Create2TestFixture() {  }
 
     void testCreate2worksInConstantinople() {
         ExtVM extVm( state, envInfo, se->chainParams(), address, address, address, value, gasPrice,
@@ -379,7 +379,7 @@ public:
         state.addBalance( to, 1 * ether );
     }
 
-    virtual ~SstoreTestFixture() { state.releaseWriteLock(); }
+    virtual ~SstoreTestFixture() {  }
 
     void testEip1283Case1() { testGasConsumed( "0x60006000556000600055", 0, 412, 0 ); }
 

@@ -150,7 +150,7 @@ void testState() {
     cout << "EVM storate reads:" << endl;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {
-                    state.createStateCopyWithReadLock().storage(address, memory_address );
+                    state.createReadOnlySnapBasedCopy().storage(address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
                 },
                 1000 ) /
@@ -176,7 +176,7 @@ void testState() {
 
     cout << "EVM code reads:" << endl;
     cout << measure_performance(
-            [&state, &address]() { state.createStateCopyWithReadLock().code(address ); }, 1000 ) /
+            [&state, &address]() { state.createReadOnlySnapBasedCopy().code(address ); }, 1000 ) /
             1e6
          << " Mreads per second" << endl;
 }

@@ -84,7 +84,7 @@ BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-            state.createStateCopyWithReadLock().addresses(h256{}, addressCount * 2 );
+            state.createReadOnlySnapBasedCopy().addresses(h256{}, addressCount * 2 );
     State::AddressMap addresses = addressesAndNextKey.first;
 
     BOOST_CHECK_EQUAL( addresses.size(), addressCount );
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses,
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     uint maxResults = 3;
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-            state.createStateCopyWithReadLock().addresses(h256{}, maxResults );
+            state.createReadOnlySnapBasedCopy().addresses(h256{}, maxResults );
     State::AddressMap& addresses = addressesAndNextKey.first;
     h256& nextKey = addressesAndNextKey.second;
 
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 
     // request next chunk
     std::pair< State::AddressMap, h256 > addressesAndNextKey2 =
-            state.createStateCopyWithReadLock().addresses(nextKey, maxResults );
+            state.createReadOnlySnapBasedCopy().addresses(nextKey, maxResults );
     State::AddressMap& addresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( addresses2.size(), maxResults );
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 }
 
 BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
-    State s = state.createStateCopyWithReadLock();
+    State s = state.createReadOnlySnapBasedCopy();
 
     // delete some accounts
     unsigned deleteCount = 3;
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
 BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-   State s = state.createStateCopyWithReadLock();
+   State s = state.createReadOnlySnapBasedCopy();
 
     // create some accounts
     unsigned createCount = 3;

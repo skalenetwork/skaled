@@ -289,14 +289,15 @@ int main( int argc, char** argv ) {
     unique_ptr< SealEngineFace > se( ChainParams( genesisInfo( networkName ) ).createSealEngine() );
     LastBlockHashes lastBlockHashes;
     EnvInfo const envInfo(
-        blockHeader, lastBlockHashes, 0 /* gasUsed */, se->chainParams().chainID );
+        blockHeader, lastBlockHashes, 0 /* gasUsed */, 10000000, se->chainParams().chainID );
 
     Transaction t;
     Address contractDestination( "1122334455667788991011121314151617181920" );
     if ( !code.empty() ) {
         // Deploy the code on some fake account to be called later.
         Account account( 0, 0 );
-        auto const latestVersion = se->evmSchedule( envInfo.number() ).accountVersion;
+        auto const latestVersion = se->evmSchedule( 1,
+                                         envInfo.number() ).accountVersion;
         account.setCode( bytes{ code }, latestVersion );
         std::unordered_map< Address, Account > map;
         map[contractDestination] = account;
@@ -310,7 +311,7 @@ int main( int argc, char** argv ) {
     state.addBalance( sender, value );
 
     // HACK 0 here is for gasPrice
-    Executive executive( state, envInfo, *se, 0 );
+    Executive executive( state, envInfo, se->chainParams(), 0, 1 );
     ExecutionResult res;
     executive.setResultRecipient( res );
     t.forceSender( sender );
@@ -347,7 +348,7 @@ int main( int argc, char** argv ) {
 
     if ( mode == Mode::Statistics ) {
         cout << "Gas used: " << res.gasUsed << " (+"
-             << t.baseGasRequired( se->evmSchedule( envInfo.number() ) ) << " for transaction, -"
+             << t.baseGasRequired( se->evmSchedule(1,  envInfo.number() ) ) << " for transaction, -"
              << res.gasRefunded << " refunded)\n";
         cout << "Output: " << toHex( output ) << "\n";
         LogEntries logs = executive.logs();

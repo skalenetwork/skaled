@@ -229,7 +229,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 }
 
 void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _miningReward ) {
-    State pre = _pre.createStateCopyWithReadLock(), post = _post.createStateCopyWithReadLock();
+    State pre = _pre.createReadOnlySnapBasedCopy(), post = _post.createReadOnlySnapBasedCopy();
     bigint preBalance = 0;
     bigint postBalance = 0;
     for ( auto const& addr : pre.addresses() )
@@ -488,7 +488,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
 
 int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    State stateExpect = _stateExpect.createStateCopyWithReadLock(), statePost = _statePost.createStateCopyWithReadLock();
+    State stateExpect = _stateExpect.createReadOnlySnapBasedCopy(), statePost = _statePost.createReadOnlySnapBasedCopy();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \
