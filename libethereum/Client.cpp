@@ -1076,8 +1076,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
         }
 
         // blockByNumber is only used for reads
-
-        auto readState = m_state.createStateCopyWithReadLock();
+        auto readState = m_state.createStateCopyAndClearCaches();
         readState.mutableHistoricState().setRootByBlockNumber( _h );
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed

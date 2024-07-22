@@ -380,11 +380,6 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    /// Create State copy with read locked state db
-    /// since the lock the db is unlocked
-
-    State createStateCopyWithReadLock() const;
-
     /// Create State copy to modify data.
     State createStateCopyAndClearCaches() const;
 
@@ -481,8 +476,6 @@ public:
 
 private:
     enum Auxiliary { CODE = 1 };
-
-    boost::optional< boost::shared_lock< boost::shared_mutex > > m_db_read_lock;
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.

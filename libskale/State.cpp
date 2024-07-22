@@ -91,7 +91,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     m_db_ptr = make_shared< OverlayDB >( openDB( _dbPath, _genesis,
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
-    auto state = createStateCopyWithReadLock();
+    auto state = createStateCopyAndClearCaches();
     totalStorageUsed_ = state.storageUsedTotal();
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
@@ -123,7 +123,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       m_historicState( _accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs )
 #endif
 {
-    auto state = createStateCopyWithReadLock();
+    auto state = createStateCopyAndClearCaches();
     totalStorageUsed_ = state.storageUsedTotal();
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
@@ -246,9 +246,6 @@ State::State( const State& _s )
 #endif
 {
     x_db_ptr = _s.x_db_ptr;
-    if ( _s.m_db_read_lock ) {
-        m_db_read_lock.emplace( *x_db_ptr );
-    }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
     m_cache = _s.m_cache;
@@ -266,9 +263,6 @@ State::State( const State& _s )
 
 State& State::operator=( const State& _s ) {
     x_db_ptr = _s.x_db_ptr;
-    if ( _s.m_db_read_lock ) {
-        m_db_read_lock.emplace( *x_db_ptr );
-    }
     m_db_ptr = _s.m_db_ptr;
     m_orig_db = _s.m_orig_db;
     m_cache = _s.m_cache;
@@ -901,13 +895,6 @@ void State::clearAllCaches() {
 }
 
 
-State State::createStateCopyWithReadLock() const {
-    LDB_CHECK(!m_isReadOnlySnapBasedState);
-    State stateCopy = State( *this );
-    stateCopy.m_db_read_lock.emplace( *stateCopy.x_db_ptr );
-    stateCopy.clearCaches();
-    return stateCopy;
-}
 
 State State::createStateCopyAndClearCaches() const {
     LDB_CHECK(!m_isReadOnlySnapBasedState);
@@ -928,7 +915,6 @@ State State::createReadOnlySnapBasedCopy() const {
     stateCopy.m_snap = m_orig_db->getLastBlockSnap();
     LDB_CHECK( stateCopy.m_snap )
     // the state does not use any locking since it is based on db snapshot
-    stateCopy.m_db_read_lock = boost::none;
     stateCopy.x_db_ptr = nullptr;
     stateCopy.m_db_ptr = make_shared< OverlayDB >(
         make_unique< batched_io::read_only_snap_based_batched_db >( stateCopy.m_orig_db, stateCopy.m_snap ) );
