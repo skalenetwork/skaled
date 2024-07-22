@@ -90,6 +90,18 @@ leveldb::Status LevelDBSnap::getValue( const std::unique_ptr< leveldb::DB >& _db
     _readOptions.snapshot = m_snap;
     return _db->Get( _readOptions, _key, &_value );
 }
+
+std::unique_ptr<leveldb::Iterator> LevelDBSnap::getIterator( const std::unique_ptr< leveldb::DB >& _db,
+    leveldb::ReadOptions _readOptions) {
+    LDB_CHECK( _db );
+    // lock to make sure snap is not concurrently closed while reading from it
+    std::shared_lock< std::shared_mutex > lock( m_usageMutex );
+    LDB_CHECK( !isClosed() )
+    _readOptions.snapshot = m_snap;
+    auto iterator = _db->NewIterator( _readOptions);
+    return  std::unique_ptr<leveldb::Iterator>(iterator);
+}
+
 uint64_t LevelDBSnap::getParentDbReopenId() const {
     return m_parentDBReopenId;
 }

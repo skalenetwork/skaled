@@ -49,6 +49,12 @@ public:
     leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions,
         const leveldb::Slice& _key, std::string& _value );
 
+    leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions,
+        std::string& _value );
+
+    std::unique_ptr<leveldb::Iterator> getIterator( const std::unique_ptr< leveldb::DB >& _db,
+        leveldb::ReadOptions _readOptions);
+
     uint64_t getInstanceId() const;
 
     uint64_t getParentDbReopenId() const;

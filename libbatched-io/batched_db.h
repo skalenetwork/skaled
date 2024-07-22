@@ -132,8 +132,8 @@ public:
     }
 
     void forEachWithPrefix(
-        std::string& , std::function< bool( dev::db::Slice, dev::db::Slice ) >  ) const override {
-        throw std::runtime_error("Function not implemented");
+        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) >  _f) const override {
+        m_db->forEachWithPrefix( _prefix, _f, m_snap );
     }
 
     virtual ~read_only_snap_based_batched_db() = default;
