@@ -1043,19 +1043,19 @@ Not supported
 ## `shh_*` Methods
 Not supported
 
-## Debug Methods
+## `debug_*` Methods
 ### debug_accountRangeAt
 #### Description
-Not supported, always throws
+Not supported, always throws exception
 
 ### debug_traceTransaction
 ### debug_storageRangeAt
 #### Description
-Not supported, always throws
+Not supported, always throws exception
 
 ### debug_preimage
 #### Description
-Not supported, always throws
+Not supported, always throws exception
 
 ### debug_traceBlockByNumber
 ### debug_traceBlockByHash
