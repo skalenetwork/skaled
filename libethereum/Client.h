@@ -453,7 +453,6 @@ namespace dev {
 
             // get read only latest block copy
             Block getReadOnlyLatestBlockCopy()  const {
-                ReadGuard l(x_postSeal);
                 return m_postSeal.getReadOnlyCopy();
             }
 

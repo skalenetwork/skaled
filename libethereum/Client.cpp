@@ -1530,7 +1530,12 @@ std::pair< u256, ExecutionResult > Client::estimateGas( Address const& _from, u2
         }
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
 
-        // We execute transaction with maximum gas limit
+        // We execute transact            u256 countAt( Address _a ) const override;
+        //            u256 balanceAt( Address _a ) const override;
+        //            u256 stateAt( Address _a, u256 _l ) const override;
+        //            bytes codeAt( Address _a ) const override;
+        //            h256 codeHashAt( Address _a ) const override;
+        //            std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;ion with maximum gas limit
         // to calculate how many of gas will be used.
         // Then we execute transaction with this gas limit
         // and check if it will be enough.
