@@ -128,16 +128,7 @@ namespace dev {
             /// Imports the given transaction into the transaction queue
             h256 importTransaction(Transaction const &_t) override;
 
-
-            /// Estimate gas usage for call/create.
-            /// @param _maxGas An upper bound value for estimation, if not provided default value of
-            /// c_maxGasEstimate will be used.
-            /// @param _callback Optional callback function for progress reporting
-            std::pair<u256, ExecutionResult> estimateGas(Address const &_from, u256 _value, Address _dest,
-                                                         bytes const &_data, int64_t _maxGas,
-                                                         u256 _gasPrice,
-                                                         GasEstimationCallback const &_callback = GasEstimationCallback()) override;
-
+            
             /// Makes the given call. Nothing is recorded into the state.
             ExecutionResult call(Address const &_secret, u256 _value, Address _dest, bytes const &_data,
                                  u256 _gas, u256 _gasPrice,
@@ -762,21 +753,6 @@ namespace dev {
             void initStateFromDiskOrGenesis();
 
             void populateNewChainStateFromGenesis();
-
-            u256 countAt( Address _a ) const override;
-            u256 balanceAt( Address _a ) const override;
-            u256 stateAt( Address _a, u256 _l ) const override;
-            bytes codeAt( Address _a ) const override;
-            h256 codeHashAt( Address _a ) const override;
-            std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
-
-
-        private:
-            std::pair<bool, ExecutionResult> estimateGasStep(int64_t _gas, Block &_latestBlock,
-                                                             Block &_pendingBlock, Address const &_from,
-                                                             Address const &_destination, u256 const &_value,
-                                                             u256 const &_gasPrice, bytes const &_data);
-
         };
 
     }  // namespace eth

@@ -191,8 +191,7 @@ public:
     std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
     std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-        GasEstimationCallback const& _callback ) override;
-
+        GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
         Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
         u256 const& _gasPrice, bytes const& _data );
