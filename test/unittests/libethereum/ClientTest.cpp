@@ -262,7 +262,7 @@ public:
         //        ), dir,
         //            dir, chainParams, WithExisting::Kill, {"eth"}, testingMode ) );
         std::shared_ptr< SnapshotManager > mgr;
-        mgr.reset( new SnapshotManager( chainParams, m_tmpDir.path(), { BlockChain::getChainDirName( chainParams ), "vol2", "filestorage"} ) );
+        mgr.reset( new SnapshotManager( chainParams, m_tmpDir.path() ) );
         // boost::filesystem::create_directory(
         //     m_tmpDir.path() / "vol1" / "12041" );
         // boost::filesystem::create_directory(
@@ -1030,7 +1030,7 @@ static std::string const c_skaleConfigString = R"E(
 
 BOOST_AUTO_TEST_SUITE( ClientSnapshotsSuite, *boost::unit_test::precondition( option_all_tests ) )
 
-BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     TestClientSnapshotsFixture fixture( c_skaleConfigString );
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 

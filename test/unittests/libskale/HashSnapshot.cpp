@@ -283,8 +283,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
-        mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ),
-            {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+        mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ) ) );
 
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
@@ -532,6 +531,13 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
 
+#define WAIT_FOR_THE_NEXT_BLOCK() { \
+    auto bn = client->number(); \
+    while ( client->number() == bn ) { \
+        usleep( 100 ); \
+    } \
+}
+
 BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     auto senderAddress = coinbase.address();
@@ -542,20 +548,25 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
+    BOOST_REQUIRE( client->getLatestSnapshotBlockNumer() == -1 );
+
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     dev::eth::simulateMining( *( client ), blocksToMine );
 
     mgr->doSnapshot( 1 );
     mgr->computeSnapshotHash( 1 );
-
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    mgr->doSnapshot( 2 );
-
-    mgr->computeSnapshotHash( 2 );
-
     BOOST_REQUIRE( mgr->isSnapshotHashPresent( 1 ) );
+
+    BOOST_REQUIRE( client->number() == 1 );
+    WAIT_FOR_THE_NEXT_BLOCK();
+
+    mgr->doSnapshot( 2 );
+    mgr->computeSnapshotHash( 2 );
     BOOST_REQUIRE( mgr->isSnapshotHashPresent( 2 ) );
+
+    BOOST_REQUIRE( client->number() == 2 );
+    WAIT_FOR_THE_NEXT_BLOCK();
 
     auto hash1 = mgr->getSnapshotHash( 1 );
     auto hash2 = mgr->getSnapshotHash( 2 );
@@ -567,25 +578,30 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
     // TODO check hash absence separately
-}
 
-BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    mgr->doSnapshot( 4 );
+    BOOST_REQUIRE( client->number() == 3 );
+    WAIT_FOR_THE_NEXT_BLOCK();
 
-    mgr->computeSnapshotHash( 4, true );
+    mgr->doSnapshot( 3 );
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+    mgr->computeSnapshotHash( 3, true );
 
-    dev::h256 hash4_dbl = mgr->getSnapshotHash( 4 );
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
 
-    mgr->computeSnapshotHash( 4 );
+    dev::h256 hash3_dbl = mgr->getSnapshotHash( 3 );
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+    mgr->computeSnapshotHash( 3 );
 
-    dev::h256 hash4 = mgr->getSnapshotHash( 4 );
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
 
-    BOOST_REQUIRE( hash4_dbl == hash4 );
+    dev::h256 hash3 = mgr->getSnapshotHash( 3 );
+
+    BOOST_REQUIRE( hash3_dbl == hash3 );
+
+    dev::h256 hash = client->hashFromNumber( 3 );
+    uint64_t timestampFromBlockchain = client->blockInfo( hash ).timestamp();
+
+    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, mgr->getBlockTimestamp( 3 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

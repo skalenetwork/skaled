@@ -1607,8 +1607,11 @@ int main( int argc, char** argv ) try {
             archiveVolumes.insert( archiveVolumes.end(), { "historic_roots", "historic_state" } );
 #endif
         }
-        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(), coreVolumes,
-            archiveVolumes, sharedSpace ? sharedSpace->getPath() : "" ) );
+        //        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(),
+        //        coreVolumes,
+        //            archiveVolumes, sharedSpace ? sharedSpace->getPath() : "" ) );
+        snapshotManager.reset( new SnapshotManager(
+            chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
     }
 
     bool downloadGenesisForSyncNode = false;

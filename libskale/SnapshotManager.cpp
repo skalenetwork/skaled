@@ -56,24 +56,28 @@ const std::string SnapshotManager::partialSnapshotHashFileName = "partial_snapsh
 // - not btrfs
 // - volumes don't exist
 SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
-    const fs::path& _dataDir, const std::vector< std::string >& _coreVolumes,
-    const std::vector< std::string >& _archiveVolumes, const std::string& _diffsDir )
+    const fs::path& _dataDir, const std::string& _diffsDir )
     : chainParams( _chainParams ) {
-    assert( _coreVolumes.size() > 0 );
+    dataDir = _dataDir;
+    coreVolumes = { dev::eth::BlockChain::getChainDirName( chainParams ), "filestorage",
+        "prices_" + chainParams.nodeInfo.id.str() + ".db",
+        "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
 
-    data_dir = _dataDir;
-    coreVolumes = _coreVolumes;
-    archiveVolumes = _archiveVolumes;
+#ifdef HISTORIC_STATE
+    archiveVolumes = { "historic_roots", "historic_state" };
+#endif
 
     allVolumes.reserve( coreVolumes.size() + archiveVolumes.size() );
     allVolumes.insert( allVolumes.end(), coreVolumes.begin(), coreVolumes.end() );
+#ifdef HISTORIC_STATE
     allVolumes.insert( allVolumes.end(), archiveVolumes.begin(), archiveVolumes.end() );
+#endif
 
-    snapshots_dir = data_dir / "snapshots";
+    snapshotsDir = dataDir / "snapshots";
     if ( _diffsDir.empty() )
-        diffs_dir = data_dir / "diffs";
+        diffsDir = dataDir / "diffs";
     else
-        diffs_dir = _diffsDir;
+        diffsDir = _diffsDir;
 
     if ( !fs::exists( _dataDir ) )
         try {
@@ -88,10 +92,10 @@ SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
     }
 
     try {
-        fs::create_directory( snapshots_dir );
+        fs::create_directory( snapshotsDir );
         if ( _diffsDir.empty() ) {
-            fs::remove_all( diffs_dir );
-            fs::create_directory( diffs_dir );
+            fs::remove_all( diffsDir );
+            fs::create_directory( diffsDir );
         }
     } catch ( const fs::filesystem_error& ex ) {
         std::throw_with_nested( CannotWrite( ex.path1() ) );
@@ -116,26 +120,26 @@ SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
 // - cannot read
 // - cannot write
 void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
-    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+    fs::path snapshotDir = snapshotsDir / to_string( _blockNumber );
 
     UnsafeRegion::lock ur_lock;
 
     try {
-        if ( fs::exists( snapshot_dir ) )
+        if ( fs::exists( snapshotDir ) )
             throw SnapshotPresent( _blockNumber );
     } catch ( const fs::filesystem_error& ) {
-        std::throw_with_nested( CannotRead( snapshot_dir ) );
+        std::throw_with_nested( CannotRead( snapshotDir ) );
     }  // catch
 
     try {
-        fs::create_directory( snapshot_dir );
+        fs::create_directory( snapshotDir );
     } catch ( const fs::filesystem_error& ) {
-        std::throw_with_nested( CannotCreate( snapshot_dir ) );
+        std::throw_with_nested( CannotCreate( snapshotDir ) );
     }  // catch
 
     int dummy_counter = 0;
     for ( const string& vol : allVolumes ) {
-        int res = btrfs.subvolume.snapshot_r( ( data_dir / vol ).c_str(), snapshot_dir.c_str() );
+        int res = btrfs.subvolume.snapshot_r( ( dataDir / vol ).c_str(), snapshotDir.c_str() );
         if ( res )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         if ( dummy_counter++ == 1 )
@@ -147,10 +151,10 @@ void SnapshotManager::doSnapshot( unsigned _blockNumber ) {
 // - not found/cannot read
 void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
     try {
-        if ( !fs::exists( snapshots_dir / to_string( _blockNumber ) ) )
+        if ( !fs::exists( snapshotsDir / to_string( _blockNumber ) ) )
             throw SnapshotAbsent( _blockNumber );
     } catch ( const fs::filesystem_error& ) {
-        std::throw_with_nested( CannotRead( snapshots_dir / to_string( _blockNumber ) ) );
+        std::throw_with_nested( CannotRead( snapshotsDir / to_string( _blockNumber ) ) );
     }
 
     UnsafeRegion::lock ur_lock;
@@ -163,12 +167,12 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 
     int dummy_counter = 0;
     for ( const string& vol : volumes ) {
-        if ( fs::exists( data_dir / vol ) ) {
-            if ( btrfs.subvolume._delete( ( data_dir / vol ).c_str() ) )
+        if ( fs::exists( dataDir / vol ) ) {
+            if ( btrfs.subvolume._delete( ( dataDir / vol ).c_str() ) )
                 throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         }
         if ( btrfs.subvolume.snapshot(
-                 ( snapshots_dir / to_string( _blockNumber ) / vol ).c_str(), data_dir.c_str() ) )
+                 ( snapshotsDir / to_string( _blockNumber ) / vol ).c_str(), dataDir.c_str() ) )
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
 
         if ( dummy_counter++ == 1 )
@@ -189,7 +193,7 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock, bool 
         if ( fs::is_regular( path ) )
             return path;
 
-        if ( !fs::exists( snapshots_dir / to_string( _toBlock ) ) ) {
+        if ( !fs::exists( snapshotsDir / to_string( _toBlock ) ) ) {
             // TODO wrong error message if this fails
             fs::remove( path );
             throw SnapshotAbsent( _toBlock );
@@ -208,9 +212,9 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock, bool 
     for ( auto it = volumes.begin(); it != volumes.end(); ++it ) {
         const string& vol = *it;
         if ( it + 1 != volumes.end() )
-            volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string() << " ";
+            volumes_cat << ( snapshotsDir / to_string( _toBlock ) / vol ).string() << " ";
         else
-            volumes_cat << ( snapshots_dir / to_string( _toBlock ) / vol ).string();
+            volumes_cat << ( snapshotsDir / to_string( _toBlock ) / vol ).string();
     }  // for cat
 
     UnsafeRegion::lock ur_lock;
@@ -233,7 +237,7 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock, bool 
 // - cannot input as diff (no base state?)
 void SnapshotManager::importDiff( unsigned _toBlock ) {
     fs::path diffPath = getDiffPath( _toBlock );
-    fs::path snapshot_dir = snapshots_dir / to_string( _toBlock );
+    fs::path snapshot_dir = snapshotsDir / to_string( _toBlock );
 
     try {
         if ( !fs::is_regular_file( diffPath ) )
@@ -252,7 +256,7 @@ void SnapshotManager::importDiff( unsigned _toBlock ) {
         std::throw_with_nested( CannotCreate( snapshot_dir ) );
     }  // catch
 
-    if ( btrfs.receive( diffPath.c_str(), ( snapshots_dir / to_string( _toBlock ) ).c_str() ) ) {
+    if ( btrfs.receive( diffPath.c_str(), ( snapshotsDir / to_string( _toBlock ) ).c_str() ) ) {
         auto ex = CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
         cleanupDirectory( snapshot_dir );
         fs::remove_all( snapshot_dir );
@@ -262,12 +266,12 @@ void SnapshotManager::importDiff( unsigned _toBlock ) {
 
 boost::filesystem::path SnapshotManager::getDiffPath( unsigned _toBlock ) {
     // check existance
-    assert( boost::filesystem::exists( diffs_dir ) );
-    return diffs_dir / ( std::to_string( _toBlock ) );
+    assert( boost::filesystem::exists( diffsDir ) );
+    return diffsDir / ( std::to_string( _toBlock ) );
 }
 
 void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
-    if ( !fs::exists( snapshots_dir / to_string( _blockNumber ) ) ) {
+    if ( !fs::exists( snapshotsDir / to_string( _blockNumber ) ) ) {
         throw SnapshotAbsent( _blockNumber );
     }
 
@@ -277,7 +281,7 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
 
     for ( const auto& volume : allVolumes ) {
         int res = btrfs.subvolume._delete(
-            ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str() );
+            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str() );
 
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
@@ -287,28 +291,28 @@ void SnapshotManager::removeSnapshot( unsigned _blockNumber ) {
             batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
     }
 
-    fs::remove_all( snapshots_dir / to_string( _blockNumber ) );
+    fs::remove_all( snapshotsDir / to_string( _blockNumber ) );
 }
 
 void SnapshotManager::cleanupButKeepSnapshot( unsigned _keepSnapshot ) {
-    this->cleanupDirectory( snapshots_dir, snapshots_dir / std::to_string( _keepSnapshot ) );
-    this->cleanupDirectory( data_dir, snapshots_dir );
-    if ( !fs::exists( diffs_dir ) )
+    this->cleanupDirectory( snapshotsDir, snapshotsDir / std::to_string( _keepSnapshot ) );
+    this->cleanupDirectory( dataDir, snapshotsDir );
+    if ( !fs::exists( diffsDir ) )
         try {
-            boost::filesystem::create_directory( diffs_dir );
+            boost::filesystem::create_directory( diffsDir );
         } catch ( const fs::filesystem_error& ex ) {
             std::throw_with_nested( CannotWrite( ex.path1() ) );
         }
 }
 
 void SnapshotManager::cleanup() {
-    this->cleanupDirectory( snapshots_dir );
-    this->cleanupDirectory( data_dir );
+    this->cleanupDirectory( snapshotsDir );
+    this->cleanupDirectory( dataDir );
 
     try {
-        boost::filesystem::create_directory( snapshots_dir );
-        if ( !fs::exists( diffs_dir ) )
-            boost::filesystem::create_directory( diffs_dir );
+        boost::filesystem::create_directory( snapshotsDir );
+        if ( !fs::exists( diffsDir ) )
+            boost::filesystem::create_directory( diffsDir );
     } catch ( const fs::filesystem_error& ex ) {
         std::throw_with_nested( CannotWrite( ex.path1() ) );
     }  // catch
@@ -342,7 +346,7 @@ void SnapshotManager::cleanupDirectory(
 // exeptions: filesystem
 void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
-    for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
+    for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
         if ( fs::basename( f ) != "0" )
             numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
@@ -365,7 +369,7 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
 
 std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     map< int, fs::path, std::greater< int > > numbers;
-    for ( auto& f : fs::directory_iterator( snapshots_dir ) ) {
+    for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
         if ( fs::basename( f ) != "0" )
             numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
@@ -391,7 +395,7 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
 // exeptions: filesystem
 void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
-    for ( auto& f : fs::directory_iterator( diffs_dir ) ) {
+    for ( auto& f : fs::directory_iterator( diffsDir ) ) {
         try {
             numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
         } catch ( ... ) { /*ignore non-numbers*/
@@ -409,7 +413,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
 }
 
 dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number, bool _forArchiveNode ) const {
-    fs::path snapshot_dir = snapshots_dir / to_string( block_number );
+    fs::path snapshot_dir = snapshotsDir / to_string( block_number );
 
     try {
         if ( !fs::exists( snapshot_dir ) )
@@ -420,12 +424,12 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number, bool _forArch
 
     std::string hashFile;
     if ( !_forArchiveNode && chainParams.nodeInfo.archiveMode )
-        hashFile = ( this->snapshots_dir / std::to_string( block_number ) /
+        hashFile = ( this->snapshotsDir / std::to_string( block_number ) /
                      this->partialSnapshotHashFileName )
                        .string();
     else
         hashFile =
-            ( this->snapshots_dir / std::to_string( block_number ) / this->snapshotHashFileName )
+            ( this->snapshotsDir / std::to_string( block_number ) / this->snapshotHashFileName )
                 .string();
 
     if ( !isSnapshotHashPresent( block_number ) ) {
@@ -445,7 +449,7 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number, bool _forArch
 }
 
 bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
-    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+    fs::path snapshot_dir = snapshotsDir / to_string( _blockNumber );
 
     try {
         if ( !fs::exists( snapshot_dir ) )
@@ -455,13 +459,13 @@ bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
     }  // catch
 
     boost::filesystem::path hashFile =
-        this->snapshots_dir / std::to_string( _blockNumber ) / this->snapshotHashFileName;
+        this->snapshotsDir / std::to_string( _blockNumber ) / this->snapshotHashFileName;
     try {
         std::lock_guard< std::mutex > lock( hashFileMutex );
         if ( !chainParams.nodeInfo.archiveMode )
             return boost::filesystem::exists( hashFile );
         else {
-            boost::filesystem::path partialHashFile = this->snapshots_dir /
+            boost::filesystem::path partialHashFile = this->snapshotsDir /
                                                       std::to_string( _blockNumber ) /
                                                       this->partialSnapshotHashFileName;
             return boost::filesystem::exists( hashFile ) &&
@@ -505,7 +509,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     dev::u256 last_price = 0;
     // manually open DB
     boost::filesystem::path prices_path =
-        this->snapshots_dir / std::to_string( _blockNumber ) / coreVolumes[2];
+        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes[2];
     if ( boost::filesystem::exists( prices_path ) ) {
         boost::filesystem::directory_iterator it( prices_path ), end;
         std::string last_price_str;
@@ -653,11 +657,11 @@ void SnapshotManager::computeAllVolumesHash(
     // TODO XXX Remove volumes structure knowledge from here!!
 
     this->computeDatabaseHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / coreVolumes[0] / "12041" / "state",
+        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes[0] / "12041" / "state",
         ctx );
 
     boost::filesystem::path blocks_extras_path =
-        this->snapshots_dir / std::to_string( _blockNumber ) / coreVolumes[0] / "blocks_and_extras";
+        this->snapshotsDir / std::to_string( _blockNumber ) / coreVolumes[0] / "blocks_and_extras";
 
     // few dbs
     boost::filesystem::directory_iterator directory_it( blocks_extras_path ), end;
@@ -683,7 +687,7 @@ void SnapshotManager::computeAllVolumesHash(
 
     // filestorage
     this->computeFileStorageHash(
-        this->snapshots_dir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
+        this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
 
     // if have prices and blocks
     if ( _blockNumber && allVolumes.size() > 3 ) {
@@ -697,7 +701,7 @@ void SnapshotManager::computeAllVolumesHash(
         dev::h256 partialHash;
         secp256k1_sha256_finalize( &partialCtx, partialHash.data() );
 
-        string hashFile = ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
+        string hashFile = ( this->snapshotsDir / std::to_string( _blockNumber ) ).string() + '/' +
                           this->partialSnapshotHashFileName;
 
         try {
@@ -720,11 +724,11 @@ void SnapshotManager::computeAllVolumesHash(
 #ifdef HISTORIC_STATE
             // historic dbs
             this->computeDatabaseHash(
-                this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[0] /
+                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
                 ctx );
             this->computeDatabaseHash(
-                this->snapshots_dir / std::to_string( _blockNumber ) / archiveVolumes[1] /
+                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
                 ctx );
 #endif
@@ -753,7 +757,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
-            ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
+            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "false" );
 
         if ( res != 0 ) {
@@ -768,7 +772,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
-            ( this->snapshots_dir / std::to_string( _blockNumber ) / volume ).string().c_str(),
+            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str(),
             "ro", "true" );
 
         if ( res != 0 ) {
@@ -779,7 +783,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     dev::h256 hash;
     secp256k1_sha256_finalize( &ctx, hash.data() );
 
-    string hash_file = ( this->snapshots_dir / std::to_string( _blockNumber ) ).string() + '/' +
+    string hash_file = ( this->snapshotsDir / std::to_string( _blockNumber ) ).string() + '/' +
                        this->snapshotHashFileName;
 
     try {
@@ -793,7 +797,7 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 }
 
 uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
-    fs::path snapshot_dir = snapshots_dir / to_string( _blockNumber );
+    fs::path snapshot_dir = snapshotsDir / to_string( _blockNumber );
 
     try {
         if ( !fs::exists( snapshot_dir ) )
@@ -802,7 +806,7 @@ uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
         std::throw_with_nested( CannotRead( snapshot_dir ) );
     }
 
-    fs::path db_dir = this->snapshots_dir / std::to_string( _blockNumber );
+    fs::path db_dir = this->snapshotsDir / std::to_string( _blockNumber );
 
     int res =
         btrfs.subvolume.property_set( ( db_dir / coreVolumes[0] ).string().c_str(), "ro", "false" );
