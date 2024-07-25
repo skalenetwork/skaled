@@ -757,8 +757,8 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
-            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str(),
-            "ro", "false" );
+            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str(), "ro",
+            "false" );
 
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
@@ -772,8 +772,8 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
-            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str(),
-            "ro", "true" );
+            ( this->snapshotsDir / std::to_string( _blockNumber ) / volume ).string().c_str(), "ro",
+            "true" );
 
         if ( res != 0 ) {
             throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
