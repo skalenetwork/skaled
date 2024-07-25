@@ -358,7 +358,7 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
         rpcServer.reset( new FullServer( ethFace , new rpc::Net( chainParams ),
             new rpc::Web3(),  // TODO Add version parameter here?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
-            new rpc::Debug( *client, nullptr, "", true),
+            new rpc::Debug( *client, nullptr, ""),
             new rpc::Test( *client ) ) );
 
         //
