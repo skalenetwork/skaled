@@ -184,9 +184,6 @@ private:
     boost::filesystem::path snapshotsDir;
     boost::filesystem::path diffsDir;
 
-    //    std::array< std::string, 4 > coreVolumes;
-    //    std::array< std::string, 2 > archiveVolumes;
-
     static const std::string snapshotHashFileName;
     static const std::string partialSnapshotHashFileName;
     mutable std::mutex hashFileMutex;
