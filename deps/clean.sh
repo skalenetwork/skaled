@@ -141,6 +141,7 @@ rm -rf ./jsoncpp
 rm -rf ./libjson-rpc-cpp
 rm -rf ./libcryptopp
 rm -rf ./proxygen
+rm -rf ./rocksdb
 rm -rf ./wangle
 rm -rf ./zstd
 rm -rf ./liblzma
