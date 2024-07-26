@@ -774,7 +774,8 @@ void SkaleHost::startWorking() {
     working = true;
 
     try {
-        m_broadcaster->startService();
+        if ( this->m_client.chainParams().nodeInfo.id != 2 )
+            m_broadcaster->startService();
     } catch ( const Broadcaster::StartupException& ) {
         working = false;
         std::throw_with_nested( SkaleHost::CreationException() );
