@@ -213,7 +213,7 @@ jobs:
           run_test ConsensusTests
           sudo NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
           sudo NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
-#          sudo NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
+          # sudo NO_NTP_CHECK=1 NO_ULIMIT_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
           cd ..
       - name: Testeth verbosity 4
         run : |
@@ -264,7 +264,7 @@ jobs:
           rerun_test ConsensusTests
           ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
           ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-#          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+          # ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
 
       - name: Configure all as historic
