@@ -27,7 +27,7 @@ using std::string, std::runtime_error;
 
 namespace dev::db {
 
-unsigned c_maxOpenLeveldbFiles1 = 25;
+unsigned c_maxOpenLeveldbFiles = 25;
 
 const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
 
@@ -100,7 +100,7 @@ leveldb::WriteOptions LevelDB::defaultWriteOptions() {
 leveldb::Options LevelDB::defaultDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenLeveldbFiles1;
+    options.max_open_files = c_maxOpenLeveldbFiles;
     options.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
     return options;
 }
@@ -114,7 +114,7 @@ leveldb::ReadOptions LevelDB::defaultSnapshotReadOptions() {
 leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     leveldb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenLeveldbFiles1;
+    options.max_open_files = c_maxOpenLeveldbFiles;
     return options;
 }
 

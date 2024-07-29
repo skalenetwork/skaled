@@ -32,7 +32,7 @@ target_link_libraries(devcore PUBLIC skale-buildinfo Boost::filesystem Boost::sy
 #target_link_libraries(devcore PRIVATE ${LEVELDB_LIBRARIES})
 
 if( BUILD_LEVELDB )
-    target_link_libraries(devcore PRIVATE leveldb skutils)
+    target_link_libraries(devcore PRIVATE leveldb rocksdb skutils)
 else()
     target_link_libraries(devcore PRIVATE leveldb::leveldb rocksdb skutils)
 endif()

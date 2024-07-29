@@ -118,7 +118,8 @@ namespace fs = boost::filesystem;
 namespace dev {
 namespace db {
 extern unsigned c_maxOpenLeveldbFiles;
-}
+extern unsigned c_maxOpenRocksdbFiles;
+}  // namespace db
 }  // namespace dev
 
 namespace {
@@ -1478,6 +1479,14 @@ int main( int argc, char** argv ) try {
                 dev::db::c_maxOpenLeveldbFiles =
                     joConfig["skaleConfig"]["nodeInfo"]["maxOpenLeveldbFiles"].get< unsigned >();
         } catch ( ... ) {
+        }
+
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxOpenRocksdbFiles" ) )
+                dev::db::c_maxOpenRocksdbFiles =
+                    joConfig["skaleConfig"]["nodeInfo"]["maxOpenRocksdbFiles"].get< unsigned >();
+        } catch ( ... ) {
+            dev::db::c_maxOpenRocksdbFiles = 1000;
         }
 
         if ( vm.count( "log-value-size-limit" ) ) {

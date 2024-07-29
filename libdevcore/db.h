@@ -31,6 +31,7 @@
 
 namespace dev {
 namespace db {
+
 // WriteBatchFace implements database write batch for a specific concrete
 // database implementation.
 class WriteBatchFace {

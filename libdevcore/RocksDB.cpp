@@ -17,17 +17,18 @@
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include "RocksDB.h"
 #include "Assertions.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+#include <rocksdb/table.h>
+
 using std::string, std::runtime_error;
 
 namespace dev::db {
 
-unsigned c_maxOpenLeveldbFiles = 25;
+unsigned c_maxOpenRocksdbFiles = 25;
 
 const size_t RocksDB::BATCH_CHUNK_SIZE = 10000;
 
@@ -36,7 +37,7 @@ inline rocksdb::Slice toLDBSlice( Slice _slice ) {
     return rocksdb::Slice( _slice.data(), _slice.size() );
 }
 
-DatabaseStatus toDatabaseStatusR( rocksdb::Status const& _status ) {
+DatabaseStatus toDatabaseStatus( rocksdb::Status const& _status ) {
     if ( _status.ok() )
         return DatabaseStatus::Ok;
     else if ( _status.IsIOError() )
@@ -54,7 +55,7 @@ void checkStatus( rocksdb::Status const& _status, boost::filesystem::path const&
         return;
 
     DatabaseError ex;
-    ex << errinfo_dbStatusCode( toDatabaseStatusR( _status ) )
+    ex << errinfo_dbStatusCode( toDatabaseStatus( _status ) )
        << errinfo_dbStatusString( _status.ToString() );
     if ( !_path.empty() )
         ex << errinfo_path( _path.string() );
@@ -87,7 +88,9 @@ void RocksDBWriteBatch::kill( Slice _key ) {
 }  // namespace
 
 rocksdb::ReadOptions RocksDB::defaultReadOptions() {
-    return rocksdb::ReadOptions();
+    rocksdb::ReadOptions readOptions = rocksdb::ReadOptions();
+    readOptions.ignore_range_deletions = true;
+    return readOptions;
 }
 
 rocksdb::WriteOptions RocksDB::defaultWriteOptions() {
@@ -98,13 +101,17 @@ rocksdb::WriteOptions RocksDB::defaultWriteOptions() {
 rocksdb::Options RocksDB::defaultDBOptions() {
     rocksdb::Options options;
     options.create_if_missing = true;
-    options.max_background_jobs = 8;  // default number of cores
-    options.max_open_files = c_maxOpenLeveldbFiles;
+    options.max_open_files = c_maxOpenRocksdbFiles;
+
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 10 ) );
+    options.table_factory.reset( rocksdb::NewBlockBasedTableFactory( table_options ) );
     return options;
 }
 
 rocksdb::ReadOptions RocksDB::defaultSnapshotReadOptions() {
     rocksdb::ReadOptions options;
+    options.ignore_range_deletions = true;
     options.fill_cache = false;
     options.async_io = true;
     return options;
@@ -113,7 +120,7 @@ rocksdb::ReadOptions RocksDB::defaultSnapshotReadOptions() {
 rocksdb::Options RocksDB::defaultSnapshotDBOptions() {
     rocksdb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenLeveldbFiles;
+    options.max_open_files = c_maxOpenRocksdbFiles;
     return options;
 }
 

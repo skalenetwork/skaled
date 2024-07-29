@@ -86,7 +86,6 @@ private:
     uint64_t m_lastDBOpenTimeMs;
     mutable std::shared_mutex m_dbMutex;
 
-
     static const size_t BATCH_CHUNK_SIZE;
 
     class SharedDBGuard {
