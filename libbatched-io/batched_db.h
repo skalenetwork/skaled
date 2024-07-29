@@ -107,19 +107,19 @@ public:
     bool is_open() const  { return !!m_db; };
 
     void insert( dev::db::Slice, dev::db::Slice ) override {
-        // do nothing
+        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
     }
 
     void kill( dev::db::Slice )  override{
-        // do nothing
+        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
     }
 
     void revert() override {
-        // do nothing
+        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
     }
 
     void commit( const std::string& ) override{
-        // do nothing
+        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
     }
 
     // readonly
@@ -127,8 +127,9 @@ public:
 
     bool exists( dev::db::Slice _key ) const override { return m_db->exists( _key, m_snap ); }
 
-    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) >  ) const override{
-        throw std::runtime_error("Function not implemented");
+    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) >  _f) const override{
+        static std::string emptyString;
+        return forEachWithPrefix( emptyString, _f );
     }
 
     void forEachWithPrefix(
