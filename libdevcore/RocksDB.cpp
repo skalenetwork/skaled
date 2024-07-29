@@ -1,7 +1,7 @@
 /*
-    Modifications Copyright (C) 2018 SKALE Labs
+    Modifications Copyright (C) 2024 SKALE Labs
 
-    This file is part of cpp-ethereum.
+    This file is part of skaled.
 
     cpp-ethereum is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 */
 
 
-#include "LevelDB.h"
+#include "RocksDB.h"
 #include "Assertions.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
@@ -27,16 +27,16 @@ using std::string, std::runtime_error;
 
 namespace dev::db {
 
-unsigned c_maxOpenLeveldbFiles1 = 25;
+unsigned c_maxOpenLeveldbFiles = 25;
 
-const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
+const size_t RocksDB::BATCH_CHUNK_SIZE = 10000;
 
 namespace {
-inline leveldb::Slice toLDBSlice( Slice _slice ) {
-    return leveldb::Slice( _slice.data(), _slice.size() );
+inline rocksdb::Slice toLDBSlice( Slice _slice ) {
+    return rocksdb::Slice( _slice.data(), _slice.size() );
 }
 
-DatabaseStatus toDatabaseStatus( leveldb::Status const& _status ) {
+DatabaseStatus toDatabaseStatusR( rocksdb::Status const& _status ) {
     if ( _status.ok() )
         return DatabaseStatus::Ok;
     else if ( _status.IsIOError() )
@@ -49,12 +49,12 @@ DatabaseStatus toDatabaseStatus( leveldb::Status const& _status ) {
         return DatabaseStatus::Unknown;
 }
 
-void checkStatus( leveldb::Status const& _status, boost::filesystem::path const& _path = {} ) {
+void checkStatus( rocksdb::Status const& _status, boost::filesystem::path const& _path = {} ) {
     if ( _status.ok() )
         return;
 
     DatabaseError ex;
-    ex << errinfo_dbStatusCode( toDatabaseStatus( _status ) )
+    ex << errinfo_dbStatusCode( toDatabaseStatusR( _status ) )
        << errinfo_dbStatusString( _status.ToString() );
     if ( !_path.empty() )
         ex << errinfo_path( _path.string() );
@@ -62,64 +62,63 @@ void checkStatus( leveldb::Status const& _status, boost::filesystem::path const&
     BOOST_THROW_EXCEPTION( ex );
 }
 
-class LevelDBWriteBatch : public WriteBatchFace {
+class RocksDBWriteBatch : public WriteBatchFace {
 public:
     void insert( Slice _key, Slice _value ) override;
     void kill( Slice _key ) override;
 
-    leveldb::WriteBatch const& writeBatch() const { return m_writeBatch; }
-    leveldb::WriteBatch& writeBatch() { return m_writeBatch; }
+    rocksdb::WriteBatch const& writeBatch() const { return m_writeBatch; }
+    rocksdb::WriteBatch& writeBatch() { return m_writeBatch; }
 
 private:
-    leveldb::WriteBatch m_writeBatch;
-    std::atomic< uint64_t > keysToBeDeletedCount;
+    rocksdb::WriteBatch m_writeBatch;
 };
 
-void LevelDBWriteBatch::insert( Slice _key, Slice _value ) {
+void RocksDBWriteBatch::insert( Slice _key, Slice _value ) {
     MICROPROFILE_SCOPEI( "LevelDBWriteBatch", "insert", MP_LAVENDERBLUSH );
     m_writeBatch.Put( toLDBSlice( _key ), toLDBSlice( _value ) );
 }
 
-void LevelDBWriteBatch::kill( Slice _key ) {
-    LevelDB::g_keysToBeDeletedStats++;
+void RocksDBWriteBatch::kill( Slice _key ) {
+    RocksDB::g_keysToBeDeletedStats++;
     m_writeBatch.Delete( toLDBSlice( _key ) );
 }
 
 }  // namespace
 
-leveldb::ReadOptions LevelDB::defaultReadOptions() {
-    return leveldb::ReadOptions();
+rocksdb::ReadOptions RocksDB::defaultReadOptions() {
+    return rocksdb::ReadOptions();
 }
 
-leveldb::WriteOptions LevelDB::defaultWriteOptions() {
-    leveldb::WriteOptions writeOptions = leveldb::WriteOptions();
-    //    writeOptions.sync = true;
+rocksdb::WriteOptions RocksDB::defaultWriteOptions() {
+    rocksdb::WriteOptions writeOptions = rocksdb::WriteOptions();
     return writeOptions;
 }
 
-leveldb::Options LevelDB::defaultDBOptions() {
-    leveldb::Options options;
+rocksdb::Options RocksDB::defaultDBOptions() {
+    rocksdb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenLeveldbFiles1;
-    options.filter_policy = leveldb::NewBloomFilterPolicy( 10 );
+    options.max_background_jobs = 8;  // default number of cores
+    options.max_open_files = c_maxOpenLeveldbFiles;
     return options;
 }
 
-leveldb::ReadOptions LevelDB::defaultSnapshotReadOptions() {
-    leveldb::ReadOptions options;
+rocksdb::ReadOptions RocksDB::defaultSnapshotReadOptions() {
+    rocksdb::ReadOptions options;
     options.fill_cache = false;
+    options.async_io = true;
     return options;
 }
 
-leveldb::Options LevelDB::defaultSnapshotDBOptions() {
-    leveldb::Options options;
+rocksdb::Options RocksDB::defaultSnapshotDBOptions() {
+    rocksdb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenLeveldbFiles1;
+    options.max_open_files = c_maxOpenLeveldbFiles;
     return options;
 }
 
-LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
-    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, int64_t _reopenPeriodMs )
+RocksDB::RocksDB( boost::filesystem::path const& _path, rocksdb::ReadOptions _readOptions,
+    rocksdb::WriteOptions _writeOptions, rocksdb::Options _dbOptions, int64_t _reopenPeriodMs )
     : m_db( nullptr ),
       m_readOptions( std::move( _readOptions ) ),
       m_writeOptions( std::move( _writeOptions ) ),
@@ -131,11 +130,11 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
 
 // this does not hold any locks so it needs to be called
 // either from a constructor or from a function that holds a lock on m_db
-void LevelDB::openDBInstanceUnsafe() {
+void RocksDB::openDBInstanceUnsafe() {
     cnote << "Time to (re)open LevelDB at " + m_path.string();
     auto startTimeMs = getCurrentTimeMs();
-    auto db = static_cast< leveldb::DB* >( nullptr );
-    auto const status = leveldb::DB::Open( m_options, m_path.string(), &db );
+    auto db = static_cast< rocksdb::DB* >( nullptr );
+    auto const status = rocksdb::DB::Open( m_options, m_path.string(), &db );
     checkStatus( status, m_path );
 
     if ( !db ) {
@@ -146,23 +145,21 @@ void LevelDB::openDBInstanceUnsafe() {
     m_lastDBOpenTimeMs = getCurrentTimeMs();
     cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
-uint64_t LevelDB::getCurrentTimeMs() {
+uint64_t RocksDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
     return std::chrono::duration_cast< std::chrono::milliseconds >( currentTime ).count();
 }
 
-LevelDB::~LevelDB() {
+RocksDB::~RocksDB() {
     if ( m_db )
         m_db.reset();
-    if ( m_options.filter_policy )
-        delete m_options.filter_policy;
 }
 
-std::string LevelDB::lookup( Slice _key ) const {
-    leveldb::Slice const key( _key.data(), _key.size() );
+std::string RocksDB::lookup( Slice _key ) const {
+    rocksdb::Slice const key( _key.data(), _key.size() );
     std::string value;
 
-    leveldb::Status status;
+    rocksdb::Status status;
     {
         SharedDBGuard readLock( *this );
         status = m_db->Get( m_readOptions, key, &value );
@@ -174,10 +171,10 @@ std::string LevelDB::lookup( Slice _key ) const {
     return value;
 }
 
-bool LevelDB::exists( Slice _key ) const {
+bool RocksDB::exists( Slice _key ) const {
     std::string value;
-    leveldb::Slice const key( _key.data(), _key.size() );
-    leveldb::Status status;
+    rocksdb::Slice const key( _key.data(), _key.size() );
+    rocksdb::Status status;
     {
         SharedDBGuard lock( *this );
         status = m_db->Get( m_readOptions, key, &value );
@@ -189,10 +186,10 @@ bool LevelDB::exists( Slice _key ) const {
     return true;
 }
 
-void LevelDB::insert( Slice _key, Slice _value ) {
-    leveldb::Slice const key( _key.data(), _key.size() );
-    leveldb::Slice const value( _value.data(), _value.size() );
-    leveldb::Status status;
+void RocksDB::insert( Slice _key, Slice _value ) {
+    rocksdb::Slice const key( _key.data(), _key.size() );
+    rocksdb::Slice const value( _value.data(), _value.size() );
+    rocksdb::Status status;
     {
         SharedDBGuard lock( *this );
         status = m_db->Put( m_writeOptions, key, value );
@@ -200,8 +197,8 @@ void LevelDB::insert( Slice _key, Slice _value ) {
     checkStatus( status );
 }
 
-void LevelDB::kill( Slice _key ) {
-    leveldb::Slice const key( _key.data(), _key.size() );
+void RocksDB::kill( Slice _key ) {
+    rocksdb::Slice const key( _key.data(), _key.size() );
     auto const status = m_db->Delete( m_writeOptions, key );
     // At this point the key is not actually deleted. It will be deleted when the batch
     // is committed
@@ -209,20 +206,20 @@ void LevelDB::kill( Slice _key ) {
     checkStatus( status );
 }
 
-std::unique_ptr< WriteBatchFace > LevelDB::createWriteBatch() const {
-    return std::unique_ptr< WriteBatchFace >( new LevelDBWriteBatch() );
+std::unique_ptr< WriteBatchFace > RocksDB::createWriteBatch() const {
+    return std::unique_ptr< WriteBatchFace >( new RocksDBWriteBatch() );
 }
 
-void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
+void RocksDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     if ( !_batch ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "Cannot commit null batch" ) );
     }
-    auto* batchPtr = dynamic_cast< LevelDBWriteBatch* >( _batch.get() );
+    auto* batchPtr = dynamic_cast< RocksDBWriteBatch* >( _batch.get() );
     if ( !batchPtr ) {
         BOOST_THROW_EXCEPTION(
             DatabaseError() << errinfo_comment( "Invalid batch type passed to LevelDB::commit" ) );
     }
-    leveldb::Status status;
+    rocksdb::Status status;
     {
         SharedDBGuard lock( *this );
         status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
@@ -238,7 +235,7 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
 
     reopenDataBaseIfNeeded();
 }
-void LevelDB::reopenDataBaseIfNeeded() {
+void RocksDB::reopenDataBaseIfNeeded() {
     if ( m_reopenPeriodMs < 0 ) {
         // restarts not enabled
         return;
@@ -255,10 +252,10 @@ void LevelDB::reopenDataBaseIfNeeded() {
     }
 }
 
-void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
+void RocksDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     cwarn << "Iterating over the entire LevelDB database: " << this->m_path;
     SharedDBGuard lock( *this );
-    std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
+    std::unique_ptr< rocksdb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
@@ -272,16 +269,16 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     }
 }
 
-void LevelDB::forEachWithPrefix(
+void RocksDB::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     cnote << "Iterating over the LevelDB prefix: " << _prefix;
     SharedDBGuard lock( *this );
-    std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
+    std::unique_ptr< rocksdb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
     auto keepIterating = true;
-    auto prefixSlice = leveldb::Slice( _prefix );
+    auto prefixSlice = rocksdb::Slice( _prefix );
     for ( itr->Seek( prefixSlice );
           keepIterating && itr->Valid() && itr->key().starts_with( prefixSlice ); itr->Next() ) {
         auto const dbKey = itr->key();
@@ -292,9 +289,9 @@ void LevelDB::forEachWithPrefix(
     }
 }
 
-h256 LevelDB::hashBase() const {
+h256 RocksDB::hashBase() const {
     SharedDBGuard lock( *this );
-    std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
+    std::unique_ptr< rocksdb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
@@ -320,9 +317,9 @@ h256 LevelDB::hashBase() const {
     return hash;
 }
 
-h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
+h256 RocksDB::hashBaseWithPrefix( char _prefix ) const {
     SharedDBGuard lock( *this );
-    std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
+    std::unique_ptr< rocksdb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
@@ -344,9 +341,9 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
     return hash;
 }
 
-bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
+bool RocksDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
     SharedDBGuard lock( *this );
-    std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
+    std::unique_ptr< rocksdb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
@@ -378,15 +375,14 @@ bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashe
         return false;
 }
 
-void LevelDB::doCompaction() const {
+void RocksDB::doCompaction() const {
     SharedDBGuard lock( *this );
-    m_db->CompactRange( nullptr, nullptr );
 }
 
-std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
-std::atomic< uint64_t > LevelDB::g_keyDeletesStats = 0;
+std::atomic< uint64_t > RocksDB::g_keysToBeDeletedStats = 0;
+std::atomic< uint64_t > RocksDB::g_keyDeletesStats = 0;
 
-uint64_t LevelDB::getKeyDeletesStats() {
+uint64_t RocksDB::getKeyDeletesStats() {
     return g_keyDeletesStats;
 }
 

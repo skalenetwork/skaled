@@ -23,6 +23,6 @@
 
 namespace dev {
 namespace db {
-using DBImpl = LevelDB;
+using DBImpl = RocksDB;
 }
 }  // namespace dev

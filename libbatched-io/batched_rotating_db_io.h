@@ -3,7 +3,7 @@
 
 #include "batched_io.h"
 
-#include <libdevcore/LevelDB.h>
+#include <libdevcore/RocksDB.h>
 
 #include <boost/filesystem.hpp>
 

@@ -2366,7 +2366,7 @@ then
                 echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
                 cd build
                 eval "$MAKE" rocksdb "${PARALLEL_MAKE_OPTIONS}"
-                #eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
                 cd "$SOURCES_ROOT"
         else
                 echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"

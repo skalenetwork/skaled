@@ -1,6 +1,6 @@
 #include "batched_rotating_db_io.h"
 
-#include <libdevcore/LevelDB.h>
+#include <libdevcore/RocksDB.h>
 
 namespace batched_io {
 
@@ -17,7 +17,7 @@ rotating_db_io::rotating_db_io(
     // open all
     for ( size_t i = 0; i < n_pieces; ++i ) {
         boost::filesystem::path path = base_path / ( std::to_string( i ) + ".db" );
-        DatabaseFace* db = new LevelDB( path );
+        DatabaseFace* db = new RocksDB( path );
         pieces.emplace_back( db );
     }  // for
 
@@ -60,7 +60,7 @@ rotating_db_io::rotating_db_io(
             if ( !boost::filesystem::exists( path ) )
                 break;
 
-            DatabaseFace* db = new LevelDB( path );
+            DatabaseFace* db = new RocksDB( path );
             pieces.emplace_back( db );
         }  // for
     }      // archive_mode
@@ -84,7 +84,7 @@ void rotating_db_io::rotate() {
     if ( archive_mode ) {
         boost::filesystem::rename( oldest_path, new_archive_path );
         test_crash_before_commit( "after_rename_oldest" );
-        DatabaseFace* new_archive_db = new LevelDB( new_archive_path );
+        DatabaseFace* new_archive_db = new RocksDB( new_archive_path );
         pieces.emplace_back( new_archive_db );
     } else {
         boost::filesystem::remove_all( oldest_path );  // delete oldest
@@ -92,7 +92,7 @@ void rotating_db_io::rotate() {
     }
 
     // 2 recreate it as new current
-    DatabaseFace* new_db = new LevelDB( oldest_path );
+    DatabaseFace* new_db = new RocksDB( oldest_path );
     pieces.emplace_front( new_db );
 
     test_crash_before_commit( "after_open_leveldb" );
