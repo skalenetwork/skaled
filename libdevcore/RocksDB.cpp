@@ -22,6 +22,8 @@
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+#include <rocksdb/table.h>
+
 using std::string, std::runtime_error;
 
 namespace dev::db {
@@ -86,12 +88,13 @@ void RocksDBWriteBatch::kill( Slice _key ) {
 }  // namespace
 
 rocksdb::ReadOptions RocksDB::defaultReadOptions() {
-    return rocksdb::ReadOptions();
+    rocksdb::ReadOptions readOptions = rocksdb::ReadOptions();
+    readOptions.ignore_range_deletions = true;
+    return readOptions;
 }
 
 rocksdb::WriteOptions RocksDB::defaultWriteOptions() {
     rocksdb::WriteOptions writeOptions = rocksdb::WriteOptions();
-    //    writeOptions.sync = true;
     return writeOptions;
 }
 
@@ -99,12 +102,18 @@ rocksdb::Options RocksDB::defaultDBOptions() {
     rocksdb::Options options;
     options.create_if_missing = true;
     options.max_open_files = c_maxOpenRocksdbFiles;
+
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 10 ) );
+    options.table_factory.reset( rocksdb::NewBlockBasedTableFactory( table_options ) );
     return options;
 }
 
 rocksdb::ReadOptions RocksDB::defaultSnapshotReadOptions() {
     rocksdb::ReadOptions options;
+    options.ignore_range_deletions = true;
     options.fill_cache = false;
+    options.async_io = true;
     return options;
 }
 
@@ -151,8 +160,6 @@ uint64_t RocksDB::getCurrentTimeMs() {
 RocksDB::~RocksDB() {
     if ( m_db )
         m_db.reset();
-    //    if ( m_options.filter_policy )
-    //        delete m_options.filter_policy;
 }
 
 std::string RocksDB::lookup( Slice _key ) const {
