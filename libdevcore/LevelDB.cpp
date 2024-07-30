@@ -426,9 +426,11 @@ void LevelDB::createBlockSnap( uint64_t _blockNumber ) {
     m_snapManager.addSnapForBlock( _blockNumber, m_db, m_dbReopenId );
 }
 
-const std::shared_ptr< LevelDBSnap >& LevelDB::getLastBlockSnap() const {
+std::shared_ptr< LevelDBSnap > LevelDB::getLastBlockSnap() const {
     SharedDBGuard lock( *this );  // protect so db is not reopened when while we get snap
-    return m_snapManager.getLastBlockSnap();
+    auto snap =  m_snapManager.getLastBlockSnap();
+    LDB_CHECK( snap );
+    return snap;
 }
 
 std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
