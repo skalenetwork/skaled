@@ -102,6 +102,8 @@ rocksdb::Options RocksDB::defaultDBOptions() {
     rocksdb::Options options;
     options.create_if_missing = true;
     options.max_open_files = c_maxOpenRocksdbFiles;
+    options.max_background_jobs = 8;
+    options.max_subcompactions = 4;
 
     rocksdb::BlockBasedTableOptions table_options;
     table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 10 ) );
