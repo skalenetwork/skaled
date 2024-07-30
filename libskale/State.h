@@ -43,6 +43,8 @@
 #include "OverlayFS.h"
 #include <libdevcore/DBImpl.h>
 
+#include <boost/chrono/io/utility/to_string.hpp>
+
 
 namespace std {
 template <>
@@ -205,12 +207,21 @@ public:
         dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
     /// which uses it. If you have no preexisting database then set BaseState to something other
 
+    // this conswtructor is used for tests
+    // we need to create temp stattedb in the /tmp dir
     State()
         : State( dev::Invalid256, skale::OverlayDB(),
 #ifdef HISTORIC_STATE
               dev::OverlayDB(), dev::OverlayDB(),
 #endif
               BaseState::Empty ) {
+        static std::atomic<uint64_t> counter = 0;
+        ++counter;
+        dev::u256 ZERO(0);
+        std::string path = "/tnp/skaled_test_state_db_" + std::to_string( getpid()  ) +
+            std::to_string( counter );
+        openDB(path,  ZERO, dev::WithExisting::Kill);
+        LDB_CHECK( m_orig_db );
     }
 
     /// Copy state object.
