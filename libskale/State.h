@@ -221,6 +221,13 @@ public:
         }
         return oss.str();
     }
+    void initStateWithRandomTestDb() {
+        std::string path = "/tmp/skaled_test_state_db_" + createRandomString();
+        dev::u256 ZERO( 0 );
+        openDB( path, ZERO, dev::WithExisting::Kill );
+        LDB_CHECK( m_orig_db );
+        m_orig_db->createBlockSnap( 0 );
+    }
     // this conswtructor is used for tests
     // we need to create temp stattedb in the /tmp dir
     State()
@@ -229,11 +236,6 @@ public:
               dev::OverlayDB(), dev::OverlayDB(),
 #endif
               BaseState::Empty ) {
-        std::string path = "/tmp/skaled_test_state_db_" + createRandomString();
-        dev::u256 ZERO(0);
-        openDB(path,  ZERO, dev::WithExisting::Kill);
-        LDB_CHECK( m_orig_db );
-        m_orig_db->createBlockSnap( 0 );
     }
 
     /// Copy state object.

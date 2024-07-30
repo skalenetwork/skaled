@@ -229,12 +229,11 @@ bytes ImportTest::executeTest( bool _isFilling ) {
 }
 
 void ImportTest::checkBalance( State const& _pre, State const& _post, bigint _miningReward ) {
-    State pre = _pre.createReadOnlySnapBasedCopy(), post = _post.createReadOnlySnapBasedCopy();
     bigint preBalance = 0;
     bigint postBalance = 0;
-    for ( auto const& addr : pre.addresses() )
+    for ( auto const& addr : _pre.addresses() )
         preBalance += addr.second;
-    for ( auto const& addr : post.addresses() )
+    for ( auto const& addr : _post.addresses() )
         postBalance += addr.second;
 
     // account could destroy ether if it suicides to itself
@@ -488,7 +487,6 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
 
 int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
-    State stateExpect = _stateExpect.createReadOnlySnapBasedCopy(), statePost = _statePost.createReadOnlySnapBasedCopy();
     bool wasError = false;
 #define CHECK( a, b )                       \
     {                                       \
@@ -503,7 +501,7 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
         }                                   \
     }
 
-    for ( auto const& a : stateExpect.addresses() ) {
+    for ( auto const& a : _stateExpect.addresses() ) {
         AccountMask addressOptions( true );
         if ( _expectedStateOptions.size() ) {
             try {
@@ -517,31 +515,31 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
         }
 
         if ( addressOptions.shouldExist() ) {
-            CHECK( statePost.addressInUse( a.first ),
+            CHECK( _statePost.addressInUse( a.first ),
                 TestOutputHelper::get().testName() + " Compare States: "
                     << a.first << " missing expected address!" );
         } else {
-            CHECK( !statePost.addressInUse( a.first ),
+            CHECK( !_statePost.addressInUse( a.first ),
                 TestOutputHelper::get().testName() + " Compare States: "
                     << a.first << " address not expected to exist!" );
         }
 
-        if ( statePost.addressInUse( a.first ) ) {
+        if ( _statePost.addressInUse( a.first ) ) {
             if ( addressOptions.hasBalance() )
-                CHECK( ( stateExpect.balance( a.first ) == statePost.balance( a.first ) ),
+                CHECK( ( _stateExpect.balance( a.first ) == _statePost.balance( a.first ) ),
                     TestOutputHelper::get().testName() + " Check State: "
                         << a.first << ": incorrect balance " << _statePost.balance( a.first )
-                        << ", expected " << stateExpect.balance( a.first ) );
+                        << ", expected " << _stateExpect.balance( a.first ) );
 
             if ( addressOptions.hasNonce() )
-                CHECK( ( stateExpect.getNonce( a.first ) == statePost.getNonce( a.first ) ),
+                CHECK( ( _stateExpect.getNonce( a.first ) == _statePost.getNonce( a.first ) ),
                     TestOutputHelper::get().testName() + " Check State: "
-                        << a.first << ": incorrect nonce " << statePost.getNonce( a.first )
-                        << ", expected " << stateExpect.getNonce( a.first ) );
+                        << a.first << ": incorrect nonce " << _statePost.getNonce( a.first )
+                        << ", expected " << _stateExpect.getNonce( a.first ) );
 
             if ( addressOptions.hasStorage() ) {
-                map< h256, pair< u256, u256 > > stateStorage = statePost.storage( a.first );
-                for ( auto const& s : stateExpect.storage( a.first ) )
+                map< h256, pair< u256, u256 > > stateStorage = _statePost.storage( a.first );
+                for ( auto const& s : _stateExpect.storage( a.first ) )
                     CHECK( ( stateStorage[s.first] == s.second ),
                         TestOutputHelper::get().testName() + " Check State: "
                             << a.first << ": incorrect storage ["
@@ -551,8 +549,8 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
                             << "] = " << toCompactHexPrefixed( s.second.second ) );
 
                 // Check for unexpected storage values
-                map< h256, pair< u256, u256 > > expectedStorage = stateExpect.storage( a.first );
-                for ( auto const& s : statePost.storage( a.first ) )
+                map< h256, pair< u256, u256 > > expectedStorage = _stateExpect.storage( a.first );
+                for ( auto const& s : _statePost.storage( a.first ) )
                     CHECK( ( expectedStorage[s.first] == s.second ),
                         TestOutputHelper::get().testName() + " Check State: "
                             << a.first << ": incorrect storage ["
@@ -563,11 +561,11 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
             }
 
             if ( addressOptions.hasCode() )
-                CHECK( ( stateExpect.code( a.first ) == statePost.code( a.first ) ),
+                CHECK( ( _stateExpect.code( a.first ) == _statePost.code( a.first ) ),
                     TestOutputHelper::get().testName() + " Check State: "
                         << a.first << ": incorrect code '"
-                        << toHexPrefixed( statePost.code( a.first ) ) << "', expected '"
-                        << toHexPrefixed( stateExpect.code( a.first ) ) << "'" );
+                        << toHexPrefixed( _statePost.code( a.first ) ) << "', expected '"
+                        << toHexPrefixed( _stateExpect.code( a.first ) ) << "'" );
         }
     }
 
