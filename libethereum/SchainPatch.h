@@ -146,4 +146,10 @@ DEFINE_AMNESIC_PATCH( VerifyBlsSyncPatch );
  */
 DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
 
+/*
+ * Purpose: migrate from LevelDb to RocksDb
+ * Version introduced: 3.20.0
+ */
+DEFINE_AMNESIC_PATCH( RocksDbPatch );
+
 #endif  // SCHAINPATCH_H

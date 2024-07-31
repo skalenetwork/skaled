@@ -22,7 +22,12 @@
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+#include <libethereum/SchainPatch.h>
+
+#include <leveldb/filter_policy.h>
+
 #include <rocksdb/table.h>
+#include <rocksdb/utilities/leveldb_options.h>
 
 using std::string, std::runtime_error;
 
@@ -89,30 +94,45 @@ void RocksDBWriteBatch::kill( Slice _key ) {
 
 rocksdb::ReadOptions RocksDB::defaultReadOptions() {
     rocksdb::ReadOptions readOptions = rocksdb::ReadOptions();
+    if ( !RocksDbPatch::isEnabledInWorkingBlock() )
+        return readOptions;
     readOptions.ignore_range_deletions = true;
     return readOptions;
 }
 
 rocksdb::WriteOptions RocksDB::defaultWriteOptions() {
     rocksdb::WriteOptions writeOptions = rocksdb::WriteOptions();
+    if ( !RocksDbPatch::isEnabledInWorkingBlock() )
+        return writeOptions;
     return writeOptions;
 }
 
 rocksdb::Options RocksDB::defaultDBOptions() {
     rocksdb::Options options;
-    options.create_if_missing = true;
-    options.max_open_files = c_maxOpenRocksdbFiles;
+    if ( !RocksDbPatch::isEnabledInWorkingBlock() ) {
+        rocksdb::LevelDBOptions opt = rocksdb::LevelDBOptions();
+        opt.create_if_missing = true;
+        opt.max_open_files = c_maxOpenRocksdbFiles;
+        opt.filter_policy = rocksdb::NewBloomFilterPolicy( 10 );
 
-    rocksdb::BlockBasedTableOptions table_options;
-    table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 10 ) );
-    options.table_factory.reset( rocksdb::NewBlockBasedTableFactory( table_options ) );
+        options = rocksdb::ConvertOptions( opt );
+    } else {
+        options.create_if_missing = true;
+        options.max_open_files = c_maxOpenRocksdbFiles;
+
+        rocksdb::BlockBasedTableOptions table_options;
+        table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 10 ) );
+        options.table_factory.reset( rocksdb::NewBlockBasedTableFactory( table_options ) );
+    }
     return options;
 }
 
 rocksdb::ReadOptions RocksDB::defaultSnapshotReadOptions() {
-    rocksdb::ReadOptions options;
-    options.ignore_range_deletions = true;
+    rocksdb::ReadOptions options = rocksdb::ReadOptions();
     options.fill_cache = false;
+    if ( !RocksDbPatch::isEnabledInWorkingBlock() )
+        return options;
+    options.ignore_range_deletions = true;
     options.async_io = true;
     return options;
 }
