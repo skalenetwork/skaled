@@ -421,9 +421,9 @@ public:
     bool checkAdminOriginAllowed( const string& origin ) const;
 
 protected:
-    skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& joIn,
-        const string& strProtocol, int nServerIndex, string strOrigin, int ipVer,
-        int nPort, e_server_mode_t esm );
+    skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& _joIn,
+        const string& _protocol, int _serverIndex, string _origin, int _ipVer,
+        int _port, e_server_mode_t _esm );
 
 private:
     bool implStartListening(  // web socket
