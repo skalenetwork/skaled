@@ -17,6 +17,11 @@
 #include <skutils/multithreading.h>
 #include <skutils/rest_call.h>
 
+#define PG_LOG( __EXPRESSION__ )  \
+    if ( pg_logging_get() ) {     \
+        pg_log( __EXPRESSION__ ); \
+    }
+
 namespace skutils {
 namespace http_pg {
 
@@ -25,18 +30,17 @@ using std::string;
 using std::to_string;
 
 void init_logging( const char* _programName ) {
-    static bool g_bWasCalled = false;
-    if ( g_bWasCalled )
+    static std::atomic_bool g_bWasCalled = false;
+    // run once
+    if ( g_bWasCalled.exchange( true ) )
         return;
-    g_bWasCalled = true;
     google::InitGoogleLogging( _programName );
 }
 
 void install_logging_fail_func( logging_fail_func_t _fn ) {
-    static bool g_bWasCalled = false;
-    if ( g_bWasCalled )
+    static std::atomic_bool g_wasCalled = false;
+    if ( g_wasCalled.exchange( true ) )
         return;
-    g_bWasCalled = true;
     google::InstallFailureFunction( reinterpret_cast< google::logging_fail_func_t >( _fn ) );
 }
 
@@ -45,7 +49,7 @@ void pg_log( const string& _s ) {
         return;
     if ( _s.empty() )
         return;
-    std::cerr << "s" << std::endl;
+    std::cerr << _s << std::endl;
 }
 
 
@@ -67,19 +71,19 @@ std::atomic_uint64_t request_site::g_instanceCounter = 0;
 request_site::request_site( request_sink& _aSink, server_side_request_handler* _SSRQ )
     : m_sink( _aSink ), m_SSRQ( _SSRQ ), m_instanceNumber( g_instanceCounter++ ) {
     m_strLogPrefix =
-        string( "PG" ) + "/" + "rq" + "/" + "site" + "/" + std::to_string( m_instanceNumber ) + " ";
-    pg_log( m_strLogPrefix + "constructor" );
+        string( "PG" ) + "/" + "rq" + "/" + "site" + "/" + to_string( m_instanceNumber ) + " ";
+    PG_LOG( m_strLogPrefix + "constructor" );
 }
 
 request_site::~request_site() {
-    pg_log( m_strLogPrefix + "destructor" );
+    PG_LOG( m_strLogPrefix + "destructor" );
 }
 
 void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > _req ) noexcept {
     m_sink.OnRecordRequestCountIncrement();
     m_httpMethod = skutils::tools::to_upper( skutils::tools::trim_copy( _req->getMethodString() ) );
 
-    pg_log( m_strLogPrefix + m_httpMethod + " request query" );
+    PG_LOG( m_strLogPrefix + m_httpMethod + " request query" );
 
     const folly::SocketAddress& origin_address = _req->getClientAddress();
     string strClientAddress = origin_address.getAddressStr();
@@ -94,14 +98,16 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > _req ) no
     string strDstPort = _req->getDstPort();
     m_dstPort = ( !strDstPort.empty() ) ? atoi( strDstPort.c_str() ) : 0;
 
-    pg_log( m_strLogPrefix + "request query " + m_httpMethod + " from origin " + m_origin +
+    PG_LOG( m_strLogPrefix + "request query " + m_httpMethod + " from origin " + m_origin +
             ", path " + m_path );
 
-    size_t nHeaderIdx = 0;
-    _req->getHeaders().forEach( [&]( string& _name, string& _value ) {
-        pg_log( m_strLogPrefix + "header " + to_string( nHeaderIdx ) + " " + _name + "=" + _value );
-        ++nHeaderIdx;
-    } );
+    if (pg_logging_get()) {
+        size_t nHeaderIdx = 0;
+        _req->getHeaders().forEach( [&]( string& _name, string& _value ) {
+            PG_LOG( m_strLogPrefix + "header " + to_string( nHeaderIdx ) + " " + _name + "=" + _value );
+            ++nHeaderIdx;
+        } );
+    }
     if ( m_httpMethod == "OPTIONS" ) {
         proxygen::ResponseBuilder( downstream_ )
             .status( 200, "OK" )
@@ -117,7 +123,7 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > _req ) no
 }
 
 void request_site::onBody( std::unique_ptr< folly::IOBuf > _body ) noexcept {
-    pg_log( m_strLogPrefix + m_httpMethod + " body query" );
+    PG_LOG( m_strLogPrefix + m_httpMethod + " body query" );
 
     if ( m_httpMethod == "OPTIONS" )
         return;
@@ -125,60 +131,57 @@ void request_site::onBody( std::unique_ptr< folly::IOBuf > _body ) noexcept {
     auto cnt = _body->computeChainDataLength();
     auto pData = _body->data();
 
-    string strIn;
-    strIn.insert( strIn.end(), pData, pData + cnt );
+    m_strBody.insert( m_strBody.end(), pData, pData + cnt );
 
-    pg_log( m_strLogPrefix + __FUNCTION__ + "part number " + to_string( m_bodyPartNumber ) );
-    pg_log( m_strLogPrefix + __FUNCTION__ + "part size " + to_string( strIn.size() ) );
-    pg_log( m_strLogPrefix + __FUNCTION__ + "part content " + strIn );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + "part number " + to_string( m_bodyPartNumber ) );
 
-    m_strBody += strIn;
-
-    pg_log(
+    PG_LOG(
         m_strLogPrefix + __FUNCTION__ + " accumulated body size " + to_string( m_strBody.size() ) );
-    pg_log( m_strLogPrefix + __FUNCTION__ + " accumulated body content part(s) " + m_strBody );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + " accumulated body content part(s) " + m_strBody );
     ++m_bodyPartNumber;
 }
 
 void request_site::onEOM() noexcept {
-    pg_log( m_strLogPrefix + m_httpMethod + "EOM query" );
+    PG_LOG( m_strLogPrefix + m_httpMethod + __FUNCTION__);
 
     if ( m_httpMethod == "OPTIONS" ) {
         proxygen::ResponseBuilder( downstream_ ).sendWithEOM();
         return;
     }
-    pg_log( m_strLogPrefix + __FUNCTION__ + " body part(s): " + to_string( m_bodyPartNumber ) );
-    pg_log( m_strLogPrefix + __FUNCTION__ + " body size: " + to_string( m_strBody.size() ) );
-    pg_log( m_strLogPrefix + __FUNCTION__ + " body content: " + m_strBody );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + " body part(s): " + to_string( m_bodyPartNumber ) );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + " body size: " + to_string( m_strBody.size() ) );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + " body content: " + m_strBody );
 
     nlohmann::json joID = "0xBADF00D", joIn;
     skutils::result_of_http_request rslt;
     rslt.isBinary_ = false;
     try {
         joIn = nlohmann::json::parse( m_strBody );
-        pg_log( m_strLogPrefix + "body JSON " + joIn.dump(  ) );
+        PG_LOG( m_strLogPrefix + "body JSON " + joIn.dump() );
         if ( joIn.count( "id" ) > 0 )
             joID = joIn["id"];
+
         rslt = m_SSRQ->onRequest( joIn, m_origin, m_ipVer, m_dstAddress_, m_dstPort );
-        if ( rslt.isBinary_ )
-            pg_log( m_strLogPrefix + "binary answer " +
+
+        if ( rslt.isBinary_ ) {
+            PG_LOG( m_strLogPrefix + "binary answer " +
                     cc::binary_table( ( const void* ) ( void* ) rslt.vecBytes_.data(),
                         size_t( rslt.vecBytes_.size() ) ) );
-        else
-            pg_log( m_strLogPrefix + "answer JSON " + rslt.joOut_.dump(  )  );
+        } else {
+            PG_LOG( m_strLogPrefix + "answer JSON " + rslt.joOut_.dump() );
+        }
     } catch ( const std::exception& ex ) {
-        pg_log( m_strLogPrefix + "problem with body " + m_strBody +
-                ", error info: " + ex.what()  );
+        PG_LOG( m_strLogPrefix + "problem with body " + m_strBody + ", error info: " + ex.what() );
         rslt.isBinary_ = false;
         rslt.joOut_ = server_side_request_handler::json_from_error_text( ex.what(), joID );
-        pg_log( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump(  )  );
+        PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     } catch ( ... ) {
-        pg_log( m_strLogPrefix + "problem with body " + m_strBody  +
-                ", error info: " + "unknown exception in HTTP handler");
+        PG_LOG( m_strLogPrefix + "problem with body " + m_strBody +
+                ", error info: " + "unknown exception in HTTP handler" );
         rslt.isBinary_ = false;
         rslt.joOut_ = server_side_request_handler::json_from_error_text(
             "unknown exception in HTTP handler", joID );
-        pg_log( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump(  ));
+        PG_LOG( m_strLogPrefix + "got error answer JSON " + rslt.joOut_.dump() );
     }
     proxygen::ResponseBuilder bldr( downstream_ );
     bldr.status( 200, "OK" );
@@ -199,16 +202,16 @@ void request_site::onEOM() noexcept {
 
 void request_site::onUpgrade( proxygen::UpgradeProtocol ) noexcept {
     // handler doesn't support upgrades
-    pg_log( m_strLogPrefix + __FUNCTION__ );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ );
 }
 
 void request_site::requestComplete() noexcept {
-    pg_log( m_strLogPrefix + __FUNCTION__ );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ );
     delete this;
 }
 
 void request_site::onError( proxygen::ProxygenError _err ) noexcept {
-    pg_log( m_strLogPrefix + __FUNCTION__ + to_string( size_t( _err ) ) + "\n" );
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + to_string( size_t( _err ) ));
     delete this;
 }
 
@@ -257,18 +260,18 @@ server::server( pg_on_request_handler_t _h, const pg_accumulate_entries& _entrie
     int32_t _threadsLimit )
     : m_h( _h ), m_entries( _entries ), m_threads( _threads ), m_threads_limit( _threadsLimit ) {
     m_logPrefix = "PG/server ";
-    pg_log( m_logPrefix + "constructor" );
+    PG_LOG( m_logPrefix + "constructor" );
 }
 
 server::~server() {
-    pg_log( m_logPrefix + "destructor" );
+    PG_LOG( m_logPrefix + "destructor" );
     stop();
 }
 
 bool server::start() {
     stop();
 
-    pg_log( m_logPrefix + "starting server thread" );
+    PG_LOG( m_logPrefix + "starting server thread" );
 
     std::vector< proxygen::HTTPServer::IPConfig > IPs;
     pg_accumulate_entries::const_iterator itWalk = m_entries.cbegin(), itEnd = m_entries.cend();
@@ -323,25 +326,25 @@ bool server::start() {
         m_server->start();
     } ) );
 
-    pg_log( m_logPrefix + "did started server thread" );
+    PG_LOG( m_logPrefix + "did started server thread" );
     return true;
 }
 
 void server::stop() {
     if ( m_server ) {
-        pg_log( m_logPrefix + "stopping server instance" );
+        PG_LOG( m_logPrefix + "stopping server instance" );
         m_server->stop();
-        pg_log( m_logPrefix + "stopped server instance" );
+        PG_LOG( m_logPrefix + "stopped server instance" );
     }
     if ( m_thread.joinable() ) {
-        pg_log( m_logPrefix + "stopping server thread" );
+        PG_LOG( m_logPrefix + "stopping server thread" );
         m_thread.join();
-        pg_log( m_logPrefix + "stopped server thread" );
+        PG_LOG( m_logPrefix + "stopped server thread" );
     }
     if ( m_server ) {
-        pg_log( m_logPrefix + "releasing server instance" );
+        PG_LOG( m_logPrefix + "releasing server instance" );
         m_server.reset();
-        pg_log( m_logPrefix + "released server instance" );
+        PG_LOG( m_logPrefix + "released server instance" );
     }
 }
 
@@ -385,14 +388,14 @@ void pg_stop( wrapped_proxygen_server_handle _hServer ) {
     delete ptrServer;
 }
 
-static pg_accumulate_entries g_accumulated_entries;
+static pg_accumulate_entries g_accumulatedEntries;
 
 void pg_accumulate_clear() {
-    g_accumulated_entries.clear();
+    g_accumulatedEntries.clear();
 }
 
 size_t pg_accumulate_size() {
-    size_t cnt = g_accumulated_entries.size();
+    size_t cnt = g_accumulatedEntries.size();
     return cnt;
 }
 
@@ -404,13 +407,13 @@ void pg_accumulate_add( int ipVer, string strBindAddr, int nPort, const char* ce
 }
 
 void pg_accumulate_add( const pg_accumulate_entry& pge ) {
-    g_accumulated_entries.push_back( pge );
+    g_accumulatedEntries.push_back( pge );
 }
 
 wrapped_proxygen_server_handle pg_accumulate_start(
     pg_on_request_handler_t h, int32_t threads, int32_t threads_limit ) {
     skutils::http_pg::server* ptrServer =
-        new skutils::http_pg::server( h, g_accumulated_entries, threads, threads_limit );
+        new skutils::http_pg::server( h, g_accumulatedEntries, threads, threads_limit );
     ptrServer->start();
     return wrapped_proxygen_server_handle( ptrServer );
 }
