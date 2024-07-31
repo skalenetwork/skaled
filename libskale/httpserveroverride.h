@@ -476,7 +476,7 @@ private:
         serversProxygenHTTP6std_, serversProxygenHTTPS4std_, serversProxygenHTTPS6std_,
         serversProxygenHTTP4nfo_, serversProxygenHTTP6nfo_, serversProxygenHTTPS4nfo_,
         serversProxygenHTTPS6nfo_;
-    skutils::http_pg::wrapped_proxygen_server_handle hProxygenServer_ = nullptr;
+    skutils::http_pg::wrapped_proxygen_server_handle m_proxygenServer = nullptr;
     e_server_mode_t implGuessProxygenRequestESM( const std::string& strDstAddress, int nDstPort );
     bool implGuessProxygenRequestESM( std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& lst,
         const std::string& strDstAddress, int nDstPort, e_server_mode_t& esm );

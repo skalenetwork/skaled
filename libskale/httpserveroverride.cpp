@@ -2895,10 +2895,10 @@ bool SkaleServerOverride::StartListening() {
                     joIn, strSchemeUC, nServerIndex, strOrigin, ipVer, nPort, esm );
                 return rslt;
             };
-            hProxygenServer_ =
+            m_proxygenServer =
                 skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
             skutils::http_pg::pg_accumulate_clear();
-            if ( !hProxygenServer_ ) {
+            if ( !m_proxygenServer ) {
                 clog( dev::VerbosityError, cc::fatal( "PROXYGEN ERROR:" ) )
                     << ( cc::error( "Failed to start server" ) );
                 return false;
@@ -2911,9 +2911,9 @@ bool SkaleServerOverride::StartListening() {
 
 bool SkaleServerOverride::StopListening( e_server_mode_t esm ) {
     bool bRetVal = true;
-    if ( hProxygenServer_ ) {
-        skutils::http_pg::pg_stop( hProxygenServer_ );
-        hProxygenServer_ = nullptr;
+    if ( m_proxygenServer ) {
+        skutils::http_pg::pg_stop( m_proxygenServer );
+        m_proxygenServer = nullptr;
     }
 
     std::list< std::shared_ptr< SkaleRelayWS > >& serversWS4 =

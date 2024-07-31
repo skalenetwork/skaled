@@ -108,7 +108,7 @@ class server : public server_side_request_handler {
     int32_t m_threads = 0;
     int32_t m_threads_limit = 0;
 
-    std::string mLogPrefix;
+    std::string m_logPrefix;
 
 public:
     server( pg_on_request_handler_t _h, const pg_accumulate_entries& _entries, int32_t _threads = 0,
@@ -118,7 +118,7 @@ public:
     void stop();
     skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
         const std::string& _origin, int _ipVer, const std::string& _dstAddress,
-        int nDstPort ) override;
+        int _dstPort ) override;
 };  /// class server
 
 
