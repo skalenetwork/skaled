@@ -419,7 +419,7 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    const dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
+    dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
     void resetStorageChanges() {
         storageUsage.clear();

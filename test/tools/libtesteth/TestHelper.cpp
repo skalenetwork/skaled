@@ -121,6 +121,7 @@ void simulateMining( Client& client, size_t numBlocks, const dev::Address &addre
     }
     state.addBalance( address, reward );
     state.commit();
+    state.getOriginalDb()->createBlockSnap(1);
     const auto balanceAfter = client.balanceAt( address );
     balanceAfter > balanceBefore; // make compiler happy
     assert( balanceAfter > balanceBefore );
