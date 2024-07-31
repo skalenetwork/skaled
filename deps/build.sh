@@ -2339,27 +2339,27 @@ then
                 cd "$SOURCES_ROOT"
                 if [ ! -d "rocksdb" ];
                 then
-                        if [ ! -f "rocksdb-from-git.tar.gz" ];
-                        then
-                                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
-                                eval git clone https://github.com/facebook/rocksdb.git --recursive
-                                cd rocksdb
-                                eval git checkout 9883b5f497a6c451065595c8c668728cfa5b8f59
-                                cd ..
-                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
-                                eval tar -czf rocksdb-from-git.tar.gz ./rocksdb
-                        else
-                                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-                                eval tar -xzf rocksdb-from-git.tar.gz
-                        fi
-                echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
-                cd rocksdb
-                eval mkdir -p build
-                cd build
-                echo -e "$INSTALL_ROOT"
-                eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                     -DWITH_ALL_TESTS=OFF -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DWITH_CORE_TOOLS=OFF -DWITH_BENCHMARK_TOOLS=OFF -DROCKSDB_BUILD_SHARED=OFF ..
-                cd ..
+                    if [ ! -f "rocksdb-from-git.tar.gz" ];
+                    then
+                            echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                            eval git clone https://github.com/facebook/rocksdb.git --recursive
+                            cd rocksdb
+                            eval git checkout 9883b5f497a6c451065595c8c668728cfa5b8f59
+                            cd ..
+                            echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                            eval tar -czf rocksdb-from-git.tar.gz ./rocksdb
+                    else
+                            echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                            eval tar -xzf rocksdb-from-git.tar.gz
+                    fi
+                    echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+                    cd rocksdb
+                    eval mkdir -p build
+                    cd build
+                    echo -e "$INSTALL_ROOT"
+                    eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                         -DWITH_ALL_TESTS=OFF -DWITH_TESTS=OFF -DWITH_TOOLS=OFF -DWITH_CORE_TOOLS=OFF -DWITH_BENCHMARK_TOOLS=OFF -DROCKSDB_BUILD_SHARED=OFF -DCMAKE_CXX_FLAGS=-mno-avx512f ..
+                    cd ..
                 else
                         cd rocksdb
                 fi
