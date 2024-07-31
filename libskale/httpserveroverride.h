@@ -82,6 +82,7 @@ class SkaleWsPeer;
 class SkaleRelayWS;
 class SkaleServerOverride;
 
+using std::string;
 
 enum class e_server_mode_t { esm_standard, esm_informational };
 
@@ -130,21 +131,21 @@ struct SkaleServerConnectionsTrackHelper {
 class SkaleWsPeer : public skutils::ws::peer {
 public:
     std::atomic_size_t nTaskNumberInPeer_ = 0;
-    const std::string m_strPeerQueueID;
+    const string m_strPeerQueueID;
     std::unique_ptr< SkaleServerConnectionsTrackHelper > m_pSSCTH;
-    std::string m_strUnDdosOrigin;
+    string m_strUnDdosOrigin;
     SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl );
     ~SkaleWsPeer() override;
     void onPeerRegister() override;
     void onPeerUnregister() override;  // peer will no longer receive onMessage after call to this
-    void onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) override;
-    void onClose( const std::string& reason, int local_close_code,
-        const std::string& local_close_code_as_str ) override;
+    void onMessage( const string& msg, skutils::ws::opcv eOpCode ) override;
+    void onClose( const string& reason, int local_close_code,
+        const string& local_close_code_as_str ) override;
     void onFail() override;
     void onLogMessage(
-        skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) override;
+        skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) override;
 
-    std::string desc( bool isColored = true ) const {
+    string desc( bool isColored = true ) const {
         return getShortPeerDescription( isColored, false, false );
     }
     SkaleRelayWS& getRelay();
@@ -163,14 +164,14 @@ public:
     bool handleRequestWithBinaryAnswer( e_server_mode_t esm, const nlohmann::json& joRequest );
 
     bool handleWebSocketSpecificRequest(
-        e_server_mode_t esm, const nlohmann::json& joRequest, std::string& strResponse );
+        e_server_mode_t esm, const nlohmann::json& joRequest, string& strResponse );
     bool handleWebSocketSpecificRequest(
         e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 protected:
     typedef void ( SkaleWsPeer::*rpc_method_t )(
         e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    typedef std::map< std::string, rpc_method_t > ws_rpc_map_t;
+    typedef std::map< string, rpc_method_t > ws_rpc_map_t;
     static const ws_rpc_map_t g_ws_rpc_map;
 
     void eth_subscribe(
@@ -194,8 +195,8 @@ private:
     void unregister_ws_conn_for_origin();
 
 public:
-    std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
-    std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
+    string implPreformatTrafficJsonMessage( const string& strJSON, bool isRequest ) const;
+    string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
 };  /// class SkaleWsPeer
 
 
@@ -215,9 +216,9 @@ protected:
     std::atomic_bool m_isRunning = false;
     std::atomic_bool m_isInLoop = false;
     int ipVer_;
-    std::string strBindAddr_, strInterfaceName_;
-    std::string m_strScheme_;
-    std::string m_strSchemeUC;
+    string strBindAddr_, strInterfaceName_;
+    string m_strScheme_;
+    string m_strSchemeUC;
     int m_nPort = -1;
     SkaleServerOverride* m_pSO = nullptr;
     e_server_mode_t esm_;
@@ -226,7 +227,7 @@ public:
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
     typedef skutils::retain_release_ptr< SkaleWsPeer > skale_peer_ptr_t;
-    typedef std::map< std::string, skale_peer_ptr_t > map_skale_peers_t;  // maps m_strPeerQueueID
+    typedef std::map< string, skale_peer_ptr_t > map_skale_peers_t;  // maps m_strPeerQueueID
                                                                           // -> skale peer pointer
 
 protected:
@@ -249,8 +250,8 @@ public:
     dev::eth::Interface* ethereum() const;
     mutex_type& mtxAllPeers() const { return m_mtxAllPeers; }
 
-    std::string nfoGetScheme() const { return m_strScheme_; }
-    std::string nfoGetSchemeUC() const { return m_strSchemeUC; }
+    string nfoGetScheme() const { return m_strScheme_; }
+    string nfoGetSchemeUC() const { return m_strSchemeUC; }
 
     friend class SkaleWsPeer;
 };  /// class SkaleRelayWS
@@ -262,11 +263,11 @@ protected:
 
 public:
     int ipVer_;
-    std::string strBindAddr_;
+    string strBindAddr_;
     int nPort_;
     const bool m_bHelperIsSSL;
     e_server_mode_t esm_;
-    std::string cert_path_, private_key_path_, ca_path_;
+    string cert_path_, private_key_path_, ca_path_;
     int32_t threads_ = 0;
     int32_t threads_limit_ = 0;
     SkaleRelayProxygenHTTP( SkaleServerOverride* pSO, int ipVer, const char* strBindAddr, int nPort,
@@ -306,22 +307,22 @@ public:
     struct net_bind_opts_t {
         size_t cntServers_ = 1;
 
-        std::string strAddrHTTP4_;
+        string strAddrHTTP4_;
         int nBasePortHTTP4_ = 0;
-        std::string strAddrHTTP6_;
+        string strAddrHTTP6_;
         int nBasePortHTTP6_ = 0;
-        std::string strAddrHTTPS4_;
+        string strAddrHTTPS4_;
         int nBasePortHTTPS4_ = 0;
-        std::string strAddrHTTPS6_;
+        string strAddrHTTPS6_;
         int nBasePortHTTPS6_ = 0;
 
-        std::string strAddrWS4_;
+        string strAddrWS4_;
         int nBasePortWS4_ = 0;
-        std::string strAddrWS6_;
+        string strAddrWS6_;
         int nBasePortWS6_ = 0;
-        std::string strAddrWSS4_;
+        string strAddrWSS4_;
         int nBasePortWSS4_ = 0;
-        std::string strAddrWSS6_;
+        string strAddrWSS6_;
         int nBasePortWSS6_ = 0;
 
         net_bind_opts_t() {}
@@ -354,9 +355,9 @@ public:
     struct net_opts_t {
         net_bind_opts_t bindOptsStandard_;
         net_bind_opts_t bindOptsInformational_;
-        std::string strPathSslKey_;
-        std::string strPathSslCert_;
-        std::string strPathSslCA_;
+        string strPathSslKey_;
+        string strPathSslCert_;
+        string strPathSslCA_;
         std::atomic_size_t cntConnections_ = 0;
         std::atomic_size_t cntConnectionsMax_ = 0;  // 0 is unlimited
         net_opts_t() {}
@@ -386,7 +387,7 @@ public:
         double lfExecutionDurationMaxForPerformanceWarning_ = 0;  // in seconds
         bool isTraceCalls_ = false;
         bool isTraceSpecialCalls_ = false;
-        std::string strEthErc20Address_;
+        string strEthErc20Address_;
         opts_t() {}
         opts_t( const opts_t& other ) { assign( other ); }
         opts_t& operator=( const opts_t& other ) { return assign( other ); }
@@ -416,23 +417,23 @@ public:
     dev::eth::Interface* ethereum() const;
     dev::eth::ChainParams& chainParams();
     const dev::eth::ChainParams& chainParams() const;
-    dev::Verbosity methodTraceVerbosity( const std::string& strMethod ) const;
-    bool checkAdminOriginAllowed( const std::string& origin ) const;
+    dev::Verbosity methodTraceVerbosity( const string& strMethod ) const;
+    bool checkAdminOriginAllowed( const string& origin ) const;
 
 protected:
     skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& joIn,
-        const std::string& strProtocol, int nServerIndex, std::string strOrigin, int ipVer,
+        const string& strProtocol, int nServerIndex, string strOrigin, int ipVer,
         int nPort, e_server_mode_t esm );
 
 private:
     bool implStartListening(  // web socket
-        std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const std::string& strAddr, int nPort,
-        const std::string& strPathSslKey, const std::string& strPathSslCert,
-        const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm );
+        std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const string& strAddr, int nPort,
+        const string& strPathSslKey, const string& strPathSslCert,
+        const string& strPathSslCA, int nServerIndex, e_server_mode_t esm );
     bool implStartListening(  // proxygen HTTP
-        std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, const std::string& strAddr,
-        int nPort, const std::string& strPathSslKey, const std::string& strPathSslCert,
-        const std::string& strPathSslCA, int nServerIndex, e_server_mode_t esm, int32_t threads = 0,
+        std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, const string& strAddr,
+        int nPort, const string& strPathSslKey, const string& strPathSslCert,
+        const string& strPathSslCA, int nServerIndex, e_server_mode_t esm, int32_t threads = 0,
         int32_t threads_limit = 0 );
 
     bool implStopListening(  // web socket
@@ -451,20 +452,20 @@ public:
     virtual bool StopListening( e_server_mode_t esm );
     virtual bool StopListening() override;
 
-    void SetUrlHandler( const std::string& url, jsonrpc::IClientConnectionHandler* handler );
+    void SetUrlHandler( const string& url, jsonrpc::IClientConnectionHandler* handler );
 
     void logPerformanceWarning( double lfExecutionDuration, int ipVer, const char* strProtocol,
         int nServerIndex, e_server_mode_t esm, const char* strOrigin, const char* strMethod,
         nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
-        e_server_mode_t esm, const std::string& strMessage );
+        e_server_mode_t esm, const string& strMessage );
     void logTraceServerTraffic( bool isRX, dev::Verbosity verbosity, int ipVer,
         const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
-        const std::string& strPayload );
+        const string& strPayload );
 
 private:
-    std::map< std::string, jsonrpc::IClientConnectionHandler* > urlhandler;
-    jsonrpc::IClientConnectionHandler* GetHandler( const std::string& url );
+    std::map< string, jsonrpc::IClientConnectionHandler* > urlhandler;
+    jsonrpc::IClientConnectionHandler* GetHandler( const string& url );
 
 public:
     std::atomic_bool m_bShutdownMode = false;
@@ -477,9 +478,9 @@ private:
         serversProxygenHTTP4nfo_, serversProxygenHTTP6nfo_, serversProxygenHTTPS4nfo_,
         serversProxygenHTTPS6nfo_;
     skutils::http_pg::wrapped_proxygen_server_handle m_proxygenServer = nullptr;
-    e_server_mode_t implGuessProxygenRequestESM( const std::string& strDstAddress, int nDstPort );
+    e_server_mode_t implGuessProxygenRequestESM( const string& strDstAddress, int nDstPort );
     bool implGuessProxygenRequestESM( std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& lst,
-        const std::string& strDstAddress, int nDstPort, e_server_mode_t& esm );
+        const string& strDstAddress, int nDstPort, e_server_mode_t& esm );
 
 public:
     int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;
@@ -501,7 +502,7 @@ public:
 protected:
     typedef void ( SkaleServerOverride::*informational_rpc_method_t )(
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    typedef std::map< std::string, informational_rpc_method_t > informational_rpc_map_t;
+    typedef std::map< string, informational_rpc_method_t > informational_rpc_map_t;
     static const informational_rpc_map_t g_informational_rpc_map;
 
 public:
@@ -514,41 +515,41 @@ protected:
 public:
     bool handleRequestWithBinaryAnswer(
         e_server_mode_t esm, const nlohmann::json& joRequest, std::vector< uint8_t >& buffer );
-    bool handleAdminOriginFilter( const std::string& strMethod, const std::string& strOriginURL );
+    bool handleAdminOriginFilter( const string& strMethod, const string& strOriginURL );
 
     bool isShutdownMode() const { return m_bShutdownMode; }
 
-    bool handleProtocolSpecificRequest( const std::string& strOrigin,
+    bool handleProtocolSpecificRequest( const string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
 protected:
-    typedef void ( SkaleServerOverride::*rpc_method_t )( const std::string& strOrigin,
+    typedef void ( SkaleServerOverride::*rpc_method_t )( const string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
-    typedef std::map< std::string, rpc_method_t > protocol_rpc_map_t;
+    typedef std::map< string, rpc_method_t > protocol_rpc_map_t;
     static const protocol_rpc_map_t g_protocol_rpc_map;
 
-    void setSchainExitTime( const std::string& strOrigin, const rapidjson::Document& joRequest,
+    void setSchainExitTime( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_sendRawTransaction( const std::string& strOrigin, const rapidjson::Document& joRequest,
+    void eth_sendRawTransaction( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_getTransactionReceipt( const std::string& strOrigin,
+    void eth_getTransactionReceipt( const string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_call( const std::string& strOrigin, const rapidjson::Document& joRequest,
+    void eth_call( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_getBalance( const std::string& strOrigin, const rapidjson::Document& joRequest,
+    void eth_getBalance( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_getStorageAt( const std::string& strOrigin, const rapidjson::Document& joRequest,
+    void eth_getStorageAt( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_getTransactionCount( const std::string& strOrigin,
+    void eth_getTransactionCount( const string& strOrigin,
         const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
 
-    void eth_getCode( const std::string& strOrigin, const rapidjson::Document& joRequest,
+    void eth_getCode( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
@@ -557,18 +558,18 @@ protected:
     nlohmann::json generateBlocksStats();
 
 protected:
-    typedef void ( SkaleServerOverride::*rpc_http_method_t )( const std::string& strOrigin,
+    typedef void ( SkaleServerOverride::*rpc_http_method_t )( const string& strOrigin,
         e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse );
-    typedef std::map< std::string, rpc_http_method_t > http_rpc_map_t;
+    typedef std::map< string, rpc_http_method_t > http_rpc_map_t;
     static const http_rpc_map_t g_http_rpc_map;
-    bool handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
-        const std::string& strRequest, std::string& strResponse );
-    bool handleHttpSpecificRequest( const std::string& strOrigin, e_server_mode_t esm,
+    bool handleHttpSpecificRequest( const string& strOrigin, e_server_mode_t esm,
+        const string& strRequest, string& strResponse );
+    bool handleHttpSpecificRequest( const string& strOrigin, e_server_mode_t esm,
         const nlohmann::json& joRequest, nlohmann::json& joResponse );
 
 public:
-    std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
-    std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
+    string implPreformatTrafficJsonMessage( const string& strJSON, bool isRequest ) const;
+    string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
     static size_t g_nMaxStringValueLengthForJsonLogs;
     static size_t g_nMaxStringValueLengthForTransactionParams;
     static void stat_transformJsonForLogOutput( nlohmann::json& jo, bool isRequest,
