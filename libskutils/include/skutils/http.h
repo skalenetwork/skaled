@@ -752,12 +752,12 @@ struct pg_accumulate_entry {
 typedef std::vector< pg_accumulate_entry > pg_accumulate_entries;
 
 bool pg_logging_get();
-void pg_logging_set( bool bIsLoggingMode );
-wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h, const pg_accumulate_entry& pge,
+void pg_logging_set( bool _bIsLoggingMode );
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t _h, const pg_accumulate_entry& _pge,
     int32_t threads = 0, int32_t threads_limit = 0 );
-wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t h,
-    const pg_accumulate_entries& entries, int32_t threads = 0, int32_t threads_limit = 0 );
-void pg_stop( wrapped_proxygen_server_handle hServer );
+wrapped_proxygen_server_handle pg_start( pg_on_request_handler_t _h,
+    const pg_accumulate_entries& _entries, int32_t _threads = 0, int32_t _threadsLimit = 0 );
+void pg_stop( wrapped_proxygen_server_handle _hServer );
 
 void pg_accumulate_clear();
 size_t pg_accumulate_size();
@@ -769,9 +769,9 @@ wrapped_proxygen_server_handle pg_accumulate_start(
 
 typedef void ( *logging_fail_func_t )();
 
-void install_logging_fail_func( logging_fail_func_t fn );
+void install_logging_fail_func( logging_fail_func_t _fn );
 
-void init_logging( const char* strProgramName );
+void init_logging( const char* _programName );
 
 };  // namespace http_pg
 
