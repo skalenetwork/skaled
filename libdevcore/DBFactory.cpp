@@ -69,6 +69,8 @@ bool isDiskDatabase() {
     switch ( g_kind ) {
     case DatabaseKind::LevelDB:
         return true;
+    case DatabaseKind::RocksDB:
+        return true;
     default:
         return false;
     }
@@ -131,6 +133,8 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path ) );
+    case DatabaseKind::RocksDB:
+        return std::unique_ptr< DatabaseFace >( new RocksDB( _path ) );
     default:
         assert( false );
         return {};

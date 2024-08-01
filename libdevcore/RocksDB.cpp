@@ -158,7 +158,7 @@ RocksDB::RocksDB( boost::filesystem::path const& _path, rocksdb::ReadOptions _re
 // this does not hold any locks so it needs to be called
 // either from a constructor or from a function that holds a lock on m_db
 void RocksDB::openDBInstanceUnsafe() {
-    cnote << "Time to (re)open LevelDB at " + m_path.string();
+    cnote << "Time to (re)open RocksDB at " + m_path.string();
     auto startTimeMs = getCurrentTimeMs();
     auto db = static_cast< rocksdb::DB* >( nullptr );
     auto const status = rocksdb::DB::Open( m_options, m_path.string(), &db );
@@ -170,7 +170,7 @@ void RocksDB::openDBInstanceUnsafe() {
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
-    cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    cnote << "ROCKSDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t RocksDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
