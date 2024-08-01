@@ -123,6 +123,15 @@ dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT 
     return dv;
 }
 
+#define TRACE_RPC_ERROR( __MESSAGE__ ) \
+    if ( pSO()->opts_.isTraceCalls_ )  \
+        cerror << __FUNCTION__ << " error in " << __MESSAGE__;
+
+#define TRACE_RPC_TRACE( __MESSAGE__ ) \
+    if ( pSO()->opts_.isTraceCalls_ )  \
+        ctrace << __FUNCTION__ << " error in " << __MESSAGE__;
+
+
 dev::eth::LogFilter toLogFilter( const json& jo ) {
     dev::eth::LogFilter filter;
     if ( ( !jo.is_object() ) || jo.size() == 0 )
@@ -210,20 +219,18 @@ json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
     return toJson( entriesByBlock, order );
 }
 
-bool checkParamsPresent(
-    const char* strMethodName, const json& joRequest, json& joResponse ) {
+bool checkParamsPresent( const char* strMethodName, const json& joRequest, json& joResponse ) {
     if ( joRequest.count( "params" ) > 0 )
         return true;
     json joError = json::object();
     joError["code"] = -32602;
-    joError["message"] = string( "error in \"" ) + strMethodName +
-                         "\" rpc method, json entry \"params\" is missing";
+    joError["message"] =
+        string( "error in \"" ) + strMethodName + "\" rpc method, json entry \"params\" is missing";
     joResponse["error"] = joError;
     return false;
 }
 
-bool checkParamsIsArray(
-    const char* strMethodName, const json& joRequest, json& joResponse ) {
+bool checkParamsIsArray( const char* strMethodName, const json& joRequest, json& joResponse ) {
     if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
         return false;
     const json& jarrParams = joRequest["params"];
@@ -231,8 +238,8 @@ bool checkParamsIsArray(
         return true;
     json joError = json::object();
     joError["code"] = -32602;
-    joError["message"] = string( "error in \"" ) + strMethodName +
-                         "\" rpc method, json entry \"params\" must be array";
+    joError["message"] =
+        string( "error in" ) + strMethodName + " rpc method, json entry \"params\" must be array";
     joResponse["error"] = joError;
     return false;
 }
@@ -258,7 +265,7 @@ bool checkParamsIsObject( const char* strMethodName, const rapidjson::Document& 
     joError.AddMember( "code", -32602, joResponse.GetAllocator() );
     joError.AddMember( "message",
         rapidjson::StringRef( string( string( "error in \"" ) + strMethodName +
-                                           "\" rpc method, json entry \"params\" must be object" )
+                                      "\" rpc method, json entry \"params\" must be object" )
                                   .c_str() ),
         joResponse.GetAllocator() );
     joError.AddMember( "error", joError, joResponse.GetAllocator() );
@@ -276,8 +283,7 @@ typedef skutils::multithreading::recursive_mutex_type mutex_type_stats;
 typedef std::lock_guard< mutex_type_stats > lock_type_stats;
 static skutils::multithreading::recursive_mutex_type g_mtx_stats( "RMTX-NMA-PEER-ALL" );
 
-struct map_method_call_stats_t
-    : public std::map< string, skutils::stats::named_event_stats* > {
+struct map_method_call_stats_t : public std::map< string, skutils::stats::named_event_stats* > {
     typedef std::map< string, skutils::stats::named_event_stats* > my_base_t;
     void clear() {
         iterator itWalk = begin(), itEnd = end();
@@ -452,10 +458,9 @@ static json generate_subsystem_stats( const char* strSubSystem ) {
     skutils::stats::named_event_stats& tq_in = stat_subsystem_traffic_queue_in( strSubSystem );
     skutils::stats::named_event_stats& tq_out = stat_subsystem_traffic_queue_out( strSubSystem );
     std::set< string > setNames = cq.all_queue_names(), setNames_aq = aq.all_queue_names(),
-                            setNames_erq = erq.all_queue_names(),
-                            setNames_exq = exq.all_queue_names(),
-                            setNames_tq_in = tq_in.all_queue_names(),
-                            setNames_tq_out = tq_out.all_queue_names();
+                       setNames_erq = erq.all_queue_names(), setNames_exq = exq.all_queue_names(),
+                       setNames_tq_in = tq_in.all_queue_names(),
+                       setNames_tq_out = tq_out.all_queue_names();
     std::set< string >::const_iterator itNameWalk, itNameEnd;
     for ( itNameWalk = setNames_aq.cbegin(), itNameEnd = setNames_aq.cend();
           itNameWalk != itNameEnd; ++itNameWalk )
@@ -564,8 +569,8 @@ bool SkaleStatsSubscriptionManager::subscribe(
                 joNotification["params"] = joParams;
                 string strNotification = joNotification.dump();
                 if ( getSSO().opts_.isTraceCalls_ )
-                    clog( dev::VerbosityDebug,
-                        cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) )
+                    clog(
+                        dev::VerbosityDebug, subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() )
                         << ( cc::ws_tx_inv( " <<< " +
                                             subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() +
                                             "/TX <<< " ) +
@@ -589,28 +594,13 @@ bool SkaleStatsSubscriptionManager::subscribe(
                             stats::register_stats_answer(
                                 "RPC", "eth_subscription/skaleStats", strNotification.size() );
                         } catch ( std::exception& ex ) {
-                            clog( dev::Verbosity::VerbosityError,
-                                cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) +
-                                    cc::debug( "/" ) +
-                                    cc::num10(
-                                        subscriptionData.m_pPeer->getRelay().serverIndex() ) )
-                                << ( subscriptionData.m_pPeer->desc() + " " +
-                                       cc::error( "error in " ) +
-                                       cc::warn( "eth_subscription/skaleStats" ) +
-                                       cc::error( " will uninstall watcher callback because of "
-                                                  "exception: " ) +
-                                       cc::warn( ex.what() ) );
+                            cerr << "eth_subscription/skaleStats"
+                                 << " will uninstall watcher callback because of "
+                                 << "exception: " << ex.what();
                         } catch ( ... ) {
-                            clog( dev::Verbosity::VerbosityError,
-                                cc::info( subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() ) +
-                                    cc::debug( "/" ) +
-                                    cc::num10(
-                                        subscriptionData.m_pPeer->getRelay().serverIndex() ) )
-                                << ( subscriptionData.m_pPeer->desc() + " " +
-                                       cc::error( "error in " ) +
-                                       cc::warn( "eth_subscription/skaleStats" ) +
-                                       cc::error( " will uninstall watcher callback because of "
-                                                  "unknown exception" ) );
+                            cerr << "eth_subscription/skaleStats"
+                                 << " will uninstall watcher callback because of "
+                                 << "unknown exception";
                         }
                         if ( !bMessageSentOK ) {
                             stats::register_stats_error(
@@ -679,18 +669,8 @@ SkaleServerConnectionsTrackHelper::~SkaleServerConnectionsTrackHelper() {
 SkaleWsPeer::SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl )
     : skutils::ws::peer( srv, hdl ),
       m_strPeerQueueID( skutils::dispatch::generate_id( this, "relay_peer" ) ) {
-    SkaleServerOverride* pSO = pso();
-    if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityTrace, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                       cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::notice( " peer ctor" ) );
 }
 SkaleWsPeer::~SkaleWsPeer() {
-    SkaleServerOverride* pSO = pso();
-    if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityTrace, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                       cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::notice( " peer dtor" ) );
     uninstallAllWatches();
     skutils::dispatch::remove( m_strPeerQueueID );
 }
@@ -709,11 +689,9 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
             pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
         if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
             m_strUnDdosOrigin.clear();
-            clog( dev::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                           cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::fatal( "UN-DDOS:" ) + " " +
-                       cc::error( " cannot accept connection - UN-DDOS protection reported "
-                                  "connection count overflow" ) );
+            cerror << __FUNCTION__
+                   << " cannot accept connection - UN-DDOS protection reported "
+                      "connection count overflow";
             close( "UN-DDOS protection reported connection count overflow" );
             throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
                                       " connection from " + url_unddos_origin.str() +
@@ -732,12 +710,8 @@ void SkaleWsPeer::unregister_ws_conn_for_origin() {
 void SkaleWsPeer::onPeerRegister() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityDebug, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                       cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::notice( " peer registered" ) );
+        ctrace << "peer registered";
     skutils::ws::peer::onPeerRegister();
-    //
-    // unddos
     register_ws_conn_for_origin();
 }
 void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage after call to
@@ -745,9 +719,7 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     m_pSSCTH.reset();
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityDebug, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                       cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::notice( " peer unregistered" ) );
+        ctrace << "peer unregistered";
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
     string strQueueIdToRemove = m_strPeerQueueID;
@@ -761,23 +733,21 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
 void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->isShutdownMode() ) {
-        clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                         cc::num10( getRelay().serverIndex() ) )
+        cwarn <<  getRelay().nfoGetSchemeUC() << "/"  << getRelay().serverIndex()
             << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + cc::ws_rx( " >>> " ) + cc::warn( "" ) );
+                   desc() + cc::ws_rx( " >>> " ) + "" );
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
-        clog( dev::VerbosityWarning, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                         cc::num10( getRelay().serverIndex() ) )
+        cwarn << getRelay().nfoGetSchemeUC()  <<  "/"  << getRelay().serverIndex()
             << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
                    desc() + cc::ws_rx( " >>> " ) +
-                   cc::error( " got binary message and will try to interpret it as text: " ) +
-                   cc::warn( msg ) );
+                    " got binary message and will try to interpret it as text: "  +
+                   msg );
     }
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
     json jarrRequest;
@@ -795,8 +765,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
             jarrRequest.push_back( joRequestOriginal );
         }
         for ( const json& joRequest : jarrRequest ) {
-            string strMethodWalk =
-                skutils::tools::getFieldSafe< string >( joRequest, "method" );
+            string strMethodWalk = skutils::tools::getFieldSafe< string >( joRequest, "method" );
             if ( strMethodWalk.empty() )
                 throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
             strMethod = strMethodWalk;
@@ -817,12 +786,12 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 strMethod = "unknown_json_rpc_method";
         }
         string e = "Bad JSON RPC request: " + msg;
-        clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                       cc::debug( "/" ) +
-                                       cc::num10( pThis->getRelay().serverIndex() ) )
+        cerror << pThis->getRelay().nfoGetSchemeUC()  +
+                                        "/"  <<
+                                        pThis->getRelay().serverIndex()
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
-                   pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+                   pThis->desc() + cc::ws_tx( " !!! " ) + e );
         json joErrorResponce;
         joErrorResponce["id"] = joID;
         json joErrorObj;
@@ -852,12 +821,11 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 "bad origin" :
                 "high load";
         string e = "Banned due to " + reason_part + " JSON RPC request: " + msg;
-        clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                       cc::debug( "/" ) +
-                                       cc::num10( pThis->getRelay().serverIndex() ) )
+        cerror << pThis->getRelay().nfoGetSchemeUC() << "/" <<
+                                        pThis->getRelay().serverIndex()
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
-                   pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+                   pThis->desc() + cc::ws_tx( " !!! " ) + e );
         json joErrorResponce;
         joErrorResponce["id"] = joID;
         json joErrorObj;
@@ -882,8 +850,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
             jarrBatchAnswer = json::array();
         for ( const json& joRequest : jarrRequest ) {
             string strRequest = joRequest.dump();
-            string strMethod =
-                skutils::tools::getFieldSafe< string >( joRequest, "method" );
+            string strMethod = skutils::tools::getFieldSafe< string >( joRequest, "method" );
             json joID = joRequest["id"];
             //
             string strPerformanceQueueName =
@@ -896,7 +863,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
             skutils::stats::time_tracker::element_ptr_t rttElement;
             rttElement.emplace( "RPC", pThis->getRelay().nfoGetSchemeUC().c_str(),
                 strMethod.c_str(), pThis->getRelay().serverIndex(), -1 );
-                        skutils::task::performance::action a(
+            skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName );
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
                 clog( pSO->methodTraceVerbosity( strMethod ),
@@ -908,7 +875,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                            pThis->desc() + cc::ws_rx( " >>> " ) +
                            pThis->implPreformatTrafficJsonMessage( joRequest, true ) );
             string strResponse;
-              try {
+            try {
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
                          pThis->getRelay().esm_, joRequest, strResponse ) ) {
                     jsonrpc::IClientConnectionHandler* handler = pSO->GetHandler( "/" );
@@ -921,13 +888,12 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 a.set_json_out( joResponse );
             } catch ( const std::exception& ex ) {
                 rttElement->setError();
-                clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                               cc::debug( "/" ) +
-                                               cc::num10( pThis->getRelay().serverIndex() ) )
+                clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                               to_string( pThis->getRelay().serverIndex() ) )
                     << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
-                           pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( ex.what() ) );
+                           pThis->desc() + cc::ws_tx( " !!! " ) + ex.what() );
                 json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 json joErrorObj;
@@ -945,7 +911,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                     << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
-                           pThis->desc() + cc::ws_tx( " !!! " ) + cc::warn( e ) );
+                           pThis->desc() + cc::ws_tx( " !!! " ) + e );
                 json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 json joErrorObj;
@@ -957,8 +923,8 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
             }
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
                 clog( pSO->methodTraceVerbosity( strMethod ),
-                    cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                        cc::num10( pThis->getRelay().serverIndex() ) )
+                     pThis->getRelay().nfoGetSchemeUC()) << "/"  <<
+                      pThis->getRelay().serverIndex()
                     << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/TX <<< " ) +
@@ -988,10 +954,10 @@ void SkaleWsPeer::onClose(
     const string& reason, int local_close_code, const string& local_close_code_as_str ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityDebug, cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                                       cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::warn( " peer close event with code=" ) + cc::c( local_close_code ) +
-                   cc::debug( ", reason=" ) + cc::info( reason ) );
+        clog( dev::VerbosityDebug,
+            getRelay().nfoGetSchemeUC() + "/" + cc::num10( getRelay().serverIndex() ) )
+            << ( desc() + " peer close event with code=" + to_string( local_close_code ) +
+                   ", reason=" + reason );
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
     uninstallAllWatches();
     // unddos
@@ -1001,22 +967,20 @@ void SkaleWsPeer::onClose(
 void SkaleWsPeer::onFail() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityError, cc::fatal( getRelay().nfoGetSchemeUC() ) )
-            << ( desc() + cc::error( " peer fail event" ) );
+        cerror << getRelay().nfoGetSchemeUC() << desc() << " peer fail event";
     skutils::ws::peer::onFail();
     uninstallAllWatches();
     // unddos
     unregister_ws_conn_for_origin();
 }
 
-void SkaleWsPeer::onLogMessage(
-    skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) {
+void SkaleWsPeer::onLogMessage( skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( skale::server::helper::dv_from_ws_msg_type( eWSLMT ),
-            cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + cc::debug( " peer log: " ) + cc::info( msg ) );
+             getRelay().nfoGetSchemeUC()) <<  "/" <<
+                 getRelay().serverIndex()
+            <<  desc() <<  " peer log: " <<  msg ;
     skutils::ws::peer::onLogMessage( eWSLMT, msg );
 }
 
@@ -1064,13 +1028,11 @@ void SkaleWsPeer::uninstallAllWatches() {
     }
 }
 
-bool SkaleWsPeer::handleRequestWithBinaryAnswer(
-    e_server_mode_t esm, const json& joRequest ) {
+bool SkaleWsPeer::handleRequestWithBinaryAnswer( e_server_mode_t esm, const json& joRequest ) {
     SkaleServerOverride* pSO = pso();
     std::vector< uint8_t > buffer;
     if ( pSO->handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
-        string strMethodName =
-            skutils::tools::getFieldSafe< string >( joRequest, "method" );
+        string strMethodName = skutils::tools::getFieldSafe< string >( joRequest, "method" );
         string s( buffer.begin(), buffer.end() );
         sendMessage( s, skutils::ws::opcv::binary );
         return true;
@@ -1141,8 +1103,7 @@ const SkaleWsPeer::ws_rpc_map_t SkaleWsPeer::g_ws_rpc_map = {
     { "eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe },
 };
 
-void SkaleWsPeer::eth_subscribe(
-    e_server_mode_t esm, const json& joRequest, json& joResponse ) {
+void SkaleWsPeer::eth_subscribe( e_server_mode_t esm, const json& joRequest, json& joResponse ) {
     if ( !skale::server::helper::checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
         return;
     const json& jarrParams = joRequest["params"];
@@ -1176,13 +1137,12 @@ void SkaleWsPeer::eth_subscribe(
         strSubscriptionType = "<empty>";
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                  cc::debug( "/" ) +
-                                                  cc::num10( getRelay().serverIndex() ) )
-            << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe" ) +
-                   cc::error( " rpc method, missing valid subscription type in parameters, was "
-                              "specifiedL " ) +
-                   cc::warn( strSubscriptionType ) );
+        clog( dev::Verbosity::VerbosityError,
+            getRelay().nfoGetSchemeUC() + "/" + cc::num10( getRelay().serverIndex() ) )
+            << ( desc() + " " + "error in " + "eth_subscribe" +
+                   " rpc method, missing valid subscription type in parameters, was "
+                   "specifiedL " +
+                   strSubscriptionType );
     json joError = json::object();
     joError["code"] = -32603;
     joError["message"] =
@@ -1210,7 +1170,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                     logFilter = skale::server::helper::toLogFilter( joParamItem );
                 }
             }
-        }  
+        }
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         dev::eth::fnClientWatchHandlerMulti_t fnOnSunscriptionEvent;
         fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
@@ -1264,23 +1224,21 @@ void SkaleWsPeer::eth_subscribe_logs(
                                             "message" );
                                 } catch ( std::exception& ex ) {
                                     clog( dev::Verbosity::VerbosityError,
-                                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                            cc::debug( "/" ) +
+                                        pThis->getRelay().nfoGetSchemeUC() + "/" +
                                             cc::num10( pThis->getRelay().serverIndex() ) )
-                                        << ( pThis->desc() + " " + cc::error( "error in " ) +
-                                               cc::warn( "eth_subscription/logs" ) +
-                                               cc::error( " will uninstall watcher callback "
-                                                          "because of exception: " ) +
-                                               cc::warn( ex.what() ) );
+                                        << ( pThis->desc() + " " + "error in " +
+                                               "eth_subscription/logs" +
+                                               " will uninstall watcher callback "
+                                               "because of exception: " +
+                                               ex.what() );
                                 } catch ( ... ) {
                                     clog( dev::Verbosity::VerbosityError,
-                                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                            cc::debug( "/" ) +
+                                        pThis->getRelay().nfoGetSchemeUC() + "/" +
                                             cc::num10( pThis->getRelay().serverIndex() ) )
-                                        << ( pThis->desc() + " " + cc::error( "error in " ) +
-                                               cc::warn( "eth_subscription/logs" ) +
-                                               cc::error( " will uninstall watcher callback "
-                                                          "because of unknown exception" ) );
+                                        << ( pThis->desc() + " " + "error in " +
+                                               "eth_subscription/logs" +
+                                               " will uninstall watcher callback "
+                                               "because of unknown exception" );
                                 }
                                 if ( !bMessageSentOK ) {
                                     pThis->ethereum()->uninstallWatch( iw );
@@ -1304,11 +1262,10 @@ void SkaleWsPeer::eth_subscribe_logs(
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe/logs" ) +
-                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+            clog( dev::Verbosity::VerbosityError,
+                getRelay().nfoGetSchemeUC() + "/" + cc::num10( getRelay().serverIndex() ) )
+                << ( desc() + " " + "error in " + "eth_subscribe/logs" + " rpc method, exception " +
+                       ex.what() );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1317,11 +1274,9 @@ void SkaleWsPeer::eth_subscribe_logs(
         return;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_subscribe/logs" ) +
-                       cc::error( " rpc method, unknown exception " ) );
+            clog( dev::Verbosity::VerbosityError,
+                getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() ) +
+                    " error in eth_subscribe/logs" + " rpc method, unknown exception " );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/logs\" rpc method, unknown exception";
@@ -1367,21 +1322,19 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                             "eth_subscription/newPendingTransactions failed to sent message" );
                 } catch ( std::exception& ex ) {
                     clog( dev::Verbosity::VerbosityError,
-                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                            cc::num10( pThis->getRelay().serverIndex() ) )
-                        << ( pThis->desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_subscription/newPendingTransactions" ) +
-                               cc::error(
-                                   " will uninstall watcher callback because of exception: " ) +
-                               cc::warn( ex.what() ) );
+                        pThis->getRelay().nfoGetSchemeUC() + "/" +
+                            to_string( pThis->getRelay().serverIndex() ) + pThis->desc() + " " +
+                            "error in " + "eth_subscription/newPendingTransactions" +
+
+                            " will uninstall watcher callback because of exception: " + ex.what() );
                 } catch ( ... ) {
                     clog( dev::Verbosity::VerbosityError,
-                        cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
+                        pThis->getRelay().nfoGetSchemeUC() + "/" +
                             cc::num10( pThis->getRelay().serverIndex() ) )
-                        << ( pThis->desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_subscription/newPendingTransactions" ) +
-                               cc::error( " will uninstall watcher callback because of unknown "
-                                          "exception" ) );
+                        << ( pThis->desc() + " " + "error in " +
+                               "eth_subscription/newPendingTransactions" +
+                               " will uninstall watcher callback because of unknown "
+                               "exception" );
                 }
                 if ( !bMessageSentOK ) {
                     pThis->ethereum()->uninstallNewPendingTransactionWatch( iw );
@@ -1402,28 +1355,23 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_subscribe/newPendingTransactions" ) +
-                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+            clog( dev::Verbosity::VerbosityError,
+                getRelay().nfoGetSchemeUC() + "/" + cc::num10( getRelay().serverIndex() ) )
+                << ( desc() + " " + "error in " + "eth_subscribe/newPendingTransactions" +
+                       " rpc method, exception " + ex.what() );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
-            string(
-                "error in \"eth_subscribe/newPendingTransactions\" rpc method, exception: " ) +
+            string( "error in \"eth_subscribe/newPendingTransactions\" rpc method, exception: " ) +
             ex.what();
         joResponse["error"] = joError;
         return;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_subscribe/newPendingTransactions" ) +
-                       cc::error( " rpc method, unknown exception " ) );
+            clog( dev::Verbosity::VerbosityError,
+                getRelay().nfoGetSchemeUC() + "/" + cc::num10( getRelay().serverIndex() ) )
+                << ( desc() + " " + "error in " + "eth_subscribe/newPendingTransactions" +
+                       " rpc method, unknown exception " );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1433,8 +1381,8 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
     }
 }
 
-void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
-    const json& /*joRequest*/, json& joResponse, bool bIncludeTransactions ) {
+void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/, const json& /*joRequest*/,
+    json& joResponse, bool bIncludeTransactions ) {
     SkaleServerOverride* pSO = pso();
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1486,19 +1434,18 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                     clog( dev::Verbosity::VerbosityError,
                         cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
                             cc::num10( pThis->getRelay().serverIndex() ) )
-                        << ( pThis->desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_subscription/newHeads" ) +
-                               cc::error(
-                                   " will uninstall watcher callback because of exception: " ) +
-                               cc::warn( ex.what() ) );
+                        << ( pThis->desc() + " " + "error in " + "eth_subscription/newHeads" +
+
+                               " will uninstall watcher callback because of exception: " +
+                               ex.what() );
                 } catch ( ... ) {
                     clog( dev::Verbosity::VerbosityError,
                         cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
                             cc::num10( pThis->getRelay().serverIndex() ) )
                         << ( pThis->desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_subscription/newHeads" ) +
-                               cc::error( " will uninstall watcher callback because of unknown "
-                                          "exception" ) );
+                               "eth_subscription/newHeads" +
+                               " will uninstall watcher callback because of unknown "
+                               "exception" );
                 }
                 if ( !bMessageSentOK ) {
                     pThis->ethereum()->uninstallNewBlockWatch( iw );
@@ -1519,17 +1466,14 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                      cc::debug( "/" ) +
-                                                      cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_subscribe/newHeads(" ) +
-                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+            clog( dev::Verbosity::VerbosityError,
+                getRelay().nfoGetSchemeUC() + "/" + cc::num10( getRelay().serverIndex() ) )
+                << ( desc() + " " + "error in " + "eth_subscribe/newHeads(" +
+                       " rpc method, exception " + ex.what() );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
-            string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) +
-            ex.what();
+            string( "error in \"eth_subscribe/newHeads(\" rpc method, exception: " ) + ex.what();
         joResponse["error"] = joError;
         return;
     } catch ( ... ) {
@@ -1537,9 +1481,8 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
             clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
                                                       cc::debug( "/" ) +
                                                       cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_subscribe/newHeads(" ) +
-                       cc::error( " rpc method, unknown exception " ) );
+                << ( desc() + " " + cc::error( "error in " ) + "eth_subscribe/newHeads(" +
+                       " rpc method, unknown exception " );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/newHeads(\" rpc method, unknown exception";
@@ -1574,14 +1517,12 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
             clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
                                                       cc::debug( "/" ) +
                                                       cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_subscribe/newHeads(" ) +
-                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+                << ( desc() + " " + cc::error( "error in " ) + "eth_subscribe/newHeads(" +
+                       " rpc method, exception " + ex.what() );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
-            string( "error in \"eth_subscribe/SkaleStats(\" rpc method, exception: " ) +
-            ex.what();
+            string( "error in \"eth_subscribe/SkaleStats(\" rpc method, exception: " ) + ex.what();
         joResponse["error"] = joError;
         return;
     } catch ( ... ) {
@@ -1589,9 +1530,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
             clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
                                                       cc::debug( "/" ) +
                                                       cc::num10( getRelay().serverIndex() ) )
-                << ( desc() + " " + cc::error( "error in " ) +
-                       cc::warn( "eth_subscribe/newHeads(" ) +
-                       cc::error( " rpc method, unknown exception " ) );
+                << ( desc() + " " + cc::error( "error in " ) + "eth_subscribe/newHeads(" +
+                       " rpc method, unknown exception " );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/SkaleStats(\" rpc method, unknown exception";
@@ -1599,6 +1539,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
         return;
     }
 }
+
 
 void SkaleWsPeer::eth_unsubscribe(
     e_server_mode_t /*esm*/, const json& joRequest, json& joResponse ) {
@@ -1618,17 +1559,12 @@ void SkaleWsPeer::eth_unsubscribe(
             iw = joParamItem.get< unsigned >();
         }
         if ( iw == unsigned( -1 ) ) {
-            if ( pSO->opts_.isTraceCalls_ )
-                clog( dev::Verbosity::VerbosityError, cc::info( getRelay().nfoGetSchemeUC() ) +
-                                                          cc::debug( "/" ) +
-                                                          cc::num10( getRelay().serverIndex() ) )
-                    << ( desc() + " " + cc::error( "error in " ) + cc::warn( "eth_unsubscribe" ) +
-                           cc::error( " rpc method, bad subscription ID " ) +
-                           cc::j( joParamItem ) );
+            auto errMessage =
+                "eth_unsubscribe rpc method, bad subscription ID " + joParamItem.dump();
+            cerror << errMessage;
             json joError = json::object();
             joError["code"] = -32602;
-            joError["message"] =
-                "error in \"eth_unsubscribe\" rpc method, ad subscription ID " + joParamItem.dump();
+            joError["message"] = errMessage;
             joResponse["error"] = joError;
             return;
         }
@@ -1643,9 +1579,8 @@ void SkaleWsPeer::eth_unsubscribe(
                         cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
                             cc::num10( getRelay().serverIndex() ) )
                         << ( desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_unsubscribe/newPendingTransactionWatch" ) +
-                               cc::error( " rpc method, bad subscription ID " ) +
-                               cc::warn( strIW ) );
+                               "eth_unsubscribe/newPendingTransactionWatch" +
+                               " rpc method, bad subscription ID " + strIW );
                 json joError = json::object();
                 joError["code"] = -32602;
                 joError["message"] =
@@ -1663,14 +1598,12 @@ void SkaleWsPeer::eth_unsubscribe(
                      iw & ( ~( SKALED_WS_SUBSCRIPTION_TYPE_MASK ) ) ) ==
                  setInstalledWatchesNewBlocks_.end() ) {
                 string strIW = dev::toJS( iw );
-                if ( pSO->opts_.isTraceCalls_ )
+                if ( pSO->opts_.isTraceCalls_ ) {
                     clog( dev::Verbosity::VerbosityError,
-                        cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                            cc::num10( getRelay().serverIndex() ) )
-                        << ( desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_unsubscribe/newHeads" ) +
-                               cc::error( " rpc method, bad subscription ID " ) +
-                               cc::warn( strIW ) );
+                        getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() ) +
+                            desc() + " " + "error in " + "eth_unsubscribe/newHeads" +
+                            " rpc method, bad subscription ID " + strIW );
+                }
                 json joError = json::object();
                 joError["code"] = -32602;
                 joError["message"] =
@@ -1688,13 +1621,10 @@ void SkaleWsPeer::eth_unsubscribe(
             if ( !bWasUnsubscribed ) {
                 string strIW = dev::toJS( iw );
                 if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::Verbosity::VerbosityError,
-                        cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                            cc::num10( getRelay().serverIndex() ) )
-                        << ( desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_unsubscribe/newHeads" ) +
-                               cc::error( " rpc method, bad subscription ID " ) +
-                               cc::warn( strIW ) );
+                    clog( dev::Verbosity::VerbosityError, getRelay().nfoGetSchemeUC() )
+                        << "/" << getRelay().serverIndex() << desc()
+                        << " error in eth_unsubscribe/newHeads rpc method, bad subscription ID "
+                        << strIW;
                 json joError = json::object();
                 joError["code"] = -32602;
                 joError["message"] =
@@ -1706,14 +1636,12 @@ void SkaleWsPeer::eth_unsubscribe(
         } else {
             if ( setInstalledWatchesLogs_.find( iw ) == setInstalledWatchesLogs_.end() ) {
                 string strIW = dev::toJS( iw );
-                if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::Verbosity::VerbosityError,
-                        cc::info( getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
-                            cc::num10( getRelay().serverIndex() ) )
-                        << ( desc() + " " + cc::error( "error in " ) +
-                               cc::warn( "eth_unsubscribe/logs" ) +
-                               cc::error( " rpc method, bad subscription ID " ) +
-                               cc::warn( strIW ) );
+                if ( pSO->opts_.isTraceCalls_ ) {
+                    clog( dev::Verbosity::VerbosityError, getRelay().nfoGetSchemeUC() )
+                        << "/" << cc::num10( getRelay().serverIndex() ) << desc()
+                        << " error in eth_unsubscribe/logs"
+                        << " rpc method, bad subscription ID " + strIW;
+                }
                 json joError = json::object();
                 joError["code"] = -32602;
                 joError["message"] =
@@ -1727,19 +1655,16 @@ void SkaleWsPeer::eth_unsubscribe(
     }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
 }
 
-string SkaleWsPeer::implPreformatTrafficJsonMessage(
-    const string& strJSON, bool isRequest ) const {
+string SkaleWsPeer::implPreformatTrafficJsonMessage( const string& strJSON, bool isRequest ) const {
     try {
         json jo = json::parse( strJSON );
         return implPreformatTrafficJsonMessage( jo, isRequest );
     } catch ( ... ) {
     }
-    return cc::error( isRequest ? "bad JSON request" : "bad JSON response" ) + " " +
-           cc::warn( strJSON );
+    return isRequest ? "bad JSON request" : "bad JSON response  " + strJSON;
 }
 
-string SkaleWsPeer::implPreformatTrafficJsonMessage(
-    const json& jo, bool isRequest ) const {
+string SkaleWsPeer::implPreformatTrafficJsonMessage( const json& jo, bool isRequest ) const {
     const SkaleServerOverride* pSO = pso();
     if ( pSO )
         return pSO->implPreformatTrafficJsonMessage( jo, isRequest );
@@ -1790,11 +1715,11 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
             clog( dev::VerbosityTrace, cc::info( m_strSchemeUC ) )
                 << ( cc::notice( "Will instantiate new peer" ) );
         if ( pSO->isShutdownMode() ) {
-            clog( dev::VerbosityWarning,
-                cc::info( m_strSchemeUC ) + cc::debug( "/" ) + cc::num10( serverIndex() ) )
-                << ( cc::ws_rx_inv( " >>> " + m_strSchemeUC + "/" +
-                                    std::to_string( serverIndex() ) + "/RX >>> " ) +
-                       cc::warn( "Skipping connection accept while in shutdown mode" ) );
+            clog( dev::VerbosityWarning, m_strSchemeUC )
+                << "/" << serverIndex()
+                << cc::ws_rx_inv(
+                       " >>> " + m_strSchemeUC + "/" + to_string( serverIndex() ) + "/RX >>> " )
+                << "Skipping connection accept while in shutdown mode";
             return pSkalePeer;
         }
         pSkalePeer = new SkaleWsPeer( srv, hdl );
@@ -1967,8 +1892,7 @@ SkaleServerOverride::SkaleServerOverride(
     {  // block
         std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
             fnOnSunscriptionEvent =
-                [this]( const unsigned& /*iw*/, const dev::eth::Transaction& /*tx*/ ) -> void {
-        };
+                [this]( const unsigned& /*iw*/, const dev::eth::Transaction& /*tx*/ ) -> void {};
         iwPendingTransactionStats_ =
             ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
     }  // block
@@ -2089,18 +2013,12 @@ void SkaleServerOverride::logPerformanceWarning( double lfExecutionDuration, int
     string strProtocolDescription = ssProtocol.str();
     //
     string strCallID = joID.dump();
-    //
-    stringstream ssMessage;
-    ssMessage << cc::deep_warn( "Performance warning:" ) << " " << cc::c( lfExecutionDuration )
-              << cc::warn( " seconds execution time for " ) << cc::info( strMethod )
-              << cc::warn( " call with " ) << cc::notice( "id" ) << cc::warn( "=" )
-              << cc::info( strCallID ) << cc::warn( " when called from origin " )
-              << cc::notice( strOrigin );
-    if ( nServerIndex >= 0 )
-        ssMessage << cc::warn( " through server with " ) << cc::notice( "index" ) << cc::warn( "=" )
-                  << cc::num10( nServerIndex );
-    string strMessage = ssMessage.str();
-    clog( dev::VerbosityWarning, strProtocolDescription ) << strMessage;
+    clog( dev::VerbosityWarning, strProtocolDescription )
+        << "Performance warning:"
+        << " " << lfExecutionDuration << " seconds execution time for " << strMethod
+        << " call with id =" << strCallID << " when called from origin " << strOrigin
+        << "through server with index =" << nServerIndex;
+    ;
 }
 
 void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const char* strProtocol,
@@ -2132,8 +2050,7 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Verbosity verbo
     bool isError = verbosity == dev::VerbosityError;
 
     stringstream ssProtocol;
-    string strProto =
-        ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
+    string strProto = ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
     strOrigin = ( strOrigin && strOrigin[0] ) ? strOrigin : "unknown origin";
     string strErrorSuffix, strOriginSuffix, strDirect;
     if ( isRX ) {
@@ -2185,11 +2102,11 @@ static void stat_check_port_availability_for_server_to_start_listen( int ipVer, 
                 ", please check network interface with this IP address exist, error details: " ) +
             strError );
     if ( is_tcp_port_listening( ipVer, sa46, nPort ) )
-        throw std::runtime_error(
-            string( "Cannot start " ) + string( strProtocolName ) +
-            string( " server on address \"" ) + strAddr + string( "\", port " ) +
-            std::to_string( nPort ) + string( ", IPv" ) + std::to_string( ipVer ) +
-            string( "/" ) + esm2str( esm ) + string( " - port is already listening" ) );
+        throw std::runtime_error( string( "Cannot start " ) + string( strProtocolName ) +
+                                  string( " server on address \"" ) + strAddr +
+                                  string( "\", port " ) + std::to_string( nPort ) +
+                                  string( ", IPv" ) + std::to_string( ipVer ) + string( "/" ) +
+                                  esm2str( esm ) + string( " - port is already listening" ) );
     pSO->logTraceServerEvent( false, ipVer, strProtocolName, nServerIndex, esm,
         cc::notice( "Port " ) + cc::num10( nPort ) +
             cc::notice( "/IPv" + std::to_string( ipVer ) ) + cc::debug( "/" ) +
@@ -2216,9 +2133,9 @@ string hostname_to_ip( string hostname ) {
     return "";
 }
 
-skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
-    const json& _joIn, const string& _protocol, int _serverIndex,
-    string _origin, int _ipVer, int _port, e_server_mode_t _esm ) {
+skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( const json& _joIn,
+    const string& _protocol, int _serverIndex, string _origin, int _ipVer, int _port,
+    e_server_mode_t _esm ) {
     skutils::result_of_http_request rslt;
     rslt.isBinary_ = false;
     string strMethod;
@@ -2234,8 +2151,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             jarrRequest.push_back( _joIn );
         }
         for ( const json& jsonRpcRequest : jarrRequest ) {
-            string methodName =
-                skutils::tools::getFieldSafe< string >( jsonRpcRequest, "method" );
+            string methodName = skutils::tools::getFieldSafe< string >( jsonRpcRequest, "method" );
             if ( methodName.empty() )
                 throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
 
@@ -2304,11 +2220,10 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
         rttElement.emplace( "RPC", _protocol.c_str(), strMethod.c_str(), _serverIndex, _ipVer );
         //
         SkaleServerConnectionsTrackHelper sscth( *this );
-        if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent ) {
+        if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
             logTraceServerTraffic( true, methodTraceVerbosity( strMethod ), _ipVer,
                 _protocol.c_str(), _serverIndex, _esm, _origin.c_str(),
                 implPreformatTrafficJsonMessage( strBody, true ) );
-        };
         string strResponse;
         try {
             if ( is_connection_limit_overflow() ) {
@@ -2334,6 +2249,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
                 handler->HandleRequest( strBody.c_str(), strResponse );
             }
 
+            json joResponse = json::parse( strResponse );
             if ( !isBatch ) {
                 rslt.isBinary_ = false;
                 rslt.joOut_ = json::parse( strResponse );
@@ -2341,7 +2257,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
         } catch ( const std::exception& ex ) {
             rttElement->setError();
             logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
-                _serverIndex, _esm, _origin.c_str(), cc::warn( ex.what() ) );
+                _serverIndex, _esm, _origin.c_str(), ex.what() );
             json joErrorResponce;
             joErrorResponce["id"] = joID;
             json joErrorObj;
@@ -2357,7 +2273,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             rttElement->setError();
             const char* e = "unknown exception in SkaleServerOverride";
             logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
-                _serverIndex, _esm, _origin.c_str(), cc::warn( e ) );
+                _serverIndex, _esm, _origin.c_str(), e );
             json joErrorResponce;
             joErrorResponce["id"] = joID;
             json joErrorObj;
@@ -2397,8 +2313,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
 
 bool SkaleServerOverride::implStartListening(  // web socket
     std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const string& strAddr, int nPort,
-    const string& strPathSslKey, const string& strPathSslCert,
-    const string& /*strPathSslCA*/, int nServerIndex, e_server_mode_t esm ) {
+    const string& strPathSslKey, const string& strPathSslCert, const string& /*strPathSslCA*/,
+    int nServerIndex, e_server_mode_t esm ) {
     bool bIsSSL = false;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
         bIsSSL = true;
@@ -2431,12 +2347,10 @@ bool SkaleServerOverride::implStartListening(  // web socket
         return true;
     } catch ( const std::exception& ex ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(), esm,
-            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
-                cc::error( " server: " ) + cc::warn( ex.what() ) );
+            "FAILED to start server: " + string( ex.what() ) );
     } catch ( ... ) {
         logTraceServerEvent( false, ipVer, bIsSSL ? "WSS" : "WS", pSrv->serverIndex(), esm,
-            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::warn( bIsSSL ? "WSS" : "WS" ) +
-                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+            "FAILED to start  server: unknown exception" );
     }
     try {
         implStopListening( pSrv, ipVer, bIsSSL, esm );
@@ -2446,10 +2360,9 @@ bool SkaleServerOverride::implStartListening(  // web socket
 }
 
 bool SkaleServerOverride::implStartListening(  // proxygen HTTP
-    std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, const string& strAddr,
-    int nPort, const string& strPathSslKey, const string& strPathSslCert,
-    const string& strPathSslCA, int nServerIndex, e_server_mode_t esm, int32_t threads,
-    int32_t threads_limit ) {
+    std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, const string& strAddr, int nPort,
+    const string& strPathSslKey, const string& strPathSslCert, const string& strPathSslCA,
+    int nServerIndex, e_server_mode_t esm, int32_t threads, int32_t threads_limit ) {
     bool bIsSSL = false;
     SkaleServerOverride* pSO = this;
     if ( ( !strPathSslKey.empty() ) && ( !strPathSslCert.empty() ) )
@@ -2484,17 +2397,9 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
                 cc::success( "/" ) + cc::notice( esm2str( esm ) ) + " " );
         return true;
     } catch ( const std::exception& ex ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-            pSrv ? pSrv->serverIndex() : -1, esm,
-            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "proxygen" ) +
-                cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::error( " server: " ) + cc::warn( ex.what() ) );
+        clog( dev::VerbosityError, "Failed to start proxygen)" ) << ex.what();
     } catch ( ... ) {
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP",
-            pSrv ? pSrv->serverIndex() : -1, esm,
-            cc::fatal( "FAILED" ) + cc::error( " to start " ) + cc::attention( "proxygen" ) +
-                cc::debug( "/" ) + cc::warn( bIsSSL ? "HTTPS" : "HTTP" ) +
-                cc::error( " server: " ) + cc::warn( "unknown exception" ) );
+        clog( dev::VerbosityError, "Failed to start proxygen: unknown exception" );
     }
     try {
         implStopListening( pSrv, ipVer, bIsSSL, esm );
@@ -2514,7 +2419,7 @@ bool SkaleServerOverride::implStopListening(  // web socket
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
         string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrWSS4_ : bo.strAddrWS4_ ) :
-                                               ( bIsSSL ? bo.strAddrWSS6_ : bo.strAddrWS6_ );
+                                          ( bIsSSL ? bo.strAddrWSS6_ : bo.strAddrWS6_ );
         int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortWSS4_ : bo.nBasePortWS4_ ) :
                                        ( bIsSSL ? bo.nBasePortWSS6_ : bo.nBasePortWS6_ ) ) +
                     nServerIndex;
@@ -2548,22 +2453,15 @@ bool SkaleServerOverride::implStopListening(  // proxygen HTTP
                                         opts_.netOpts_.bindOptsInformational_;
         int nServerIndex = pSrv->serverIndex();
         string strAddr = ( ipVer == 4 ) ? ( bIsSSL ? bo.strAddrHTTPS4_ : bo.strAddrHTTP4_ ) :
-                                               ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
+                                          ( bIsSSL ? bo.strAddrHTTPS6_ : bo.strAddrHTTP6_ );
         int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
                                        ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
                     nServerIndex;
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
-            cc::notice( "Will stop " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
-                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::notice( " server on address " ) +
-                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
-                cc::debug( "/" ) + cc::notice( esm2str( esm ) ) + cc::notice( "..." ) );
+        cdebug << "Will stop proxygen" << ( bIsSSL ? "HTTPS" : "HTTP" ) << "server on address "
+               << strAddr << " and port " << nPort;
         pSrv->stop();
         pSrv.reset();
-        logTraceServerEvent( false, ipVer, bIsSSL ? "HTTPS" : "HTTP", nServerIndex, esm,
-            cc::success( "OK, stopped " ) + cc::attention( "proxygen" ) + cc::debug( "/" ) +
-                cc::info( bIsSSL ? "HTTPS" : "HTTP" ) + cc::success( " server on address " ) +
-                cc::info( strAddr ) + cc::success( " and port " ) + cc::c( nPort ) +
-                cc::debug( "/" ) + cc::notice( esm2str( esm ) ) );
+        cdebug << "Stopped proxygen server";
     } catch ( ... ) {
     }
     return true;
@@ -2720,9 +2618,7 @@ e_server_mode_t SkaleServerOverride::implGuessProxygenRequestESM(
         return esm;
     if ( implGuessProxygenRequestESM( serversProxygenHTTPS6nfo_, strDstAddress, nDstPort, esm ) )
         return esm;
-    clog( dev::VerbosityWarning, cc::fatal( "WARNING:" ) )
-        << ( cc::warn( "Failed to lookup ESM for " ) + cc::attention( strDstAddress ) +
-               cc::warn( ":" ) + cc::num10( nDstPort ) );
+    cwarn << "Failed to lookup ESM for " << strDstAddress << ":" << nDstPort;
     return e_server_mode_t::esm_standard;
 }
 bool SkaleServerOverride::implGuessProxygenRequestESM(
@@ -2747,8 +2643,7 @@ bool SkaleServerOverride::StartListening() {
         if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
             skutils::http_pg::pg_on_request_handler_t fnHandler =
                 [=]( const json& joIn, const string& strOrigin, int ipVer,
-                    const string& strDstAddress,
-                    int nDstPort ) -> skutils::result_of_http_request {
+                    const string& strDstAddress, int nDstPort ) -> skutils::result_of_http_request {
                 if ( isShutdownMode() )
                     throw std::runtime_error( "query was cancelled due to server shutdown mode" );
                 skutils::url u( strOrigin );
@@ -2954,11 +2849,8 @@ void SkaleServerOverride::max_connection_set( size_t cntConnectionsMax ) {
 
 void SkaleServerOverride::on_connection_overflow_peer_closed(
     int ipVer, const char* strProtocol, int nServerIndex, int nPort, e_server_mode_t esm ) {
-    string strMessage = cc::info( strProtocol ) + cc::debug( "/" ) +
-                             cc::num10( nServerIndex ) + cc::warn( " server on port " ) +
-                             cc::num10( nPort ) +
-                             cc::warn( " did closed peer because of connection limit overflow" );
-    logTraceServerEvent( false, ipVer, strProtocol, nServerIndex, esm, strMessage );
+    cdebug << ipVer << " " << strProtocol << nServerIndex << "server on port " << nPort
+           << " closed peer because of connection limit overflow" << ( int ) esm;
 }
 
 skutils::tools::load_monitor& stat_get_load_monitor() {
@@ -2971,7 +2863,7 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
 }
 
 json SkaleServerOverride::provideSkaleStats() {  // abstract from
-                                                           // dev::rpc::SkaleStatsProviderImpl
+                                                 // dev::rpc::SkaleStatsProviderImpl
     json joStats = json::object();
     //
     joStats["blocks"] = generateBlocksStats();
@@ -3014,8 +2906,7 @@ json SkaleServerOverride::provideSkaleStats() {  // abstract from
     return joStats;
 }
 
-bool SkaleServerOverride::handleInformationalRequest(
-    const json& joRequest, json& joResponse ) {
+bool SkaleServerOverride::handleInformationalRequest( const json& joRequest, json& joResponse ) {
     string strMethod = joRequest["method"].get< string >();
     informational_rpc_map_t::const_iterator itFind = g_informational_rpc_map.find( strMethod );
     if ( itFind == g_informational_rpc_map.end() ) {
@@ -3046,8 +2937,7 @@ static string stat_encode_eth_call_data_chunck_address(
     return strDst;
 }
 
-void SkaleServerOverride::informational_eth_getBalance(
-    const json& joRequest, json& joResponse ) {
+void SkaleServerOverride::informational_eth_getBalance( const json& joRequest, json& joResponse ) {
     std::cout << ( cc::debug( "Got call to informational version of " ) +
                    cc::info( "eth_getBalance" ) + cc::debug( " JSON RPC API with request as " ) +
                    cc::j( joRequest ) + "\n" );
@@ -3113,34 +3003,19 @@ void SkaleServerOverride::informational_eth_getBalance(
                 strRevertReason = "EVM revert instruction without description message";
             Json::FastWriter fastWriter;
             string strJSON = fastWriter.write( _jsonCallArgs );
-            string strOut = cc::fatal( "Error message from eth_call():" ) + cc::error( " " ) +
-                                 cc::warn( strRevertReason ) +
-                                 cc::error( ", with call arguments: " ) + cc::j( strJSON ) +
-                                 cc::error( ", and using " ) + cc::info( "blockNumber" ) +
-                                 cc::error( "=" ) + cc::bright( blockNumber );
-            cerror << strOut;
-            cerror << DETAILED_ERROR;
+            cerror << "Error message from eth_call(): "
+                   << strRevertReason + ", with call arguments: " << strJSON
+                   << +", and using blockNumber" << blockNumber << DETAILED_ERROR;
             throw std::runtime_error( strRevertReason );
         }
 
         string strBallance = er.output.empty() ? "0x0" : dev::toJS( er.output );
         joResponse["result"] = strBallance;
+
     } catch ( const std::exception& ex ) {
-        const char* strError = ex.what();
-        if ( strError == nullptr || strError[0] == '\0' )
-            strError = "Error without description in informational version of \"eth_getBalance\"";
-        std::cout << ( cc::fatal( "ERROR:" ) +
-                       cc::error( " Got error in informational version of " ) +
-                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
-                       cc::error( strError ) + "\n" );
-        throw ex;
+        cerror << __FUNCTION__ << ex.what();
     } catch ( ... ) {
-        const char* strError = "Unknown error in informational version of \"eth_getBalance\"";
-        std::cout << ( cc::fatal( "ERROR:" ) +
-                       cc::error( " Got error in informational version of " ) +
-                       cc::info( "eth_getBalance" ) + cc::debug( " with description: " ) +
-                       cc::error( strError ) + "\n" );
-        throw std::runtime_error( strError );
+        cerror << __FUNCTION__ << "Unknown exception";
     }
 }
 
@@ -3210,7 +3085,7 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
             joError.SetObject();
             joError.AddMember( "code", -32602, joResponse.GetAllocator() );
             string errorMessage = string( "error in \"" ) + "setSchainExitTime" +
-                                       "\" rpc method, json entry \"params\" must be object";
+                                  "\" rpc method, json entry \"params\" must be object";
             rapidjson::Value v;
             v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
             joError.AddMember( "message", v, joResponse.GetAllocator() );
@@ -3222,7 +3097,7 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
                 joError.SetObject();
                 joError.AddMember( "code", -32602, joResponse.GetAllocator() );
                 string errorMessage = string( "error in \"" ) + "setSchainExitTime" +
-                                           "\" rpc method, json entry \"params\" must be object";
+                                      "\" rpc method, json entry \"params\" must be object";
                 rapidjson::Value v;
                 v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
                 joError.AddMember( "message", v, joResponse.GetAllocator() );
@@ -3250,14 +3125,9 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         bool isLocalAddress = skutils::is_local_private_network_address(
             strIP );  // NOTICE: supports both IPv4 and IPv6
         // print info about this method call into log output
-        clog( dev::VerbosityDebug, cc::warn( "ADMIN-CALL" ) )
-            << ( cc::debug( "Got " ) + cc::info( "setSchainExitTime" ) +
-                   cc::debug( " call with " ) + cc::notice( "finishTime" ) + cc::debug( "=" ) +
-                   cc::size10( finishTime ) + cc::debug( ", " ) + cc::notice( "origin" ) +
-                   cc::debug( "=" ) + cc::notice( strOrigin ) + cc::debug( ", " ) +
-                   cc::notice( "remote IP" ) + cc::debug( "=" ) + cc::notice( strIP ) +
-                   cc::debug( ", " ) + cc::notice( "isLocalAddress" ) + cc::debug( "=" ) +
-                   cc::yn( isLocalAddress ) );
+        cdebug << __FUNCTION__ << " call with finishTime =" << finishTime
+               << ", << origin =" << strOrigin << ", remote IP =" << strIP << ", "
+               << "isLocalAddress =" << isLocalAddress;
         // return call error if call from outside of local network
         if ( !isLocalAddress )
             throw std::runtime_error(
@@ -3277,32 +3147,24 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse.Parse( strResponse.data() );
     } catch ( const std::exception& ex ) {
-        if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError,
-                cc::debug( " during call from " ) + cc::u( strOrigin ) )
-                << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
-                       cc::error( " rpc method, exception " ) + cc::warn( ex.what() ) );
+        auto errMesssage = "setSchainExitTime rpc method, exception " + string( ex.what() );
+        cerror << errMesssage;
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-        string errorMessage =
-            string( "error in \"setSchainExitTime\" rpc method, exception: " ) + ex.what();
         rapidjson::Value v;
-        v.SetString( errorMessage.c_str(), errorMessage.size(), joResponse.GetAllocator() );
+        v.SetString( errMesssage.c_str(), errMesssage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
     } catch ( ... ) {
-        if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityError,
-                cc::debug( " during call from " ) + cc::u( strOrigin ) )
-                << ( " " + cc::error( "error in " ) + cc::warn( "setSchainExitTime" ) +
-                       cc::error( " rpc method, unknown exception " ) );
+        string errMesssage = "setSchainExitTime rpc method, unknown exception";
+        cerror << errMesssage;
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-        joError.AddMember( "message",
-            "error in \"setSchainExitTime\" rpc method, unknown exception",
-            joResponse.GetAllocator() );
+        rapidjson::Value v;
+        v.SetString( errMesssage.c_str(), errMesssage.size(), joResponse.GetAllocator() );
+        joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
     }
 }
@@ -3342,8 +3204,8 @@ void SkaleServerOverride::eth_getCode( const string& /*strOrigin*/,
     opts_.fn_eth_getCode_( joRequest, joResponse );
 }
 
-bool SkaleServerOverride::handleHttpSpecificRequest( const string& strOrigin,
-    e_server_mode_t esm, const string& strRequest, string& strResponse ) {
+bool SkaleServerOverride::handleHttpSpecificRequest(
+    const string& strOrigin, e_server_mode_t esm, const string& strRequest, string& strResponse ) {
     strResponse.clear();
     rapidjson::Document joRequest;
     joRequest.SetObject();
@@ -3385,8 +3247,8 @@ bool SkaleServerOverride::handleHttpSpecificRequest( const string& strOrigin,
     return true;
 }
 
-bool SkaleServerOverride::handleHttpSpecificRequest( const string& strOrigin,
-    e_server_mode_t esm, const json& joRequest, json& joResponse ) {
+bool SkaleServerOverride::handleHttpSpecificRequest(
+    const string& strOrigin, e_server_mode_t esm, const json& joRequest, json& joResponse ) {
     if ( esm == e_server_mode_t::esm_informational &&
          handleInformationalRequest( joRequest, joResponse ) )
         return true;
@@ -3407,16 +3269,14 @@ string SkaleServerOverride::implPreformatTrafficJsonMessage(
         return implPreformatTrafficJsonMessage( jo, isRequest );
     } catch ( ... ) {
     }
-    return cc::error( isRequest ? "bad JSON request" : "bad JSON response" ) + " " +
-           cc::warn( strJSON );
+    return ( isRequest ? "bad JSON request" : "bad JSON response" ) + string( " " ) + strJSON;
 }
 
 string SkaleServerOverride::implPreformatTrafficJsonMessage(
     const json& jo, bool isRequest ) const {
     json jo2 = jo;
-    SkaleServerOverride::stat_transformJsonForLogOutput( jo2, isRequest,
-        SkaleServerOverride::g_nMaxStringValueLengthForJsonLogs,
-        SkaleServerOverride::g_nMaxStringValueLengthForTransactionParams );
+    stat_transformJsonForLogOutput( jo2, isRequest, g_nMaxStringValueLengthForJsonLogs,
+        g_nMaxStringValueLengthForTransactionParams );
     return cc::j( jo2 );
 }
 
@@ -3456,8 +3316,8 @@ void SkaleServerOverride::stat_transformJsonForLogOutput( json& jo, bool isReque
     if ( ( !( nMaxStringValueLengthForTransactionParams == 0 ||
               nMaxStringValueLengthForTransactionParams == string::npos ) ) &&
          nCallIndent == 1 && isRequest && jo.count( "method" ) > 0 && jo["method"].is_string() &&
-         jo["method"].get< string >() == "eth_sendRawTransaction" &&
-         jo.count( "params" ) > 0 && jo["params"].is_array() ) {
+         jo["method"].get< string >() == "eth_sendRawTransaction" && jo.count( "params" ) > 0 &&
+         jo["params"].is_array() ) {
         bSkipParams = true;
         json jarrNewParams = json::array();
         for ( auto it : jo["params"].items() ) {
