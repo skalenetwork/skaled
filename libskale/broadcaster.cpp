@@ -116,11 +116,11 @@ void* ZmqBroadcaster::client_socket() const {
         int value = 1;
 
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE, &value, sizeof( value ) );
-        value = 300;
+        value = 15;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_IDLE, &value, sizeof( value ) );
         value = 10;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_CNT, &value, sizeof( value ) );
-        value = 300;
+        value = 15;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
         value = 16;
