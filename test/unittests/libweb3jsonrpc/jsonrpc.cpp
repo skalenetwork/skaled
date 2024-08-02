@@ -30,7 +30,6 @@
 #include <libethereum/ChainParams.h>
 #include <libethereum/ClientTest.h>
 #include <libethereum/SchainPatch.h>
-#include <libethereum/TransactionQueue.h>
 #include <libp2p/Network.h>
 #include <libskale/httpserveroverride.h>
 #include <libweb3jsonrpc/AccountHolder.h>
@@ -45,7 +44,6 @@
 #include <libweb3jsonrpc/Web3.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
-#include <boost/lexical_cast.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/process.hpp>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
@@ -58,6 +56,13 @@
 
 // This is defined by some weird windows header - workaround for now.
 #undef GetMessage
+
+#define CHECK(__EXPRESSION__)                                             \
+    if ( !( __EXPRESSION__ ) ) {                                                  \
+        auto __msg__ = string( "Check failed::" ) + #__EXPRESSION__ + " " + \
+                       string( __FILE__ ) + ":" + to_string( __LINE__ );        \
+        throw std::runtime_error( __msg__);                 \
+    }
 
 using namespace std;
 using namespace dev;
@@ -249,6 +254,10 @@ namespace {
         TestIpcServer &m_server;
     };
 
+
+
+
+
     struct JsonRpcFixture : public TestOutputHelperFixture {
 
 // chain params needs to be a field of JsonRPCFixture
@@ -323,9 +332,6 @@ namespace {
             chainParams.sChain.multiTransactionMode = _mtmEnabled;
             chainParams.nodeInfo.syncNode = _isSyncNode;
 
-            //        web3.reset( new WebThreeDirect(
-            //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
-            //            true ) );
 
             auto monitor = make_shared<InstanceMonitor>("test");
 
@@ -334,11 +340,6 @@ namespace {
                                              shared_ptr<GasPricer>(), NULL, monitor, tempDir.path(),
                                              WithExisting::Kill));
 
-            //        client.reset(
-            //            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr<
-            //            GasPricer >(),
-            //                tempDir.path(), "", WithExisting::Kill, TransactionQueue::Limits{100000,
-            //                1024} ) );
 
             client->setAuthor(coinbase.address());
 
@@ -397,11 +398,11 @@ namespace {
 
             sleep(1);
 
-            auto client = new jsonrpc::HttpClient("http://" + chainParams.nodeInfo.ip + ":" + std::to_string(
+            auto httpClient = new jsonrpc::HttpClient("http://" + chainParams.nodeInfo.ip + ":" + std::to_string(
                     serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_));
-            client->SetTimeout(1000000000);
+            httpClient->SetTimeout(1000000000);
 
-            rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*client));
+            rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
 
 
             BOOST_TEST_MESSAGE("Constructed JsonRpcFixture");
@@ -527,10 +528,9 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
     }
 
 
-
     namespace bp = boost::process;
 
-    void printOutputInALoop(bp::ipstream* _stream) {
+    void printOutputInALoop(bp::ipstream *_stream) {
         BOOST_CHECK_NE(_stream, nullptr);
         string line;
         while (_stream && std::getline(*_stream, line) && !line.empty()) {
@@ -538,45 +538,119 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         }
     }
 
+
+    class SkaledFixture : public TestOutputHelperFixture {
+
+        static string readFile(const std::string &_path) {
+
+            CHECK(boost::filesystem::exists(_path));
+
+            boost::filesystem::ifstream stream(_path, std::ios::in | std::ios::binary);
+
+            CHECK(stream.is_open());
+
+            string contents((std::istreambuf_iterator<char>(stream)),
+                            std::istreambuf_iterator<char>());
+
+            return contents;
+        }
+
+    public:
+
+        SkaledFixture(const std::string &_configPath) {
+
+            auto config = readFile(_configPath);
+
+            Json::Value ret;
+            Json::Reader().parse(config, ret);
+
+            string owner = ret["skaleConfig"]["sChain"]["schainOwner"].asString();
+            auto ip = ret["skaleConfig"]["sChain"]["nodes"][0]["ip"].asString();
+            CHECK(!ip.empty())
+            auto basePort = ret["skaleConfig"]["sChain"]["nodes"][0]["basePort"].asInt();
+            CHECK(basePort > 0)
+
+            auto coinbaseTest = dev::KeyPair(
+                    dev::Secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9"));
+            auto account3Test = dev::KeyPair(
+                    dev::Secret("0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC"));
+
+            auto skaledEndpoint = "http://" + ip + ":" + std::to_string(basePort);
+
+            cout << "Skaled Endpoint: " << skaledEndpoint << std::endl;
+
+            auto httpClient = new jsonrpc::HttpClient(skaledEndpoint);
+            httpClient->SetTimeout(1000000000);
+
+            rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
+
+            string command = "/usr/bin/bash";
+
+            vector<string> args = {"-c",
+                                   "cd ../skaled && ./skaled --config ../../test/historicstate/configs/basic_config.json"};
+
+
+
+
+            // Start the child process
+            skaledProcess = std::make_unique<bp::child>(
+                    command, bp::args(args), bp::std_out > outStream, bp::std_err > errStream);
+
+
+            std::cout << "PID: " << skaledProcess->id() << std::endl;
+
+            // Print process output in threads
+            outPrintThread = make_unique<boost::thread>(boost::bind(printOutputInALoop, &outStream));
+            errPrintThread = make_unique<boost::thread>(boost::bind(printOutputInALoop, &errStream));
+
+
+            BOOST_TEST_MESSAGE("Constructed SkaledFixture");
+
+        }
+
+        ~SkaledFixture() override {
+            BOOST_TEST_MESSAGE("Destroying SkaledFixture");
+            skaledProcess->terminate();
+            outPrintThread->join();
+            errPrintThread->join();
+            BOOST_TEST_MESSAGE("Destructed SkaledFixture");
+        }
+
+        dev::KeyPair coinbase{KeyPair::create()};
+        dev::KeyPair account2{KeyPair::create()};
+        dev::KeyPair account3{KeyPair::create()};
+        unique_ptr<WebThreeStubClient> rpcClient;
+        unique_ptr<bp::child> skaledProcess;
+        unique_ptr<boost::thread> outPrintThread;
+        unique_ptr<boost::thread> errPrintThread;
+        // Create a pipe to capture the output
+        bp::ipstream outStream;
+        bp::ipstream errStream;
+
+    };
+
+
     BOOST_AUTO_TEST_CASE(jsonrpc_number_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
+        string configFileName = "../../test/historicstate/configs/basic_config.json";
 
-        string command = "/usr/bin/bash";
+        SkaledFixture fixture(configFileName);
 
-        vector<string> args = {"-c", "cd ../skaled && ./skaled --config ../../test/historicstate/configs/basic_config.json"};
-
-        // Create a pipe to capture the output
-        bp::ipstream pipe_stream;
-        bp::ipstream error_stream;
-
-
-        // Start the child process
-        bp::child c(command, bp::args(args), bp::std_out > pipe_stream, bp::std_err > error_stream);
-
-        // Get the PID of the child process
-        pid_t pid = c.id();
-        std::cout << "PID: " << pid << std::endl;
-
-
-
-        // Create a thread to run the process
-
-
-        boost::thread outPrintThread(boost::bind(printOutputInALoop, &pipe_stream));
-        boost::thread errPrintThread(boost::bind(printOutputInALoop,  &error_stream));
 
         // Wait for the process to finish
-        c.wait();
 
+        u256 blockNumber = 0;
 
-        JsonRpcFixture fixture;
-        auto number = jsToU256(fixture.rpcClient->eth_blockNumber());
-        BOOST_CHECK_EQUAL(number, fixture.client->number());
-        dev::eth::mine(*(fixture.client), 1);
-        auto numberAfter = jsToU256(fixture.rpcClient->eth_blockNumber());
-        BOOST_CHECK_GE(numberAfter, number + 1);
-        BOOST_CHECK_EQUAL(numberAfter, fixture.client->number());
+        while (blockNumber == 0) {
+            try {
+                blockNumber = jsToU256(fixture.rpcClient->eth_blockNumber());
+                cout << "Got block number " << blockNumber << std::endl;
+            } catch (std::exception & e) {
+                cerr << e.what();
+                sleep(1);
+            };
+        }
     }
 
 
@@ -1873,10 +1947,10 @@ then compile!
         string txHash;
         BlockHeader badInfo, goodInfo;
         for (;;) {
-            string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
-            u256 gasEstimate = jsToU256(gasEstimateStr);
+            string gasEstStr = fixture.rpcClient->eth_estimateGas(transact);
+            u256 gasEst = jsToU256(gasEstStr);
             // old
-            if (gasEstimate == u256(21000 + 1024 * 68)) {
+            if (gasEst == u256(21000 + 1024 * 68)) {
                 try {
                     fixture.rpcClient->eth_sendTransaction(transact);
                     BOOST_REQUIRE(false);
@@ -1888,7 +1962,7 @@ then compile!
             }
                 // new
             else {
-                BOOST_REQUIRE_EQUAL(gasEstimate, correctEstimate);
+                BOOST_REQUIRE_EQUAL(gasEst, correctEstimate);
                 txHash = fixture.rpcClient->eth_sendTransaction(transact);
                 goodInfo = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock));
                 break;
