@@ -255,9 +255,6 @@ namespace {
     };
 
 
-
-
-
     struct JsonRpcFixture : public TestOutputHelperFixture {
 
 // chain params needs to be a field of JsonRPCFixture
@@ -575,46 +572,36 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
             auto account3Test = dev::KeyPair(
                     dev::Secret("0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC"));
 
-            auto skaledEndpoint = "http://" + ip + ":" + std::to_string(basePort);
+            skaledEndpoint = "http://" + ip + ":" + std::to_string(basePort + 3);
 
             cout << "Skaled Endpoint: " << skaledEndpoint << std::endl;
 
             auto httpClient = new jsonrpc::HttpClient(skaledEndpoint);
-            httpClient->SetTimeout(1000000000);
-
+            httpClient->SetTimeout(10000);
             rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
 
-            string command = "/usr/bin/bash";
+            u256 blockNumber = 0;
 
-            vector<string> args = {"-c",
-                                   "cd ../skaled && ./skaled --config ../../test/historicstate/configs/basic_config.json"};
+            cout << "Waiting for skaled ...";
 
+            while (blockNumber == 0) {
+                try {
+                    blockNumber = jsToU256(rpcClient->eth_blockNumber());
+                    cout << "Got block number " << blockNumber << std::endl;
+                } catch (std::exception &e) {
+                    cerr << e.what() << std::endl;
+                    sleep(1);
+                };
+            }
 
-
-
-            // Start the child process
-            skaledProcess = std::make_unique<bp::child>(
-                    command, bp::args(args), bp::std_out > outStream, bp::std_err > errStream);
-
-
-            std::cout << "PID: " << skaledProcess->id() << std::endl;
-
-            // Print process output in threads
-            outPrintThread = make_unique<boost::thread>(boost::bind(printOutputInALoop, &outStream));
-            errPrintThread = make_unique<boost::thread>(boost::bind(printOutputInALoop, &errStream));
-
-
-            BOOST_TEST_MESSAGE("Constructed SkaledFixture");
+            cout << "Starting test" << std::endl;
 
         }
 
         ~SkaledFixture() override {
-            BOOST_TEST_MESSAGE("Destroying SkaledFixture");
-            skaledProcess->terminate();
-            outPrintThread->join();
-            errPrintThread->join();
             BOOST_TEST_MESSAGE("Destructed SkaledFixture");
         }
+
 
         dev::KeyPair coinbase{KeyPair::create()};
         dev::KeyPair account2{KeyPair::create()};
@@ -626,8 +613,83 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         // Create a pipe to capture the output
         bp::ipstream outStream;
         bp::ipstream errStream;
+        string skaledEndpoint;
 
     };
+
+    // Define a function that will be called by each thread
+    void blockPerformance(string &_skaledEndpoint, uint64_t _iterations) {
+        auto httpClient = new jsonrpc::HttpClient(_skaledEndpoint);
+        httpClient->SetTimeout(5000);
+        auto rpcC = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
+        for (uint64_t i = 0; i < _iterations; ++i) {
+            try {
+                auto bn = jsToU256(rpcC->eth_blockNumber());
+                CHECK(bn > 0);
+            } catch (std::exception &e) {
+                cerr << e.what() << endl;
+            }
+        }
+    }
+
+    // Callback function to handle data received from the server
+    size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+        ((std::string*)userp)->append((char*)contents, size * nmemb);
+        return size * nmemb;
+    }
+
+    void blockPerformanceCurl(string &_skaledEndpoint, uint64_t _iterations) {
+
+
+        const char *json_rpc_request = R"({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1})";
+
+
+        CURL *curl;
+        CURLcode res;
+        std::string readBuffer;
+
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        curl = curl_easy_init();
+        CHECK(curl);
+        curl_easy_setopt(curl, CURLOPT_URL, _skaledEndpoint.c_str());
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_rpc_request);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(json_rpc_request));
+        // Set up callback to capture response
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+        // Set HTTP headers
+        struct curl_slist *headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        for (uint64_t i = 0; i < _iterations; ++i) {
+
+            /* Perform the first request */
+            res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            } else {
+                // Parse JSON response
+                Json::CharReaderBuilder readerBuilder;
+                Json::Value jsonData;
+                std::string errs;
+
+                std::istringstream s(readBuffer);
+                if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
+                    std::string blockNumberHex = jsonData["result"].asString();
+                    unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
+                    CHECK(blockNumber > 0)
+                } else {
+                    std::cerr << "Failed to parse JSON response: " << errs << std::endl;
+                }
+            }
+        }
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
 
 
     BOOST_AUTO_TEST_CASE(jsonrpc_number_perf) {
@@ -637,20 +699,19 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
 
         SkaledFixture fixture(configFileName);
 
+        // Vector to hold the thread objects
+        vector<shared_ptr<thread>> threads;
 
-        // Wait for the process to finish
-
-        u256 blockNumber = 0;
-
-        while (blockNumber == 0) {
-            try {
-                blockNumber = jsToU256(fixture.rpcClient->eth_blockNumber());
-                cout << "Got block number " << blockNumber << std::endl;
-            } catch (std::exception & e) {
-                cerr << e.what();
-                sleep(1);
-            };
+        // Launch 100 threads
+        for (int i = 0; i < 100; ++i) {
+            auto t = make_shared<thread>([&]() { blockPerformanceCurl(fixture.skaledEndpoint, 10000); });
+            threads.push_back(t);
         }
+
+        for (auto &&thread: threads) {
+            thread->join();
+        }
+
     }
 
 
