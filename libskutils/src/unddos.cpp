@@ -38,8 +38,8 @@ void origin_entry_setting::load_friendly_for_any_origin() {
     origin_wildcards_.push_back( "*" );
     max_calls_per_second_ = 500;
     max_calls_per_minute_ = 15000;
-    ban_peak_ = duration( 15 );
-    ban_lengthy_ = duration( 120 );
+    m_banPerSecDuration = duration(15 );
+    m_banPerMinDuration = duration(120 );
     max_ws_conn_ = 50;
     load_recommended_custom_methods_as_multiplier_of_default();
 }
@@ -49,8 +49,8 @@ void origin_entry_setting::load_reasonable_for_any_origin() {
     origin_wildcards_.push_back( "*" );
     max_calls_per_second_ = 100;
     max_calls_per_minute_ = 5000;
-    ban_peak_ = duration( 15 );
-    ban_lengthy_ = duration( 120 );
+    m_banPerSecDuration = duration(15 );
+    m_banPerMinDuration = duration(120 );
     max_ws_conn_ = 10;
     load_recommended_custom_methods_as_multiplier_of_default();
 }
@@ -60,8 +60,8 @@ void origin_entry_setting::load_unlim_for_any_origin() {
     origin_wildcards_.push_back( "*" );
     max_calls_per_second_ = std::numeric_limits< size_t >::max();
     max_calls_per_minute_ = std::numeric_limits< size_t >::max();
-    ban_peak_ = duration( 0 );
-    ban_lengthy_ = duration( 0 );
+    m_banPerSecDuration = duration(0 );
+    m_banPerMinDuration = duration(0 );
     max_ws_conn_ = std::numeric_limits< size_t >::max();
     load_recommended_custom_methods_as_multiplier_of_default();
 }
@@ -72,8 +72,8 @@ void origin_entry_setting::load_unlim_for_localhost_only() {
     origin_wildcards_.push_back( "::1" );
     max_calls_per_second_ = std::numeric_limits< size_t >::max();
     max_calls_per_minute_ = std::numeric_limits< size_t >::max();
-    ban_peak_ = duration( 0 );
-    ban_lengthy_ = duration( 0 );
+    m_banPerSecDuration = duration(0 );
+    m_banPerMinDuration = duration(0 );
     max_ws_conn_ = std::numeric_limits< size_t >::max();
     load_recommended_custom_methods_as_multiplier_of_default();
 }
@@ -110,8 +110,8 @@ void origin_entry_setting::clear() {
     origin_wildcards_.clear();
     max_calls_per_second_ = 0;
     max_calls_per_minute_ = 0;
-    ban_peak_ = duration( 0 );
-    ban_lengthy_ = duration( 0 );
+    m_banPerSecDuration = duration(0 );
+    m_banPerMinDuration = duration(0 );
     max_ws_conn_ = 0;
     map_custom_method_settings_.clear();
 }
@@ -123,8 +123,8 @@ origin_entry_setting& origin_entry_setting::assign( const origin_entry_setting& 
     origin_wildcards_ = other.origin_wildcards_;
     max_calls_per_second_ = other.max_calls_per_second_;
     max_calls_per_minute_ = other.max_calls_per_minute_;
-    ban_peak_ = other.ban_peak_;
-    ban_lengthy_ = other.ban_lengthy_;
+    m_banPerSecDuration = other.m_banPerSecDuration;
+    m_banPerMinDuration = other.m_banPerMinDuration;
     max_ws_conn_ = other.max_ws_conn_;
     map_custom_method_settings_ = other.map_custom_method_settings_;
     return ( *this );
@@ -137,8 +137,8 @@ origin_entry_setting& origin_entry_setting::merge( const origin_entry_setting& o
         return ( *this );
     max_calls_per_second_ = std::min( max_calls_per_second_, other.max_calls_per_second_ );
     max_calls_per_minute_ = std::min( max_calls_per_minute_, other.max_calls_per_minute_ );
-    ban_peak_ = std::max( ban_peak_, other.ban_peak_ );
-    ban_lengthy_ = std::max( ban_lengthy_, other.ban_lengthy_ );
+    m_banPerSecDuration = std::max(m_banPerSecDuration, other.m_banPerSecDuration );
+    m_banPerMinDuration = std::max(m_banPerMinDuration, other.m_banPerMinDuration );
     max_ws_conn_ = std::min( max_ws_conn_, other.max_ws_conn_ );
     if ( !other.map_custom_method_settings_.empty() ) {
         nlohmann::json joCMS = nlohmann::json::object();
@@ -178,9 +178,9 @@ void origin_entry_setting::fromJSON( const nlohmann::json& jo ) {
     if ( jo.find( "max_calls_per_minute" ) != jo.end() )
         max_calls_per_minute_ = jo["max_calls_per_minute"].get< size_t >();
     if ( jo.find( "ban_peak" ) != jo.end() )
-        ban_peak_ = jo["ban_peak"].get< size_t >();
+        m_banPerSecDuration = jo["ban_peak"].get< size_t >();
     if ( jo.find( "ban_lengthy" ) != jo.end() )
-        ban_lengthy_ = jo["ban_lengthy"].get< size_t >();
+        m_banPerMinDuration = jo["ban_lengthy"].get< size_t >();
     if ( jo.find( "max_ws_conn" ) != jo.end() )
         max_ws_conn_ = jo["max_ws_conn"].get< size_t >();
     if ( jo.find( "custom_method_settings" ) != jo.end() ) {
@@ -205,8 +205,8 @@ void origin_entry_setting::toJSON( nlohmann::json& jo ) const {
     jo["origin"] = jarrWildcards;
     jo["max_calls_per_second"] = max_calls_per_second_;
     jo["max_calls_per_minute"] = max_calls_per_minute_;
-    jo["ban_peak"] = ban_peak_;
-    jo["ban_lengthy"] = ban_lengthy_;
+    jo["ban_peak"] = m_banPerSecDuration;
+    jo["ban_lengthy"] = m_banPerMinDuration;
     jo["max_ws_conn"] = max_ws_conn_;
     if ( !map_custom_method_settings_.empty() ) {
         nlohmann::json joCMS = nlohmann::json::object();
@@ -262,8 +262,6 @@ size_t origin_entry_setting::max_calls_per_minute( const char* strMethod ) const
     return cnt;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 settings::settings() {
     clear();
@@ -288,45 +286,45 @@ settings& settings::operator=( const settings& other ) {
 }
 
 bool settings::empty() const {
-    if ( !enabled_ )
+    if ( !m_enabled )
         return true;
-    if ( !origins_.empty() )
+    if ( !m_origins.empty() )
         return false;
-    if ( !global_limit_.empty() )
+    if ( !m_globalLimit.empty() )
         return false;
     return true;
 }
 
 void settings::clear() {
-    enabled_ = true;
-    origins_.clear();
-    global_limit_.clear();
+    m_enabled = true;
+    m_origins.clear();
+    m_globalLimit.clear();
 }
 
 settings& settings::assign( const settings& other ) {
     if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
         return ( *this );
     clear();
-    enabled_ = other.enabled_;
-    origins_ = other.origins_;
-    global_limit_ = other.global_limit_;
+    m_enabled = other.m_enabled;
+    m_origins = other.m_origins;
+    m_globalLimit = other.m_globalLimit;
     return ( *this );
 }
 
 settings& settings::merge( const settings& other ) {
     if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
         return ( *this );
-    for ( const origin_entry_setting& oe : other.origins_ )
+    for ( const origin_entry_setting& oe : other.m_origins )
         merge( oe );
-    global_limit_.merge( other.global_limit_ );
+    m_globalLimit.merge(other.m_globalLimit );
     return ( *this );
 }
 settings& settings::merge( const origin_entry_setting& oe ) {
     size_t i = indexOfOrigin( oe );
     if ( i == std::string::npos )
-        origins_.push_back( oe );
+        m_origins.push_back(oe );
     else
-        origins_[i].merge( oe );
+        m_origins[i].merge(oe );
     return ( *this );
 }
 
@@ -341,10 +339,10 @@ size_t settings::indexOfOrigin( const origin_entry_setting& oe, size_t idxStart 
 size_t settings::indexOfOrigin( const char* origin_wildcard, size_t idxStart ) {
     if ( origin_wildcard == nullptr || ( *origin_wildcard ) == '\0' )
         return std::string::npos;
-    size_t cnt = origins_.size();
+    size_t cnt = m_origins.size();
     size_t i = ( idxStart == std::string::npos ) ? 0 : ( idxStart + 1 );
     for ( ; i < cnt; ++i ) {
-        const origin_entry_setting& oe = origins_[i];
+        const origin_entry_setting& oe = m_origins[i];
         for ( const std::string& wildcard : oe.origin_wildcards_ ) {
             if ( wildcard == origin_wildcard )
                 return i;
@@ -366,7 +364,7 @@ void settings::fromJSON( const nlohmann::json& jo ) {
             for ( const nlohmann::json& joOrigin : joOrigins ) {
                 origin_entry_setting oe;
                 oe.fromJSON( joOrigin );
-                origins_.push_back( oe );
+                m_origins.push_back(oe );
             }
         }
     }
@@ -374,29 +372,29 @@ void settings::fromJSON( const nlohmann::json& jo ) {
         const nlohmann::json& joGlobalLimit = jo["global"];
         origin_entry_setting oe;
         oe.fromJSON( joGlobalLimit );
-        global_limit_ = oe;
+        m_globalLimit = oe;
     } else
-        global_limit_.load_unlim_for_any_origin();
+        m_globalLimit.load_unlim_for_any_origin();
     bool isEnabled = true;
     if ( jo.find( "enabled" ) != jo.end() ) {
         const nlohmann::json& joEnabled = jo["enabled"];
         if ( joEnabled.is_boolean() )
             isEnabled = joEnabled.get< bool >();
     }
-    enabled_ = isEnabled;
+    m_enabled = isEnabled;
 }
 
 void settings::toJSON( nlohmann::json& jo ) const {
     jo = nlohmann::json::object();
     nlohmann::json joOrigins = nlohmann::json::array();
-    for ( const origin_entry_setting& oe : origins_ ) {
+    for ( const origin_entry_setting& oe : m_origins ) {
         nlohmann::json joOrigin = nlohmann::json::object();
         oe.toJSON( joOrigin );
         joOrigins.push_back( joOrigin );
     }
     nlohmann::json joGlobalLimit = nlohmann::json::object();
-    global_limit_.toJSON( joGlobalLimit );
-    jo["enabled"] = enabled_;
+    m_globalLimit.toJSON(joGlobalLimit );
+    jo["enabled"] = m_enabled;
     jo["origins"] = joOrigins;
     jo["global"] = joGlobalLimit;
 }
@@ -404,10 +402,10 @@ void settings::toJSON( nlohmann::json& jo ) const {
 size_t settings::find_origin_entry_setting_match( const char* origin, size_t idxStart ) const {
     if ( origin == nullptr || ( *origin ) == '\0' )
         return std::string::npos;
-    size_t cnt = origins_.size();
+    size_t cnt = m_origins.size();
     size_t i = ( idxStart == std::string::npos ) ? 0 : ( idxStart + 1 );
     for ( ; i < cnt; ++i ) {
-        const origin_entry_setting& oe = origins_[i];
+        const origin_entry_setting& oe = m_origins[i];
         if ( oe.match_origin( origin ) )
             return i;
     }
@@ -417,20 +415,20 @@ size_t settings::find_origin_entry_setting_match( const char* origin, size_t idx
 origin_entry_setting& settings::find_origin_entry_setting( const char* origin ) {
     size_t i = find_origin_entry_setting_match( origin );
     if ( i != std::string::npos )
-        return origins_[i];
+        return m_origins[i];
     return auto_append_any_origin_rule();
 }
 
 origin_entry_setting& settings::auto_append_any_origin_rule() {
-    if ( !origins_.empty() ) {
+    if ( !m_origins.empty() ) {
         size_t i = find_origin_entry_setting_match( "*" );
         if ( i != std::string::npos )
-            return origins_[i];
+            return m_origins[i];
     }
     origin_entry_setting oe;
     oe.load_defaults_for_any_origin();
-    origins_.push_back( oe );
-    return origins_[origins_.size() - 1];
+    m_origins.push_back(oe );
+    return m_origins[m_origins.size() - 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -483,15 +481,13 @@ int time_entry::compare( const time_entry& other ) const {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 tracked_origin::tracked_origin( const char* origin, time_tick_mark ttm )
-    : origin_( ( origin != nullptr && origin[0] != '\0' ) ? origin : "" ) {
-    if ( ttm != time_tick_mark( 0 ) )
-        time_entries_.push_back( time_entry( ttm ) );
+    : m_origin((origin != nullptr && origin[0] != '\0' ) ? origin : "" ) {
+    recordUse(ttm);
 }
 
 tracked_origin::tracked_origin( const std::string& origin, time_tick_mark ttm )
-    : origin_( origin ) {
-    if ( ttm != time_tick_mark( 0 ) )
-        time_entries_.push_back( time_entry( ttm ) );
+    : m_origin(origin ) {
+    recordUse(ttm);
 }
 
 tracked_origin::tracked_origin( const tracked_origin& other ) {
@@ -512,283 +508,184 @@ tracked_origin& tracked_origin::operator=( const tracked_origin& other ) {
 }
 
 bool tracked_origin::empty() const {
-    if ( !origin_.empty() )
+    if ( !m_origin.empty() )
         return false;
-    if ( !time_entries_.empty() )
+    if ( !(m_currentSecondUseCounter == 0 && m_currentMinuteUseCounter == 0) )
         return false;
     return true;
 }
 
 void tracked_origin::clear() {
-    origin_.clear();
-    time_entries_.clear();
+    m_origin.clear();
+    m_currentSecondUseCounter = 0;
+    m_currentMinuteUseCounter = 0;
     clear_ban();
 }
 
 tracked_origin& tracked_origin::assign( const tracked_origin& other ) {
     clear();
-    origin_ = other.origin_;
-    time_entries_ = other.time_entries_;
-    ban_until_ = other.ban_until_;
+    m_origin = other.m_origin;
+    m_currentSecondUseCounter.store(other.m_currentSecondUseCounter);
+    m_currentMinuteUseCounter.store(other.m_currentMinuteUseCounter);
+    m_banUntil = other.m_banUntil;
     return ( *this );
 }
 
 int tracked_origin::compare( const tracked_origin& other ) const {
-    int n = origin_.compare( other.origin_ );
+    int n = m_origin.compare(other.m_origin );
     return n;
 }
 int tracked_origin::compare( const char* origin ) const {
-    int n = origin_.compare( origin ? origin : "" );
+    int n = m_origin.compare(origin ? origin : "" );
     return n;
 }
 int tracked_origin::compare( const std::string& origin ) const {
-    int n = origin_.compare( origin );
+    int n = m_origin.compare(origin );
     return n;
 }
 
-size_t tracked_origin::unload_old_data_by_time_to_past(
-    time_tick_mark ttmNow, duration durationToPast ) {
-    if ( durationToPast == duration( 0 ) )
-        return 0;
-    adjust_now_tick_mark( ttmNow );
-    time_tick_mark ttmUntil = ttmNow - durationToPast;
-    size_t cntRemoved = 0;
-    adjust_now_tick_mark( ttmNow );
-    while ( !time_entries_.empty() ) {
-        const time_entry& te = time_entries_.front();
-        if ( te.ttm_ < ttmUntil ) {
-            time_entries_.erase( time_entries_.begin() );  // time_entries_.pop_front();
-            ++cntRemoved;
-        } else
-            break;
-    }
-    return cntRemoved;
-}
-
-size_t tracked_origin::unload_old_data_by_count( size_t cntEntriesMax ) {
-    size_t cntRemoved = 0;
-    while ( time_entries_.size() > cntEntriesMax ) {
-        time_entries_.erase( time_entries_.begin() );  // time_entries_.pop_front();
-        ++cntRemoved;
-    }
-    return cntRemoved;
-}
-
-size_t tracked_origin::count_to_past( time_tick_mark ttmNow, duration durationToPast,
-    size_t cntOptimizedMaxSteps, size_t cntTargetUnDDoS ) const {
-    // if ( durationToPast == duration( 0 ) )
-    //    return 0;
-    if ( cntOptimizedMaxSteps == 0 )
-        return 0;
-    adjust_now_tick_mark( ttmNow );
-    time_tick_mark ttmUntil = ttmNow - durationToPast;
-    size_t cnt = 0, idxStep;
-    bool bNeedReScaling = false;
-    time_tick_mark ttRescaling = ttmUntil;
-    time_entries_t::const_reverse_iterator itWalk = time_entries_.crbegin(),
-                                           itEnd = time_entries_.crend();
-    for ( idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
-        const time_entry& te = ( *itWalk );
-        if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow ) {
-            ++cnt;
-            ttRescaling = te.ttm_ - ttmUntil;
-        }
-        if ( cntOptimizedMaxSteps != 0 && cntOptimizedMaxSteps != size_t( -1 ) &&
-             idxStep >= cntOptimizedMaxSteps ) {
-            bNeedReScaling = true;
-            break;
-        }
-    }
-    if ( bNeedReScaling && cnt > 0 ) {
-        bool isNeedRescan = false;
-        if ( ttRescaling > 0 ) {
-            cnt *= durationToPast;
-            cnt /= ttRescaling;
-            if ( cntTargetUnDDoS != 0 && cntTargetUnDDoS != size_t( -1 ) && cnt >= cntTargetUnDDoS )
-                isNeedRescan = true;
-        } else
-            isNeedRescan = true;
-        if ( isNeedRescan ) {
-            // need exact full result
-            cnt = 0;
-            time_entries_.crbegin();
-            itEnd = time_entries_.crend();
-            for ( idxStep = 0; itWalk != itEnd; ++itWalk, ++idxStep ) {
-                const time_entry& te = ( *itWalk );
-                if ( ttmUntil <= te.ttm_ && te.ttm_ <= ttmNow )
-                    ++cnt;
-            }
-        }
-    }
-    return cnt;
-}
-
 bool tracked_origin::clear_ban() {
-    if ( ban_until_ == time_tick_mark( 0 ) )
+    if (m_banUntil == time_tick_mark(0 ) )
         return false;
-    ban_until_ = time_tick_mark( 0 );
+    m_banUntil = time_tick_mark(0 );
     return true;  // was cleared
 }
 
 bool tracked_origin::check_ban( time_tick_mark ttmNow, bool isAutoClear ) {
-    if ( ban_until_ == time_tick_mark( 0 ) )
+    if (m_banUntil == time_tick_mark(0 ) )
         return false;
     adjust_now_tick_mark( ttmNow );
-    if ( ttmNow <= ban_until_ )
+    if (ttmNow <= m_banUntil )
         return true;
     if ( isAutoClear )
         clear_ban();
     return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void tracked_origin::recordUse( time_tick_mark _useTimeSec) {
+    static constexpr uint64_t SECONDS_IN_MINUTE = 60;
+    static constexpr uint64_t SECONDS_IN_HOUR = 60 * 60;
+
+    auto minute = _useTimeSec / SECONDS_IN_MINUTE;
+    auto hour = _useTimeSec / SECONDS_IN_MINUTE;
+
+    if (minute > m_currentMinute) {
+        // next minute arrived. Reset use counter
+        m_currentMinuteUseCounter = 0;
+        m_currentMinute = minute;
+    }
+
+    if (hour > m_currentSecond) {
+        // next hour arrived. Reset use counter
+        m_currentSecondUseCounter = 0;
+        m_currentSecond = hour;
+    }
+
+    m_currentSecondUseCounter++;
+    m_currentSecondUseCounter++;
+
+}
 
 algorithm::algorithm() {}
 
 algorithm::algorithm( const settings& st ) {
-    settings_ = st;
+    m_settings = st;
 }
 
 algorithm::~algorithm() {}
 
 algorithm& algorithm::operator=( const settings& st ) {
-    lock_type lock( mtx_ );
-    settings_ = st;
+    lock_type lock(x_mtx );
+    m_settings = st;
     return ( *this );
 }
 
-size_t algorithm::unload_old_data_by_time_to_past(
-    time_tick_mark ttmNow, duration durationToPast ) {
-    if ( !settings_.enabled_ )
-        return 0;
-    if ( durationToPast == duration( 0 ) )
-        return 0;
-    adjust_now_tick_mark( ttmNow );
-    lock_type lock( mtx_ );
-    size_t cnt = 0;
-    std::set< std::string > setOriginsTorRemove;
-    tracked_origins_t::iterator itWalk = tracked_origins_.begin(), itEnd = tracked_origins_.end();
-    for ( ; itWalk != itEnd; ++itWalk ) {
-        tracked_origin& to = const_cast< tracked_origin& >( *itWalk );
-        size_t cntWalk = to.unload_old_data_by_time_to_past( ttmNow, durationToPast );
-        cnt += cntWalk;
-        if ( to.time_entries_.empty() ) {
-            setOriginsTorRemove.insert( to.origin_ );  // TO-FIX: do not unload banned
-        }
-    }
-    for ( const std::string& origin : setOriginsTorRemove )
-        tracked_origins_.erase( origin );
-    //
-    tracked_global_.unload_old_data_by_time_to_past( ttmNow, durationToPast );
-    //
-    return cnt;
-}
-
 e_high_load_detection_result_t algorithm::register_call_from_origin(
-    const char* origin, const char* strMethod, time_tick_mark ttmNow, duration durationToPast ) {
-    if ( !settings_.enabled_ )
+        const char* _origin, const char* _strMethod, time_tick_mark _callTime, duration _durationToPast ) {
+    if ( !m_settings.m_enabled )
         return e_high_load_detection_result_t::ehldr_no_error;
-    if ( origin == nullptr || origin[0] == '\0' )
+    if (_origin == nullptr || _origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
-    adjust_now_tick_mark( ttmNow );
-    lock_type lock( mtx_ );
+    adjust_now_tick_mark(_callTime );
+    lock_type lock(x_mtx );
     //
-    tracked_global_.time_entries_.push_back( time_entry( ttmNow ) );
-    if ( tracked_global_.check_ban( ttmNow ) )
-        return e_high_load_detection_result_t::ehldr_ban;  // still banned
-    //
-    unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
-    tracked_origins_t::iterator itFind = tracked_origins_.find( origin ),
+    m_globalOrigin.recordUse(time_entry(_callTime ) );
+    if ( m_globalOrigin.check_ban(_callTime ) )
+        return e_high_load_detection_result_t::ehldr_already_banned;  // still banned
+
+    tracked_origins_t::iterator itFind = tracked_origins_.find(_origin ),
                                 itEnd = tracked_origins_.end();
     if ( itFind == itEnd ) {
-        tracked_origin to( origin, ttmNow );
+        tracked_origin to(_origin, _callTime );
         tracked_origins_.insert( to );
         return e_high_load_detection_result_t::ehldr_no_error;
     }
     // return detect_high_load( origin.ttmNow, durationToPast )
     tracked_origin& to = const_cast< tracked_origin& >( *itFind );
-    to.time_entries_.push_back( time_entry( ttmNow ) );
-    if ( to.check_ban( ttmNow ) )
-        return e_high_load_detection_result_t::ehldr_ban;  // still banned
-    const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
-    // const size_t cntUnloaded = to.unload_old_data_by_count( oe.max_calls_per_minute( strMethod )
-    // ); if ( cntUnloaded > oe.max_calls_per_minute_ ) {
-    //    to.ban_until_ = ttmNow + oe.ban_lengthy_;
-    //    return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per minute
-    //}
-    size_t nMaxCallsPerTimeUnit = oe.max_calls_per_minute( strMethod );
-    if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast = to.count_to_past(
-            ttmNow, durationToPast, cntOptimizedMaxSteps4cm_, nMaxCallsPerTimeUnit );
-        if ( cntPast > nMaxCallsPerTimeUnit ) {
-            to.ban_until_ = ttmNow + oe.ban_lengthy_;
-            return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per
-                                                                   // second
+    to.recordUse( time_entry(_callTime ) );
+    if ( to.check_ban(_callTime ) )
+        return e_high_load_detection_result_t::ehldr_already_banned;  // still banned
+    const origin_entry_setting& oe = m_settings.find_origin_entry_setting(_origin );
+    auto maxCallsPerMinute = oe.max_calls_per_minute(_strMethod );
+    if (maxCallsPerMinute > 0 ) {
+        if (to.m_currentMinuteUseCounter > maxCallsPerMinute ) {
+            to.m_banUntil = _callTime + oe.m_banPerMinDuration;
+            return e_high_load_detection_result_t::ehldr_detected_ban_per_min;  // ban by too high load per min
         }
     }
-    nMaxCallsPerTimeUnit = oe.max_calls_per_second( strMethod );
-    if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast =
-            to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_, nMaxCallsPerTimeUnit );
-        if ( cntPast > nMaxCallsPerTimeUnit ) {
-            to.ban_until_ = ttmNow + oe.ban_peak_;
-            return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+    auto maxCallsPerSecond = oe.max_calls_per_second(_strMethod );
+    if (maxCallsPerSecond > 0 ) {
+        if (to.m_currentSecondUseCounter > maxCallsPerSecond ) {
+            to.m_banUntil = _callTime + oe.m_banPerSecDuration;
+            return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
         }
     }
-    //
-    //
-    nMaxCallsPerTimeUnit = settings_.global_limit_.max_calls_per_minute( strMethod );
-    if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast = tracked_global_.count_to_past(
-            ttmNow, durationToPast, cntOptimizedMaxSteps4gm_, nMaxCallsPerTimeUnit );
-        if ( cntPast > nMaxCallsPerTimeUnit ) {
-            tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_lengthy_;
-            return e_high_load_detection_result_t::ehldr_lengthy;  // ban by too high load per
-                                                                   // second
+
+    maxCallsPerMinute = m_settings.m_globalLimit.max_calls_per_minute(_strMethod );
+    if (maxCallsPerMinute > 0 ) {
+        if (m_globalOrigin.m_currentMinuteUseCounter > maxCallsPerMinute ) {
+            m_globalOrigin.m_banUntil = _callTime + m_settings.m_globalLimit.m_banPerMinDuration;
+            return e_high_load_detection_result_t::ehldr_detected_ban_per_min;
         }
     }
-    nMaxCallsPerTimeUnit = settings_.global_limit_.max_calls_per_second( strMethod );
-    if ( nMaxCallsPerTimeUnit > 0 ) {
-        size_t cntPast = tracked_global_.count_to_past(
-            ttmNow, 1, cntOptimizedMaxSteps4gs_, nMaxCallsPerTimeUnit );
-        if ( cntPast > nMaxCallsPerTimeUnit ) {
-            tracked_global_.ban_until_ = ttmNow + settings_.global_limit_.ban_peak_;
-            return e_high_load_detection_result_t::ehldr_peak;  // ban by too high load per second
+    maxCallsPerSecond = m_settings.m_globalLimit.max_calls_per_second(_strMethod );
+    if (maxCallsPerSecond > 0 ) {
+        if (m_globalOrigin.m_currentSecondUseCounter > maxCallsPerMinute ) {
+            m_globalOrigin.m_banUntil = _callTime + m_settings.m_globalLimit.m_banPerSecDuration;
+            return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;  // ban by too high load per second
         }
     }
-    //
-    //
+
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 
 bool algorithm::is_ban_ws_conn_for_origin( const char* origin ) const {
-    if ( !settings_.enabled_ )
+    if ( !m_settings.m_enabled )
         return false;
     if ( origin == nullptr || origin[0] == '\0' )
         return true;
-    lock_type lock( mtx_ );
-    if ( ws_conn_count_global_ > settings_.global_limit_.max_ws_conn_ )
+    lock_type lock(x_mtx );
+    if (ws_conn_count_global_ > m_settings.m_globalLimit.max_ws_conn_ )
         return true;
     map_ws_conn_counts_t::const_iterator itFind = map_ws_conn_counts_.find( origin ),
                                          itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd )
         return false;
-    const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
+    const origin_entry_setting& oe = m_settings.find_origin_entry_setting(origin );
     if ( itFind->second > oe.max_ws_conn_ )
         return true;
     return false;
 }
 
 e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const char* origin ) {
-    if ( !settings_.enabled_ )
+    if ( !m_settings.m_enabled )
         return e_high_load_detection_result_t::ehldr_no_error;
     if ( origin == nullptr || origin[0] == '\0' )
         return e_high_load_detection_result_t::ehldr_bad_origin;
-    lock_type lock( mtx_ );
+    lock_type lock(x_mtx );
     ++ws_conn_count_global_;
-    if ( ws_conn_count_global_ > settings_.global_limit_.max_ws_conn_ )
-        return e_high_load_detection_result_t::ehldr_peak;
+    if (ws_conn_count_global_ > m_settings.m_globalLimit.max_ws_conn_ )
+        return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd ) {
@@ -796,25 +693,25 @@ e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const cha
         itFind = map_ws_conn_counts_.find( origin );
     } else
         ++itFind->second;
-    const origin_entry_setting& oe = settings_.find_origin_entry_setting( origin );
+    const origin_entry_setting& oe = m_settings.find_origin_entry_setting(origin );
     if ( itFind->second > oe.max_ws_conn_ )
-        return e_high_load_detection_result_t::ehldr_peak;
+        return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
     return e_high_load_detection_result_t::ehldr_no_error;
 }
 
 bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
     if ( origin == nullptr || origin[0] == '\0' ) {
-        if ( !settings_.enabled_ )
+        if ( !m_settings.m_enabled )
             return true;
         return false;
     }
-    lock_type lock( mtx_ );
+    lock_type lock(x_mtx );
     if ( ws_conn_count_global_ > 0 )
         --ws_conn_count_global_;
     map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find( origin ),
                                    itEnd = map_ws_conn_counts_.end();
     if ( itFind == itEnd ) {
-        if ( !settings_.enabled_ )
+        if ( !m_settings.m_enabled )
             return true;
         return false;
     }
@@ -826,12 +723,12 @@ bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
 }
 
 bool algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings ) {
-    lock_type lock( mtx_ );
+    lock_type lock(x_mtx );
     try {
         settings new_settings;
         new_settings.fromJSON( joUnDdosSettings );
-        settings_ = new_settings;
-        settings_.auto_append_any_origin_rule();
+        m_settings = new_settings;
+        m_settings.auto_append_any_origin_rule();
         return true;
     } catch ( ... ) {
         return false;
@@ -839,81 +736,26 @@ bool algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings 
 }
 
 settings algorithm::get_settings() const {
-    lock_type lock( mtx_ );
-    settings_.auto_append_any_origin_rule();
-    settings copied = settings_;
+    lock_type lock(x_mtx );
+    m_settings.auto_append_any_origin_rule();
+    settings copied = m_settings;
     return copied;
 }
 
 void algorithm::set_settings( const settings& new_settings ) const {
-    lock_type lock( mtx_ );
-    settings_ = new_settings;
-    settings_.auto_append_any_origin_rule();
+    lock_type lock(x_mtx );
+    m_settings = new_settings;
+    m_settings.auto_append_any_origin_rule();
 }
 
 nlohmann::json algorithm::get_settings_json() const {
-    lock_type lock( mtx_ );
-    settings_.auto_append_any_origin_rule();
+    lock_type lock(x_mtx );
+    m_settings.auto_append_any_origin_rule();
     nlohmann::json joUnDdosSettings = nlohmann::json::object();
-    settings_.toJSON( joUnDdosSettings );
+    m_settings.toJSON(joUnDdosSettings );
     return joUnDdosSettings;
 }
 
-nlohmann::json algorithm::stats( time_tick_mark ttmNow, duration durationToPast ) const {
-    lock_type lock( mtx_ );
-    ( const_cast< algorithm* >( this ) )
-        ->unload_old_data_by_time_to_past( ttmNow, durationToPast );  // unload first
-    nlohmann::json joStats = nlohmann::json::object();
-    nlohmann::json joCounts = nlohmann::json::object();
-    nlohmann::json joCalls = nlohmann::json::object();
-    nlohmann::json joWsConns = nlohmann::json::object();
-    size_t cntRpcBan = 0, cntRpcNormal = 0, cntWsBan = 0, cntWsNormal = 0;
-    for ( const tracked_origin& to : tracked_origins_ ) {
-        nlohmann::json joOriginCallInfo = nlohmann::json::object();
-        bool isBan = ( to.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
-        joOriginCallInfo["cps"] =
-            to.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4cs_, size_t( -1 ) );
-        joOriginCallInfo["cpm"] =
-            to.count_to_past( ttmNow, durationToPast, cntOptimizedMaxSteps4cm_, size_t( -1 ) );
-        joOriginCallInfo["ban"] = isBan;
-        joCalls[to.origin_] = joOriginCallInfo;
-        if ( isBan )
-            ++cntRpcBan;
-        else
-            ++cntRpcNormal;
-    }
-    for ( const map_ws_conn_counts_t::value_type& pr : map_ws_conn_counts_ ) {
-        nlohmann::json joWsConnInfo = nlohmann::json::object();
-        bool isBan = is_ban_ws_conn_for_origin( pr.first );
-        joWsConnInfo["cnt"] = pr.second;
-        joWsConnInfo["ban"] = isBan;
-        joWsConns[pr.first] = joWsConnInfo;
-        if ( isBan )
-            ++cntWsBan;
-        else
-            ++cntWsNormal;
-    }
-    joCounts["rpc_ban"] = cntRpcBan;
-    joCounts["rpc_normal"] = cntRpcNormal;
-    joCounts["ws_ban"] = cntWsBan;
-    joCounts["ws_normal"] = cntWsNormal;
-    joStats["counts"] = joCounts;
-    joStats["calls"] = joCalls;
-    joStats["ws_conns"] = joWsConns;
-    //
-    joStats["global_ws_conns_count"] = ws_conn_count_global_;
-    joStats["global_cps"] =
-        tracked_global_.count_to_past( ttmNow, 1, cntOptimizedMaxSteps4gs_, size_t( -1 ) );
-    joStats["global_cpm"] = tracked_global_.count_to_past(
-        ttmNow, durationToPast, cntOptimizedMaxSteps4gm_, size_t( -1 ) );
-    bool isGlobalBan = ( tracked_global_.ban_until_ != time_tick_mark( 0 ) ) ? true : false;
-    joStats["global_ban"] = isGlobalBan;
-    //
-    return joStats;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace unddos
 };  // namespace skutils

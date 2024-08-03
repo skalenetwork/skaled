@@ -19,8 +19,6 @@
 namespace skutils {
 namespace unddos {
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef time_t time_tick_mark;
 typedef time_t duration;
@@ -39,9 +37,6 @@ inline void adjust_now_tick_mark( time_tick_mark& ttm ) {
     ttm = make_tick_mark( ttm );
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class custom_method_setting {
 public:
     size_t max_calls_per_second_ = 0;
@@ -51,12 +46,9 @@ public:
         max_calls_per_minute_ = std::min( max_calls_per_minute_, other.max_calls_per_minute_ );
         return ( *this );
     }
-};  // class custom_method_setting
+};
 
 typedef std::map< std::string, custom_method_setting > map_custom_method_settings_t;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef std::vector< std::string > origin_wildcards_t;
 
@@ -65,8 +57,8 @@ public:
     origin_wildcards_t origin_wildcards_;
     size_t max_calls_per_second_ = 0;
     size_t max_calls_per_minute_ = 0;
-    duration ban_peak_ = duration( 0 );
-    duration ban_lengthy_ = duration( 0 );
+    duration m_banPerSecDuration = duration(0 );
+    duration m_banPerMinDuration = duration(0 );
     size_t max_ws_conn_ = 0;
     map_custom_method_settings_t map_custom_method_settings_;
     origin_entry_setting();
@@ -76,7 +68,6 @@ public:
     origin_entry_setting& operator=( const origin_entry_setting& other );
     void load_defaults_for_any_origin();
     void load_friendly_for_any_origin();
-    void load_reasonable_for_any_origin();
     void load_unlim_for_any_origin();
     void load_unlim_for_localhost_only();
     void load_custom_method_as_multiplier_of_default(
@@ -91,21 +82,17 @@ public:
     void fromJSON( const nlohmann::json& jo );
     void toJSON( nlohmann::json& jo ) const;
     bool match_origin( const char* origin ) const;
-    bool match_origin( const std::string& origin ) const;
     size_t max_calls_per_second( const char* strMethod ) const;
     size_t max_calls_per_minute( const char* strMethod ) const;
-};  /// class origin_entry_setting
+};
 
 typedef std::vector< origin_entry_setting > origin_entry_settings_t;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class settings {
 public:
-    bool enabled_ = true;
-    origin_entry_settings_t origins_;
-    origin_entry_setting global_limit_;
+    bool m_enabled = true;
+    origin_entry_settings_t m_origins;
+    origin_entry_setting m_globalLimit;
     settings();
     settings( const settings& other );
     settings( settings&& other );
@@ -125,25 +112,9 @@ public:
     void toJSON( nlohmann::json& jo ) const;
     size_t find_origin_entry_setting_match(
         const char* origin, size_t idxStart = std::string::npos ) const;
-    size_t find_origin_entry_setting_match(
-        const std::string& origin, size_t idxStart = std::string::npos ) const {
-        return find_origin_entry_setting_match( origin.c_str(), idxStart );
-    }
     origin_entry_setting& find_origin_entry_setting( const char* origin );
-    origin_entry_setting& find_origin_entry_setting( const std::string& origin ) {
-        return find_origin_entry_setting( origin.c_str() );
-    }
-    const origin_entry_setting& find_origin_entry_setting( const char* origin ) const {
-        return ( const_cast< settings* >( this ) )->find_origin_entry_setting( origin );
-    }
-    const origin_entry_setting& find_origin_entry_setting( const std::string& origin ) const {
-        return ( const_cast< settings* >( this ) )->find_origin_entry_setting( origin );
-    }
     origin_entry_setting& auto_append_any_origin_rule();
-};  /// class settings
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+};
 
 class time_entry {
 public:
@@ -177,24 +148,22 @@ public:
     bool operator>=( const time_entry& other ) const {
         return ( compare( other ) >= 0 ) ? true : false;
     }
-};  /// class time_entry
-
-typedef std::vector< time_entry > time_entries_t;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+};
 
 class tracked_origin {
 public:
-    std::string origin_;
-    time_entries_t time_entries_;
-    time_tick_mark ban_until_ = time_tick_mark( 0 );
+    std::string m_origin;
+    std::atomic<uint64_t> m_currentSecond;
+    std::atomic<uint64_t> m_currentMinute;
+    std::atomic<uint64_t> m_currentMinuteUseCounter;
+    std::atomic<uint64_t> m_currentSecondUseCounter;
+    time_tick_mark m_banUntil = time_tick_mark(0 );
     tracked_origin( const char* origin = nullptr, time_tick_mark ttm = time_tick_mark( 0 ) );
     tracked_origin( const std::string& origin, time_tick_mark ttm = time_tick_mark( 0 ) );
     tracked_origin( const tracked_origin& other );
     tracked_origin( tracked_origin&& other );
     virtual ~tracked_origin();
-    operator std::string() const { return origin_; }
+    operator std::string() const { return m_origin; }
     tracked_origin& operator=( const tracked_origin& other );
     bool empty() const;
     operator bool() const { return ( !empty() ); }
@@ -257,48 +226,34 @@ public:
     bool operator>=( const std::string& origin ) const {
         return ( compare( origin ) >= 0 ) ? true : false;
     }
-    //
-    size_t unload_old_data_by_time_to_past(
-        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
-    size_t unload_old_data_by_count( size_t cntEntriesMax );
-    size_t count_to_past( time_tick_mark ttmNow = time_tick_mark( 0 ),
-        duration durationToPast = duration( 60 ), size_t cntOptimizedMaxSteps = size_t( -1 ),
-        size_t cntTargetUnDDoS = size_t( -1 ) ) const;
+
     bool clear_ban();
     bool check_ban( time_tick_mark ttmNow = time_tick_mark( 0 ), bool isAutoClear = true );
-};  /// class tracked_origin
+
+    void recordUse( time_tick_mark _ttmNow);
+
+};
 
 typedef std::set< tracked_origin > tracked_origins_t;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 enum class e_high_load_detection_result_t {
     ehldr_no_error,
-    ehldr_peak,     // ban by too high load per minute
-    ehldr_lengthy,  // ban by too high load per second
+    ehldr_detected_ban_per_sec,     // ban by too high load per sec
+    ehldr_detected_ban_per_min,  // ban by too high load per min
     ehldr_bad_origin,
-    ehldr_ban  // still banned
+    ehldr_already_banned  // still banned
 };
 
 class algorithm {
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
-    mutable mutex_type mtx_;
-    mutable settings settings_;
+    mutable mutex_type x_mtx;
+    mutable settings m_settings;
     tracked_origins_t tracked_origins_;
-    tracked_origin tracked_global_;
+    tracked_origin m_globalOrigin;
     typedef std::map< std::string, size_t > map_ws_conn_counts_t;
     map_ws_conn_counts_t map_ws_conn_counts_;
     size_t ws_conn_count_global_ = 0;
-    size_t cntOptimizedMaxSteps4cm_ =
-        15;  // local per one caller, per minute (optimize approximation for calls per time unit)
-    size_t cntOptimizedMaxSteps4cs_ =
-        15;  // local per one caller, per second (optimize approximation for calls per time unit)
-    size_t cntOptimizedMaxSteps4gm_ =
-        10;  // global for all callers, per minute (optimize approximation for calls per time unit)
-    size_t cntOptimizedMaxSteps4gs_ =
-        10;  // global for all callers, per second (optimize approximation for calls per time unit)
 
 public:
     algorithm();
@@ -308,11 +263,10 @@ public:
     virtual ~algorithm();
     algorithm& operator=( const algorithm& ) = delete;
     algorithm& operator=( const settings& st );
-    size_t unload_old_data_by_time_to_past(
-        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) );
-    e_high_load_detection_result_t register_call_from_origin( const char* origin,
-        const char* strMethod, time_tick_mark ttmNow = time_tick_mark( 0 ),
-        duration durationToPast = duration( 60 ) );
+    e_high_load_detection_result_t register_call_from_origin(const char* _origin,
+                                                             const char* _strMethod, time_tick_mark _callTime = time_tick_mark(0 ),
+                                                             duration _durationToPast = duration(60 ) );
+
     e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
         const std::string& strMethod, time_tick_mark ttmNow = time_tick_mark( 0 ),
         duration durationToPast = duration( 60 ) ) {
@@ -323,14 +277,8 @@ public:
         time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
         return register_call_from_origin( origin, nullptr, ttmNow, durationToPast );
     }
-    e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
-        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
-        return register_call_from_origin( origin.c_str(), nullptr, ttmNow, durationToPast );
-    }
     bool is_ban_ws_conn_for_origin( const char* origin ) const;
-    bool is_ban_ws_conn_for_origin( const std::string& origin ) const {
-        return is_ban_ws_conn_for_origin( origin.c_str() );
-    }
+
     e_high_load_detection_result_t register_ws_conn_for_origin( const char* origin );
     e_high_load_detection_result_t register_ws_conn_for_origin( const std::string& origin ) {
         return register_ws_conn_for_origin( origin.c_str() );
@@ -343,14 +291,9 @@ public:
     settings get_settings() const;
     void set_settings( const settings& new_settings ) const;
     nlohmann::json get_settings_json() const;
-    nlohmann::json stats( time_tick_mark ttmNow = time_tick_mark( 0 ),
-        duration durationToPast = duration( 60 ) ) const;
-};  /// class algorithm
+};
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-};  // namespace unddos
-};  // namespace skutils
+};
+};
 
 #endif  // (!defined __SKUTILS_UN_DDOS_H)

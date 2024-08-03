@@ -550,11 +550,11 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
     skutils::unddos::e_high_load_detection_result_t ehldr =
         pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin, strMethod );
     switch ( ehldr ) {
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:  // ban by too high load per
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_sec:  // ban by too high load per
                                                                        // minute
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_lengthy:  // ban by too high load
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_min:  // ban by too high load
                                                                           // per second
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:      // still banned
     case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
         json joErrorResponce;
         joErrorResponce["id"] = joID;
@@ -1826,11 +1826,11 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         ehldr = unddos_.register_call_from_origin( str_unddos_origin, strMethod );
     }
     switch ( ehldr ) {
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_peak:     // ban by too high
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_sec:     // ban by too high
                                                                           // load per minute
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_lengthy:  // ban by too high
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_min:  // ban by too high
                                                                           // load per second
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:      // still banned
     case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
         if ( strMethod.empty() )
             strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";

@@ -13,13 +13,13 @@ static skutils::unddos::settings compose_test_unddos_settings() {
     oe1.max_calls_per_second_ = 3;
     oe1.max_calls_per_minute_ = 10;
     oe1.max_ws_conn_ = 2;
-    oe1.ban_peak_ = skutils::unddos::duration( 5 );
-    oe1.ban_lengthy_ = skutils::unddos::duration( 10 );
-    settings.origins_.push_back( oe1 );
+    oe1.m_banPerSecDuration = skutils::unddos::duration(5 );
+    oe1.m_banPerMinDuration = skutils::unddos::duration(10 );
+    settings.m_origins.push_back(oe1 );
     //
     skutils::unddos::origin_entry_setting oe2;
     oe2.load_unlim_for_localhost_only();
-    settings.origins_.push_back( oe2 );
+    settings.m_origins.push_back(oe2 );
     return settings;
 }
 
