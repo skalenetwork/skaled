@@ -784,6 +784,8 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         }
     };
 
+
+
     BOOST_AUTO_TEST_CASE(jsonrpc_latest_block_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
@@ -795,6 +797,33 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         jsonRPCPerfTest(fixture, 100, runner);
         jsonRPCPerfTest(fixture, 200, runner);
     }
+
+
+    class GetBalancePerfRunner : public Runner {
+
+    public:
+
+        virtual string buildRequest() {
+            return R"({"jsonrpc":"2.0","method":"eth_getBalance","params":["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "latest"],"id":1})";
+        }
+
+
+        virtual void checkResult(Json::Value _value) {
+        }
+    };
+
+    BOOST_AUTO_TEST_CASE(jsonrpc_getbalance_perf) {
+        *boost::unit_test::precondition(dev::test::run_not_express);
+
+        SkaledFixture fixture(configFileName);
+        GetBalancePerfRunner runner;
+
+        jsonRPCPerfTest(fixture, 10, runner);
+        jsonRPCPerfTest(fixture, 50, runner);
+        jsonRPCPerfTest(fixture, 100, runner);
+        jsonRPCPerfTest(fixture, 200, runner);
+    }
+
 
     class GasPriceRunner : public Runner {
 
