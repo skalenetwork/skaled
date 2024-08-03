@@ -1036,8 +1036,9 @@ int main( int argc, char** argv ) try {
 
     setupLogging( loggingOptions );
 
-    const size_t nCpuCount = skutils::tools::cpu_count();
-    size_t nDispatchThreads = nCpuCount * 2;
+    // we do not really use these much threads anymore
+    // so setting default value to 1
+    size_t nDispatchThreads = 1;
     if ( vm.count( "dispatch-threads" ) ) {
         size_t n = vm["dispatch-threads"].as< size_t >();
         const size_t nMin = 4;
