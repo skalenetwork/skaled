@@ -418,9 +418,6 @@ namespace skutils::unddos {
         return m_origins[m_origins.size() - 1];
     }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     time_entry::time_entry(time_tick_mark ttm) : ttm_(ttm) {}
 
     time_entry::time_entry(const time_entry &other) {
@@ -592,14 +589,14 @@ namespace skutils::unddos {
         if (m_globalOrigin.isBanned(_callTime))
             return e_high_load_detection_result_t::ehldr_already_banned;  // still banned
 
-        tracked_origins_t::iterator itFind = tracked_origins_.find(_origin),
-                itEnd = tracked_origins_.end();
+        tracked_origins_t::iterator itFind = m_trackedOriginsMap.find(_origin),
+                itEnd = m_trackedOriginsMap.end();
         if (itFind == itEnd) {
             tracked_origin to(_origin, _callTime);
-            tracked_origins_.insert(to);
+            m_trackedOriginsMap.insert(to);
             return e_high_load_detection_result_t::ehldr_no_error;
         }
-        // return detect_high_load( origin.ttmNow, durationToPast )
+
         tracked_origin &to = const_cast< tracked_origin & >( *itFind );
         to.recordUse(time_entry(_callTime));
         if (to.isBanned(_callTime))
@@ -644,10 +641,10 @@ namespace skutils::unddos {
         if (origin == nullptr || origin[0] == '\0')
             return true;
         lock_type lock(x_mtx);
-        if (ws_conn_count_global_ > m_settings.m_globalLimit.m_maxWSConn)
+        if (m_WsConnCountGlobal > m_settings.m_globalLimit.m_maxWSConn)
             return true;
-        map_ws_conn_counts_t::const_iterator itFind = map_ws_conn_counts_.find(origin),
-                itEnd = map_ws_conn_counts_.end();
+        map_ws_conn_counts_t::const_iterator itFind = m_mapWsConnCounts.find(origin),
+                itEnd = m_mapWsConnCounts.end();
         if (itFind == itEnd)
             return false;
         const origin_entry_setting &oe = m_settings.find_origin_entry_setting(origin);
@@ -662,14 +659,14 @@ namespace skutils::unddos {
         if (origin == nullptr || origin[0] == '\0')
             return e_high_load_detection_result_t::ehldr_bad_origin;
         lock_type lock(x_mtx);
-        ++ws_conn_count_global_;
-        if (ws_conn_count_global_ > m_settings.m_globalLimit.m_maxWSConn)
+        ++m_WsConnCountGlobal;
+        if (m_WsConnCountGlobal > m_settings.m_globalLimit.m_maxWSConn)
             return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
-        map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find(origin),
-                itEnd = map_ws_conn_counts_.end();
+        map_ws_conn_counts_t::iterator itFind = m_mapWsConnCounts.find(origin),
+                itEnd = m_mapWsConnCounts.end();
         if (itFind == itEnd) {
-            map_ws_conn_counts_[origin] = 1;
-            itFind = map_ws_conn_counts_.find(origin);
+            m_mapWsConnCounts[origin] = 1;
+            itFind = m_mapWsConnCounts.find(origin);
         } else
             ++itFind->second;
         const origin_entry_setting &oe = m_settings.find_origin_entry_setting(origin);
@@ -685,10 +682,10 @@ namespace skutils::unddos {
             return false;
         }
         lock_type lock(x_mtx);
-        if (ws_conn_count_global_ > 0)
-            --ws_conn_count_global_;
-        map_ws_conn_counts_t::iterator itFind = map_ws_conn_counts_.find(origin),
-                itEnd = map_ws_conn_counts_.end();
+        if (m_WsConnCountGlobal > 0)
+            --m_WsConnCountGlobal;
+        map_ws_conn_counts_t::iterator itFind = m_mapWsConnCounts.find(origin),
+                itEnd = m_mapWsConnCounts.end();
         if (itFind == itEnd) {
             if (!m_settings.m_enabled)
                 return true;
@@ -697,7 +694,7 @@ namespace skutils::unddos {
         if (itFind->second >= 1)
             --itFind->second;
         if (itFind->second == 0)
-            map_ws_conn_counts_.erase(itFind);
+            m_mapWsConnCounts.erase(itFind);
         return true;
     }
 

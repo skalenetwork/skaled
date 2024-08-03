@@ -244,16 +244,21 @@ enum class e_high_load_detection_result_t {
     ehldr_already_banned  // still banned
 };
 
+
+
 class algorithm {
+
     typedef skutils::multithreading::recursive_mutex_type mutex_type;
     typedef std::lock_guard< mutex_type > lock_type;
+    typedef std::map< std::string, size_t > map_ws_conn_counts_t;
+
     mutable mutex_type x_mtx;
     mutable settings m_settings;
-    tracked_origins_t tracked_origins_;
+    tracked_origins_t m_trackedOriginsMap;
     tracked_origin m_globalOrigin;
-    typedef std::map< std::string, size_t > map_ws_conn_counts_t;
-    map_ws_conn_counts_t map_ws_conn_counts_;
-    size_t ws_conn_count_global_ = 0;
+
+    map_ws_conn_counts_t m_mapWsConnCounts;
+    size_t m_WsConnCountGlobal = 0;
 
 public:
     algorithm();
