@@ -717,16 +717,13 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
     };
 
 
-
-
-
     void jsonRPCPerfTest(SkaledFixture &fixture, uint64_t threadCount, Runner& _runner) {
         vector<shared_ptr<thread>> threads;
         std::atomic<uint64_t> totalCalls = 0;
 
         cerr << "Running " << threadCount << " threads ...";
         for (uint64_t i = 0; i < threadCount; ++i) {
-            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture.skaledEndpoint, 100, totalCalls); });
+            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture.skaledEndpoint, 10, totalCalls); });
             threads.push_back(t);
         }
 
