@@ -272,17 +272,17 @@ namespace skutils::unddos {
     bool settings::empty() const {
         if (!m_enabled)
             return true;
-        if (!m_origins.empty())
+        if (!m_originSettings.empty())
             return false;
-        if (!m_globalLimit.empty())
+        if (!m_globalLimitSetting.empty())
             return false;
         return true;
     }
 
     void settings::clear() {
         m_enabled = true;
-        m_origins.clear();
-        m_globalLimit.clear();
+        m_originSettings.clear();
+        m_globalLimitSetting.clear();
     }
 
     settings &settings::assign(const settings &other) {
@@ -290,26 +290,26 @@ namespace skutils::unddos {
             return (*this);
         clear();
         m_enabled = other.m_enabled;
-        m_origins = other.m_origins;
-        m_globalLimit = other.m_globalLimit;
+        m_originSettings = other.m_originSettings;
+        m_globalLimitSetting = other.m_globalLimitSetting;
         return (*this);
     }
 
     settings &settings::merge(const settings &other) {
         if (((void *) (this)) == ((void *) (&other)))
             return (*this);
-        for (const origin_entry_setting &oe: other.m_origins)
+        for (const origin_entry_setting &oe: other.m_originSettings)
             merge(oe);
-        m_globalLimit.merge(other.m_globalLimit);
+        m_globalLimitSetting.merge(other.m_globalLimitSetting);
         return (*this);
     }
 
     settings &settings::merge(const origin_entry_setting &oe) {
         size_t i = indexOfOrigin(oe);
         if (i == std::string::npos)
-            m_origins.push_back(oe);
+            m_originSettings.push_back(oe);
         else
-            m_origins[i].merge(oe);
+            m_originSettings[i].merge(oe);
         return (*this);
     }
 
@@ -325,10 +325,10 @@ namespace skutils::unddos {
     size_t settings::indexOfOrigin(const char *origin_wildcard, size_t idxStart) {
         if (origin_wildcard == nullptr || (*origin_wildcard) == '\0')
             return std::string::npos;
-        size_t cnt = m_origins.size();
+        size_t cnt = m_originSettings.size();
         size_t i = (idxStart == std::string::npos) ? 0 : (idxStart + 1);
         for (; i < cnt; ++i) {
-            const origin_entry_setting &oe = m_origins[i];
+            const origin_entry_setting &oe = m_originSettings[i];
             for (const std::string &wildcard: oe.m_originWildcards) {
                 if (wildcard == origin_wildcard)
                     return i;
@@ -351,7 +351,7 @@ namespace skutils::unddos {
                 for (const nlohmann::json &joOrigin: joOrigins) {
                     origin_entry_setting oe;
                     oe.fromJSON(joOrigin);
-                    m_origins.push_back(oe);
+                    m_originSettings.push_back(oe);
                 }
             }
         }
@@ -359,9 +359,9 @@ namespace skutils::unddos {
             const nlohmann::json &joGlobalLimit = jo["global"];
             origin_entry_setting oe;
             oe.fromJSON(joGlobalLimit);
-            m_globalLimit = oe;
+            m_globalLimitSetting = oe;
         } else
-            m_globalLimit.load_unlim_for_any_origin();
+            m_globalLimitSetting.load_unlim_for_any_origin();
         bool isEnabled = true;
         if (jo.find("enabled") != jo.end()) {
             const nlohmann::json &joEnabled = jo["enabled"];
@@ -374,13 +374,13 @@ namespace skutils::unddos {
     void settings::toJSON(nlohmann::json &jo) const {
         jo = nlohmann::json::object();
         nlohmann::json joOrigins = nlohmann::json::array();
-        for (const origin_entry_setting &oe: m_origins) {
+        for (const origin_entry_setting &oe: m_originSettings) {
             nlohmann::json joOrigin = nlohmann::json::object();
             oe.toJSON(joOrigin);
             joOrigins.push_back(joOrigin);
         }
         nlohmann::json joGlobalLimit = nlohmann::json::object();
-        m_globalLimit.toJSON(joGlobalLimit);
+        m_globalLimitSetting.toJSON(joGlobalLimit);
         jo["enabled"] = m_enabled;
         jo["origins"] = joOrigins;
         jo["global"] = joGlobalLimit;
@@ -389,10 +389,10 @@ namespace skutils::unddos {
     size_t settings::find_origin_entry_setting_match(const char *origin, size_t idxStart) const {
         if (origin == nullptr || (*origin) == '\0')
             return std::string::npos;
-        size_t cnt = m_origins.size();
+        size_t cnt = m_originSettings.size();
         size_t i = (idxStart == std::string::npos) ? 0 : (idxStart + 1);
         for (; i < cnt; ++i) {
-            const origin_entry_setting &oe = m_origins[i];
+            const origin_entry_setting &oe = m_originSettings[i];
             if (oe.match_origin(origin))
                 return i;
         }
@@ -402,163 +402,81 @@ namespace skutils::unddos {
     origin_entry_setting &settings::find_origin_entry_setting(const char *origin) {
         size_t i = find_origin_entry_setting_match(origin);
         if (i != std::string::npos)
-            return m_origins[i];
+            return m_originSettings[i];
         return auto_append_any_origin_rule();
     }
 
     origin_entry_setting &settings::auto_append_any_origin_rule() {
-        if (!m_origins.empty()) {
+        if (!m_originSettings.empty()) {
             size_t i = find_origin_entry_setting_match("*");
             if (i != std::string::npos)
-                return m_origins[i];
+                return m_originSettings[i];
         }
         origin_entry_setting oe;
         oe.load_defaults_for_any_origin();
-        m_origins.push_back(oe);
-        return m_origins[m_origins.size() - 1];
+        m_originSettings.push_back(oe);
+        return m_originSettings[m_originSettings.size() - 1];
     }
 
-    time_entry::time_entry(time_tick_mark ttm) : ttm_(ttm) {}
-
-    time_entry::time_entry(const time_entry &other) {
-        assign(other);
-    }
-
-    time_entry::time_entry(time_entry &&other) {
-        assign(other);
-        other.clear();
-    }
-
-    time_entry::~time_entry() {
-        clear();
-    }
-
-    time_entry &time_entry::operator=(const time_entry &other) {
-        return assign(other);
-    }
-
-    bool time_entry::empty() const {
-        if (ttm_ != time_tick_mark(0))
-            return false;
-        return true;
-    }
-
-    void time_entry::clear() {
-        ttm_ = time_tick_mark(0);
-    }
-
-    time_entry &time_entry::assign(const time_entry &other) {
-        clear();
-        ttm_ = other.ttm_;
-        return (*this);
-    }
-
-    int time_entry::compare(const time_entry &other) const {
-        if (ttm_ < other.ttm_)
-            return -1;
-        if (ttm_ > other.ttm_)
-            return 1;
-        return 0;
-    }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     tracked_origin::tracked_origin(const char *origin, time_tick_mark ttm)
             : m_origin((origin != nullptr && origin[0] != '\0') ? origin : "") {
-        recordUse(ttm);
+        recordUse(ttm, "");
     }
 
     tracked_origin::tracked_origin(const std::string &origin, time_tick_mark ttm)
             : m_origin(origin) {
-        recordUse(ttm);
-    }
-
-    tracked_origin::tracked_origin(const tracked_origin &other) {
-        assign(other);
-    }
-
-    tracked_origin::tracked_origin(tracked_origin &&other) {
-        assign(other);
-        other.clear();
+        recordUse(ttm, "");
     }
 
     tracked_origin::~tracked_origin() {
-        clear();
     }
 
-    tracked_origin &tracked_origin::operator=(const tracked_origin &other) {
-        return assign(other);
+
+    void tracked_origin::clearBan() {
+        m_banUntilSec = time_tick_mark(0);
     }
 
-    bool tracked_origin::empty() const {
-        if (!m_origin.empty())
-            return false;
-        if (!(m_currentSecondUseCounter == 0 && m_currentMinuteUseCounter == 0))
-            return false;
-        return true;
+    bool tracked_origin::isBanned(uint64_t _timeSec) {
+        return (_timeSec <= m_banUntilSec);
     }
 
-    void tracked_origin::clear() {
-        m_origin.clear();
-        m_currentSecondUseCounter = 0;
-        m_currentMinuteUseCounter = 0;
-        clear_ban();
-    }
+    void tracked_origin::recordUse(uint64_t _useTimeSec, const char* _strMethod) {
 
-    tracked_origin &tracked_origin::assign(const tracked_origin &other) {
-        clear();
-        m_origin = other.m_origin;
-        m_currentSecondUseCounter.store(other.m_currentSecondUseCounter);
-        m_currentMinuteUseCounter.store(other.m_currentMinuteUseCounter);
-        m_banUntil = other.m_banUntil;
-        return (*this);
-    }
+        std::string method = (_strMethod? _strMethod : "");
 
-    int tracked_origin::compare(const tracked_origin &other) const {
-        int n = m_origin.compare(other.m_origin);
-        return n;
-    }
 
-    int tracked_origin::compare(const char *origin) const {
-        int n = m_origin.compare(origin ? origin : "");
-        return n;
-    }
-
-    int tracked_origin::compare(const std::string &origin) const {
-        int n = m_origin.compare(origin);
-        return n;
-    }
-
-    void tracked_origin::clear_ban() {
-        m_banUntil = time_tick_mark(0);
-    }
-
-    bool tracked_origin::isBanned(time_tick_mark _time) {
-        return (_time <= m_banUntil);
-    }
-
-    void tracked_origin::recordUse(time_tick_mark _useTimeSec) {
         static constexpr uint64_t SECONDS_IN_MINUTE = 60;
-        static constexpr uint64_t SECONDS_IN_HOUR = 60 * 60;
-
         auto minute = _useTimeSec / SECONDS_IN_MINUTE;
-        auto hour = _useTimeSec / SECONDS_IN_MINUTE;
 
-        if (minute > m_currentMinute) {
-            // next minute arrived. Reset use counter
-            m_currentMinuteUseCounter = 0;
-            m_currentMinute = minute;
-        }
+        std::lock_guard lock(x_mutex);
 
-        if (hour > m_currentSecond) {
+        if ((uint64_t )_useTimeSec > m_currentSec) {
             // next hour arrived. Reset use counter
-            m_currentSecondUseCounter = 0;
-            m_currentSecond = hour;
+            m_currentSecUseCounterPerMethod.clear();
+            m_currentSec = (uint64_t) _useTimeSec;
+        }
+        
+        if (minute > m_currentMin) {
+            // next minute arrived. Reset use counters
+            m_currentMinUseCounterPerMethod.clear();
+            m_currentMin = minute;
         }
 
-        m_currentSecondUseCounter++;
-        m_currentSecondUseCounter++;
+
+        // increment counters
+
+        if (m_currentSecUseCounterPerMethod.count(method) > 0) {
+            m_currentSecUseCounterPerMethod[method]++;
+        } else {
+            m_currentSecUseCounterPerMethod[method] = 1;
+        }
+
+        if (m_currentMinUseCounterPerMethod.count(method) > 0) {
+            m_currentMinUseCounterPerMethod[method]++;
+        } else {
+            m_currentMinUseCounterPerMethod[method] = 1;
+        }
 
     }
 
@@ -576,58 +494,78 @@ namespace skutils::unddos {
         return (*this);
     }
 
+    constexpr uint64_t MAX_UNDDOS_MAP_ENTRIES = 1000000;
+
     e_high_load_detection_result_t algorithm::register_call_from_origin(
             const char *_origin, const char *_strMethod, time_tick_mark _callTime, duration _durationToPast) {
+
+
+
         if (!m_settings.m_enabled)
             return e_high_load_detection_result_t::ehldr_no_error;
         if (_origin == nullptr || _origin[0] == '\0')
             return e_high_load_detection_result_t::ehldr_bad_origin;
-        adjust_now_tick_mark(_callTime);
-        lock_type lock(x_mtx);
-        //
-        m_globalOrigin.recordUse(time_entry(_callTime));
+
+        setCallTimeToNowIfZero(_callTime);
+
+
+        m_globalOrigin.recordUse(_callTime, _strMethod);
+
         if (m_globalOrigin.isBanned(_callTime))
             return e_high_load_detection_result_t::ehldr_already_banned;  // still banned
 
-        tracked_origins_t::iterator itFind = m_trackedOriginsMap.find(_origin),
-                itEnd = m_trackedOriginsMap.end();
-        if (itFind == itEnd) {
-            tracked_origin to(_origin, _callTime);
-            m_trackedOriginsMap.insert(to);
+        lock_type lock(x_mtx);
+
+        if (m_trackedOriginsMap.size() > MAX_UNDDOS_MAP_ENTRIES) {
+            // the map grows in size, we clear it from time to time
+            // so it does not grow indefinitely because of old accesses
+            // this will happen very infrequently, you need a million different IPS
+            // to fill the map
+            m_trackedOriginsMap.clear();
+        }
+
+
+        if (m_trackedOriginsMap.count(_origin) == 0) {
+            std::string strOrigin = _origin;
+            m_trackedOriginsMap.emplace(strOrigin, tracked_origin(_origin, _callTime));
             return e_high_load_detection_result_t::ehldr_no_error;
         }
 
-        tracked_origin &to = const_cast< tracked_origin & >( *itFind );
-        to.recordUse(time_entry(_callTime));
+        tracked_origin &to = m_trackedOriginsMap.find(_origin)->second;
+
+        to.recordUse(_callTime, _strMethod);
+
         if (to.isBanned(_callTime))
             return e_high_load_detection_result_t::ehldr_already_banned;  // still banned
+
         const origin_entry_setting &oe = m_settings.find_origin_entry_setting(_origin);
         auto maxCallsPerMinute = oe.max_calls_per_minute(_strMethod);
         if (maxCallsPerMinute > 0) {
-            if (to.m_currentMinuteUseCounter > maxCallsPerMinute) {
-                to.m_banUntil = _callTime + oe.m_banPerMinDuration;
+            if (to.m_currentMinUseCounterPerMethod[_strMethod] > maxCallsPerMinute) {
+                to.m_banUntilSec = _callTime + oe.m_banPerMinDuration;
                 return e_high_load_detection_result_t::ehldr_detected_ban_per_min;  // ban by too high load per min
             }
         }
         auto maxCallsPerSecond = oe.max_calls_per_second(_strMethod);
         if (maxCallsPerSecond > 0) {
-            if (to.m_currentSecondUseCounter > maxCallsPerSecond) {
-                to.m_banUntil = _callTime + oe.m_banPerSecDuration;
+            if (to.m_currentSecUseCounterPerMethod[_strMethod] > maxCallsPerSecond) {
+                to.m_banUntilSec = _callTime + oe.m_banPerSecDuration;
                 return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
             }
         }
 
-        maxCallsPerMinute = m_settings.m_globalLimit.max_calls_per_minute(_strMethod);
+
+        maxCallsPerMinute = m_settings.m_globalLimitSetting.max_calls_per_minute(_strMethod);
         if (maxCallsPerMinute > 0) {
-            if (m_globalOrigin.m_currentMinuteUseCounter > maxCallsPerMinute) {
-                m_globalOrigin.m_banUntil = _callTime + m_settings.m_globalLimit.m_banPerMinDuration;
+            if (m_globalOrigin.m_currentMinUseCounterPerMethod[_strMethod] > maxCallsPerMinute) {
+                m_globalOrigin.m_banUntilSec = _callTime + m_settings.m_globalLimitSetting.m_banPerMinDuration;
                 return e_high_load_detection_result_t::ehldr_detected_ban_per_min;
             }
         }
-        maxCallsPerSecond = m_settings.m_globalLimit.max_calls_per_second(_strMethod);
+        maxCallsPerSecond = m_settings.m_globalLimitSetting.max_calls_per_second(_strMethod);
         if (maxCallsPerSecond > 0) {
-            if (m_globalOrigin.m_currentSecondUseCounter > maxCallsPerMinute) {
-                m_globalOrigin.m_banUntil = _callTime + m_settings.m_globalLimit.m_banPerSecDuration;
+            if (m_globalOrigin.m_currentSecUseCounterPerMethod[_strMethod] > maxCallsPerSecond) {
+                m_globalOrigin.m_banUntilSec = _callTime + m_settings.m_globalLimitSetting.m_banPerSecDuration;
                 return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;  // ban by too high load per second
             }
         }
@@ -635,23 +573,6 @@ namespace skutils::unddos {
         return e_high_load_detection_result_t::ehldr_no_error;
     }
 
-    bool algorithm::is_ban_ws_conn_for_origin(const char *origin) const {
-        if (!m_settings.m_enabled)
-            return false;
-        if (origin == nullptr || origin[0] == '\0')
-            return true;
-        lock_type lock(x_mtx);
-        if (m_WsConnCountGlobal > m_settings.m_globalLimit.m_maxWSConn)
-            return true;
-        map_ws_conn_counts_t::const_iterator itFind = m_mapWsConnCounts.find(origin),
-                itEnd = m_mapWsConnCounts.end();
-        if (itFind == itEnd)
-            return false;
-        const origin_entry_setting &oe = m_settings.find_origin_entry_setting(origin);
-        if (itFind->second > oe.m_maxWSConn)
-            return true;
-        return false;
-    }
 
     e_high_load_detection_result_t algorithm::register_ws_conn_for_origin(const char *origin) {
         if (!m_settings.m_enabled)
@@ -660,7 +581,7 @@ namespace skutils::unddos {
             return e_high_load_detection_result_t::ehldr_bad_origin;
         lock_type lock(x_mtx);
         ++m_WsConnCountGlobal;
-        if (m_WsConnCountGlobal > m_settings.m_globalLimit.m_maxWSConn)
+        if (m_WsConnCountGlobal > m_settings.m_globalLimitSetting.m_maxWSConn)
             return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
         map_ws_conn_counts_t::iterator itFind = m_mapWsConnCounts.find(origin),
                 itEnd = m_mapWsConnCounts.end();

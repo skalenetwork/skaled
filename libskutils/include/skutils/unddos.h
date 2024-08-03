@@ -33,7 +33,7 @@ inline time_tick_mark make_tick_mark( time_tick_mark ttm ) {
     return ttm;
 }
 
-inline void adjust_now_tick_mark( time_tick_mark& ttm ) {
+inline void setCallTimeToNowIfZero(time_tick_mark& ttm ) {
     ttm = make_tick_mark( ttm );
 }
 
@@ -91,8 +91,8 @@ typedef std::vector< origin_entry_setting > origin_entry_settings_t;
 class settings {
 public:
     bool m_enabled = true;
-    origin_entry_settings_t m_origins;
-    origin_entry_setting m_globalLimit;
+    origin_entry_settings_t m_originSettings;
+    origin_entry_setting m_globalLimitSetting;
     settings();
     settings( const settings& other );
     settings( settings&& other );
@@ -116,125 +116,52 @@ public:
     origin_entry_setting& auto_append_any_origin_rule();
 };
 
-class time_entry {
-public:
-    time_tick_mark ttm_ = time_tick_mark( 0 );
-    time_entry( time_tick_mark ttm = time_tick_mark( 0 ) );
-    time_entry( const time_entry& other );
-    time_entry( time_entry&& other );
-    virtual ~time_entry();
-    time_entry& operator=( const time_entry& other );
-    bool empty() const;
-    operator bool() const { return ( !empty() ); }
-    bool operator!() const { return empty(); }
-    void clear();
-    time_entry& assign( const time_entry& other );
-    int compare( const time_entry& other ) const;
-    bool operator==( const time_entry& other ) const {
-        return ( compare( other ) == 0 ) ? true : false;
-    }
-    bool operator!=( const time_entry& other ) const {
-        return ( compare( other ) != 0 ) ? true : false;
-    }
-    bool operator<( const time_entry& other ) const {
-        return ( compare( other ) < 0 ) ? true : false;
-    }
-    bool operator<=( const time_entry& other ) const {
-        return ( compare( other ) <= 0 ) ? true : false;
-    }
-    bool operator>( const time_entry& other ) const {
-        return ( compare( other ) > 0 ) ? true : false;
-    }
-    bool operator>=( const time_entry& other ) const {
-        return ( compare( other ) >= 0 ) ? true : false;
-    }
-};
 
 class tracked_origin {
 public:
+    std::mutex x_mutex;
     std::string m_origin;
-    std::atomic<uint64_t> m_currentSecond;
-    std::atomic<uint64_t> m_currentMinute;
-    std::atomic<uint64_t> m_currentMinuteUseCounter;
-    std::atomic<uint64_t> m_currentSecondUseCounter;
-    time_tick_mark m_banUntil = time_tick_mark(0 );
+    uint64_t m_currentSec;
+    uint64_t m_currentMin;
+    std::map<std::string, uint64_t> m_currentMinUseCounterPerMethod;
+    std::map<std::string, uint64_t>  m_currentSecUseCounterPerMethod;
+    uint64_t m_banUntilSec = 0;
     tracked_origin( const char* origin = nullptr, time_tick_mark ttm = time_tick_mark( 0 ) );
     tracked_origin( const std::string& origin, time_tick_mark ttm = time_tick_mark( 0 ) );
-    tracked_origin( const tracked_origin& other );
-    tracked_origin( tracked_origin&& other );
+
+    tracked_origin(const tracked_origin& other)
+            : m_origin(other.m_origin),
+              m_currentSec(other.m_currentSec),
+              m_currentMin(other.m_currentMin),
+              m_currentMinUseCounterPerMethod(other.m_currentMinUseCounterPerMethod),
+              m_currentSecUseCounterPerMethod(other.m_currentSecUseCounterPerMethod),
+              m_banUntilSec(other.m_banUntilSec) {
+    }
+
+
+    tracked_origin(tracked_origin&& _other) noexcept
+            : m_origin(std::move(_other.m_origin)),
+              m_currentSec(_other.m_currentSec),
+              m_currentMin(_other.m_currentMin),
+              m_currentMinUseCounterPerMethod(std::move(_other.m_currentMinUseCounterPerMethod)),
+              m_currentSecUseCounterPerMethod(std::move(_other.m_currentSecUseCounterPerMethod)),
+              m_banUntilSec(_other.m_banUntilSec) {
+        // x_mutex is intentionally not moved
+        _other.m_currentSec = 0;
+        _other.m_currentMin = 0;
+        _other.m_banUntilSec = 0;
+    }
+
+
     virtual ~tracked_origin();
     operator std::string() const { return m_origin; }
-    tracked_origin& operator=( const tracked_origin& other );
-    bool empty() const;
-    operator bool() const { return ( !empty() ); }
-    bool operator!() const { return empty(); }
-    void clear();
-    tracked_origin& assign( const tracked_origin& other );
-    int compare( const tracked_origin& other ) const;
-    int compare( const char* origin ) const;
-    int compare( const std::string& origin ) const;
-    //
-    bool operator==( const tracked_origin& other ) const {
-        return ( compare( other ) == 0 ) ? true : false;
-    }
-    bool operator!=( const tracked_origin& other ) const {
-        return ( compare( other ) != 0 ) ? true : false;
-    }
-    bool operator<( const tracked_origin& other ) const {
-        return ( compare( other ) < 0 ) ? true : false;
-    }
-    bool operator<=( const tracked_origin& other ) const {
-        return ( compare( other ) <= 0 ) ? true : false;
-    }
-    bool operator>( const tracked_origin& other ) const {
-        return ( compare( other ) > 0 ) ? true : false;
-    }
-    bool operator>=( const tracked_origin& other ) const {
-        return ( compare( other ) >= 0 ) ? true : false;
-    }
-    //
-    bool operator==( const char* origin ) const {
-        return ( compare( origin ) == 0 ) ? true : false;
-    }
-    bool operator!=( const char* origin ) const {
-        return ( compare( origin ) != 0 ) ? true : false;
-    }
-    bool operator<( const char* origin ) const { return ( compare( origin ) < 0 ) ? true : false; }
-    bool operator<=( const char* origin ) const {
-        return ( compare( origin ) <= 0 ) ? true : false;
-    }
-    bool operator>( const char* origin ) const { return ( compare( origin ) > 0 ) ? true : false; }
-    bool operator>=( const char* origin ) const {
-        return ( compare( origin ) >= 0 ) ? true : false;
-    }
-    //
-    bool operator==( const std::string& origin ) const {
-        return ( compare( origin ) == 0 ) ? true : false;
-    }
-    bool operator!=( const std::string& origin ) const {
-        return ( compare( origin ) != 0 ) ? true : false;
-    }
-    bool operator<( const std::string& origin ) const {
-        return ( compare( origin ) < 0 ) ? true : false;
-    }
-    bool operator<=( const std::string& origin ) const {
-        return ( compare( origin ) <= 0 ) ? true : false;
-    }
-    bool operator>( const std::string& origin ) const {
-        return ( compare( origin ) > 0 ) ? true : false;
-    }
-    bool operator>=( const std::string& origin ) const {
-        return ( compare( origin ) >= 0 ) ? true : false;
-    }
+    void clearBan();
+    bool isBanned(uint64_t _timeSec);
 
-    void clear_ban();
-    bool isBanned(time_tick_mark _time);
-
-    void recordUse( time_tick_mark _ttmNow);
+    void recordUse(uint64_t _useTimeSec, const char* _strMethod);
 
 };
 
-typedef std::set< tracked_origin > tracked_origins_t;
 
 enum class e_high_load_detection_result_t {
     ehldr_no_error,
@@ -254,8 +181,9 @@ class algorithm {
 
     mutable mutex_type x_mtx;
     mutable settings m_settings;
-    tracked_origins_t m_trackedOriginsMap;
+
     tracked_origin m_globalOrigin;
+    std::map< std::string, tracked_origin > m_trackedOriginsMap;
 
     map_ws_conn_counts_t m_mapWsConnCounts;
     size_t m_WsConnCountGlobal = 0;
