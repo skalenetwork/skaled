@@ -590,9 +590,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 skutils::tools::format( "%s task %zu", pThis->getRelay().nfoGetSchemeUC().c_str(),
                     pThis.get_unconst()->nTaskNumberInPeer_++ );
             //
-            skutils::stats::time_tracker::element_ptr_t rttElement;
-            rttElement.emplace( "RPC", pThis->getRelay().nfoGetSchemeUC().c_str(),
-                strMethod.c_str(), pThis->getRelay().serverIndex(), -1 );
+            skutils::stats::time_tracker::element timeTracker;
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName );
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
@@ -617,7 +615,6 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 json joResponse = json::parse( strResponse );
                 a.set_json_out( joResponse );
             } catch ( const std::exception& ex ) {
-                rttElement->setError();
                 clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() + "/" +
                                                to_string( pThis->getRelay().serverIndex() ) )
                     << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
@@ -633,15 +630,14 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 strResponse = joErrorResponce.dump();
                 a.set_json_err( joErrorResponce );
             } catch ( ... ) {
-                rttElement->setError();
                 const char* e = "unknown exception in SkaleServerOverride";
-                clog( dev::VerbosityError, cc::info( pThis->getRelay().nfoGetSchemeUC() ) +
-                                               cc::debug( "/" ) +
-                                               to_string( pThis->getRelay().serverIndex() ) )
-                    << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                clog( dev::VerbosityError,  pThis->getRelay().nfoGetSchemeUC() ) <<
+                                               "/"  <<
+                                               to_string( pThis->getRelay().serverIndex() ) <<
+                    cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                         std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/ERR !!! " ) +
-                           pThis->desc() + cc::ws_tx( " !!! " ) + e );
+                                        "/ERR !!! " ) <<
+                           pThis->desc() + cc::ws_tx( " !!! " ) + e;
                 json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 json joErrorObj;
@@ -664,13 +660,13 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 jarrBatchAnswer.push_back( joAnswerPart );
             } else
                 pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
-            rttElement->stop();
-            double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+            timeTracker.stop();
+            double lfExecutionDuration = timeTracker.getDurationInSeconds();  // in seconds
             if ( lfExecutionDuration >= pSO->opts_.lfExecutionDurationMaxForPerformanceWarning_ )
                 pSO->logPerformanceWarning( lfExecutionDuration, -1,
                     pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
                     pThis->getRelay().esm_, pThis->getOrigin().c_str(), strMethod.c_str(), joID );
-        }  // for( const json & joRequest : jarrRequest )
+        }
         if ( isBatch ) {
             string strResponse = jarrBatchAnswer.dump();
             pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
@@ -1857,9 +1853,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         string strPerformanceActionName = skutils::tools::format(
             "%s task %zu, %s", _protocol.c_str(), nTaskNumberCall_++, strMethod.c_str() );
 
-        skutils::stats::time_tracker::element_ptr_t rttElement;
-        rttElement.emplace( "RPC", _protocol.c_str(), strMethod.c_str(), _serverIndex, _ipVer );
-        //
+        skutils::stats::time_tracker::element timeTracker;
         SkaleServerConnectionsTrackHelper sscth( *this );
         if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
             logTraceServerTraffic( true, methodTraceVerbosity( strMethod ), _ipVer,
@@ -1881,7 +1875,6 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
                 throw std::runtime_error( "No client connection handler found" );
             std::vector< uint8_t > buffer;
             if ( handleRequestWithBinaryAnswer( _esm, joRequest, buffer ) ) {
-                rttElement->stop();
                 rslt.isBinary_ = true;
                 rslt.vecBytes_ = buffer;
                 return rslt;
@@ -1896,7 +1889,6 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
                 rslt.joOut_ = json::parse( strResponse );
             }
         } catch ( const std::exception& ex ) {
-            rttElement->setError();
             logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
                 _serverIndex, _esm, _origin.c_str(), ex.what() );
             json joErrorResponce;
@@ -1911,7 +1903,6 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
                 rslt.joOut_ = joErrorResponce;
             }
         } catch ( ... ) {
-            rttElement->setError();
             const char* e = "unknown exception in SkaleServerOverride";
             logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
                 _serverIndex, _esm, _origin.c_str(), e );
@@ -1938,12 +1929,12 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
             rslt.isBinary_ = false;
             rslt.joOut_ = json::parse( strResponse );
         }
-        rttElement->stop();
-        double lfExecutionDuration = rttElement->getDurationInSeconds();  // in seconds
+        timeTracker.stop();
+        double lfExecutionDuration = timeTracker.getDurationInSeconds();
         if ( lfExecutionDuration >= opts_.lfExecutionDurationMaxForPerformanceWarning_ )
             logPerformanceWarning( lfExecutionDuration, _ipVer, _protocol.c_str(), _serverIndex,
                 _esm, _origin.c_str(), strMethod.c_str(), joID );
-    }  // for( const json & joRequest : jarrRequest )
+    }
     if ( isBatch ) {
         rslt.isBinary_ = false;  // batch request can be only text/JSON
         rslt.joOut_ = jarrBatchAnswer;

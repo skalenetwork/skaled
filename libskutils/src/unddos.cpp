@@ -533,7 +533,7 @@ namespace skutils::unddos {
             const char *_origin, const char *_strMethod, time_tick_mark _callTime, duration) {
 
 
-        if (!m_settings.m_enabled) {
+        if (m_settings.m_enabled) {
             // DOS protection disabled
             return e_high_load_detection_result_t::ehldr_no_error;
         }
