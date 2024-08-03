@@ -726,7 +726,7 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
 
         cerr << "Running " << threadCount << " threads ...";
         for (uint64_t i = 0; i < threadCount; ++i) {
-            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture.skaledEndpoint, 10, totalCalls); });
+            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture.skaledEndpoint, 100, totalCalls); });
             threads.push_back(t);
         }
 

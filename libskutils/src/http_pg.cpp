@@ -404,12 +404,7 @@ size_t pg_accumulate_size() {
     return cnt;
 }
 
-void pg_accumulate_add( int ipVer, string strBindAddr, int nPort, const char* cert_path,
-    const char* private_key_path, const char* ca_path ) {
-    pg_accumulate_entry pge = { ipVer, strBindAddr, nPort, cert_path ? cert_path : "",
-        private_key_path ? private_key_path : "", ca_path ? ca_path : "" };
-    pg_accumulate_add( pge );
-}
+
 
 void pg_accumulate_add( const pg_accumulate_entry& pge ) {
     g_accumulatedEntries.push_back( pge );
