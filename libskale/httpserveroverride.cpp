@@ -96,6 +96,7 @@
 namespace fs = boost::filesystem;
 
 using nlohmann::json;
+using skutils::unddos::e_high_load_detection_result_t;
 
 namespace skale {
 namespace server {
@@ -122,14 +123,6 @@ dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT 
     }
     return dv;
 }
-
-#define TRACE_RPC_ERROR( __MESSAGE__ ) \
-    if ( pSO()->opts_.isTraceCalls_ )  \
-        cerror << __FUNCTION__ << " error in " << __MESSAGE__;
-
-#define TRACE_RPC_TRACE( __MESSAGE__ ) \
-    if ( pSO()->opts_.isTraceCalls_ )  \
-        ctrace << __FUNCTION__ << " error in " << __MESSAGE__;
 
 
 dev::eth::LogFilter toLogFilter( const json& jo ) {
@@ -244,33 +237,6 @@ bool checkParamsIsArray( const char* strMethodName, const json& joRequest, json&
     return false;
 }
 
-bool checkParamsIsObject( const char* strMethodName, const rapidjson::Document& joRequest,
-    rapidjson::Document& joResponse ) {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer< rapidjson::StringBuffer > writer( buffer );
-    joRequest.Accept( writer );
-    string strRequest = buffer.GetString();
-    json objRequest = json::parse( strRequest );
-
-    json objResponse;
-    if ( !checkParamsPresent( strMethodName, objRequest, objResponse ) ) {
-        string strResponse = objResponse.dump();
-        joResponse.Parse( strResponse.data() );
-        return false;
-    }
-    if ( joRequest["params"].IsObject() )
-        return true;
-    rapidjson::Value joError;
-    joError.SetObject();
-    joError.AddMember( "code", -32602, joResponse.GetAllocator() );
-    joError.AddMember( "message",
-        rapidjson::StringRef( string( string( "error in \"" ) + strMethodName +
-                                      "\" rpc method, json entry \"params\" must be object" )
-                                  .c_str() ),
-        joResponse.GetAllocator() );
-    joError.AddMember( "error", joError, joResponse.GetAllocator() );
-    return false;
-}
 
 };  // namespace helper
 };  // namespace server
@@ -303,213 +269,7 @@ struct map_method_call_stats_t : public std::map< string, skutils::stats::named_
 };
 
 map_method_call_stats_t g_map_method_call_stats;
-map_method_call_stats_t g_map_method_answer_stats;
-map_method_call_stats_t g_map_method_error_stats;
-map_method_call_stats_t g_map_method_exception_stats;
-map_method_call_stats_t g_map_method_traffic_stats_in;
-map_method_call_stats_t g_map_method_traffic_stats_out;
-static size_t g_nSizeDefaultOnQueueAdd = 10;
 
-static skutils::stats::named_event_stats& stat_subsystem_call_queue( const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    map_method_call_stats_t::iterator itFind = g_map_method_call_stats.find( strSubSystem ),
-                                      itEnd = g_map_method_call_stats.end();
-    if ( itFind != itEnd ) {
-        skutils::stats::named_event_stats* x = itFind->second;
-        if ( x )
-            return ( *x );
-    }
-    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
-    g_map_method_call_stats[strSubSystem] = x;
-    return ( *x );
-}
-static skutils::stats::named_event_stats& stat_subsystem_answer_queue( const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    map_method_call_stats_t::iterator itFind = g_map_method_answer_stats.find( strSubSystem ),
-                                      itEnd = g_map_method_answer_stats.end();
-    if ( itFind != itEnd ) {
-        skutils::stats::named_event_stats* x = itFind->second;
-        if ( x )
-            return ( *x );
-    }
-    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
-    g_map_method_answer_stats[strSubSystem] = x;
-    return ( *x );
-}
-static skutils::stats::named_event_stats& stat_subsystem_error_queue( const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    map_method_call_stats_t::iterator itFind = g_map_method_error_stats.find( strSubSystem ),
-                                      itEnd = g_map_method_error_stats.end();
-    if ( itFind != itEnd ) {
-        skutils::stats::named_event_stats* x = itFind->second;
-        if ( x )
-            return ( *x );
-    }
-    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
-    g_map_method_error_stats[strSubSystem] = x;
-    return ( *x );
-}
-static skutils::stats::named_event_stats& stat_subsystem_exception_queue(
-    const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    map_method_call_stats_t::iterator itFind = g_map_method_exception_stats.find( strSubSystem ),
-                                      itEnd = g_map_method_exception_stats.end();
-    if ( itFind != itEnd ) {
-        skutils::stats::named_event_stats* x = itFind->second;
-        if ( x )
-            return ( *x );
-    }
-    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
-    g_map_method_exception_stats[strSubSystem] = x;
-    return ( *x );
-}
-
-static skutils::stats::named_event_stats& stat_subsystem_traffic_queue_in(
-    const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    const auto itFind = g_map_method_traffic_stats_in.find( strSubSystem );
-    if ( itFind != std::end( g_map_method_traffic_stats_in ) ) {
-        skutils::stats::named_event_stats* x = itFind->second;
-        if ( x )
-            return ( *x );
-    }
-    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
-    g_map_method_traffic_stats_in[strSubSystem] = x;
-    return ( *x );
-}
-static skutils::stats::named_event_stats& stat_subsystem_traffic_queue_out(
-    const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    const auto itFind = g_map_method_traffic_stats_out.find( strSubSystem );
-    if ( itFind != std::end( g_map_method_traffic_stats_out ) ) {
-        skutils::stats::named_event_stats* x = itFind->second;
-        if ( x )
-            return ( *x );
-    }
-    skutils::stats::named_event_stats* x = new skutils::stats::named_event_stats;
-    g_map_method_traffic_stats_out[strSubSystem] = x;
-    return ( *x );
-}
-
-
-void register_stats_message(
-    const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
-    lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& cq = stat_subsystem_call_queue( strSubSystem );
-    cq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
-    cq.event_add( strMethodName );
-    skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_in( strSubSystem );
-    tq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
-    tq.event_add( strMethodName, nJsonSize );
-}
-void register_stats_answer(
-    const char* strSubSystem, const char* strMethodName, const size_t nJsonSize ) {
-    lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& aq = stat_subsystem_answer_queue( strSubSystem );
-    aq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
-    aq.event_add( strMethodName );
-
-    skutils::stats::named_event_stats& tq = stat_subsystem_traffic_queue_out( strSubSystem );
-    tq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
-    tq.event_add( strMethodName, nJsonSize );
-}
-void register_stats_error( const char* strSubSystem, const char* strMethodName ) {
-    lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& eq = stat_subsystem_error_queue( strSubSystem );
-    eq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
-    eq.event_add( strMethodName );
-}
-void register_stats_exception( const char* strSubSystem, const char* strMethodName ) {
-    lock_type_stats lock( g_mtx_stats );
-    skutils::stats::named_event_stats& eq = stat_subsystem_exception_queue( strSubSystem );
-    eq.event_queue_add( strMethodName, g_nSizeDefaultOnQueueAdd );
-    eq.event_add( strMethodName );
-}
-
-void register_stats_message( const char* strSubSystem, const json& joMessage ) {
-    string strMethodName = skutils::tools::getFieldSafe< string >( joMessage, "method" );
-    string txt = joMessage.dump();
-    size_t txt_len = txt.length();
-    register_stats_message( strSubSystem, strMethodName.c_str(), txt_len );
-}
-void register_stats_answer(
-    const char* strSubSystem, const json& joMessage, const json& joAnswer ) {
-    string strMethodName = skutils::tools::getFieldSafe< string >( joMessage, "method" );
-    string txt = joAnswer.dump();
-    size_t txt_len = txt.length();
-    register_stats_answer( strSubSystem, strMethodName.c_str(), txt_len );
-}
-void register_stats_error( const char* strSubSystem, const json& joMessage ) {
-    string strMethodName = skutils::tools::getFieldSafe< string >( joMessage, "method" );
-    register_stats_error( strSubSystem, strMethodName.c_str() );
-}
-void register_stats_exception( const char* strSubSystem, const json& joMessage ) {
-    string strMethodName = skutils::tools::getFieldSafe< string >( joMessage, "method" );
-    register_stats_exception( strSubSystem, strMethodName.c_str() );
-}
-
-static json generate_subsystem_stats( const char* strSubSystem ) {
-    lock_type_stats lock( g_mtx_stats );
-    json jo = json::object();
-    skutils::stats::named_event_stats& cq = stat_subsystem_call_queue( strSubSystem );
-    skutils::stats::named_event_stats& aq = stat_subsystem_answer_queue( strSubSystem );
-    skutils::stats::named_event_stats& erq = stat_subsystem_error_queue( strSubSystem );
-    skutils::stats::named_event_stats& exq = stat_subsystem_exception_queue( strSubSystem );
-    skutils::stats::named_event_stats& tq_in = stat_subsystem_traffic_queue_in( strSubSystem );
-    skutils::stats::named_event_stats& tq_out = stat_subsystem_traffic_queue_out( strSubSystem );
-    std::set< string > setNames = cq.all_queue_names(), setNames_aq = aq.all_queue_names(),
-                       setNames_erq = erq.all_queue_names(), setNames_exq = exq.all_queue_names(),
-                       setNames_tq_in = tq_in.all_queue_names(),
-                       setNames_tq_out = tq_out.all_queue_names();
-    std::set< string >::const_iterator itNameWalk, itNameEnd;
-    for ( itNameWalk = setNames_aq.cbegin(), itNameEnd = setNames_aq.cend();
-          itNameWalk != itNameEnd; ++itNameWalk )
-        setNames.insert( *itNameWalk );
-    for ( itNameWalk = setNames_erq.cbegin(), itNameEnd = setNames_erq.cend();
-          itNameWalk != itNameEnd; ++itNameWalk )
-        setNames.insert( *itNameWalk );
-    for ( itNameWalk = setNames_exq.cbegin(), itNameEnd = setNames_exq.cend();
-          itNameWalk != itNameEnd; ++itNameWalk )
-        setNames.insert( *itNameWalk );
-    for ( itNameWalk = setNames_tq_in.cbegin(), itNameEnd = setNames_tq_in.cend();
-          itNameWalk != itNameEnd; ++itNameWalk )
-        setNames.insert( *itNameWalk );
-    for ( itNameWalk = setNames_tq_out.cbegin(), itNameEnd = setNames_tq_out.cend();
-          itNameWalk != itNameEnd; ++itNameWalk )
-        setNames.insert( *itNameWalk );
-    for ( itNameWalk = setNames.cbegin(), itNameEnd = setNames.cend(); itNameWalk != itNameEnd;
-          ++itNameWalk ) {
-        const string& strMethodName = ( *itNameWalk );
-        size_t nCalls = 0, nAnswers = 0, nErrors = 0, nExceptions = 0;
-        skutils::stats::bytes_count_t nBytesRecv = 0, nBytesSent = 0;
-        skutils::stats::time_point tpNow = skutils::stats::clock::now();
-        double lfCallsPerSecond = cq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nCalls );
-        double lfAnswersPerSecond =
-            aq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nAnswers );
-        double lfErrorsPerSecond =
-            erq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nErrors );
-        double lfExceptionsPerSecond =
-            exq.compute_eps_smooth( strMethodName, tpNow, nullptr, &nExceptions );
-        double lfBytesPerSecondRecv = tq_in.compute_eps_smooth( strMethodName, tpNow, &nBytesRecv );
-        double lfBytesPerSecondSent =
-            tq_out.compute_eps_smooth( strMethodName, tpNow, &nBytesSent );
-        json joMethod = json::object();
-        joMethod["cps"] = lfCallsPerSecond / g_nSizeDefaultOnQueueAdd;
-        joMethod["aps"] = lfAnswersPerSecond / g_nSizeDefaultOnQueueAdd;
-        joMethod["erps"] = lfErrorsPerSecond / g_nSizeDefaultOnQueueAdd;
-        joMethod["exps"] = lfExceptionsPerSecond / g_nSizeDefaultOnQueueAdd;
-        joMethod["bps_recv"] = lfBytesPerSecondRecv;
-        joMethod["bps_sent"] = lfBytesPerSecondSent;
-        joMethod["calls"] = nCalls;
-        joMethod["answers"] = nAnswers;
-        joMethod["errors"] = nErrors;
-        joMethod["exceptions"] = nExceptions;
-        joMethod["bytes_recv"] = nBytesRecv;
-        joMethod["bytes_sent"] = nBytesSent;
-        jo[strMethodName] = joMethod;
-    }
-    return jo;
-}
 
 };  // namespace stats
 
@@ -586,13 +346,6 @@ bool SkaleStatsSubscriptionManager::subscribe(
                             if ( !bMessageSentOK )
                                 throw std::runtime_error(
                                     "eth_subscription/skaleStats failed to sent message" );
-                            stats::register_stats_answer(
-                                ( string( "RPC/" ) +
-                                    subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() )
-                                    .c_str(),
-                                "eth_subscription/skaleStats", strNotification.size() );
-                            stats::register_stats_answer(
-                                "RPC", "eth_subscription/skaleStats", strNotification.size() );
                         } catch ( std::exception& ex ) {
                             cerr << "eth_subscription/skaleStats"
                                  << " will uninstall watcher callback because of "
@@ -793,8 +546,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
         return;
     }
-    //
-    // unddos
+
     skutils::unddos::e_high_load_detection_result_t ehldr =
         pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin, strMethod );
     switch ( ehldr ) {
@@ -804,24 +556,11 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                                                                           // per second
     case skutils::unddos::e_high_load_detection_result_t::ehldr_ban:      // still banned
     case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
-        if ( strMethod.empty() )
-            strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
-        string reason_part =
-            ( ehldr == skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin &&
-                ( !m_strUnDdosOrigin.empty() ) ) ?
-                "bad origin" :
-                "high load";
-        string e = "Banned due to " + reason_part + " JSON RPC request: " + msg;
-        cerror << pThis->getRelay().nfoGetSchemeUC() << "/" << pThis->getRelay().serverIndex()
-               << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                   std::to_string( pThis->getRelay().serverIndex() ) +
-                                   "/ERR !!! " ) +
-                      pThis->desc() + cc::ws_tx( " !!! " ) + e );
         json joErrorResponce;
         joErrorResponce["id"] = joID;
         json joErrorObj;
         joErrorObj["code"] = -32000;
-        joErrorObj["message"] = string( e );
+        joErrorObj["message"] = "Too many request for this method from this IP address";;
         joErrorResponce["error"] = joErrorObj;
         string strResponse = joErrorResponce.dump();
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
@@ -1016,17 +755,6 @@ void SkaleWsPeer::uninstallAllWatches() {
     }
 }
 
-bool SkaleWsPeer::handleRequestWithBinaryAnswer( e_server_mode_t esm, const json& joRequest ) {
-    SkaleServerOverride* pSO = pso();
-    std::vector< uint8_t > buffer;
-    if ( pSO->handleRequestWithBinaryAnswer( esm, joRequest, buffer ) ) {
-        string strMethodName = skutils::tools::getFieldSafe< string >( joRequest, "method" );
-        string s( buffer.begin(), buffer.end() );
-        sendMessage( s, skutils::ws::opcv::binary );
-        return true;
-    }
-    return false;
-}
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
     e_server_mode_t esm, const json& joRequest, string& strResponse ) {
@@ -1465,7 +1193,6 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
     e_server_mode_t /*esm*/, const json& joRequest, json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
-        // skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         SkaleStatsSubscriptionManager::subscription_id_t idSubscription = 0;
         size_t nIntervalMilliseconds = 1000;
         if ( joRequest.count( "intervalMilliseconds" ) )
@@ -1618,7 +1345,7 @@ void SkaleWsPeer::eth_unsubscribe(
             ethereum()->uninstallWatch( iw );
             setInstalledWatchesLogs_.erase( iw );
         }
-    }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
+    }
 }
 
 string SkaleWsPeer::implPreformatTrafficJsonMessage( const string& strJSON, bool isRequest ) const {
@@ -1769,7 +1496,6 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
             } );
         } catch ( ... ) {
         }
-        // pThis->m_isRunning = false;
     } ).detach();
     cdebug << m_strSchemeUC << "Server started on port " << m_nPort;
     return true;
@@ -1844,14 +1570,14 @@ SkaleServerOverride::SkaleServerOverride(
             dev::eth::TransactionHashes arrTxHashes = ethereum()->transactionHashes( h );
         };
         iwBlockStats_ = ethereum()->installNewBlockWatch( fnOnSunscriptionEvent );
-    }  // block
-    {  // block
+    }
+    {
         std::function< void( const unsigned& iw, const dev::eth::Transaction& tx ) >
             fnOnSunscriptionEvent =
                 [this]( const unsigned& /*iw*/, const dev::eth::Transaction& /*tx*/ ) -> void {};
         iwPendingTransactionStats_ =
             ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
-    }  // block
+    }
 }
 
 SkaleServerOverride::~SkaleServerOverride() {
@@ -1864,39 +1590,6 @@ SkaleServerOverride::~SkaleServerOverride() {
         iwPendingTransactionStats_ = unsigned( -1 );
     }
     StopListening();
-}
-
-json SkaleServerOverride::generateBlocksStats() {
-    lock_type lock( mtxStats_ );
-    json joStats = json::object();
-    skutils::stats::time_point tpNow = skutils::stats::clock::now();
-    const double lfBlocksPerSecond = statsBlocks_.compute_eps_smooth( "blocks", tpNow );
-    double lfTransactionsPerSecond = statsTransactions_.compute_eps_smooth( "transactions", tpNow );
-    if ( lfTransactionsPerSecond >= 1.0 )
-        lfTransactionsPerSecond -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
-    if ( lfTransactionsPerSecond <= 1.0 )
-        lfTransactionsPerSecond = 0.0;
-    double lfTransactionsPerBlock =
-        ( lfBlocksPerSecond > 0.0 ) ? ( lfTransactionsPerSecond / lfBlocksPerSecond ) : 0.0;
-    if ( lfTransactionsPerBlock >= 1.0 )
-        lfTransactionsPerBlock -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
-    if ( lfTransactionsPerBlock <= 1.0 )
-        lfTransactionsPerBlock = 0.0;
-    if ( lfTransactionsPerBlock == 0.0 )
-        lfTransactionsPerSecond = 0.0;
-    if ( lfTransactionsPerSecond == 0.0 )
-        lfTransactionsPerBlock = 0.0;
-    double lfPendingTxPerSecond =
-        statsPendingTx_.compute_eps_smooth( "transactionsPending", tpNow );
-    if ( lfPendingTxPerSecond >= 1.0 )
-        lfPendingTxPerSecond -= 1.0;  // workaround for UnitsPerSecond in skutils::stats
-    if ( lfPendingTxPerSecond <= 1.0 )
-        lfPendingTxPerSecond = 0.0;
-    joStats["blocksPerSecond"] = lfBlocksPerSecond;
-    joStats["transactionsPerSecond"] = lfTransactionsPerSecond;
-    joStats["transactionsPerBlock"] = lfTransactionsPerBlock;
-    joStats["pendingTxPerSecond"] = lfPendingTxPerSecond;
-    return joStats;
 }
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
@@ -2117,8 +1810,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         string e = "Bad JSON RPC request: " + _joIn.dump();
         throw std::runtime_error( e );
     }
-    //
-    // unddos
+
     skutils::url url_unddos_origin( _origin );
     const string str_unddos_origin = url_unddos_origin.host();
 
@@ -2149,12 +1841,12 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         string e = "Banned due to " + reason_part + " JSON RPC request: " + _joIn.dump();
         throw std::runtime_error( e );
     }
-        // break;
+
     case skutils::unddos::e_high_load_detection_result_t::ehldr_no_error:
     default: {
         // no error
     } break;
-    }  // switch( ehldr )
+    }
     json jarrBatchAnswer;
     if ( isBatch )
         jarrBatchAnswer = json::array();
@@ -2356,7 +2048,7 @@ bool SkaleServerOverride::implStopListening(  // web socket
                                        ( bIsSSL ? bo.nBasePortWSS6_ : bo.nBasePortWS6_ ) ) +
                     nServerIndex;
         ctrace << "Will stop " << ( bIsSSL ? "WSS" : "WS" ) << " server on address " << strAddr  +
-                " and port "  << nPort + "/"  << esm2str( esm );
+                " and port "  << nPort << "/"  << esm2str( esm );
         if ( pSrv->isRunning() )
             pSrv->stop();
         pSrv.reset();
@@ -2593,7 +2285,7 @@ bool SkaleServerOverride::StartListening() {
                 skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
             skutils::http_pg::pg_accumulate_clear();
             if ( !m_proxygenServer ) {
-                cerror <<  "PROXYGEN ERROR:Failed to start server";
+                cerror <<  "Failed to start proxygen server";
                 return false;
             }
         }
