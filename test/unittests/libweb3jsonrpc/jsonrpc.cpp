@@ -638,71 +638,96 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         return size * nmemb;
     }
 
-    void blockPerformanceCurl(string &_skaledEndpoint, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
+    class Runner {
+    public:
+
+        virtual void perfRun(string &_skaledEndpoint, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
 
 
-        auto finishTime = std::time(NULL) + _runningTimeSec;
+            auto finishTime = std::time(NULL) + _runningTimeSec;
 
-        const char *json_rpc_request = R"({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1})";
+            auto json_rpc_request = buildRequest();
 
 
-        CURL *curl;
-        CURLcode res;
-        std::string readBuffer;
+            CURL *curl;
+            CURLcode res;
+            std::string readBuffer;
 
-        curl_global_init(CURL_GLOBAL_DEFAULT);
-        curl = curl_easy_init();
-        CHECK(curl);
-        curl_easy_setopt(curl, CURLOPT_URL, _skaledEndpoint.c_str());
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_rpc_request);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(json_rpc_request));
-        // Set up callback to capture response
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+            curl_global_init(CURL_GLOBAL_DEFAULT);
+            curl = curl_easy_init();
+            CHECK(curl);
+            curl_easy_setopt(curl, CURLOPT_URL, _skaledEndpoint.c_str());
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_rpc_request.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json_rpc_request.size());
+            // Set up callback to capture response
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
-        // Set HTTP headers
-        struct curl_slist *headers = nullptr;
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            // Set HTTP headers
+            struct curl_slist *headers = nullptr;
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-        while (std::time(NULL) < finishTime) {
-            /* Perform the first request */
-            res = curl_easy_perform(curl);
-            if (res != CURLE_OK) {
-                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-            } else {
-                // Parse JSON response
-                Json::CharReaderBuilder readerBuilder;
-                Json::Value jsonData;
-                std::string errs;
+            while (std::time(NULL) < finishTime) {
+                /* Perform the first request */
+                res = curl_easy_perform(curl);
+                if (res != CURLE_OK) {
+                    fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                } else {
+                    // Parse JSON response
+                    Json::CharReaderBuilder readerBuilder;
+                    Json::Value jsonData;
+                    std::string errs;
 
-                if (_totalCalls % 1000 == 0) {
-                    std::istringstream s(readBuffer);
-                    if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
-                        std::string blockNumberHex = jsonData["result"].asString();
-                        unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
-                        CHECK(blockNumber > 0)
-                    } else {
-                        std::cerr << "Failed to parse JSON response: " << errs << std::endl;
+                    if (_totalCalls % 1000 == 0) {
+                        std::istringstream s(readBuffer);
+                        if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
+                            std::string blockNumberHex = jsonData["result"].asString();
+                            unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
+                            CHECK(blockNumber > 0);
+                            //checkResult(jsonData);
+                        } else {
+                            std::cerr << "Failed to parse JSON response: " << errs << std::endl;
+                        }
                     }
                 }
+                _totalCalls++;
             }
-            _totalCalls++;
+
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
         }
 
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-    }
+        virtual void checkResult(Json::Value jsonData) = 0;
+
+        virtual string buildRequest() = 0;
+    };
+
+    class BlockPerformanceRunner : public Runner {
+
+    public:
+
+        virtual string buildRequest() {
+            return  R"({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1})";
+        }
+
+        virtual void checkResult(Json::Value jsonData) {
+            std::string blockNumberHex = jsonData["result"].asString();
+            unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
+            CHECK(blockNumber > 0);
+        }
+
+    };
 
 
-    void blockNumberPerfTest(SkaledFixture &fixture, uint64_t threadCount) {
+    void blockNumberPerfTest(SkaledFixture &fixture, uint64_t threadCount, Runner& _runner) {
         vector<shared_ptr<thread>> threads;
         std::atomic<uint64_t> totalCalls = 0;
 
         cerr << "Running " << threadCount << " threads ...";
         for (uint64_t i = 0; i < threadCount; ++i) {
-            auto t = make_shared<thread>([&]() { blockPerformanceCurl(fixture.skaledEndpoint, 10, totalCalls); });
+            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture.skaledEndpoint, 10, totalCalls); });
             threads.push_back(t);
         }
 
@@ -724,10 +749,12 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         // Vector to hold the thread objects
 
 
-        blockNumberPerfTest(fixture, 10);
-        blockNumberPerfTest(fixture, 50);
-        blockNumberPerfTest(fixture, 100);
-        blockNumberPerfTest(fixture, 200);
+        BlockPerformanceRunner runner;
+
+        blockNumberPerfTest(fixture, 10, runner);
+        blockNumberPerfTest(fixture, 50, runner);
+        blockNumberPerfTest(fixture, 100, runner);
+        blockNumberPerfTest(fixture, 200, runner);
     }
 
 
