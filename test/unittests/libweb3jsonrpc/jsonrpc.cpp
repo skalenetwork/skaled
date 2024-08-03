@@ -633,13 +633,15 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
     }
 
     // Callback function to handle data received from the server
-    size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-        ((std::string*)userp)->append((char*)contents, size * nmemb);
+    size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+        ((std::string *) userp)->append((char *) contents, size * nmemb);
         return size * nmemb;
     }
 
-    void blockPerformanceCurl(string &_skaledEndpoint, uint64_t _iterations) {
+    void blockPerformanceCurl(string &_skaledEndpoint, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
 
+
+        auto finishTime = std::time(NULL) + _runningTimeSec;
 
         const char *json_rpc_request = R"({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1})";
 
@@ -664,8 +666,7 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         headers = curl_slist_append(headers, "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-        for (uint64_t i = 0; i < _iterations; ++i) {
-
+        while (std::time(NULL) < finishTime) {
             /* Perform the first request */
             res = curl_easy_perform(curl);
             if (res != CURLE_OK) {
@@ -676,21 +677,42 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
                 Json::Value jsonData;
                 std::string errs;
 
-                std::istringstream s(readBuffer);
-//                if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
-//                    std::string blockNumberHex = jsonData["result"].asString();
-//                    unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
-//                    CHECK(blockNumber > 0)
-//                } else {
-//                    std::cerr << "Failed to parse JSON response: " << errs << std::endl;
-//                }
+                if (_totalCalls % 1000 == 0) {
+                    std::istringstream s(readBuffer);
+                    if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
+                        std::string blockNumberHex = jsonData["result"].asString();
+                        unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
+                        CHECK(blockNumber > 0)
+                    } else {
+                        std::cerr << "Failed to parse JSON response: " << errs << std::endl;
+                    }
+                }
             }
+            _totalCalls++;
         }
 
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
 
+
+    void blockNumberPerfTest(SkaledFixture &fixture, uint64_t threadCount) {
+        vector<shared_ptr<thread>> threads;
+        std::atomic<uint64_t> totalCalls = 0;
+
+        cerr << "Running " << threadCount << " threads ...";
+        for (uint64_t i = 0; i < threadCount; ++i) {
+            auto t = make_shared<thread>([&]() { blockPerformanceCurl(fixture.skaledEndpoint, 10, totalCalls); });
+            threads.push_back(t);
+        }
+
+        for (auto &&thread: threads) {
+            thread->join();
+        }
+
+        cerr << " Calls per sec: " << totalCalls / ((float) 10) << endl;
+
+    }
 
     BOOST_AUTO_TEST_CASE(jsonrpc_number_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
@@ -700,18 +722,12 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         SkaledFixture fixture(configFileName);
 
         // Vector to hold the thread objects
-        vector<shared_ptr<thread>> threads;
 
-        // Launch 100 threads
-        for (int i = 0; i < 100; ++i) {
-            auto t = make_shared<thread>([&]() { blockPerformanceCurl(fixture.skaledEndpoint, 10000); });
-            threads.push_back(t);
-        }
 
-        for (auto &&thread: threads) {
-            thread->join();
-        }
-
+        blockNumberPerfTest(fixture, 10);
+        blockNumberPerfTest(fixture, 50);
+        blockNumberPerfTest(fixture, 100);
+        blockNumberPerfTest(fixture, 200);
     }
 
 

@@ -8,18 +8,15 @@ BOOST_AUTO_TEST_SUITE( unddos, *boost::unit_test::precondition( dev::test::optio
 static skutils::unddos::settings compose_test_unddos_settings() {
     skutils::unddos::settings settings;
     //
-    skutils::unddos::origin_entry_setting oe1;
+    skutils::unddos::origin_dos_limits oe1;
     oe1.m_originWildcards.push_back("11.11.11.11" );
     oe1.m_defaultMaxCallsPerSec = 3;
     oe1.m_defaultMaxCallsPerMin = 10;
     oe1.m_maxWSConn = 2;
     oe1.m_banPerSecDuration = skutils::unddos::duration(5 );
     oe1.m_banPerMinDuration = skutils::unddos::duration(10 );
-    settings.m_origins.push_back(oe1 );
-    //
-    skutils::unddos::origin_entry_setting oe2;
+    skutils::unddos::origin_dos_limits oe2;
     oe2.load_unlim_for_localhost_only();
-    settings.m_origins.push_back(oe2 );
     return settings;
 }
 
