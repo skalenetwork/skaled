@@ -773,8 +773,31 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         jsonRPCPerfTest(fixture, 50, runner);
         jsonRPCPerfTest(fixture, 100, runner);
         jsonRPCPerfTest(fixture, 200, runner);
-    }    
+    }
 
+    class GetLatestBlockPerfRunner : public Runner {
+
+    public:
+
+        virtual string buildRequest() {
+            return  R"({"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1})";
+        }
+
+        virtual void checkResult(Json::Value) {
+        }
+    };
+
+    BOOST_AUTO_TEST_CASE(jsonrpc_latest_block_perf) {
+        *boost::unit_test::precondition(dev::test::run_not_express);
+
+        SkaledFixture fixture(configFileName);
+        GetLatestBlockPerfRunner runner;
+
+        jsonRPCPerfTest(fixture, 10, runner);
+        jsonRPCPerfTest(fixture, 50, runner);
+        jsonRPCPerfTest(fixture, 100, runner);
+        jsonRPCPerfTest(fixture, 200, runner);
+    }
 
 // SKALE disabled
 // BOOST_AUTO_TEST_CASE(jsonrpc_peerCount)
