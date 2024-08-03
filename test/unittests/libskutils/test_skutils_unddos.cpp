@@ -9,10 +9,10 @@ static skutils::unddos::settings compose_test_unddos_settings() {
     skutils::unddos::settings settings;
     //
     skutils::unddos::origin_entry_setting oe1;
-    oe1.origin_wildcards_.push_back( "11.11.11.11" );
-    oe1.max_calls_per_second_ = 3;
-    oe1.max_calls_per_minute_ = 10;
-    oe1.max_ws_conn_ = 2;
+    oe1.m_originWildcards.push_back("11.11.11.11" );
+    oe1.m_defaultMaxCallsPerSec = 3;
+    oe1.m_defaultMaxCallsPerMin = 10;
+    oe1.m_maxWSConn = 2;
     oe1.m_banPerSecDuration = skutils::unddos::duration(5 );
     oe1.m_banPerMinDuration = skutils::unddos::duration(10 );
     settings.m_origins.push_back(oe1 );

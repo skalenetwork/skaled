@@ -54,13 +54,13 @@ typedef std::vector< std::string > origin_wildcards_t;
 
 class origin_entry_setting {
 public:
-    origin_wildcards_t origin_wildcards_;
-    size_t max_calls_per_second_ = 0;
-    size_t max_calls_per_minute_ = 0;
+    origin_wildcards_t m_originWildcards;
+    size_t m_defaultMaxCallsPerSec = 0;
+    size_t m_defaultMaxCallsPerMin = 0;
     duration m_banPerSecDuration = duration(0 );
     duration m_banPerMinDuration = duration(0 );
-    size_t max_ws_conn_ = 0;
-    map_custom_method_settings_t map_custom_method_settings_;
+    size_t m_maxWSConn = 0;
+    map_custom_method_settings_t m_mapCustomMethodSettings;
     origin_entry_setting();
     origin_entry_setting( const origin_entry_setting& other );
     origin_entry_setting( origin_entry_setting&& other );
@@ -227,8 +227,8 @@ public:
         return ( compare( origin ) >= 0 ) ? true : false;
     }
 
-    bool clear_ban();
-    bool check_ban( time_tick_mark ttmNow = time_tick_mark( 0 ), bool isAutoClear = true );
+    void clear_ban();
+    bool isBanned(time_tick_mark _time);
 
     void recordUse( time_tick_mark _ttmNow);
 
