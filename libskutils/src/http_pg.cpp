@@ -297,13 +297,18 @@ bool server::start() {
 
 
     if ( m_threads <= 0 ) {
-        m_threads = 1;
+        // Get the number of CPU cores available
+        unsigned int num_cpus = std::thread::hardware_concurrency();
+        m_threads = num_cpus;
     }
+
 
     if ( m_threads_limit > 0 && m_threads > m_threads_limit )
         m_threads = m_threads_limit;
 
     proxygen::HTTPServerOptions options;
+
+
     options.threads = static_cast< size_t >( m_threads );
     options.idleTimeout = std::chrono::milliseconds( skutils::rest::g_nClientConnectionTimeoutMS );
     // // // options.shutdownOn = {SIGINT, SIGTERM}; // experimental only, not needed in `skaled`
