@@ -603,12 +603,6 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                  << "unknown exception";
                         }
                         if ( !bMessageSentOK ) {
-                            stats::register_stats_error(
-                                ( string( "RPC/" ) +
-                                    subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() )
-                                    .c_str(),
-                                "eth_subscription/skaleStats" );
-                            stats::register_stats_error( "RPC", "eth_subscription/skaleStats" );
                             unsubscribe( idSubscription );
                         }
                     } );
@@ -2131,7 +2125,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
     static string mainnet_proxy_ip_address = hostname_to_ip( "api.skalenodes.com" );
     static string testnet_proxy_ip_address = hostname_to_ip( "testnet-api.skalenodes.com" );
 
-    skutils::unddos::e_high_load_detection_result_t ehldr;
+    skutils::unddos::e_high_load_detection_result_t ehldr =
+            skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
     if ( str_unddos_origin == mainnet_proxy_ip_address ||
          str_unddos_origin == testnet_proxy_ip_address ) {
         ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
@@ -2793,44 +2788,6 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
 json SkaleServerOverride::provideSkaleStats() {  // abstract from
                                                  // dev::rpc::SkaleStatsProviderImpl
     json joStats = json::object();
-    //
-    joStats["blocks"] = generateBlocksStats();
-    //
-    json joExecutionPerformance = json::object();
-    joExecutionPerformance["RPC"] =
-        skutils::stats::time_tracker::queue::getQueueForSubsystem( "RPC" ).getAllStats();
-    joStats["executionPerformance"] = joExecutionPerformance;
-    joStats["protocols"]["http"]["listenerCount"] =
-        serversProxygenHTTP4std_.size() + serversProxygenHTTP4nfo_.size() +
-        serversProxygenHTTP6std_.size() + serversProxygenHTTP6nfo_.size();
-    joStats["protocols"]["https"]["listenerCount"] =
-        serversProxygenHTTPS4std_.size() + serversProxygenHTTPS4nfo_.size() +
-        serversProxygenHTTPS6std_.size() + serversProxygenHTTPS6nfo_.size();
-    joStats["protocols"]["wss"]["listenerCount"] = serversWSS4std_.size() + serversWSS4nfo_.size() +
-                                                   serversWSS6std_.size() + serversWSS6nfo_.size();
-    {  // block for subsystem stats using optimized locking only once
-        stats::lock_type_stats lock( stats::g_mtx_stats );
-        joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
-        joStats["protocols"]["http"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTP" );
-        joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
-        joStats["protocols"]["https"]["rpc"] = stats::generate_subsystem_stats( "RPC/HTTPS" );
-        joStats["protocols"]["ws"]["listenerCount"] = serversWS4std_.size() +
-                                                      serversWS4nfo_.size() +
-                                                      serversWS6std_.size() + serversWS6nfo_.size();
-        joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "WS" );
-        joStats["protocols"]["ws"]["rpc"] = stats::generate_subsystem_stats( "RPC/WS" );
-        joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
-        joStats["protocols"]["wss"]["rpc"] = stats::generate_subsystem_stats( "RPC/WSS" );
-        joStats["rpc"] = stats::generate_subsystem_stats( "RPC" );
-    }  // block for subsystem stats using optimized locking only once
-    //
-    skutils::tools::load_monitor& lm = stat_get_load_monitor();
-    double lfCpuLoad = lm.last_cpu_load();
-    joStats["system"]["cpu_load"] = lfCpuLoad;
-    joStats["system"]["disk_usage"] = lm.last_disk_load();
-    double lfMemUsage = skutils::tools::mem_usage();
-    joStats["system"]["mem_usage"] = lfMemUsage;
-    joStats["unddos"] = unddos_.stats();
     return joStats;
 }
 
