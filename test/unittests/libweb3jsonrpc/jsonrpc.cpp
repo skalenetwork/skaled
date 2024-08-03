@@ -683,10 +683,7 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
                     if (_totalCalls % 1000 == 0) {
                         std::istringstream s(readBuffer);
                         if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
-                            std::string blockNumberHex = jsonData["result"].asString();
-                            unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
-                            CHECK(blockNumber > 0);
-                            //checkResult(jsonData);
+                            checkResult(jsonData);
                         } else {
                             std::cerr << "Failed to parse JSON response: " << errs << std::endl;
                         }
@@ -704,7 +701,7 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
         virtual string buildRequest() = 0;
     };
 
-    class BlockPerformanceRunner : public Runner {
+    class GetBlockNumberPerfRunner : public Runner {
 
     public:
 
@@ -717,11 +714,13 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
             unsigned int blockNumber = std::stoul(blockNumberHex, nullptr, 16);
             CHECK(blockNumber > 0);
         }
-
     };
 
 
-    void blockNumberPerfTest(SkaledFixture &fixture, uint64_t threadCount, Runner& _runner) {
+
+
+
+    void jsonRPCPerfTest(SkaledFixture &fixture, uint64_t threadCount, Runner& _runner) {
         vector<shared_ptr<thread>> threads;
         std::atomic<uint64_t> totalCalls = 0;
 
@@ -739,23 +738,42 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
 
     }
 
-    BOOST_AUTO_TEST_CASE(jsonrpc_number_perf) {
+    string configFileName = "../../test/historicstate/configs/basic_config.json";
+
+    BOOST_AUTO_TEST_CASE(jsonrpc_block_number_perf) {
+        *boost::unit_test::precondition(dev::test::run_not_express);
+        SkaledFixture fixture(configFileName);
+        GetBlockNumberPerfRunner runner;
+
+        jsonRPCPerfTest(fixture, 10, runner);
+        jsonRPCPerfTest(fixture, 50, runner);
+        jsonRPCPerfTest(fixture, 100, runner);
+        jsonRPCPerfTest(fixture, 200, runner);
+    }
+
+    class GetBlockByNumberPerfRunner : public Runner {
+
+    public:
+
+        virtual string buildRequest() {
+            return  R"({"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x01", true],"id":1})";
+        }
+
+        virtual void checkResult(Json::Value) {
+        }
+    };
+
+    BOOST_AUTO_TEST_CASE(jsonrpc_block_by_number_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
-        string configFileName = "../../test/historicstate/configs/basic_config.json";
-
         SkaledFixture fixture(configFileName);
+        GetBlockByNumberPerfRunner runner;
 
-        // Vector to hold the thread objects
-
-
-        BlockPerformanceRunner runner;
-
-        blockNumberPerfTest(fixture, 10, runner);
-        blockNumberPerfTest(fixture, 50, runner);
-        blockNumberPerfTest(fixture, 100, runner);
-        blockNumberPerfTest(fixture, 200, runner);
-    }
+        jsonRPCPerfTest(fixture, 10, runner);
+        jsonRPCPerfTest(fixture, 50, runner);
+        jsonRPCPerfTest(fixture, 100, runner);
+        jsonRPCPerfTest(fixture, 200, runner);
+    }    
 
 
 // SKALE disabled
