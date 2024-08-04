@@ -559,10 +559,10 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             Json::Value ret;
             Json::Reader().parse(config, ret);
 
-            string owner = ret["skaleConfig"]["sChain"]["schainOwner"].asString();
-            auto ip = ret["skaleConfig"]["sChain"]["nodes"][0]["ip"].asString();
+            schainOwnerAddress = ret["skaleConfig"]["sChain"]["schainOwner"].asString();
+            ip = ret["skaleConfig"]["sChain"]["nodes"][0]["ip"].asString();
             CHECK(!ip.empty())
-            auto basePort = ret["skaleConfig"]["sChain"]["nodes"][0]["basePort"].asInt();
+            basePort = ret["skaleConfig"]["sChain"]["nodes"][0]["basePort"].asInt();
             CHECK(basePort > 0)
 
             auto coinbaseTest = dev::KeyPair(
@@ -605,14 +605,10 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         dev::KeyPair account2{KeyPair::create()};
         dev::KeyPair account3{KeyPair::create()};
         unique_ptr<WebThreeStubClient> rpcClient;
-        unique_ptr<bp::child> skaledProcess;
-        unique_ptr<boost::thread> outPrintThread;
-        unique_ptr<boost::thread> errPrintThread;
-        // Create a pipe to capture the output
-        bp::ipstream outStream;
-        bp::ipstream errStream;
         string skaledEndpoint;
-
+        string schainOwnerAddress;
+        string ip;
+        uint64_t basePort;
     };
 
     // Define a function that will be called by each thread
@@ -638,6 +634,20 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     class Runner {
     public:
+
+        string buildRequestFromParams(const string _methodName, Json::Value &params) const {
+            Json::Value request;
+
+            // Populate the JSON object with required fields
+            request["jsonrpc"] = "2.0";
+            request["method"] = _methodName;
+            // Add params to the root object
+            request["params"] = params;
+            // Add the id field
+            request["id"] = 1;
+            Json::StreamWriterBuilder writer;
+            return Json::writeString(writer, request);
+        }
 
         virtual void perfRun(SkaledFixture& _fixture, double _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
 
@@ -800,11 +810,16 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     public:
 
         string buildRequest(SkaledFixture& _fixture) override {
-            return R"({"jsonrpc":"2.0","method":"eth_getBalance","params":["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "latest"],"id":1})";
+
+            // Create the params array
+            Json::Value params(Json::arrayValue);
+            params.append(_fixture.schainOwnerAddress);
+            params.append("latest");
+            return buildRequestFromParams("eth_getBalance", params);
+
         }
 
-
-        void checkResult(Json::Value _value) override{
+        void checkResult(Json::Value _value) override {
         }
     };
 
