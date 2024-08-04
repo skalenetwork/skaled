@@ -642,7 +642,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         virtual void perfRun(SkaledFixture& _fixture, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
 
 
-            auto finishTime = std::time(NULL) + _runningTimeSec;
+            auto finishTime = std::time(nullptr) + _runningTimeSec;
 
             auto json_rpc_request = buildRequest(_fixture);
 
@@ -667,7 +667,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             headers = curl_slist_append(headers, "Content-Type: application/json");
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-            while (std::time(NULL) < finishTime) {
+            while ((uint64_t) std::time(nullptr) < finishTime) {
                 /* Perform the first request */
                 res = curl_easy_perform(curl);
                 if (res != CURLE_OK) {
@@ -740,10 +740,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         SkaledFixture fixture(configFileName);
         GetBlockNumberPerfRunner runner;
 
-        jsonRPCPerfTest(fixture, 10, runner);
-        jsonRPCPerfTest(fixture, 50, runner);
-        jsonRPCPerfTest(fixture, 100, runner);
-        jsonRPCPerfTest(fixture, 200, runner);
+        for (uint64_t threadCount : { 10, 50, 100, 200 }) {
+            jsonRPCPerfTest(fixture, threadCount, runner);
+        }
     }
 
     class GetBlockByNumberPerfRunner : public Runner {
@@ -764,10 +763,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         SkaledFixture fixture(configFileName);
         GetBlockByNumberPerfRunner runner;
 
-        jsonRPCPerfTest(fixture, 10, runner);
-        jsonRPCPerfTest(fixture, 50, runner);
-        jsonRPCPerfTest(fixture, 100, runner);
-        jsonRPCPerfTest(fixture, 200, runner);
+        for (uint64_t threadCount : { 10, 50, 100, 200 }) {
+            jsonRPCPerfTest(fixture, threadCount, runner);
+        }
     }
 
     class GetLatestBlockPerfRunner : public Runner {
@@ -790,10 +788,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         SkaledFixture fixture(configFileName);
         GetLatestBlockPerfRunner runner;
 
-        jsonRPCPerfTest(fixture, 10, runner);
-        jsonRPCPerfTest(fixture, 50, runner);
-        jsonRPCPerfTest(fixture, 100, runner);
-        jsonRPCPerfTest(fixture, 200, runner);
+        for (uint64_t threadCount : { 10, 50, 100, 200 }) {
+            jsonRPCPerfTest(fixture, threadCount, runner);
+        }
     }
 
 
@@ -816,10 +813,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         SkaledFixture fixture(configFileName);
         GetBalancePerfRunner runner;
 
-        jsonRPCPerfTest(fixture, 10, runner);
-        jsonRPCPerfTest(fixture, 50, runner);
-        jsonRPCPerfTest(fixture, 100, runner);
-        jsonRPCPerfTest(fixture, 200, runner);
+        for (uint64_t threadCount : { 10, 50, 100, 200 }) {
+            jsonRPCPerfTest(fixture, threadCount, runner);
+        }
     }
 
 
@@ -841,10 +837,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         SkaledFixture fixture(configFileName);
         GasPriceRunner runner;
 
-        jsonRPCPerfTest(fixture, 10, runner);
-        jsonRPCPerfTest(fixture, 50, runner);
-        jsonRPCPerfTest(fixture, 100, runner);
-        jsonRPCPerfTest(fixture, 200, runner);
+        for (uint64_t threadCount : { 10, 50, 100, 200 }) {
+            jsonRPCPerfTest(fixture, threadCount, runner);
+        }
     }
 
 
@@ -866,10 +861,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         SkaledFixture fixture(configFileName);
         CoinbaseRunner runner;
 
-        jsonRPCPerfTest(fixture, 10, runner);
-        jsonRPCPerfTest(fixture, 50, runner);
-        jsonRPCPerfTest(fixture, 100, runner);
-        jsonRPCPerfTest(fixture, 200, runner);
+        for (uint64_t threadCount : { 10, 50, 100, 200 }) {
+            jsonRPCPerfTest(fixture, threadCount, runner);
+        }
     }
 
 // SKALE disabled
