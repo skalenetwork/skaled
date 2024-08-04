@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     class Runner {
     public:
 
-        virtual void perfRun(string &_skaledEndpoint, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
+        virtual void perfRun(SkaledFixture& _fixture, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
 
 
             auto finishTime = std::time(NULL) + _runningTimeSec;
@@ -654,7 +654,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             curl_global_init(CURL_GLOBAL_DEFAULT);
             curl = curl_easy_init();
             CHECK(curl);
-            curl_easy_setopt(curl, CURLOPT_URL, _skaledEndpoint.c_str());
+            curl_easy_setopt(curl, CURLOPT_URL, _fixture.skaledEndpoint.c_str());
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_rpc_request.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json_rpc_request.size());
@@ -721,7 +721,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
         cerr << "Running " << threadCount << " threads ...";
         for (uint64_t i = 0; i < threadCount; ++i) {
-            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture.skaledEndpoint, 10, totalCalls); });
+            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture, 10, totalCalls); });
             threads.push_back(t);
         }
 
