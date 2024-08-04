@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     class Runner {
     public:
 
-        virtual void perfRun(SkaledFixture& _fixture, uint64_t _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
+        virtual void perfRun(SkaledFixture& _fixture, double _runningTimeSec, std::atomic<uint64_t> &_totalCalls) {
 
 
             auto finishTime = std::time(nullptr) + _runningTimeSec;
@@ -715,13 +715,14 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     };
 
 
-    void jsonRPCPerfTest(SkaledFixture &fixture, uint64_t threadCount, Runner& _runner) {
+    void jsonRPCPerfTest(SkaledFixture &fixture, uint64_t threadCount, Runner& _runner, double runningTimeSec = 10.0) {
         vector<shared_ptr<thread>> threads;
         std::atomic<uint64_t> totalCalls = 0;
 
         cerr << "Running " << threadCount << " threads ...";
         for (uint64_t i = 0; i < threadCount; ++i) {
-            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture, 10, totalCalls); });
+            auto t = make_shared<thread>([&]() { _runner.perfRun(fixture, runningTimeSec,
+                                                 totalCalls); });
             threads.push_back(t);
         }
 
@@ -729,7 +730,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             thread->join();
         }
 
-        cerr << " Calls per sec: " << totalCalls / ((float) 10) << endl;
+        cerr << " Calls per sec: " << totalCalls / runningTimeSec << endl;
 
     }
 
