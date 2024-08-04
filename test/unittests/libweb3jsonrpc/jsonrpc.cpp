@@ -394,10 +394,10 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
 
         sleep(1);
 
-        auto client = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
-        client->SetTimeout(1000000000);
+        auto httpClient = new jsonrpc::HttpClient( "http://" + chainParams.nodeInfo.ip + ":" + std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
+        httpClient->SetTimeout(1000000000);
 
-        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *client ) );
+        rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *httpClient ) );
 
 
         BOOST_TEST_MESSAGE("Constructed JsonRpcFixture");
@@ -644,7 +644,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             auto finishTime = std::time(NULL) + _runningTimeSec;
 
-            auto json_rpc_request = buildRequest();
+            auto json_rpc_request = buildRequest(_fixture);
 
 
             CURL *curl;
@@ -696,14 +696,14 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
         virtual void checkResult(Json::Value jsonData) = 0;
 
-        virtual string buildRequest() = 0;
+        virtual string buildRequest(SkaledFixture& _fixture) = 0;
     };
 
     class GetBlockNumberPerfRunner : public Runner {
 
     public:
 
-        virtual string buildRequest() {
+        virtual string buildRequest(SkaledFixture&) {
             return  R"({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1})";
         }
 
@@ -750,11 +750,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     public:
 
-        virtual string buildRequest() {
+        string buildRequest(SkaledFixture&) override {
             return  R"({"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x01", true],"id":1})";
         }
 
-        virtual void checkResult(Json::Value) {
+        void checkResult(Json::Value) override {
         }
     };
 
@@ -774,11 +774,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     public:
 
-        virtual string buildRequest() {
+        string buildRequest(SkaledFixture&) override {
             return  R"({"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", true],"id":1})";
         }
 
-        virtual void checkResult(Json::Value) {
+        void checkResult(Json::Value) override {
         }
     };
 
@@ -801,12 +801,12 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     public:
 
-        virtual string buildRequest() {
+        string buildRequest(SkaledFixture& _fixture) override {
             return R"({"jsonrpc":"2.0","method":"eth_getBalance","params":["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "latest"],"id":1})";
         }
 
 
-        virtual void checkResult(Json::Value _value) {
+        void checkResult(Json::Value _value) override{
         }
     };
 
@@ -827,11 +827,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     public:
 
-        virtual string buildRequest() {
+        string buildRequest(SkaledFixture&) override {
             return  R"({"jsonrpc":"2.0","method":"eth_gasPrice","params":["latest", true],"id":1})";
         }
 
-        virtual void checkResult(Json::Value) {
+        void checkResult(Json::Value) override {
         }
     };
 
@@ -852,11 +852,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     public:
 
-        virtual string buildRequest() {
+        string buildRequest(SkaledFixture&) override {
             return  R"({"jsonrpc":"2.0","method":"eth_coinbase","params":["latest", true],"id":1})";
         }
 
-        virtual void checkResult(Json::Value) {
+        void checkResult(Json::Value) override {
         }
     };
 
@@ -2165,10 +2165,10 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     string txHash;
     BlockHeader badInfo, goodInfo;
     for(;;) {
-        string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
-        u256 gasEstimate = jsToU256(gasEstimateStr);
+        string gasStr = fixture.rpcClient->eth_estimateGas(transact);
+        u256 gasEst = jsToU256(gasStr);
         // old
-        if(gasEstimate == u256(21000+1024*68)){
+        if(gasEst == u256(21000+1024*68)){
             try{
                 fixture.rpcClient->eth_sendTransaction( transact );
                 BOOST_REQUIRE(false);
