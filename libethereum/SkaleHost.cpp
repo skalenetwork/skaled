@@ -597,14 +597,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
-        skutils::task::performance::json jarrProcessedTxns =
-            skutils::task::performance::json::array();
 
         for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
             const bytes& data = *it;
             h256 sha = sha3( data );
             LOG( m_traceLogger ) << "Arrived txn: " << sha;
-            jarrProcessedTxns.push_back( toJS( sha ) );
 #ifdef DEBUG_TX_BALANCE
             if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
                 LOG( m_errorLogger ) << "createBlock assert";
