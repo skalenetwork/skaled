@@ -567,6 +567,13 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             basePort = ret["skaleConfig"]["sChain"]["nodes"][0]["basePort"].asInt();
             CHECK(basePort > 0)
 
+
+            auto chainIdStr = ret["params"]["chainID"].asString();
+
+            // trim 0x
+            chainIdStr = chainIdStr.substr( 2 );
+            chainId =  std::stoull(chainIdStr, nullptr, 16);
+
             auto coinbaseTest = dev::KeyPair(
                     dev::Secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9"));
             auto account3Test = dev::KeyPair(
@@ -618,6 +625,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         string schainOwnerAddress;
         string ip;
         uint64_t basePort;
+        uint64_t chainId;
     };
 
     // Define a function that will be called by each thread
@@ -1226,11 +1234,17 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         ts.gasPrice = gasPrice;
 
         Secret secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9");
-        Transaction transaction( ts, secret );  // always legacy, no prefix byte
+        Transaction transaction( ts);  // always legacy, no prefix byte
+        transaction.forceChainId( fixture.chainId );
+        transaction.sign( secret );
+        BOOST_REQUIRE( transaction.chainId());
         auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
 
         BOOST_REQUIRE( result["raw"] );
         BOOST_REQUIRE( result["tx"] );
+
+        auto txHash = fixture.rpcClient->eth_sendRawTransaction( result["raw"].asString() );
+        BOOST_REQUIRE( !txHash.empty() );
 
         accountNonce = fixture.getTransactionCount(  address);
     }
