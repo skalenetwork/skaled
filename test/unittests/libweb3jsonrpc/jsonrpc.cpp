@@ -36,6 +36,8 @@
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include "genesisGeneration2Config.h"
+#include "libweb3jsonrpc/SkaleFace.h"
+
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
@@ -47,7 +49,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/process.hpp>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
-
+#include <libweb3jsonrpc/JsonHelper.h>
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/oracle/OracleRequestSpec.h>
 
@@ -600,6 +602,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             BOOST_TEST_MESSAGE("Destructed SkaledFixture");
         }
 
+        u256 getTransactionCount(string& _address) {
+            return jsToU256( this->rpcClient->eth_getTransactionCount( toJS( _address ), "latest" ) );
+        }
+
+
 
         dev::KeyPair coinbase{KeyPair::create()};
         dev::KeyPair account2{KeyPair::create()};
@@ -744,11 +751,11 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     }
 
-    string configFileName = "../../test/historicstate/configs/basic_config.json";
+    string skaledConfigFileName = "../../test/historicstate/configs/basic_config.json";
 
     BOOST_AUTO_TEST_CASE(jsonrpc_block_number_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
-        SkaledFixture fixture(configFileName);
+        SkaledFixture fixture(skaledConfigFileName);
         GetBlockNumberPerfRunner runner;
 
         for (uint64_t threadCount : { 10, 50, 100, 200 }) {
@@ -771,7 +778,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     BOOST_AUTO_TEST_CASE(jsonrpc_block_by_number_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
-        SkaledFixture fixture(configFileName);
+        SkaledFixture fixture(skaledConfigFileName);
         GetBlockByNumberPerfRunner runner;
 
         for (uint64_t threadCount : { 10, 50, 100, 200 }) {
@@ -796,7 +803,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     BOOST_AUTO_TEST_CASE(jsonrpc_latest_block_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
-        SkaledFixture fixture(configFileName);
+        SkaledFixture fixture(skaledConfigFileName);
         GetLatestBlockPerfRunner runner;
 
         for (uint64_t threadCount : { 10, 50, 100, 200 }) {
@@ -826,7 +833,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     BOOST_AUTO_TEST_CASE(jsonrpc_getbalance_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
-        SkaledFixture fixture(configFileName);
+        SkaledFixture fixture(skaledConfigFileName);
         GetBalancePerfRunner runner;
 
         for (uint64_t threadCount : { 10, 50, 100, 200 }) {
@@ -850,7 +857,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     BOOST_AUTO_TEST_CASE(jsonrpc_gas_price_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
-        SkaledFixture fixture(configFileName);
+        SkaledFixture fixture(skaledConfigFileName);
         GasPriceRunner runner;
 
         for (uint64_t threadCount : { 10, 50, 100, 200 }) {
@@ -874,7 +881,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     BOOST_AUTO_TEST_CASE(jsonrpc_coinbase_perf) {
         *boost::unit_test::precondition(dev::test::run_not_express);
 
-        SkaledFixture fixture(configFileName);
+        SkaledFixture fixture(skaledConfigFileName);
         CoinbaseRunner runner;
 
         for (uint64_t threadCount : { 10, 50, 100, 200 }) {
@@ -1196,6 +1203,34 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 
     BOOST_CHECK_EQUAL( countAtBeforeSign, countAtAfterSign );
 }
+
+
+BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
+        SkaledFixture fixture(skaledConfigFileName);
+        auto address = fixture.schainOwnerAddress;
+        auto accountNonce = fixture.getTransactionCount(  address);
+        auto receiver = KeyPair::create();
+
+        Json::Value t;
+
+        t["from"] = toJS( address );
+        t["value"] = jsToDecimal( toJS( 1 ) );
+        t["to"] = toJS( receiver.address() );
+        TransactionSkeleton ts = toTransactionSkeleton( t );
+        ts.nonce = accountNonce;
+        ts.gas = 90000;
+        ts.gasPrice = 10000000;
+
+        Secret secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9");
+        Transaction transaction( ts, secret );  // always legacy, no prefix byte
+        auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
+
+        BOOST_REQUIRE( result["raw"] );
+        BOOST_REQUIRE( result["tx"] );
+
+        accountNonce = fixture.getTransactionCount(  address);
+    }
+
 
 BOOST_AUTO_TEST_CASE( simple_contract ) {
     JsonRpcFixture fixture;
