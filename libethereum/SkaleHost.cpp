@@ -536,21 +536,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
-    //
+
     boost::chrono::high_resolution_clock::time_point skaledTimeStart;
     skaledTimeStart = boost::chrono::high_resolution_clock::now();
-    static std::atomic_size_t g_nCreateBlockTaskNumber = 0;
-    size_t nCreateBlockTaskNumber = g_nCreateBlockTaskNumber++;
-    std::string strPerformanceQueueName_create_block = "bc/create_block";
-    std::string strPerformanceActionName_create_block =
-        skutils::tools::format( "b-create %zu", nCreateBlockTaskNumber );
-    skutils::task::performance::json jsn_create_block = skutils::task::performance::json::object();
-    jsn_create_block["blockID"] = toJS( _blockID );
-    jsn_create_block["timeStamp"] = toJS( _timeStamp );
-    jsn_create_block["gasPrice"] = toJS( _gasPrice );
-    jsn_create_block["stateRoot"] = toJS( _stateRoot );
-    skutils::task::performance::action a_create_block( strPerformanceQueueName_create_block,
-        strPerformanceActionName_create_block, jsn_create_block );
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
@@ -668,17 +656,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         assert( _blockID == m_client.number() + 1 );
 
-        //
-        a_create_block.finish();
-        //
-        static std::atomic_size_t g_nImportBlockTaskNumber = 0;
-        size_t nImportBlockTaskNumber = g_nImportBlockTaskNumber++;
-        std::string strPerformanceQueueName_import_block = "bc/import_block";
-        std::string strPerformanceActionName_import_block =
-            skutils::tools::format( "b-import %zu", nImportBlockTaskNumber );
-        skutils::task::performance::action a_import_block(
-            strPerformanceQueueName_import_block, strPerformanceActionName_import_block );
-        //
+
         m_debugTracer.tracepoint( "import_block" );
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
