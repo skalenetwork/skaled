@@ -1247,16 +1247,12 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
-        SkaledFixture fixture(skaledConfigFileName);
-        auto address = fixture.schainOwnerAddress;
-        auto accountNonce = fixture.getTransactionCount(  address);
-        u256  gasPrice = fixture.getCurrentGasPrice();
+void sendSingleTransfer(SkaledFixture& _fixture) {
+        auto address = _fixture.schainOwnerAddress;
+        auto accountNonce = _fixture.getTransactionCount(  address);
+        u256  gasPrice = _fixture.getCurrentGasPrice();
         auto receiver = KeyPair::create();
-
-
         Json::Value t;
-
         t["from"] = toJS( address );
         t["value"] = jsToDecimal( toJS( 1 ) );
         t["to"] = toJS( receiver.address() );
@@ -1265,34 +1261,41 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         ts.gas = 90000;
         ts.gasPrice = gasPrice;
 
-        Secret secret(fixture.ownerKey);
+        Secret secret(_fixture.ownerKey);
+
         Transaction transaction( ts);  // always legacy, no prefix byte
-        transaction.forceChainId( fixture.chainId );
+        transaction.forceChainId( _fixture.chainId );
         transaction.sign( secret );
-        BOOST_REQUIRE( transaction.chainId());
+        CHECK( transaction.chainId());
         auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
 
-        BOOST_REQUIRE( result["raw"] );
-        BOOST_REQUIRE( result["tx"] );
+        CHECK( result["raw"] );
+        CHECK( result["tx"] );
 
-        auto beginTime = fixture.getCurrentTimeMs();
-        auto txHash = fixture.rpcClient->eth_sendRawTransaction( result["raw"].asString() );
-        cerr << "Time to send transaction" << fixture.getCurrentTimeMs() - beginTime << endl;
-        BOOST_REQUIRE( !txHash.empty() );
+        auto beginTime = _fixture.getCurrentTimeMs();
+        auto txHash = _fixture.rpcClient->eth_sendRawTransaction( result["raw"].asString() );
+        cerr << "Time to send transaction, ms " << _fixture.getCurrentTimeMs() - beginTime << endl;
+        CHECK( !txHash.empty() );
 
         u256 newAccountNonce;
         uint64_t completionTime;
 
         do {
-            newAccountNonce = fixture.getTransactionCount(  address);
+            newAccountNonce = _fixture.getTransactionCount(  address);
             this_thread::sleep_for(std::chrono::milliseconds(100));
-            completionTime = fixture.getCurrentTimeMs();
+            completionTime = _fixture.getCurrentTimeMs();
         } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
 
-        BOOST_REQUIRE( newAccountNonce - accountNonce == 1);
+        CHECK( newAccountNonce - accountNonce == 1);
         cerr << "Time for transaction, ms " << completionTime - beginTime << endl;
+    }
 
 
+BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
+        SkaledFixture fixture(skaledConfigFileName);
+        for (uint64_t i = 0; i< 1000; i++) {
+        sendSingleTransfer(fixture);
+        }
     }
 
 
