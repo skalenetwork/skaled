@@ -606,7 +606,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             return jsToU256( this->rpcClient->eth_getTransactionCount( toJS( _address ), "latest" ) );
         }
 
-
+        u256 getCurrentGasPrice() {
+            return jsToU256(rpcClient->eth_gasPrice());
+        }
 
         dev::KeyPair coinbase{KeyPair::create()};
         dev::KeyPair account2{KeyPair::create()};
@@ -1209,7 +1211,9 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
         auto address = fixture.schainOwnerAddress;
         auto accountNonce = fixture.getTransactionCount(  address);
+        u256  gasPrice = fixture.getCurrentGasPrice();
         auto receiver = KeyPair::create();
+
 
         Json::Value t;
 
@@ -1219,7 +1223,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         TransactionSkeleton ts = toTransactionSkeleton( t );
         ts.nonce = accountNonce;
         ts.gas = 90000;
-        ts.gasPrice = 10000000;
+        ts.gasPrice = gasPrice;
 
         Secret secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9");
         Transaction transaction( ts, secret );  // always legacy, no prefix byte
