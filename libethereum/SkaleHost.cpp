@@ -419,19 +419,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     h256Hash to_delete;
 
-    //
-    static std::atomic_size_t g_nFetchTransactionsTaskNumber = 0;
-    size_t nFetchTransactionsTaskNumber = g_nFetchTransactionsTaskNumber++;
-    std::string strPerformanceQueueName_fetch_transactions = "bc/fetch_transactions";
-    std::string strPerformanceActionName_fetch_transactions =
-        skutils::tools::format( "fetch task %zu", nFetchTransactionsTaskNumber );
-    skutils::task::performance::json jsn = skutils::task::performance::json::object();
-    jsn["limit"] = toJS( _limit );
-    jsn["stateRoot"] = toJS( _stateRoot );
-    skutils::task::performance::action a_fetch_transactions(
-        strPerformanceQueueName_fetch_transactions, strPerformanceActionName_fetch_transactions,
-        jsn );
-    //
     m_debugTracer.tracepoint( "fetch_transactions" );
 
     int counter = 0;
@@ -464,11 +451,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             return true;
         } );
 
-
-    //
-    a_fetch_transactions.finish();
-    //
-
     if ( counter++ == 0 )
         m_pending_createMutex.lock();
 
@@ -490,16 +472,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     {
         std::lock_guard< std::mutex > localGuard( m_receivedMutex );
         //
-        static std::atomic_size_t g_nDropBadTransactionsTaskNumber = 0;
-        size_t nDropBadTransactionsTaskNumber = g_nDropBadTransactionsTaskNumber++;
-        std::string strPerformanceQueueName_drop_bad_transactions = "bc/fetch_transactions";
-        std::string strPerformanceActionName_drop_bad_transactions =
-            skutils::tools::format( "fetch task %zu", nDropBadTransactionsTaskNumber );
 
-        skutils::task::performance::action a_drop_bad_transactions(
-            strPerformanceQueueName_drop_bad_transactions,
-            strPerformanceActionName_drop_bad_transactions, jsn );
-        //
         for ( auto sha : to_delete ) {
             m_debugTracer.tracepoint( "drop_bad" );
             m_tq.drop( sha );
