@@ -554,7 +554,37 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
     public:
 
+        void readInsecurePrivateKeyFromHardhatConfig() {
+            // get insecure test private key from hardhat config
+            auto hardHatConfig = readFile(HARDHAT_CONFIG_FILE_NAME);
+
+            std::istringstream stream(hardHatConfig);
+            std::string line;
+            string insecurePrivateKey;
+            bool foundKey = false;
+            while (std::getline(stream, line)) {
+                if (line.find("INSECURE_PRIVATE_KEY") != std::string::npos) {
+                    size_t start = line.find('"') + 1;
+                    size_t end = line.rfind('"');
+                    insecurePrivateKey = line.substr(start, end - start);
+                    break;
+                }
+            }
+
+
+            CHECK(!insecurePrivateKey.empty());
+            ownerKey = "0x" + insecurePrivateKey;
+        }
+
+        uint64_t getCurrentTimeMs() {
+            using namespace std::chrono;
+            return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+        }
+
+
         SkaledFixture(const std::string &_configPath) {
+
+            readInsecurePrivateKeyFromHardhatConfig();
 
             auto config = readFile(_configPath);
 
@@ -626,6 +656,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         string ip;
         uint64_t basePort;
         uint64_t chainId;
+        std::string ownerKey;
+        const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     };
 
     // Define a function that will be called by each thread
@@ -1233,7 +1265,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         ts.gas = 90000;
         ts.gasPrice = gasPrice;
 
-        Secret secret("0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9");
+        Secret secret(fixture.ownerKey);
         Transaction transaction( ts);  // always legacy, no prefix byte
         transaction.forceChainId( fixture.chainId );
         transaction.sign( secret );
@@ -1243,10 +1275,24 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         BOOST_REQUIRE( result["raw"] );
         BOOST_REQUIRE( result["tx"] );
 
+        auto beginTime = fixture.getCurrentTimeMs();
         auto txHash = fixture.rpcClient->eth_sendRawTransaction( result["raw"].asString() );
+        cerr << "Time to send transaction" << fixture.getCurrentTimeMs() - beginTime << endl;
         BOOST_REQUIRE( !txHash.empty() );
 
-        accountNonce = fixture.getTransactionCount(  address);
+        u256 newAccountNonce;
+        uint64_t completionTime;
+
+        do {
+            newAccountNonce = fixture.getTransactionCount(  address);
+            this_thread::sleep_for(std::chrono::milliseconds(100));
+            completionTime = fixture.getCurrentTimeMs();
+        } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
+
+        BOOST_REQUIRE( newAccountNonce - accountNonce == 1);
+        cerr << "Time for transaction, ms " << completionTime - beginTime << endl;
+
+
     }
 
 
