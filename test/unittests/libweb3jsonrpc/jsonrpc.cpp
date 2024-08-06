@@ -652,6 +652,46 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             return jsToU256(rpcClient->eth_getBalance(_address, "latest"));
         }
 
+        void sendSingleTransfer(u256 _amount, KeyPair _from, Address _to) {
+            auto addressStr = "0x" + _from.address().hex();
+            auto accountNonce = getTransactionCount( addressStr );
+            u256  gasPrice = getCurrentGasPrice();
+            Json::Value t;
+            t["from"] = toJS( _from.address() );
+            t["value"] = jsToDecimal( toJS( _amount ) );
+            t["to"] = toJS( _to );
+            TransactionSkeleton ts = toTransactionSkeleton( t );
+            ts.nonce = accountNonce;
+            ts.gas = 90000;
+            ts.gasPrice = gasPrice;
+
+
+
+            Transaction transaction( ts);  // always legacy, no prefix byte
+            transaction.forceChainId( chainId );
+            transaction.sign( _from.secret() );
+            CHECK( transaction.chainId());
+            auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
+
+            CHECK( result["raw"] );
+            CHECK( result["tx"] );
+
+            auto beginTime = getCurrentTimeMs();
+            auto txHash = rpcClient->eth_sendRawTransaction( result["raw"].asString() );
+            CHECK( !txHash.empty() );
+
+            u256 newAccountNonce;
+            uint64_t completionTime;
+
+            do {
+                newAccountNonce = getTransactionCount(  addressStr);
+                this_thread::sleep_for(std::chrono::milliseconds(100));
+                completionTime = getCurrentTimeMs();
+            } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
+
+            CHECK( newAccountNonce - accountNonce == 1);
+        }
+
         dev::KeyPair coinbase{KeyPair::create()};
         dev::KeyPair account2{KeyPair::create()};
         dev::KeyPair account3{KeyPair::create()};
@@ -761,6 +801,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         virtual void checkResult(Json::Value jsonData) = 0;
 
         virtual string buildRequest(SkaledFixture& _fixture) = 0;
+
     };
 
     class GetBlockNumberPerfRunner : public Runner {
@@ -1252,45 +1293,7 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 }
 
 
-void sendSingleTransfer(SkaledFixture& _fixture, u256 _amount, KeyPair _from, Address _to) {
-        auto addressStr = "0x" + _from.address().hex();
-        auto accountNonce = _fixture.getTransactionCount( addressStr );
-        u256  gasPrice = _fixture.getCurrentGasPrice();
-        Json::Value t;
-        t["from"] = toJS( _from.address() );
-        t["value"] = jsToDecimal( toJS( _amount ) );
-        t["to"] = toJS( _to );
-        TransactionSkeleton ts = toTransactionSkeleton( t );
-        ts.nonce = accountNonce;
-        ts.gas = 90000;
-        ts.gasPrice = gasPrice;
 
-
-
-        Transaction transaction( ts);  // always legacy, no prefix byte
-        transaction.forceChainId( _fixture.chainId );
-        transaction.sign( _from.secret() );
-        CHECK( transaction.chainId());
-        auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
-
-        CHECK( result["raw"] );
-        CHECK( result["tx"] );
-
-        auto beginTime = _fixture.getCurrentTimeMs();
-        auto txHash = _fixture.rpcClient->eth_sendRawTransaction( result["raw"].asString() );
-        CHECK( !txHash.empty() );
-
-        u256 newAccountNonce;
-        uint64_t completionTime;
-
-        do {
-            newAccountNonce = _fixture.getTransactionCount(  addressStr);
-            this_thread::sleep_for(std::chrono::milliseconds(100));
-            completionTime = _fixture.getCurrentTimeMs();
-        } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
-
-        CHECK( newAccountNonce - accountNonce == 1);
-    }
 
 
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
@@ -1302,7 +1305,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
             auto fee = fixture.getCurrentGasPrice() * 21000;
             CHECK( fee <= balance );
             auto amount = (balance - fee) / 2;
-            sendSingleTransfer(fixture, amount, *fixture.ownerKey, dstAddress);
+            fixture.sendSingleTransfer(amount, *fixture.ownerKey, dstAddress);
         }
     }
 
