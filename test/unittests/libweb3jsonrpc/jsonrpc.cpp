@@ -1253,8 +1253,8 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 
 
 void sendSingleTransfer(SkaledFixture& _fixture, u256 _amount, KeyPair _from, Address _to) {
-        auto address = _fixture.ownerAddressStr;
-        auto accountNonce = _fixture.getTransactionCount(  address);
+        auto addressStr = "0x" + _from.address().hex();
+        auto accountNonce = _fixture.getTransactionCount( addressStr );
         u256  gasPrice = _fixture.getCurrentGasPrice();
         Json::Value t;
         t["from"] = toJS( _from.address() );
@@ -1284,7 +1284,7 @@ void sendSingleTransfer(SkaledFixture& _fixture, u256 _amount, KeyPair _from, Ad
         uint64_t completionTime;
 
         do {
-            newAccountNonce = _fixture.getTransactionCount(  address);
+            newAccountNonce = _fixture.getTransactionCount(  addressStr);
             this_thread::sleep_for(std::chrono::milliseconds(100));
             completionTime = _fixture.getCurrentTimeMs();
         } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
