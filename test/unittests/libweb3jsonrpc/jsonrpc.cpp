@@ -592,7 +592,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             Json::Value ret;
             Json::Reader().parse(config, ret);
 
-            schainOwnerAddress = ret["skaleConfig"]["sChain"]["schainOwner"].asString();
+            ownerAddressStr = ret["skaleConfig"]["sChain"]["schainOwner"].asString();
             ip = ret["skaleConfig"]["sChain"]["nodes"][0]["ip"].asString();
             CHECK(!ip.empty())
             basePort = ret["skaleConfig"]["sChain"]["nodes"][0]["basePort"].asInt();
@@ -653,7 +653,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         dev::KeyPair account3{KeyPair::create()};
         unique_ptr<WebThreeStubClient> rpcClient;
         string skaledEndpoint;
-        string schainOwnerAddress;
+        string ownerAddressStr;
         string ip;
         uint64_t basePort;
         uint64_t chainId;
@@ -863,7 +863,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             // Create the params array
             Json::Value params(Json::arrayValue);
-            params.append(_fixture.schainOwnerAddress);
+            params.append(_fixture.ownerAddressStr);
             params.append("latest");
             return buildRequestFromParams("eth_getBalance", params);
 
@@ -1249,7 +1249,7 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 
 
 void sendSingleTransfer(SkaledFixture& _fixture, u256 _amount, KeyPair _from, Address _to) {
-        auto address = _fixture.schainOwnerAddress;
+        auto address = _fixture.ownerAddressStr;
         auto accountNonce = _fixture.getTransactionCount(  address);
         u256  gasPrice = _fixture.getCurrentGasPrice();
         Json::Value t;
