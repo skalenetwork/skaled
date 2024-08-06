@@ -55,7 +55,6 @@ using namespace std;
 #include <libdevcore/microprofile.h>
 
 #include <skutils/console_colors.h>
-#include <skutils/task_performance.h>
 #include <skutils/utils.h>
 
 using namespace dev;
@@ -267,10 +266,6 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         };
 
         m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
-            skutils::task::performance::action action(
-                "trace/" + name, std::to_string( m_debugTracer.get_tracepoint_count( name ) ) );
-
-            // HACK reduce TRACEPOINT log output
             static uint64_t last_block_when_log = -1;
             if ( name == "fetch_transactions" || name == "drop_bad_transactions" ) {
                 uint64_t current_block = this->m_client.number();
@@ -340,13 +335,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     h256 sha = transaction.sha3();
 
-    //
-    static std::atomic_size_t g_nReceiveTransactionsTaskNumber = 0;
-    size_t nReceiveTransactionsTaskNumber = g_nReceiveTransactionsTaskNumber++;
-    std::string strPerformanceQueueName = "bc/receive_transaction";
-    std::string strPerformanceActionName =
-        skutils::tools::format( "receive task %zu", nReceiveTransactionsTaskNumber );
-    skutils::task::performance::action a( strPerformanceQueueName, strPerformanceActionName );
+
     //
     m_debugTracer.tracepoint( "receive_transaction" );
     {
@@ -820,7 +809,6 @@ void SkaleHost::stopWorking() {
 
 void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
-    size_t nBroadcastTaskNumber = 0;
     while ( !m_exitNeeded ) {
         try {
             m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
@@ -851,16 +839,6 @@ void SkaleHost::broadcastFunc() {
                             "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
                         std::string rlp = toJS( txn.toBytes() );
                         std::string h = toJS( txn.sha3() );
-                        //
-                        std::string strPerformanceQueueName = "bc/broadcast";
-                        std::string strPerformanceActionName =
-                            skutils::tools::format( "broadcast %zu", nBroadcastTaskNumber++ );
-                        skutils::task::performance::json jsn =
-                            skutils::task::performance::json::object();
-                        jsn["hash"] = h;
-                        skutils::task::performance::action a(
-                            strPerformanceQueueName, strPerformanceActionName, jsn );
-                        //
                         m_debugTracer.tracepoint( "broadcast" );
                         m_broadcaster->broadcast( rlp );
                     }
