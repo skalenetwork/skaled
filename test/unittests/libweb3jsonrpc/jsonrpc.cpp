@@ -574,7 +574,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             CHECK(!insecurePrivateKey.empty());
             string ownerKeyStr = "0x" + insecurePrivateKey;
             Secret ownerSecret(ownerKeyStr);
-            ownerKey = make_shared<KeyPair>(ownerSecret);
+            ownerKey = ownerSecret;
         }
 
         uint64_t getCurrentTimeMs() {
@@ -651,13 +651,12 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         u256 getBalance(string _address) {
             return jsToU256(rpcClient->eth_getBalance(_address, "latest"));
         }
-
-        void sendSingleTransfer(u256 _amount, ptr<KeyPair> _from, Address _to) {
-            auto addressStr = "0x" + _from->address().hex();
+        void sendSingleTransfer(u256 _amount, Secret& _from, Address _to) {
+            auto addressStr = "0x" + KeyPair(_from).address().hex();
             auto accountNonce = getTransactionCount( addressStr );
             u256  gasPrice = getCurrentGasPrice();
             Json::Value t;
-            t["from"] = toJS( _from->address() );
+            t["from"] = toJS( KeyPair(_from).address() );
             t["value"] = jsToDecimal( toJS( _amount ) );
             t["to"] = toJS( _to );
             TransactionSkeleton ts = toTransactionSkeleton( t );
@@ -669,7 +668,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             Transaction transaction( ts);  // always legacy, no prefix byte
             transaction.forceChainId( chainId );
-            transaction.sign( _from->secret() );
+            transaction.sign( _from );
             CHECK( transaction.chainId());
             auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
 
@@ -692,13 +691,18 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             CHECK( newAccountNonce - accountNonce == 1);
         }
 
-        void splitAccount(ptr<KeyPair> _fromKey) {
-            auto dstAddress = KeyPair::create().address();
-            auto balance = getBalance( "0x" + _fromKey->address().hex() );
+        Secret splitAccountInHalves(Secret& _fromKey) {
+            Secret dstSecret =  KeyPair::create().secret();
+            auto dstAddress = KeyPair(dstSecret).address();
+            auto balance = getBalance( "0x" + KeyPair(_fromKey).address().hex() );
+            CHECK( balance > 0);
             auto fee = getCurrentGasPrice() * 21000;
             CHECK( fee <= balance );
+            CHECK( balance > 0  )
             auto amount = (balance - fee) / 2;
             sendSingleTransfer(amount, _fromKey, dstAddress);
+            CHECK( getBalance( "0x" + dstAddress.hex()) > 0  );
+            return dstSecret;
         }
 
         dev::KeyPair coinbase{KeyPair::create()};
@@ -710,7 +714,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         string ip;
         uint64_t basePort;
         uint64_t chainId;
-        std::shared_ptr<KeyPair> ownerKey;
+        Secret ownerKey;
         const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     };
 
@@ -1302,13 +1306,25 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 }
 
 
-
-
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
-        for (uint64_t i = 0; i< 20; i++) {
-            fixture.splitAccount(fixture.ownerKey);
+        for (uint64_t i = 0; i< 2; i++) {
+            fixture.splitAccountInHalves(fixture.ownerKey);
         }
+    }
+
+
+BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
+        SkaledFixture fixture(skaledConfigFileName);
+        vector<Secret> accountPieces;
+        accountPieces.push_back( fixture.ownerKey );
+        for (int j = 0; j < 3; j++) {
+            for (auto&& accountPiece : accountPieces) {
+                auto newKey = fixture.splitAccountInHalves(accountPiece);
+                accountPieces.push_back( newKey );
+            }
+        }
+
     }
 
 
