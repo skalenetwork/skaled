@@ -566,11 +566,27 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
 
 
+            mutex testKeysMutex;
+
             for (int j = 0; j < _n; j++) {
-                auto testKeysCopy = testKeys;
+                vector<Secret> testKeysCopy;
+
+                {
+                    lock_guard<mutex> lock(testKeysMutex);
+                    testKeysCopy = testKeys;
+                }
+                vector<shared_ptr<thread>> threads;
                 for (auto&& testKey : testKeysCopy) {
-                    auto newKey = splitAccountInHalves(testKey);
-                    testKeys.push_back( newKey );
+                    Secret newKey;
+                    auto t = make_shared<thread>([&]() {
+                        newKey = splitAccountInHalves(testKey);
+                        lock_guard<mutex> lock(testKeysMutex);
+                        testKeys.push_back( newKey );
+                    });
+                    threads.push_back( t );
+                }
+                for (auto&& t : threads) {
+                    t->join();
                 }
             }
         }
