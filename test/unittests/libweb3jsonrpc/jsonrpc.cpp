@@ -652,12 +652,12 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             return jsToU256(rpcClient->eth_getBalance(_address, "latest"));
         }
 
-        void sendSingleTransfer(u256 _amount, KeyPair _from, Address _to) {
-            auto addressStr = "0x" + _from.address().hex();
+        void sendSingleTransfer(u256 _amount, ptr<KeyPair> _from, Address _to) {
+            auto addressStr = "0x" + _from->address().hex();
             auto accountNonce = getTransactionCount( addressStr );
             u256  gasPrice = getCurrentGasPrice();
             Json::Value t;
-            t["from"] = toJS( _from.address() );
+            t["from"] = toJS( _from->address() );
             t["value"] = jsToDecimal( toJS( _amount ) );
             t["to"] = toJS( _to );
             TransactionSkeleton ts = toTransactionSkeleton( t );
@@ -669,7 +669,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             Transaction transaction( ts);  // always legacy, no prefix byte
             transaction.forceChainId( chainId );
-            transaction.sign( _from.secret() );
+            transaction.sign( _from->secret() );
             CHECK( transaction.chainId());
             auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
 
@@ -690,6 +690,15 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
 
             CHECK( newAccountNonce - accountNonce == 1);
+        }
+
+        void splitAccount(ptr<KeyPair> _fromKey) {
+            auto dstAddress = KeyPair::create().address();
+            auto balance = getBalance( "0x" + _fromKey->address().hex() );
+            auto fee = getCurrentGasPrice() * 21000;
+            CHECK( fee <= balance );
+            auto amount = (balance - fee) / 2;
+            sendSingleTransfer(amount, _fromKey, dstAddress);
         }
 
         dev::KeyPair coinbase{KeyPair::create()};
@@ -1295,18 +1304,10 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 
 
 
-
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
-        auto dstAddress = KeyPair::create().address();
-
-        for (uint64_t i = 0; i< 1; i++) {
-            KeyPair fromKey = *fixture.ownerKey;
-            auto balance = fixture.getBalance( "0x" + fromKey.address().hex() );
-            auto fee = fixture.getCurrentGasPrice() * 21000;
-            CHECK( fee <= balance );
-            auto amount = (balance - fee) / 2;
-            fixture.sendSingleTransfer(amount, *fixture.ownerKey, dstAddress);
+        for (uint64_t i = 0; i< 20; i++) {
+            fixture.splitAccount(fixture.ownerKey);
         }
     }
 
