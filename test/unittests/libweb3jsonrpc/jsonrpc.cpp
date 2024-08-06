@@ -716,6 +716,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
 
 
+
             Transaction transaction( ts);  // always legacy, no prefix byte
             transaction.forceChainId( chainId );
             transaction.sign( _from );
@@ -726,8 +727,21 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             CHECK( result["tx"] );
 
             auto beginTime = getCurrentTimeMs();
-            auto txHash = rpcClient()->eth_sendRawTransaction( result["raw"].asString() );
-            CHECK( !txHash.empty() );
+
+            cerr << "sending transaction" << transaction.from() << ":nonce:" << transaction.nonce() << endl;
+            try {
+                auto txHash = rpcClient()->eth_sendRawTransaction( result["raw"].asString() );
+                CHECK( !txHash.empty() );
+            } catch (std::exception& e) {
+                cerr << "Exception in transaction" << transaction.from() << ":nonce:" << transaction.nonce() << endl;
+                cerr << e.what() << endl;
+                throw e;
+            }
+
+            cerr << "sent transaction" << transaction.from() << ":nonce:" << transaction.nonce() << endl;
+
+
+
 
             u256 newAccountNonce;
             uint64_t completionTime;
