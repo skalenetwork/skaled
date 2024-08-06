@@ -60,7 +60,6 @@ namespace eth {
 
 std::shared_ptr< skutils::json_config_file_accessor > g_configAccesssor;
 std::shared_ptr< SkaleHost > g_skaleHost;
-std::shared_ptr< skale::OverlayFS > g_overlayFS;
 
 };  // namespace eth
 };  // namespace dev
@@ -281,7 +280,10 @@ boost::filesystem::path getFileStorageDir( const Address& _address ) {
 }
 
 // TODO: check file name and file existance
-ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
+ETH_REGISTER_FS_PRECOMPILED( createFile )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+    if ( !_overlayFS )
+        throw runtime_error( "_overlayFS is nullptr " );
+
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -297,14 +299,14 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
         const fs::path filePath( rawFilename );
         const fs::path fsDirectoryPath = getFileStorageDir( Address( address ) );
         if ( !fs::exists( fsDirectoryPath ) ) {
-            g_overlayFS->createDirectory( fsDirectoryPath.string() );
+            _overlayFS->createDirectory( fsDirectoryPath.string() );
         }
         const fs::path fsFilePath = fsDirectoryPath / filePath.parent_path();
         if ( filePath.filename().extension() == "._hash" ) {
             throw std::runtime_error(
                 "createFile() failed because _hash extension is not allowed" );
         }
-        g_overlayFS->createFile( ( fsFilePath / filePath.filename() ).string(), fileSize );
+        _overlayFS->createFile( ( fsFilePath / filePath.filename() ).string(), fileSize );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -322,7 +324,10 @@ ETH_REGISTER_PRECOMPILED( createFile )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
+ETH_REGISTER_FS_PRECOMPILED( uploadChunk )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+    if ( !_overlayFS )
+        throw runtime_error( "_overlayFS is nullptr " );
+
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -349,7 +354,7 @@ ETH_REGISTER_PRECOMPILED( uploadChunk )( bytesConstRef _in ) {
         const _byte_* data =
             _in.cropped( 128 + filenameBlocksCount * UINT256_SIZE, dataLength ).data();
 
-        g_overlayFS->writeChunk( filePath.string(), position, dataLength, data );
+        _overlayFS->writeChunk( filePath.string(), position, dataLength, data );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -451,7 +456,10 @@ ETH_REGISTER_PRECOMPILED( getFileSize )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
+ETH_REGISTER_FS_PRECOMPILED( deleteFile )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+    if ( !_overlayFS )
+        throw runtime_error( "_overlayFS is nullptr " );
+
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -462,8 +470,8 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
 
         const fs::path filePath = getFileStorageDir( Address( address ) ) / filename;
 
-        g_overlayFS->deleteFile( filePath.string() );
-        g_overlayFS->deleteFile( filePath.string() + "._hash" );
+        _overlayFS->deleteFile( filePath.string() );
+        _overlayFS->deleteFile( filePath.string() + "._hash" );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -481,7 +489,10 @@ ETH_REGISTER_PRECOMPILED( deleteFile )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
+ETH_REGISTER_FS_PRECOMPILED( createDirectory )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+    if ( !_overlayFS )
+        throw runtime_error( "_overlayFS is nullptr " );
+
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -491,7 +502,7 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
         convertBytesToString( _in, 32, directoryPath, directoryPathLength );
 
         const fs::path absolutePath = getFileStorageDir( Address( address ) ) / directoryPath;
-        g_overlayFS->createDirectory( absolutePath.string() );
+        _overlayFS->createDirectory( absolutePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -509,7 +520,10 @@ ETH_REGISTER_PRECOMPILED( createDirectory )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
+ETH_REGISTER_FS_PRECOMPILED( deleteDirectory )( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
+    if ( !_overlayFS )
+        throw runtime_error( "_overlayFS is nullptr " );
+
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -525,8 +539,8 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
 
         const std::string absolutePathStr = absolutePath.string();
 
-        g_overlayFS->deleteFile( absolutePathStr + "._hash" );
-        g_overlayFS->deleteDirectory( absolutePath.string() );
+        _overlayFS->deleteFile( absolutePathStr + "._hash" );
+        _overlayFS->deleteDirectory( absolutePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -544,7 +558,8 @@ ETH_REGISTER_PRECOMPILED( deleteDirectory )( bytesConstRef _in ) {
     return { false, response };
 }
 
-ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
+ETH_REGISTER_FS_PRECOMPILED( calculateFileHash )
+( bytesConstRef _in, skale::OverlayFS* _overlayFS ) {
     try {
         auto rawAddress = _in.cropped( 12, 20 ).toBytes();
         std::string address;
@@ -560,7 +575,7 @@ ETH_REGISTER_PRECOMPILED( calculateFileHash )( bytesConstRef _in ) {
             throw std::runtime_error( "calculateFileHash() failed because file does not exist" );
         }
 
-        g_overlayFS->calculateFileHash( filePath.string() );
+        _overlayFS->calculateFileHash( filePath.string() );
 
         u256 code = 1;
         bytes response = toBigEndian( code );
@@ -1057,30 +1072,6 @@ ETH_REGISTER_PRECOMPILED( getBlockRandom )( bytesConstRef ) {
 }
 
 ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
-    /*
-        try {
-            auto rawAddress = _in.cropped( 0, 20 ).toBytes();
-            std::string address;
-            boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( address ) );
-            auto add = parseBigEndianRightPadded( _in, 20, 32 );
-
-            auto value = u256( add );
-
-            g_state.addBalance( Address( address ), value );
-
-            dev::u256 code = 1;
-            bytes response = toBigEndian( code );
-            return {true, response};
-        } catch ( std::exception& ex ) {
-            std::string strError = ex.what();
-            if ( strError.empty() )
-                strError = "exception without description";
-            LOG( getLogger( VerbosityError ) )
-                << "Exception in precompiled/addBalance(): " << strError << "\n";
-        } catch ( ... ) {
-            LOG( getLogger( VerbosityError ) ) << "Unknown exception in precompiled/addBalance()\n";
-        }
-    */
     dev::u256 code = 0;
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
@@ -1110,48 +1101,5 @@ ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
-
-// ETH_REGISTER_PRECOMPILED( convertUint256ToString )( bytesConstRef _in ) {
-//    try {
-//        auto rawValue = _in.cropped( 0, 32 ).toBytes();
-//        std::string strValue = "";
-//        boost::algorithm::hex( rawValue.begin(), rawValue.end(), back_inserter( strValue ) );
-//        bytes response = stat_string_to_bytes_with_length( strValue );
-//        return {true, response};
-//    } catch ( std::exception& ex ) {
-//        std::string strError = ex.what();
-//        if ( strError.empty() )
-//            strError = "exception without description";
-//        LOG( getLogger( VerbosityError ) )
-//            << "Exception in precompiled/convertUint256ToString(): " << strError << "\n";
-//    } catch ( ... ) {
-//        LOG( getLogger( VerbosityError ) )
-//            << "Unknown exception in precompiled/convertUint256ToString()\n";
-//    }
-//    u256 code = 0;
-//    bytes response = toBigEndian( code );
-//    return {false, response};  // 1st false - means bad error occur
-//}
-// ETH_REGISTER_PRECOMPILED( convertAddressToString )( bytesConstRef _in ) {
-//    try {
-//        auto rawAddress = _in.cropped( 12, 20 ).toBytes();
-//        std::string strValue = "";
-//        boost::algorithm::hex( rawAddress.begin(), rawAddress.end(), back_inserter( strValue ) );
-//        bytes response = stat_string_to_bytes_with_length( strValue );
-//        return {true, response};
-//    } catch ( std::exception& ex ) {
-//        std::string strError = ex.what();
-//        if ( strError.empty() )
-//            strError = "exception without description";
-//        LOG( getLogger( VerbosityError ) )
-//            << "Exception in precompiled/convertAddressToString(): " << strError << "\n";
-//    } catch ( ... ) {
-//        LOG( getLogger( VerbosityError ) )
-//            << "Unknown exception in precompiled/convertAddressToString()\n";
-//    }
-//    u256 code = 0;
-//    bytes response = toBigEndian( code );
-//    return {false, response};  // 1st false - means bad error occur
-//}
 
 }  // namespace
