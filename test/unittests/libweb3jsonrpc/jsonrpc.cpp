@@ -561,7 +561,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             std::istringstream stream(hardHatConfig);
             std::string line;
             string insecurePrivateKey;
-            bool foundKey = false;
             while (std::getline(stream, line)) {
                 if (line.find("INSECURE_PRIVATE_KEY") != std::string::npos) {
                     size_t start = line.find('"') + 1;
@@ -573,7 +572,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
 
             CHECK(!insecurePrivateKey.empty());
-            ownerKey = "0x" + insecurePrivateKey;
+            string ownerKeyStr = "0x" + insecurePrivateKey;
+            Secret ownerSecret(ownerKeyStr);
+            ownerKey = make_shared<KeyPair>(ownerSecret);
         }
 
         uint64_t getCurrentTimeMs() {
@@ -656,7 +657,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         string ip;
         uint64_t basePort;
         uint64_t chainId;
-        std::string ownerKey;
+        std::shared_ptr<KeyPair> ownerKey;
         const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     };
 
@@ -1247,25 +1248,24 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 }
 
 
-void sendSingleTransfer(SkaledFixture& _fixture) {
+void sendSingleTransfer(SkaledFixture& _fixture, u256 _amount, KeyPair _from, Address _to) {
         auto address = _fixture.schainOwnerAddress;
         auto accountNonce = _fixture.getTransactionCount(  address);
         u256  gasPrice = _fixture.getCurrentGasPrice();
-        auto receiver = KeyPair::create();
         Json::Value t;
-        t["from"] = toJS( address );
-        t["value"] = jsToDecimal( toJS( 1 ) );
-        t["to"] = toJS( receiver.address() );
+        t["from"] = toJS( _from.address() );
+        t["value"] = jsToDecimal( toJS( _amount ) );
+        t["to"] = toJS( _to );
         TransactionSkeleton ts = toTransactionSkeleton( t );
         ts.nonce = accountNonce;
         ts.gas = 90000;
         ts.gasPrice = gasPrice;
 
-        Secret secret(_fixture.ownerKey);
+
 
         Transaction transaction( ts);  // always legacy, no prefix byte
         transaction.forceChainId( _fixture.chainId );
-        transaction.sign( secret );
+        transaction.sign( _from.secret() );
         CHECK( transaction.chainId());
         auto result =  dev::eth::toJson( transaction, transaction.toBytes() );
 
@@ -1274,7 +1274,6 @@ void sendSingleTransfer(SkaledFixture& _fixture) {
 
         auto beginTime = _fixture.getCurrentTimeMs();
         auto txHash = _fixture.rpcClient->eth_sendRawTransaction( result["raw"].asString() );
-        cerr << "Time to send transaction, ms " << _fixture.getCurrentTimeMs() - beginTime << endl;
         CHECK( !txHash.empty() );
 
         u256 newAccountNonce;
@@ -1287,14 +1286,15 @@ void sendSingleTransfer(SkaledFixture& _fixture) {
         } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
 
         CHECK( newAccountNonce - accountNonce == 1);
-        cerr << "Time for transaction, ms " << completionTime - beginTime << endl;
     }
 
 
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
-        for (uint64_t i = 0; i< 1000; i++) {
-        sendSingleTransfer(fixture);
+        auto dstAddress = KeyPair::create().address();
+
+        for (uint64_t i = 0; i< 3; i++) {
+            sendSingleTransfer(fixture, 1, *fixture.ownerKey, dstAddress);
         }
     }
 
