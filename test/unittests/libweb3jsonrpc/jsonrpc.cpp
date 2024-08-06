@@ -1301,7 +1301,8 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         auto dstAddress = KeyPair::create().address();
 
         for (uint64_t i = 0; i< 1; i++) {
-            auto balance = fixture.getBalance( "0x" + fixture.ownerKey->address().hex() );
+            KeyPair fromKey = *fixture.ownerKey;
+            auto balance = fixture.getBalance( "0x" + fromKey.address().hex() );
             auto fee = fixture.getCurrentGasPrice() * 21000;
             CHECK( fee <= balance );
             auto amount = (balance - fee) / 2;
