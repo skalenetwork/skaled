@@ -568,7 +568,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             mutex testKeysMutex;
 
-            for (int j = 0; j < _n; j++) {
+            for (uint64_t j = 0; j < _n; j++) {
                 vector<Secret> testKeysCopy;
 
                 {
@@ -661,9 +661,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             cout << "Skaled Endpoint: " << skaledEndpoint << std::endl;
 
-            auto httpClient = new jsonrpc::HttpClient(skaledEndpoint);
-            httpClient->SetTimeout(10000);
-            rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
 
             u256 blockNumber = 0;
 
@@ -671,7 +668,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             while (blockNumber == 0) {
                 try {
-                    blockNumber = jsToU256(rpcClient->eth_blockNumber());
+                    blockNumber = jsToU256(rpcClient()->eth_blockNumber());
                     cout << "Got block number " << blockNumber << std::endl;
                 } catch (std::exception &e) {
                     cerr << e.what() << std::endl;
@@ -691,15 +688,15 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         }
 
         u256 getTransactionCount(string& _address) {
-            return jsToU256( this->rpcClient->eth_getTransactionCount( toJS( _address ), "latest" ) );
+            return jsToU256( this->rpcClient()->eth_getTransactionCount( toJS( _address ), "latest" ) );
         }
 
         u256 getCurrentGasPrice() {
-            return jsToU256(rpcClient->eth_gasPrice());
+            return jsToU256(rpcClient()->eth_gasPrice());
         }
 
         u256 getBalance(string _address) {
-            return jsToU256(rpcClient->eth_getBalance(_address, "latest"));
+            return jsToU256(rpcClient()->eth_getBalance(_address, "latest"));
         }
         void sendSingleTransfer(u256 _amount, Secret& _from, Address _to) {
             auto addressStr = "0x" + KeyPair(_from).address().hex();
@@ -729,7 +726,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             CHECK( result["tx"] );
 
             auto beginTime = getCurrentTimeMs();
-            auto txHash = rpcClient->eth_sendRawTransaction( result["raw"].asString() );
+            auto txHash = rpcClient()->eth_sendRawTransaction( result["raw"].asString() );
             CHECK( !txHash.empty() );
 
             u256 newAccountNonce;
@@ -763,7 +760,14 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         dev::KeyPair coinbase{KeyPair::create()};
         dev::KeyPair account2{KeyPair::create()};
         dev::KeyPair account3{KeyPair::create()};
-        unique_ptr<WebThreeStubClient> rpcClient;
+
+        unique_ptr<WebThreeStubClient> rpcClient() {
+            auto httpClient = new jsonrpc::HttpClient(skaledEndpoint);
+            httpClient->SetTimeout(10000);
+            auto rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
+            return rpcClient;
+        }
+
         string skaledEndpoint;
         string ownerAddressStr;
         string ip;
