@@ -553,6 +553,35 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         }
 
     public:
+        void setupFirstKey() {
+            auto firstKey = Secret::random();
+            testKeys.push_back(firstKey);
+            string amount = "1000000000000000000000000000000000000000000000000000000000";
+            u256 num(amount);
+            sendSingleTransfer( num, ownerKey, KeyPair(firstKey).address());
+        }
+
+        void setupTwoToTheNKeys(uint64_t _n) {
+            setupFirstKey();
+
+
+
+            for (int j = 0; j < _n; j++) {
+                auto testKeysCopy = testKeys;
+                for (auto&& testKey : testKeysCopy) {
+                    auto newKey = splitAccountInHalves(testKey);
+                    testKeys.push_back( newKey );
+                }
+            }
+        }
+
+        string getAddressAsString(Secret& _secret) {
+            return "0x" + KeyPair(_secret).address().hex();
+        }
+
+        string getAddressAsString(Address& _address) {
+            return "0x" + _address.hex();
+        }
 
         void readInsecurePrivateKeyFromHardhatConfig() {
             // get insecure test private key from hardhat config
@@ -575,6 +604,10 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             string ownerKeyStr = "0x" + insecurePrivateKey;
             Secret ownerSecret(ownerKeyStr);
             ownerKey = ownerSecret;
+
+            auto balance = getBalance( getAddressAsString( ownerKey ) );
+            CHECK( balance > 0);
+
         }
 
         uint64_t getCurrentTimeMs() {
@@ -584,8 +617,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
 
         SkaledFixture(const std::string &_configPath) {
-
-            readInsecurePrivateKeyFromHardhatConfig();
 
             auto config = readFile(_configPath);
 
@@ -634,6 +665,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             cout << "Starting test" << std::endl;
 
+
+            readInsecurePrivateKeyFromHardhatConfig();
+
         }
 
         ~SkaledFixture() override {
@@ -655,6 +689,9 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             auto addressStr = "0x" + KeyPair(_from).address().hex();
             auto accountNonce = getTransactionCount( addressStr );
             u256  gasPrice = getCurrentGasPrice();
+            u256 srcBalanceBefore = getBalance(getAddressAsString( _from ));
+            CHECK( srcBalanceBefore  > 0 );
+            u256 dstBalanceBefore = getBalance(getAddressAsString( _to ));
             Json::Value t;
             t["from"] = toJS( KeyPair(_from).address() );
             t["value"] = jsToDecimal( toJS( _amount ) );
@@ -689,6 +726,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
 
             CHECK( newAccountNonce - accountNonce == 1);
+            auto balanceAfter = getBalance( getAddressAsString( _to ) );
+            CHECK( balanceAfter - dstBalanceBefore ==  _amount);
         }
 
         Secret splitAccountInHalves(Secret& _fromKey) {
@@ -715,6 +754,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         uint64_t basePort;
         uint64_t chainId;
         Secret ownerKey;
+        vector<Secret> testKeys;
         const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     };
 
@@ -1308,8 +1348,10 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
-        for (uint64_t i = 0; i< 2; i++) {
-            fixture.splitAccountInHalves(fixture.ownerKey);
+        fixture.setupFirstKey();
+        auto firstKey = fixture.testKeys.at(0);
+        for (uint64_t i = 0; i< 40; i++) {
+            fixture.splitAccountInHalves(firstKey );
         }
     }
 
@@ -1317,13 +1359,10 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
 BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
         SkaledFixture fixture(skaledConfigFileName);
         vector<Secret> accountPieces;
-        accountPieces.push_back( fixture.ownerKey );
-        for (int j = 0; j < 3; j++) {
-            for (auto&& accountPiece : accountPieces) {
-                auto newKey = fixture.splitAccountInHalves(accountPiece);
-                accountPieces.push_back( newKey );
-            }
-        }
+
+        fixture.setupFirstKey();
+
+        fixture.setupTwoToTheNKeys( 10 );
 
     }
 
