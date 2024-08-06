@@ -648,6 +648,10 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             return jsToU256(rpcClient->eth_gasPrice());
         }
 
+        u256 getBalance(string _address) {
+            return jsToU256(rpcClient->eth_getBalance(_address, "latest"));
+        }
+
         dev::KeyPair coinbase{KeyPair::create()};
         dev::KeyPair account2{KeyPair::create()};
         dev::KeyPair account3{KeyPair::create()};
@@ -1293,8 +1297,12 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
         auto dstAddress = KeyPair::create().address();
 
-        for (uint64_t i = 0; i< 3; i++) {
-            sendSingleTransfer(fixture, 1, *fixture.ownerKey, dstAddress);
+        for (uint64_t i = 0; i< 1; i++) {
+            auto balance = fixture.getBalance( "0x" + fixture.ownerKey->address().hex() );
+            auto fee = fixture.getCurrentGasPrice() * 21000;
+            CHECK( fee <= balance );
+            auto amount = (balance - fee) / 2;
+            sendSingleTransfer(fixture, amount, *fixture.ownerKey, dstAddress);
         }
     }
 
