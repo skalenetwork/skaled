@@ -555,8 +555,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
     public:
         void setupFirstKey() {
             auto firstKey = Secret::random();
-            testKeys.push_back(firstKey);
-            string amount = "1000000000000000000000000000000000000000000000000000000000";
+            testKeys[getAddressAsString(firstKey)] = firstKey;
+            string amount = "100000000000000000000000000000000000000000000000000000000";
             u256 num(amount);
             sendSingleTransfer( num, ownerKey, KeyPair(firstKey).address());
         }
@@ -569,19 +569,30 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             mutex testKeysMutex;
 
             for (uint64_t j = 0; j < _n; j++) {
-                vector<Secret> testKeysCopy;
+                map<string, Secret> testKeysCopy;
 
                 {
                     lock_guard<mutex> lock(testKeysMutex);
                     testKeysCopy = testKeys;
                 }
+
+                map<string, Secret> keyPairs;
+
+                for (auto&& testKey : testKeysCopy) {
+                    lock_guard<mutex> lock(testKeysMutex);
+                    Secret newKey =  KeyPair::create().secret();
+                    string address = getAddressAsString(newKey);
+                    CHECK( testKeys.count( address ) == 0);
+                    testKeys[address] = newKey;
+                    keyPairs[address] = newKey;
+                    keyPairs[getAddressAsString(testKey.second)] = newKey;
+                }
+
                 vector<shared_ptr<thread>> threads;
                 for (auto&& testKey : testKeysCopy) {
                     Secret newKey;
                     auto t = make_shared<thread>([&]() {
-                        newKey = splitAccountInHalves(testKey);
-                        lock_guard<mutex> lock(testKeysMutex);
-                        testKeys.push_back( newKey );
+                        splitAccountInHalves(testKey.second, keyPairs[testKey.first]);
                     });
                     threads.push_back( t );
                 }
@@ -698,7 +709,8 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         u256 getBalance(string _address) {
             return jsToU256(rpcClient()->eth_getBalance(_address, "latest"));
         }
-        void sendSingleTransfer(u256 _amount, Secret& _from, Address _to) {
+
+        bool sendSingleTransfer(u256 _amount, Secret& _from, Address _to) {
             auto addressStr = "0x" + KeyPair(_from).address().hex();
             auto accountNonce = getTransactionCount( addressStr );
             u256  gasPrice = getCurrentGasPrice();
@@ -728,19 +740,15 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             auto beginTime = getCurrentTimeMs();
 
-            cerr << "sending transaction" << transaction.from() << ":nonce:" << transaction.nonce() << endl;
+
             try {
                 auto txHash = rpcClient()->eth_sendRawTransaction( result["raw"].asString() );
                 CHECK( !txHash.empty() );
             } catch (std::exception& e) {
-                cerr << "Exception in transaction" << transaction.from() << ":nonce:" << transaction.nonce() << endl;
+                cerr << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
                 cerr << e.what() << endl;
                 throw e;
             }
-
-            cerr << "sent transaction" << transaction.from() << ":nonce:" << transaction.nonce() << endl;
-
-
 
 
             u256 newAccountNonce;
@@ -750,25 +758,31 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
                 newAccountNonce = getTransactionCount(  addressStr);
                 this_thread::sleep_for(std::chrono::milliseconds(100));
                 completionTime = getCurrentTimeMs();
-            } while (completionTime - beginTime < 5000 && newAccountNonce == accountNonce);
+                if ( completionTime - beginTime > 30000 ) {
+                    return false;
+                }
+            } while (newAccountNonce == accountNonce);
 
             CHECK( newAccountNonce - accountNonce == 1);
             auto balanceAfter = getBalance( getAddressAsString( _to ) );
             CHECK( balanceAfter - dstBalanceBefore ==  _amount);
+
+            return true;
         }
 
-        Secret splitAccountInHalves(Secret& _fromKey) {
-            Secret dstSecret =  KeyPair::create().secret();
-            auto dstAddress = KeyPair(dstSecret).address();
+        void splitAccountInHalves(Secret _fromKey, Secret _toKey) {
+            auto dstAddress = KeyPair(_toKey).address();
             auto balance = getBalance( "0x" + KeyPair(_fromKey).address().hex() );
             CHECK( balance > 0);
             auto fee = getCurrentGasPrice() * 21000;
             CHECK( fee <= balance );
             CHECK( balance > 0  )
             auto amount = (balance - fee) / 2;
-            sendSingleTransfer(amount, _fromKey, dstAddress);
+
+            if (!sendSingleTransfer(amount, _fromKey, dstAddress)) {
+                sendSingleTransfer( amount, _fromKey, dstAddress );
+            }
             CHECK( getBalance( "0x" + dstAddress.hex()) > 0  );
-            return dstSecret;
         }
 
         dev::KeyPair coinbase{KeyPair::create()};
@@ -788,7 +802,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         uint64_t basePort;
         uint64_t chainId;
         Secret ownerKey;
-        vector<Secret> testKeys;
+        map<string, Secret> testKeys;
         const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     };
 
@@ -1385,7 +1399,8 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         fixture.setupFirstKey();
         auto firstKey = fixture.testKeys.at(0);
         for (uint64_t i = 0; i< 40; i++) {
-            fixture.splitAccountInHalves(firstKey );
+            auto dst = Secret::random();
+            fixture.splitAccountInHalves(firstKey, dst);
         }
     }
 
