@@ -1028,7 +1028,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
-        strRevertReason = skutils::eth::call_error_message_2_str( res.output );
+        strRevertReason = dev::errorMessageToString( res.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;

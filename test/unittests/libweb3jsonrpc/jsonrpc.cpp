@@ -2779,7 +2779,114 @@ BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     txPOW2["gasPrice"] = "0xc5002ab03e1e7e196b3d0ffa9801e783fcd48d4c6d972f1389ab63f4e2d0bef0"; // gas 1m
     txPOW2["value"] = 100;
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ), jsonrpc::JsonRpcException ); // block gas limit reached
-    }
+}
+
+BOOST_AUTO_TEST_CASE( revertReason ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1000 );
+//    // SPDX-License-Identifier: UNLICENSED
+
+//    pragma solidity ^0.8.4;
+
+//    error CustomError();
+//    error CustomErrorWithArg(uint256 arg1);
+//    error CustomErrorWithArgs(uint256 arg1, bytes32 arg2);
+
+//    contract Error {
+//        function customError() external pure {
+//            revert CustomError();
+//        }
+
+//        function customErrorwithArg(uint256 x) external pure {
+//            revert CustomErrorWithArg(x);
+//        }
+
+//        function customErrorwithArgs(uint256 x, bytes32 b) external pure {
+//            revert CustomErrorWithArgs(x, b);
+//        }
+
+//        function throwRevertWithoutErrorMessage() external pure {
+//            revert();
+//        }
+
+//        function throwRevertWithErrorMessage() external pure {
+//            revert("error message");
+//        }
+//    }
+    std::string bytecode = "608060405234801561001057600080fd5b50610386806100206000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c80631ccb2cb41461005c5780633155edc8146100785780634de1fb0f14610094578063dda3a7bd1461009e578063f006fd35146100a8575b600080fd5b610076600480360381019061007191906101f3565b6100b2565b005b610092600480360381019061008d91906101ca565b6100f1565b005b61009c61012e565b005b6100a6610133565b005b6100b0610165565b005b81816040517f0594f0fe0000000000000000000000000000000000000000000000000000000081526004016100e89291906102ab565b60405180910390fd5b806040517fe372fe1e0000000000000000000000000000000000000000000000000000000081526004016101259190610290565b60405180910390fd5b600080fd5b6040517f09caebf300000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b6040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161019790610270565b60405180910390fd5b6000813590506101af81610322565b92915050565b6000813590506101c481610339565b92915050565b6000602082840312156101dc57600080fd5b60006101ea848285016101b5565b91505092915050565b6000806040838503121561020657600080fd5b6000610214858286016101b5565b9250506020610225858286016101a0565b9150509250929050565b610238816102e5565b82525050565b600061024b600d836102d4565b9150610256826102f9565b602082019050919050565b61026a816102ef565b82525050565b600060208201905081810360008301526102898161023e565b9050919050565b60006020820190506102a56000830184610261565b92915050565b60006040820190506102c06000830185610261565b6102cd602083018461022f565b9392505050565b600082825260208201905092915050565b6000819050919050565b6000819050919050565b7f6572726f72206d65737361676500000000000000000000000000000000000000600082015250565b61032b816102e5565b811461033657600080fd5b50565b610342816102ef565b811461034d57600080fd5b5056fea2646970667358221220dfeb247eec1a9f2092ccf93f00996637cb773621c86b66125e5089370c9ebe2764736f6c63430008040033";
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["data"] = bytecode;
+    create["gas"] = "1800000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    // call customError()
+    Json::Value txCustomError;
+    txCustomError["to"] = contractAddress;
+    txCustomError["data"] = "0xdda3a7bd";
+    txCustomError["from"] = senderAddress.hex();
+    txCustomError["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txCustomError );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x0" ) );
+    BOOST_REQUIRE( receipt["revertReason"] == "0x09caebf3" );
+
+    // call customErrorWithArg(1)
+    Json::Value txCustomErrorWithArg;
+    txCustomErrorWithArg["to"] = contractAddress;
+    txCustomErrorWithArg["data"] = "0x3155edc80000000000000000000000000000000000000000000000000000000000000001";
+    txCustomErrorWithArg["from"] = senderAddress.hex();
+    txCustomErrorWithArg["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txCustomErrorWithArg );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x0" ) );
+    BOOST_REQUIRE( receipt["revertReason"] == "0xe372fe1e0000000000000000000000000000000000000000000000000000000000000001" );
+
+    // call customErrorWithArgs(1, 0xa449dcaf2bca14e6bd0ac650eed9555008363002b2fc3a4c8422b7a9525a8135)
+    Json::Value txCustomErrorWithArgs;
+    txCustomErrorWithArgs["to"] = contractAddress;
+    txCustomErrorWithArgs["data"] = "0x1ccb2cb40000000000000000000000000000000000000000000000000000000000000001a449dcaf2bca14e6bd0ac650eed9555008363002b2fc3a4c8422b7a9525a8135";
+    txCustomErrorWithArgs["from"] = senderAddress.hex();
+    txCustomErrorWithArgs["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txCustomErrorWithArgs );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x0" ) );
+    BOOST_REQUIRE( receipt["revertReason"] == "0x0594f0fe0000000000000000000000000000000000000000000000000000000000000001a449dcaf2bca14e6bd0ac650eed9555008363002b2fc3a4c8422b7a9525a8135" );
+
+    // call to throwRevertWithErrorMessage()
+    Json::Value txThrowRevertWithErrorMessage;
+    txThrowRevertWithErrorMessage["to"] = contractAddress;
+    txThrowRevertWithErrorMessage["data"] = "0xf006fd35";
+    txThrowRevertWithErrorMessage["from"] = senderAddress.hex();
+    txThrowRevertWithErrorMessage["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txThrowRevertWithErrorMessage );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x0" ) );
+    BOOST_REQUIRE( receipt["revertReason"] == "error message" );
+
+    // call to throwRevertWithoutErrorMessage()
+    Json::Value txThrowRevertWithoutErrorMessage;
+    txThrowRevertWithoutErrorMessage["to"] = contractAddress;
+    txThrowRevertWithoutErrorMessage["data"] = "0x4de1fb0f";
+    txThrowRevertWithoutErrorMessage["from"] = senderAddress.hex();
+    txThrowRevertWithoutErrorMessage["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txThrowRevertWithoutErrorMessage );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x0" ) );
+    BOOST_REQUIRE( receipt["revertReason"] == "EVM revert instruction without description message" );
+}
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
