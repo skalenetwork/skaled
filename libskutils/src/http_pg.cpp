@@ -299,7 +299,8 @@ bool server::start() {
     if ( m_threads <= 0 ) {
         // Get the number of CPU cores available
         unsigned int num_cpus = std::thread::hardware_concurrency();
-        m_threads = num_cpus;
+        // roughly match apache which has 150 threads
+        m_threads = 32 * num_cpus;
     }
 
 
