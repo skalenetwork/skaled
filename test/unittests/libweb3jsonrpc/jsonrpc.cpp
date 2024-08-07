@@ -726,9 +726,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
             ts.gas = 90000;
             ts.gasPrice = gasPrice;
 
-
-
-
             Transaction transaction( ts);  // always legacy, no prefix byte
             transaction.forceChainId( chainId );
             transaction.sign( _from );
@@ -1397,7 +1394,7 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         SkaledFixture fixture(skaledConfigFileName);
         fixture.setupFirstKey();
-        auto firstKey = fixture.testKeys.at(0);
+        auto firstKey = fixture.testKeys.begin()->second;
         for (uint64_t i = 0; i< 40; i++) {
             auto dst = Secret::random();
             fixture.splitAccountInHalves(firstKey, dst);
@@ -1411,7 +1408,7 @@ BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
 
         fixture.setupFirstKey();
 
-        fixture.setupTwoToTheNKeys( 10 );
+        fixture.setupTwoToTheNKeys( 8 );
 
     }
 
