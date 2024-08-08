@@ -716,7 +716,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
         }
 
-        void checkResult(Json::Value _value) override {
+        void checkResult(Json::Value ) override {
         }
     };
 
