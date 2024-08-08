@@ -34,7 +34,7 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
 }
 
 
-CurlHandle::CurlHandle::CurlHandle(SkaledFixture &_fixture) {
+CurlClient::CurlClient::CurlClient(SkaledFixture &_fixture) {
     curl = curl_easy_init();
     CHECK(curl);
     curl_easy_setopt(curl, CURLOPT_URL, _fixture.skaledEndpoint.c_str());
@@ -47,14 +47,40 @@ CurlHandle::CurlHandle::CurlHandle(SkaledFixture &_fixture) {
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 }
 
-void CurlHandle::setRequest(const string &_json_rpc_request) {
+void CurlClient::setRequest(const string &_json_rpc_request) {
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, _json_rpc_request.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, _json_rpc_request.size());
 }
 
-CurlHandle::~CurlHandle() {
+uint64_t CurlClient::doRequestResponse() {
+    auto res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        throw std::runtime_error(string("curl_easy_perform() failed")
+                                 + curl_easy_strerror(res));
+    }
+    return ++totalCallsCount;
+}
+
+std::atomic<uint64_t> CurlClient::totalCallsCount = 0;
+
+Json::Value CurlClient::parseResponse() {
+    Json::CharReaderBuilder readerBuilder;
+    Json::Value jsonData;
+    std::string errs;
+    std::istringstream s(readBuffer);
+    if (!Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
+        throw std::runtime_error("Failed to parse JSON response: " + errs);
+    }
+    return jsonData;
+}
+
+CurlClient::~CurlClient() {
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
+}
+
+uint64_t CurlClient::getTotalCallsCount() {
+    return totalCallsCount;
 }
 
 
@@ -72,14 +98,16 @@ string SkaledFixture::readFile(const std::string &_path) {
     return contents;
 }
 
-thread_local ptr<CurlHandle> SkaledFixture::curlHandle;
+thread_local ptr<CurlClient> SkaledFixture::curlClient;
 
-ptr<CurlHandle> SkaledFixture::getThreadLocalCurlHandle() {
-    if (!curlHandle) {
-        curlHandle = make_shared<CurlHandle>(*this);
+ptr<CurlClient> SkaledFixture::getThreadLocalCurlClient() {
+    if (!curlClient) {
+        curlClient = make_shared<CurlClient>(*this);
     }
-    return curlHandle;
+    return curlClient;
 };
+
+
 
 void SkaledFixture::setupFirstKey() {
     auto firstKey = Secret::random();

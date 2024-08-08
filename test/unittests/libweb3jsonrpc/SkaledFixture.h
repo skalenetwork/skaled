@@ -24,18 +24,26 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
 class SkaledFixture;
 
-class CurlHandle {
-public:
+class CurlClient {
+
+
     CURL *curl;
     std::string readBuffer;
     struct curl_slist *headers = nullptr;
+    static std::atomic<uint64_t> totalCallsCount;
 
+public:
+    static uint64_t getTotalCallsCount();
 
-    CurlHandle(SkaledFixture &_fixture);
+    CurlClient(SkaledFixture &_fixture);
 
     void setRequest(const string &_json_rpc_request);
 
-    ~CurlHandle();
+    uint64_t doRequestResponse();
+
+    Json::Value parseResponse();
+
+    ~CurlClient();
 };
 
 
@@ -43,11 +51,11 @@ class SkaledFixture : public TestOutputHelperFixture {
 
     static string readFile(const std::string &_path);
 
-    static thread_local ptr<CurlHandle> curlHandle;
+    static thread_local ptr<CurlClient> curlClient;
 
 public:
 
-    ptr<CurlHandle> getThreadLocalCurlHandle();
+    ptr<CurlClient> getThreadLocalCurlClient();
 
     void setupFirstKey();
 
