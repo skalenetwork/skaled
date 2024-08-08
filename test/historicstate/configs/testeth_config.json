@@ -316,7 +316,7 @@
       "maxCacheSize": 2000,
       "collectionQueueSize": 2,
       "collectionDuration": 10,
-      "transactionQueueSize": 100,
+      "transactionQueueSize": 10000,
       "maxOpenLeveldbFiles": 25,
       "testSignatures": true
     },
