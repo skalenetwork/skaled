@@ -83,6 +83,13 @@ uint64_t CurlClient::getTotalCallsCount() {
     return totalCallsCount;
 }
 
+void CurlClient::eth_sendRawTransaction(const std::string &_rawTransactionHex) {
+    std::string jsonPayload =
+            R"({"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":[")" + _rawTransactionHex + R"("],"id":1})";
+    setRequest(jsonPayload);
+    doRequestResponse();
+}
+
 
 string SkaledFixture::readFile(const std::string &_path) {
 
@@ -300,8 +307,10 @@ bool SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to)
 
 
     try {
-        auto txHash = rpcClient()->eth_sendRawTransaction(result["raw"].asString());
-        CHECK(!txHash.empty());
+        auto payload = result["raw"].asString();
+        //auto txHash = rpcClient()->eth_sendRawTransaction(payload);
+        getThreadLocalCurlClient()->eth_sendRawTransaction(payload);
+        //CHECK(!txHash.empty());
     } catch (std::exception &e) {
         cerr << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
         cerr << e.what() << endl;

@@ -43,6 +43,8 @@ public:
 
     Json::Value parseResponse();
 
+    void eth_sendRawTransaction(const std::string &_rawTransactionHex);
+
     ~CurlClient();
 };
 
