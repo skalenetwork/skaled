@@ -645,6 +645,12 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
         SkaledFixture(const std::string &_configPath) {
 
+            static atomic_bool isCurlInited(false);
+
+            if (isCurlInited.exchange(true)) {
+                curl_global_init(CURL_GLOBAL_DEFAULT);
+            }
+
             auto config = readFile(_configPath);
 
             Json::Value ret;
@@ -824,6 +830,36 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
         return size * nmemb;
     }
 
+    class CurlHandle {
+    public:
+        CURL *curl;
+        std::string readBuffer;
+        struct curl_slist *headers = nullptr;
+
+        CurlHandle(SkaledFixture &_fixture) {
+            curl = curl_easy_init();
+            CHECK(curl);
+            curl_easy_setopt(curl, CURLOPT_URL, _fixture.skaledEndpoint.c_str());
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            // Set up callback to capture response
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+            // Set HTTP headers
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        }
+
+        void setRequest(const string& _json_rpc_request) {
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, _json_rpc_request.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, _json_rpc_request.size());
+        }
+
+        ~CurlHandle() {
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+        }
+    };
+
     class Runner {
     public:
 
@@ -848,30 +884,14 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
 
             auto json_rpc_request = buildRequest(_fixture);
 
-
-            CURL *curl;
             CURLcode res;
-            std::string readBuffer;
 
-            curl_global_init(CURL_GLOBAL_DEFAULT);
-            curl = curl_easy_init();
-            CHECK(curl);
-            curl_easy_setopt(curl, CURLOPT_URL, _fixture.skaledEndpoint.c_str());
-            curl_easy_setopt(curl, CURLOPT_POST, 1L);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_rpc_request.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json_rpc_request.size());
-            // Set up callback to capture response
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-            // Set HTTP headers
-            struct curl_slist *headers = nullptr;
-            headers = curl_slist_append(headers, "Content-Type: application/json");
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            CurlHandle curlHandle(_fixture);
+            curlHandle.setRequest(json_rpc_request);
 
             while ((uint64_t) std::time(nullptr) < finishTime) {
                 /* Perform the first request */
-                res = curl_easy_perform(curl);
+                res = curl_easy_perform(curlHandle.curl);
                 if (res != CURLE_OK) {
                     fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
                 } else {
@@ -881,7 +901,7 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
                     std::string errs;
 
                     if (_totalCalls % 1000 == 0) {
-                        std::istringstream s(readBuffer);
+                        std::istringstream s(curlHandle.readBuffer);
                         if (Json::parseFromStream(readerBuilder, s, &jsonData, &errs)) {
                             checkResult(jsonData);
                         } else {
@@ -891,9 +911,6 @@ BOOST_AUTO_TEST_CASE( jsonrpc_number ) {
                 }
                 _totalCalls++;
             }
-
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
         }
 
         virtual void checkResult(Json::Value jsonData) = 0;
