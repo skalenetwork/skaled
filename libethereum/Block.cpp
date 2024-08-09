@@ -351,6 +351,8 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
     return ret;
 }
 
+
+// Note - this function is only used in tests
 pair< TransactionReceipts, bool > Block::sync(
     BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, unsigned msTimeout ) {
     MICROPROFILE_SCOPEI( "Block", "sync tq", MP_BURLYWOOD );

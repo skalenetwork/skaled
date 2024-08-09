@@ -616,8 +616,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 std::lock_guard< std::mutex > localGuard( m_receivedMutex );
                 m_received.erase( sha );
                 LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-                // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
-                // ).detach();
             } else {
                 Transaction t( data, CheckTransaction::Everything, true,
                     EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
@@ -629,7 +627,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 haveConsensusBorn = true;
             }
 
-            if ( m_tq.knownTransactions().count( sha ) != 0 ) {
+            if ( SkaleDebugInterface::g_isEnabled  && m_tq.isTransactionKnown( sha ) != 0 ) {
+                // this trace is expensive since it will aquire a read lock on transaction queue
                 LOG( m_traceLogger )
                     << "Consensus returned future transaction that we didn't yet send";
                 m_debugTracer.tracepoint( "import_future" );

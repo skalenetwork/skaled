@@ -230,6 +230,17 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
     return top_transactions;
 }
 
+// note - this function is currently only used when tracing is enabled
+bool TransactionQueue::isTransactionKnown(h256& _hash) const {
+    h256Hash rv;
+    {  // block
+        ReadGuard l( m_lock );
+        return m_known.count( _hash ) > 0;
+    }
+}
+
+
+// note - this function is heavy and is only used in tests
 const h256Hash TransactionQueue::knownTransactions() const {
     h256Hash rv;
     {  // block
@@ -313,7 +324,7 @@ u256 TransactionQueue::maxCurrentNonce_WITH_LOCK( Address const& _a ) const {
 
 void TransactionQueue::insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p ) {
     if ( m_currentByHash.count( _p.first ) ) {
-        cwarn << "Transaction hash" << _p.first << "already in current?!";
+        cwarn << "Transaction hash" << _p.first << "already in current";
         return;
     }
 
@@ -406,6 +417,7 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
     }
 }
 
+// Note - this function is only used for tests
 void TransactionQueue::setFuture( h256 const& _txHash ) {
     WriteGuard l( m_lock );
     return setFuture_WITH_LOCK( _txHash );
