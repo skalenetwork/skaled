@@ -1105,7 +1105,7 @@ BOOST_AUTO_TEST_SUITE(JsonRpcSuite)
 
         fixture.setupFirstKey();
 
-        fixture.setupTwoToTheNKeys(8);
+        fixture.setupTwoToTheNKeys(11);
 
     }
 

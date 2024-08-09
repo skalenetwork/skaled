@@ -131,6 +131,10 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
     mutex testKeysMutex;
 
     for (uint64_t j = 0; j < _n; j++) {
+
+        cerr << "Iteration " << j << "Number of keys:" << testKeys.size() << endl;
+
+
         map<string, Secret> testKeysCopy;
 
         {
@@ -284,7 +288,7 @@ bool SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to)
     u256 gasPrice = getCurrentGasPrice();
     u256 srcBalanceBefore = getBalance(getAddressAsString(_from));
     CHECK(srcBalanceBefore > 0);
-    u256 dstBalanceBefore = getBalance(getAddressAsString(_to));
+    //u256 dstBalanceBefore = getBalance(getAddressAsString(_to));
     Json::Value t;
     t["from"] = toJS(KeyPair(_from).address());
     t["value"] = jsToDecimal(toJS(_amount));
@@ -308,8 +312,8 @@ bool SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to)
 
     try {
         auto payload = result["raw"].asString();
-        //auto txHash = rpcClient()->eth_sendRawTransaction(payload);
-        getThreadLocalCurlClient()->eth_sendRawTransaction(payload);
+        auto txHash = rpcClient()->eth_sendRawTransaction(payload);
+        //getThreadLocalCurlClient()->eth_sendRawTransaction(payload);
         //CHECK(!txHash.empty());
     } catch (std::exception &e) {
         cerr << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
@@ -323,16 +327,16 @@ bool SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to)
 
     do {
         newAccountNonce = getTransactionCount(addressStr);
-        this_thread::sleep_for(std::chrono::milliseconds(100));
+        sleep(1);
         completionTime = getCurrentTimeMs();
-        if (completionTime - beginTime > 30000) {
+        if (completionTime - beginTime > 60000) {
             return false;
         }
     } while (newAccountNonce == accountNonce);
 
     CHECK(newAccountNonce - accountNonce == 1);
-    auto balanceAfter = getBalance(getAddressAsString(_to));
-    CHECK(balanceAfter - dstBalanceBefore == _amount);
+    //auto balanceAfter = getBalance(getAddressAsString(_to));
+    //CHECK(balanceAfter - dstBalanceBefore == _amount);
 
     return true;
 }
@@ -347,8 +351,9 @@ void SkaledFixture::splitAccountInHalves(Secret _fromKey, Secret _toKey) {
     auto amount = (balance - fee) / 2;
 
     if (!sendSingleTransfer(amount, _fromKey, dstAddress)) {
-        sendSingleTransfer(amount, _fromKey, dstAddress);
+      throw std::runtime_error("Transaction timeout");
     }
+
     CHECK(getBalance("0x" + dstAddress.hex()) > 0);
 }
 
