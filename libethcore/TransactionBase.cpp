@@ -165,7 +165,7 @@ void TransactionBase::fillFromBytesLegacy(
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
         m_type = Type::Invalid;
-        m_rawData = _rlpData.toBytes();
+        m_rawData = std::make_shared<bytes>(_rlpData.toBytes());
 
         if ( !_allowInvalid )
             throw;
@@ -226,7 +226,7 @@ void TransactionBase::fillFromBytesType1(
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
         m_type = Type::Invalid;
-        m_rawData = _rlpData.toBytes();
+        m_rawData = std::make_shared<bytes>(_rlpData.toBytes());
 
         if ( !_allowInvalid )
             throw;
@@ -294,7 +294,7 @@ void TransactionBase::fillFromBytesType2(
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
         m_type = Type::Invalid;
-        m_rawData = _rlpData.toBytes();
+        m_rawData = std::make_shared<bytes>(_rlpData.toBytes());
 
         if ( !_allowInvalid )
             throw;
@@ -345,7 +345,7 @@ TransactionBase::TransactionBase(
         m_type = Type::Invalid;
         RLPStream s;
         s.append( _rlpData.toBytes() );  // add "string" header
-        m_rawData = s.out();
+        m_rawData = std::make_shared<bytes>(s.out());
 
         if ( !_allowInvalid ) {
             cerror << "Got invalid transaction.";
@@ -456,7 +456,7 @@ void TransactionBase::streamType2Transaction( RLPStream& _s, IncludeSignature _s
 
 void TransactionBase::streamRLP( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
     if ( isInvalid() ) {
-        _s.appendRaw( m_rawData );
+        _s.appendRaw( *m_rawData );
         return;
     }
 
@@ -526,7 +526,7 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
         if ( m_txType != TransactionType::Legacy )
             input.insert( input.begin(), m_txType );
     } else {
-        RLP data( m_rawData );
+        RLP data( *m_rawData );
         input = dev::bytes( data.payload().begin(), data.payload().end() );
     }
 
