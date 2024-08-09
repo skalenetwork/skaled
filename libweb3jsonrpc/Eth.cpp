@@ -486,12 +486,9 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         strRevertReason = skutils::eth::call_error_message_2_str( er.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
-        std::string strTx = t.toString();
-        std::string strOut = "Error message from eth_call(): " + strRevertReason +
-                             ", with call arguments: " + strTx +
-                             ", and using blockNumber=" + blockNumber;
-        cerror << strOut;
-        throw std::logic_error( strRevertReason );
+
+        Json::Value output = toJS( er.output );
+        BOOST_THROW_EXCEPTION( JsonRpcException( -32004, strRevertReason, output ) );
     }
 
 
