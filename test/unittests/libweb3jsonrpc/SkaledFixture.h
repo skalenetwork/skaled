@@ -5,6 +5,8 @@
 #ifndef SKALE_SKALEDFIXTURE_H
 #define SKALE_SKALEDFIXTURE_H
 
+#include <test/tools/libtesteth/TestHelper.h>
+#include <test/tools/libtesteth/TestOutputHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -53,11 +55,11 @@ class SkaledFixture : public TestOutputHelperFixture {
 
     static string readFile(const std::string &_path);
 
-    static thread_local ptr<CurlClient> curlClient;
+    static thread_local std::shared_ptr<CurlClient> curlClient;
 
 public:
 
-    ptr<CurlClient> getThreadLocalCurlClient();
+    std::shared_ptr<CurlClient> getThreadLocalCurlClient();
 
     void setupFirstKey();
 
