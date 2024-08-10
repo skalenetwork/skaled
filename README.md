@@ -45,7 +45,7 @@ Skaled builds and runs on Ubuntu 20.04 and 22.04
 
 ### Clone repository
 
-```
+```shell
 git clone --recurse-submodules https://github.com/skalenetwork/skaled.git
 cd skaled
 ```
@@ -56,7 +56,7 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 
 ### Install required Ubuntu packages
 
-```
+```shell
 sudo apt update
 sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen 
 sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-9 g++-9 gperf clang-format-11 gnutls-dev
@@ -69,7 +69,7 @@ sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoog
 NB cmake needs to be of version >=3.21, git of version >=2.18
 
 ### (for Ubuntu 20.10 or later) Set  gcc-9 as default compiler
-```
+```shell
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
 sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
@@ -80,7 +80,7 @@ gcc --version
 
 # Install latest cmake 
 
-```
+```shell
 sudo apt-get purge cmake
 sudo snap install cmake --classic
 ```
@@ -88,7 +88,7 @@ sudo snap install cmake --classic
 
 ### Build dependencies
 
-```
+```shell
 cd deps
 ./build.sh DEBUG=1
 ```
@@ -96,7 +96,7 @@ cd deps
 
 ## Hunter fix
 
-```
+```shell
 mkdir -p ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
 cd ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
 wget https://github.com/hunter-packages/crc32c/archive/refs/tags/hunter-1.0.5.tar.gz
@@ -117,7 +117,7 @@ cmake --build build -- -j$(nproc)
 
 To run the tests:
 
-```
+```shell
 cd build/test
 ./testeth -- --all
 ```
