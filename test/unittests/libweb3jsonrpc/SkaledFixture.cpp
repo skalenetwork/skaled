@@ -155,7 +155,7 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
         vector<shared_ptr<thread>> threads;
 
-        std::vector<u256> pendingTransactionNonces(testKeys.size());
+        std::map<string, u256> pendingTransactionNonces;
         mutex m;
 
         for (auto &&testKey: testKeysCopy) {
@@ -163,13 +163,17 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
             auto t = make_shared<thread>([&]() {
                 auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first]);
                 lock_guard<mutex> lock(m);
-                pendingTransactionNonces.push_back(nonce);
+                pendingTransactionNonces[testKey.first] =  nonce;
             });
             threads.push_back(t);
         }
         for (auto &&t: threads) {
             t->join();
         }
+
+        for (auto &&pendingTx: pendingTransactionNonces) {
+            this->waitForTransaction(pendingTx.first, pendingTx.second);
+        };
     }
 }
 

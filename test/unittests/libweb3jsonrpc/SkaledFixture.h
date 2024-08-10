@@ -97,6 +97,7 @@ public:
     uint64_t basePort;
     uint64_t chainId;
     Secret ownerKey;
+    // map of test key addresses to secret keys
     map<string, Secret> testKeys;
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
