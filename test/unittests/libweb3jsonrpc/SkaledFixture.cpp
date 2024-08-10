@@ -161,7 +161,8 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
         for (auto &&testKey: testKeysCopy) {
             Secret newKey;
             auto t = make_shared<thread>([&]() {
-                auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first]);
+                auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first],
+                                                  true);
                 lock_guard<mutex> lock(m);
                 pendingTransactionNonces[testKey.first] =  nonce;
             });
