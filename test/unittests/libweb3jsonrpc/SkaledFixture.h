@@ -78,15 +78,15 @@ public:
 
     ~SkaledFixture() override;
 
-    u256 getTransactionCount(string &_address);
+    u256 getTransactionCount(const string &_address);
 
     u256 getCurrentGasPrice();
 
-    u256 getBalance(string _address);
+    u256 getBalance(const string& _address);
 
-    bool sendSingleTransfer(u256 _amount, Secret &_from, Address _to);
+    uint64_t sendSingleTransfer(u256 _amount, Secret &_from, Address _to, bool _noWait = false);
 
-    void splitAccountInHalves(Secret _fromKey, Secret _toKey);
+    u256 splitAccountInHalves(Secret _fromKey, Secret _toKey, bool _noWait = false);
 
 
     unique_ptr<WebThreeStubClient> rpcClient();
@@ -99,6 +99,12 @@ public:
     Secret ownerKey;
     map<string, Secret> testKeys;
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
+    uint64_t transactionTimeoutMs = 60000;
+    bool verifyTransactions = false;
+
+    void waitForTransaction(const string& _address, const u256& _transactionNonce);
+
+    int timeBetweenTransactionCompletionChecksMs = 1000;
 };
 
 
