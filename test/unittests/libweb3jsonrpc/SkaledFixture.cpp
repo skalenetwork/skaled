@@ -159,10 +159,12 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
         std::map<string, u256> pendingTransactionNonces;
         mutex m;
 
+        auto gasPrice = getCurrentGasPrice();
+
         for (auto &&testKey: testKeysCopy) {
             Secret newKey;
             auto t = make_shared<thread>([&]() {
-                auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first],
+                auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first], gasPrice,
                                                   false);
                 lock_guard<mutex> lock(m);
                 pendingTransactionNonces[testKey.first] =  nonce;
@@ -369,17 +371,16 @@ void SkaledFixture::waitForTransaction(const string& _address,
     CHECK(newAccountNonce - _transactionNonce == 1);
 }
 
-u256 SkaledFixture::splitAccountInHalves(Secret _fromKey, Secret _toKey, bool _noWait) {
+u256 SkaledFixture::splitAccountInHalves(Secret _fromKey, Secret _toKey, u256& _gasPrice,  bool _noWait) {
     auto dstAddress = KeyPair(_toKey).address();
     auto balance = getBalance("0x" + KeyPair(_fromKey).address().hex());
     CHECK(balance > 0);
-    auto fee = getCurrentGasPrice() * 21000;
+    auto fee = _gasPrice * 21000;
     CHECK(fee <= balance);
     CHECK(balance > 0)
     auto amount = (balance - fee) / 2;
 
-    auto gasPrice = getCurrentGasPrice();
-    return sendSingleTransfer(amount, _fromKey, dstAddress, gasPrice, _noWait);
+    return sendSingleTransfer(amount, _fromKey, dstAddress, _gasPrice, _noWait);
 
 }
 

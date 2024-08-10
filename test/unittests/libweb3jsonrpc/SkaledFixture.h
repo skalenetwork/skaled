@@ -86,7 +86,7 @@ public:
 
     uint64_t sendSingleTransfer(u256 _amount, Secret &_from, Address _to, u256 &_gasPrice, bool _noWait = false);
 
-    u256 splitAccountInHalves(Secret _fromKey, Secret _toKey, bool _noWait = false);
+    u256 splitAccountInHalves(Secret _fromKey, Secret _toKey, u256& _gasPrice, bool _noWait = false);
 
 
     unique_ptr<WebThreeStubClient> rpcClient();

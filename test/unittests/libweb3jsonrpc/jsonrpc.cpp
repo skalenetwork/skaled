@@ -1074,9 +1074,10 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
     SkaledFixture fixture( skaledConfigFileName );
     fixture.setupFirstKey();
     auto firstKey = fixture.testKeys.begin()->second;
+    auto gasPrice = fixture.getCurrentGasPrice();
     for ( uint64_t i = 0; i < 40; i++ ) {
         auto dst = Secret::random();
-        fixture.splitAccountInHalves( firstKey, dst );
+        fixture.splitAccountInHalves( firstKey, dst, gasPrice );
     }
 }
 
