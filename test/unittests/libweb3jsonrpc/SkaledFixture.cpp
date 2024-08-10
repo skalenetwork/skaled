@@ -120,7 +120,8 @@ void SkaledFixture::setupFirstKey() {
     testKeys[getAddressAsString(firstKey)] = firstKey;
     string amount = "100000000000000000000000000000000000000000000000000000000";
     u256 num(amount);
-    sendSingleTransfer(num, ownerKey, KeyPair(firstKey).address());
+    auto gasPrice = getCurrentGasPrice();
+    sendSingleTransfer(num, ownerKey, KeyPair(firstKey).address(), gasPrice);
 }
 
 void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
@@ -162,7 +163,7 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
             Secret newKey;
             auto t = make_shared<thread>([&]() {
                 auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first],
-                                                  true);
+                                                  false);
                 lock_guard<mutex> lock(m);
                 pendingTransactionNonces[testKey.first] =  nonce;
             });
@@ -292,11 +293,10 @@ u256 SkaledFixture::getBalance(const string& _address) {
     return jsToU256(rpcClient()->eth_getBalance(_address, "latest"));
 }
 
-uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to,
-                                           bool _noWait) {
+uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to, u256 &_gasPrice, bool _noWait) {
     auto addressStr = "0x" + KeyPair(_from).address().hex();
     auto accountNonce = getTransactionCount(addressStr);
-    u256 gasPrice = getCurrentGasPrice();
+
 
 
     u256 dstBalanceBefore;
@@ -312,7 +312,7 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address 
     TransactionSkeleton ts = toTransactionSkeleton(t);
     ts.nonce = accountNonce;
     ts.gas = 90000;
-    ts.gasPrice = gasPrice;
+    ts.gasPrice = _gasPrice;
 
     Transaction transaction(ts);  // always legacy, no prefix byte
     transaction.forceChainId(chainId);
@@ -378,7 +378,8 @@ u256 SkaledFixture::splitAccountInHalves(Secret _fromKey, Secret _toKey, bool _n
     CHECK(balance > 0)
     auto amount = (balance - fee) / 2;
 
-    return sendSingleTransfer(amount, _fromKey, dstAddress, _noWait);
+    auto gasPrice = getCurrentGasPrice();
+    return sendSingleTransfer(amount, _fromKey, dstAddress, gasPrice, _noWait);
 
 }
 
