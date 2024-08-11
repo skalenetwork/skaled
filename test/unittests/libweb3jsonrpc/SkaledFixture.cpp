@@ -134,6 +134,8 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
         cout << "Creating test wallets. Iteration " << j << " wallets created: " << testAccounts.size() << endl;
 
+        auto begin = getCurrentTimeMs();
+
         map<string, std::shared_ptr<SkaledAccount>> testAccountsCopy;
 
         {
@@ -174,6 +176,8 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
         for (auto &&account: testAccountsCopy) {
             waitForTransaction(account.second);
         };
+
+        cerr << 1000.0 * testAccountsCopy.size() / (getCurrentTimeMs() - begin) << " tps" << endl;
     }
 
     cout << "Creating keys completed. Total test wallets created:" << testAccounts.size() << endl;
