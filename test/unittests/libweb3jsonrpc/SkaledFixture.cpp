@@ -126,7 +126,6 @@ void SkaledFixture::setupFirstKey() {
 
 
 void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
-    setupFirstKey();
 
 
     mutex testAccountsMutex;
