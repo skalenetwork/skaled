@@ -526,10 +526,15 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
 
+
+
+
     boost::chrono::high_resolution_clock::time_point skaledTimeStart;
     skaledTimeStart = boost::chrono::high_resolution_clock::now();
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
+
+    auto milliseconds = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     if ( m_ignoreNewBlocks ) {
         LOG( m_warningLogger ) << "WARNING: skaled got new block #" << _blockID
@@ -690,7 +695,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
             LOG( m_infoLogger ) << "Rotation is completed. Instance is exiting";
         }
+
+        std::cerr << std::chrono::duration_cast<std::chrono::microseconds >(std::chrono::system_clock::now().time_since_epoch()).count() - milliseconds << std::endl;
     }
+
+
 } catch ( const std::exception& ex ) {
     LOG( m_errorLogger ) << "CRITICAL " << ex.what() << " (in createBlock)";
     LOG( m_errorLogger ) << "\n" << skutils::signal::generate_stack_trace() << "\n";

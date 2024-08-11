@@ -116,42 +116,43 @@ ptr<CurlClient> SkaledFixture::getThreadLocalCurlClient() {
 
 
 void SkaledFixture::setupFirstKey() {
-    auto firstKey = Secret::random();
-    testKeys[getAddressAsString(firstKey)] = firstKey;
+    auto firstAccount = SkaledAccount::generate();
+    CHECK(testAccounts.try_emplace(firstAccount.getAddressAsString(), firstAccount).second);
     string amount = "100000000000000000000000000000000000000000000000000000000";
     u256 num(amount);
     auto gasPrice = getCurrentGasPrice();
-    sendSingleTransfer(num, ownerKey, KeyPair(firstKey).address(), gasPrice);
+    sendSingleTransfer(num, *ownerAccount, firstAccount.getAddressAsString(), gasPrice);
 }
+
 
 void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
     setupFirstKey();
 
 
-    mutex testKeysMutex;
+    mutex testAccountsMutex;
 
     for (uint64_t j = 0; j < _n; j++) {
 
-        cerr << "Iteration " << j << "Number of keys:" << testKeys.size() << endl;
+        cerr << "Iteration " << j << "Number of keys:" << testAccounts.size() << endl;
 
 
-        map<string, Secret> testKeysCopy;
+        map<string, SkaledAccount> testAccountsCopy;
 
         {
-            lock_guard<mutex> lock(testKeysMutex);
-            testKeysCopy = testKeys;
+            lock_guard<mutex> lock(testAccountsMutex);
+            testAccountsCopy = testAccounts;
         }
 
-        map<string, Secret> keyPairs;
+        map<string, SkaledAccount> oldNewPairs;
 
-        for (auto &&testKey: testKeysCopy) {
-            lock_guard<mutex> lock(testKeysMutex);
-            Secret newKey = KeyPair::create().secret();
-            string address = getAddressAsString(newKey);
-            CHECK(testKeys.count(address) == 0);
-            testKeys[address] = newKey;
-            keyPairs[address] = newKey;
-            keyPairs[getAddressAsString(testKey.second)] = newKey;
+        for (auto &&testAccount: testAccountsCopy) {
+            auto newAccount = SkaledAccount::generate();
+            string address = newAccount.getAddressAsString();
+            CHECK(testAccounts.count(address) == 0);
+            oldNewPairs.emplace(testAccount.first, newAccount);
+            // add the new account to the map
+            lock_guard<mutex> lock(testAccountsMutex);
+            testAccounts.emplace(newAccount.getAddressAsString(), newAccount);
         }
 
         vector<shared_ptr<thread>> threads;
@@ -161,13 +162,15 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
         auto gasPrice = getCurrentGasPrice();
 
-        for (auto &&testKey: testKeysCopy) {
-            Secret newKey;
+        for (auto &&testAccount: testAccountsCopy) {
             auto t = make_shared<thread>([&]() {
-                auto nonce = splitAccountInHalves(testKey.second, keyPairs[testKey.first], gasPrice,
+                SkaledAccount oldAccount = testAccount.second;
+                SkaledAccount newAccount = oldNewPairs.at(testAccount.first);
+                auto nonce = splitAccountInHalves(oldAccount,
+                                                  newAccount, gasPrice,
                                                   false);
                 lock_guard<mutex> lock(m);
-                pendingTransactionNonces[testKey.first] =  nonce;
+                pendingTransactionNonces[testAccount.first] = nonce;
             });
             threads.push_back(t);
         }
@@ -181,13 +184,6 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
     }
 }
 
-string SkaledFixture::getAddressAsString(Secret &_secret) {
-    return "0x" + KeyPair(_secret).address().hex();
-}
-
-string SkaledFixture::getAddressAsString(Address &_address) {
-    return "0x" + _address.hex();
-}
 
 void SkaledFixture::readInsecurePrivateKeyFromHardhatConfig() {
     // get insecure test private key from hardhat config
@@ -209,9 +205,9 @@ void SkaledFixture::readInsecurePrivateKeyFromHardhatConfig() {
     CHECK(!insecurePrivateKey.empty());
     string ownerKeyStr = "0x" + insecurePrivateKey;
     Secret ownerSecret(ownerKeyStr);
-    ownerKey = ownerSecret;
+    ownerAccount = make_shared<SkaledAccount>(ownerSecret, 0);
 
-    auto balance = getBalance(getAddressAsString(ownerKey));
+    auto balance = getBalance(ownerAccount->getAddressAsString());
     CHECK(balance > 0);
 
 }
@@ -291,26 +287,30 @@ u256 SkaledFixture::getCurrentGasPrice() {
     return jsToU256(rpcClient()->eth_gasPrice());
 }
 
-u256 SkaledFixture::getBalance(const string& _address) {
+u256 SkaledFixture::getBalance(const string &_address) const {
     return jsToU256(rpcClient()->eth_getBalance(_address, "latest"));
 }
 
-uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address _to, u256 &_gasPrice, bool _noWait) {
-    auto addressStr = "0x" + KeyPair(_from).address().hex();
-    auto accountNonce = getTransactionCount(addressStr);
+u256 SkaledFixture::getBalance(const SkaledAccount &_account) const {
+    return getBalance(_account.getAddressAsString());
+}
 
+uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, SkaledAccount &_from, const string &_to, u256 &_gasPrice,
+                                           bool _noWait) {
+    auto from = _from.getAddressAsString();
+    auto accountNonce = getTransactionCount(from);
 
 
     u256 dstBalanceBefore;
     if (this->verifyTransactions) {
-        u256 srcBalanceBefore = getBalance(getAddressAsString(_from));
+        u256 srcBalanceBefore = getBalance(_from.getAddressAsString());
         CHECK(srcBalanceBefore > 0);
-        dstBalanceBefore = getBalance(getAddressAsString(_to));
+        dstBalanceBefore = getBalance(_to);
     }
     Json::Value t;
-    t["from"] = toJS(KeyPair(_from).address());
+    t["from"] = from;
     t["value"] = jsToDecimal(toJS(_amount));
-    t["to"] = toJS(_to);
+    t["to"] = _to;
     TransactionSkeleton ts = toTransactionSkeleton(t);
     ts.nonce = accountNonce;
     ts.gas = 90000;
@@ -318,7 +318,7 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address 
 
     Transaction transaction(ts);  // always legacy, no prefix byte
     transaction.forceChainId(chainId);
-    transaction.sign(_from);
+    transaction.sign(_from.getKey());
     CHECK(transaction.chainId());
     auto result = dev::eth::toJson(transaction, transaction.toBytes());
 
@@ -342,18 +342,18 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, Secret &_from, Address 
         return (uint64_t) accountNonce;
     }
 
-    waitForTransaction(addressStr, accountNonce);
+    waitForTransaction(from, accountNonce);
 
     if (this->verifyTransactions) {
-        auto balanceAfter = getBalance(getAddressAsString(_to));
+        auto balanceAfter = getBalance(_to);
         CHECK(balanceAfter - dstBalanceBefore == _amount);
     }
 
     return (uint64_t) accountNonce;
 }
 
-void SkaledFixture::waitForTransaction(const string& _address,
-                                       const u256& _transactionNonce) {
+void SkaledFixture::waitForTransaction(const string &_address,
+                                       const u256 &_transactionNonce) {
     u256 newAccountNonce;
 
 
@@ -371,24 +371,32 @@ void SkaledFixture::waitForTransaction(const string& _address,
     CHECK(newAccountNonce - _transactionNonce == 1);
 }
 
-u256 SkaledFixture::splitAccountInHalves(Secret _fromKey, Secret _toKey, u256& _gasPrice,  bool _noWait) {
-    auto dstAddress = KeyPair(_toKey).address();
-    auto balance = getBalance("0x" + KeyPair(_fromKey).address().hex());
+u256 SkaledFixture::splitAccountInHalves(SkaledAccount _from, SkaledAccount _to, u256 &_gasPrice, bool _noWait) {
+    auto balance = getBalance(_from.getAddressAsString());
     CHECK(balance > 0);
     auto fee = _gasPrice * 21000;
     CHECK(fee <= balance);
     CHECK(balance > 0)
     auto amount = (balance - fee) / 2;
 
-    return sendSingleTransfer(amount, _fromKey, dstAddress, _gasPrice, _noWait);
+    return sendSingleTransfer(amount, _from, _to.getAddressAsString(), _gasPrice, _noWait);
 
 }
 
 
-unique_ptr<WebThreeStubClient> SkaledFixture::rpcClient() {
+unique_ptr<WebThreeStubClient> SkaledFixture::rpcClient() const {
     auto httpClient = new jsonrpc::HttpClient(skaledEndpoint);
     httpClient->SetTimeout(10000);
     auto rpcClient = unique_ptr<WebThreeStubClient>(new WebThreeStubClient(*httpClient));
     return rpcClient;
 }
+
+SkaledAccount::SkaledAccount(const Secret _key, const u256 _currentNonce) : key(_key),
+                                                                            currentTransactionCountOnBlockchain(
+                                                                                    _currentNonce),
+                                                                            lastSentNonce(_currentNonce) {}
+
+const Secret &SkaledAccount::getKey() const {
+    return key;
+};
 

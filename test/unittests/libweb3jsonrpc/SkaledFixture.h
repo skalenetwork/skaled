@@ -23,6 +23,98 @@ using namespace dev::test;
 // Callback function to handle data received from the server
 size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
+class SkaledAccount  {
+    Secret key;
+    u256 currentTransactionCountOnBlockchain = 0;
+    std::optional<u256> lastSentNonce = std::nullopt;
+    mutable std::shared_mutex mutex;
+
+public:
+
+    static SkaledAccount generate() {
+        Secret newKey = KeyPair::create().secret();
+        return SkaledAccount(newKey, 0);
+    }
+
+    Address getAddress() const {
+        return KeyPair(key).address();
+    }
+
+    string getAddressAsString() const {
+        return "0x" + KeyPair(key).address().hex();
+    }
+
+    // generate a copy constructor below
+    SkaledAccount(const SkaledAccount& account) {
+        key = account.key;
+        currentTransactionCountOnBlockchain = account.currentTransactionCountOnBlockchain;
+        lastSentNonce = account.lastSentNonce;
+    }
+
+
+    // generate a move constructor below
+
+    SkaledAccount(SkaledAccount&& account) noexcept {
+        key = std::move(account.key);
+        currentTransactionCountOnBlockchain = account.currentTransactionCountOnBlockchain;
+        lastSentNonce = std::move(account.lastSentNonce);
+    }
+
+
+
+    SkaledAccount& operator=(const SkaledAccount& account) {
+        key = account.key;
+        currentTransactionCountOnBlockchain = account.currentTransactionCountOnBlockchain;
+        lastSentNonce = account.lastSentNonce;
+        return *this;
+    }
+
+    const Secret &getKey() const;
+
+    SkaledAccount(const Secret key, const u256 _currentNonce);
+
+    u256 getCurrentTransactionCountOnBlockchain()  const {
+        std::shared_lock<std::shared_mutex> lock(mutex);
+        return currentTransactionCountOnBlockchain;
+    }
+
+    u256 getLastSentNonce() {
+        std::shared_lock<std::shared_mutex> lock(mutex);
+        if (!lastSentNonce.has_value()) {
+            throw std::runtime_error("No transaction has been sent from this account");
+        }
+        return lastSentNonce.value();
+    }
+
+    u256 computeNonceForNextTransaction() {
+        std::unique_lock<std::shared_mutex> lock(mutex);
+        if (!lastSentNonce.has_value()) {
+            throw std::runtime_error("No transaction has been sent from this account");
+        }
+        if (this->lastSentNonce != this->currentTransactionCountOnBlockchain) {
+            throw std::runtime_error("Previous transaction has not yet been confirmed");
+        }
+        lastSentNonce = this->currentTransactionCountOnBlockchain;
+        return this->currentTransactionCountOnBlockchain++;
+    }
+
+    void notifyLastTransactionCompleted() {
+        std::unique_lock<std::shared_mutex> lock(mutex);
+
+        if (! lastSentNonce.has_value() && this->lastSentNonce == this->currentTransactionCountOnBlockchain) {
+            throw std::runtime_error("No pending transaction for this account");
+        }
+
+        CHECK(lastSentNonce == currentTransactionCountOnBlockchain + 1);
+
+        currentTransactionCountOnBlockchain = lastSentNonce.value();
+
+        lastSentNonce = std::nullopt;
+    }
+
+
+};
+
 
 class SkaledFixture;
 
@@ -65,10 +157,6 @@ public:
 
     void setupTwoToTheNKeys(uint64_t _n);
 
-    string getAddressAsString(Secret &_secret);
-
-    string getAddressAsString(Address &_address);
-
     void readInsecurePrivateKeyFromHardhatConfig();
 
     uint64_t getCurrentTimeMs();
@@ -82,23 +170,26 @@ public:
 
     u256 getCurrentGasPrice();
 
-    u256 getBalance(const string& _address);
-
-    uint64_t sendSingleTransfer(u256 _amount, Secret &_from, Address _to, u256 &_gasPrice, bool _noWait = false);
-
-    u256 splitAccountInHalves(Secret _fromKey, Secret _toKey, u256& _gasPrice, bool _noWait = false);
+    u256 getBalance(const string& _address) const;
 
 
-    unique_ptr<WebThreeStubClient> rpcClient();
+    u256 getBalance(const SkaledAccount &_account) const ;
+
+    uint64_t sendSingleTransfer(u256 _amount, SkaledAccount &_from, const string& _to, u256 &_gasPrice, bool _noWait = false);
+
+    u256 splitAccountInHalves(SkaledAccount _from, SkaledAccount _to, u256& _gasPrice, bool _noWait = false);
+
+
+    unique_ptr<WebThreeStubClient> rpcClient() const;
 
     string skaledEndpoint;
     string ownerAddressStr;
     string ip;
     uint64_t basePort;
     uint64_t chainId;
-    Secret ownerKey;
+    std::shared_ptr<SkaledAccount> ownerAccount;
     // map of test key addresses to secret keys
-    map<string, Secret> testKeys;
+    map<string, SkaledAccount> testAccounts;
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
     bool verifyTransactions = false;
