@@ -25,8 +25,9 @@ size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
 class SkaledAccount  {
     Secret key;
-    u256 currentTransactionCountOnBlockchain = 0;
+    u256 currentTransactionCountOnChain = 0;
     std::optional<u256> lastSentNonce = std::nullopt;
+
     mutable std::shared_mutex mutex;
 
 public:
@@ -36,9 +37,6 @@ public:
         return SkaledAccount(newKey, 0);
     }
 
-    Address getAddress() const {
-        return KeyPair(key).address();
-    }
 
     string getAddressAsString() const {
         return "0x" + KeyPair(key).address().hex();
@@ -47,7 +45,7 @@ public:
     // generate a copy constructor below
     SkaledAccount(const SkaledAccount& account) {
         key = account.key;
-        currentTransactionCountOnBlockchain = account.currentTransactionCountOnBlockchain;
+        currentTransactionCountOnChain = account.currentTransactionCountOnChain;
         lastSentNonce = account.lastSentNonce;
     }
 
@@ -56,7 +54,7 @@ public:
 
     SkaledAccount(SkaledAccount&& account) noexcept {
         key = std::move(account.key);
-        currentTransactionCountOnBlockchain = account.currentTransactionCountOnBlockchain;
+        currentTransactionCountOnChain = account.currentTransactionCountOnChain;
         lastSentNonce = std::move(account.lastSentNonce);
     }
 
@@ -64,18 +62,18 @@ public:
 
     SkaledAccount& operator=(const SkaledAccount& account) {
         key = account.key;
-        currentTransactionCountOnBlockchain = account.currentTransactionCountOnBlockchain;
+        currentTransactionCountOnChain = account.currentTransactionCountOnChain;
         lastSentNonce = account.lastSentNonce;
         return *this;
     }
 
     const Secret &getKey() const;
 
-    SkaledAccount(const Secret key, const u256 _currentNonce);
+    SkaledAccount(const Secret key, const u256 _currentTransactionCountOnChain);
 
     u256 getCurrentTransactionCountOnBlockchain()  const {
         std::shared_lock<std::shared_mutex> lock(mutex);
-        return currentTransactionCountOnBlockchain;
+        return currentTransactionCountOnChain;
     }
 
     u256 getLastSentNonce() {
@@ -88,26 +86,23 @@ public:
 
     u256 computeNonceForNextTransaction() {
         std::unique_lock<std::shared_mutex> lock(mutex);
-        if (!lastSentNonce.has_value()) {
-            throw std::runtime_error("No transaction has been sent from this account");
-        }
-        if (this->lastSentNonce != this->currentTransactionCountOnBlockchain) {
+        if ( lastSentNonce.has_value() && lastSentNonce != currentTransactionCountOnChain) {
             throw std::runtime_error("Previous transaction has not yet been confirmed");
         }
-        lastSentNonce = this->currentTransactionCountOnBlockchain;
-        return this->currentTransactionCountOnBlockchain++;
+        lastSentNonce = currentTransactionCountOnChain;
+        return lastSentNonce.value();
     }
 
     void notifyLastTransactionCompleted() {
         std::unique_lock<std::shared_mutex> lock(mutex);
 
-        if (! lastSentNonce.has_value() && this->lastSentNonce == this->currentTransactionCountOnBlockchain) {
+        if (! lastSentNonce.has_value()) {
             throw std::runtime_error("No pending transaction for this account");
         }
 
-        CHECK(lastSentNonce == currentTransactionCountOnBlockchain + 1);
+        CHECK(lastSentNonce == currentTransactionCountOnChain);
 
-        currentTransactionCountOnBlockchain = lastSentNonce.value();
+        currentTransactionCountOnChain++;
 
         lastSentNonce = std::nullopt;
     }
@@ -159,7 +154,7 @@ public:
 
     void readInsecurePrivateKeyFromHardhatConfig();
 
-    uint64_t getCurrentTimeMs();
+    static uint64_t getCurrentTimeMs();
 
 
     SkaledFixture(const std::string &_configPath);

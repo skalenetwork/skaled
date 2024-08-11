@@ -3,6 +3,7 @@
 #include "WebThreeStubClient.h"
 
 
+#include <boost/algorithm/string.hpp>
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
@@ -118,10 +119,9 @@ ptr<CurlClient> SkaledFixture::getThreadLocalCurlClient() {
 void SkaledFixture::setupFirstKey() {
     auto firstAccount = SkaledAccount::generate();
     CHECK(testAccounts.try_emplace(firstAccount.getAddressAsString(), firstAccount).second);
-    string amount = "100000000000000000000000000000000000000000000000000000000";
-    u256 num(amount);
+    u256 amount("100000000000000000000000000000000000000000000000000000000");
     auto gasPrice = getCurrentGasPrice();
-    sendSingleTransfer(num, *ownerAccount, firstAccount.getAddressAsString(), gasPrice);
+    sendSingleTransfer(amount, *ownerAccount, firstAccount.getAddressAsString(), gasPrice);
 }
 
 
@@ -181,6 +181,10 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
         for (auto &&pendingTx: pendingTransactionNonces) {
             this->waitForTransaction(pendingTx.first, pendingTx.second);
         };
+
+        for (auto &&account: testAccountsCopy) {
+            account.second.notifyLastTransactionCompleted();
+        };
     }
 }
 
@@ -205,7 +209,15 @@ void SkaledFixture::readInsecurePrivateKeyFromHardhatConfig() {
     CHECK(!insecurePrivateKey.empty());
     string ownerKeyStr = "0x" + insecurePrivateKey;
     Secret ownerSecret(ownerKeyStr);
-    ownerAccount = make_shared<SkaledAccount>(ownerSecret, 0);
+
+
+    auto transactionCount = getTransactionCount(ownerAddressStr);
+    ownerAccount = make_shared<SkaledAccount>(ownerSecret, transactionCount);
+    cerr << "Transaction count: " << transactionCount << endl;
+    cerr << ownerAddressStr << endl;
+    cerr << ownerAccount->getAddressAsString();
+    CHECK(ownerAccount->getCurrentTransactionCountOnBlockchain() ==
+          getTransactionCount(ownerAccount->getAddressAsString()));
 
     auto balance = getBalance(ownerAccount->getAddressAsString());
     CHECK(balance > 0);
@@ -232,6 +244,7 @@ SkaledFixture::SkaledFixture(const std::string &_configPath) {
     Json::Reader().parse(config, ret);
 
     ownerAddressStr = ret["skaleConfig"]["sChain"]["schainOwner"].asString();
+    boost::algorithm::to_lower(ownerAddressStr);
     ip = ret["skaleConfig"]["sChain"]["nodes"][0]["ip"].asString();
     CHECK(!ip.empty())
     basePort = ret["skaleConfig"]["sChain"]["nodes"][0]["basePort"].asInt();
@@ -280,7 +293,7 @@ SkaledFixture::~SkaledFixture() {
 }
 
 u256 SkaledFixture::getTransactionCount(const string &_address) {
-    return jsToU256(this->rpcClient()->eth_getTransactionCount(toJS(_address), "latest"));
+    return jsToU256(this->rpcClient()->eth_getTransactionCount(_address, "latest"));
 }
 
 u256 SkaledFixture::getCurrentGasPrice() {
@@ -300,6 +313,9 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, SkaledAccount &_from, c
     auto from = _from.getAddressAsString();
     auto accountNonce = getTransactionCount(from);
 
+    CHECK(accountNonce == _from.getCurrentTransactionCountOnBlockchain());
+
+    CHECK(accountNonce == _from.computeNonceForNextTransaction());
 
     u256 dstBalanceBefore;
     if (this->verifyTransactions) {
@@ -343,6 +359,8 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, SkaledAccount &_from, c
     }
 
     waitForTransaction(from, accountNonce);
+
+    _from.notifyLastTransactionCompleted();
 
     if (this->verifyTransactions) {
         auto balanceAfter = getBalance(_to);
@@ -391,10 +409,9 @@ unique_ptr<WebThreeStubClient> SkaledFixture::rpcClient() const {
     return rpcClient;
 }
 
-SkaledAccount::SkaledAccount(const Secret _key, const u256 _currentNonce) : key(_key),
-                                                                            currentTransactionCountOnBlockchain(
-                                                                                    _currentNonce),
-                                                                            lastSentNonce(_currentNonce) {}
+SkaledAccount::SkaledAccount(const Secret _key, const u256 _currentTransactionCountOnChain) : key(_key),
+                                                                                              currentTransactionCountOnChain(
+                                                                                                      _currentTransactionCountOnChain) {}
 
 const Secret &SkaledAccount::getKey() const {
     return key;
