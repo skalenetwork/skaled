@@ -118,10 +118,10 @@ ptr<CurlClient> SkaledFixture::getThreadLocalCurlClient() {
 
 void SkaledFixture::setupFirstKey() {
     auto firstAccount = SkaledAccount::generate();
-    CHECK(testAccounts.try_emplace(firstAccount.getAddressAsString(), firstAccount).second);
+    CHECK(testAccounts.try_emplace(firstAccount->getAddressAsString(), firstAccount).second);
     u256 amount("100000000000000000000000000000000000000000000000000000000");
     auto gasPrice = getCurrentGasPrice();
-    sendSingleTransfer(amount, *ownerAccount, firstAccount.getAddressAsString(), gasPrice);
+    sendSingleTransfer(amount, ownerAccount, firstAccount->getAddressAsString(), gasPrice);
 }
 
 
@@ -136,23 +136,24 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
         cerr << "Iteration " << j << "Number of keys:" << testAccounts.size() << endl;
 
 
-        map<string, SkaledAccount> testAccountsCopy;
+        map<string, std::shared_ptr<SkaledAccount>> testAccountsCopy;
 
         {
             lock_guard<mutex> lock(testAccountsMutex);
             testAccountsCopy = testAccounts;
         }
 
-        map<string, SkaledAccount> oldNewPairs;
+        map<string, shared_ptr<SkaledAccount>> oldNewPairs;
 
         for (auto &&testAccount: testAccountsCopy) {
             auto newAccount = SkaledAccount::generate();
-            string address = newAccount.getAddressAsString();
+            string address = newAccount->getAddressAsString();
             CHECK(testAccounts.count(address) == 0);
             oldNewPairs.emplace(testAccount.first, newAccount);
             // add the new account to the map
             lock_guard<mutex> lock(testAccountsMutex);
-            testAccounts.emplace(newAccount.getAddressAsString(), newAccount);
+            CHECK(testAccounts.count(newAccount->getAddressAsString()) == 0);
+            testAccounts.emplace(newAccount->getAddressAsString(), newAccount);
         }
 
         vector<shared_ptr<thread>> threads;
@@ -164,8 +165,8 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
         for (auto &&testAccount: testAccountsCopy) {
             auto t = make_shared<thread>([&]() {
-                SkaledAccount oldAccount = testAccount.second;
-                SkaledAccount newAccount = oldNewPairs.at(testAccount.first);
+                auto oldAccount = testAccount.second;
+                auto newAccount = oldNewPairs.at(testAccount.first);
                 auto nonce = splitAccountInHalves(oldAccount,
                                                   newAccount, gasPrice,
                                                   false);
@@ -183,7 +184,7 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
         };
 
         for (auto &&account: testAccountsCopy) {
-            account.second.notifyLastTransactionCompleted();
+            account.second->notifyLastTransactionCompleted();
         };
     }
 }
@@ -212,13 +213,7 @@ void SkaledFixture::readInsecurePrivateKeyFromHardhatConfig() {
 
 
     auto transactionCount = getTransactionCount(ownerAddressStr);
-    ownerAccount = make_shared<SkaledAccount>(ownerSecret, transactionCount);
-    cerr << "Transaction count: " << transactionCount << endl;
-    cerr << ownerAddressStr << endl;
-    cerr << ownerAccount->getAddressAsString();
-    CHECK(ownerAccount->getCurrentTransactionCountOnBlockchain() ==
-          getTransactionCount(ownerAccount->getAddressAsString()));
-
+    ownerAccount = SkaledAccount::getInstance(ownerSecret, transactionCount);
     auto balance = getBalance(ownerAccount->getAddressAsString());
     CHECK(balance > 0);
 
@@ -293,7 +288,10 @@ SkaledFixture::~SkaledFixture() {
 }
 
 u256 SkaledFixture::getTransactionCount(const string &_address) {
-    return jsToU256(this->rpcClient()->eth_getTransactionCount(_address, "latest"));
+    auto count =  jsToU256(this->rpcClient()->eth_getTransactionCount(_address, "latest"));
+
+    return count;
+
 }
 
 u256 SkaledFixture::getCurrentGasPrice() {
@@ -308,18 +306,19 @@ u256 SkaledFixture::getBalance(const SkaledAccount &_account) const {
     return getBalance(_account.getAddressAsString());
 }
 
-uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, SkaledAccount &_from, const string &_to, u256 &_gasPrice,
+uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledAccount> _from, const string &_to, u256 &_gasPrice,
                                            bool _noWait) {
-    auto from = _from.getAddressAsString();
+    auto from = _from->getAddressAsString();
     auto accountNonce = getTransactionCount(from);
 
-    CHECK(accountNonce == _from.getCurrentTransactionCountOnBlockchain());
 
-    CHECK(accountNonce == _from.computeNonceForNextTransaction());
+    CHECK(accountNonce == _from->getCurrentTransactionCountOnBlockchain());
+
+    CHECK(accountNonce == _from->computeNonceForNextTransaction());
 
     u256 dstBalanceBefore;
     if (this->verifyTransactions) {
-        u256 srcBalanceBefore = getBalance(_from.getAddressAsString());
+        u256 srcBalanceBefore = getBalance(_from->getAddressAsString());
         CHECK(srcBalanceBefore > 0);
         dstBalanceBefore = getBalance(_to);
     }
@@ -329,12 +328,13 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, SkaledAccount &_from, c
     t["to"] = _to;
     TransactionSkeleton ts = toTransactionSkeleton(t);
     ts.nonce = accountNonce;
+    ts.nonce = accountNonce;
     ts.gas = 90000;
     ts.gasPrice = _gasPrice;
 
     Transaction transaction(ts);  // always legacy, no prefix byte
     transaction.forceChainId(chainId);
-    transaction.sign(_from.getKey());
+    transaction.sign(_from->getKey());
     CHECK(transaction.chainId());
     auto result = dev::eth::toJson(transaction, transaction.toBytes());
 
@@ -360,7 +360,7 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, SkaledAccount &_from, c
 
     waitForTransaction(from, accountNonce);
 
-    _from.notifyLastTransactionCompleted();
+    _from->notifyLastTransactionCompleted();
 
     if (this->verifyTransactions) {
         auto balanceAfter = getBalance(_to);
@@ -389,15 +389,15 @@ void SkaledFixture::waitForTransaction(const string &_address,
     CHECK(newAccountNonce - _transactionNonce == 1);
 }
 
-u256 SkaledFixture::splitAccountInHalves(SkaledAccount _from, SkaledAccount _to, u256 &_gasPrice, bool _noWait) {
-    auto balance = getBalance(_from.getAddressAsString());
+u256 SkaledFixture::splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256 &_gasPrice, bool _noWait) {
+    auto balance = getBalance(_from->getAddressAsString());
     CHECK(balance > 0);
     auto fee = _gasPrice * 21000;
     CHECK(fee <= balance);
     CHECK(balance > 0)
     auto amount = (balance - fee) / 2;
 
-    return sendSingleTransfer(amount, _from, _to.getAddressAsString(), _gasPrice, _noWait);
+    return sendSingleTransfer(amount, _from, _to->getAddressAsString(), _gasPrice, _noWait);
 
 }
 
@@ -416,4 +416,6 @@ SkaledAccount::SkaledAccount(const Secret _key, const u256 _currentTransactionCo
 const Secret &SkaledAccount::getKey() const {
     return key;
 };
+
+std::map<string, std::shared_ptr<SkaledAccount>> SkaledAccount::accounts;
 
