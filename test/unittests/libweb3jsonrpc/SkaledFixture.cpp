@@ -134,7 +134,6 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
         cout << "Creating test wallets. Iteration " << j << " wallets created: " << testAccounts.size() << endl;
 
-
         map<string, std::shared_ptr<SkaledAccount>> testAccountsCopy;
 
         {
@@ -157,27 +156,19 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
         vector<shared_ptr<thread>> threads;
 
-        std::map<string, u256> pendingTransactionNonces;
-        mutex m;
-
         auto gasPrice = getCurrentGasPrice();
 
         for (auto &&testAccount: testAccountsCopy) {
             auto t = make_shared<thread>([&]() {
                 auto oldAccount = testAccount.second;
                 auto newAccount = oldNewPairs.at(testAccount.first);
-                auto nonce = splitAccountInHalves(oldAccount,
-                                                  newAccount, gasPrice,
-                                                  true);
-                lock_guard<mutex> lock(m);
-                pendingTransactionNonces[testAccount.first] = nonce;
+                splitAccountInHalves(oldAccount, newAccount, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION);
             });
             threads.push_back(t);
         }
         for (auto &&t: threads) {
             t->join();
         }
-
 
 
         for (auto &&account: testAccountsCopy) {
@@ -308,8 +299,8 @@ u256 SkaledFixture::getBalance(const SkaledAccount &_account) const {
     return getBalance(_account.getAddressAsString());
 }
 
-uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledAccount> _from, const string &_to, u256 &_gasPrice,
-                                           bool _noWait) {
+void SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledAccount> _from, const string &_to, u256 &_gasPrice,
+                                       TransactionWait _wait) {
     auto from = _from->getAddressAsString();
     auto accountNonce = getTransactionCount(from);
 
@@ -355,9 +346,9 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledA
         throw e;
     }
 
-    if (_noWait) {
-        // dont wait for it to finish and return its nonce immediately
-        return (uint64_t) accountNonce;
+    if (_wait == TransactionWait::DONT_WAIT_FOR_COMPLETION) {
+        // dont wait for it to finish and return immediately
+        return;
     }
 
     waitForTransaction(_from);
@@ -367,7 +358,7 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledA
         CHECK(balanceAfter - dstBalanceBefore == _amount);
     }
 
-    return (uint64_t) accountNonce;
+    return;
 }
 
 void SkaledFixture::waitForTransaction(std::shared_ptr<SkaledAccount> _account) {
@@ -391,7 +382,8 @@ void SkaledFixture::waitForTransaction(std::shared_ptr<SkaledAccount> _account) 
     _account->notifyLastTransactionCompleted();
 }
 
-u256 SkaledFixture::splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256 &_gasPrice, bool _noWait) {
+void SkaledFixture::splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256 &_gasPrice,
+                                         TransactionWait _wait) {
     auto balance = getBalance(_from->getAddressAsString());
     CHECK(balance > 0);
     auto fee = _gasPrice * 21000;
@@ -399,7 +391,7 @@ u256 SkaledFixture::splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, s
     CHECK(balance > 0)
     auto amount = (balance - fee) / 2;
 
-    return sendSingleTransfer(amount, _from, _to->getAddressAsString(), _gasPrice, _noWait);
+    sendSingleTransfer(amount, _from, _to->getAddressAsString(), _gasPrice, _wait);
 
 }
 

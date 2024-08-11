@@ -23,6 +23,11 @@ using namespace dev::test;
 // Callback function to handle data received from the server
 size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
+enum class TransactionWait {
+    WAIT_FOR_COMPLETION,
+    DONT_WAIT_FOR_COMPLETION
+};
+
 class SkaledAccount  {
     Secret key;
     u256 currentTransactionCountOnChain = 0;
@@ -178,9 +183,12 @@ public:
 
     u256 getBalance(const SkaledAccount &_account) const ;
 
-    uint64_t sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledAccount> _from, const string& _to, u256 &_gasPrice, bool _noWait = false);
+    void sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledAccount> _from, const string& _to, u256 &_gasPrice,
+                            TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION);
 
-    u256 splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256& _gasPrice, bool _noWait = false);
+
+    void splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256& _gasPrice,
+                              TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION);
 
 
     unique_ptr<WebThreeStubClient> rpcClient() const;
