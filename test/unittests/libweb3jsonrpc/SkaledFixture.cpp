@@ -178,12 +178,10 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
             t->join();
         }
 
-        for (auto &&pendingTx: pendingTransactionNonces) {
-            this->waitForTransaction(pendingTx.first, pendingTx.second);
-        };
+
 
         for (auto &&account: testAccountsCopy) {
-            account.second->notifyLastTransactionCompleted();
+            waitForTransaction(account.second);
         };
     }
 
@@ -362,9 +360,7 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledA
         return (uint64_t) accountNonce;
     }
 
-    waitForTransaction(from, accountNonce);
-
-    _from->notifyLastTransactionCompleted();
+    waitForTransaction(_from);
 
     if (this->verifyTransactions) {
         auto balanceAfter = getBalance(_to);
@@ -374,14 +370,14 @@ uint64_t SkaledFixture::sendSingleTransfer(u256 _amount, std::shared_ptr<SkaledA
     return (uint64_t) accountNonce;
 }
 
-void SkaledFixture::waitForTransaction(const string &_address,
-                                       const u256 &_transactionNonce) {
-    u256 newAccountNonce;
+void SkaledFixture::waitForTransaction(std::shared_ptr<SkaledAccount> _account) {
+    u256 transactionCount;
 
+    auto transactionNonce = _account->getLastSentNonce();
 
     auto beginTime = getCurrentTimeMs();
 
-    while ((newAccountNonce = getTransactionCount(_address)) == _transactionNonce) {
+    while ((transactionCount = getTransactionCount(_account->getAddressAsString())) == transactionNonce) {
         if (getCurrentTimeMs() - beginTime > transactionTimeoutMs) {
             throw runtime_error("Transaction timeout");
         }
@@ -389,8 +385,10 @@ void SkaledFixture::waitForTransaction(const string &_address,
         usleep(1000 * this->timeBetweenTransactionCompletionChecksMs);
     }
 
-    // the nonce should have been incremented by 1
-    CHECK(newAccountNonce - _transactionNonce == 1);
+    // the count should now be one more than the last transaction nonce
+    CHECK(transactionCount - transactionNonce == 1);
+
+    _account->notifyLastTransactionCompleted();
 }
 
 u256 SkaledFixture::splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256 &_gasPrice, bool _noWait) {

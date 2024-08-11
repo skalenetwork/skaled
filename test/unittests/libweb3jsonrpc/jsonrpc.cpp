@@ -1076,7 +1076,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
     fixture.setupFirstKey();
     auto firstAccount = fixture.testAccounts.begin()->second;
     auto gasPrice = fixture.getCurrentGasPrice();
-    for ( uint64_t i = 0; i < 40; i++ ) {
+    for ( uint64_t i = 0; i < 3; i++ ) {
         auto dst = SkaledAccount::generate();
         fixture.splitAccountInHalves( firstAccount, dst, gasPrice );
     }

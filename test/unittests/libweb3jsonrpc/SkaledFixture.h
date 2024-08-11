@@ -197,7 +197,7 @@ public:
     uint64_t transactionTimeoutMs = 60000;
     bool verifyTransactions = false;
 
-    void waitForTransaction(const string& _address, const u256& _transactionNonce);
+    void waitForTransaction(std::shared_ptr<SkaledAccount> _account);
 
     int timeBetweenTransactionCompletionChecksMs = 1000;
 };
