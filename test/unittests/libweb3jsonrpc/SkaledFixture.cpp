@@ -132,7 +132,7 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
 
     for (uint64_t j = 0; j < _n; j++) {
 
-        cerr << "Iteration " << j << "Number of keys:" << testAccounts.size() << endl;
+        cout << "Creating test wallets. Iteration " << j << " wallets created: " << testAccounts.size() << endl;
 
 
         map<string, std::shared_ptr<SkaledAccount>> testAccountsCopy;
@@ -168,7 +168,7 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
                 auto newAccount = oldNewPairs.at(testAccount.first);
                 auto nonce = splitAccountInHalves(oldAccount,
                                                   newAccount, gasPrice,
-                                                  false);
+                                                  true);
                 lock_guard<mutex> lock(m);
                 pendingTransactionNonces[testAccount.first] = nonce;
             });
@@ -186,6 +186,11 @@ void SkaledFixture::setupTwoToTheNKeys(uint64_t _n) {
             account.second->notifyLastTransactionCompleted();
         };
     }
+
+    cout << "Creating keys completed. Total test wallets created:" << testAccounts.size() << endl;
+
+
+
 }
 
 

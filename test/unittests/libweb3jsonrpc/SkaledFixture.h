@@ -84,14 +84,11 @@ public:
             throw std::runtime_error("Previous transaction has not yet been confirmed");
         }
         lastSentNonce = currentTransactionCountOnChain;
-        cerr << "Started " +  this->getAddressAsString() + "\n";
         return lastSentNonce.value();
     }
 
     void notifyLastTransactionCompleted() {
         std::unique_lock<std::shared_mutex> lock(mutex);
-
-        cerr << "Completed " +  this->getAddressAsString() + "\n";
 
         if (! lastSentNonce.has_value()) {
             throw std::runtime_error("No pending transaction for this account");
