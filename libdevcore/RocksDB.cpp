@@ -22,13 +22,15 @@
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+#include <rocksdb/compression_type.h>
+#include <rocksdb/utilities/leveldb_options.h>
 #include <rocksdb/table.h>
 
 using std::string, std::runtime_error;
 
 namespace dev::db {
 
-unsigned c_maxOpenRocksdbFiles = 25;
+unsigned c_maxOpenRocksdbFiles = 1000;
 
 const size_t RocksDB::BATCH_CHUNK_SIZE = 10000;
 
@@ -101,12 +103,14 @@ rocksdb::WriteOptions RocksDB::defaultWriteOptions() {
 rocksdb::Options RocksDB::defaultDBOptions() {
     rocksdb::Options options;
     options.create_if_missing = true;
-    options.max_open_files = c_maxOpenRocksdbFiles;
+    options.max_open_files = 1000;
     options.max_background_jobs = 8;
     options.max_subcompactions = 4;
+    options.env->SetBackgroundThreads(4, rocksdb::Env::Priority::HIGH);
+    options.env->SetBackgroundThreads(4, rocksdb::Env::Priority::LOW);
 
     rocksdb::BlockBasedTableOptions table_options;
-    table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 10 ) );
+    table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 7, 1 ) );
     options.table_factory.reset( rocksdb::NewBlockBasedTableFactory( table_options ) );
     return options;
 }
