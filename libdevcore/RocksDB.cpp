@@ -23,8 +23,8 @@
 #include <libdevcore/microprofile.h>
 
 #include <rocksdb/compression_type.h>
-#include <rocksdb/utilities/leveldb_options.h>
 #include <rocksdb/table.h>
+#include <rocksdb/utilities/leveldb_options.h>
 
 using std::string, std::runtime_error;
 
@@ -106,8 +106,8 @@ rocksdb::Options RocksDB::defaultDBOptions() {
     options.max_open_files = 1000;
     options.max_background_jobs = 8;
     options.max_subcompactions = 4;
-    options.env->SetBackgroundThreads(4, rocksdb::Env::Priority::HIGH);
-    options.env->SetBackgroundThreads(4, rocksdb::Env::Priority::LOW);
+    options.env->SetBackgroundThreads( 4, rocksdb::Env::Priority::HIGH );
+    options.env->SetBackgroundThreads( 4, rocksdb::Env::Priority::LOW );
 
     rocksdb::BlockBasedTableOptions table_options;
     table_options.filter_policy.reset( rocksdb::NewRibbonFilterPolicy( 7, 1 ) );
