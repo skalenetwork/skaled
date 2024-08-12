@@ -288,6 +288,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                                     sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
                                     c_defaultLevelDBReopenIntervalMs;
 
+    // negative maxHistoricStateDbSize means rotations are disabled
+    s.maxHistoricStateDbSize = sChainObj.count( "maxHistoricStateDbSize" ) ?
+                                   sChainObj.at( "maxHistoricStateDbSize" ).get_int64() :
+                                   -1;
+
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
                                  0;
