@@ -24,8 +24,10 @@
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/oracle/OracleRequestSpec.h>
 
-#include <cstdlib>
 #include "SkaledFixture.h"
+#include <cstdlib>
+
+#include <boost/asio/placeholders.hpp>
 
 
 // Callback function to handle data received from the server
@@ -90,6 +92,30 @@ void CurlClient::eth_sendRawTransaction(const std::string &_rawTransactionHex) {
     setRequest(jsonPayload);
     doRequestResponse();
 }
+
+u256 CurlClient::eth_getBalance(const std::string &_addressString) {
+    std::string jsonPayload =
+            R"({"jsonrpc":"2.0","method":"eth_getBalance","params":[")" + _addressString + R"(","latest"],"id":1})";
+    setRequest(jsonPayload);
+    doRequestResponse();
+    auto response = parseResponse();
+    if (response.isMember( "error" ) ) {
+        auto errorObject = response["error"];
+        string errorMessage = "eth_getBalance returned error.";
+        if (errorObject.isMember( "message" )) {
+            errorMessage += errorObject["message"].asString();
+        }
+        throw runtime_error(errorMessage);
+    }
+
+    CHECK (response.isMember( "result" ) );
+    auto resultStr = response["result"].asString();
+    return jsToU256(resultStr);
+
+}
+
+
+
 
 
 string SkaledFixture::readFile(const std::string &_path) {
@@ -388,7 +414,7 @@ void SkaledFixture::waitForTransaction(std::shared_ptr<SkaledAccount> _account) 
 
 void SkaledFixture::splitAccountInHalves(std::shared_ptr<SkaledAccount> _from, std::shared_ptr<SkaledAccount> _to, u256 &_gasPrice,
                                          TransactionWait _wait) {
-    auto balance = getBalance(_from->getAddressAsString());
+    auto balance = getThreadLocalCurlClient()->eth_getBalance( _from->getAddressAsString() );
     CHECK(balance > 0);
     auto fee = _gasPrice * 21000;
     CHECK(fee <= balance);

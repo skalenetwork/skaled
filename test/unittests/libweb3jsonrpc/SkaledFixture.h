@@ -147,6 +147,9 @@ public:
 
     void eth_sendRawTransaction(const std::string &_rawTransactionHex);
 
+
+    u256 eth_getBalance(const std::string &_addressString);
+
     ~CurlClient();
 };
 
