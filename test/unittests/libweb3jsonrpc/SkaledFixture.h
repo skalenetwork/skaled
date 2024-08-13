@@ -133,22 +133,27 @@ class CurlClient {
     std::string readBuffer;
     struct curl_slist *headers = nullptr;
     static std::atomic<uint64_t> totalCallsCount;
+    string skaledEndpoint;
 
 public:
     static uint64_t getTotalCallsCount();
 
+    void resetCurl();
     CurlClient(SkaledFixture &_fixture);
 
-    void setRequest(const string &_json_rpc_request);
+    void setRequest( const string& _json_rpc_request );
 
     uint64_t doRequestResponse();
 
     Json::Value parseResponse();
 
-    void eth_sendRawTransaction(const std::string &_rawTransactionHex);
+    void eth_sendRawTransaction( const std::string& _rawTransactionHex );
+    void doRequestResponseAndCheckForError( std::string jsonPayload, Json::Value& response );
 
 
     u256 eth_getBalance(const std::string &_addressString);
+
+    u256 eth_getTransactionCount(const std:: string &_addressString);
 
     ~CurlClient();
 };
@@ -207,6 +212,7 @@ public:
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
     bool verifyTransactions = false;
+    bool useThreadsForTransactionSubmission = false;
 
     void waitForTransaction(std::shared_ptr<SkaledAccount> _account);
 
