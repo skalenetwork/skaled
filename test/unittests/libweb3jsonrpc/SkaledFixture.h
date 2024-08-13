@@ -81,15 +81,21 @@ public:
 
     u256 computeNonceForNextTransaction() {
         std::unique_lock< std::shared_mutex > lock( mutex );
-        if ( lastSentNonce.has_value() && lastSentNonce != currentTransactionCountOnChain ) {
+        if ( lastSentNonce.has_value()) {
             throw std::runtime_error( "Previous transaction has not yet been confirmed" );
         }
         lastSentNonce = currentTransactionCountOnChain;
+
+        cerr << "Started " << this->getAddressAsString() << endl;
+
         return lastSentNonce.value();
     }
 
     void notifyLastTransactionCompleted() {
         std::unique_lock< std::shared_mutex > lock( mutex );
+
+
+        cerr << "Completing " << this->getAddressAsString() << endl;
 
         if ( !lastSentNonce.has_value() ) {
             throw std::runtime_error( "No pending transaction for this account" );
@@ -203,6 +209,9 @@ public:
     std::shared_ptr< SkaledAccount > ownerAccount;
     // map of test key addresses to secret keys
     map< string, std::shared_ptr< SkaledAccount > > testAccounts;
+    vector< shared_ptr<SkaledAccount>> testAccountsVector;
+
+
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
     bool verifyTransactions = false;

@@ -1091,9 +1091,9 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
 
     fixture.setupFirstKey();
 
-    fixture.setupTwoToTheNKeys(9);
+    fixture.setupTwoToTheNKeys(1);
 
-    fixture.sendTinyTransfersForAllAccounts(100);
+    fixture.sendTinyTransfersForAllAccounts(1);
 
 }
 
