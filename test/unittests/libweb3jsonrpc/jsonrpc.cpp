@@ -1088,6 +1088,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
     vector< Secret > accountPieces;
 
     fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 2;
 
     fixture.setupFirstKey();
 
@@ -1295,7 +1296,7 @@ disappeared! res = fixture.rpcClient->eth_getFilterLogs(filterId); REQUIRE_APPRO
     ///////////////// OTHER CALLS //////////////////
     // HACK this may return DIFFERENT block! because of undeterministic block rotation!
     string existing = "0x1df"; string existing_hash = logs[256+64-1-1-32]["blockHash"].asString();
-    //cerr << logs << endl;
+    //cout << logs << endl;
 
     BOOST_REQUIRE_NO_THROW(res = fixture.rpcClient->eth_getBlockByNumber(existing, true));
     BOOST_REQUIRE_EQUAL(res["number"], existing);
@@ -2003,7 +2004,7 @@ BOOST_AUTO_TEST_CASE( test_importRawBlock ) {
 
     // blockHash, "0xedef94eddd6002ae14803b91aa5138932f948026310144fc615d52d7d5ff29c7" );
     // TODO again, this was computed just in code - no trust to it
-    std::cerr << blockHash << std::endl;
+    std::cout << blockHash << std::endl;
     BOOST_CHECK_EQUAL(
         blockHash, "0x7683f686a7ecf6949d29cab2075b8aa45f061e27338e61ea3c37a7a0bd80f17b" );
 }

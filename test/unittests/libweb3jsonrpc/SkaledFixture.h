@@ -81,12 +81,17 @@ public:
 
     u256 computeNonceForNextTransaction() {
         std::unique_lock< std::shared_mutex > lock( mutex );
+
+
+        cout << "Starting " << this->getAddressAsString() << endl;
+
+
         if ( lastSentNonce.has_value()) {
             throw std::runtime_error( "Previous transaction has not yet been confirmed" );
         }
         lastSentNonce = currentTransactionCountOnChain;
 
-        cerr << "Started " << this->getAddressAsString() << endl;
+        cout << "Started " << this->getAddressAsString() << endl;
 
         return lastSentNonce.value();
     }
@@ -95,7 +100,7 @@ public:
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
-        cerr << "Completing " << this->getAddressAsString() << endl;
+        cout << "Completing " << this->getAddressAsString() << endl;
 
         if ( !lastSentNonce.has_value() ) {
             throw std::runtime_error( "No pending transaction for this account" );
@@ -106,6 +111,8 @@ public:
         currentTransactionCountOnChain++;
 
         lastSentNonce = std::nullopt;
+
+        cout << "Completed " << this->getAddressAsString() << endl;
     }
 
 private:
@@ -164,6 +171,7 @@ public:
     void setupFirstKey();
 
     void setupTwoToTheNKeys( uint64_t _n );
+    void doOneTinyTransfersIteration();
 
     void sendTinyTransfersForAllAccounts(uint64_t _iterations);
 
