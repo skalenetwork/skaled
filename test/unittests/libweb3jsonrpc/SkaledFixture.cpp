@@ -1,3 +1,22 @@
+/*
+Modifications Copyright (C) 2024- SKALE Labs
+
+    This file is part of cpp-ethereum.
+
+    cpp-ethereum is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    cpp-ethereum is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma GCC diagnostic ignored "-Wdeprecated"
 
 #include "WebThreeStubClient.h"
@@ -279,16 +298,18 @@ void SkaledFixture::doOneTinyTransfersIteration() {
 
     CHECK( testAccountsVector.size() == testAccounts.size() );
 
-    for ( uint64_t accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
+
+    for ( uint64_t  accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
         if ( threadsCountForTestTransactions > 1 ) {
             if ( accountNum % transactionsPerThreaad == 0 ) {
                 uint64_t threadNumber = accountNum / transactionsPerThreaad;
-                auto t = make_shared< thread >( [&]() {
+                auto t = make_shared< thread >( [transactionsPerThreaad, threadNumber, gasPrice, this]() {
                     for ( uint64_t j = 0; j < transactionsPerThreaad; j++ ) {
-                        auto oldAccount =
+                        auto index = threadNumber * transactionsPerThreaad + j;
+                        auto account =
                             testAccountsVector.at( threadNumber * transactionsPerThreaad + j );
                         sendTinyTransfer(
-                            oldAccount, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+                            account, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
                     }
                 } );
                 threads.push_back( t );
@@ -302,9 +323,6 @@ void SkaledFixture::doOneTinyTransfersIteration() {
     }
 
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps"
-         << endl;
-
 
     if ( threadsCountForTestTransactions > 1 ) {
         CHECK( threads.size() == threadsCountForTestTransactions );
@@ -312,6 +330,10 @@ void SkaledFixture::doOneTinyTransfersIteration() {
             t->join();
         }
     }
+
+
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps" << endl;
+
 
 
     for ( auto&& account : testAccounts ) {
@@ -444,7 +466,7 @@ u256 SkaledFixture::getBalance( const SkaledAccount& _account ) const {
 }
 
 void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    const string& _to, u256& _gasPrice, TransactionWait _wait ) {
+    const string& _to, const u256& _gasPrice, TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
     auto accountNonce = _from->computeNonceForNextTransaction();
     u256 dstBalanceBefore;
@@ -560,7 +582,7 @@ void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from
 
 
 void SkaledFixture::sendTinyTransfer(
-    std::shared_ptr< SkaledAccount > _from, u256& _gasPrice, TransactionWait _wait ) {
+    std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice, TransactionWait _wait ) {
     auto fee = _gasPrice * 21000;
 
     if ( this->verifyTransactions ) {

@@ -1088,13 +1088,13 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
     vector< Secret > accountPieces;
 
     fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 2;
+    fixture.threadsCountForTestTransactions = 8;
 
     fixture.setupFirstKey();
 
-    fixture.setupTwoToTheNKeys(1);
+    fixture.setupTwoToTheNKeys(12);
 
-    fixture.sendTinyTransfersForAllAccounts(1);
+    fixture.sendTinyTransfersForAllAccounts(100);
 
 }
 
