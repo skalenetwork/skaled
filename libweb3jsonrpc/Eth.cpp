@@ -512,10 +512,14 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
             strRevertReason = skutils::eth::call_error_message_2_str( result.second.output );
             if ( strRevertReason.empty() )
                 strRevertReason = "EVM revert instruction without description message";
-            throw std::logic_error( strRevertReason );
+            
+            Json::Value output = toJS( result.second.output );
+            BOOST_THROW_EXCEPTION( JsonRpcException( -32004, strRevertReason, output ) );
         }
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
+        throw error;
+    } catch ( jsonrpc::JsonRpcException& error ) {
         throw error;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
