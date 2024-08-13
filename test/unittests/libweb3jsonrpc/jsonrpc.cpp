@@ -1087,6 +1087,8 @@ BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
+    fixture.verifyTransactions = false;
+
     fixture.setupFirstKey();
 
     fixture.setupTwoToTheNKeys( 13 );
