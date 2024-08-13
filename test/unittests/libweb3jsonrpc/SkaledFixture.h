@@ -1,6 +1,21 @@
-//
-// Created by kladko on 08-08-2024.
-//
+/*
+Modifications Copyright (C) 2024 SKALE Labs
+
+    This file is part of cpp-ethereum.
+
+    cpp-ethereum is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    cpp-ethereum is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef SKALE_SKALEDFIXTURE_H
 #define SKALE_SKALEDFIXTURE_H
@@ -83,7 +98,7 @@ public:
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
-        cout << "Starting " << this->getAddressAsString() << endl;
+
 
 
         if ( lastSentNonce.has_value()) {
@@ -91,7 +106,7 @@ public:
         }
         lastSentNonce = currentTransactionCountOnChain;
 
-        cout << "Started " << this->getAddressAsString() << endl;
+
 
         return lastSentNonce.value();
     }
@@ -99,8 +114,6 @@ public:
     void notifyLastTransactionCompleted() {
         std::unique_lock< std::shared_mutex > lock( mutex );
 
-
-        cout << "Completing " << this->getAddressAsString() << endl;
 
         if ( !lastSentNonce.has_value() ) {
             throw std::runtime_error( "No pending transaction for this account" );
@@ -112,7 +125,6 @@ public:
 
         lastSentNonce = std::nullopt;
 
-        cout << "Completed " << this->getAddressAsString() << endl;
     }
 
 private:
@@ -194,7 +206,7 @@ public:
     u256 getBalance( const SkaledAccount& _account ) const;
 
     void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-        const string& _to, u256& _gasPrice,
+        const string& _to, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
 
@@ -203,7 +215,7 @@ public:
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
 
-    void sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, u256& _gasPrice,
+    void sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
 
