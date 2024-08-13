@@ -240,6 +240,10 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
             }
         }
 
+
+
+        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << "submission tps" << endl;
+
         if ( useThreadsForTransactionSubmission ) {
             for ( auto&& t : threads ) {
                 t->join();
@@ -250,7 +254,7 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
             waitForTransaction( account.second );
         };
 
-        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << " tps" << endl;
+        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
     }
 
     cout << "Creating keys completed. Total test wallets created:" << testAccounts.size() << endl;
