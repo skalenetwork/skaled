@@ -224,7 +224,7 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
         vector< shared_ptr< thread > > threads;
 
         for ( auto&& testAccount : testAccountsCopy ) {
-            if ( useThreadsForTransactionSubmission ) {
+            if ( useThreadsForTestKeyCreation ) {
                 auto t = make_shared< thread >( [&]() {
                     auto oldAccount = testAccount.second;
                     auto newAccount = oldNewPairs.at( testAccount.first );
@@ -242,9 +242,9 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
 
 
         cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin )
-             << "submission tps" << endl;
+             << "submission tps " << endl;
 
-        if ( useThreadsForTransactionSubmission ) {
+        if ( useThreadsForTestKeyCreation ) {
             for ( auto&& t : threads ) {
                 t->join();
             }
@@ -254,7 +254,7 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
             waitForTransaction( account.second );
         };
 
-        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << " total tps"
+        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << " total tps "
              << endl;
     }
 
@@ -274,7 +274,7 @@ void SkaledFixture::sendTinyTransfersForAllAccounts( uint64_t _iterations) {
 
 
         for ( auto&& testAccount : testAccounts ) {
-            if ( useThreadsForTransactionSubmission ) {
+            if ( threadCountForTestTransactions > 1 ) {
                 auto t = make_shared< thread >( [&]() {
                     auto oldAccount = testAccount.second;
                     sendTinyTransfer( oldAccount, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
@@ -287,10 +287,10 @@ void SkaledFixture::sendTinyTransfersForAllAccounts( uint64_t _iterations) {
         }
 
 
-        cerr << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << "submission tps"
+        cerr << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps"
              << endl;
 
-        if ( useThreadsForTransactionSubmission ) {
+        if ( threadsCountForTestTransactions  > 1) {
             for ( auto&& t : threads ) {
                 t->join();
             }

@@ -206,7 +206,8 @@ public:
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
     bool verifyTransactions = false;
-    bool useThreadsForTransactionSubmission = false;
+    bool useThreadsForTestKeyCreation = false;
+    uint64_t threadsCountForTestTransactions = 1;
 
     void waitForTransaction( std::shared_ptr< SkaledAccount > _account );
 

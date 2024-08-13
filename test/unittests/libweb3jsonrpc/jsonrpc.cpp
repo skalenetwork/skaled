@@ -1083,7 +1083,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -1092,6 +1092,7 @@ BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
     fixture.setupFirstKey();
 
     fixture.setupTwoToTheNKeys(9);
+
     fixture.sendTinyTransfersForAllAccounts(100);
 
 }
