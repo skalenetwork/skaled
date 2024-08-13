@@ -995,7 +995,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                 TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
-        m_db_ptr->addReceiptToPartials( receipt );
+        //m_db_ptr->addReceiptToPartials( receipt );
         m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
