@@ -49,6 +49,7 @@ using namespace dev::rpc;
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 const u256 MAX_BLOCK_RANGE = 1024;
+const int REVERT_INSTRUCTION_ERROR_CODE = -32000;
 
 #ifdef HISTORIC_STATE
 
@@ -488,7 +489,8 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
             strRevertReason = "EVM revert instruction without description message";
 
         Json::Value output = toJS( er.output );
-        BOOST_THROW_EXCEPTION( JsonRpcException( -32004, strRevertReason, output ) );
+        BOOST_THROW_EXCEPTION(
+            JsonRpcException( REVERT_INSTRUCTION_ERROR_CODE, strRevertReason, output ) );
     }
 
 
@@ -512,9 +514,10 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
             strRevertReason = skutils::eth::call_error_message_2_str( result.second.output );
             if ( strRevertReason.empty() )
                 strRevertReason = "EVM revert instruction without description message";
-            
+
             Json::Value output = toJS( result.second.output );
-            BOOST_THROW_EXCEPTION( JsonRpcException( -32004, strRevertReason, output ) );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_INSTRUCTION_ERROR_CODE, strRevertReason, output ) );
         }
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
