@@ -1091,7 +1091,9 @@ BOOST_AUTO_TEST_CASE( splitAccountIntoExponentialPieces ) {
 
     fixture.setupFirstKey();
 
-    fixture.setupTwoToTheNKeys( 13 );
+    fixture.setupTwoToTheNKeys(9);
+    fixture.sendTinyTransfersForAllAccounts(100);
+
 }
 
 
