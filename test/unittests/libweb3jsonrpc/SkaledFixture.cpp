@@ -241,8 +241,8 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
         }
 
 
-
-        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << "submission tps" << endl;
+        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin )
+             << "submission tps" << endl;
 
         if ( useThreadsForTransactionSubmission ) {
             for ( auto&& t : threads ) {
@@ -254,10 +254,54 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
             waitForTransaction( account.second );
         };
 
-        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
+        cerr << 1000.0 * testAccountsCopy.size() / ( getCurrentTimeMs() - begin ) << " total tps"
+             << endl;
     }
 
     cout << "Creating keys completed. Total test wallets created:" << testAccounts.size() << endl;
+}
+
+
+void SkaledFixture::sendTinyTransfersForAllAccounts( uint64_t _iterations) {
+    cout << "Running tiny transfers for accounts :" << testAccounts.size() << endl;
+
+    for (uint64_t i = 0; i < _iterations; i++) {
+        auto begin = getCurrentTimeMs();
+
+        auto gasPrice = getCurrentGasPrice();
+
+        vector< shared_ptr< thread > > threads;
+
+
+        for ( auto&& testAccount : testAccounts ) {
+            if ( useThreadsForTransactionSubmission ) {
+                auto t = make_shared< thread >( [&]() {
+                    auto oldAccount = testAccount.second;
+                    sendTinyTransfer( oldAccount, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+                } );
+                threads.push_back( t );
+            } else {
+                auto oldAccount = testAccount.second;
+                sendTinyTransfer( oldAccount, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+            }
+        }
+
+
+        cerr << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << "submission tps"
+             << endl;
+
+        if ( useThreadsForTransactionSubmission ) {
+            for ( auto&& t : threads ) {
+                t->join();
+            }
+        }
+
+        for ( auto&& account : testAccounts ) {
+            waitForTransaction( account.second );
+        };
+
+        cerr << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
+    }
 }
 
 
@@ -424,8 +468,8 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 
     try {
         auto payload = result["raw"].asString();
-        auto txHash = rpcClient()->eth_sendRawTransaction( payload );
-        // getThreadLocalCurlClient()->eth_sendRawTransaction(payload);
+        //auto txHash = rpcClient()->eth_sendRawTransaction( payload );
+        getThreadLocalCurlClient()->eth_sendRawTransaction(payload);
         // CHECK(!txHash.empty());
     } catch ( std::exception& e ) {
         cerr << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
@@ -488,6 +532,18 @@ void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from
     auto amount = ( balance - fee ) / 2;
 
     sendSingleTransfer( amount, _from, _to->getAddressAsString(), _gasPrice, _wait );
+}
+
+
+void SkaledFixture::sendTinyTransfer(
+    std::shared_ptr< SkaledAccount > _from, u256& _gasPrice, TransactionWait _wait ) {
+    auto fee = _gasPrice * 21000;
+
+    if ( this->verifyTransactions ) {
+        CHECK( fee <= getBalance( _from->getAddressAsString() ) )
+    }
+
+    sendSingleTransfer( 1, _from, _from->getAddressAsString(), _gasPrice, _wait );
 }
 
 
