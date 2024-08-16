@@ -3030,7 +3030,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 151
-    ret["params"]["chainID"] = "0x97";
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
     time_t eip1559PatchActivationTimestamp = time(nullptr) + 10;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
 
