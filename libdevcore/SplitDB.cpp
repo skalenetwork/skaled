@@ -116,9 +116,9 @@ void SplitDB::PrefixedDB::forEachWithPrefix(
 
 h256 SplitDB::PrefixedDB::hashBase() const {
     // HACK TODO implement that it would work with any DatabaseFace*
-    const LevelDB* ldb = dynamic_cast< const LevelDB* >( backend.get() );
-    if ( ldb )
-        return ldb->hashBaseWithPrefix( prefix );
+    const RocksDB* rdb = dynamic_cast< const RocksDB* >( backend.get() );
+    if ( rdb )
+        return rdb->hashBaseWithPrefix( prefix );
     else
         return h256();
 }

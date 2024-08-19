@@ -2,6 +2,7 @@
 #define SPLITDB_H
 
 #include "LevelDB.h"
+#include "RocksDB.h"
 
 #include <boost/filesystem.hpp>
 

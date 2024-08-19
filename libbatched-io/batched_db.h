@@ -92,14 +92,14 @@ protected:
 class read_only_snap_based_batched_db : public db_face {
 private:
     std::shared_ptr< dev::db::DBImpl > m_db;
-    std::shared_ptr< dev::db::LevelDBSnap > m_snap;
+    std::shared_ptr< dev::db::RocksDBSnap > m_snap;
 
 public:
 
     read_only_snap_based_batched_db( std::shared_ptr< dev::db::DBImpl > _db,
-        std::shared_ptr< dev::db::LevelDBSnap > _snap ) {
-        LDB_CHECK(_db);
-        LDB_CHECK(_snap);
+        std::shared_ptr< dev::db::RocksDBSnap > _snap ) {
+        RDB_CHECK(_db);
+        RDB_CHECK(_snap);
         m_db = _db;
         m_snap = _snap;
     }

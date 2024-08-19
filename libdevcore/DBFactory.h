@@ -27,7 +27,7 @@
 
 namespace dev::db {
 
-enum class DatabaseKind { LevelDB };
+enum class DatabaseKind { LevelDB, RocksDB };
 
 /// Provide a set of program options related to databases
 ///

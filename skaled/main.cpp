@@ -75,6 +75,7 @@
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
+#include <libweb3jsonrpc/Tracing.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
 
@@ -117,7 +118,8 @@ namespace fs = boost::filesystem;
 namespace dev {
 namespace db {
 extern unsigned c_maxOpenLeveldbFiles;
-}
+extern unsigned c_maxOpenRocksdbFiles;
+}  // namespace db
 }  // namespace dev
 
 namespace {
@@ -1479,6 +1481,14 @@ int main( int argc, char** argv ) try {
         } catch ( ... ) {
         }
 
+        try {
+            if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxOpenRocksdbFiles" ) )
+                dev::db::c_maxOpenRocksdbFiles =
+                    joConfig["skaleConfig"]["nodeInfo"]["maxOpenRocksdbFiles"].get< unsigned >();
+        } catch ( ... ) {
+            dev::db::c_maxOpenRocksdbFiles = 1000;
+        }
+
         if ( vm.count( "log-value-size-limit" ) ) {
             int n = vm["log-value-size-limit"].as< size_t >();
             cc::_max_value_size_ = ( n > 0 ) ? n : std::string::npos;
@@ -1943,7 +1953,7 @@ int main( int argc, char** argv ) try {
             rpc::SkaleStats,  /// skaleStats
             rpc::NetFace, rpc::Web3Face, rpc::PersonalFace, rpc::AdminEthFace,
             // SKALE rpc::AdminNetFace,
-            rpc::DebugFace, rpc::SkalePerformanceTracker, rpc::TestFace >;
+            rpc::DebugFace, rpc::SkalePerformanceTracker, rpc::TracingFace, rpc::TestFace >;
 
         sessionManager.reset( new rpc::SessionManager() );
         accountHolder.reset( new SimpleAccountHolder(
@@ -1980,16 +1990,16 @@ int main( int argc, char** argv ) try {
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
-#ifdef HISTORIC_STATE
-        // debug interface is always enabled in historic state, but
-        // non-tracing calls are only available if SkaleDebugInterface::g_isEnabled  is true
-        auto pDebugFace =
-            new rpc::Debug( *g_client, &debugInterface, argv_string, SkaleDebugInterface::g_isEnabled  );
-#else
-        // debug interface is enabled on core node if SkaleDebugInterface::g_isEnabled  is true
-        auto pDebugFace = SkaleDebugInterface::g_isEnabled  ?
-                              new rpc::Debug( *g_client, &debugInterface, argv_string, true ) :
+        auto pDebugFace = SkaleDebugInterface::g_isEnabled ?
+                              new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                               nullptr;
+
+#ifdef HISTORIC_STATE
+        // tracing interface is always enabled for the historic state nodes
+        auto pTracingFace = new rpc::Tracing( *g_client, argv_string );
+#else
+        // tracing interface is only enabled for the historic state nodes
+        auto pTracingFace = nullptr;
 #endif
 
 
@@ -1997,9 +2007,9 @@ int main( int argc, char** argv ) try {
                                            new rpc::SkalePerformanceTracker( configPath.string() ) :
                                            nullptr;
 
-        g_jsonrpcIpcServer.reset(
-            new FullServer( pEthFace, pSkaleFace, pSkaleStatsFace, pNetFace, pWeb3Face,
-                pPersonalFace, pAdminEthFace, pDebugFace, pPerformanceTrackerFace, nullptr ) );
+        g_jsonrpcIpcServer.reset( new FullServer( pEthFace, pSkaleFace, pSkaleStatsFace, pNetFace,
+            pWeb3Face, pPersonalFace, pAdminEthFace, pDebugFace, pPerformanceTrackerFace,
+            pTracingFace, nullptr ) );
 
         if ( is_ipc ) {
             try {

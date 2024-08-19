@@ -529,7 +529,7 @@ private:
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
     // if the state is based on a LevelDB snap, the instance of the snap goes here
-    std::shared_ptr<dev::db::LevelDBSnap> m_snap = nullptr;
+    std::shared_ptr<dev::db::RocksDBSnap> m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
 
 #ifdef HISTORIC_STATE

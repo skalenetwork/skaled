@@ -1,7 +1,7 @@
 #ifndef ROTATINGLEVELDB_H
 #define ROTATINGLEVELDB_H
 
-#include "LevelDB.h"
+#include "RocksDB.h"
 
 #include <libbatched-io/batched_rotating_db_io.h>
 

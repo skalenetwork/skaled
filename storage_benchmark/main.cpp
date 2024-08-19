@@ -134,7 +134,7 @@ void testState() {
          << " Mreads per second" << endl;
     cout << endl;
 
-    cout << "EVM storate writes:" << endl;
+    cout << "EVM storage writes:" << endl;
     size_t memory_address = 0;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {

@@ -67,7 +67,7 @@ OverlayDB HistoricState::openDB(
     try {
         clog( VerbosityTrace, "statedb" ) << "Opening state database";
         std::unique_ptr< db::DatabaseFace > db =
-            db::DBFactory::createHistoric( db::DatabaseKind::LevelDB, dbPaths.statePath() );
+            db::DBFactory::createHistoric( db::DatabaseKind::RocksDB, dbPaths.statePath() );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {

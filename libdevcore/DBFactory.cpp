@@ -20,6 +20,7 @@
 #include "DBFactory.h"
 #include "FileSystem.h"
 #include "LevelDB.h"
+#include "RocksDB.h"
 #include "libethcore/Exceptions.h"
 
 namespace dev::db {
@@ -142,6 +143,10 @@ std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
     case DatabaseKind::LevelDB:
         return std::unique_ptr< DatabaseFace >( new LevelDB( _path, LevelDB::defaultReadOptions(),
             LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_reopenPeriodMs ) );
+        break;
+    case DatabaseKind::RocksDB:
+        return std::unique_ptr< DatabaseFace >( new RocksDB( _path, RocksDB::defaultReadOptions(),
+            RocksDB::defaultWriteOptions(), RocksDB::defaultDBOptions(), s_reopenPeriodMs ) );
         break;
     default:
         assert( false );

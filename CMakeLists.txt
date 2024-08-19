@@ -171,6 +171,8 @@ include( ProjectSecp256k1 )
 
 find_package( Threads )
 
+find_package( rocksdb )
+
 if( MINIUPNPC )
     find_package( Miniupnpc 1.8.2013 REQUIRED )
 endif()

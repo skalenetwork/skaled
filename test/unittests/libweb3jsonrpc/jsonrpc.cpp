@@ -383,7 +383,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         rpcServer.reset( new FullServer( ethFace, new rpc::Net( chainParams ),
             new rpc::Web3(),  // TODO Add version parameter here?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
-            new rpc::Debug( *client, nullptr, "", true ), new rpc::Test( *client ) ) );
+            new rpc::Debug( *client, nullptr, ""),
+            new rpc::Test( *client ) ) );
 
         //
         SkaleServerOverride::opts_t serverOpts;

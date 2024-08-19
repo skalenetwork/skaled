@@ -452,9 +452,9 @@ void SnapshotManager::computeDatabaseHash(
     bool isContinue = true;
 
     while ( isContinue ) {
-        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
-            dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-            dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+        std::unique_ptr< dev::db::RocksDB > m_db( new dev::db::RocksDB( _dbDir.string(),
+            dev::db::RocksDB::defaultSnapshotReadOptions(), dev::db::RocksDB::defaultWriteOptions(),
+            dev::db::RocksDB::defaultSnapshotDBOptions() ) );
 
         isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
     }
