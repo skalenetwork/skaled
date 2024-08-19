@@ -107,6 +107,7 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
         res["s"] = toJS( _t.signature().s );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["chainId"] = toJS( _t.chainId() );
             res["yParity"] = toJS( _t.signature().v );
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
@@ -352,6 +353,7 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
         res["v"] = toJS( _t.signature().v );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["chainId"] = toJS( _t.chainId() );
             res["yParity"] = toJS( _t.signature().v );
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
@@ -404,6 +406,7 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
         res["s"] = toJS( _t.signature().s.hex() );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["chainId"] = toJS( _t.chainId() );
             res["yParity"] = toJS( _t.signature().v );
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
