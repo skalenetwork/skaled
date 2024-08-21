@@ -118,7 +118,6 @@ jobs:
           make skaled -j$(nproc)
           #echo "Ensure release mode skaled does not have any debug markers"
           cp skaled/skaled skaled/skaled-debug
-          strip skaled/skaled
           cd ..
       - name: Configure historic state build
         run: |
@@ -141,7 +140,6 @@ jobs:
           make skaled -j$(nproc)
           #echo "Ensure release mode skaled does not have any debug markers"
           cp skaled/skaled skaled/skaled-debug
-          strip skaled/skaled
           cd ..
       - name: Build and publish container
         run: |
