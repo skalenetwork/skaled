@@ -49,7 +49,9 @@ using namespace dev::rpc;
 const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 const u256 MAX_BLOCK_RANGE = 1024;
-const int REVERT_INSTRUCTION_ERROR_CODE = -32004;
+
+// Geth compatible error code for a revert
+const uint64_t REVERT_RPC_ERROR_CODE = 3;
 
 #ifdef HISTORIC_STATE
 
@@ -488,9 +490,13 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
 
-        Json::Value output = toJS( er.output );
-        BOOST_THROW_EXCEPTION(
-            JsonRpcException( REVERT_INSTRUCTION_ERROR_CODE, strRevertReason, output ) );
+        if ( !er.output.empty() ) {
+            Json::Value output = toJS( er.output );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+        }
+
+        throw std::logic_error( strRevertReason );
     }
 
 
@@ -515,9 +521,13 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
             if ( strRevertReason.empty() )
                 strRevertReason = "EVM revert instruction without description message";
 
-            Json::Value output = toJS( result.second.output );
-            BOOST_THROW_EXCEPTION(
-                JsonRpcException( REVERT_INSTRUCTION_ERROR_CODE, strRevertReason, output ) );
+            if ( !result.second.output.empty() ) {
+                Json::Value output = toJS( result.second.output );
+                BOOST_THROW_EXCEPTION(
+                    JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+            }
+
+            throw std::logic_error( strRevertReason );
         }
         return toJS( result.first );
     } catch ( std::logic_error& error ) {

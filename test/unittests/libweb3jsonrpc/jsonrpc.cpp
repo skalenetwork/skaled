@@ -1820,7 +1820,7 @@ BOOST_AUTO_TEST_CASE( call_with_error ) {
     try {
         fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     } catch ( jsonrpc::JsonRpcException& ex) {
-        BOOST_CHECK_EQUAL(ex.GetCode(), -32004);
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
         BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
         BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
     } 
@@ -1875,7 +1875,7 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
     try {
         fixture.rpcClient->eth_estimateGas( transactionCallObject, "latest" );
     } catch ( jsonrpc::JsonRpcException& ex) {
-        BOOST_CHECK_EQUAL(ex.GetCode(), -32004);
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
         BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
         BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
     } 
