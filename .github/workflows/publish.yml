@@ -116,6 +116,7 @@ jobs:
           cd build
           make skaled -j$(nproc)
           cp skaled/skaled skaled/skaled-debug
+          strip --strip-all skaled/skaled
           cd ..
       - name: Configure historic state build
         run: |
@@ -136,6 +137,7 @@ jobs:
           cd build-historic
           make skaled -j$(nproc)
           cp skaled/skaled skaled/skaled-debug
+          strip --strip-all skaled/skaled
           cd ..
       - name: Build and publish container
         run: |
