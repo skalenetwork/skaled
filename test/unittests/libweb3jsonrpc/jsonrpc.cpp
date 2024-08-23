@@ -2992,7 +2992,8 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 151
-    ret["params"]["chainID"] = "0x97";
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
     time_t eip1559PatchActivationTimestamp = time(nullptr) + 10;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
 
@@ -3066,6 +3067,8 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( toJS( jsToInt( block["transactions"][0]["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == block["transactions"][0]["v"].asString() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].size() == 0 );
+    BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
+    BOOST_REQUIRE( block["transactions"][0]["chainId"].asString() == chainID );
 
     std::string blockHash = block["hash"].asString();
     BOOST_REQUIRE( fixture.client->transactionHashes( dev::h256( blockHash ) )[0] == dev::h256( "0xc843560015a655b8f81f65a458be9019bdb5cd8e416b6329ca18f36de0b8244d") );
@@ -3138,7 +3141,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 151
-    ret["params"]["chainID"] = "0x97";
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
     time_t eip1559PatchActivationTimestamp = time(nullptr) + 10;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
 
@@ -3214,6 +3218,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
     BOOST_REQUIRE( toJS( jsToInt( block["transactions"][0]["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == block["transactions"][0]["v"].asString() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
+    BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
+    BOOST_REQUIRE( block["transactions"][0]["chainId"].asString() == chainID );
 
     std::string blockHash = block["hash"].asString();
 
