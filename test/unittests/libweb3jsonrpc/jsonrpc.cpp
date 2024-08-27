@@ -1770,6 +1770,117 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
 }
 
+
+BOOST_AUTO_TEST_CASE( call_with_error ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // pragma solidity ^0.8.0;
+    // contract BasicCustomErrorContract {
+    //     // Define custom errors
+    //     error InsufficientBalance();
+    //     error Unauthorized();
+    //     address public owner;
+    //     // Function only callable by the owner
+    //     function ownerOnlyFunction() external {
+    //         revert Unauthorized();
+    //     }
+    // }
+
+    string compiled =
+        "608060405234801561001057600080fd5b50610168806100206000396000f3fe608060"
+        "405234801561001057600080fd5b5060043610610053576000357c0100000000000000"
+        "000000000000000000000000000000000000000000900480638da5cb5b146100585780"
+        "63e021c20614610076575b600080fd5b610060610080565b60405161006d9190610117"
+        "565b60405180910390f35b61007e6100a4565b005b60008054906101000a900473ffff"
+        "ffffffffffffffffffffffffffffffffffff1681565b6040517f82b429000000000000"
+        "0000000000000000000000000000000000000000000000815260040160405180910390"
+        "fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60"
+        "00610101826100d6565b9050919050565b610111816100f6565b82525050565b600060"
+        "208201905061012c6000830184610108565b9291505056fea264697066735822122013"
+        "2ca0f4158a0540a7e67f304c94305f81bbe52de2314e2b9cee92a2c74e103a64736f6c"
+        "63430008120033";
+
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "180000"; 
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0xe021c206";
+
+    try {
+        fixture.rpcClient->eth_call( transactionCallObject, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex) {
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
+        BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
+        BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
+    } 
+}
+
+BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // pragma solidity ^0.8.0;
+    // contract BasicCustomErrorContract {
+    //     // Define custom errors
+    //     error InsufficientBalance();
+    //     error Unauthorized();
+    //     address public owner;
+    //     // Function only callable by the owner
+    //     function ownerOnlyFunction() external {
+    //         revert Unauthorized();
+    //     }
+    // }
+
+    string compiled =
+        "608060405234801561001057600080fd5b50610168806100206000396000f3fe608060"
+        "405234801561001057600080fd5b5060043610610053576000357c0100000000000000"
+        "000000000000000000000000000000000000000000900480638da5cb5b146100585780"
+        "63e021c20614610076575b600080fd5b610060610080565b60405161006d9190610117"
+        "565b60405180910390f35b61007e6100a4565b005b60008054906101000a900473ffff"
+        "ffffffffffffffffffffffffffffffffffff1681565b6040517f82b429000000000000"
+        "0000000000000000000000000000000000000000000000815260040160405180910390"
+        "fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60"
+        "00610101826100d6565b9050919050565b610111816100f6565b82525050565b600060"
+        "208201905061012c6000830184610108565b9291505056fea264697066735822122013"
+        "2ca0f4158a0540a7e67f304c94305f81bbe52de2314e2b9cee92a2c74e103a64736f6c"
+        "63430008120033";
+    
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "180000"; 
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0xe021c206";
+
+    try {
+        fixture.rpcClient->eth_estimateGas( transactionCallObject, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex) {
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
+        BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
+        BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
+    } 
+}
+
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     // 1s empty block interval
     JsonRpcFixture fixture( "", true, true, false, false, false, 1000 );
