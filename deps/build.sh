@@ -2116,7 +2116,9 @@ then
 		cd build2
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
-        eval strip --strip-debug "${INSTALL_ROOT}"/lib/libfolly*.a
+		if [ "$DEBUG" = "0" ]; then
+            eval strip --strip-debug "${INSTALL_ROOT}"/lib/libfolly*.a
+        fi
 		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
