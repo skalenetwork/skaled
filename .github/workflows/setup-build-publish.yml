@@ -151,6 +151,13 @@ jobs:
           export CMAKE_BUILD_TYPE=$BUILD_TYPE
           cd build
           make skaled -j$(nproc)
+          if [[ "$BUILD_TYPE" = "Release" ]]; then
+              debug_wc=$(objdump -h skaled/skaled | grep -i debug | wc -l)
+              sym_wc=$(readelf -s skaled/skaled | wc -l)
+              if (( debug_wc != 0 || sym_wc > 10000 )); then
+                  exit 1
+              fi
+          fi
           cd ..
       - name: Build and publish container
         env:
