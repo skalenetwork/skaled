@@ -292,6 +292,8 @@ int main( int argc, char** argv ) {
         0 /* gasUsed */, chainParams.chainID );
     EVMSchedule evmSchedule = chainParams.makeEvmSchedule( 0, envInfo.number() );
 
+    state = state.createStateModifyCopy();
+
     Transaction t;
     Address contractDestination( "1122334455667788991011121314151617181920" );
     if ( !code.empty() ) {
@@ -387,5 +389,8 @@ int main( int argc, char** argv ) {
              << '\n';
         cout << "exec time: " << fixed << setprecision( 6 ) << execTime << '\n';
     }
+
+    state.releaseWriteLock();
+
     return 0;
 }
