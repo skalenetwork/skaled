@@ -103,7 +103,7 @@ jobs:
           export CC=gcc-9
           export CXX=g++-9
           export TARGET=all
-          export CMAKE_BUILD_TYPE=Release
+          export CMAKE_BUILD_TYPE=RelWithDebInfo
           mkdir -p build
           cd build
           cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ..
