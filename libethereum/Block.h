@@ -220,7 +220,7 @@ public:
     /// This will append @a _t to the transaction list and change the state accordingly.
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
-        uint64_t _transactionIndex = 0);
+        int64_t _transactionIndex = -1);
 
 #ifdef HISTORIC_STATE
     ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,

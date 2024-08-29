@@ -26,6 +26,8 @@
 #include "libhistoric/HistoricState.h"
 #include <libethereum/SchainPatch.h>
 
+#include <boost/range/adaptor/map.hpp>
+
 #include <thread>
 
 using std::string;
@@ -99,21 +101,43 @@ std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
     dev::eth::BlockNumber _blockNumber ) const {
     std::vector< dev::bytes > partialTransactionReceipts;
 
-    string prefix( "safeLastTransactionReceipts." + std::to_string(_blockNumber) + ".");
+    string prefix( "safeLastTransactionReceipts." + std::to_string( _blockNumber ) + "." );
 
     if ( m_db_face ) {
-        m_db_face->forEachWithPrefix(
-            prefix, [&partialTransactionReceipts]( Slice, Slice value ) {
-                const std::string l( value.begin(), value.end() );
-                if ( !l.empty() ) {
-                    dev::bytes b( l.begin(), l.end() );
-                    partialTransactionReceipts.push_back( b );
-                }
-                return true;
-            } );
+        m_db_face->forEachWithPrefix( prefix, [&partialTransactionReceipts]( Slice, Slice value ) {
+            const std::string l( value.begin(), value.end() );
+            if ( !l.empty() ) {
+                dev::bytes b( l.begin(), l.end() );
+                partialTransactionReceipts.push_back( b );
+            }
+            return true;
+        } );
     }
     return partialTransactionReceipts;
 }
+
+
+void OverlayDB::removeAllPartialTransactionReceipts() {
+    // first we get all keys
+
+    string prefix( "safeLastTransactionReceipts." );
+    vector< string > keys;
+    if ( m_db_face ) {
+        m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice  ) {
+            const std::string keyStr( key.begin(), key.end() );
+            keys.push_back( keyStr );
+            return true;
+        } );
+
+        for ( auto&& key : keys ) {
+            // now remove all of them
+            m_db_face->kill( key );
+        }
+    }
+
+    m_db_face->commit( "Clean partial keys" );
+}
+
 
 void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
     this->lastExecutedTransactionHash = _newHash;
@@ -121,18 +145,13 @@ void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
 
 
 void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
- dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex) {
+    dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
+    string key = "safeLastTransactionReceipts." + std::to_string( _blockNumber ) + "." +
+                 std::to_string( _transactionIndex );
 
 
-    string key  = "safeLastTransactionReceipts." + std::to_string(_blockNumber) + "." + std::to_string(_transactionIndex);
-
-
-    m_db_face->insert( skale::slicing::toSlice( key),
-    skale::slicing::toSlice( _newReceipt ) );
-
+    m_db_face->insert( skale::slicing::toSlice( key ), skale::slicing::toSlice( _newReceipt ) );
 }
-
-
 
 
 void OverlayDB::commitStorageValues() {
