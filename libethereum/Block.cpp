@@ -151,7 +151,7 @@ Block& Block::operator=( Block const& _s ) {
 // in particular we do not copy receipts and transactions
 // as well as raw bytes
 Block Block::getReadOnlyCopy() const {
-    Block copy(Null);
+    Block copy( Null );
     copy.m_state = m_state.createReadOnlySnapBasedCopy();
     copy.m_author = m_author;
     copy.m_sealEngine = m_sealEngine;
@@ -161,7 +161,6 @@ Block Block::getReadOnlyCopy() const {
     copy.m_previousBlock = m_previousBlock;
     return copy;
 };
-
 
 
 void Block::resetCurrent( int64_t _timestamp ) {
@@ -450,56 +449,38 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-tuple< TransactionReceipts, unsigned > Block::syncEveryone(
-    BlockChain const& _bc, const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-    Transactions* vecMissing  // it's non-null only for PARTIAL CATCHUP
-) {
+tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
     noteChain( _bc );
 
-    // TRANSACTIONS
-    TransactionReceipts receipts;
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
 
-    //    m_currentBlock.setTimestamp( _timestamp );
     this->resetCurrent( _timestamp );
 
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
-    TransactionReceipts saved_receipts = this->m_state.safePartialTransactionReceipts();
-    if ( vecMissing ) {
-        assert( saved_receipts.size() == _transactions.size() - vecMissing->size() );
-    } else
-        // NB! Not commit! Commit will be after 1st transaction!
-        m_state.clearPartialTransactionReceipts();
+
+    TransactionReceipts saved_receipts =
+        this->m_state.safePartialTransactionReceipts( info().number() );
+    m_receipts = saved_receipts;
+    TransactionReceipts receipts = saved_receipts;
 
 
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
-            if ( vecMissing != nullptr ) {  // it's non-null only for PARTIAL CATCHUP
 
-                auto iterMissing = std::find_if( vecMissing->begin(), vecMissing->end(),
-                    [&tr]( const Transaction& trMissing ) -> bool {
-                        return trMissing.sha3() == tr.sha3();
-                    } );
-
-                if ( iterMissing == vecMissing->end() ) {
-                    m_transactions.push_back( tr );
-                    m_transactionSet.insert( tr.sha3() );
-                    // HACK TODO We assume but don't check that accumulated receipts contain
-                    // exactly receipts of first n txns!
-                    m_receipts.push_back( saved_receipts[i] );
-                    receipts.push_back( saved_receipts[i] );
-                    continue;  // skip this transaction, it was already executed before PARTIAL
-                               // CATCHUP
-                }              // if
+            if (i < saved_receipts.size()) {
+                // this transaction has already been executed, we do not need to execute it again
+                m_transactions.push_back( tr );
+                m_transactionSet.insert( tr.sha3() );
+                continue;;
             }
 
-            // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
@@ -850,7 +831,8 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
 
 ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
+    uint64_t _transactionIndex) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -864,8 +846,7 @@ ExecutionResult Block::execute(
     // by the outer function. Otherwise, we need to do write-lock ourselves
     // since the
     State stateSnapshot =
-        _p != Permanence::Reverted ? m_state.createStateCopyAndClearCaches() :
-                                     m_state;
+        _p != Permanence::Reverted ? m_state.createStateCopyAndClearCaches() : m_state;
 
     EnvInfo envInfo = EnvInfo(
         info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );
@@ -884,7 +865,8 @@ ExecutionResult Block::execute(
             throw -1;  // will catch below
 
         resultReceipt =
-            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp );
+            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp,
+                _transactionIndex );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {

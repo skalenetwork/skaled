@@ -63,16 +63,18 @@ public:
     OverlayDB& operator=( OverlayDB&& ) = default;
 
     dev::h256 getLastExecutedTransactionHash() const;
-    dev::bytes getPartialTransactionReceipts() const;
+    std::vector< dev::bytes > getPartialTransactionReceipts(
+        dev::eth::BlockNumber _blockNumber ) const;
     void setLastExecutedTransactionHash( const dev::h256& );
-    void setPartialTransactionReceipts( const dev::bytes& );
 
-    void addReceiptToPartials( const dev::eth::TransactionReceipt& );
+    void setPartialTransactionReceipt( const dev::bytes& _newReceipt,
+        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
+
     void clearPartialTransactionReceipts();
 
     // commit key-value pairs in storage
     void commitStorageValues();
-    void commit( );
+    void commit();
     void rollback();
     void clearDB();
     bool connected() const;
@@ -116,13 +118,13 @@ private:
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
-
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
-    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
+
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
     void copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const;
+
 };
 
 }  // namespace skale

@@ -305,7 +305,6 @@ void SkaledFixture::doOneTinyTransfersIteration() {
                 uint64_t threadNumber = accountNum / transactionsPerThreaad;
                 auto t = make_shared< thread >( [transactionsPerThreaad, threadNumber, gasPrice, this]() {
                     for ( uint64_t j = 0; j < transactionsPerThreaad; j++ ) {
-                        auto index = threadNumber * transactionsPerThreaad + j;
                         auto account =
                             testAccountsVector.at( threadNumber * transactionsPerThreaad + j );
                         sendTinyTransfer(
