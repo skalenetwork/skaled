@@ -312,6 +312,15 @@ void State::safeRemoveAllPartialTransactionReceipts() {
 }
 
 
+void State::safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
+    dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setPartialTransactionReceipt( _receipt,  _blockNumber, _transactionIndex );
+        m_db_ptr->commit();
+    }
+}
+
+
 
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {

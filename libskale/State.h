@@ -252,6 +252,10 @@ public:
     dev::eth::TransactionReceipts safePartialTransactionReceipts(dev::eth::BlockNumber _blockNumber);
     void safeRemoveAllPartialTransactionReceipts();
 
+
+    void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
+        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex);
+
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
 

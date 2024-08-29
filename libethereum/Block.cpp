@@ -468,18 +468,30 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     TransactionReceipts receipts = m_receipts;
 
+    unsigned countBad = 0;
+
     if (m_receipts.size() > 0) {
         cwarn << "Recovering from a previous crash while processing transaction" <<
             m_receipts.size() << "in block" << info().number();
+        // count bad transactions in previously executed transactions
+        // a bad transaction is in the block but does not use any gas
+        u256 cumulativeGas = 0;
+        for (auto const& receipt : m_receipts) {
+            if (receipt.cumulativeGasUsed() == cumulativeGas) {
+                countBad++;
+            }
+            cumulativeGas = receipt.cumulativeGasUsed();
+        }
     }
 
-    unsigned count_bad = 0;
+
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
 
             if (i < saved_receipts.size()) {
-                // this transaction has already been executed, we do not need to execute it again
+                // this transaction has already been executed and we have a
+                // receipt for it. We do not need to execute it again
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
                 continue;;
@@ -503,7 +515,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
                     m_receipts.push_back( null_receipt );
                     receipts.push_back( null_receipt );
-                    ++count_bad;
+                    // we need to record the receipt in case we crash
+                    m_state.safeSetAndCommitPartialTransactionReceipt( null_receipt.rlp(),
+                         info().number(), i);
+                    ++countBad;
                 }
 
                 continue;
@@ -518,7 +533,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
                 // if added but bad
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
-                    ++count_bad;
+                    ++countBad;
                  }
 
 
@@ -541,7 +556,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         LDB_CHECK( m_state.safePartialTransactionReceipts(info().number()).empty() );
     }
 
-    return make_tuple( receipts, receipts.size() - count_bad );
+    LDB_CHECK( receipts.size() >= countBad );
+
+    return make_tuple( receipts, receipts.size() - countBad );
 }
 
 u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
