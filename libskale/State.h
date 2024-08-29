@@ -249,7 +249,7 @@ public:
     State& operator=( State&& ) = default;
 
     dev::h256 safeLastExecutedTransactionHash();
-    dev::eth::TransactionReceipts safePartialTransactionReceipts();
+    dev::eth::TransactionReceipts safePartialTransactionReceipts(dev::eth::BlockNumber _blockNumber);
     void clearPartialTransactionReceipts();
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
@@ -389,7 +389,7 @@ public:
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::ChainOperationParams const& _chainParams,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), int64_t _transactionIndex = -1 );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }

@@ -38,6 +38,7 @@
 
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
+#include "test/tools/libtestutils/FixedClient.h"
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
@@ -290,23 +291,17 @@ dev::h256 State::safeLastExecutedTransactionHash() {
     return shaLastTx;
 }
 
-dev::eth::TransactionReceipts State::safePartialTransactionReceipts() {
+dev::eth::TransactionReceipts State::safePartialTransactionReceipts(eth::BlockNumber _blockNumber) {
     dev::eth::TransactionReceipts partialTransactionReceipts;
     if ( m_db_ptr ) {
-        dev::bytes rawTransactionReceipts = m_db_ptr->getPartialTransactionReceipts();
-        if ( !rawTransactionReceipts.empty() ) {
-            dev::RLP rlp( rawTransactionReceipts );
-            dev::eth::BlockReceipts blockReceipts( rlp );
-            partialTransactionReceipts.insert( partialTransactionReceipts.end(),
-                blockReceipts.receipts.begin(), blockReceipts.receipts.end() );
+        auto rawTransactionReceipts = m_db_ptr->getPartialTransactionReceipts(_blockNumber);
+        for (auto&& rawTransactionReceipt : rawTransactionReceipts ) {
+            dev::RLP rlp( rawTransactionReceipt );
+            dev::eth::TransactionReceipt receipt( rlp.data() );
+            partialTransactionReceipts.push_back( receipt );
         }
     }
     return partialTransactionReceipts;
-}
-
-void State::clearPartialTransactionReceipts() {
-    dev::eth::BlockReceipts blockReceipts;
-    m_db_ptr->setPartialTransactionReceipts( blockReceipts.rlp() );
 }
 
 void State::populateFrom( eth::AccountMap const& _map ) {
@@ -944,7 +939,7 @@ bool State::empty() const {
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
-    OnOpFunc const& _onOp ) {
+    OnOpFunc const& _onOp, int64_t _transactionIndex ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -995,7 +990,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                 TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                 TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         receipt.setRevertReason( strRevertReason );
-        //m_db_ptr->addReceiptToPartials( receipt );
+
+        // if we are committing we need to know transaction index in block since
+        // to save the receipt
+        LDB_CHECK( _transactionIndex >= 0 );
+        RLPStream stream;
+        receipt.streamRLP( stream );
+        m_db_ptr->setPartialTransactionReceipt( stream.out(), (BlockNumber) _envInfo.number(), (uint64_t) _transactionIndex );
         m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
