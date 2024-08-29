@@ -304,6 +304,15 @@ dev::eth::TransactionReceipts State::safePartialTransactionReceipts(eth::BlockNu
     return partialTransactionReceipts;
 }
 
+
+void State::safeRemoveAllPartialTransactionReceipts() {
+    if ( m_db_ptr ) {
+        m_db_ptr->removeAllPartialTransactionReceipts();
+    }
+}
+
+
+
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
         const Address& address = addressAccountPair.first;
@@ -996,12 +1005,26 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         LDB_CHECK( _transactionIndex >= 0 );
         RLPStream stream;
         receipt.streamRLP( stream );
-        m_db_ptr->setPartialTransactionReceipt( stream.out(), (BlockNumber) _envInfo.number(), (uint64_t) _transactionIndex );
+        m_db_ptr->setPartialTransactionReceipt( stream.out(), (BlockNumber) _envInfo.number(),
+            (uint64_t) _transactionIndex );
+
         m_fs_ptr->commit();
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
+
+        // do a simple sanity check each ten thousand transactions that we correctly
+        // saved partial transaction receipt
+        static uint64_t sanityCheckCounter= 0;
+        sanityCheckCounter++;
+        if (sanityCheckCounter % 10000 == 0) {
+            auto receipts  = safePartialTransactionReceipts( _envInfo.number() );
+            LDB_CHECK( receipts.back().rlp() == receipt.rlp() );
+        }
+
+
         // since we committed changes corresponding to a particular block
         // we need to create a new readonly snap
         LDB_CHECK(m_orig_db);

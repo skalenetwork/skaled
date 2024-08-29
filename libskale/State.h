@@ -250,7 +250,7 @@ public:
 
     dev::h256 safeLastExecutedTransactionHash();
     dev::eth::TransactionReceipts safePartialTransactionReceipts(dev::eth::BlockNumber _blockNumber);
-    void clearPartialTransactionReceipts();
+    void safeRemoveAllPartialTransactionReceipts();
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );

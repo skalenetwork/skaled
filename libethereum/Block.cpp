@@ -464,10 +464,14 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
 
     TransactionReceipts saved_receipts =
-        this->m_state.safePartialTransactionReceipts( info().number() );
-    m_receipts = saved_receipts;
-    TransactionReceipts receipts = saved_receipts;
 
+    m_receipts = m_state.safePartialTransactionReceipts( info().number() );
+    TransactionReceipts receipts = m_receipts;
+
+    if (m_receipts.size() > 0) {
+        cwarn << "Recovering from a previous crash while processing transaction" <<
+            m_receipts.size() << "in block" << info().number();
+    }
 
     unsigned count_bad = 0;
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
@@ -499,7 +503,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
                     m_receipts.push_back( null_receipt );
                     receipts.push_back( null_receipt );
-
                     ++count_bad;
                 }
 
@@ -507,7 +510,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             }
 
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
@@ -516,7 +519,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 // if added but bad
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++count_bad;
-            }
+                 }
 
 
         } catch ( Exception& ex ) {
@@ -528,6 +531,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
 #endif
+
+    // we got to the end of the block so we do not need partial transaction receipts anymore
+    m_state.safeRemoveAllPartialTransactionReceipts();
+
+    // do a simple sanity check from time to time
+    static uint64_t sanityCheckCounter = 0;
+    if (sanityCheckCounter++ % 10000 == 0) {
+        LDB_CHECK( m_state.safePartialTransactionReceipts(info().number()).empty() );
+    }
 
     return make_tuple( receipts, receipts.size() - count_bad );
 }
@@ -832,7 +844,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 
 ExecutionResult Block::execute(
     LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
-    uint64_t _transactionIndex) {
+    int64_t _transactionIndex) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );

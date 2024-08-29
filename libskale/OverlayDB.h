@@ -65,12 +65,13 @@ public:
     dev::h256 getLastExecutedTransactionHash() const;
     std::vector< dev::bytes > getPartialTransactionReceipts(
         dev::eth::BlockNumber _blockNumber ) const;
+
+    void removeAllPartialTransactionReceipts();
+
     void setLastExecutedTransactionHash( const dev::h256& );
 
     void setPartialTransactionReceipt( const dev::bytes& _newReceipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
-
-    void clearPartialTransactionReceipts();
 
     // commit key-value pairs in storage
     void commitStorageValues();
