@@ -29,9 +29,10 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieDB.h>
 #include <libethcore/Common.h>
+#include <libskale/OverlayDB.h>
 
 namespace dev {
-class OverlayDB;
+
 namespace eth {
 
 // introduce new classes StorageRoot and GlobalRoot to better separate storage and
@@ -177,7 +178,6 @@ public:
         changed();
     }
 
-
     /// @returns account's original storage
     /// not taking into account overlayed modifications
     std::unordered_map< u256, u256 > const& originalStorageCache() const;
@@ -244,19 +244,17 @@ public:
 
     /// @returns account's original storage value corresponding to the @_key
     /// not taking into account overlayed modifications
-    u256 originalStorageValue( u256 const& _key, OverlayDB const& _db ) const;
-
+    u256 originalStorageValue( u256 const& _key, skale::OverlayDB const& _db ) const;
 
     /// @returns account's storage value corresponding to the @_key
     /// taking into account overlayed modifications
-    u256 storageValue( u256 const& _key, OverlayDB const& _db ) const {
+    u256 storageValue( u256 const& _key, skale::OverlayDB const& _db ) const {
         auto mit = m_storageOverlay.find( _key );
         if ( mit != m_storageOverlay.end() )
             return mit->second;
 
         return originalStorageValue( _key, _db );
     }
-
 
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -310,7 +308,6 @@ protected:
     /// The base storage root. Used with the state DB to give a base to the storage.
     /// m_storageOverlay is overlaid on this and takes precedence for all values set.
     StorageRoot m_storageRoot = StorageRoot( EmptyTrie );
-
 
 public:
     static uint64_t howMany() { return Counter< Account >::howMany(); }

@@ -69,5 +69,4 @@ void db_splitter::prefixed_db::forEachWithPrefix(
     } );
 }
 
-
 }  // namespace batched_io

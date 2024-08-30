@@ -533,4 +533,122 @@ void OverlayDB::updateStorageUsage( dev::s256 const& _storageUsed ) {
     storageUsed_ = _storageUsed;
 }
 
+// HistoricState block
+
+void OverlayDB::insert( h256 const& _h, bytesConstRef _v ) {
+#if DEV_GUARDED_DB
+    WriteGuard l( x_this );
+#endif
+    auto it = m_historicMain.find( _h );
+    if ( it != m_historicMain.end() ) {
+        it->second.first = _v.toString();
+        it->second.second++;
+    } else
+        m_historicMain[_h] = make_pair( _v.toString(), 1 );
+
+    if ( m_commitOnEveryInsert ) {
+        // commit immediately to save memory
+        commit( "" );
+    }
+}
+
+std::string OverlayDB::lookup( h256 const& _h ) const {
+#if DEV_GUARDED_DB
+    ReadGuard l( x_this );
+#endif
+    std::string ret = "";
+    auto it = m_historicMain.find( _h );
+    if ( it != m_historicMain.end() ) {
+        if ( it->second.second > 0 )
+            return it->second.first;
+        else
+            cwarn << "Lookup required for value with refcount == 0. This is probably a critical "
+                     "trie issue"
+                  << _h;
+    }
+    if ( !ret.empty() || !m_db_face )
+        return ret;
+
+    return m_db_face->lookup( dev::toSlice( _h ) );
+}
+
+bool OverlayDB::exists( h256 const& _h ) const {
+#if DEV_GUARDED_DB
+    ReadGuard l( x_this );
+#endif
+    auto it = m_historicMain.find( _h );
+    if ( it != m_historicMain.end() && it->second.second > 0 )
+        return true;
+    return m_db_face && m_db_face->exists( dev::toSlice( _h ) );
+}
+
+void OverlayDB::kill( h256 const& _h ) {
+#if ETH_PARANOIA || 1
+    if ( m_historicMain.count( _h ) ) {
+        if ( m_historicMain[_h].second > 0 ) {
+            m_historicMain[_h].second--;
+            return;
+        }
+#if ETH_PARANOIA
+        else {
+            // If we get to this point, then there was probably a node in the level DB which we need
+            // to remove and which we have previously used as part of the memory-based MemoryDB.
+            // Nothing to be worried about *as long as the node exists in the DB*.
+            cdebug << "NOKILL-WAS" << _h;
+        }
+        cdebug << "KILL" << _h << "=>" << m_main[_h].second;
+    } else {
+        cdebug << "NOKILL" << _h;
+#endif
+    }
+    if ( m_db_face ) {
+        if ( !m_db_face->exists( dev::toSlice( _h ) ) ) {
+            // No point node ref decreasing for EmptyTrie since we never bother incrementing it
+            // in the first place for empty storage tries.
+            if ( _h != dev::EmptyTrie )
+                cnote << "Decreasing DB node ref count below zero with no DB node. Probably "
+                         "have a corrupt Trie."
+                      << _h;
+            // TODO: for 1.1: ref-counted triedb.
+        }
+    }
+#else
+    MemoryDB::kill( _h );
+#endif
+}
+
+bytes OverlayDB::lookupAux( h256 const& _h ) const {
+#if DEV_GUARDED_DB
+    ReadGuard l( x_this );
+#endif
+    bytes ret = bytes();
+    auto it = m_historicAux.find( _h );
+    if ( it != m_historicAux.end() && it->second.second )
+        return it->second.first;
+    if ( !ret.empty() || !m_db_face )
+        return ret;
+
+    bytes b = _h.asBytes();
+    b.push_back( 255 );  // for aux
+    std::string const v = m_db_face->lookup( dev::toSlice( b ) );
+    if ( v.empty() )
+        cwarn << "Aux not found: " << _h;
+
+    return dev::asBytes( v );
+}
+
+void OverlayDB::removeAux( h256 const& _h ) {
+#if DEV_GUARDED_DB
+    WriteGuard l( x_this );
+#endif
+    m_historicAux[_h].second = false;
+}
+
+void OverlayDB::insertAux( h256 const& _h, bytesConstRef _v ) {
+#if DEV_GUARDED_DB
+    WriteGuard l( x_this );
+#endif
+    m_historicAux[_h] = make_pair( _v.toBytes(), true );
+}
+
 }  // namespace skale

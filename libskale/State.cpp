@@ -112,7 +112,10 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-    dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
+    std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+        _historicDb,
+    std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+        _historicBlockToStateRootDb,
 #endif
     skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
@@ -759,7 +762,6 @@ void State::clearStorageValue(
     currentStorageUsed_ += count * 32;
 }
 
-
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
     if ( Account const* acc = account( _contract ) ) {
         auto memoryPtr = acc->originalStorageCache().find( _key );
@@ -778,7 +780,6 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
         return 0;
     }
 }
-
 
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0

@@ -7,6 +7,7 @@
 #include "HistoricState.h"
 
 #include "DatabasePaths.h"
+#include <libbatched-io/batched_rotating_db_io.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
 #include <libdevcore/MemoryDB.h>
@@ -24,10 +25,15 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-HistoricState::HistoricState( u256 const& _accountStartNonce, OverlayDB const& _db,
-    OverlayDB const& _blockToStateRootDB, skale::BaseState _bs )
-    : m_db( _db ),
-      m_blockToStateRootDB( _blockToStateRootDB ),
+HistoricState::HistoricState( u256 const& _accountStartNonce,
+    std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
+    std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
+        _blockToStateRootDB,
+    skale::BaseState _bs )
+    : m_db( _db.first ),
+      m_rotatingTreeDb( _db.second ),
+      m_blockToStateRootDB( _blockToStateRootDB.first ),
+      m_rotatingRootsDb( _blockToStateRootDB.second ),
       m_state( &m_db ),
       m_accountStartNonce( _accountStartNonce ) {
     if ( _bs != skale::BaseState::PreExisting || m_state.isNull() )
@@ -47,8 +53,8 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_accountStartNonce( _s.m_accountStartNonce ),
       m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ) {}
 
-OverlayDB HistoricState::openDB(
-    fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
+std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
+HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
         if ( _we == WithExisting::Kill ) {
@@ -66,9 +72,12 @@ OverlayDB HistoricState::openDB(
 
     try {
         clog( VerbosityTrace, "statedb" ) << "Opening state database";
-        std::unique_ptr< db::DatabaseFace > db =
-            db::DBFactory::createHistoric( db::DatabaseKind::LevelDB, dbPaths.statePath() );
-        return OverlayDB( std::move( db ) );
+        auto rotator =
+            std::make_shared< batched_io::BatchedRotatingHistoricDbIO >( dbPaths.statePath() );
+        auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
+        auto bdb = std::unique_ptr< batched_io::batched_db >();
+        bdb->open( rotatingDB );
+        return { skale::OverlayDB( std::move( bdb ) ), std::move( rotatingDB ) };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
             clog( VerbosityError, "statedb" )
@@ -198,7 +207,7 @@ void HistoricState::clearCacheIfTooLarge() const {
 void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
-    m_state.db()->commit();
+    m_state.db()->commit( "commit" );
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -305,7 +314,7 @@ void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
     // record the latest block number
     auto bnk = sha3( "latest" );
     m_blockToStateRootDB.insert( bnk, &bn );
-    m_blockToStateRootDB.commit();
+    m_blockToStateRootDB.commit( "commit" );
 }
 
 void HistoricState::setRootFromDB() {
@@ -462,7 +471,7 @@ map< h256, pair< u256, u256 > > HistoricState::storage( Address const& _id ) con
     if ( HistoricAccount const* a = account( _id ) ) {
         // Pull out all values from trie storage.
         if ( h256 root = a->originalStorageRoot() ) {
-            SecureTrieDB< h256, OverlayDB > memdb( const_cast< OverlayDB* >( &m_db ),
+            SecureTrieDB< h256, skale::OverlayDB > memdb( const_cast< skale::OverlayDB* >( &m_db ),
                 root );  // promise we won't alter the overlay! :)
 
             for ( auto it = memdb.hashedBegin(); it != memdb.hashedEnd(); ++it ) {
@@ -660,8 +669,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
     _out << "--- " << _s.globalRoot() << std::endl;
     std::set< Address > d;
     std::set< Address > dtr;
-    auto trie =
-        SecureTrieDB< Address, OverlayDB >( const_cast< OverlayDB* >( &_s.m_db ), _s.globalRoot() );
+    auto trie = SecureTrieDB< Address, skale::OverlayDB >(
+        const_cast< skale::OverlayDB* >( &_s.m_db ), _s.globalRoot() );
     for ( auto i : trie )
         d.insert( i.first ), dtr.insert( i.first );
     for ( auto i : _s.m_cache )
@@ -691,7 +700,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
                 std::set< u256 > delta;
                 std::set< u256 > cached;
                 if ( r ) {
-                    SecureTrieDB< h256, OverlayDB > memdb( const_cast< OverlayDB* >( &_s.m_db ),
+                    SecureTrieDB< h256, skale::OverlayDB > memdb(
+                        const_cast< skale::OverlayDB* >( &_s.m_db ),
                         r[2].toHash< h256 >() );  // promise we won't alter the overlay! :)
                     for ( auto const& j : memdb )
                         mem[j.first] = RLP( j.second ).toInt< u256 >(), back.insert( j.first );
@@ -757,7 +767,7 @@ _txIndex, BlockChain const &_bc) {
  */
 
 AddressHash HistoricState::commitExternalChangesIntoTrieDB(
-    const AccountMap& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
+    const AccountMap& _cache, SecureTrieDB< Address, skale::OverlayDB >& _state ) {
     AddressHash ret;
     for ( auto const& i : _cache )
         if ( i.second.isDirty() ) {
@@ -780,7 +790,7 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
                     storageRoot = existingAccount->originalStorageRoot();
                 }
 
-                SecureTrieDB< h256, OverlayDB > storageDB( _state.db(), storageRoot );
+                SecureTrieDB< h256, skale::OverlayDB > storageDB( _state.db(), storageRoot );
 
                 for ( auto const& j : i.second.storageOverlay() ) {
                     if ( j.second ) {

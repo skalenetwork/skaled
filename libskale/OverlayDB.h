@@ -28,6 +28,7 @@
 #include <memory>
 
 #include <libbatched-io/batched_db.h>
+#include <libdevcore/Address.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libethereum/Account.h>
@@ -105,24 +106,48 @@ public:
 
     std::unordered_map< dev::u256, dev::u256 > storage( dev::h160 const& address ) const;
 
+    // block for HistoricState
+    void insert( dev::h256 const& _h, dev::bytesConstRef _v );
+
+    std::string lookup( dev::h256 const& _h ) const;
+    bool exists( dev::h256 const& _h ) const;
+    void kill( dev::h256 const& _h );
+
+    dev::bytes lookupAux( dev::h256 const& _h ) const;
+    void removeAux( dev::h256 const& _h );
+    void insertAux( dev::h256 const& _h, dev::bytesConstRef _v );
+
+    void setCommitOnEveryInsert( bool _value ) {
+        commit( "commit" );
+        m_commitOnEveryInsert = _value;
+    }
+
 private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
     std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
     dev::s256 storageUsed_ = 0;
 
+    // for HistoricState
+    std::unordered_map< dev::h256, std::pair< std::string, unsigned > > m_historicMain;
+    std::unordered_map< dev::h256, std::pair< dev::bytes, bool > > m_historicAux;
+
     std::shared_ptr< batched_io::db_face > m_db_face;
 
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
+    // a flag to commit to disk on every insert to save memory
+    // this is currently only used for historic state conversion
+    bool m_commitOnEveryInsert = false;
 
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
     mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
-    void copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const;
+    void copyStorageIntoAccountMap(
+        std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
 
 }  // namespace skale

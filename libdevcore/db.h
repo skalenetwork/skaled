@@ -30,6 +30,22 @@
 #include <string>
 
 namespace dev {
+
+namespace {
+inline db::Slice toSlice( h256 const& _h ) {
+    return db::Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
+}
+
+inline db::Slice toSlice( std::string const& _str ) {
+    return db::Slice( _str.data(), _str.size() );
+}
+
+inline db::Slice toSlice( bytes const& _b ) {
+    return db::Slice( reinterpret_cast< char const* >( &_b[0] ), _b.size() );
+}
+
+}  // namespace
+
 namespace db {
 // WriteBatchFace implements database write batch for a specific concrete
 // database implementation.
