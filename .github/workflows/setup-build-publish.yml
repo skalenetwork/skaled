@@ -61,7 +61,7 @@ jobs:
         run: |
           sudo apt-get -y remove libzmq* || true
           sudo apt-get -y install software-properties-common gcc-9 g++-9 || true
-	        sudo apt-get purge --auto-remove liblz4-dev || true
+          sudo apt-get purge --auto-remove liblz4-dev || true
   
       - name: Use g++-9 and gcov-9 by default
         run: |
