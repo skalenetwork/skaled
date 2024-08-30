@@ -255,6 +255,7 @@ void Client::initStateFromDiskOrGenesis() {
             m_state.mutableHistoricState().db().setCommitOnEveryInsert( true );
             m_state.populateHistoricStateFromSkaleState();
             m_state.mutableHistoricState().db().setCommitOnEveryInsert( false );
+            exit( 0 );
         }
 #endif
     }

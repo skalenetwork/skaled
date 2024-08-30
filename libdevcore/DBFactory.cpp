@@ -140,8 +140,9 @@ std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
     DatabaseKind _kind, fs::path const& _path ) {
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
-        return std::unique_ptr< DatabaseFace >( new LevelDB( _path, LevelDB::defaultReadOptions(),
-            LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_reopenPeriodMs ) );
+        return std::unique_ptr< DatabaseFace >(
+            new LevelDB( _path, LevelDB::defaultSnapshotReadOptions(),
+                LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_reopenPeriodMs ) );
         break;
     default:
         assert( false );
