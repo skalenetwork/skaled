@@ -27,7 +27,7 @@ on:
         required: true
       DOCKER_PASSWORD:
         required: true
-      
+
 jobs:
   main:
     runs-on: self-hosted
