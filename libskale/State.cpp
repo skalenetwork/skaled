@@ -301,6 +301,8 @@ dev::eth::TransactionReceipts State::safePartialTransactionReceipts(eth::BlockNu
             partialTransactionReceipts.push_back( receipt );
         }
     }
+
+
     return partialTransactionReceipts;
 }
 

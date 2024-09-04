@@ -449,6 +449,42 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
+inline void Block::doPartialCatchupTestIfRequested( uint64_t previouslyExecutedTransactions, unsigned i ) {
+    static const char* FAIL_AT_TX_NUM = std::getenv( "TEST_FAIL_AT_TX_NUM" );
+    FAIL_AT_TX_NUM = "2464";
+    static int64_t transactionCount = 0;
+
+    if ( FAIL_AT_TX_NUM ) {
+        if ( transactionCount == std::stoi( FAIL_AT_TX_NUM )) {
+            // fail hard for test
+            cerror << "Test: crashing skaled on purpose after processing  " << i
+                   << " transactions in block";
+            // Create and open a file at the specified path
+            // Create an ofstream object for the file
+            std::ofstream outfile;
+            // Enable exceptions for the ofstream object
+            outfile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+            outfile.open("/tmp/partial_catchup_count");
+            outfile << i;  // Write the integer to the file
+            outfile.close();
+            cerror << "Wrote test file";
+            exit( -1 );
+        }
+
+        if ( previouslyExecutedTransactions ) {
+            // we just restarted after crash
+            // verify rile couint
+            std::ifstream infile;
+            infile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+            infile.open("/tmp/partial_catchup_count");
+            uint64_t savedCount;
+            infile >> savedCount;
+            LDB_CHECK( savedCount == previouslyExecutedTransactions )
+        }
+
+        transactionCount++;
+    }
+}
 tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
     const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
     if ( isSealed() )
@@ -465,19 +501,22 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     TransactionReceipts saved_receipts =
 
-    m_receipts = m_state.safePartialTransactionReceipts( info().number() );
+        m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     TransactionReceipts receipts = m_receipts;
 
     unsigned countBad = 0;
 
-    if (m_receipts.size() > 0) {
-        cwarn << "Recovering from a previous crash while processing transaction" <<
-            m_receipts.size() << "in block" << info().number();
+    uint64_t partialCatchupPreviouslyExecutedTxCouht = false;
+
+    if ( m_receipts.size() > 0 ) {
+        partialCatchupPreviouslyExecutedTxCouht = m_receipts.size();
+        cwarn << "Recovering from a previous crash while processing transaction:"
+              << m_receipts.size() << "block:" << info().number();
         // count bad transactions in previously executed transactions
         // a bad transaction is in the block but does not use any gas
         u256 cumulativeGas = 0;
-        for (auto const& receipt : m_receipts) {
-            if (receipt.cumulativeGasUsed() == cumulativeGas) {
+        for ( auto const& receipt : m_receipts ) {
+            if ( receipt.cumulativeGasUsed() == cumulativeGas ) {
                 countBad++;
             }
             cumulativeGas = receipt.cumulativeGasUsed();
@@ -488,14 +527,20 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
         Transaction const& tr = _transactions[i];
         try {
-
-            if (i < saved_receipts.size()) {
+            if ( i < saved_receipts.size() ) {
                 // this transaction has already been executed and we have a
                 // receipt for it. We do not need to execute it again
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
-                continue;;
+                continue;
+                ;
             }
+
+
+            // Tell skaled to fail in a middle of blog processing
+            // this is used in partial catchup tests
+            doPartialCatchupTestIfRequested( partialCatchupPreviouslyExecutedTxCouht, i );
+
 
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
                 LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
@@ -516,8 +561,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                     m_receipts.push_back( null_receipt );
                     receipts.push_back( null_receipt );
                     // we need to record the receipt in case we crash
-                    m_state.safeSetAndCommitPartialTransactionReceipt( null_receipt.rlp(),
-                         info().number(), i);
+                    m_state.safeSetAndCommitPartialTransactionReceipt(
+                        null_receipt.rlp(), info().number(), i );
                     ++countBad;
                 }
 
@@ -534,7 +579,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 // if added but bad
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++countBad;
-                 }
+            }
 
 
         } catch ( Exception& ex ) {
@@ -552,8 +597,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     // do a simple sanity check from time to time
     static uint64_t sanityCheckCounter = 0;
-    if (sanityCheckCounter++ % 10000 == 0) {
-        LDB_CHECK( m_state.safePartialTransactionReceipts(info().number()).empty() );
+    if ( sanityCheckCounter++ % 10000 == 0 ) {
+        LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
     }
 
     LDB_CHECK( receipts.size() >= countBad );
@@ -859,9 +904,8 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 #endif
 
 
-ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp,
-    int64_t _transactionIndex) {
+ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
+    Permanence _p, OnOpFunc const& _onOp, int64_t _transactionIndex ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -893,9 +937,8 @@ ExecutionResult Block::execute(
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
-        resultReceipt =
-            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp,
-                _transactionIndex );
+        resultReceipt = stateSnapshot.execute(
+            envInfo, m_sealEngine->chainParams(), _t, _p, _onOp, _transactionIndex );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
