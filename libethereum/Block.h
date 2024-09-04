@@ -234,6 +234,7 @@ public:
     /// and bool, true iff there are more transactions to be processed.
     std::pair< TransactionReceipts, bool > sync( BlockChain const& _bc, TransactionQueue& _tq,
         GasPricer const& _gp, unsigned _msTimeout = 100 );
+    static void doPartialCatchupTestIfRequested( uint64_t _previouslyExecutedTransactions, unsigned _i );
 
     /// Sync our state with the block chain.
     /// This basically involves wiping ourselves if we've been superceded and rebuilding from the
