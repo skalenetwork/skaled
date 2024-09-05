@@ -644,7 +644,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         total_arrived += out_txns.size();
 
-        assert( _blockID == m_client.number() + 1 );
+        if (_blockID != m_client.number() + 1 ) {
+            LOG(m_errorLogger) << "Mismatch in block number:SKALED_NUMBER:" <<
+                m_client.number() << ":CONSENSUS_NUMBER:" << _blockID;
+            assert(false);
+        }
+
 
 
         m_debugTracer.tracepoint( "import_block" );

@@ -449,9 +449,8 @@ pair< TransactionReceipts, bool > Block::sync(
     return ret;
 }
 
-inline void Block::doPartialCatchupTestIfRequested( uint64_t previouslyExecutedTransactions, unsigned i ) {
+inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
     static const char* FAIL_AT_TX_NUM = std::getenv( "TEST_FAIL_AT_TX_NUM" );
-    FAIL_AT_TX_NUM = "2464";
     static int64_t transactionCount = 0;
 
     if ( FAIL_AT_TX_NUM ) {
@@ -459,27 +458,7 @@ inline void Block::doPartialCatchupTestIfRequested( uint64_t previouslyExecutedT
             // fail hard for test
             cerror << "Test: crashing skaled on purpose after processing  " << i
                    << " transactions in block";
-            // Create and open a file at the specified path
-            // Create an ofstream object for the file
-            std::ofstream outfile;
-            // Enable exceptions for the ofstream object
-            outfile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-            outfile.open("/tmp/partial_catchup_count");
-            outfile << i;  // Write the integer to the file
-            outfile.close();
-            cerror << "Wrote test file";
             exit( -1 );
-        }
-
-        if ( previouslyExecutedTransactions ) {
-            // we just restarted after crash
-            // verify rile couint
-            std::ifstream infile;
-            infile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-            infile.open("/tmp/partial_catchup_count");
-            uint64_t savedCount;
-            infile >> savedCount;
-            LDB_CHECK( savedCount == previouslyExecutedTransactions )
         }
 
         transactionCount++;
@@ -506,12 +485,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     unsigned countBad = 0;
 
-    uint64_t partialCatchupPreviouslyExecutedTxCouht = false;
-
     if ( m_receipts.size() > 0 ) {
-        partialCatchupPreviouslyExecutedTxCouht = m_receipts.size();
-        cwarn << "Recovering from a previous crash while processing transaction:"
-              << m_receipts.size() << "block:" << info().number();
+        cwarn << "Recovering from a previous crash while processing TRANSACTION:"
+              << m_receipts.size() << ":BLOCK:" << info().number();
         // count bad transactions in previously executed transactions
         // a bad transaction is in the block but does not use any gas
         u256 cumulativeGas = 0;
@@ -539,7 +515,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
             // Tell skaled to fail in a middle of blog processing
             // this is used in partial catchup tests
-            doPartialCatchupTestIfRequested( partialCatchupPreviouslyExecutedTxCouht, i );
+            doPartialCatchupTestIfRequested( i );
 
 
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
