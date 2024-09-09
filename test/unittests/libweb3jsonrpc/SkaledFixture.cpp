@@ -206,6 +206,17 @@ void SkaledFixture::setupFirstKey() {
     ownerAccount = nullptr;
 }
 
+void SkaledFixture::deployERC20() {
+
+
+    std::ifstream inputFile("../../test/unittests/libweb3jsonrpc/contracts/ERC20_bytecode.txt"); // Open the file
+    CHECK(inputFile)
+    std::string content;
+    std::getline(inputFile, content); // Read the string from the file
+    inputFile.close(); // Close the file
+    std::cout << "Read string: " << content << std::endl; // Output the string
+}
+
 
 void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
     mutex testAccountsMutex;

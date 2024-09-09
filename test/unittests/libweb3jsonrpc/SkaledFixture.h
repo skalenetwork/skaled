@@ -182,6 +182,8 @@ public:
 
     void setupFirstKey();
 
+    void deployERC20();
+
     void setupTwoToTheNKeys( uint64_t _n );
     void doOneTinyTransfersIteration();
 
