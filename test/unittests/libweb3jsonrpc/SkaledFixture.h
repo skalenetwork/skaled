@@ -145,10 +145,13 @@ class CurlClient {
     CURL* curl;
     std::string readBuffer;
     struct curl_slist* headers = nullptr;
-    static std::atomic< uint64_t > totalCallsCount;
+
     string skaledEndpoint;
 
 public:
+
+    static std::atomic< uint64_t > totalCallsCount;
+
     static uint64_t getTotalCallsCount();
 
     void resetCurl();
@@ -156,11 +159,11 @@ public:
 
     void setRequest( const string& _json_rpc_request );
 
-    uint64_t doRequestResponse();
+    Json::Value doRequestResponse();
 
     Json::Value parseResponse();
 
-    void eth_sendRawTransaction( const std::string& _rawTransactionHex );
+    string eth_sendRawTransaction( const std::string& _rawTransactionHex );
     void doRequestResponseAndCheckForError( std::string jsonPayload, Json::Value& response );
 
 
@@ -209,6 +212,10 @@ public:
 
     void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         const string& _to, const u256& _gasPrice,
+        TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
+
+    void sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+        const string& _byteCode, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
 
