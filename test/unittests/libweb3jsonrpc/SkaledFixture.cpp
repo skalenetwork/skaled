@@ -87,12 +87,32 @@ void CurlClient::setRequest( const string& _json_rpc_request ) {
     curl_easy_setopt( curl, CURLOPT_POSTFIELDSIZE, _json_rpc_request.size() );
 }
 
-uint64_t CurlClient::doRequestResponse() {
+Json::Value CurlClient::doRequestResponse() {
     auto res = curl_easy_perform( curl );
     if ( res != CURLE_OK ) {
         throw std::runtime_error(
             string( "curl_easy_perform() failed" ) + curl_easy_strerror( res ) );
     }
+
+    Json::CharReaderBuilder readerBuilder;
+    Json::Value root;
+    std::string errs;
+
+    // Parse the JSON string
+    std::istringstream ss( readBuffer );
+    if ( Json::parseFromStream( readerBuilder, ss, &root, &errs ) ) {
+        // Accessing JSON data
+        if ( root.isMember( "result" ) ) {
+            return root["result"];
+        } else {
+            throw std::runtime_error( "No result in response" );
+        }
+    } else {
+        // Output error message if parsing fails
+        cerr << "Failed to parse JSON: " << errs << std::endl;
+        throw runtime_error( "Failed to parse JSON" );
+    }
+
     return ++totalCallsCount;
 }
 
@@ -118,11 +138,12 @@ uint64_t CurlClient::getTotalCallsCount() {
     return totalCallsCount;
 }
 
-void CurlClient::eth_sendRawTransaction( const std::string& _rawTransactionHex ) {
+string CurlClient::eth_sendRawTransaction( const std::string& _rawTransactionHex ) {
     std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":[")" +
                               _rawTransactionHex + R"("],"id":1})";
     setRequest( jsonPayload );
-    doRequestResponse();
+    auto result = doRequestResponse();
+    return result.asString();
 }
 
 void CurlClient::doRequestResponseAndCheckForError(
@@ -207,14 +228,26 @@ void SkaledFixture::setupFirstKey() {
 }
 
 void SkaledFixture::deployERC20() {
+    cout << "Deploying test ERC20 contract ... " << endl;
 
 
-    std::ifstream inputFile("../../test/unittests/libweb3jsonrpc/contracts/ERC20_bytecode.txt"); // Open the file
-    CHECK(inputFile)
+    std::ifstream inputFile(
+        "../../test/unittests/libweb3jsonrpc/contracts/ERC20_bytecode.txt" );  // Open the file
+    CHECK( inputFile )
     std::string content;
-    std::getline(inputFile, content); // Read the string from the file
-    inputFile.close(); // Close the file
-    std::cout << "Read string: " << content << std::endl; // Output the string
+    std::getline( inputFile, content );  // Read the string from the file
+    inputFile.close();                   // Close the file
+
+
+    auto gasPrice = getCurrentGasPrice();
+
+    CHECK( testAccounts.size() > 0 );
+
+    sendSingleDeploy( 0, this->testAccounts.begin()->second, content, gasPrice,
+        TransactionWait::WAIT_FOR_COMPLETION );
+
+
+    cout << "Deployed test ERC20 contract" << endl;
 }
 
 
@@ -310,18 +343,19 @@ void SkaledFixture::doOneTinyTransfersIteration() {
     CHECK( testAccountsVector.size() == testAccounts.size() );
 
 
-    for ( uint64_t  accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
+    for ( uint64_t accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
         if ( threadsCountForTestTransactions > 1 ) {
             if ( accountNum % transactionsPerThreaad == 0 ) {
                 uint64_t threadNumber = accountNum / transactionsPerThreaad;
-                auto t = make_shared< thread >( [transactionsPerThreaad, threadNumber, gasPrice, this]() {
-                    for ( uint64_t j = 0; j < transactionsPerThreaad; j++ ) {
-                        auto account =
-                            testAccountsVector.at( threadNumber * transactionsPerThreaad + j );
-                        sendTinyTransfer(
-                            account, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
-                    }
-                } );
+                auto t = make_shared< thread >(
+                    [transactionsPerThreaad, threadNumber, gasPrice, this]() {
+                        for ( uint64_t j = 0; j < transactionsPerThreaad; j++ ) {
+                            auto account =
+                                testAccountsVector.at( threadNumber * transactionsPerThreaad + j );
+                            sendTinyTransfer(
+                                account, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+                        }
+                    } );
                 threads.push_back( t );
             }
         } else {
@@ -333,7 +367,6 @@ void SkaledFixture::doOneTinyTransfersIteration() {
     }
 
 
-
     if ( threadsCountForTestTransactions > 1 ) {
         CHECK( threads.size() == threadsCountForTestTransactions );
         for ( auto&& t : threads ) {
@@ -342,8 +375,8 @@ void SkaledFixture::doOneTinyTransfersIteration() {
     }
 
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps" << endl;
-
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps"
+         << endl;
 
 
     for ( auto&& account : testAccounts ) {
@@ -545,6 +578,80 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
         CHECK( balanceAfter - dstBalanceBefore == _amount );
     }
 }
+
+
+void SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+    const string& _byteCode, const u256& _gasPrice, TransactionWait _wait ) {
+    auto from = _from->getAddressAsString();
+    auto accountNonce = _from->computeNonceForNextTransaction();
+    u256 dstBalanceBefore;
+
+
+    if ( this->verifyTransactions ) {
+        CHECK( accountNonce == getTransactionCount( from ) );
+        u256 srcBalanceBefore = getBalance( _from->getAddressAsString() );
+        CHECK( srcBalanceBefore > 0 );
+        if ( 21000 * _gasPrice + _amount > srcBalanceBefore ) {
+            cout << "Not enough balance to send a transfer" << endl;
+            cout << "Wallet:" << from << endl;
+            cout << "Balance:" << srcBalanceBefore << endl;
+            cout << "Transfer amount: " << _amount << endl;
+            cout << "Gas price" << _gasPrice << endl;
+            cout << "Missing amount:" << 21000 * _gasPrice + _amount - srcBalanceBefore << endl;
+        }
+
+        CHECK( 21000 * _gasPrice + _amount <= srcBalanceBefore );
+
+        CHECK( srcBalanceBefore > 0 );
+        CHECK( dstBalanceBefore == 0 );
+    }
+
+    Json::Value t;
+    t["from"] = from;
+    t["value"] = jsToDecimal( toJS( _amount ) );
+    t["data"] = "0x" + _byteCode;
+    TransactionSkeleton ts = toTransactionSkeleton( t );
+    ts.nonce = accountNonce;
+    ts.nonce = accountNonce;
+    ts.gas = 1000000;
+    ts.gasPrice = _gasPrice;
+
+    Transaction transaction( ts );  // always legacy, no prefix byte
+    transaction.forceChainId( chainId );
+    transaction.sign( _from->getKey() );
+    CHECK( transaction.chainId() );
+    auto result = dev::eth::toJson( transaction, transaction.toBytes() );
+
+    CHECK( result["raw"] );
+    CHECK( result["tx"] );
+
+
+    try {
+        auto payload = result["raw"].asString();
+        // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
+        auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
+        CHECK(!txHash.empty());
+    } catch ( std::exception& e ) {
+        cout << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
+        cout << e.what() << endl;
+        throw e;
+    }
+
+    if ( _wait == TransactionWait::DONT_WAIT_FOR_COMPLETION ) {
+        // dont wait for it to finish and return immediately
+        return;
+    }
+
+    waitForTransaction( _from );
+
+    /*
+    if ( this->verifyTransactions ) {
+        auto balanceAfter = getBalance( _to );
+        CHECK( balanceAfter - dstBalanceBefore == _amount );
+    }
+    */
+}
+
 
 void SkaledFixture::waitForTransaction( std::shared_ptr< SkaledAccount > _account ) {
     u256 transactionCount;

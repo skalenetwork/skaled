@@ -588,8 +588,8 @@ public:
         curlClient->setRequest( jsonRpcRequest );
 
         while ( ( uint64_t ) std::time( nullptr ) < finishTime ) {
-            auto callsCount = curlClient->doRequestResponse();
-            if ( callsCount % 1000 == 0 ) {
+            auto result = curlClient->doRequestResponse();
+            if ( CurlClient::totalCallsCount % 1000 == 0 ) {
                 auto jsonResult = curlClient->parseResponse();
                 checkResult( jsonResult );
             }
@@ -1108,9 +1108,12 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers ) {
     fixture.threadsCountForTestTransactions = 8;
 
     fixture.setupFirstKey();
+
     fixture.deployERC20();
 
     fixture.setupTwoToTheNKeys(12);
+
+
 
     //fixture.sendTinyTransfersForAllAccounts(100);
 
