@@ -320,14 +320,26 @@
       "maxOpenLeveldbFiles": 25,
       "testSignatures": true
     },
-    "sChain":
-    {
+    "sChain": {
       "schainName": "TestChain",
       "schainID": 5,
       "schainOwner": "0x907cd0881E50d359bb9Fd120B1A5A143b1C97De6",
       "contractStorageLimit": 10000000000,
       "emptyBlockIntervalMs": 10000,
+      "contractStorageZeroValuePatchTimestamp": 1,
+      "revertableFSPatchTimestamp": 1,
+      "contractStoragePatchTimestamp": 1,
+      "verifyDaSigsPatchTimestamp": 1,
+      "storageDestructionPatchTimestamp": 1,
+      "powCheckPatchTimestamp": 1,
+      "skipInvalidTransactionsPatchTimestamp": 1,
       "pushZeroPatchTimestamp": 1,
+      "precompiledConfigPatchTimestamp": 1,
+      "correctForkInPowPatchTimestamp": 1,
+      "EIP1559TransactionsPatchTimestamp": 1,
+      "fastConsensusPatchTimestamp": 1,
+      "flexibleDeploymentPatchTimestamp": 1,
+      "verifyBlsSyncPatchTimestamp": 1,
       "multiTransactionMode": true,
       "levelDBReopenIntervalMs": 1,
       "nodes": [
