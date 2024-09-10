@@ -1483,6 +1483,40 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     BOOST_CHECK_EQUAL( response3, "0x1db20" );
 }
 
+BOOST_AUTO_TEST_CASE( eth_estimateGas_chainId ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535
+    ret["params"]["chainID"] = "0xffff"; 
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    // pragma solidity ^0.8.13;
+
+    // contract Counter {
+    //     error BlockNumber(uint256 blockNumber);
+
+    //     constructor() {
+    //         revert BlockNumber(block.chainid);
+    //     }
+    // }
+
+    Json::Value testRevert;
+    testRevert["data"] = "0x6080604052348015600f57600080fd5b50604051633013bad360e21b815246600482015260240160405180910390fdfe";
+
+    try {
+        fixture.rpcClient->eth_estimateGas( testRevert, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex) {
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
+        BOOST_CHECK_EQUAL(ex.GetData().asString(), "0xc04eeb4c000000000000000000000000000000000000000000000000000000000000ffff");
+        BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
+    } 
+}
+
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
