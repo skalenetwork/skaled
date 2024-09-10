@@ -3064,7 +3064,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x1" );
-    BOOST_REQUIRE( toJS( jsToInt( block["transactions"][0]["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == block["transactions"][0]["v"].asString() );
+    BOOST_REQUIRE( block["transactions"][0]["yParity"].asString() == block["transactions"][0]["v"].asString() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].size() == 0 );
     BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
@@ -3081,20 +3081,20 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
     BOOST_REQUIRE( result["type"] == "0x1" );
-    BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
+    BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
     BOOST_REQUIRE( result["accessList"].size() == 0 );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
     BOOST_REQUIRE( result["type"] == "0x1" );
-    BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
+    BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
 
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x4", "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
     BOOST_REQUIRE( result["type"] == "0x1" );
-    BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
+    BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
     BOOST_REQUIRE( result["accessList"].size() == 0 );
 
@@ -3202,7 +3202,6 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
 
     // compare with txn hash from geth
     BOOST_REQUIRE( txHash == "0x7bd586e93e3012577de4ba33e3b887baf520cbb92c5dd10996b262f9c5c8f747" );
-    std::cout << dev::toHexPrefixed( fixture.client->transactions( 4 )[0].toBytes() ) << '\n';
     BOOST_REQUIRE( dev::toHexPrefixed( fixture.client->transactions( 4 )[0].toBytes() ) == "0x02f8c98197808504a817c8008504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000000000000000000000000000000000000000000000000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554ba3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
@@ -3216,7 +3215,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( block["transactions"].size() == 1 );
     BOOST_REQUIRE( block["transactions"][0]["hash"].asString() == txHash );
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x2" );
-    BOOST_REQUIRE( toJS( jsToInt( block["transactions"][0]["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == block["transactions"][0]["v"].asString() );
+    BOOST_REQUIRE( block["transactions"][0]["yParity"].asString() == block["transactions"][0]["v"].asString() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
     BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
     BOOST_REQUIRE( block["transactions"][0]["chainId"].asString() == chainID );
@@ -3231,7 +3230,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
     BOOST_REQUIRE( result["type"] == "0x2" );
-    BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
+    BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
     BOOST_REQUIRE( result.isMember( "maxPriorityFeePerGas" ) && result["maxPriorityFeePerGas"].isString() );
     BOOST_REQUIRE( result.isMember( "maxFeePerGas" ) && result["maxFeePerGas"].isString() );
@@ -3239,7 +3238,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
     BOOST_REQUIRE( result["type"] == "0x2" );
-    BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
+    BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
     BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
@@ -3247,7 +3246,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x4", "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
     BOOST_REQUIRE( result["type"] == "0x2" );
-    BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 + 2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
+    BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
     BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
