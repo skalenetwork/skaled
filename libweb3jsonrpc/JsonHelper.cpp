@@ -120,7 +120,7 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
                 }
                 res["accessList"].append( accessList );
             }
-            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+            if ( _t.txType() == dev::eth::TransactionType::Type2 ) {
                 res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
                 res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
             }
@@ -366,7 +366,7 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
                 }
                 res["accessList"].append( accessList );
             }
-            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+            if ( _t.txType() == dev::eth::TransactionType::Type2 ) {
                 res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
                 res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
             }
@@ -421,7 +421,7 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
             }
             if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
                 res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
-                res["maxFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
             }
         }
     }
