@@ -182,6 +182,18 @@ u256 CurlClient::eth_getTransactionCount( const std::string& _addressString ) {
     return jsToU256( resultStr );
 }
 
+Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":[")" +
+                              _hash + R"("],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    CHECK( response["result"].isObject() );
+    return response["result"];
+
+}
+
 
 string SkaledFixture::readFile( const std::string& _path ) {
     CHECK( boost::filesystem::exists( _path ) );
@@ -227,7 +239,7 @@ void SkaledFixture::setupFirstKey() {
     ownerAccount = nullptr;
 }
 
-void SkaledFixture::deployERC20() {
+string SkaledFixture::deployERC20() {
     cout << "Deploying test ERC20 contract ... " << endl;
 
 
@@ -247,7 +259,17 @@ void SkaledFixture::deployERC20() {
         TransactionWait::WAIT_FOR_COMPLETION );
 
 
-    cout << "Deployed test ERC20 contract" << endl;
+    auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( hash );
+
+    CHECK( receipt.isMember( "contractAddress" ) );
+    CHECK( receipt["contractAddress"].isString());
+
+    auto contractAddress = receipt["contractAddress"].asString();
+
+
+    cout << "Deployed test ERC20 contract at address:" << contractAddress <<  endl;
+
+    return contractAddress;
 }
 
 

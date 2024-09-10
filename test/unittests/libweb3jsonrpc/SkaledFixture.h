@@ -171,6 +171,8 @@ public:
 
     u256 eth_getTransactionCount( const std::string& _addressString );
 
+    Json::Value  eth_getTransactionReceipt( const std::string& _hash );
+
     ~CurlClient();
 };
 
@@ -185,7 +187,7 @@ public:
 
     void setupFirstKey();
 
-    void deployERC20();
+    string deployERC20();
 
     void setupTwoToTheNKeys( uint64_t _n );
     void doOneTinyTransfersIteration();
