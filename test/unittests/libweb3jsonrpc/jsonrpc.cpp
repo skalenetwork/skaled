@@ -546,7 +546,7 @@ void printOutputInALoop( bp::ipstream* _stream ) {
 
 
 
-// Define a function that will be called by each thread
+// Define a function that will be called by each thread_
 void blockPerformance( string& _skaledEndpoint, uint64_t _iterations ) {
     auto httpClient = new jsonrpc::HttpClient( _skaledEndpoint );
     httpClient->SetTimeout( 5000 );

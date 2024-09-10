@@ -214,7 +214,7 @@ public:
         const string& _to, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
-    void sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+    string sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         const string& _byteCode, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 

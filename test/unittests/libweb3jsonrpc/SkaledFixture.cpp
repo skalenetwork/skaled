@@ -243,7 +243,7 @@ void SkaledFixture::deployERC20() {
 
     CHECK( testAccounts.size() > 0 );
 
-    sendSingleDeploy( 0, this->testAccounts.begin()->second, content, gasPrice,
+    auto hash = sendSingleDeploy( 0, this->testAccounts.begin()->second, content, gasPrice,
         TransactionWait::WAIT_FOR_COMPLETION );
 
 
@@ -580,7 +580,7 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 }
 
 
-void SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+string SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
     const string& _byteCode, const u256& _gasPrice, TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
     auto accountNonce = _from->computeNonceForNextTransaction();
@@ -625,11 +625,12 @@ void SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccou
     CHECK( result["raw"] );
     CHECK( result["tx"] );
 
+    string txHash;
 
     try {
         auto payload = result["raw"].asString();
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
-        auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
+        txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
         CHECK(!txHash.empty());
     } catch ( std::exception& e ) {
         cout << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
@@ -639,10 +640,12 @@ void SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccou
 
     if ( _wait == TransactionWait::DONT_WAIT_FOR_COMPLETION ) {
         // dont wait for it to finish and return immediately
-        return;
+        return txHash;
     }
 
     waitForTransaction( _from );
+
+    return txHash;
 
     /*
     if ( this->verifyTransactions ) {
