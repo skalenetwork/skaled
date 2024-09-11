@@ -187,7 +187,8 @@ public:
     void deployERC20();
     string checkReceiptStatusAndGetGasUsed( string _hash);
 
-    void mintERC20( const string& _address, u256 _amount, u256 _gasPrice, TransactionWait _wait );
+    void mintERC20(std::shared_ptr< SkaledAccount >  _minter,
+        const string& _address, u256 _amount, u256 _gasPrice, TransactionWait _wait);
 
     void setupTwoToTheNKeys( uint64_t _n );
 
