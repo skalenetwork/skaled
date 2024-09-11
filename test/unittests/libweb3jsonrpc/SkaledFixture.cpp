@@ -675,7 +675,7 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount, std::shared_
     TransactionSkeleton ts = toTransactionSkeleton( t );
     ts.nonce = accountNonce;
     ts.nonce = accountNonce;
-    ts.gas = 1000000;
+    ts.gas = 10000000;
     ts.gasPrice = _gasPrice;
 
     Transaction transaction( ts );  // always legacy, no prefix byte
