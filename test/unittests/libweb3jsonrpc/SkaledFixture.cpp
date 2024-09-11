@@ -183,15 +183,20 @@ u256 CurlClient::eth_getTransactionCount( const std::string& _addressString ) {
 }
 
 Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
-    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":[")" +
-                              _hash + R"("],"id":1})";
+    std::string jsonPayload =
+        R"({"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":[")" + _hash +
+        R"("],"id":1})";
     Json::Value response;
     doRequestResponseAndCheckForError( jsonPayload, response );
 
     CHECK( response.isMember( "result" ) );
     CHECK( response["result"].isObject() );
+    CHECK( response["result"]["status"].isString());
+    if (response["result"]["status"].asString() == "0x0") {
+        cerr << response << endl;
+        throw std::runtime_error( "Transaction reverted" );
+    }
     return response["result"];
-
 }
 
 
@@ -239,7 +244,7 @@ void SkaledFixture::setupFirstKey() {
     ownerAccount = nullptr;
 }
 
-string SkaledFixture::deployERC20() {
+void SkaledFixture::deployERC20() {
     cout << "Deploying test ERC20 contract ... " << endl;
 
 
@@ -255,21 +260,51 @@ string SkaledFixture::deployERC20() {
 
     CHECK( testAccounts.size() > 0 );
 
-    auto hash = sendSingleDeploy( 0, this->testAccounts.begin()->second, content, gasPrice,
+    auto hash = sendSingleDeployOrSolidityCall( 0, this->testAccounts.begin()->second,
+        std::nullopt, content,
+        gasPrice,
         TransactionWait::WAIT_FOR_COMPLETION );
 
 
     auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( hash );
 
     CHECK( receipt.isMember( "contractAddress" ) );
-    CHECK( receipt["contractAddress"].isString());
+    CHECK( receipt["contractAddress"].isString() );
 
-    auto contractAddress = receipt["contractAddress"].asString();
+    erc20ContractAddress = receipt["contractAddress"].asString();
 
 
-    cout << "Deployed test ERC20 contract at address:" << contractAddress <<  endl;
+    cout << "Deployed test ERC20 contract at address:" << erc20ContractAddress << endl;
+}
 
-    return contractAddress;
+
+void SkaledFixture::mintERC20( const string& _address, u256 _amount ) {
+    cout << "Minting test ERC20 token " <<   endl;
+
+
+    auto gasPrice = getCurrentGasPrice();
+
+    CHECK( testAccounts.size() > 0 );
+    CHECK( _address.size() == 42 );
+    auto amountString = toHex(_amount);
+    CHECK( amountString.size() == 64);
+
+    auto data = this->MINT_FUNCTION_SELECTOR + _address.substr( 2 ) + amountString;
+
+    auto hash = sendSingleDeployOrSolidityCall( 0,
+        this->testAccounts.begin()->second, this->erc20ContractAddress,
+        data,
+        gasPrice,
+        TransactionWait::WAIT_FOR_COMPLETION );
+
+
+    auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( hash );
+
+    CHECK( receipt.isMember( "gasUsed" ) );
+    CHECK( receipt["gasUsed"].isString() );
+
+
+    cout << "Minted test ERC20, gas used " << receipt["gasUsed"].asString() << endl;
 }
 
 
@@ -602,8 +637,9 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 }
 
 
-string SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    const string& _byteCode, const u256& _gasPrice, TransactionWait _wait ) {
+string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+    std::optional< string > _to, const string& _data, const u256& _gasPrice,
+    TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
     auto accountNonce = _from->computeNonceForNextTransaction();
     u256 dstBalanceBefore;
@@ -630,8 +666,12 @@ string SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAcc
 
     Json::Value t;
     t["from"] = from;
+    if (_to) {
+        t["to"] = from;
+    }
     t["value"] = jsToDecimal( toJS( _amount ) );
-    t["data"] = "0x" + _byteCode;
+    CHECK( _data.size() % 2 == 0 );
+    t["data"] = "0x" + _data;
     TransactionSkeleton ts = toTransactionSkeleton( t );
     ts.nonce = accountNonce;
     ts.nonce = accountNonce;
@@ -653,7 +693,7 @@ string SkaledFixture::sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAcc
         auto payload = result["raw"].asString();
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
         txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
-        CHECK(!txHash.empty());
+        CHECK( !txHash.empty() );
     } catch ( std::exception& e ) {
         cout << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
         cout << e.what() << endl;

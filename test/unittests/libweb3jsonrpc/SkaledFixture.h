@@ -98,14 +98,10 @@ public:
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
-
-
-
-        if ( lastSentNonce.has_value()) {
+        if ( lastSentNonce.has_value() ) {
             throw std::runtime_error( "Previous transaction has not yet been confirmed" );
         }
         lastSentNonce = currentTransactionCountOnChain;
-
 
 
         return lastSentNonce.value();
@@ -124,7 +120,6 @@ public:
         currentTransactionCountOnChain++;
 
         lastSentNonce = std::nullopt;
-
     }
 
 private:
@@ -149,7 +144,6 @@ class CurlClient {
     string skaledEndpoint;
 
 public:
-
     static std::atomic< uint64_t > totalCallsCount;
 
     static uint64_t getTotalCallsCount();
@@ -171,7 +165,7 @@ public:
 
     u256 eth_getTransactionCount( const std::string& _addressString );
 
-    Json::Value  eth_getTransactionReceipt( const std::string& _hash );
+    Json::Value eth_getTransactionReceipt( const std::string& _hash );
 
     ~CurlClient();
 };
@@ -187,12 +181,14 @@ public:
 
     void setupFirstKey();
 
-    string deployERC20();
+    void deployERC20();
+
+    void mintERC20( const string& _address, u256 _amount );
 
     void setupTwoToTheNKeys( uint64_t _n );
     void doOneTinyTransfersIteration();
 
-    void sendTinyTransfersForAllAccounts(uint64_t _iterations);
+    void sendTinyTransfersForAllAccounts( uint64_t _iterations );
 
     void readInsecurePrivateKeyFromHardhatConfig();
 
@@ -216,8 +212,8 @@ public:
         const string& _to, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
-    string sendSingleDeploy( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-        const string& _byteCode, const u256& _gasPrice,
+    string sendSingleDeployOrSolidityCall( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+        std::optional< string > _to, const string& _data, const u256& _gasPrice,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
 
@@ -240,7 +236,8 @@ public:
     std::shared_ptr< SkaledAccount > ownerAccount;
     // map of test key addresses to secret keys
     map< string, std::shared_ptr< SkaledAccount > > testAccounts;
-    vector< shared_ptr<SkaledAccount>> testAccountsVector;
+    vector< shared_ptr< SkaledAccount > > testAccountsVector;
+    string erc20ContractAddress;
 
 
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
@@ -252,6 +249,9 @@ public:
     void waitForTransaction( std::shared_ptr< SkaledAccount > _account );
 
     int timeBetweenTransactionCompletionChecksMs = 1000;
+
+    // Keccak-256("mint(address,uint256)")
+    const string MINT_FUNCTION_SELECTOR = "6a627842";
 };
 
 
