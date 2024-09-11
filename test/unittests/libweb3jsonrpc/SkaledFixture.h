@@ -20,6 +20,9 @@ Modifications Copyright (C) 2024 SKALE Labs
 #ifndef SKALE_SKALEDFIXTURE_H
 #define SKALE_SKALEDFIXTURE_H
 
+#include "libdevcrypto/AES.h"
+
+
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
@@ -182,11 +185,15 @@ public:
     void setupFirstKey();
 
     void deployERC20();
+    string checkReceiptStatusAndGetGasUsed( string _hash);
 
-    void mintERC20( const string& _address, u256 _amount );
+    void mintERC20( const string& _address, u256 _amount, u256 _gasPrice, TransactionWait _wait );
 
     void setupTwoToTheNKeys( uint64_t _n );
+
     void doOneTinyTransfersIteration();
+
+    void mintAllKeysWithERC20();
 
     void sendTinyTransfersForAllAccounts( uint64_t _iterations );
 

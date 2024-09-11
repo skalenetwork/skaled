@@ -1111,7 +1111,9 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers ) {
 
     fixture.deployERC20();
 
-    fixture.mintERC20( fixture.testAccounts.begin()->first, u256(1) );
+    fixture.mintERC20(
+        fixture.testAccounts.begin()->first, u256( 1 ), fixture.getCurrentGasPrice(),
+        TransactionWait::WAIT_FOR_COMPLETION);
 
     fixture.setupTwoToTheNKeys(12);
 

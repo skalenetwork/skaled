@@ -191,8 +191,8 @@ Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
 
     CHECK( response.isMember( "result" ) );
     CHECK( response["result"].isObject() );
-    CHECK( response["result"]["status"].isString());
-    if (response["result"]["status"].asString() == "0x0") {
+    CHECK( response["result"]["status"].isString() );
+    if ( response["result"]["status"].asString() == "0x0" ) {
         cerr << response << endl;
         throw std::runtime_error( "Transaction reverted" );
     }
@@ -260,51 +260,45 @@ void SkaledFixture::deployERC20() {
 
     CHECK( testAccounts.size() > 0 );
 
-    auto hash = sendSingleDeployOrSolidityCall( 0, this->testAccounts.begin()->second,
-        std::nullopt, content,
-        gasPrice,
-        TransactionWait::WAIT_FOR_COMPLETION );
+    auto hash = sendSingleDeployOrSolidityCall( 0, this->testAccounts.begin()->second, std::nullopt,
+        content, gasPrice, TransactionWait::WAIT_FOR_COMPLETION );
 
 
     auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( hash );
-
     CHECK( receipt.isMember( "contractAddress" ) );
     CHECK( receipt["contractAddress"].isString() );
-
     erc20ContractAddress = receipt["contractAddress"].asString();
-
-
     cout << "Deployed test ERC20 contract at address:" << erc20ContractAddress << endl;
+    cout << "Gas used " << receipt["gasUsed"].asString() << endl;
 }
 
 
-void SkaledFixture::mintERC20( const string& _address, u256 _amount ) {
-    cout << "Minting test ERC20 token " <<   endl;
-
-
-    auto gasPrice = getCurrentGasPrice();
-
-    CHECK( testAccounts.size() > 0 );
-    CHECK( _address.size() == 42 );
-    auto amountString = toHex(_amount);
-    CHECK( amountString.size() == 64);
-
-    auto data = this->MINT_FUNCTION_SELECTOR + _address.substr( 2 ) + amountString;
-
-    auto hash = sendSingleDeployOrSolidityCall( 0,
-        this->testAccounts.begin()->second, this->erc20ContractAddress,
-        data,
-        gasPrice,
-        TransactionWait::WAIT_FOR_COMPLETION );
-
-
-    auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( hash );
+string SkaledFixture::checkReceiptStatusAndGetGasUsed( string _hash ) {
+    auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( _hash );
 
     CHECK( receipt.isMember( "gasUsed" ) );
     CHECK( receipt["gasUsed"].isString() );
 
+    return receipt["gasUsed"].asString();
+}
+void SkaledFixture::mintERC20(
+    const string& _address, u256 _amount, u256 _gasPrice, TransactionWait _wait ) {
+    cout << "Minting test ERC20 token " << endl;
 
-    cout << "Minted test ERC20, gas used " << receipt["gasUsed"].asString() << endl;
+
+    CHECK( testAccounts.size() > 0 );
+    CHECK( _address.size() == 42 );
+    auto amountString = toHex( _amount );
+    CHECK( amountString.size() == 64 );
+
+    auto data = this->MINT_FUNCTION_SELECTOR + _address.substr( 2 ) + amountString;
+
+    auto hash = sendSingleDeployOrSolidityCall(
+        0, this->testAccounts.begin()->second, this->erc20ContractAddress, data, _gasPrice, _wait );
+
+    if ( _wait == TransactionWait::WAIT_FOR_COMPLETION ) {
+        checkReceiptStatusAndGetGasUsed( hash );
+    }
 }
 
 
@@ -389,7 +383,7 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
 
 void SkaledFixture::doOneTinyTransfersIteration() {
     CHECK( threadsCountForTestTransactions <= testAccounts.size() );
-    auto transactionsPerThreaad = testAccounts.size() / threadsCountForTestTransactions;
+    auto transactionsPerThread = testAccounts.size() / threadsCountForTestTransactions;
 
     auto begin = getCurrentTimeMs();
 
@@ -402,13 +396,13 @@ void SkaledFixture::doOneTinyTransfersIteration() {
 
     for ( uint64_t accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
         if ( threadsCountForTestTransactions > 1 ) {
-            if ( accountNum % transactionsPerThreaad == 0 ) {
-                uint64_t threadNumber = accountNum / transactionsPerThreaad;
+            if ( accountNum % transactionsPerThread == 0 ) {
+                uint64_t threadNumber = accountNum / transactionsPerThread;
                 auto t = make_shared< thread >(
-                    [transactionsPerThreaad, threadNumber, gasPrice, this]() {
-                        for ( uint64_t j = 0; j < transactionsPerThreaad; j++ ) {
+                    [transactionsPerThread, threadNumber, gasPrice, this]() {
+                        for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
                             auto account =
-                                testAccountsVector.at( threadNumber * transactionsPerThreaad + j );
+                                testAccountsVector.at( threadNumber * transactionsPerThread + j );
                             sendTinyTransfer(
                                 account, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
                         }
@@ -442,6 +436,68 @@ void SkaledFixture::doOneTinyTransfersIteration() {
 
     cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
 }
+
+
+void SkaledFixture::mintAllKeysWithERC20() {
+    CHECK( threadsCountForTestTransactions <= testAccounts.size() );
+    auto transactionsPerThread = testAccounts.size() / threadsCountForTestTransactions;
+
+    auto begin = getCurrentTimeMs();
+
+    auto gasPrice = getCurrentGasPrice();
+
+    vector< shared_ptr< thread > > threads;
+
+    CHECK( testAccountsVector.size() == testAccounts.size() );
+
+
+    for ( uint64_t accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
+        if ( threadsCountForTestTransactions > 1 ) {
+            if ( accountNum % transactionsPerThread == 0 ) {
+                uint64_t threadNumber = accountNum / transactionsPerThread;
+                auto t = make_shared< thread >(
+                    [transactionsPerThread, threadNumber, gasPrice, this]() {
+                        for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
+                            auto account =
+                                testAccountsVector.at( threadNumber * transactionsPerThread + j );
+                            auto address = account->getAddressAsString();
+                            mintERC20( address, 1000000, gasPrice,
+                                TransactionWait::DONT_WAIT_FOR_COMPLETION );
+                        }
+                    } );
+                threads.push_back( t );
+            }
+        } else {
+            auto account = testAccountsVector.at( accountNum );
+            auto address = account->getAddressAsString();
+            mintERC20( address, 1000000, gasPrice,
+                TransactionWait::DONT_WAIT_FOR_COMPLETION );
+            CHECK( account->getLastSentNonce() >= 0 )
+            CHECK( testAccountsVector.at( accountNum )->getLastSentNonce() >= 0 );
+        }
+    }
+
+
+    if ( threadsCountForTestTransactions > 1 ) {
+        CHECK( threads.size() == threadsCountForTestTransactions );
+        for ( auto&& t : threads ) {
+            t->join();
+        }
+    }
+
+
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps"
+         << endl;
+
+
+    for ( auto&& account : testAccounts ) {
+        waitForTransaction( account.second );
+    };
+
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
+}
+
+
 void SkaledFixture::sendTinyTransfersForAllAccounts( uint64_t _iterations ) {
     cout << "Running tiny transfers for accounts :" << testAccounts.size() << endl;
 
@@ -637,9 +693,9 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 }
 
 
-string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    std::optional< string > _to, const string& _data, const u256& _gasPrice,
-    TransactionWait _wait ) {
+string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount,
+    std::shared_ptr< SkaledAccount > _from, std::optional< string > _to, const string& _data,
+    const u256& _gasPrice, TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
     auto accountNonce = _from->computeNonceForNextTransaction();
     u256 dstBalanceBefore;
@@ -666,7 +722,7 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount, std::shared_
 
     Json::Value t;
     t["from"] = from;
-    if (_to) {
+    if ( _to ) {
         t["to"] = from;
     }
     t["value"] = jsToDecimal( toJS( _amount ) );
