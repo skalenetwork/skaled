@@ -1659,7 +1659,7 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
         }
     }
 
-    then convert to yul: solc --ir p0test.sol >p0test.yul
+    then convert to yul:  --ir p0test.sol` >p0test.yul
 
     then change code:
                     {

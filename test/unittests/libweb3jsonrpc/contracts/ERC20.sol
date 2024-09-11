@@ -28,15 +28,11 @@ contract ERC20 is IERC20 {
     uint256 public totalSupply;
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    string public name;
-    string public symbol;
-    uint8 public decimals;
+    string public name = "SKALE Test";
+    string public symbol = "SKL";
+    uint8 public decimals = 18;
 
-    constructor(string memory _name, string memory _symbol, uint8 _decimals) {
-        name = _name;
-        symbol = _symbol;
-        decimals = _decimals;
-    }
+
 
     function transfer(address recipient, uint256 amount)
         external

@@ -1,6 +1,6 @@
 # You need solc preinstalled
 # sudo add-apt-repository ppa:ethereum/ethereum
-# sudo apt install solc
+# x`
 
 
 import subprocess
