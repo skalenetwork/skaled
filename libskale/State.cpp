@@ -1036,10 +1036,6 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         }
 
 
-        // since we committed changes corresponding to a particular block
-        // we need to create a new readonly snap
-        LDB_CHECK(m_orig_db);
-        m_orig_db->createBlockSnap(_envInfo.number());
         break;
     }
     case Permanence::Uncommitted:

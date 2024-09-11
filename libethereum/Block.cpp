@@ -571,6 +571,12 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
 
+
+    // since we committed changes corresponding to a particular block
+    // we need to create a new readonly snap
+    LDB_CHECK(m_state.getOriginalDb());
+    m_state.getOriginalDb()->createBlockSnap( info().number() );
+
     // do a simple sanity check from time to time
     static uint64_t sanityCheckCounter = 0;
     if ( sanityCheckCounter++ % 10000 == 0 ) {
