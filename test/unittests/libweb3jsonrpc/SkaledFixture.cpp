@@ -270,6 +270,11 @@ void SkaledFixture::deployERC20() {
     erc20ContractAddress = receipt["contractAddress"].asString();
     cout << "Deployed test ERC20 contract at address:" << erc20ContractAddress << endl;
     cout << "Gas used " << receipt["gasUsed"].asString() << endl;
+
+
+    // mint zero tokens to check contract works
+    mintERC20( testAccounts.begin()->second, testAccounts.begin()->first, u256( 0 ),
+        getCurrentGasPrice(), TransactionWait::WAIT_FOR_COMPLETION );
 }
 
 
@@ -281,11 +286,10 @@ string SkaledFixture::checkReceiptStatusAndGetGasUsed( string _hash ) {
 
     return receipt["gasUsed"].asString();
 }
-void SkaledFixture::mintERC20(
-    const string& _address, u256 _amount, u256 _gasPrice, TransactionWait _wait ) {
+void SkaledFixture::mintERC20( std::shared_ptr< SkaledAccount > _minter, const string& _address,
+    u256 _amount, u256 _gasPrice, TransactionWait _wait ) {
     cout << "Minting test ERC20 token " << endl;
-
-
+    CHECK( _minter );
     CHECK( testAccounts.size() > 0 );
     CHECK( _address.size() == 42 );
     auto amountString = toHex( _amount );
@@ -294,7 +298,7 @@ void SkaledFixture::mintERC20(
     auto data = this->MINT_FUNCTION_SELECTOR + _address.substr( 2 ) + amountString;
 
     auto hash = sendSingleDeployOrSolidityCall(
-        0, this->testAccounts.begin()->second, this->erc20ContractAddress, data, _gasPrice, _wait );
+        0, _minter, this->erc20ContractAddress, data, _gasPrice, _wait );
 
     if ( _wait == TransactionWait::WAIT_FOR_COMPLETION ) {
         checkReceiptStatusAndGetGasUsed( hash );
@@ -398,8 +402,8 @@ void SkaledFixture::doOneTinyTransfersIteration() {
         if ( threadsCountForTestTransactions > 1 ) {
             if ( accountNum % transactionsPerThread == 0 ) {
                 uint64_t threadNumber = accountNum / transactionsPerThread;
-                auto t = make_shared< thread >(
-                    [transactionsPerThread, threadNumber, gasPrice, this]() {
+                auto t =
+                    make_shared< thread >( [transactionsPerThread, threadNumber, gasPrice, this]() {
                         for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
                             auto account =
                                 testAccountsVector.at( threadNumber * transactionsPerThread + j );
@@ -455,13 +459,13 @@ void SkaledFixture::mintAllKeysWithERC20() {
         if ( threadsCountForTestTransactions > 1 ) {
             if ( accountNum % transactionsPerThread == 0 ) {
                 uint64_t threadNumber = accountNum / transactionsPerThread;
-                auto t = make_shared< thread >(
-                    [transactionsPerThread, threadNumber, gasPrice, this]() {
+                auto t =
+                    make_shared< thread >( [transactionsPerThread, threadNumber, gasPrice, this]() {
                         for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
                             auto account =
                                 testAccountsVector.at( threadNumber * transactionsPerThread + j );
                             auto address = account->getAddressAsString();
-                            mintERC20( address, 1000000, gasPrice,
+                            mintERC20( account, address, 1000000, gasPrice,
                                 TransactionWait::DONT_WAIT_FOR_COMPLETION );
                         }
                     } );
@@ -470,8 +474,8 @@ void SkaledFixture::mintAllKeysWithERC20() {
         } else {
             auto account = testAccountsVector.at( accountNum );
             auto address = account->getAddressAsString();
-            mintERC20( address, 1000000, gasPrice,
-                TransactionWait::DONT_WAIT_FOR_COMPLETION );
+            mintERC20(
+                account, address, 1000000, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
             CHECK( account->getLastSentNonce() >= 0 )
             CHECK( testAccountsVector.at( accountNum )->getLastSentNonce() >= 0 );
         }
