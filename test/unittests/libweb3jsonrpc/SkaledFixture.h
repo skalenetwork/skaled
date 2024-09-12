@@ -43,6 +43,8 @@ size_t WriteCallback( void* contents, size_t size, size_t nmemb, void* userp );
 
 enum class TransactionWait { WAIT_FOR_COMPLETION, DONT_WAIT_FOR_COMPLETION };
 
+enum class TransferType { NATIVE, ERC20 };
+
 class SkaledAccount {
     Secret key;
     u256 currentTransactionCountOnChain = 0;
@@ -192,11 +194,11 @@ public:
 
     void setupTwoToTheNKeys( uint64_t _n );
 
-    void doOneTinyTransfersIteration();
+    void doOneTinyTransfersIteration( TransferType _transferType );
 
     void mintAllKeysWithERC20();
 
-    void sendTinyTransfersForAllAccounts( uint64_t _iterations );
+    void sendTinyTransfersForAllAccounts( uint64_t _iterations, TransferType _transferType );
 
     void readInsecurePrivateKeyFromHardhatConfig();
 
@@ -231,6 +233,7 @@ public:
 
 
     void sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
+        TransferType _transferType,
         TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
 
 

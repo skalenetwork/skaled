@@ -384,7 +384,7 @@ void SkaledFixture::setupTwoToTheNKeys( uint64_t _n ) {
 }
 
 
-void SkaledFixture::doOneTinyTransfersIteration() {
+void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
     CHECK( threadsCountForTestTransactions <= testAccounts.size() );
     auto transactionsPerThread = testAccounts.size() / threadsCountForTestTransactions;
 
@@ -401,20 +401,21 @@ void SkaledFixture::doOneTinyTransfersIteration() {
         if ( threadsCountForTestTransactions > 1 ) {
             if ( accountNum % transactionsPerThread == 0 ) {
                 uint64_t threadNumber = accountNum / transactionsPerThread;
-                auto t =
-                    make_shared< thread >( [transactionsPerThread, threadNumber, gasPrice, this]() {
+                auto t = make_shared< thread >(
+                    [transactionsPerThread, threadNumber, gasPrice, _transferType, this]() {
                         for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
                             auto account =
                                 testAccountsVector.at( threadNumber * transactionsPerThread + j );
-                            sendTinyTransfer(
-                                account, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+                            sendTinyTransfer( account, gasPrice, _transferType,
+                                TransactionWait::DONT_WAIT_FOR_COMPLETION );
                         }
                     } );
                 threads.push_back( t );
             }
         } else {
             auto oldAccount = testAccountsVector.at( accountNum );
-            sendTinyTransfer( oldAccount, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+            sendTinyTransfer(
+                oldAccount, gasPrice, _transferType, TransactionWait::DONT_WAIT_FOR_COMPLETION );
             CHECK( oldAccount->getLastSentNonce() >= 0 )
             CHECK( testAccountsVector.at( accountNum )->getLastSentNonce() >= 0 );
         }
@@ -497,15 +498,17 @@ void SkaledFixture::mintAllKeysWithERC20() {
         waitForTransaction( account.second );
     };
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " Mint total tps" << endl;
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " Mint total tps"
+         << endl;
 }
 
 
-void SkaledFixture::sendTinyTransfersForAllAccounts( uint64_t _iterations ) {
+void SkaledFixture::sendTinyTransfersForAllAccounts(
+    uint64_t _iterations, TransferType _transferType ) {
     cout << "Running tiny transfers for accounts :" << testAccounts.size() << endl;
 
     for ( uint64_t iteration = 0; iteration < _iterations; iteration++ ) {
-        doOneTinyTransfersIteration();
+        doOneTinyTransfersIteration( _transferType );
     }
 }
 
@@ -822,8 +825,8 @@ void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from
 }
 
 
-void SkaledFixture::sendTinyTransfer(
-    std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice, TransactionWait _wait ) {
+void SkaledFixture::sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
+    TransferType, TransactionWait _wait ) {
     auto fee = _gasPrice * 21000;
 
     if ( this->verifyTransactions ) {
