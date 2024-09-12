@@ -220,7 +220,7 @@ public:
     /// This will append @a _t to the transaction list and change the state accordingly.
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
-        int64_t _transactionIndex = -1);
+        int64_t _transactionIndex = -1 );
 
 #ifdef HISTORIC_STATE
     ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
@@ -250,7 +250,7 @@ public:
 
     /// Sync all transactions unconditionally
     std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice);
+        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.

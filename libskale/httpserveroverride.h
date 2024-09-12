@@ -142,8 +142,7 @@ public:
     void onClose( const string& reason, int local_close_code,
         const string& local_close_code_as_str ) override;
     void onFail() override;
-    void onLogMessage(
-        skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) override;
+    void onLogMessage( skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) override;
 
     string desc( bool isColored = true ) const {
         return getShortPeerDescription( isColored, false, false );
@@ -228,7 +227,7 @@ public:
     typedef std::lock_guard< mutex_type > lock_type;
     typedef skutils::retain_release_ptr< SkaleWsPeer > skale_peer_ptr_t;
     typedef std::map< string, skale_peer_ptr_t > map_skale_peers_t;  // maps m_strPeerQueueID
-                                                                          // -> skale peer pointer
+                                                                     // -> skale peer pointer
 
 protected:
     mutable mutex_type m_mtxAllPeers;
@@ -422,14 +421,14 @@ public:
 
 protected:
     skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& _joIn,
-        const string& _protocol, int _serverIndex, string _origin, int _ipVer,
-        int _port, e_server_mode_t _esm );
+        const string& _protocol, int _serverIndex, string _origin, int _ipVer, int _port,
+        e_server_mode_t _esm );
 
 private:
     bool implStartListening(  // web socket
         std::shared_ptr< SkaleRelayWS >& pSrv, int ipVer, const string& strAddr, int nPort,
-        const string& strPathSslKey, const string& strPathSslCert,
-        const string& strPathSslCA, int nServerIndex, e_server_mode_t esm );
+        const string& strPathSslKey, const string& strPathSslCert, const string& strPathSslCA,
+        int nServerIndex, e_server_mode_t esm );
     bool implStartListening(  // proxygen HTTP
         std::shared_ptr< SkaleRelayProxygenHTTP >& pSrv, int ipVer, const string& strAddr,
         int nPort, const string& strPathSslKey, const string& strPathSslCert,
@@ -534,8 +533,8 @@ protected:
     void eth_sendRawTransaction( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_getTransactionReceipt( const string& strOrigin,
-        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+    void eth_getTransactionReceipt( const string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
 
     void eth_call( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
@@ -546,8 +545,8 @@ protected:
     void eth_getStorageAt( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );
 
-    void eth_getTransactionCount( const string& strOrigin,
-        const rapidjson::Document& joRequest, rapidjson::Document& joResponse );
+    void eth_getTransactionCount( const string& strOrigin, const rapidjson::Document& joRequest,
+        rapidjson::Document& joResponse );
 
     void eth_getCode( const string& strOrigin, const rapidjson::Document& joRequest,
         rapidjson::Document& joResponse );

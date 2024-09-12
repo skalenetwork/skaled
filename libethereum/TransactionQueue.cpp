@@ -231,7 +231,7 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
 }
 
 // note - this function is currently only used when tracing is enabled
-bool TransactionQueue::isTransactionKnown(h256& _hash) const {
+bool TransactionQueue::isTransactionKnown( h256& _hash ) const {
     h256Hash rv;
     {  // block
         ReadGuard l( m_lock );

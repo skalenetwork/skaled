@@ -87,7 +87,6 @@ public:
     virtual ~ClientBase() {}
 
 
-
     LocalisedLogEntries logs( unsigned _watchId ) const override;
     LocalisedLogEntries logs( LogFilter const& _filter ) const override;
     virtual void prependLogsFromBlock( LogFilter const& _filter, h256 const& _blockHash,
@@ -197,7 +196,6 @@ public:
         u256 const& _gasPrice, bytes const& _data );
 
 
-
 protected:
     /// The interface that must be implemented in any class deriving this.
     /// {
@@ -223,12 +221,8 @@ protected:
 
 
     // get read only latest block copy
-    Block getReadOnlyLatestBlockCopy()  const {
-        return postSeal()   .getReadOnlyCopy();
-    }
-
+    Block getReadOnlyLatestBlockCopy() const { return postSeal().getReadOnlyCopy(); }
 };
-
 
 
 }  // namespace eth

@@ -123,7 +123,7 @@ void OverlayDB::removeAllPartialTransactionReceipts() {
     string prefix( "safeLastTransactionReceipts." );
     vector< string > keys;
     if ( m_db_face ) {
-        m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice  ) {
+        m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice ) {
             const std::string keyStr( key.begin(), key.end() );
             keys.push_back( keyStr );
             return true;

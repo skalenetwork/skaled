@@ -225,7 +225,7 @@ void Client::populateNewChainStateFromGenesis() {
     // initing the state. This is probably never going to happen anyway
     // since block processing happens very early in Client init
     // but better safe than sorry
-    DEV_GUARDED(m_blockImportMutex)
+    DEV_GUARDED( m_blockImportMutex )
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateCopyAndClearCaches();
     m_state.populateFrom( bc().chainParams().genesisState );
@@ -241,7 +241,7 @@ void Client::populateNewChainStateFromGenesis() {
 void Client::initStateFromDiskOrGenesis() {
     // write lock so transactions are not processed while state initialized
     // state initialization happens very early at client init but better safe than sorry
-    DEV_WRITE_GUARDED( x_working);
+    DEV_WRITE_GUARDED( x_working );
 #ifdef HISTORIC_STATE
     // Check if If the historic state databases do not yet exist
     bool historicStateExists = fs::exists(
@@ -280,13 +280,9 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     m_bq.setChain( bc() );
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds( 30 );
-    m_tqReady = m_tq.onReady( [=]() {
-        this->onTransactionQueueReady();
-    } );
+    m_tqReady = m_tq.onReady( [=]() { this->onTransactionQueueReady(); } );
     m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
-    m_bqReady = m_bq.onReady( [=]() {
-        this->onBlockQueueReady();
-    } );
+    m_bqReady = m_bq.onReady( [=]() { this->onBlockQueueReady(); } );
     m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
     bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
@@ -319,7 +315,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     // when we start, we create a read only State DB snap to be used in eth calls
     // after that, new snaps are created after each block is processed
 
-    m_state.createReadOnlyStateDBSnap(number());
+    m_state.createReadOnlyStateDBSnap( number() );
 
     SchainPatch::init( chainParams() );
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
@@ -527,8 +523,7 @@ size_t Client::importTransactionsAsBlock(
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
     size_t cntSucceeded = 0;
-    cntSucceeded = syncTransactions(
-        _transactions, _gasPrice, _timestamp);
+    cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
     sealUnconditionally( false );
     importWorkingBlock();
 
@@ -555,8 +550,7 @@ size_t Client::importTransactionsAsBlock(
 }
 
 size_t Client::syncTransactions(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp
-) {
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
     assert( m_skaleHost );
 
     while ( m_working.isSealed() ) {
@@ -574,7 +568,7 @@ size_t Client::syncTransactions(
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
         tie( newPendingReceipts, goodReceipts ) =
-            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice);
+            m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
@@ -1079,7 +1073,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
     // We need to check external gas under mutex to be sure about current block number
     // correctness
     const_cast< Transaction& >( _t ).checkOutExternalGas(
-            chainParams(), bc().info().timestamp(), number(), false );
+        chainParams(), bc().info().timestamp(), number(), false );
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
@@ -1416,6 +1410,3 @@ bytes Client::historicStateCodeAt( Address _a, BlockNumber _block ) const {
     return blockByNumber( _block ).mutableState().mutableHistoricState().code( _a );
 }
 #endif
-
-
-

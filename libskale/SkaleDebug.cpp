@@ -6,22 +6,22 @@
 #include <sstream>
 
 
-std::atomic<bool> SkaleDebugInterface::g_isEnabled = true;
+std::atomic< bool > SkaleDebugInterface::g_isEnabled = true;
 
-#define CHECK_ENABLED       \
-        if ( !SkaleDebugInterface::g_isEnabled ) { \
-            return;         \
-        };
+#define CHECK_ENABLED                          \
+    if ( !SkaleDebugInterface::g_isEnabled ) { \
+        return;                                \
+    };
 
-#define CHECK_ENABLED_STR       \
-if ( !SkaleDebugInterface::g_isEnabled ) { \
-return "";         \
-};
+#define CHECK_ENABLED_STR                      \
+    if ( !SkaleDebugInterface::g_isEnabled ) { \
+        return "";                             \
+    };
 
-#define CHECK_ENABLED_INT       \
-if ( !SkaleDebugInterface::g_isEnabled ) { \
-return 0;         \
-};
+#define CHECK_ENABLED_INT                      \
+    if ( !SkaleDebugInterface::g_isEnabled ) { \
+        return 0;                              \
+    };
 
 SkaleDebugInterface::SkaleDebugInterface() {}
 

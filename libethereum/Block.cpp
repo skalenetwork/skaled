@@ -454,7 +454,7 @@ inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
     static int64_t transactionCount = 0;
 
     if ( FAIL_AT_TX_NUM ) {
-        if ( transactionCount == std::stoi( FAIL_AT_TX_NUM )) {
+        if ( transactionCount == std::stoi( FAIL_AT_TX_NUM ) ) {
             // fail hard for test
             cerror << "Test: crashing skaled on purpose after processing  " << i
                    << " transactions in block";
@@ -574,7 +574,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     // since we committed changes corresponding to a particular block
     // we need to create a new readonly snap
-    LDB_CHECK(m_state.getOriginalDb());
+    LDB_CHECK( m_state.getOriginalDb() );
     m_state.getOriginalDb()->createBlockSnap( info().number() );
 
     // do a simple sanity check from time to time

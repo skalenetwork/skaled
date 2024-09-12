@@ -525,16 +525,14 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
-
-
-
-
     boost::chrono::high_resolution_clock::time_point skaledTimeStart;
     skaledTimeStart = boost::chrono::high_resolution_clock::now();
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
-    auto milliseconds = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    auto milliseconds = std::chrono::duration_cast< std::chrono::microseconds >(
+        std::chrono::system_clock::now().time_since_epoch() )
+                            .count();
 
     if ( m_ignoreNewBlocks ) {
         LOG( m_warningLogger ) << "WARNING: skaled got new block #" << _blockID
@@ -632,7 +630,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 haveConsensusBorn = true;
             }
 
-            if ( SkaleDebugInterface::g_isEnabled  && m_tq.isTransactionKnown( sha ) != 0 ) {
+            if ( SkaleDebugInterface::g_isEnabled && m_tq.isTransactionKnown( sha ) != 0 ) {
                 // this trace is expensive since it will aquire a read lock on transaction queue
                 LOG( m_traceLogger )
                     << "Consensus returned future transaction that we didn't yet send";
@@ -644,12 +642,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         total_arrived += out_txns.size();
 
-        if (_blockID != m_client.number() + 1 ) {
-            LOG(m_errorLogger) << "Mismatch in block number:SKALED_NUMBER:" <<
-                m_client.number() << ":CONSENSUS_NUMBER:" << _blockID;
-            assert(false);
+        if ( _blockID != m_client.number() + 1 ) {
+            LOG( m_errorLogger ) << "Mismatch in block number:SKALED_NUMBER:" << m_client.number()
+                                 << ":CONSENSUS_NUMBER:" << _blockID;
+            assert( false );
         }
-
 
 
         m_debugTracer.tracepoint( "import_block" );
@@ -701,7 +698,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             LOG( m_infoLogger ) << "Rotation is completed. Instance is exiting";
         }
 
-        std::cerr << std::chrono::duration_cast<std::chrono::microseconds >(std::chrono::system_clock::now().time_since_epoch()).count() - milliseconds << std::endl;
+        std::cerr << std::chrono::duration_cast< std::chrono::microseconds >(
+                         std::chrono::system_clock::now().time_since_epoch() )
+                             .count() -
+                         milliseconds
+                  << std::endl;
     }
 
 

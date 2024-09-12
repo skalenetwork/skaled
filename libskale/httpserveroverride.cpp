@@ -550,17 +550,20 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
     skutils::unddos::e_high_load_detection_result_t ehldr =
         pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin, strMethod );
     switch ( ehldr ) {
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_sec:  // ban by too high load per
-                                                                       // minute
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_min:  // ban by too high load
-                                                                          // per second
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:      // still banned
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_sec:  // ban by too
+                                                                                       // high load
+                                                                                       // per minute
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_min:  // ban by too
+                                                                                       // high load
+                                                                                       // per second
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:  // still banned
     case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
         json joErrorResponce;
         joErrorResponce["id"] = joID;
         json joErrorObj;
         joErrorObj["code"] = -32000;
-        joErrorObj["message"] = "Too many request for this method from this IP address";;
+        joErrorObj["message"] = "Too many request for this method from this IP address";
+        ;
         joErrorResponce["error"] = joErrorObj;
         string strResponse = joErrorResponce.dump();
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
@@ -631,13 +634,12 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 a.set_json_err( joErrorResponce );
             } catch ( ... ) {
                 const char* e = "unknown exception in SkaleServerOverride";
-                clog( dev::VerbosityError,  pThis->getRelay().nfoGetSchemeUC() ) <<
-                                               "/"  <<
-                                               to_string( pThis->getRelay().serverIndex() ) <<
-                    cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/ERR !!! " ) <<
-                           pThis->desc() + cc::ws_tx( " !!! " ) + e;
+                clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() )
+                    << "/" << to_string( pThis->getRelay().serverIndex() )
+                    << cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                      std::to_string( pThis->getRelay().serverIndex() ) +
+                                      "/ERR !!! " )
+                    << pThis->desc() + cc::ws_tx( " !!! " ) + e;
                 json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 json joErrorObj;
@@ -1814,7 +1816,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
     static string testnet_proxy_ip_address = hostname_to_ip( "testnet-api.skalenodes.com" );
 
     skutils::unddos::e_high_load_detection_result_t ehldr =
-            skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
+        skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
     if ( str_unddos_origin == mainnet_proxy_ip_address ||
          str_unddos_origin == testnet_proxy_ip_address ) {
         ehldr = skutils::unddos::e_high_load_detection_result_t::ehldr_no_error;
@@ -1822,11 +1824,13 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         ehldr = unddos_.register_call_from_origin( str_unddos_origin, strMethod );
     }
     switch ( ehldr ) {
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_sec:     // ban by too high
-                                                                          // load per minute
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_min:  // ban by too high
-                                                                          // load per second
-    case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:      // still banned
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_sec:  // ban by too
+                                                                                       // high load
+                                                                                       // per minute
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_detected_ban_per_min:  // ban by too
+                                                                                       // high load
+                                                                                       // per second
+    case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:  // still banned
     case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
         if ( strMethod.empty() )
             strMethod = isBatch ? "batch_json_rpc_request" : "unknown_json_rpc_method";
@@ -1996,7 +2000,7 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
         if ( strAddr.empty() || nPort <= 0 )
             return true;
         cnote << "starting proxygen" << ( bIsSSL ? "HTTPS" : "HTTP" ) << "/" << nServerIndex << "/"
-               << esm2str( esm ) << " server on address " << strAddr << " and port " << nPort;
+              << esm2str( esm ) << " server on address " << strAddr << " and port " << nPort;
 
 
         // check if somebody is already listening
@@ -2012,7 +2016,7 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
         cnote << "Started server";
         return true;
     } catch ( const std::exception& ex ) {
-        cerror <<  "Failed to start proxygen)" << ex.what();
+        cerror << "Failed to start proxygen)" << ex.what();
     } catch ( ... ) {
         cerror << "Failed to start proxygen: unknown exception";
     }
@@ -2038,8 +2042,8 @@ bool SkaleServerOverride::implStopListening(  // web socket
         int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortWSS4_ : bo.nBasePortWS4_ ) :
                                        ( bIsSSL ? bo.nBasePortWSS6_ : bo.nBasePortWS6_ ) ) +
                     nServerIndex;
-        ctrace << "Will stop " << ( bIsSSL ? "WSS" : "WS" ) << " server on address " << strAddr  +
-                " and port "  << nPort << "/"  << esm2str( esm );
+        ctrace << "Will stop " << ( bIsSSL ? "WSS" : "WS" ) << " server on address "
+               << strAddr + " and port " << nPort << "/" << esm2str( esm );
         if ( pSrv->isRunning() )
             pSrv->stop();
         pSrv.reset();
@@ -2276,7 +2280,7 @@ bool SkaleServerOverride::StartListening() {
                 skutils::http_pg::pg_accumulate_start( fnHandler, pg_threads_, pg_threads_limit_ );
             skutils::http_pg::pg_accumulate_clear();
             if ( !m_proxygenServer ) {
-                cerror <<  "Failed to start proxygen server";
+                cerror << "Failed to start proxygen server";
                 return false;
             }
         }

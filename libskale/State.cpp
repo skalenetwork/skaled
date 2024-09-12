@@ -259,7 +259,6 @@ State::State( const State& _s )
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
-
 }
 
 State& State::operator=( const State& _s ) {
@@ -291,11 +290,12 @@ dev::h256 State::safeLastExecutedTransactionHash() {
     return shaLastTx;
 }
 
-dev::eth::TransactionReceipts State::safePartialTransactionReceipts(eth::BlockNumber _blockNumber) {
+dev::eth::TransactionReceipts State::safePartialTransactionReceipts(
+    eth::BlockNumber _blockNumber ) {
     dev::eth::TransactionReceipts partialTransactionReceipts;
     if ( m_db_ptr ) {
-        auto rawTransactionReceipts = m_db_ptr->getPartialTransactionReceipts(_blockNumber);
-        for (auto&& rawTransactionReceipt : rawTransactionReceipts ) {
+        auto rawTransactionReceipts = m_db_ptr->getPartialTransactionReceipts( _blockNumber );
+        for ( auto&& rawTransactionReceipt : rawTransactionReceipts ) {
             dev::RLP rlp( rawTransactionReceipt );
             dev::eth::TransactionReceipt receipt( rlp.data() );
             partialTransactionReceipts.push_back( receipt );
@@ -314,14 +314,13 @@ void State::safeRemoveAllPartialTransactionReceipts() {
 }
 
 
-void State::safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
-    dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex) {
+void State::safeSetAndCommitPartialTransactionReceipt(
+    const dev::bytes& _receipt, dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
     if ( m_db_ptr ) {
-        m_db_ptr->setPartialTransactionReceipt( _receipt,  _blockNumber, _transactionIndex );
+        m_db_ptr->setPartialTransactionReceipt( _receipt, _blockNumber, _transactionIndex );
         m_db_ptr->commit();
     }
 }
-
 
 
 void State::populateFrom( eth::AccountMap const& _map ) {
@@ -353,7 +352,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 }
 
 std::unordered_map< Address, u256 > State::addresses() const {
-    SharedDBGuard lock(*this);
+    SharedDBGuard lock( *this );
 
     std::unordered_map< Address, u256 > addresses;
     for ( auto const& h160StringPair : m_db_ptr->accounts() ) {
@@ -429,7 +428,7 @@ eth::Account* State::account( Address const& _address ) {
     // Populate basic info.
     bytes stateBack;
     {
-        SharedDBGuard lock(*this);
+        SharedDBGuard lock( *this );
 
         stateBack = asBytes( m_db_ptr->lookup( _address ) );
     }
@@ -479,8 +478,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
         removeEmptyAccounts();
 
     {
-
-        LDB_CHECK(!m_isReadOnlySnapBasedState);
+        LDB_CHECK( !m_isReadOnlySnapBasedState );
 
         boost::unique_lock< boost::shared_mutex > lock( *x_db_ptr );
 
@@ -642,14 +640,13 @@ void State::kill( Address _addr ) {
 
 
 std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contract ) const {
-    SharedDBGuard lock(*this);
+    SharedDBGuard lock( *this );
     return storage_WITHOUT_LOCK( _contract );
 }
 
 
 std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     const Address& _contract ) const {
-
     std::map< h256, std::pair< u256, u256 > > storage;
     for ( auto const& addressValuePair : m_db_ptr->storage( _contract ) ) {
         u256 const& address = addressValuePair.first;
@@ -689,7 +686,7 @@ u256 State::storage( Address const& _id, u256 const& _key ) const {
             return memoryIterator->second;
 
         // Not in the storage cache - go to the DB.
-        SharedDBGuard lock(*this);
+        SharedDBGuard lock( *this );
         u256 value = m_db_ptr->lookup( _id, _key );
         acc->setStorageCache( _key, value );
         return value;
@@ -744,7 +741,7 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
             return memoryPtr->second;
         }
 
-        SharedDBGuard lock(*this);
+        SharedDBGuard lock( *this );
         u256 value = m_db_ptr->lookup( _contract, _key );
         acc->setStorageCache( _key, value );
         return value;
@@ -799,7 +796,7 @@ bytes const& State::code( Address const& _addr ) const {
     if ( a->code().empty() ) {
         // Load the code from the backend.
         eth::Account* mutableAccount = const_cast< eth::Account* >( a );
-        SharedDBGuard lock(*this);
+        SharedDBGuard lock( *this );
         mutableAccount->noteCode( m_db_ptr->lookupAuxiliary( _addr, Auxiliary::CODE ) );
         eth::CodeSizeCache::instance().store( a->codeHash(), a->code().size() );
     }
@@ -910,9 +907,8 @@ void State::clearAllCaches() {
 }
 
 
-
 State State::createStateCopyAndClearCaches() const {
-    LDB_CHECK(!m_isReadOnlySnapBasedState);
+    LDB_CHECK( !m_isReadOnlySnapBasedState );
     State stateCopy = State( *this );
     stateCopy.clearCaches();
     return stateCopy;
@@ -920,8 +916,8 @@ State State::createStateCopyAndClearCaches() const {
 
 
 State State::createReadOnlySnapBasedCopy() const {
-    LDB_CHECK(!m_isReadOnlySnapBasedState);
-    State stateCopy = *this ;
+    LDB_CHECK( !m_isReadOnlySnapBasedState );
+    State stateCopy = *this;
     stateCopy.m_isReadOnlySnapBasedState = true;
     stateCopy.clearAllCaches();
     // get the snap for the latest block
@@ -931,8 +927,9 @@ State State::createReadOnlySnapBasedCopy() const {
     LDB_CHECK( stateCopy.m_snap )
     // the state does not use any locking since it is based on db snapshot
     stateCopy.x_db_ptr = nullptr;
-    stateCopy.m_db_ptr = make_shared< OverlayDB >(
-        make_unique< batched_io::read_only_snap_based_batched_db >( stateCopy.m_orig_db, stateCopy.m_snap ) );
+    stateCopy.m_db_ptr =
+        make_shared< OverlayDB >( make_unique< batched_io::read_only_snap_based_batched_db >(
+            stateCopy.m_orig_db, stateCopy.m_snap ) );
     return stateCopy;
 }
 
@@ -946,7 +943,7 @@ bool State::connected() const {
 bool State::empty() const {
     if ( m_cache.empty() ) {
         if ( m_db_ptr ) {
-            SharedDBGuard lock(*this);
+            SharedDBGuard lock( *this );
             if ( m_db_ptr->empty() ) {
                 return true;
             }
@@ -1016,8 +1013,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         LDB_CHECK( _transactionIndex >= 0 );
         RLPStream stream;
         receipt.streamRLP( stream );
-        m_db_ptr->setPartialTransactionReceipt( stream.out(), (BlockNumber) _envInfo.number(),
-            (uint64_t) _transactionIndex );
+        m_db_ptr->setPartialTransactionReceipt(
+            stream.out(), ( BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
         m_fs_ptr->commit();
 
@@ -1028,10 +1025,10 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         // do a simple sanity check each ten thousand transactions that we correctly
         // saved partial transaction receipt
-        static uint64_t sanityCheckCounter= 0;
+        static uint64_t sanityCheckCounter = 0;
         sanityCheckCounter++;
-        if (sanityCheckCounter % 10000 == 0) {
-            auto receipts  = safePartialTransactionReceipts( _envInfo.number() );
+        if ( sanityCheckCounter % 10000 == 0 ) {
+            auto receipts = safePartialTransactionReceipts( _envInfo.number() );
             LDB_CHECK( receipts.back().rlp() == receipt.rlp() );
         }
 
@@ -1169,7 +1166,7 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
     return _out;
 }
 
-void State::createReadOnlyStateDBSnap(uint64_t _blockNumber) {
-    LDB_CHECK(m_orig_db);
-    m_orig_db->createBlockSnap(_blockNumber);
+void State::createReadOnlyStateDBSnap( uint64_t _blockNumber ) {
+    LDB_CHECK( m_orig_db );
+    m_orig_db->createBlockSnap( _blockNumber );
 }

@@ -43,9 +43,8 @@
 #include "OverlayFS.h"
 #include <libdevcore/DBImpl.h>
 
-#include <boost/chrono/io/utility/to_string.hpp>
 #include <openssl/rand.h>
-
+#include <boost/chrono/io/utility/to_string.hpp>
 
 
 namespace std {
@@ -164,23 +163,22 @@ using ChangeLog = std::vector< Change >;
  */
 class State {
 public:
-
     class SharedDBGuard {
         const State& m_state;
 
 
     public:
         explicit SharedDBGuard( const State& _state ) : m_state( _state ) {
-            if (m_state.m_isReadOnlySnapBasedState)
+            if ( m_state.m_isReadOnlySnapBasedState )
                 return;
-            if (!m_state.x_db_ptr) {
-                throw std::logic_error("Null pointer in SharedDBGuard");
+            if ( !m_state.x_db_ptr ) {
+                throw std::logic_error( "Null pointer in SharedDBGuard" );
             };
             m_state.x_db_ptr->lock_shared();
         }
 
         ~SharedDBGuard() {
-            if (m_state.m_isReadOnlySnapBasedState)
+            if ( m_state.m_isReadOnlySnapBasedState )
                 return;
             m_state.x_db_ptr->unlock_shared();
         }
@@ -249,12 +247,13 @@ public:
     State& operator=( State&& ) = default;
 
     dev::h256 safeLastExecutedTransactionHash();
-    dev::eth::TransactionReceipts safePartialTransactionReceipts(dev::eth::BlockNumber _blockNumber);
+    dev::eth::TransactionReceipts safePartialTransactionReceipts(
+        dev::eth::BlockNumber _blockNumber );
     void safeRemoveAllPartialTransactionReceipts();
 
 
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
-        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex);
+        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
@@ -433,7 +432,7 @@ public:
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
     dev::s256 storageUsedTotal() const {
-        SharedDBGuard(*this);
+        SharedDBGuard( *this );
         return m_db_ptr->storageUsed();
     }
 
@@ -442,7 +441,7 @@ public:
     };  // only for tests
 
 
-    void createReadOnlyStateDBSnap(uint64_t _blockNumber);
+    void createReadOnlyStateDBSnap( uint64_t _blockNumber );
 
 private:
     void clearCaches();
@@ -495,7 +494,6 @@ private:
     };
 
 public:
-
 #ifdef HISTORIC_STATE
     void populateHistoricStateFromSkaleState();
     void populateHistoricStateBatchFromSkaleState(
@@ -533,7 +531,7 @@ private:
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
     // if the state is based on a LevelDB snap, the instance of the snap goes here
-    std::shared_ptr<dev::db::LevelDBSnap> m_snap = nullptr;
+    std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
 
 #ifdef HISTORIC_STATE
@@ -557,8 +555,8 @@ public:
     }
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
 
-        void clearAllCaches();
-    };
+    void clearAllCaches();
+};
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );
 

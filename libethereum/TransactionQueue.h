@@ -131,7 +131,7 @@ public:
     const h256Hash knownTransactions() const;
 
     // Check if transaction is in the queue
-    bool isTransactionKnown(h256& _hash) const;
+    bool isTransactionKnown( h256& _hash ) const;
 
     /// Get max nonce for an account
     /// @returns Max transaction nonce for account in the queue

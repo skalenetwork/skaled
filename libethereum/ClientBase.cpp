@@ -180,7 +180,6 @@ ImportResult ClientBase::injectBlock( bytes const& _block ) {
 }
 
 
-
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs( unsigned _watchId ) const {
     LogFilter f;
@@ -624,7 +623,8 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         //            u256 stateAt( Address _a, u256 _l ) const override;
         //            bytes codeAt( Address _a ) const override;
         //            h256 codeHashAt( Address _a ) const override;
-        //            std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;ion with maximum gas limit
+        //            std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const
+        //            override;ion with maximum gas limit
         // to calculate how many of gas will be used.
         // Then we execute transaction with this gas limit
         // and check if it will be enough.
