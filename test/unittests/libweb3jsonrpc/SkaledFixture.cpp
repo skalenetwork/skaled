@@ -190,6 +190,9 @@ Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
     doRequestResponseAndCheckForError( jsonPayload, response );
 
     CHECK( response.isMember( "result" ) );
+    if (!response["result"].isObject()) {
+        cerr << response << endl;
+    }
     CHECK( response["result"].isObject() );
     CHECK( response["result"]["status"].isString() );
     if ( response["result"]["status"].asString() == "0x0" ) {
@@ -279,6 +282,7 @@ void SkaledFixture::deployERC20() {
 
 
 string SkaledFixture::checkReceiptStatusAndGetGasUsed( string _hash ) {
+    CHECK( _hash.size() == 66 );
     auto receipt = getThreadLocalCurlClient()->eth_getTransactionReceipt( _hash );
 
     CHECK( receipt.isMember( "gasUsed" ) );
@@ -438,10 +442,11 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
         waitForTransaction( account.second );
     };
 
-    //  check the first account
-    checkReceiptStatusAndGetGasUsed(testAccountsVector.front()->getLastTxHash());
-
     cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
+
+    for (auto&& account : testAccountsVector) {
+        checkReceiptStatusAndGetGasUsed(account->getLastTxHash());
+    }
 }
 
 
