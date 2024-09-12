@@ -1,3 +1,4 @@
 ./test/tools/libtesteth/*
 ./test/tools/fuzzTesting/*
 ./test/tools/libtestutils/*
+./test/tools/jsontests/*
