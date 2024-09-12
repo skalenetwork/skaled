@@ -7,4 +7,6 @@
 ./test/unittests/libdevcrypto/*
 ./test/unittests/libethcore/*
 ./test/unittests/libethereum/*
+./test/unittests/libweb3core/*
+./test/unittests/libweb3jsonrpc/*
 ./storage_benchmark/*
