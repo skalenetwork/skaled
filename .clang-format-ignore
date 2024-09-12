@@ -4,3 +4,4 @@
 ./test/tools/jsontests/*
 ./test/unittests/external-dependencies/*
 ./test/unittests/libskutils/*
+./test/unittests/libdevcrypto/*
