@@ -438,6 +438,9 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
         waitForTransaction( account.second );
     };
 
+    //  check the first account
+    checkReceiptStatusAndGetGasUsed(testAccountsVector.front()->getLastTxHash());
+
     cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
 }
 
@@ -701,7 +704,7 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 
     waitForTransaction( _from );
 
-    if ( this->verifyTransactions ) {
+    if ( this->verifyTransactions && _transferType == TransferType::NATIVE) {
         auto balanceAfter = getBalance( _to );
         CHECK( balanceAfter - dstBalanceBefore == _amount );
     }

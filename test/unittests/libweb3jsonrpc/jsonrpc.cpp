@@ -1115,7 +1115,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers ) {
     fixture.setupTwoToTheNKeys(12);
     fixture.mintAllKeysWithERC20();
 
-    //fixture.sendTinyTransfersForAllAccounts(100);
+    fixture.sendTinyTransfersForAllAccounts(10, TransferType::ERC20);
 
 }
 
