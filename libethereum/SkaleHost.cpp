@@ -572,8 +572,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::atomic_bool haveConsensusBorn = false;  // means we need to re-verify old txns
 
-    // HACK this is for not allowing new transactions in tq between deletion and block creation!
-    // TODO decouple SkaleHost and Client!!!
     size_t n_succeeded;
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
@@ -586,15 +584,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             const bytes& data = *it;
             h256 sha = sha3( data );
             LOG( m_traceLogger ) << "Arrived txn: " << sha;
-#ifdef DEBUG_TX_BALANCE
-            if ( sent.count( sha ) != m_transaction_cache.count( sha.asArray() ) ) {
-                LOG( m_errorLogger ) << "createBlock assert";
-                //            sleep(200);
-                assert( sent.count( sha ) == m_transaction_cache.count( sha.asArray() ) );
-            }
-            assert( arrived.count( sha ) == 0 );
-            arrived.insert( sha );
-#endif
 
             Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
@@ -615,8 +604,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 m_debugTracer.tracepoint( "import_future" );
             }
 
-        }  // for
-        // TODO Monitor somehow m_transaction_cache and delete long-lasting elements?
+        }
 
         total_arrived += out_txns.size();
 
@@ -625,7 +613,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                                  << ":CONSENSUS_NUMBER:" << _blockID;
             assert( false );
         }
-
 
         m_debugTracer.tracepoint( "import_block" );
 
