@@ -192,7 +192,7 @@ double stat_compute_bps_til_now( const traffic_queue_t& qtr, bytes_count_t* p_nS
 
 namespace time_tracker {
 
-class element  {
+class element {
 public:
     typedef std::pair< skutils::stats::time_point, void* > id_t;
 
@@ -202,20 +202,16 @@ public:
     typedef std::chrono::duration< double, std::milli > duration;
 
 private:
+    mutable std::atomic< bool > m_isStopped = false;
 
-    mutable std::atomic<bool> m_isStopped = false;
-
-    mutable std::atomic<uint64_t> m_startTime, m_endTime;
+    mutable std::atomic< uint64_t > m_startTime, m_endTime;
 
 public:
-
-
     element();
     virtual ~element();
     void stop();
     double getDurationInSeconds() const;
 };  /// class element
-
 
 
 };  // namespace time_tracker

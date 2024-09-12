@@ -71,7 +71,6 @@ public:
 };  /// class request_site
 
 
-
 class request_site_factory : public proxygen::RequestHandlerFactory {
     folly::ThreadLocalPtr< request_sink > m_sink;
     server_side_request_handler* m_SSRQ = nullptr;
@@ -95,8 +94,7 @@ public:
     static std::string answer_from_error_text(
         const char* _errorDescription, const nlohmann::json& _joID );
     virtual skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
-        const std::string& _origin, int _ipVer, const std::string& _dstAddress,
-        int _dstPort ) = 0;
+        const std::string& _origin, int _ipVer, const std::string& _dstAddress, int _dstPort ) = 0;
 };  /// class server_side_request_handler
 
 
