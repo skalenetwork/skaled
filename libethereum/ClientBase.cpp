@@ -80,6 +80,8 @@ void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
         fnOnNewChanges_( iw_ );
 }
 
+
+
 std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Block& _latestBlock,
     Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
     u256 const& _gasPrice, bytes const& _data ) {
@@ -595,103 +597,4 @@ map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
     return getReadOnlyLatestBlockCopy().state().storage( _a );
 }
 
-std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from, u256 _value,
-    Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-    GasEstimationCallback const& _callback ) {
-    try {
-        int64_t upperBound = _maxGas;
-        if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
-            upperBound = c_maxGasEstimate;
-        int64_t lowerBound;
-        if ( CorrectForkInPowPatch::isEnabledInWorkingBlock() )
-            lowerBound = Transaction::baseGasRequired( !_dest, &_data,
-                bc().sealEngine()->chainParams().makeEvmSchedule(
-                    bc().info().timestamp(), bc().number() ) );
-        else
-            lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
 
-        Block latest = getReadOnlyLatestBlockCopy();
-        Block pending = latest;
-
-        if ( upperBound > pending.info().gasLimit() ) {
-            upperBound = pending.info().gasLimit().convert_to< int64_t >();
-        }
-        u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
-
-        // We execute transact            u256 countAt( Address _a ) const override;
-        //            u256 balanceAt( Address _a ) const override;
-        //            u256 stateAt( Address _a, u256 _l ) const override;
-        //            bytes codeAt( Address _a ) const override;
-        //            h256 codeHashAt( Address _a ) const override;
-        //            std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const
-        //            override;ion with maximum gas limit
-        // to calculate how many of gas will be used.
-        // Then we execute transaction with this gas limit
-        // and check if it will be enough.
-        // If not run binary search to find optimal gas limit.
-
-        auto estimatedStep =
-            estimateGasStep( upperBound, latest, pending, _from, _dest, _value, gasPrice, _data );
-        if ( estimatedStep.first ) {
-            auto executionResult = estimatedStep.second;
-            auto gasUsed = std::max( executionResult.gasUsed.convert_to< int64_t >(), lowerBound );
-
-            estimatedStep =
-                estimateGasStep( gasUsed, latest, pending, _from, _dest, _value, gasPrice, _data );
-            if ( estimatedStep.first ) {
-                return make_pair( gasUsed, executionResult );
-            }
-            while ( lowerBound + 1 < upperBound ) {
-                int64_t middle = ( lowerBound + upperBound ) / 2;
-                estimatedStep = estimateGasStep(
-                    middle, latest, pending, _from, _dest, _value, gasPrice, _data );
-                if ( estimatedStep.first ) {
-                    upperBound = middle;
-                } else {
-                    lowerBound = middle;
-                }
-                if ( _callback ) {
-                    _callback( GasEstimationProgress{ lowerBound, upperBound } );
-                }
-            }
-        }
-
-        return make_pair( upperBound,
-            estimateGasStep( upperBound, latest, pending, _from, _dest, _value, gasPrice, _data )
-                .second );
-    } catch ( ... ) {
-        // TODO: Some sort of notification of failure.
-        return make_pair( u256(), ExecutionResult() );
-    }
-}
-
-std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Block& _latestBlock,
-    Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
-    u256 const& _gasPrice, bytes const& _data ) {
-    u256 nonce = _latestBlock.transactionsFrom( _from );
-    Transaction t;
-    if ( _destination )
-        t = Transaction( _value, _gasPrice, _gas, _destination, _data, nonce );
-    else
-        t = Transaction( _value, _gasPrice, _gas, _data, nonce );
-    t.forceSender( _from );
-    t.forceChainId( chainId() );
-    t.ignoreExternalGas();
-    EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
-        _pendingBlock.previousInfo().timestamp(), 0, _gas );
-    // Make a copy of state!! It will be deleted after step!
-    State tempState = _latestBlock.mutableState();
-    tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
-    ExecutionResult executionResult =
-        tempState.execute( env, bc().chainParams(), t, Permanence::Reverted ).first;
-    if ( executionResult.excepted == TransactionException::OutOfGas ||
-         executionResult.excepted == TransactionException::OutOfGasBase ||
-         executionResult.excepted == TransactionException::OutOfGasIntrinsic ||
-         executionResult.codeDeposit == CodeDeposit::Failed ||
-         executionResult.excepted == TransactionException::BadJumpDestination ||
-         executionResult.excepted == TransactionException::RevertInstruction ) {
-        return make_pair( false, executionResult );
-    } else {
-        return make_pair( true, executionResult );
-    }
-}
