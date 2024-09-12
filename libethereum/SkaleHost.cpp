@@ -318,7 +318,6 @@ SkaleHost::~SkaleHost() {}
 void SkaleHost::logState() {
     LOG( m_traceLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
                          << cc::debug( " got_from_consensus = " ) << total_arrived
-                         << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
                          << cc::debug( " m_tq = " ) << m_tq.status().current
                          << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
 }
@@ -483,13 +482,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
             h256 sha = txn.sha3();
 
-            if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() )
-                m_debugTracer.tracepoint( "sent_txn_again" );
-            else {
-                m_debugTracer.tracepoint( "sent_txn_new" );
-                m_m_transaction_cache[sha.asArray()] = txn;
-            }
-
             out_vector.push_back( txn.toBytes() );
 
             ++total_sent;
@@ -604,30 +596,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             arrived.insert( sha );
 #endif
 
-            // if already known
-            // TODO clear occasionally this cache?!
-            if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
-                Transaction t = m_m_transaction_cache.at( sha.asArray() );
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), true );
-                out_txns.push_back( t );
-                LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
-                m_debugTracer.tracepoint( "drop_good" );
-                m_tq.dropGood( t );
-                MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
-                m_m_transaction_cache.erase( sha.asArray() );
+            Transaction t( data, CheckTransaction::Everything, true,
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+            t.checkOutExternalGas(
+                m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
+            out_txns.push_back( t );
+            m_debugTracer.tracepoint( "drop_good" );
+            m_tq.dropGood( t );
+            {
                 std::lock_guard< std::mutex > localGuard( m_receivedMutex );
                 m_received.erase( sha );
-                LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-            } else {
-                Transaction t( data, CheckTransaction::Everything, true,
-                    EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
-                out_txns.push_back( t );
-                LOG( m_debugLogger ) << "Will import consensus-born txn";
-                m_debugTracer.tracepoint( "import_consensus_born" );
-                haveConsensusBorn = true;
             }
 
             if ( SkaleDebugInterface::g_isEnabled && m_tq.isTransactionKnown( sha ) != 0 ) {

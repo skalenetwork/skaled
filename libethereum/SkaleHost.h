@@ -193,9 +193,6 @@ private:
     std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
-    std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
-        m_m_transaction_cache;  // used to find Transaction objects when
-                                // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
 
