@@ -232,22 +232,20 @@ public:
     u256 getBalance( const SkaledAccount& _account ) const;
 
     void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-        const string& _to, const u256& _gasPrice,
-        TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
+        const string& _to, const u256& _gasPrice, TransferType _transferType,
+        TransactionWait _wait);
 
     string sendSingleDeployOrSolidityCall( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         std::optional< string > _to, const string& _data, const u256& _gasPrice,
-        TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
+        TransactionWait _wait);
 
 
     void splitAccountInHalves( std::shared_ptr< SkaledAccount > _from,
-        std::shared_ptr< SkaledAccount > _to, u256& _gasPrice,
-        TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
+        std::shared_ptr< SkaledAccount > _to, u256& _gasPrice, TransactionWait _wait);
 
 
     void sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
-        TransferType _transferType,
-        TransactionWait _wait = TransactionWait::WAIT_FOR_COMPLETION );
+        TransferType _transferType, TransactionWait _wait);
 
 
     unique_ptr< WebThreeStubClient > rpcClient() const;
@@ -276,6 +274,9 @@ public:
 
     // Keccak-256("mint(address,uint256)")
     const string MINT_FUNCTION_SELECTOR = "6a627842";
+
+    // Keccak-256("transfer(address,uint256)")
+    const string TRANSFER_FUNCTION_SELECTOR = "4b40e901";
 };
 
 

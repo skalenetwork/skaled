@@ -1078,7 +1078,8 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
     auto gasPrice = fixture.getCurrentGasPrice();
     for ( uint64_t i = 0; i < 3; i++ ) {
         auto dst = SkaledAccount::generate();
-        fixture.splitAccountInHalves( firstAccount, dst, gasPrice );
+        fixture.splitAccountInHalves( firstAccount, dst, gasPrice,
+            TransactionWait::WAIT_FOR_COMPLETION);
     }
 }
 

@@ -234,8 +234,8 @@ void SkaledFixture::setupFirstKey() {
     cout << "Owner balance, wei:" << ownerBalance << endl;
     cout << "First wallet:" << firstAccount->getAddressAsString() << endl;
     cout << "Gas price, wei " << gasPrice << endl;
-    sendSingleTransfer(
-        FIRST_WALLET_FUNDING, ownerAccount, firstAccount->getAddressAsString(), gasPrice );
+    sendSingleTransfer( FIRST_WALLET_FUNDING, ownerAccount, firstAccount->getAddressAsString(),
+        gasPrice, TransferType::NATIVE, TransactionWait::WAIT_FOR_COMPLETION  );
     cout << "Transferred " << FIRST_WALLET_FUNDING << " wei to the first wallet" << endl;
     CHECK( getBalance( firstAccount->getAddressAsString() ) == FIRST_WALLET_FUNDING );
     CHECK( getBalance( ownerAccount->getAddressAsString() ) > FIRST_WALLET_FUNDING );
@@ -499,7 +499,7 @@ void SkaledFixture::mintAllKeysWithERC20() {
     };
 
     // just for the first tc check the first transaction completed ok
-    checkReceiptStatusAndGetGasUsed( testAccountsVector.front()->getLastTxHash());
+    checkReceiptStatusAndGetGasUsed( testAccountsVector.front()->getLastTxHash() );
 
     cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " Mint total tps"
          << endl;
@@ -631,7 +631,7 @@ u256 SkaledFixture::getBalance( const SkaledAccount& _account ) const {
 }
 
 void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    const string& _to, const u256& _gasPrice, TransactionWait _wait ) {
+    const string& _to, const u256& _gasPrice, TransferType _transferType, TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
     auto accountNonce = _from->computeNonceForNextTransaction();
     u256 dstBalanceBefore;
@@ -659,7 +659,12 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 
     Json::Value t;
     t["from"] = from;
-    t["value"] = jsToDecimal( toJS( _amount ) );
+    auto amountString = toHex( _amount );
+    if ( _transferType == TransferType::NATIVE ) {
+        t["value"] = "0x" + amountString;
+    } else {
+        t["data"] = "0x" + MINT_FUNCTION_SELECTOR + from.substr( 2 ) + amountString;
+    }
     t["to"] = _to;
     TransactionSkeleton ts = toTransactionSkeleton( t );
     ts.nonce = accountNonce;
@@ -826,19 +831,20 @@ void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from
     CHECK( balance > 0 )
     auto amount = ( balance - fee ) / 2;
 
-    sendSingleTransfer( amount, _from, _to->getAddressAsString(), _gasPrice, _wait );
+    sendSingleTransfer(
+        amount, _from, _to->getAddressAsString(), _gasPrice, TransferType::NATIVE, _wait );
 }
 
 
 void SkaledFixture::sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
-    TransferType, TransactionWait _wait ) {
+    TransferType _transferType, TransactionWait _wait ) {
     auto fee = _gasPrice * 21000;
 
     if ( this->verifyTransactions ) {
         CHECK( fee <= getBalance( _from->getAddressAsString() ) )
     }
 
-    sendSingleTransfer( 1, _from, _from->getAddressAsString(), _gasPrice, _wait );
+    sendSingleTransfer( 1, _from, _from->getAddressAsString(), _gasPrice, _transferType, _wait );
 }
 
 
