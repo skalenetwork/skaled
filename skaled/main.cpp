@@ -1268,7 +1268,7 @@ int main( int argc, char** argv ) try {
         }
         try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-debug-behavior-apis" ) )
-                SkaleDebugInterface::g_isEnabled  =
+                SkaleDebugInterface::g_isEnabled =
                     joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
@@ -1285,7 +1285,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "enable-admin-apis" ) )
         bEnabledAPIs_admin = true;
     if ( vm.count( "enable-debug-behavior-apis" ) )
-        SkaleDebugInterface::g_isEnabled  = true;
+        SkaleDebugInterface::g_isEnabled = true;
     if ( vm.count( "enable-performance-tracker-apis" ) )
         bEnabledAPIs_performanceTracker = true;
     clog( VerbosityWarning, "main" )
@@ -1299,7 +1299,7 @@ int main( int argc, char** argv ) try {
     clog( VerbosityWarning, "main" )
         << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "enable-debug-behavior-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( SkaleDebugInterface::g_isEnabled  );
+        << cc::flag_ed( SkaleDebugInterface::g_isEnabled );
     clog( VerbosityWarning, "main" )
         << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "enable-performance-tracker-apis" ) << cc::debug( " mode is " )
@@ -1983,11 +1983,11 @@ int main( int argc, char** argv ) try {
 #ifdef HISTORIC_STATE
         // debug interface is always enabled in historic state, but
         // non-tracing calls are only available if SkaleDebugInterface::g_isEnabled  is true
-        auto pDebugFace =
-            new rpc::Debug( *g_client, &debugInterface, argv_string, SkaleDebugInterface::g_isEnabled  );
+        auto pDebugFace = new rpc::Debug(
+            *g_client, &debugInterface, argv_string, SkaleDebugInterface::g_isEnabled );
 #else
         // debug interface is enabled on core node if SkaleDebugInterface::g_isEnabled  is true
-        auto pDebugFace = SkaleDebugInterface::g_isEnabled  ?
+        auto pDebugFace = SkaleDebugInterface::g_isEnabled ?
                               new rpc::Debug( *g_client, &debugInterface, argv_string, true ) :
                               nullptr;
 #endif
