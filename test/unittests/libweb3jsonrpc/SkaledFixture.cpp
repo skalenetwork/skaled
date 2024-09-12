@@ -288,7 +288,6 @@ string SkaledFixture::checkReceiptStatusAndGetGasUsed( string _hash ) {
 }
 void SkaledFixture::mintERC20( std::shared_ptr< SkaledAccount > _minter, const string& _address,
     u256 _amount, u256 _gasPrice, TransactionWait _wait ) {
-    cout << "Minting test ERC20 token " << endl;
     CHECK( _minter );
     CHECK( testAccounts.size() > 0 );
     CHECK( _address.size() == 42 );
@@ -475,7 +474,7 @@ void SkaledFixture::mintAllKeysWithERC20() {
             auto account = testAccountsVector.at( accountNum );
             auto address = account->getAddressAsString();
             mintERC20(
-                account, address, 1000000, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
+                account, address, 1000000000, gasPrice, TransactionWait::DONT_WAIT_FOR_COMPLETION );
             CHECK( account->getLastSentNonce() >= 0 )
             CHECK( testAccountsVector.at( accountNum )->getLastSentNonce() >= 0 );
         }
@@ -490,7 +489,7 @@ void SkaledFixture::mintAllKeysWithERC20() {
     }
 
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps"
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " Mint submission tps"
          << endl;
 
 
@@ -498,7 +497,7 @@ void SkaledFixture::mintAllKeysWithERC20() {
         waitForTransaction( account.second );
     };
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
+    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " Mint total tps" << endl;
 }
 
 
