@@ -1806,6 +1806,40 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
     BOOST_CHECK_EQUAL( response3, "0x1db20" );
 }
 
+BOOST_AUTO_TEST_CASE( eth_estimateGas_chainId ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 65535
+    ret["params"]["chainID"] = "0xffff"; 
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    // pragma solidity ^0.8.13;
+
+    // contract Counter {
+    //     error BlockNumber(uint256 blockNumber);
+
+    //     constructor() {
+    //         revert BlockNumber(block.chainid);
+    //     }
+    // }
+
+    Json::Value testRevert;
+    testRevert["data"] = "0x6080604052348015600f57600080fd5b50604051633013bad360e21b815246600482015260240160405180910390fdfe";
+
+    try {
+        fixture.rpcClient->eth_estimateGas( testRevert, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex) {
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
+        BOOST_CHECK_EQUAL(ex.GetData().asString(), "0xc04eeb4c000000000000000000000000000000000000000000000000000000000000ffff");
+        BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
+    } 
+}
+
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
@@ -2090,6 +2124,117 @@ BOOST_AUTO_TEST_CASE( call_from_parameter ) {
     responseString = fixture.rpcClient->eth_call( transactionCallObject, "latest" );
     BOOST_CHECK_EQUAL(
         responseString, "0x000000000000000000000000112233445566778899aabbccddeeff0011223344" );
+}
+
+
+BOOST_AUTO_TEST_CASE( call_with_error ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // pragma solidity ^0.8.0;
+    // contract BasicCustomErrorContract {
+    //     // Define custom errors
+    //     error InsufficientBalance();
+    //     error Unauthorized();
+    //     address public owner;
+    //     // Function only callable by the owner
+    //     function ownerOnlyFunction() external {
+    //         revert Unauthorized();
+    //     }
+    // }
+
+    string compiled =
+        "608060405234801561001057600080fd5b50610168806100206000396000f3fe608060"
+        "405234801561001057600080fd5b5060043610610053576000357c0100000000000000"
+        "000000000000000000000000000000000000000000900480638da5cb5b146100585780"
+        "63e021c20614610076575b600080fd5b610060610080565b60405161006d9190610117"
+        "565b60405180910390f35b61007e6100a4565b005b60008054906101000a900473ffff"
+        "ffffffffffffffffffffffffffffffffffff1681565b6040517f82b429000000000000"
+        "0000000000000000000000000000000000000000000000815260040160405180910390"
+        "fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60"
+        "00610101826100d6565b9050919050565b610111816100f6565b82525050565b600060"
+        "208201905061012c6000830184610108565b9291505056fea264697066735822122013"
+        "2ca0f4158a0540a7e67f304c94305f81bbe52de2314e2b9cee92a2c74e103a64736f6c"
+        "63430008120033";
+
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "180000"; 
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0xe021c206";
+
+    try {
+        fixture.rpcClient->eth_call( transactionCallObject, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex) {
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
+        BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
+        BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
+    } 
+}
+
+BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
+    JsonRpcFixture fixture;
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+    // pragma solidity ^0.8.0;
+    // contract BasicCustomErrorContract {
+    //     // Define custom errors
+    //     error InsufficientBalance();
+    //     error Unauthorized();
+    //     address public owner;
+    //     // Function only callable by the owner
+    //     function ownerOnlyFunction() external {
+    //         revert Unauthorized();
+    //     }
+    // }
+
+    string compiled =
+        "608060405234801561001057600080fd5b50610168806100206000396000f3fe608060"
+        "405234801561001057600080fd5b5060043610610053576000357c0100000000000000"
+        "000000000000000000000000000000000000000000900480638da5cb5b146100585780"
+        "63e021c20614610076575b600080fd5b610060610080565b60405161006d9190610117"
+        "565b60405180910390f35b61007e6100a4565b005b60008054906101000a900473ffff"
+        "ffffffffffffffffffffffffffffffffffff1681565b6040517f82b429000000000000"
+        "0000000000000000000000000000000000000000000000815260040160405180910390"
+        "fd5b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60"
+        "00610101826100d6565b9050919050565b610111816100f6565b82525050565b600060"
+        "208201905061012c6000830184610108565b9291505056fea264697066735822122013"
+        "2ca0f4158a0540a7e67f304c94305f81bbe52de2314e2b9cee92a2c74e103a64736f6c"
+        "63430008120033";
+    
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["code"] = compiled;
+    create["gas"] = "180000"; 
+    string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    Json::Value transactionCallObject;
+    transactionCallObject["to"] = contractAddress;
+    transactionCallObject["data"] = "0xe021c206";
+
+    try {
+        fixture.rpcClient->eth_estimateGas( transactionCallObject, "latest" );
+    } catch ( jsonrpc::JsonRpcException& ex) {
+        BOOST_CHECK_EQUAL(ex.GetCode(), 3);
+        BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
+        BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
+    } 
 }
 
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
@@ -3342,10 +3487,11 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 151
-    ret["params"]["chainID"] = "0x97";
-    time_t eip1559PatchActivationTimestamp = time( nullptr ) + 10;
-    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] =
-        eip1559PatchActivationTimestamp;
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
+    time_t eip1559PatchActivationTimestamp = time(nullptr) + 10;
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
+
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -3433,6 +3579,8 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
                    block["transactions"][0]["v"].asString() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].size() == 0 );
+    BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
+    BOOST_REQUIRE( block["transactions"][0]["chainId"].asString() == chainID );
 
     std::string blockHash = block["hash"].asString();
     BOOST_REQUIRE(
@@ -3536,10 +3684,10 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 151
-    ret["params"]["chainID"] = "0x97";
-    time_t eip1559PatchActivationTimestamp = time( nullptr ) + 10;
-    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] =
-        eip1559PatchActivationTimestamp;
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
+    time_t eip1559PatchActivationTimestamp = time(nullptr) + 10;
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -3593,6 +3741,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( receipt["type"] == "0x0" );
     BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
 
+
     // send 1 WEI from 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251 to
     // 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b encoded type 2 txn
     txHash = fixture.rpcClient->eth_sendRawTransaction(
@@ -3601,6 +3750,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
         "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
         "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
         "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
+
     auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
     BOOST_REQUIRE( pendingTransactions.isArray() && pendingTransactions.size() == 1 );
     BOOST_REQUIRE( pendingTransactions[0]["type"] == "0x2" );
@@ -3621,6 +3771,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
         "00000780a0f1a407dfc1a9f782001d89f617e9b3a2f295378533784fb39960dea60beea2d0a05ac3da2946554b"
         "a3d5721850f4f89ee7a0c38e4acab7130908e7904d13174388" );
 
+
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance(
                        "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
 
@@ -3637,6 +3788,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
                          2 * fixture.client->chainParams().chainID ) ==
                    block["transactions"][0]["v"].asString() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
+    BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
+    BOOST_REQUIRE( block["transactions"][0]["chainId"].asString() == chainID );
 
     std::string blockHash = block["hash"].asString();
 
@@ -3654,6 +3807,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE(
         result.isMember( "maxPriorityFeePerGas" ) && result["maxPriorityFeePerGas"].isString() );
     BOOST_REQUIRE( result.isMember( "maxFeePerGas" ) && result["maxFeePerGas"].isString() );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3661,7 +3816,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 +
                          2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x4", "0x0" );
@@ -3670,7 +3825,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( toJS( jsToInt( result["yParity"].asString() ) + 35 +
                          2 * fixture.client->chainParams().chainID ) == result["v"].asString() );
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_getBlockByNumber( "0x0", false ) );
