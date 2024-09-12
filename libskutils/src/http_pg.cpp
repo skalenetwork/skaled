@@ -101,10 +101,11 @@ void request_site::onRequest( std::unique_ptr< proxygen::HTTPMessage > _req ) no
     PG_LOG( m_strLogPrefix + "request query " + m_httpMethod + " from origin " + m_origin +
             ", path " + m_path );
 
-    if (pg_logging_get()) {
+    if ( pg_logging_get() ) {
         size_t nHeaderIdx = 0;
         _req->getHeaders().forEach( [&]( string& _name, string& _value ) {
-            PG_LOG( m_strLogPrefix + "header " + to_string( nHeaderIdx ) + " " + _name + "=" + _value );
+            PG_LOG(
+                m_strLogPrefix + "header " + to_string( nHeaderIdx ) + " " + _name + "=" + _value );
             ++nHeaderIdx;
         } );
     }
@@ -142,7 +143,7 @@ void request_site::onBody( std::unique_ptr< folly::IOBuf > _body ) noexcept {
 }
 
 void request_site::onEOM() noexcept {
-    PG_LOG( m_strLogPrefix + m_httpMethod + __FUNCTION__);
+    PG_LOG( m_strLogPrefix + m_httpMethod + __FUNCTION__ );
 
     if ( m_httpMethod == "OPTIONS" ) {
         proxygen::ResponseBuilder( downstream_ ).sendWithEOM();
@@ -211,7 +212,7 @@ void request_site::requestComplete() noexcept {
 }
 
 void request_site::onError( proxygen::ProxygenError _err ) noexcept {
-    PG_LOG( m_strLogPrefix + __FUNCTION__ + to_string( size_t( _err ) ));
+    PG_LOG( m_strLogPrefix + __FUNCTION__ + to_string( size_t( _err ) ) );
     delete this;
 }
 
@@ -404,7 +405,6 @@ size_t pg_accumulate_size() {
     size_t cnt = g_accumulatedEntries.size();
     return cnt;
 }
-
 
 
 void pg_accumulate_add( const pg_accumulate_entry& pge ) {

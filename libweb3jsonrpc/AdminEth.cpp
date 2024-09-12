@@ -144,8 +144,7 @@ h256 AdminEth::blockHash( string const& _blockNumberOrHash ) const {
     }
 }
 
-Json::Value AdminEth::admin_eth_vmTrace(
-    string const& , int , string const& _session ) {
+Json::Value AdminEth::admin_eth_vmTrace( string const&, int, string const& _session ) {
     RPC_ADMIN;
     throw jsonrpc::JsonRpcException( "Usupported API call" );
 }
