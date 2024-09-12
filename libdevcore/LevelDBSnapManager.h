@@ -38,29 +38,27 @@ class LevelDBSnap;
 // this class represents a LevelDB snap corresponding to the point immediately
 // after processing of a particular block id.
 class LevelDBSnapManager {
-
 public:
     const std::shared_ptr< LevelDBSnap >& getLastBlockSnap() const;
 
 
-    LevelDBSnapManager() {};
+    LevelDBSnapManager(){};
 
     void addSnapForBlock(
         uint64_t _blockNumber, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
 
-    void closeAllOpenSnaps(std::unique_ptr< leveldb::DB >& _db, uint64_t  _dbInstanceId);
+    void closeAllOpenSnaps( std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
 
     // this function should be called while holding database reopen lock
     uint64_t garbageCollectUnusedOldSnaps(
         std::unique_ptr< leveldb::DB >& _db, uint64_t _dbReopenId, uint64_t _maxSnapLifetimeMs );
 
 private:
-
     // old snaps contains snap objects for older blocks
     // these objects are alive untils the
     // corresponding eth_calls complete
-    std::map<std::uint64_t , std::shared_ptr<LevelDBSnap>> oldSnaps;
-    std::shared_ptr<LevelDBSnap> m_lastBlockSnap;
+    std::map< std::uint64_t, std::shared_ptr< LevelDBSnap > > oldSnaps;
+    std::shared_ptr< LevelDBSnap > m_lastBlockSnap;
     // mutex to protect snaps and m_lastBlockSnap;
     mutable std::shared_mutex m_snapMutex;
 
@@ -70,7 +68,8 @@ private:
     // this will cause the eth_call to return an error
     static const size_t FORCE_SNAP_CLOSE_TIME_MS = 3000;
 
-    void createNewSnap( uint64_t _blockId, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
+    void createNewSnap(
+        uint64_t _blockId, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId );
 };
 
 }  // namespace dev::db

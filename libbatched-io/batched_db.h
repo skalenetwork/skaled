@@ -68,24 +68,25 @@ public:
 
     bool exists( dev::db::Slice _key ) const override { return m_db->exists( _key ); }
 
-    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const override{
+    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const override {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
         m_db->forEach( f );
     }
 
-    void forEachWithPrefix(
-        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const override {
+    void forEachWithPrefix( std::string& _prefix,
+        std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const override {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
         m_db->forEachWithPrefix( _prefix, f );
     }
 
-    ~batched_db() override{
+    ~batched_db() override {
         // all batches should be either commit()'ted or revert()'ed!
         assert( !m_batch );
     }
 
 protected:
-    void recover() override { /*nothing*/ }
+    void recover() override { /*nothing*/
+    }
 };
 
 
@@ -95,52 +96,54 @@ private:
     std::shared_ptr< dev::db::LevelDBSnap > m_snap;
 
 public:
-
-    read_only_snap_based_batched_db( std::shared_ptr< dev::db::DBImpl > _db,
-        std::shared_ptr< dev::db::LevelDBSnap > _snap ) {
-        LDB_CHECK(_db);
-        LDB_CHECK(_snap);
+    read_only_snap_based_batched_db(
+        std::shared_ptr< dev::db::DBImpl > _db, std::shared_ptr< dev::db::LevelDBSnap > _snap ) {
+        LDB_CHECK( _db );
+        LDB_CHECK( _snap );
         m_db = _db;
         m_snap = _snap;
     }
 
-    bool is_open() const  { return !!m_db; };
+    bool is_open() const { return !!m_db; };
 
     void insert( dev::db::Slice, dev::db::Slice ) override {
-        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
     }
 
-    void kill( dev::db::Slice )  override{
-        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
+    void kill( dev::db::Slice ) override {
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
     }
 
     void revert() override {
-        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
     }
 
-    void commit( const std::string& ) override{
-        throw std::runtime_error("Function not implemented:" + std::string(__FUNCTION__));
+    void commit( const std::string& ) override {
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
     }
 
     // readonly
-    std::string lookup( dev::db::Slice _key ) const  override{ return m_db->lookup( _key, m_snap ); }
+    std::string lookup( dev::db::Slice _key ) const override {
+        return m_db->lookup( _key, m_snap );
+    }
 
     bool exists( dev::db::Slice _key ) const override { return m_db->exists( _key, m_snap ); }
 
-    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) >  _f) const override{
+    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > _f ) const override {
         static std::string emptyString;
         return forEachWithPrefix( emptyString, _f );
     }
 
-    void forEachWithPrefix(
-        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) >  _f) const override {
+    void forEachWithPrefix( std::string& _prefix,
+        std::function< bool( dev::db::Slice, dev::db::Slice ) > _f ) const override {
         m_db->forEachWithPrefix( _prefix, _f, m_snap );
     }
 
     virtual ~read_only_snap_based_batched_db() = default;
 
 protected:
-    void recover() override { /*nothing*/ }
+    void recover() override { /*nothing*/
+    }
 };
 
 
@@ -177,7 +180,8 @@ private:
             std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const;
 
     protected:
-        virtual void recover() { /* nothing */ }
+        virtual void recover() { /* nothing */
+        }
     };
 };
 

@@ -296,9 +296,9 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     }
 }
 
-void LevelDB::forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > _f)
-    const {
-    forEachWithPrefix(_prefix, _f, nullptr);
+void LevelDB::forEachWithPrefix(
+    std::string& _prefix, std::function< bool( Slice, Slice ) > _f ) const {
+    forEachWithPrefix( _prefix, _f, nullptr );
 }
 
 void LevelDB::forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > f,
@@ -308,9 +308,9 @@ void LevelDB::forEachWithPrefix( std::string& _prefix, std::function< bool( Slic
 
     std::unique_ptr< leveldb::Iterator > itr;
 
-    if (_snap) {
+    if ( _snap ) {
         LDB_CHECK( m_dbReopenId == _snap->getParentDbReopenId() );
-        itr =  _snap->getIterator(m_db, m_readOptions);
+        itr = _snap->getIterator( m_db, m_readOptions );
     } else {
         itr.reset( m_db->NewIterator( m_readOptions ) );
     }
@@ -428,7 +428,7 @@ void LevelDB::createBlockSnap( uint64_t _blockNumber ) {
 
 std::shared_ptr< LevelDBSnap > LevelDB::getLastBlockSnap() const {
     SharedDBGuard lock( *this );  // protect so db is not reopened when while we get snap
-    auto snap =  m_snapManager.getLastBlockSnap();
+    auto snap = m_snapManager.getLastBlockSnap();
     LDB_CHECK( snap );
     return snap;
 }

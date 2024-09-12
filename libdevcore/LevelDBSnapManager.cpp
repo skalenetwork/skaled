@@ -37,8 +37,6 @@ namespace dev::db {
 // this function returns the size of oldSnaps after cleanup
 uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
     std::unique_ptr< leveldb::DB >& _db, uint64_t _dbReopenId, uint64_t _maxSnapLifetimeMs ) {
-
-
     std::vector< std::shared_ptr< LevelDBSnap > > unusedOldSnaps;
 
     uint64_t mapSizeAfterCleanup;
@@ -67,9 +65,9 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
 
     // now we removed unused snaps from the map. Close them
 
-    for (auto&& snap: unusedOldSnaps) {
-        LDB_CHECK(snap);
-        snap->close(_db, _dbReopenId);
+    for ( auto&& snap : unusedOldSnaps ) {
+        LDB_CHECK( snap );
+        snap->close( _db, _dbReopenId );
     }
     return mapSizeAfterCleanup;
 }
@@ -78,35 +76,33 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
 // this will be called from EVM processing thread just after the block is processed
 void LevelDBSnapManager::addSnapForBlock(
     uint64_t _blockNumber, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId ) {
-
     createNewSnap( _blockNumber, _db, _dbInstanceId );
 
     // we garbage-collect  unused old snaps that no-one used or that exist for more that max
     // lifetime we give for eth_calls to complete
-    garbageCollectUnusedOldSnaps( _db, _dbInstanceId,
-        OLD_SNAP_LIFETIME_MS );
+    garbageCollectUnusedOldSnaps( _db, _dbInstanceId, OLD_SNAP_LIFETIME_MS );
 }
 
 
 // this will create new last block snap and move previous last block snap into old snaps map
 void LevelDBSnapManager::createNewSnap(
     uint64_t _blockId, std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId ) {
-        // hold the write lock during the update so snap manager does not return inconsistent value
-        // snap creation in LevelDB should happen really fast
-        std::unique_lock< std::shared_mutex > lock( m_snapMutex );
+    // hold the write lock during the update so snap manager does not return inconsistent value
+    // snap creation in LevelDB should happen really fast
+    std::unique_lock< std::shared_mutex > lock( m_snapMutex );
 
-        LDB_CHECK( _db );
-        auto newSnapHandle = _db->GetSnapshot();
-        LDB_CHECK( newSnapHandle );
+    LDB_CHECK( _db );
+    auto newSnapHandle = _db->GetSnapshot();
+    LDB_CHECK( newSnapHandle );
 
-        auto newSnap = std::make_shared< LevelDBSnap >( _blockId, newSnapHandle, _dbInstanceId );
-        LDB_CHECK( newSnap );
+    auto newSnap = std::make_shared< LevelDBSnap >( _blockId, newSnapHandle, _dbInstanceId );
+    LDB_CHECK( newSnap );
 
-        auto oldSnap = m_lastBlockSnap;
-        m_lastBlockSnap = newSnap;
-        if (oldSnap) {
-            oldSnaps.emplace( oldSnap->getInstanceId(), oldSnap );
-        }
+    auto oldSnap = m_lastBlockSnap;
+    m_lastBlockSnap = newSnap;
+    if ( oldSnap ) {
+        oldSnaps.emplace( oldSnap->getInstanceId(), oldSnap );
+    }
 }
 const std::shared_ptr< LevelDBSnap >& LevelDBSnapManager::getLastBlockSnap() const {
     // read lock briefly to make no snap is concurrently created.

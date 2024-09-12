@@ -38,22 +38,22 @@ class LevelDB;
 // after processing of a particular block id.
 class LevelDBSnap {
 public:
-
-    LevelDBSnap( uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId);
+    LevelDBSnap(
+        uint64_t _blockId, const leveldb::Snapshot* _snap, uint64_t _parentLevelDBReopenId );
 
     // close this snapshot. Use after close will cause an exception
     void close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _parentDBReopenId );
 
     virtual ~LevelDBSnap();
 
-    leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions,
-        const leveldb::Slice& _key, std::string& _value );
+    leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db,
+        leveldb::ReadOptions _readOptions, const leveldb::Slice& _key, std::string& _value );
 
-    leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions,
-        std::string& _value );
+    leveldb::Status getValue( const std::unique_ptr< leveldb::DB >& _db,
+        leveldb::ReadOptions _readOptions, std::string& _value );
 
-    std::unique_ptr<leveldb::Iterator> getIterator( const std::unique_ptr< leveldb::DB >& _db,
-        leveldb::ReadOptions _readOptions);
+    std::unique_ptr< leveldb::Iterator > getIterator(
+        const std::unique_ptr< leveldb::DB >& _db, leveldb::ReadOptions _readOptions );
 
     uint64_t getInstanceId() const;
 
@@ -64,7 +64,6 @@ public:
     bool isClosed() const;
 
 private:
-
     const uint64_t m_blockId;
 
     const leveldb::Snapshot* m_snap = nullptr;
@@ -85,7 +84,7 @@ private:
     // the database handle already does not exist
     uint64_t m_parentDBReopenId;
 
-    std::atomic<uint64_t> m_instanceId; // unique id of this snap object instance
+    std::atomic< uint64_t > m_instanceId;  // unique id of this snap object instance
 
     static std::atomic< uint64_t > objectCounter;
 };

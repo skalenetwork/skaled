@@ -5,4 +5,6 @@
 ./test/unittests/external-dependencies/*
 ./test/unittests/libskutils/*
 ./test/unittests/libdevcrypto/*
-./test/unittests/libethcore/
+./test/unittests/libethcore/*
+./test/unittests/libethereum/*
+./storage_benchmark/*
