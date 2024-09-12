@@ -12,7 +12,8 @@
 ./test/unittests/libtesteth/*
 ./test/unittests/libdevcore/*
 ./test/unittests/libethashseal/*
-/test/unittests/mapreduce_consensus/*
+./test/unittests/mapreduce_consensus/*
 ./test/unittests/libevm/*
 ./test/unittests/libskale/*
 ./storage_benchmark/*
+./skale-vm/*
