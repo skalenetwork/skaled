@@ -9,4 +9,9 @@
 ./test/unittests/libethereum/*
 ./test/unittests/libweb3core/*
 ./test/unittests/libweb3jsonrpc/*
+./test/unittests/libtesteth/*
+./test/unittests/libdevcore/*
+./test/unittests/libethashseal/*
+/test/unittests/mapreduce_consensus/*
+./test/unittests/libevm/*
 ./storage_benchmark/*
