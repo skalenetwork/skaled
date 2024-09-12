@@ -1,1 +1,2 @@
 ./test/tools/libtesteth/*
+./test/tools/fuzzTesting/*
