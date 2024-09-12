@@ -300,7 +300,7 @@ void SkaledFixture::mintERC20( std::shared_ptr< SkaledAccount > _minter, const s
         0, _minter, this->erc20ContractAddress, data, _gasPrice, _wait );
 
     if ( _wait == TransactionWait::WAIT_FOR_COMPLETION ) {
-        checkReceiptStatusAndGetGasUsed( hash );
+        checkReceiptStatusAndGetGasUsed( _minter->getLastTxHash() );
     }
 }
 
@@ -498,6 +498,9 @@ void SkaledFixture::mintAllKeysWithERC20() {
         waitForTransaction( account.second );
     };
 
+    // just for the first tc check the first transaction completed ok
+    checkReceiptStatusAndGetGasUsed( testAccountsVector.front()->getLastTxHash());
+
     cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " Mint total tps"
          << endl;
 }
@@ -677,7 +680,8 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
     try {
         auto payload = result["raw"].asString();
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
-        getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
+        auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
+        _from->setLastTxHash( txHash );
         // CHECK(!txHash.empty());
     } catch ( std::exception& e ) {
         cout << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
@@ -756,6 +760,7 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount,
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
         txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
         CHECK( !txHash.empty() );
+        _from->setLastTxHash( txHash );
     } catch ( std::exception& e ) {
         cout << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
         cout << e.what() << endl;

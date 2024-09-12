@@ -49,6 +49,7 @@ class SkaledAccount {
     Secret key;
     u256 currentTransactionCountOnChain = 0;
     std::optional< u256 > lastSentNonce = std::nullopt;
+    std::optional< string > lastSentTxHash = std::nullopt;
 
     mutable std::shared_mutex mutex;
 
@@ -58,6 +59,18 @@ class SkaledAccount {
     friend std::shared_ptr< SkaledAccount > std::make_shared< SkaledAccount >();
 
 public:
+
+    void setLastTxHash(const string& _hash) {
+        std::unique_lock< std::shared_mutex > lock( mutex );
+        this->lastSentTxHash = _hash;
+    }
+
+    string getLastTxHash() {
+        std::shared_lock< std::shared_mutex > lock( mutex );
+        CHECK(lastSentTxHash)
+        return lastSentTxHash.value();
+    }
+
     static shared_ptr< SkaledAccount > getInstance(
         const Secret key, const u256 _currentTransactionCountOnChain ) {
         static std::mutex addressesMutex;
