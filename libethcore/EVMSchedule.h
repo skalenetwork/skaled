@@ -94,6 +94,8 @@ struct EVMSchedule {
 };
 
 static const EVMSchedule DefaultSchedule = EVMSchedule();
+// Used only in GeneralStateTests --all tests
+static const EVMSchedule FrontierSchedule = EVMSchedule( false, false, 21000 );
 static const EVMSchedule HomesteadSchedule = EVMSchedule( true, true, 53000 );
 
 static const EVMSchedule EIP150Schedule = [] {
@@ -112,7 +114,7 @@ static const EVMSchedule EIP158Schedule = [] {
     EVMSchedule schedule = EIP150Schedule;
     schedule.expByteGas = 50;
     schedule.eip158Mode = true;
-    schedule.maxCodeSize = 1024 * 64;  // We are now using 64k code size limit in SKALE
+    schedule.maxCodeSize = 0x6000; // 1024 * 64;  // We are now using 64k code size limit in SKALE
     return schedule;
 }();
 
