@@ -1987,6 +1987,35 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     BOOST_REQUIRE_EQUAL(receipt["status"], "0x1");
 }
 
+BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 2192608523748315
+    std::string chainID = "0x7ca2a743083db";
+    ret["params"]["chainID"] = chainID;
+    time_t eip1559PatchActivationTimestamp = time(nullptr);
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+
+    fixture.rpcClient->eth_sendRawTransaction( "0x02f8ae8707ca2a743083db8080a0d7d2692231d351eab7d73269effb12393260eb38d11e81085a995dbfffeb4d4b830103ae9403f7c171a32e275c712fe6f32612ad21b485728180a40c11dedd000000000000000000000000229a61f480631a331ffde0dff312d06c087f818dc001a084bb73dbd78dbb45040982a5425c110ff217acb6b04d2e5366c0b75fbdadd450a001fef7f8c83e7472e51fae99dda30e7d0318d5a78487121a69642ca77763c02d" );
+
+    auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
+    BOOST_REQUIRE( pendingTransactions.size() == 1 );
+
+    auto t = fixture.client->pending().front();
+
+    BOOST_REQUIRE( t.hasExternalGas() );
+    BOOST_REQUIRE( t.getExternalGas() == 92966 );
+    t.checkOutExternalGas( fixture.chainParams, 1, 0, true );
+    BOOST_REQUIRE( t.getExternalGas() == 92966 );
+}
+
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -2924,7 +2953,7 @@ BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     txPOW2["gasPrice"] = "0xc5002ab03e1e7e196b3d0ffa9801e783fcd48d4c6d972f1389ab63f4e2d0bef0"; // gas 1m
     txPOW2["value"] = 100;
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ), jsonrpc::JsonRpcException ); // block gas limit reached
-    }
+}
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;

@@ -200,7 +200,14 @@ void Transaction::checkOutExternalGas( const ChainParams& _cp, time_t _committed
     u256 const& difficulty = _cp.externalGasDifficulty;
     assert( difficulty > 0 );
     if ( ( _force || !m_externalGasIsChecked ) && !isInvalid() ) {
-        h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^ dev::sha3( gasPrice() );
+        // reset externalGas value
+        // we may face patch activation after txn was added to the queue but before it was executed
+        // therefore we need to recalculate externalGas
+        if ( m_externalGasIsChecked && hasExternalGas() )
+            m_externalGas = 0;
+
+        h256 hash = dev::sha3( sender().ref() ) ^ dev::sha3( nonce() ) ^
+                    dev::sha3( TransactionBase::gasPrice() );
         if ( !hash ) {
             hash = h256( 1 );
         }
