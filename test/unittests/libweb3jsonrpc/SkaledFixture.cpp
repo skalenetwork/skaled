@@ -692,6 +692,9 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
     Transaction transaction( ts );
     transaction.forceChainId( chainId );
     transaction.forceType( this->transactionType );
+    if (transactionType == TransactionType::Type2) {
+        transaction.forceType2Fees( _gasPrice, _gasPrice );
+    }
     transaction.sign( _from->getKey() );
     CHECK( transaction.chainId() );
 

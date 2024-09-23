@@ -135,6 +135,14 @@ public:
     /// Force type. This is used in tests
     void forceType( TransactionType _type ) { m_txType = _type; }
 
+
+    /// Force Type2 fees. This is used in tests
+    void forceType2Fees( const u256& _maxFeePerGas, const u256& _maxPriorityFeePerGas ) {
+        m_maxFeePerGas = _maxFeePerGas;
+        m_maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    }
+
+
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
