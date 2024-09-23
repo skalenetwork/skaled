@@ -231,6 +231,8 @@ public:
 
     u256 getBalance( const SkaledAccount& _account ) const;
 
+    string getTxPayload( Transaction& _transaction);
+
     void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         const string& _to, const u256& _gasPrice, TransferType _transferType,
         TransactionWait _wait);
@@ -267,6 +269,8 @@ public:
     bool verifyTransactions = false;
     bool useThreadsForTestKeyCreation = false;
     uint64_t threadsCountForTestTransactions = 1;
+    TransactionType transactionType = TransactionType::Legacy;
+
 
     void waitForTransaction( std::shared_ptr< SkaledAccount > _account );
 

@@ -132,6 +132,9 @@ public:
     /// Force the chainId to a particular value. This will result in an invalid transaction RLP.
     void forceChainId( uint64_t _chainID ) { m_chainId = _chainID; }
 
+    /// Force type. This is used in tests
+    void forceType( TransactionType _type ) { m_txType = _type; }
+
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;

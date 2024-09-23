@@ -638,6 +638,15 @@ u256 SkaledFixture::getBalance( const SkaledAccount& _account ) const {
     return getBalance( _account.getAddressAsString() );
 }
 
+string SkaledFixture::getTxPayload( Transaction& transaction) {
+    vector< uint8_t > txBytes = transaction.toBytes();
+    auto result = toJson( transaction, txBytes );
+
+    CHECK( result["raw"] );
+    CHECK( result["tx"] );
+
+    return result["raw"].asString();
+}
 void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
     const string& _to, const u256& _gasPrice, TransferType _transferType, TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
@@ -680,18 +689,16 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
     ts.gas = 90000;
     ts.gasPrice = _gasPrice;
 
-    Transaction transaction( ts );  // always legacy, no prefix byte
+    Transaction transaction( ts );
     transaction.forceChainId( chainId );
+    transaction.forceType( this->transactionType );
     transaction.sign( _from->getKey() );
     CHECK( transaction.chainId() );
-    auto result = dev::eth::toJson( transaction, transaction.toBytes() );
 
-    CHECK( result["raw"] );
-    CHECK( result["tx"] );
-
+    auto payload = getTxPayload( transaction);
 
     try {
-        auto payload = result["raw"].asString();
+
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
         auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
         _from->setLastTxHash( txHash );
@@ -761,15 +768,12 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount,
     transaction.forceChainId( chainId );
     transaction.sign( _from->getKey() );
     CHECK( transaction.chainId() );
-    auto result = dev::eth::toJson( transaction, transaction.toBytes() );
 
-    CHECK( result["raw"] );
-    CHECK( result["tx"] );
+    auto payload = getTxPayload( transaction );
 
     string txHash;
 
     try {
-        auto payload = result["raw"].asString();
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
         txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
         CHECK( !txHash.empty() );

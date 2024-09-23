@@ -341,6 +341,16 @@ TransactionBase::TransactionBase(
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
+    } catch ( std::exception& e ) {
+        m_type = Type::Invalid;
+        RLPStream s;
+        s.append( _rlpData.toBytes() );  // add "string" header
+        m_rawData = std::make_shared< bytes >( s.out() );
+
+        if ( !_allowInvalid ) {
+            cerror << "Got invalid transaction." << e.what();
+            throw;
+        }
     } catch ( ... ) {
         m_type = Type::Invalid;
         RLPStream s;
