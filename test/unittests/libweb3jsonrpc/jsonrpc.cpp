@@ -1992,28 +1992,128 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
 
-    // Set chainID = 2192608523748315
-    std::string chainID = "0x7ca2a743083db";
+    // Set chainID = 21
+    std::string chainID = "0x15";
     ret["params"]["chainID"] = chainID;
-    time_t eip1559PatchActivationTimestamp = time(nullptr);
-    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
+
+    // remove deployment control
+    auto accounts = ret["accounts"];
+    accounts.removeMember( "0xD2002000000000000000000000000000000000D2" );
+    ret["accounts"] = accounts;
+
+    // setup patch
+    time_t externalGasPatchActivationTimestamp = time(nullptr) + 10;
+    ret["skaleConfig"]["sChain"]["ExternalGasPatchTimestamp"] = externalGasPatchActivationTimestamp;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
-    JsonRpcFixture fixture( config );
+    JsonRpcFixture fixture( config, true, false );
     dev::eth::simulateMining( *( fixture.client ), 20 );
 
-    fixture.rpcClient->eth_sendRawTransaction( "0x02f8ae8707ca2a743083db8080a0d7d2692231d351eab7d73269effb12393260eb38d11e81085a995dbfffeb4d4b830103ae9403f7c171a32e275c712fe6f32612ad21b485728180a40c11dedd000000000000000000000000229a61f480631a331ffde0dff312d06c087f818dc001a084bb73dbd78dbb45040982a5425c110ff217acb6b04d2e5366c0b75fbdadd450a001fef7f8c83e7472e51fae99dda30e7d0318d5a78487121a69642ca77763c02d" );
+    auto senderAddress = fixture.coinbase.address().hex();
 
-    auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
-    BOOST_REQUIRE( pendingTransactions.size() == 1 );
+//    // SPDX-License-Identifier: GPL-3.0
 
-    auto t = fixture.client->pending().front();
+//    pragma solidity >=0.8.2 <0.9.0;
 
-    BOOST_REQUIRE( t.hasExternalGas() );
-    BOOST_REQUIRE( t.getExternalGas() == 92966 );
-    t.checkOutExternalGas( fixture.chainParams, 1, 0, true );
-    BOOST_REQUIRE( t.getExternalGas() == 92966 );
+//    /**
+//     * @title Storage
+//     * @dev Store & retrieve value in a variable
+//     * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
+//     */
+//    contract Storage {
+
+//        uint256 number;
+//        uint256 number1;
+//        uint256 number2;
+
+//        /**
+//         * @dev Store value in variable
+//         * @param num value to store
+//         */
+//        function store(uint256 num) public {
+//            number = num;
+//            number1 = num;
+//            number2 = num;
+//        }
+
+//        /**
+//         * @dev Return value
+//         * @return value of 'number'
+//         */
+//        function retrieve() public view returns (uint256){
+//            return number;
+//        }
+//    }
+    std::string bytecode = "608060405234801561001057600080fd5b5061015e806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100e7565b60405180910390f35b610073600480360381019061006e91906100ab565b61007e565b005b60008054905090565b80600081905550806001819055508060028190555050565b6000813590506100a581610111565b92915050565b6000602082840312156100c1576100c061010c565b5b60006100cf84828501610096565b91505092915050565b6100e181610102565b82525050565b60006020820190506100fc60008301846100d8565b92915050565b6000819050919050565b600080fd5b61011a81610102565b811461012557600080fd5b5056fea2646970667358221220780703bb6ac2eec922a510d57edcae39b852b578e7f63a263ddb936758dc9c4264736f6c63430008070033";
+
+    // deploy contact
+    Json::Value create;
+    create["from"] = senderAddress;
+    create["code"] = bytecode;
+    create["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    create["gas"] = 140000;
+    create["nonce"] = 0;
+
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
+    std::string contractAddress = receipt["contractAddress"].asString();
+
+    // send txn to a contract from the suspicious account
+    // store( 4 )
+    Json::Value txn;
+    txn["from"] = "0x40797bb29d12FC0dFD04277D16a3Dd4FAc3a6e5B";
+    txn["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000004";
+    txn["gasPrice"] = "0xdffe55527a88d3775c23ecd3ae38ff1e90caf12b5beb4f7ea3ad998a990a895c";
+    txn["gas"] = 140000;
+    txn["chainId"] = "0x15";
+    txn["nonce"] = 0;
+    txn["to"] = contractAddress;
+
+    auto ts = toTransactionSkeleton( txn );
+    auto t = dev::eth::Transaction( ts, dev::Secret( "7be24de049f2d0d4ecaeaa81564aecf647fa7a4c86264243d77e01da25d859a0" ) );
+
+    txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE( receipt["status"].asString() == "0x0" );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x61cb" );
+
+    sleep(10);
+
+    // push new block to update timestamp
+    Json::Value refill;
+    refill["from"] = senderAddress;
+    refill["to"] = dev::Address::random().hex();
+    refill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    refill["value"] = 100;
+    refill["nonce"] = 1;
+
+    txHash = fixture.rpcClient->eth_sendTransaction( refill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // send txn to a contract from another suspicious account
+    // store( 4 )
+    txn["from"] = "0x5cdb7527ec85022991D4e27F254C438E8337ad7E";
+    txn["data"] = "0x6057361d0000000000000000000000000000000000000000000000000000000000000004";
+    txn["gasPrice"] = "0x974749a06d5cd0dba6a4e1f3d14d5f480db716dcbc9a34ec5496b8d86e99f898";
+    txn["gas"] = 140000;
+    txn["chainId"] = "0x15";
+    txn["nonce"] = 0;
+    txn["to"] = contractAddress;
+
+    ts = toTransactionSkeleton( txn );
+    t = dev::eth::Transaction( ts, dev::Secret( "8df08814fcfc169aad0015654114be06c28b27bdcdef286cf4dbd5e2950a3ffc" ) );
+
+    txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
 }
 
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
