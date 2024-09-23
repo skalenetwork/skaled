@@ -1833,6 +1833,58 @@ contract Logger{
     BOOST_REQUIRE_EQUAL(logs.size(), 24);
 }
 
+// check correct logIndex
+BOOST_AUTO_TEST_CASE( logs_nologs ) {
+    JsonRpcFixture fixture("", true, true, false, true );   // mtm
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+
+// will generate topics [0xxxx, 0], [0xxx, 1] etc every other call
+/*
+pragma solidity >=0.4.10 <0.7.0;
+
+contract Logger{
+
+    uint256 j;
+
+    fallback() external payable {
+        if(j%2==0)
+            log2(bytes32(block.number), bytes32(block.number), bytes32(j));
+        j++;
+    }
+}
+*/
+
+    string bytecode = "6080604052348015600f57600080fd5b5060848061001e6000396000f3fe60806040526000600260005481601157fe5b061415603b5760005460001b4360001b4360001b6040518082815260200191505060405180910390a25b600080815480929190600101919050555000fea26469706673582212205710e222d639f59ab31105350f88b2ecb4d5a2515ca026cc7295493c30f7c23e64736f6c634300060c0033";
+
+    Json::Value create;
+    create["code"] = bytecode;
+    create["gas"] = "180000";  // TODO or change global default of 90000?
+
+    string deployHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value deployReceipt = fixture.rpcClient->eth_getTransactionReceipt( deployHash );
+    string contractAddress = deployReceipt["contractAddress"].asString();
+
+    for(int i=0; i<4; ++i){
+        Json::Value t;
+        t["from"] = toJS( fixture.coinbase.address() );
+        t["value"] = jsToDecimal( "0" );
+        t["to"] = contractAddress;
+        t["gas"] = "99000";
+        t["nonce"] = toJS( 4-i );     // 4,3,2,1
+
+        std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+        BOOST_REQUIRE( !txHash.empty() );
+    }
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    BOOST_REQUIRE_EQUAL(fixture.client->number(), 3);     // block 1 - bootstrapAll, block 2 - deploy
+
+    // TODO Chech fields in logs here
+}
+
 // limit on getLogs output
 BOOST_AUTO_TEST_CASE( getLogs_limit ) {
     JsonRpcFixture fixture( "", true, true, false, false, false, -1,
