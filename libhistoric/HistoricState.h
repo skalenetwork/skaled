@@ -127,7 +127,7 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit HistoricState( u256 const& _accountStartNonce,
+    explicit HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricStateDbSize,
         std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
         std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
             _blockToStateRootDB,
@@ -266,7 +266,8 @@ public:
     /// The hash of the root of our state tree.
     GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
-    void commitExternalChanges( AccountMap const& _cache );
+    void commitExternalChanges(
+        AccountMap const& _cache, uint64_t _blockTimestamp = -1, bool _isFirstTxnInBlock = false );
 
     /// Resets any uncommitted changes to the cache.
     void setRoot( GlobalRoot const& _root );
@@ -351,7 +352,20 @@ private:
     AddressHash commitExternalChangesIntoTrieDB(
         AccountMap const& _cache, SecureTrieDB< Address, skale::OverlayDB >& _state );
 
+    uint64_t calculateNewDataSize( AccountMap const& _cache ) const;
+    bool isRotationNeeded( uint64_t bytes ) const {
+        if ( m_maxHistoricStateDbSize < 1 )
+            return false;
+        return m_storageUsage + bytes > m_maxHistoricStateDbSize;
+    };
+    void updateStorageUsage( uint64_t bytes ) {
+        m_storageUsage += bytes;
+        m_db.updateStorageUsage( m_storageUsage );
+    }
+
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
+    dev::s256 m_maxHistoricStateDbSize = -1;
+    uint64_t m_storageUsage = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );

@@ -25,7 +25,7 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-HistoricState::HistoricState( u256 const& _accountStartNonce,
+HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricStateDbSize,
     std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
     std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
         _blockToStateRootDB,
@@ -35,11 +35,14 @@ HistoricState::HistoricState( u256 const& _accountStartNonce,
       m_blockToStateRootDB( _blockToStateRootDB.first ),
       m_rotatingRootsDb( _blockToStateRootDB.second ),
       m_state( &m_db ),
-      m_accountStartNonce( _accountStartNonce ) {
+      m_accountStartNonce( _accountStartNonce ),
+      m_maxHistoricStateDbSize( _maxHistoricStateDbSize ) {
     if ( _bs != skale::BaseState::PreExisting || m_state.isNull() )
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
         m_state.init();
+
+    m_storageUsage = m_db.storageUsed().convert_to< uint64_t >();
 }
 
 HistoricState::HistoricState( HistoricState const& _s )
@@ -51,7 +54,8 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_nonExistingAccountsCache( _s.m_nonExistingAccountsCache ),
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
-      m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ) {}
+      m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
+      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
 
 std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
 HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -68,6 +72,13 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         clog( VerbosityDebug, "statedb" )
             << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
+
+        clog( VerbosityDebug, "statedb" )
+            << "Verifying path exists (and creating if not present): " << dbPaths.statePath();
+        fs::create_directories( dbPaths.statePath() );
+        clog( VerbosityDebug, "statedb" )
+            << "Ensuring permissions are set for path: " << dbPaths.statePath();
+        DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.statePath(), fs::owner_all ) );
     }
 
     try {
@@ -75,7 +86,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         auto rotator =
             std::make_shared< batched_io::BatchedRotatingHistoricDbIO >( dbPaths.statePath() );
         auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
-        auto bdb = std::unique_ptr< batched_io::batched_db >();
+        auto bdb = std::make_unique< batched_io::batched_db >();
         bdb->open( rotatingDB );
         return { skale::OverlayDB( std::move( bdb ) ), std::move( rotatingDB ) };
     } catch ( boost::exception const& ex ) {
@@ -204,10 +215,31 @@ void HistoricState::clearCacheIfTooLarge() const {
     }
 }
 
-void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
+uint64_t HistoricState::calculateNewDataSize( const AccountMap& _cache ) const {
+    uint64_t res = 0;
+    for ( const auto& item : _cache ) {
+        if ( item.second.isDirty() )
+            if ( item.second.isAlive() ) {
+                res += 32 * 2 * item.second.storageOverlay().size();  // for storage
+                if ( item.second.hasNewCode() )
+                    res += 32 + item.second.code().size();           // for new code
+                res += 32 * ( item.second.version() != 0 ? 5 : 4 );  // for account details
+                res += 20;                                           // for address
+            }
+    }
+
+    return res;
+}
+
+void HistoricState::commitExternalChanges(
+    AccountMap const& _accountMap, uint64_t _blockTimestamp, bool _isFirstTxnInBlock ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
+    auto newDataSize = calculateNewDataSize( _accountMap );
+    if ( _isFirstTxnInBlock && isRotationNeeded( newDataSize ) )
+        m_rotatingRootsDb->rotate( _blockTimestamp );
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
-    m_state.db()->commit( "commit" );
+    updateStorageUsage( newDataSize );
+    m_state.db()->commit( std::to_string( _blockTimestamp ), true );
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -314,7 +346,7 @@ void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
     // record the latest block number
     auto bnk = sha3( "latest" );
     m_blockToStateRootDB.insert( bnk, &bn );
-    m_blockToStateRootDB.commit( "commit" );
+    m_blockToStateRootDB.commit( "0", true );
 }
 
 void HistoricState::setRootFromDB() {
@@ -621,9 +653,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
 
     u256 const startGasUsed = _envInfo.gasUsed();
 
-
     bool const statusCode = executeTransaction( e, _t, onOp );
-
 
     switch ( _p ) {
     case skale::Permanence::Reverted:

@@ -224,7 +224,7 @@ void Client::populateNewChainStateFromGenesis() {
     m_state = m_state.createStateModifyCopy();
     m_state.populateFrom( bc().chainParams().genesisState );
     m_state.mutableHistoricState().saveRootForBlock( 0 );
-    m_state.mutableHistoricState().db().commit();
+    m_state.mutableHistoricState().db().commit( "0", true );
     m_state.releaseWriteLock();
 #else
     m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
@@ -242,7 +242,7 @@ void Client::initStateFromDiskOrGenesis() {
 
     m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
         BaseState::PreExisting, chainParams().accountInitialFunds,
-        chainParams().sChain.contractStorageLimit );
+        chainParams().sChain.contractStorageLimit, chainParams().sChain.maxHistoricStateDbSize );
 
 
     if ( m_state.empty() ) {
@@ -252,9 +252,9 @@ void Client::initStateFromDiskOrGenesis() {
         // if SKALE state exists but historic state does not, we need to populate the historic state
         // from SKALE state
         if ( !historicStateExists ) {
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert( true );
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert( true, bc().info().timestamp() );
             m_state.populateHistoricStateFromSkaleState();
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert( false );
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert( false, bc().info().timestamp() );
         }
 #endif
     }

@@ -66,7 +66,7 @@ using dev::eth::TransactionReceipt;
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
-    dev::s256 _contractStorageLimit )
+    dev::s256 _contractStorageLimit, dev::s256 _maxHistoricStateDbSize )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
@@ -75,7 +75,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
       contractStorageLimit_( _contractStorageLimit )
 #ifdef HISTORIC_STATE
       ,
-      m_historicState( _accountStartNonce,
+      m_historicState( _accountStartNonce, _maxHistoricStateDbSize,
           dev::eth::HistoricState::openDB(
               boost::filesystem::path( std::string( _dbPath.string() )
                                            .append( "/" )
@@ -117,7 +117,8 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
-    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit )
+    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit,
+    s256 _maxHistoricStateDbSize )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
@@ -127,7 +128,8 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       contractStorageLimit_( _contractStorageLimit )
 #ifdef HISTORIC_STATE
       ,
-      m_historicState( _accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs )
+      m_historicState( _accountStartNonce, _maxHistoricStateDbSize, _historicDb,
+          _historicBlockToStateRootDb, _bs )
 #endif
 {
     auto state = createStateReadOnlyCopy();
@@ -488,7 +490,8 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
+void State::commit(
+    dev::eth::CommitBehaviour _commitBehaviour, uint64_t _timestamp, bool _isFirstTxnInBlock ) {
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -544,7 +547,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
 
 
 #ifdef HISTORIC_STATE
-    m_historicState.commitExternalChanges( m_cache );
+    m_historicState.commitExternalChanges( m_cache, _timestamp, _isFirstTxnInBlock );
 #endif
 
     m_changeLog.clear();
@@ -1007,7 +1010,7 @@ bool State::empty() const {
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
-    OnOpFunc const& _onOp ) {
+    OnOpFunc const& _onOp, bool _isFirstTxnInBlock ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -1066,7 +1069,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                                      dev::eth::CommitBehaviour::KeepEmptyAccounts,
+            _envInfo.timestamp(), _isFirstTxnInBlock );
 
         break;
     }

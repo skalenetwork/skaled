@@ -31,12 +31,13 @@
 #include <libdevcore/Address.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libethereum/Account.h>
+//#include <libethereum/Account.h>
 
 namespace dev {
 namespace eth {
+class Account;
 class TransactionReceipt;
-}
+}  // namespace eth
 }  // namespace dev
 
 namespace skale {
@@ -73,7 +74,7 @@ public:
 
     // commit key-value pairs in storage
     void commitStorageValues();
-    void commit( const std::string& _debugCommitId );
+    void commit( const std::string& _debugCommitId, bool _isHistoricState = false );
     void rollback();
     void clearDB();
     bool connected() const;
@@ -117,8 +118,8 @@ public:
     void removeAux( dev::h256 const& _h );
     void insertAux( dev::h256 const& _h, dev::bytesConstRef _v );
 
-    void setCommitOnEveryInsert( bool _value ) {
-        commit( "commit" );
+    void setCommitOnEveryInsert( bool _value, uint64_t _timestamp ) {
+        commit( std::to_string( _timestamp ) );
         m_commitOnEveryInsert = _value;
     }
 

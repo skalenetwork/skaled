@@ -9,9 +9,12 @@ using namespace dev::db;
 BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path )
     : basePath( _path ) {
     // initialize timestamps
-    for ( const auto& f : boost::filesystem::directory_iterator( basePath ) ) {
-        piecesByTimestamp.push_back( std::stoull( boost::filesystem::basename( f ) ) );
-    }
+    if ( boost::filesystem::exists( basePath ) )
+        for ( const auto& f : boost::filesystem::directory_iterator( basePath ) ) {
+            piecesByTimestamp.push_back( std::stoull( boost::filesystem::basename( f ) ) );
+        }
+    if ( piecesByTimestamp.empty() )
+        piecesByTimestamp.push_back( 0 );
     std::sort( piecesByTimestamp.begin(), piecesByTimestamp.end() );
 
     // open current

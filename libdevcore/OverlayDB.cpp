@@ -25,20 +25,20 @@
 #include <thread>
 
 namespace dev {
-// namespace {
-// inline db::Slice toSlice( h256 const& _h ) {
-//    return db::Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
-//}
+namespace {
+inline db::Slice toSlice( h256 const& _h ) {
+    return db::Slice( reinterpret_cast< char const* >( _h.data() ), _h.size );
+}
 
-// inline db::Slice toSlice( std::string const& _str ) {
-//    return db::Slice( _str.data(), _str.size() );
-//}
+inline db::Slice toSlice( std::string const& _str ) {
+    return db::Slice( _str.data(), _str.size() );
+}
 
-// inline db::Slice toSlice( bytes const& _b ) {
-//    return db::Slice( reinterpret_cast< char const* >( &_b[0] ), _b.size() );
-//}
+inline db::Slice toSlice( bytes const& _b ) {
+    return db::Slice( reinterpret_cast< char const* >( &_b[0] ), _b.size() );
+}
 
-//}  // namespace
+}  // namespace
 
 OverlayDB::~OverlayDB() = default;
 

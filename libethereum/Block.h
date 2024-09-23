@@ -217,7 +217,8 @@ public:
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
+        bool _isFirstTxnInBlock = false );
 
 #ifdef HISTORIC_STATE
     ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,

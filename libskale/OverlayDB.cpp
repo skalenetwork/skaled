@@ -36,6 +36,8 @@ using std::vector;
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
 
+#include <libethereum/Account.h>
+
 //#include "SHA3.h"
 
 using dev::bytes;
@@ -168,14 +170,15 @@ void OverlayDB::commitStorageValues() {
 }
 
 
-void OverlayDB::commit( const std::string& _debugCommitId ) {
+void OverlayDB::commit( const std::string& _debugCommitId, bool _isHistoricState ) {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
             DEV_READ_GUARDED( x_this )
 #endif
-            {
+            if ( !_isHistoricState ) {
+                // debug commit id is empty for historic state
                 for ( auto const& addressValuePair : m_cache ) {
                     h160 const& address = addressValuePair.first;
                     bytes const& value = addressValuePair.second;
@@ -205,6 +208,24 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
 
                 m_db_face->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
                     skale::slicing::toSlice( getPartialTransactionReceipts() ) );
+            } else {
+                for ( auto const& i : m_historicMain ) {
+                    if ( i.second.second ) {
+                        m_db_face->insert( skale::slicing::toSlice( i.first ),
+                            skale::slicing::toSlice( i.second.first ) );
+                    //              cnote << i.first << "#" << m_main[i.first].second;
+                    }
+                }
+                for ( auto const& i : m_historicAux )
+                    if ( i.second.second ) {
+                        bytes b = i.first.asBytes();
+                        b.push_back( 255 );  // for aux
+                        m_db_face->insert( skale::slicing::toSlice( b ),
+                            skale::slicing::toSlice( i.second.first ) );
+                    }
+
+                m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
+                    skale::slicing::toSlice( storageUsed_.str() ) );
             }
 
             try {
@@ -569,7 +590,7 @@ std::string OverlayDB::lookup( h256 const& _h ) const {
     if ( !ret.empty() || !m_db_face )
         return ret;
 
-    return m_db_face->lookup( dev::toSlice( _h ) );
+    return m_db_face->lookup( skale::slicing::toSlice( _h ) );
 }
 
 bool OverlayDB::exists( h256 const& _h ) const {
@@ -579,7 +600,7 @@ bool OverlayDB::exists( h256 const& _h ) const {
     auto it = m_historicMain.find( _h );
     if ( it != m_historicMain.end() && it->second.second > 0 )
         return true;
-    return m_db_face && m_db_face->exists( dev::toSlice( _h ) );
+    return m_db_face && m_db_face->exists( skale::slicing::toSlice( _h ) );
 }
 
 void OverlayDB::kill( h256 const& _h ) {
@@ -602,7 +623,7 @@ void OverlayDB::kill( h256 const& _h ) {
 #endif
     }
     if ( m_db_face ) {
-        if ( !m_db_face->exists( dev::toSlice( _h ) ) ) {
+        if ( !m_db_face->exists( skale::slicing::toSlice( _h ) ) ) {
             // No point node ref decreasing for EmptyTrie since we never bother incrementing it
             // in the first place for empty storage tries.
             if ( _h != dev::EmptyTrie )
@@ -630,7 +651,7 @@ bytes OverlayDB::lookupAux( h256 const& _h ) const {
 
     bytes b = _h.asBytes();
     b.push_back( 255 );  // for aux
-    std::string const v = m_db_face->lookup( dev::toSlice( b ) );
+    std::string const v = m_db_face->lookup( skale::slicing::toSlice( b ) );
     if ( v.empty() )
         cwarn << "Aux not found: " << _h;
 

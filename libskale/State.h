@@ -181,7 +181,8 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
+        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32,
+        dev::s256 _maxHistoricStateDbSize = -1 );
     /// which uses it. If you have no preexisting database then set BaseState to something other
 
     State()
@@ -338,15 +339,16 @@ public:
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
 
-    void commit( dev::eth::CommitBehaviour _commitBehaviour =
-                     dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+    void commit(
+        dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts,
+        uint64_t timestamp = -1, bool _isFirstTxnInBlock = false );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::ChainOperationParams const& _chainParams,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), bool _isFirstTxnInBlock = false );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }
@@ -417,7 +419,7 @@ private:
             _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
-        dev::s256 _contractStorageLimit = 32 );
+        dev::s256 _contractStorageLimit = 32, dev::s256 _maxHistoricStateDbSize = -1 );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.

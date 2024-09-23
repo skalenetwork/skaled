@@ -507,7 +507,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             }
 
             ExecutionResult res =
-                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc() );
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i == 0 );
 
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
@@ -854,8 +854,8 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 #endif
 
 
-ExecutionResult Block::execute(
-    LastBlockHashesFace const& _lh, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp ) {
+ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
+    Permanence _p, OnOpFunc const& _onOp, bool _isFirstTxnInBlock ) {
     MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -886,8 +886,8 @@ ExecutionResult Block::execute(
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
-        resultReceipt =
-            stateSnapshot.execute( envInfo, m_sealEngine->chainParams(), _t, _p, _onOp );
+        resultReceipt = stateSnapshot.execute(
+            envInfo, m_sealEngine->chainParams(), _t, _p, _onOp, _isFirstTxnInBlock );
 
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {

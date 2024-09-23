@@ -54,6 +54,7 @@ void checkStatus( leveldb::Status const& _status, boost::filesystem::path const&
         return;
 
     DatabaseError ex;
+    std::cout << "STATUS: " << _status.ToString() << '\n';
     ex << errinfo_dbStatusCode( toDatabaseStatus( _status ) )
        << errinfo_dbStatusString( _status.ToString() );
     if ( !_path.empty() )

@@ -30,12 +30,12 @@ void RotatingHistoricState::rotate( uint64_t timestamp ) {
 std::string RotatingHistoricState::lookup( Slice _key ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    uint64_t timestamp = getTimestampFromKey( _key );
-    auto db = ioBackend->getPieceByTimestamp( timestamp );
-
-    const std::string& v = db->lookup( _key );
-    if ( !v.empty() )
-        return v;
+    for ( auto timestamp : getPiecesByTimestamp() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        auto v = db->lookup( _key );
+        if ( !v.empty() )
+            return v;
+    }
     return std::string();
 }
 
