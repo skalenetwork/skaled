@@ -30,7 +30,6 @@ target_link_libraries(
         pthread
         idn2
         batched-io
-        lz4
     )
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)
