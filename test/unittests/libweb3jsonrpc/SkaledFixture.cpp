@@ -813,7 +813,7 @@ void SkaledFixture::waitForTransaction( std::shared_ptr< SkaledAccount > _accoun
         }
 
         if ( getCurrentTimeMs() - beginTime > transactionTimeoutMs ) {
-            throw runtime_error( "Transaction timeout" );
+            throw runtime_error( "Transaction was not executed in time ms: " + to_string( transactionTimeoutMs )    );
         }
         // wait for a bit before checking again
         usleep( 300 * this->timeBetweenTransactionCompletionChecksMs );

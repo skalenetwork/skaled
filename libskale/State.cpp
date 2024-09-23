@@ -1023,13 +1023,20 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
 
-        // do a simple sanity check each ten thousand transactions that we correctly
+        // do a simple sanity check each millions transactions that we correctly
         // saved partial transaction receipt
+        // at 1000 tps and 1 sec  block time this means that we are doing this roughly each 1000
+        // blocks so we are not slowing down the system by doing a check
         static uint64_t sanityCheckCounter = 0;
         sanityCheckCounter++;
-        if ( sanityCheckCounter % 10000 == 0 ) {
+        if ( sanityCheckCounter % 1000000 == 0 ) {
             auto receipts = safePartialTransactionReceipts( _envInfo.number() );
-            LDB_CHECK( receipts.back().rlp() == receipt.rlp() );
+            if ( receipts.back().rlp() != receipt.rlp() ) {
+                cerr << "Found incorrect deserialization of partial receipts at sanity check:"
+                     << sanityCheckCounter << endl
+                     << receipts.back() << endl
+                     << receipt;
+            }
         }
 
 

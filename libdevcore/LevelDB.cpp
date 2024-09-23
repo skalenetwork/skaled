@@ -303,7 +303,6 @@ void LevelDB::forEachWithPrefix(
 
 void LevelDB::forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > f,
     const std::shared_ptr< LevelDBSnap >& _snap ) const {
-    cnote << "Iterating over the LevelDB prefix: " << _prefix;
     SharedDBGuard lock( *this );  // protect so DB is not reopened during iteration
 
     std::unique_ptr< leveldb::Iterator > itr;
