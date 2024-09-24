@@ -1090,6 +1090,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
 
     fixture.verifyTransactions = false;
     fixture.threadsCountForTestTransactions = 8;
+    fixture.mtmBatchSize = 1;
 
     fixture.setupFirstKey();
     fixture.deployERC20();
@@ -1099,6 +1100,24 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
     fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
 
 }
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+
+    fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
+
+}
+
+
 
 
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers ) {

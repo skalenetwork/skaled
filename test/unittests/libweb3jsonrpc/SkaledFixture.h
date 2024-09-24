@@ -233,7 +233,7 @@ public:
 
     string getTxPayload( Transaction& _transaction);
 
-    void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+    void sendSingleTransferBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         const string& _to, const u256& _gasPrice, TransferType _transferType,
         TransactionWait _wait);
 
@@ -273,6 +273,7 @@ public:
     u256 powDiffuculty = 1;
     bool verifyTransactions = false;
     bool useThreadsForTestKeyCreation = false;
+    uint64_t mtmBatchSize = 1;
 
     uint64_t threadsCountForTestTransactions = 1;
     TransactionType transactionType = TransactionType::Legacy;
