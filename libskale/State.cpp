@@ -65,11 +65,12 @@ using dev::eth::TransactionReceipt;
 #endif
 
 const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkipExecution{
-    { { 1020352220, "0x3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" }, 40729 },
-    { { 1482601649, "0xd3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" }, 32151 },
-    { { 974399131, "0xfcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e988b27a237693" }, 23700 },
-    { { 1482601649, "0x6f2074cfe73a258c049ac2222101b7020461c2d40dcd5ab9587d5bbdd13e4c68" }, 55293 }
-};
+    { { 1020352220, "3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" }, 40729 },
+    { { 1482601649, "d3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" }, 32151 },
+    { { 974399131, "fcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e988b27a237693" }, 23700 },
+    { { 1482601649, "6f2074cfe73a258c049ac2222101b7020461c2d40dcd5ab9587d5bbdd13e4c68" }, 55293 },
+    { { 21, "95fb5557db8cc6de0aff3a64c18a6d9378b0d312b24f5d77e8dbf5cc0612d74f" }, 23232 }
+};  // the last value is for the test
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,

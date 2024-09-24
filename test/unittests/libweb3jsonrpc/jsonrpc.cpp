@@ -2116,6 +2116,53 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
 }
 
+BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 21
+    std::string chainID = "0x15";
+    ret["params"]["chainID"] = chainID;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+
+    auto senderAddress = fixture.coinbase.address().hex();
+
+    Json::Value refill;
+    refill["from"] = senderAddress;
+    refill["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    refill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    refill["value"] = 1000000000000000;
+    refill["nonce"] = 0;
+
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( refill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // send txn and verify that gas used is correct
+    // gas used value is hardcoded in State::txnsToSkipExecution
+    Json::Value txn;
+    txn["from"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txn["gasPrice"] = "0x4a817c800";
+    txn["gas"] = 40000;
+    txn["chainId"] = "0x15";
+    txn["nonce"] = 0;
+    txn["value"] = 1;
+    txn["to"] = "0x5cdb7527ec85022991D4e27F254C438E8337ad7E";
+
+    auto ts = toTransactionSkeleton( txn );
+    auto t = dev::eth::Transaction( ts, dev::Secret( "08cee1f4bc8c37f88124bb3fc64566ccd35dbeeac84c62300f6b8809cab9ea2f" ) );
+
+    txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
+    BOOST_REQUIRE( txHash == "0x95fb5557db8cc6de0aff3a64c18a6d9378b0d312b24f5d77e8dbf5cc0612d74f" );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x5ac0" );
+}
+
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
