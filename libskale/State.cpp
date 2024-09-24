@@ -1024,7 +1024,31 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    bool const statusCode = executeTransaction( e, _t, onOp );
+    bool statusCodeTmp = false;
+    if ( ( _chainParams.chainID == 1020352220 &&
+             _t.sha3() ==
+                 dev::h256(
+                     "0x3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" ) ) ||
+         ( _chainParams.chainID == 1482601649 &&
+             _t.sha3() ==
+                 dev::h256(
+                     "0xd3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" ) ) ||
+         ( _chainParams.chainID == 974399131 &&
+             _t.sha3() ==
+                 dev::h256(
+                     "0xfcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e988b27a237693" ) ) ||
+         ( _chainParams.chainID == 1482601649 &&
+             _t.sha3() ==
+                 dev::h256(
+                     "0x6f2074cfe73a258c049ac2222101b7020461c2d40dcd5ab9587d5bbdd13e4c68" ) ) ) {
+        e.initialize( _t );
+        e.execute();
+        //        e.finalize();
+        statusCodeTmp = false;
+    } else {
+        statusCodeTmp = executeTransaction( e, _t, onOp );
+    }
+    bool const statusCode = statusCodeTmp;
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -1056,9 +1080,38 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         // shaLastTx.hex() << "\n";
 
         TransactionReceipt receipt =
-            _envInfo.number() >= _chainParams.byzantiumForkBlock ?
-                TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+            TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
+        if ( _chainParams.chainID == 1020352220 &&
+             _t.sha3() ==
+                 dev::h256(
+                     "0x3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" ) ) {
+            receipt = TransactionReceipt( statusCode, startGasUsed + 40729, e.logs() );
+        } else {
+            if ( _chainParams.chainID == 1482601649 &&
+                 _t.sha3() ==
+                     dev::h256(
+                         "0xd3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" ) ) {
+                receipt = TransactionReceipt( statusCode, startGasUsed + 32151, e.logs() );
+            } else {
+                if ( _chainParams.chainID == 974399131 &&
+                     _t.sha3() == dev::h256( "0xfcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e"
+                                             "988b27a237693" ) ) {
+                    receipt = TransactionReceipt( statusCode, startGasUsed + 23700, e.logs() );
+                } else {
+                    if ( ( _chainParams.chainID == 1482601649 &&
+                             _t.sha3() == dev::h256( "0x6f2074cfe73a258c049ac2222101b7020461c2d40dc"
+                                                     "d5ab9587d5bbdd13e4c68" ) ) ) {
+                        receipt = TransactionReceipt( statusCode, startGasUsed + 55293, e.logs() );
+                    } else {
+                        receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+                                      TransactionReceipt(
+                                          statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                                      TransactionReceipt(
+                                          EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+                    }
+                }
+            }
+        }
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
         m_fs_ptr->commit();
@@ -1075,9 +1128,37 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 
     TransactionReceipt receipt =
-        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
-            TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-            TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+        TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
+    if ( _chainParams.chainID == 1020352220 &&
+         _t.sha3() ==
+             dev::h256( "0x3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" ) ) {
+        receipt = TransactionReceipt( statusCode, startGasUsed + 40729, e.logs() );
+    } else {
+        if ( _chainParams.chainID == 1482601649 &&
+             _t.sha3() ==
+                 dev::h256(
+                     "0xd3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" ) ) {
+            receipt = TransactionReceipt( statusCode, startGasUsed + 32151, e.logs() );
+        } else {
+            if ( _chainParams.chainID == 974399131 &&
+                 _t.sha3() ==
+                     dev::h256(
+                         "0xfcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e988b27a237693" ) ) {
+                receipt = TransactionReceipt( statusCode, startGasUsed + 23700, e.logs() );
+            } else {
+                if ( ( _chainParams.chainID == 1482601649 &&
+                         _t.sha3() == dev::h256( "0x6f2074cfe73a258c049ac2222101b7020461c2d40dcd5ab"
+                                                 "9587d5bbdd13e4c68" ) ) ) {
+                    receipt = TransactionReceipt( statusCode, startGasUsed + 55293, e.logs() );
+                } else {
+                    receipt =
+                        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+                            TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                            TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+                }
+            }
+        }
+    }
     receipt.setRevertReason( strRevertReason );
 
     return make_pair( res, receipt );
