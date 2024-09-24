@@ -252,6 +252,9 @@ public:
 
     unique_ptr< WebThreeStubClient > rpcClient() const;
 
+
+    void calculateAndSetPowGas(Transaction& _t) const;
+
     string skaledEndpoint;
     string ownerAddressStr;
     string ip;
@@ -266,8 +269,11 @@ public:
 
     const string HARDHAT_CONFIG_FILE_NAME = "../../test/historicstate/hardhat/hardhat.config.js";
     uint64_t transactionTimeoutMs = 60000;
+    bool usePow = false;
+    u256 powDiffuculty = 1;
     bool verifyTransactions = false;
     bool useThreadsForTestKeyCreation = false;
+
     uint64_t threadsCountForTestTransactions = 1;
     TransactionType transactionType = TransactionType::Legacy;
 

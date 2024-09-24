@@ -30,7 +30,8 @@
     "minimumDifficulty": "0x0",
     "difficultyBoundDivisor": "0x0800",
     "durationLimit": "0x0d",
-    "blockReward": "0x4563918244F40000"
+    "blockReward": "0x4563918244F40000",
+    "externalGasDifficulty": "0x01"
   },
   "genesis": {
     "nonce": "0x0000000000000042",

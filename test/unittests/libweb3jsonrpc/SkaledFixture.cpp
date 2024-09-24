@@ -190,7 +190,7 @@ Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
     doRequestResponseAndCheckForError( jsonPayload, response );
 
     CHECK( response.isMember( "result" ) );
-    if (!response["result"].isObject()) {
+    if ( !response["result"].isObject() ) {
         cerr << response << endl;
     }
     CHECK( response["result"].isObject() );
@@ -238,7 +238,7 @@ void SkaledFixture::setupFirstKey() {
     cout << "First wallet:" << firstAccount->getAddressAsString() << endl;
     cout << "Gas price, wei " << gasPrice << endl;
     sendSingleTransfer( FIRST_WALLET_FUNDING, ownerAccount, firstAccount->getAddressAsString(),
-        gasPrice, TransferType::NATIVE, TransactionWait::WAIT_FOR_COMPLETION  );
+        gasPrice, TransferType::NATIVE, TransactionWait::WAIT_FOR_COMPLETION );
     cout << "Transferred " << FIRST_WALLET_FUNDING << " wei to the first wallet" << endl;
     CHECK( getBalance( firstAccount->getAddressAsString() ) == FIRST_WALLET_FUNDING );
     CHECK( getBalance( ownerAccount->getAddressAsString() ) > FIRST_WALLET_FUNDING );
@@ -444,8 +444,8 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
 
     cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
 
-    for (auto&& account : testAccountsVector) {
-        checkReceiptStatusAndGetGasUsed(account->getLastTxHash());
+    for ( auto&& account : testAccountsVector ) {
+        checkReceiptStatusAndGetGasUsed( account->getLastTxHash() );
     }
 }
 
@@ -638,7 +638,7 @@ u256 SkaledFixture::getBalance( const SkaledAccount& _account ) const {
     return getBalance( _account.getAddressAsString() );
 }
 
-string SkaledFixture::getTxPayload( Transaction& transaction) {
+string SkaledFixture::getTxPayload( Transaction& transaction ) {
     vector< uint8_t > txBytes = transaction.toBytes();
     auto result = toJson( transaction, txBytes );
 
@@ -692,16 +692,20 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
     Transaction transaction( ts );
     transaction.forceChainId( chainId );
     transaction.forceType( this->transactionType );
-    if (transactionType == TransactionType::Type2) {
+    if ( transactionType == TransactionType::Type2 ) {
         transaction.forceType2Fees( _gasPrice, _gasPrice );
     }
+
+    if (usePow) {
+        calculateAndSetPowGas(transaction);
+    }
+
     transaction.sign( _from->getKey() );
     CHECK( transaction.chainId() );
 
-    auto payload = getTxPayload( transaction);
+    auto payload = getTxPayload( transaction );
 
     try {
-
         // auto txHash = rpcClient()->eth_sendRawTransaction( payload );
         auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
         _from->setLastTxHash( txHash );
@@ -719,7 +723,7 @@ void SkaledFixture::sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAcc
 
     waitForTransaction( _from );
 
-    if ( this->verifyTransactions && _transferType == TransferType::NATIVE) {
+    if ( this->verifyTransactions && _transferType == TransferType::NATIVE ) {
         auto balanceAfter = getBalance( _to );
         CHECK( balanceAfter - dstBalanceBefore == _amount );
     }
@@ -820,7 +824,8 @@ void SkaledFixture::waitForTransaction( std::shared_ptr< SkaledAccount > _accoun
         }
 
         if ( getCurrentTimeMs() - beginTime > transactionTimeoutMs ) {
-            throw runtime_error( "Transaction was not executed in time ms: " + to_string( transactionTimeoutMs )    );
+            throw runtime_error(
+                "Transaction was not executed in time ms: " + to_string( transactionTimeoutMs ) );
         }
         // wait for a bit before checking again
         usleep( 300 * this->timeBetweenTransactionCompletionChecksMs );
@@ -868,6 +873,22 @@ unique_ptr< WebThreeStubClient > SkaledFixture::rpcClient() const {
     httpClient->SetTimeout( 10000 );
     auto rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *httpClient ) );
     return rpcClient;
+}
+
+void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
+
+    for ( u256 i = 1;; i++ ) {
+        _t.forceGasPrice( i );
+
+        h256 hash = dev::sha3( _t.sender().ref() ) ^
+            dev::sha3( _t.nonce() ) ^ dev::sha3( _t.gasPrice() );
+
+        u256 externalGas = ~u256( 0 ) / u256( hash ) / powDiffuculty;
+
+        if ( externalGas >= _t.gas() ) {
+            return;
+        }
+    }
 }
 
 SkaledAccount::SkaledAccount( const Secret _key, const u256 _currentTransactionCountOnChain )
