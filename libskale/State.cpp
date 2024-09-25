@@ -490,8 +490,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit(
-    dev::eth::CommitBehaviour _commitBehaviour, uint64_t _timestamp, bool _isFirstTxnInBlock ) {
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour, uint64_t _timestamp ) {
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -547,7 +546,7 @@ void State::commit(
 
 
 #ifdef HISTORIC_STATE
-    m_historicState.commitExternalChanges( m_cache, _timestamp, _isFirstTxnInBlock );
+    m_historicState.commitExternalChanges( m_cache, _timestamp );
 #endif
 
     m_changeLog.clear();
@@ -1010,7 +1009,7 @@ bool State::empty() const {
 
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
-    OnOpFunc const& _onOp, bool _isFirstTxnInBlock ) {
+    OnOpFunc const& _onOp ) {
     // Create and initialize the executive. This will throw fairly cheaply and quickly if the
     // transaction is bad in any way.
     // HACK 0 here is for gasPrice
@@ -1070,7 +1069,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts,
-            _envInfo.timestamp(), _isFirstTxnInBlock );
+            _envInfo.timestamp() );
 
         break;
     }

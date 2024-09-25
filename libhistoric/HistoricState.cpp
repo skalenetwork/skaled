@@ -239,12 +239,9 @@ uint64_t HistoricState::calculateNewDataSize( const AccountMap& _cache ) const {
 }
 
 void HistoricState::commitExternalChanges(
-    AccountMap const& _accountMap, uint64_t _blockTimestamp, bool _isFirstTxnInBlock ) {
+    AccountMap const& _accountMap, uint64_t _blockTimestamp ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     auto newDataSize = calculateNewDataSize( _accountMap );
-    if ( _isFirstTxnInBlock && isRotationNeeded( newDataSize ) ) {
-        m_rotatingTreeDb->rotate( _blockTimestamp );
-    }
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
     updateStorageUsage( newDataSize );
     m_state.db()->commit( std::to_string( _blockTimestamp ), true );
@@ -856,4 +853,11 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
             ret.insert( i.first );
         }
     return ret;
+}
+
+void HistoricState::rotateDbsIfNeeded( uint64_t _timestamp ) {
+    if ( m_maxHistoricStateDbSize < 1 )
+        return;
+    if ( m_db.storageUsed() > m_maxHistoricStateDbSize )
+        m_rotatingTreeDb->rotate( _timestamp );
 }

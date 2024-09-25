@@ -26,7 +26,11 @@ BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesyste
 void BatchedRotatingHistoricDbIO::rotate( uint64_t timestamp ) {
     piecesByTimestamp.push_back( timestamp );
 
+    auto storageUsed = current->lookup( dev::db::Slice( "storageUsed" ) );
+    current->kill( dev::db::Slice( "storageUsed" ) );
+
     current.reset( new LevelDB( basePath / std::to_string( timestamp ) ) );
+    current->insert( dev::db::Slice( "storageUsed" ), storageUsed );
 
     test_crash_before_commit( "after_open_leveldb" );
 }

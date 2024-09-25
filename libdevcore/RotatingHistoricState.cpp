@@ -30,6 +30,9 @@ void RotatingHistoricState::rotate( uint64_t timestamp ) {
 std::string RotatingHistoricState::lookup( Slice _key ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
+    if ( _key.toString() == std::string( "storageUsed" ) )
+        return currentPiece()->lookup( _key );
+
     for ( auto timestamp : getPiecesByTimestamp() ) {
         auto db = ioBackend->getPieceByTimestamp( timestamp );
         auto v = db->lookup( _key );

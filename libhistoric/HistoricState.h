@@ -266,8 +266,7 @@ public:
     /// The hash of the root of our state tree.
     GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
-    void commitExternalChanges(
-        AccountMap const& _cache, uint64_t _blockTimestamp = -1, bool _isFirstTxnInBlock = false );
+    void commitExternalChanges( AccountMap const& _cache, uint64_t _blockTimestamp = -1 );
 
     /// Resets any uncommitted changes to the cache.
     void setRoot( GlobalRoot const& _root );
@@ -298,6 +297,8 @@ public:
     void setRootFromDB();
 
     uint64_t getAndResetBlockCommitTime();
+
+    void rotateDbsIfNeeded( uint64_t _timestamp );
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -354,20 +355,12 @@ private:
 
     uint64_t calculateNewDataSize( AccountMap const& _cache ) const;
 
-    bool isRotationNeeded( uint64_t bytes ) const {
-        if ( m_maxHistoricStateDbSize < 1 )
-            return false;
-        return m_storageUsage + bytes > m_maxHistoricStateDbSize;
-    }
-
     void updateStorageUsage( uint64_t bytes ) {
         m_storageUsage += bytes;
         m_db.updateStorageUsage( m_storageUsage );
     }
 
-    dev::s256 storageUsedTotal() const {
-        return m_db.storageUsed();
-    }
+    dev::s256 storageUsedTotal() const { return m_db.storageUsed(); }
 
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
     dev::s256 m_maxHistoricStateDbSize = -1;
