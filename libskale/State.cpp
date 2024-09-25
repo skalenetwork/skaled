@@ -1041,7 +1041,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
         statusCodeTmp = false;
@@ -1081,7 +1081,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-        if ( ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+        if ( _p == Permanence::Committed &&
+             ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
             receipt = TransactionReceipt( statusCode,
                 startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
                 e.logs() );
@@ -1107,7 +1108,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     TransactionReceipt receipt =
         TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-    if ( ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
         receipt = TransactionReceipt( statusCode,
             startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
             e.logs() );
