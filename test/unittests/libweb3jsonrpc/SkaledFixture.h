@@ -126,10 +126,12 @@ public:
             throw std::runtime_error( "Previous transaction has not yet been confirmed" );
         }
 
+        auto nextNonce = currentTransactionCountOnChain;
+
         lastSentNonce = currentTransactionCountOnChain + _batchSize - 1;
 
 
-        return lastSentNonce.value();
+        return nextNonce;
     }
 
 

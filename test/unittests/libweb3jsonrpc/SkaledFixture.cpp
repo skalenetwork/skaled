@@ -453,15 +453,16 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
     }
 
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " submission tps"
-         << endl;
+    cout << 1000.0 * testAccounts.size() * mtmBatchSize / ( getCurrentTimeMs() - begin ) <<
+        " submission tps" << endl;
 
 
     for ( auto&& account : testAccounts ) {
-        waitForTransaction( account.second );
+        waitForTransactionOrBatch(account.second, mtmBatchSize );
     };
 
-    cout << 1000.0 * testAccounts.size() / ( getCurrentTimeMs() - begin ) << " total tps" << endl;
+    cout <<  1000.0 * testAccounts.size() * mtmBatchSize / ( getCurrentTimeMs() - begin )
+    << " total tps" << endl;
 
     for ( auto&& account : testAccountsVector ) {
         checkReceiptStatusAndGetGasUsed( account->getLastTxHash() );
@@ -839,13 +840,14 @@ void SkaledFixture::waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > 
     uint64_t _batchSize) {
     u256 transactionCount;
 
-    auto transactionNonce = _account->getLastSentNonce();
+    auto lastSentNonce = _account->getLastSentNonce();
 
     auto beginTime = getCurrentTimeMs();
 
 
     while ( ( transactionCount = getThreadLocalCurlClient()->eth_getTransactionCount(
-                  _account->getAddressAsString() ) ) < transactionNonce + _batchSize ) {
+                  _account->getAddressAsString() ) ) < lastSentNonce + 1) {
+
         if ( this->verifyTransactions ) {
             CHECK( getTransactionCount( _account->getAddressAsString() ) == transactionCount )
         }
@@ -859,7 +861,7 @@ void SkaledFixture::waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > 
     }
 
     // the count should now be one more than the last transaction nonce
-    CHECK( transactionCount - transactionNonce == _batchSize );
+    CHECK( transactionCount == lastSentNonce + 1);
 
     _account->notifyLastTransactionOrBatchCompleted(  _batchSize);
 }

@@ -431,10 +431,10 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     try {
         return toJS( client()->importTransaction( t ) );
     } catch ( PendingTransactionAlreadyExists& ) {
-        throw std::runtime_error( "Invalid nonce. MTM mode enabled." );
+        throw std::runtime_error( "Transaction with same nonce already exists in the queue." );
     } catch ( TransactionAlreadyInChain& ) {
         // make it similar to what geth does
-        throw std::in( "Invalid nonce. MTM mode enabled." );
+        throw std::runtime_error( "Nonce too low." );
     } catch ( InvalidNonce& ) {
         if ( !client()->chainParams().sChain.multiTransactionMode ) {
             // make it similar  to what geth does
