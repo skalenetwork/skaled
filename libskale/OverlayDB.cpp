@@ -213,7 +213,7 @@ void OverlayDB::commit( const std::string& _debugCommitId, bool _isHistoricState
                     if ( i.second.second ) {
                         m_db_face->insert( skale::slicing::toSlice( i.first ),
                             skale::slicing::toSlice( i.second.first ) );
-                    //              cnote << i.first << "#" << m_main[i.first].second;
+                        //              cnote << i.first << "#" << m_main[i.first].second;
                     }
                 }
                 for ( auto const& i : m_historicAux )

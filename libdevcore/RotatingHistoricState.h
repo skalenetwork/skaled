@@ -17,8 +17,6 @@ private:
 
     mutable std::set< WriteBatchFace* > batch_cache;
     mutable std::shared_mutex m_mutex;
-    std::set< uint64_t > inUse;
-    std::shared_mutex inUseMutex;
 
     std::vector< uint64_t > getPiecesByTimestamp() const {
         return ioBackend->getPiecesByTimestamp();

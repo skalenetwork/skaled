@@ -47,7 +47,9 @@ HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricS
 
 HistoricState::HistoricState( HistoricState const& _s )
     : m_db( _s.m_db ),
+      m_rotatingTreeDb( _s.m_rotatingTreeDb ),
       m_blockToStateRootDB( _s.m_blockToStateRootDB ),
+      m_rotatingRootsDb( _s.m_rotatingRootsDb ),
       m_state( &m_db, _s.m_state.root(), Verification::Skip ),
       m_cache( _s.m_cache ),
       m_unchangedCacheEntries( _s.m_unchangedCacheEntries ),
@@ -55,7 +57,8 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
       m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
-      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
+      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ),
+      m_storageUsage( _s.storageUsedTotal().convert_to< uint64_t >() ) {}
 
 std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
 HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -88,7 +91,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
         auto bdb = std::make_unique< batched_io::batched_db >();
         bdb->open( rotatingDB );
-        return { skale::OverlayDB( std::move( bdb ) ), std::move( rotatingDB ) };
+        return { skale::OverlayDB( std::move( bdb ) ), rotatingDB };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
             clog( VerbosityError, "statedb" )
@@ -151,7 +154,9 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
         return *this;
 
     m_db = _s.m_db;
+    m_rotatingTreeDb = _s.m_rotatingTreeDb;
     m_blockToStateRootDB = _s.m_blockToStateRootDB;
+    m_rotatingRootsDb = _s.m_rotatingRootsDb;
     m_state.open( &m_db, _s.m_state.root(), Verification::Skip );
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
@@ -159,6 +164,8 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_unrevertablyTouched = _s.m_unrevertablyTouched;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_totalTimeSpentInStateCommitsPerBlock = _s.m_totalTimeSpentInStateCommitsPerBlock;
+    m_maxHistoricStateDbSize = _s.m_maxHistoricStateDbSize;
+    m_storageUsage = _s.storageUsedTotal().convert_to< uint64_t >();
     return *this;
 }
 
@@ -235,8 +242,9 @@ void HistoricState::commitExternalChanges(
     AccountMap const& _accountMap, uint64_t _blockTimestamp, bool _isFirstTxnInBlock ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     auto newDataSize = calculateNewDataSize( _accountMap );
-    if ( _isFirstTxnInBlock && isRotationNeeded( newDataSize ) )
-        m_rotatingRootsDb->rotate( _blockTimestamp );
+    if ( _isFirstTxnInBlock && isRotationNeeded( newDataSize ) ) {
+        m_rotatingTreeDb->rotate( _blockTimestamp );
+    }
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
     updateStorageUsage( newDataSize );
     m_state.db()->commit( std::to_string( _blockTimestamp ), true );

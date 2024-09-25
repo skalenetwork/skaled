@@ -252,9 +252,11 @@ void Client::initStateFromDiskOrGenesis() {
         // if SKALE state exists but historic state does not, we need to populate the historic state
         // from SKALE state
         if ( !historicStateExists ) {
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert( true, bc().info().timestamp() );
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert(
+                true, bc().info().timestamp() );
             m_state.populateHistoricStateFromSkaleState();
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert( false, bc().info().timestamp() );
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert(
+                false, bc().info().timestamp() );
         }
 #endif
     }

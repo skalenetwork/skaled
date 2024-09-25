@@ -353,14 +353,20 @@ private:
         AccountMap const& _cache, SecureTrieDB< Address, skale::OverlayDB >& _state );
 
     uint64_t calculateNewDataSize( AccountMap const& _cache ) const;
+
     bool isRotationNeeded( uint64_t bytes ) const {
         if ( m_maxHistoricStateDbSize < 1 )
             return false;
         return m_storageUsage + bytes > m_maxHistoricStateDbSize;
-    };
+    }
+
     void updateStorageUsage( uint64_t bytes ) {
         m_storageUsage += bytes;
         m_db.updateStorageUsage( m_storageUsage );
+    }
+
+    dev::s256 storageUsedTotal() const {
+        return m_db.storageUsed();
     }
 
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
