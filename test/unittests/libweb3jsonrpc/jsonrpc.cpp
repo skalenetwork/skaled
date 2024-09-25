@@ -1106,11 +1106,11 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
     vector< Secret > accountPieces;
 
     fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 2;
-    fixture.mtmBatchSize = 10;
+    fixture.threadsCountForTestTransactions = 8;
+    fixture.mtmBatchSize = 5;
 
     fixture.setupFirstKey();
-    fixture.setupTwoToTheNKeys(11);
+    fixture.setupTwoToTheNKeys(10);
 
     fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
 
