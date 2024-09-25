@@ -112,20 +112,32 @@ public:
         return lastSentNonce.value();
     }
 
-    u256 computeNonceForNextTransaction() {
+
+
+
+
+    // will return the next nonce that can be used for a transaction
+    // if it is a batch, then _batchSize transactions will be sent
+    u256 computeNonceForNextTransactionOrBatch(uint64_t _batchSize) {
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
         if ( lastSentNonce.has_value() ) {
             throw std::runtime_error( "Previous transaction has not yet been confirmed" );
         }
-        lastSentNonce = currentTransactionCountOnChain;
+
+        lastSentNonce = currentTransactionCountOnChain + _batchSize - 1;
 
 
         return lastSentNonce.value();
     }
 
-    void notifyLastTransactionCompleted() {
+
+    u256 computeNonceForNextTx() {
+        return computeNonceForNextTransactionOrBatch( 1 );
+    }
+
+    void notifyLastTransactionOrBatchCompleted(uint64_t _batchSize) {
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
@@ -133,9 +145,9 @@ public:
             throw std::runtime_error( "No pending transaction for this account" );
         }
 
-        CHECK( lastSentNonce == currentTransactionCountOnChain );
+        CHECK( lastSentNonce == currentTransactionCountOnChain + _batchSize - 1);
 
-        currentTransactionCountOnChain++;
+        currentTransactionCountOnChain+= _batchSize;
 
         lastSentNonce = std::nullopt;
     }
@@ -233,9 +245,14 @@ public:
 
     string getTxPayload( Transaction& _transaction);
 
-    void sendSingleTransferBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-        const string& _to, const u256& _gasPrice, TransferType _transferType,
-        TransactionWait _wait);
+    void sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+        const string& _to, const u256& _gasPrice,  uint64_t _batchSize,
+        TransferType _transferType, TransactionWait _wait);
+
+    void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+    const string& _to, const u256& _gasPrice,  TransferType _transferType, TransactionWait _wait) {
+        sendSingleTransferOrBatch( _amount, _from, _to, _gasPrice, 1, _transferType, _wait );
+    }
 
     string sendSingleDeployOrSolidityCall( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         std::optional< string > _to, const string& _data, const u256& _gasPrice,
@@ -279,7 +296,14 @@ public:
     TransactionType transactionType = TransactionType::Legacy;
 
 
-    void waitForTransaction( std::shared_ptr< SkaledAccount > _account );
+    void waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > _account,
+        uint64_t _batchSize);
+
+    void waitForTransaction( std::shared_ptr< SkaledAccount > _account ) {
+        waitForTransactionOrBatch( _account, 1 );
+    }
+
+
 
     int timeBetweenTransactionCompletionChecksMs = 1000;
 

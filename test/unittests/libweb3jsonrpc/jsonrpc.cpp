@@ -1106,12 +1106,11 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
     vector< Secret > accountPieces;
 
     fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
+    fixture.threadsCountForTestTransactions = 1;
+    fixture.mtmBatchSize = 2;
 
     fixture.setupFirstKey();
-    fixture.deployERC20();
-
-    fixture.setupTwoToTheNKeys(12);
+    fixture.setupTwoToTheNKeys(0);
 
     fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
 

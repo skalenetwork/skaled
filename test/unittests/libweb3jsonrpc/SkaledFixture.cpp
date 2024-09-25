@@ -104,8 +104,27 @@ Json::Value CurlClient::doRequestResponse() {
         // Accessing JSON data
         if ( root.isMember( "result" ) ) {
             return root["result"];
+        } else if (root.isMember( "error" )) {
+            CHECK( root["error"].isObject() );
+            auto errorDescription = root["error"];
+            string description = "JSON-RPC error:";
+            if (errorDescription.isMember( "code" )) {
+                description += errorDescription["code"].asString() + ":";
+            }
+
+            if (errorDescription.isMember( "message" )) {
+                description += errorDescription["message"].asString() + ":";
+            };
+
+            throw std::runtime_error( description);
         } else {
-            throw std::runtime_error( "No result in response" );
+            throw std::runtime_error( "No result  or error in response" );
+            Json::StreamWriterBuilder writer;
+            writer["indentation"] = "  "; // Set indentation level (2 spaces here)
+
+            // Convert the Json::Value to a string
+            std::string output = Json::writeString(writer, root);
+            throw std::runtime_error( "No result  or error in response:"  + output);
         }
     } else {
         // Output error message if parsing fails
@@ -237,7 +256,7 @@ void SkaledFixture::setupFirstKey() {
     cout << "Owner balance, wei:" << ownerBalance << endl;
     cout << "First wallet:" << firstAccount->getAddressAsString() << endl;
     cout << "Gas price, wei " << gasPrice << endl;
-    sendSingleTransferBatch( FIRST_WALLET_FUNDING, ownerAccount, firstAccount->getAddressAsString(),
+    sendSingleTransfer( FIRST_WALLET_FUNDING, ownerAccount, firstAccount->getAddressAsString(),
         gasPrice, TransferType::NATIVE, TransactionWait::WAIT_FOR_COMPLETION );
     cout << "Transferred " << FIRST_WALLET_FUNDING << " wei to the first wallet" << endl;
     CHECK( getBalance( firstAccount->getAddressAsString() ) == FIRST_WALLET_FUNDING );
@@ -647,10 +666,14 @@ string SkaledFixture::getTxPayload( Transaction& transaction ) {
 
     return result["raw"].asString();
 }
-void SkaledFixture::sendSingleTransferBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    const string& _to, const u256& _gasPrice, TransferType _transferType, TransactionWait _wait ) {
+
+// this call sends ether a single transfer, or multiple copies of same transfer.
+// the latter is used in MTM mode testing. For a single transder _batchSize = 1
+void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
+    const string& _to, const u256& _gasPrice,  uint64_t _batchSize, TransferType _transferType,
+    TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
-    auto accountNonce = _from->computeNonceForNextTransaction();
+    auto accountNonce = _from->computeNonceForNextTransactionOrBatch(_batchSize);
     u256 dstBalanceBefore;
 
 
@@ -691,7 +714,7 @@ void SkaledFixture::sendSingleTransferBatch( u256 _amount, std::shared_ptr< Skal
 
     vector<string> txHashes;
 
-    for (uint64_t i = 0; i < mtmBatchSize; i++) {
+    for (uint64_t i = 0; i < _batchSize; i++) {
         Transaction transaction( ts );
         transaction.forceChainId( chainId );
         transaction.forceType( this->transactionType );
@@ -712,8 +735,9 @@ void SkaledFixture::sendSingleTransferBatch( u256 _amount, std::shared_ptr< Skal
             auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
             txHashes.push_back( txHash );
         } catch ( std::exception& e ) {
-            cout << "EXCEPTION  " << transaction.from() << ": nonce: " << transaction.nonce() << endl;
-            cout << e.what() << endl;
+            cerr << "Exception in eth_sendRawTransaction from: " << transaction.from() <<
+                ": nonce: " << transaction.nonce() << endl;
+            cerr << e.what() << endl;
             throw e;
         }
 
@@ -736,7 +760,7 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount,
     std::shared_ptr< SkaledAccount > _from, std::optional< string > _to, const string& _data,
     const u256& _gasPrice, TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
-    auto accountNonce = _from->computeNonceForNextTransaction();
+    auto accountNonce = _from->computeNonceForNextTx();
     u256 dstBalanceBefore;
 
 
@@ -811,7 +835,8 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount,
 }
 
 
-void SkaledFixture::waitForTransaction( std::shared_ptr< SkaledAccount > _account ) {
+void SkaledFixture::waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > _account,
+    uint64_t _batchSize) {
     u256 transactionCount;
 
     auto transactionNonce = _account->getLastSentNonce();
@@ -820,7 +845,7 @@ void SkaledFixture::waitForTransaction( std::shared_ptr< SkaledAccount > _accoun
 
 
     while ( ( transactionCount = getThreadLocalCurlClient()->eth_getTransactionCount(
-                  _account->getAddressAsString() ) ) == transactionNonce ) {
+                  _account->getAddressAsString() ) ) < transactionNonce + _batchSize ) {
         if ( this->verifyTransactions ) {
             CHECK( getTransactionCount( _account->getAddressAsString() ) == transactionCount )
         }
@@ -834,9 +859,9 @@ void SkaledFixture::waitForTransaction( std::shared_ptr< SkaledAccount > _accoun
     }
 
     // the count should now be one more than the last transaction nonce
-    CHECK( transactionCount - transactionNonce == 1 );
+    CHECK( transactionCount - transactionNonce == _batchSize );
 
-    _account->notifyLastTransactionCompleted();
+    _account->notifyLastTransactionOrBatchCompleted(  _batchSize);
 }
 
 void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from,
@@ -853,7 +878,7 @@ void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from
     CHECK( balance > 0 )
     auto amount = ( balance - fee ) / 2;
 
-    sendSingleTransferBatch(
+    sendSingleTransfer(
         amount, _from, _to->getAddressAsString(), _gasPrice, TransferType::NATIVE, _wait );
 }
 
@@ -866,7 +891,8 @@ void SkaledFixture::sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, co
         CHECK( fee <= getBalance( _from->getAddressAsString() ) )
     }
 
-    sendSingleTransferBatch( 1, _from, _from->getAddressAsString(), _gasPrice, _transferType, _wait );
+    sendSingleTransferOrBatch( 1, _from, _from->getAddressAsString(), _gasPrice,
+        this->mtmBatchSize, _transferType, _wait );
 }
 
 
