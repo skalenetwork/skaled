@@ -105,26 +105,26 @@ BOOST_AUTO_TEST_CASE( test_jsToFixed, *boost::unit_test::precondition( dev::test
                           "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ) );
     h256 b( "0x000000000000000000000000000000000000000000000000000000740c54b42f" );
     BOOST_CHECK( b == jsToFixed< 32 >( "498423084079" ) );
-    BOOST_CHECK( h256() == jsToFixed< 32 >( "NotAHexadecimalOrDecimal" ) );
+    BOOST_CHECK_THROW( jsToFixed< 32 >( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 }
 
 BOOST_AUTO_TEST_CASE( test_jsToInt, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_CHECK( 43832124 == jsToInt( "43832124" ) );
     BOOST_CHECK( 1342356623 == jsToInt( "0x5002bc8f" ) );
     BOOST_CHECK( 3483942 == jsToInt( "015224446" ) );
-    BOOST_CHECK( 0 == jsToInt( "NotAHexadecimalOrDecimal" ) );
+    BOOST_CHECK_THROW( jsToInt( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 
     BOOST_CHECK( u256( "983298932490823474234" ) == jsToInt< 32 >( "983298932490823474234" ) );
     BOOST_CHECK( u256( "983298932490823474234" ) == jsToInt< 32 >( "0x354e03915c00571c3a" ) );
-    BOOST_CHECK( u256() == jsToInt< 32 >( "NotAHexadecimalOrDecimal" ) );
+    BOOST_CHECK_THROW( jsToInt< 32 >( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
     BOOST_CHECK( u128( "228273101986715476958866839113050921216" ) ==
                  jsToInt< 16 >( "0xabbbccddeeff11223344556677889900" ) );
-    BOOST_CHECK( u128() == jsToInt< 16 >( "NotAHexadecimalOrDecimal" ) );
+    BOOST_CHECK_THROW( jsToInt< 16 >( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 }
 
 BOOST_AUTO_TEST_CASE( test_jsToU256, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_CHECK( u256( "983298932490823474234" ) == jsToU256( "983298932490823474234" ) );
-    BOOST_CHECK( u256() == jsToU256( "NotAHexadecimalOrDecimal" ) );
+    BOOST_CHECK_THROW( jsToU256( "NotAHexadecimalOrDecimal" ), std::invalid_argument );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
