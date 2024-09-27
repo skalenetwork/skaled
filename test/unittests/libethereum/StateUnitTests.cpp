@@ -36,24 +36,8 @@ namespace dev {
 namespace test {
 BOOST_FIXTURE_TEST_SUITE( StateUnitTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( Basic, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( Basic ) {
     Block s( Block::Null );
-}
-
-BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
-    Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
-    State state( 0 );
-    State s = state.createStateModifyCopy();
-    s.createContract( addr );
-    uint8_t codeData[] = {'c', 'o', 'd', 'e'};
-    u256 version = 123;
-    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
-    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
-
-    auto& loadedCode = s.code( addr );
-    BOOST_CHECK(
-        std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedCode ) ) );
 }
 
 class AddressRangeTestFixture : public TestOutputHelperFixture {
@@ -70,6 +54,8 @@ public:
         for ( auto const& hashAndAddr : hashToAddress )
             writer.addBalance( hashAndAddr.second, 100 );
         writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+
+        writer.mutableHistoricState().saveRootForBlock(1);
     }
 
     TransientDirectory m_tempDirState;
@@ -80,22 +66,58 @@ public:
 
 BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 
+BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
+    Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+    State s = state.createStateModifyCopy();
+    s.createContract( addr );
+    uint8_t codeData[] = {'c', 'o', 'd', 'e'};
+    u256 version = 123;
+    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
+    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
-BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    s.mutableHistoricState().saveRootForBlock(2);
+    s.mutableHistoricState().setRootByBlockNumber(2);
+
+    auto& loadedCode = s.code( addr );
+    BOOST_CHECK(
+        std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedCode ) ) );
+
+    auto& loadedHistoricCode = s.mutableHistoricState().code( addr );
+    BOOST_CHECK(
+        std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedHistoricCode ) ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
+
+    State sr = state.createStateReadOnlyCopy();
+    sr.mutableHistoricState().setRootFromDB();
+
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-        state.createStateReadOnlyCopy().addresses( h256{}, addressCount * 2 );
+        sr.addresses( h256{}, addressCount * 2 );
     State::AddressMap addresses = addressesAndNextKey.first;
 
     BOOST_CHECK_EQUAL( addresses.size(), addressCount );
     BOOST_CHECK( addresses == hashToAddress );
     BOOST_CHECK_EQUAL( addressesAndNextKey.second, h256{} );
+
+    std::pair< State::AddressMap, h256 > historicAddressesAndNextKey =
+        sr.mutableHistoricState().addresses( h256{}, addressCount * 2 );
+    State::AddressMap historicAddresses = historicAddressesAndNextKey.first;
+
+    BOOST_CHECK_EQUAL( historicAddresses.size(), addressCount );
+    BOOST_CHECK( historicAddresses == hashToAddress );
+    BOOST_CHECK_EQUAL( historicAddressesAndNextKey.second, h256{} );
 }
 
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     uint maxResults = 3;
+    State sr = state.createStateReadOnlyCopy();
+    sr.mutableHistoricState().setRootFromDB();
+
+    // 1 check State
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-        state.createStateReadOnlyCopy().addresses( h256{}, maxResults );
+        sr.addresses( h256{}, maxResults );
     State::AddressMap& addresses = addressesAndNextKey.first;
     h256& nextKey = addressesAndNextKey.second;
 
@@ -106,11 +128,30 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 
     // request next chunk
     std::pair< State::AddressMap, h256 > addressesAndNextKey2 =
-        state.createStateReadOnlyCopy().addresses( nextKey, maxResults );
+        sr.addresses( nextKey, maxResults );
     State::AddressMap& addresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( addresses2.size(), maxResults );
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
     BOOST_CHECK( addresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
+
+    // 2 check historic state
+    addressesAndNextKey =
+        sr.mutableHistoricState().addresses( h256{}, maxResults );
+    addresses = addressesAndNextKey.first;
+    h256& historicNextKey = addressesAndNextKey.second;
+
+    BOOST_CHECK_EQUAL( addresses.size(), maxResults );
+    itHashToAddressEnd = std::next( hashToAddress.begin(), maxResults );
+    BOOST_CHECK( addresses == State::AddressMap( hashToAddress.begin(), itHashToAddressEnd ) );
+    BOOST_CHECK_EQUAL( historicNextKey, itHashToAddressEnd->first );
+
+    // request next chunk
+    addressesAndNextKey2 =
+        sr.mutableHistoricState().addresses( nextKey, maxResults );
+    State::AddressMap& historicAddresses2 = addressesAndNextKey2.first;
+    BOOST_CHECK_EQUAL( historicAddresses2.size(), maxResults );
+    itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
+    BOOST_CHECK( historicAddresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
 }
 
 BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
@@ -130,10 +171,8 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
     BOOST_CHECK( addresses == State::AddressMap( it, hashToAddress.end() ) );
 }
 
-BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
-    
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-   State s = state.createStateReadOnlyCopy();
+BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache ) {
+    State s = state.createStateReadOnlyCopy();
 
     // create some accounts
     unsigned createCount = 3;
@@ -153,6 +192,48 @@ BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
     State::AddressMap& addresses = addressesAndNextKey.first;
     for ( auto const& hashAndAddr : newHashToAddress )
         BOOST_CHECK( addresses.find( hashAndAddr.first ) != addresses.end() );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+class DbRotationFixture : public TestOutputHelperFixture {
+public:
+    DbRotationFixture() {
+        state.mutableHistoricState().saveRootForBlock( 0 );
+    }
+    TransientDirectory m_tempDirState;
+    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
+    Address address1{1}, address2{2};
+};
+
+BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
+
+BOOST_AUTO_TEST_CASE( main ) {
+    State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
+    sw.incNonce(address1);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
+    sw.mutableHistoricState().saveRootForBlock( 1 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
+    sw.incNonce( address2 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
+    sw.mutableHistoricState().saveRootForBlock( 2 );
+
+    // check that in block 0 we have nonce 0/0, block 1 - 1/0, block 2 - 1/1
+
+    sw.mutableHistoricState().setRootByBlockNumber( 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 2 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
