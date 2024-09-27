@@ -601,8 +601,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                              << stCurrent.hex();
 
         // FATAL if mismatch in non-default
-        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot &&
-             !this->m_client.chainParams().nodeInfo.syncNode ) {
+        if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
             LOG( m_errorLogger ) << "FATAL STATE ROOT MISMATCH ERROR: current state root "
                                  << dev::h256::Arith( stCurrent ).str()
                                  << " is not equal to arrived state root " << _stateRoot.str()
