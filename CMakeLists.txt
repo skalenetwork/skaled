@@ -18,6 +18,12 @@ list( APPEND CMAKE_MODULE_PATH ${DEPS_INSTALL_ROOT}/lib/cmake )
 
 link_directories( ${CMAKE_BINARY_DIR}/deps/lib )          # HACK for not-found -lff in testeth
 
+if( NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
+    set( CMAKE_CXX_FLAGS           "${CMAKE_CXX_FLAGS}           -rdynamic" )
+    set( CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    -rdynamic" )
+    set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic" )
+endif()
+
 option( SKALED_PROFILING "Build for profiling" OFF )
 if( SKALED_PROFILING )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -pg" )
@@ -25,8 +31,6 @@ if( SKALED_PROFILING )
     set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg" )
     set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg" )
 endif()
-
-set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -s")
 
 if( CMAKE_BUILD_TYPE STREQUAL "Release" )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O3" )
