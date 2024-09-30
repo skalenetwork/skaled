@@ -41,10 +41,10 @@ def run_skaled(_schain_index: int, _total_nodes: int):
 
 
 def main():
-    for i in range(0, TOTAL_NODES):
-        run_skaled(i, TOTAL_NODES)
+    for i in range(TOTAL_NODES):
+        run_skaled(i + 1, TOTAL_NODES)
 
-    for i in range(0, TOTAL_NODES):
+    for i in range(TOTAL_NODES):
         processes[i].wait()
 
 

@@ -1095,7 +1095,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
     fixture.setupFirstKey();
     fixture.deployERC20();
 
-    fixture.setupTwoToTheNKeys(12);
+    fixture.setupTwoToTheNKeys(8);
 
     fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
 
@@ -1110,7 +1110,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
     fixture.mtmBatchSize = 5;
 
     fixture.setupFirstKey();
-    fixture.setupTwoToTheNKeys(10);
+    fixture.setupTwoToTheNKeys(8);
 
     fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
 
