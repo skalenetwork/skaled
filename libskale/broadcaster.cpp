@@ -97,7 +97,7 @@ void* ZmqBroadcaster::server_socket() const {
         val = 60000;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
-        val = 16;
+        val = 1024;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
 
