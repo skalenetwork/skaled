@@ -208,7 +208,7 @@ public:
 
 BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
 
-BOOST_AUTO_TEST_CASE( main ) {
+BOOST_AUTO_TEST_CASE( twoChanges ) {
     State sw = state.createStateModifyCopyAndPassLock();
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
@@ -235,6 +235,86 @@ BOOST_AUTO_TEST_CASE( main ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 }
+
+// same, but add empty block between
+BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
+    State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
+    sw.mutableHistoricState().saveRootForBlock( 1 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
+    sw.incNonce(address1);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
+    sw.mutableHistoricState().saveRootForBlock( 2 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1003 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 );
+    sw.mutableHistoricState().saveRootForBlock( 3 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1004 );
+    sw.incNonce( address2 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1004 );
+    sw.mutableHistoricState().saveRootForBlock( 4 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1005 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1005 );
+    sw.mutableHistoricState().saveRootForBlock( 5 );
+
+    // check that in block 0 and 1 we have nonce 0/0, block 2 and 3 - 1/0, block 4 and 5 - 1/1
+
+    sw.mutableHistoricState().setRootByBlockNumber( 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 2 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 3 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 4 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 5 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+}
+
+BOOST_AUTO_TEST_CASE( update ) {
+    State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
+    sw.incNonce(address1);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
+    sw.mutableHistoricState().saveRootForBlock( 1 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
+    sw.incNonce( address1 );
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
+    sw.mutableHistoricState().saveRootForBlock( 2 );
+
+    // check that in block 0 we have nonce 0/0, block 1 - 1/0, block 2 - 1/1
+
+    sw.mutableHistoricState().setRootByBlockNumber( 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 2 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 2 );
+}
+
+// TODO Make changes to storage
 
 BOOST_AUTO_TEST_SUITE_END()
 
