@@ -208,6 +208,7 @@ public:
 
 BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
 
+// make two changes in two blocks and try to access state in each block
 BOOST_AUTO_TEST_CASE( twoChanges ) {
     State sw = state.createStateModifyCopyAndPassLock();
 
@@ -289,6 +290,7 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 }
 
+// change 1 address 2 times in 2 blocks, check it on all blocks
 BOOST_AUTO_TEST_CASE( update ) {
     State sw = state.createStateModifyCopyAndPassLock();
 
@@ -314,7 +316,35 @@ BOOST_AUTO_TEST_CASE( update ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 2 );
 }
 
-// TODO Make changes to storage
+// change storage of 1 address 2 times in 2 blocks, check it on all blocks
+// with unrelated blocks in between
+BOOST_AUTO_TEST_CASE( updateStorage ) {
+    h256 location = h256(123456);
+
+    State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
+    sw.incNonce(address1);
+    sw.setStorage(address1, location, 1);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
+    sw.mutableHistoricState().saveRootForBlock( 1 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
+    sw.setStorage(address1, location, 2);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
+    sw.mutableHistoricState().saveRootForBlock( 2 );
+
+    // check
+
+    sw.mutableHistoricState().setRootByBlockNumber( 0 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(0) );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(1) );
+
+    sw.mutableHistoricState().setRootByBlockNumber( 2 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(2) );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
