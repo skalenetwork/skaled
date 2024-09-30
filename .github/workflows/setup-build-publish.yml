@@ -161,7 +161,7 @@ jobs:
           bash ./scripts/build_and_publish.sh
   
       - name: Upload skaled binary as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
           name: skaled-${{ inputs.node_type }}
