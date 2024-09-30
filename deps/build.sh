@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 set -e
 export SKALED_DEPS_CHAIN=1
 
@@ -1164,7 +1163,7 @@ then
 			#--with-sysroot=="$INSTALL_ROOT"
             mkdir build && cd build
             eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                -DBUILD_SHARED_LIBS=OFF \
+                -DBUILD_SHARED_LIBS=OFF -DLIBUV_BUILD_SHARED=OFF\
                 ..
             cd ../..
 		fi
