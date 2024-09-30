@@ -322,6 +322,15 @@ void SkaleHost::logState() {
                          << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
 }
 
+
+void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
+    {
+        std::lock_guard< std::mutex > lock( m_broadcastQueueMutex );
+        this->m_broadcastQueue.push_back( _t );
+    }
+    m_broadcastQueueCondition.notify_all();  // Notify the condition variable
+}
+
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     // drop incoming transactions if skaled has an outdated state
     if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
@@ -334,25 +343,21 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     h256 sha = transaction.sha3();
 
-
     //
     m_debugTracer.tracepoint( "receive_transaction" );
-    {
-        std::lock_guard< std::mutex > localGuard( m_receivedMutex );
-        m_received.insert( sha );
-        LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-    }
+
 
 #if ( defined _DEBUG )
     h256 sha2 =
 #endif
-        m_client.importTransaction( transaction );
+        m_client.importTransaction( transaction, TransactionBroadcast::DontBroadcast );
 #if ( defined _DEBUG )
     assert( sha == sha2 );
 #endif
 
     m_debugTracer.tracepoint( "receive_transaction_success" );
     LOG( m_debugLogger ) << "Successfully received through broadcast " << sha;
+
 
     return sha;
 }
@@ -414,27 +419,23 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
     Transactions txns = m_tq.topTransactionsSync(
         _limit, [this, &to_delete, &counter, &latestInfo]( const Transaction& tx ) -> bool {
-            if ( m_tq.getCategory( tx.sha3() ) != 1 )  // take broadcasted
-                return false;
-
             // XXX TODO Invent good way to do this
             if ( counter++ == 0 )
                 m_pending_createMutex.lock();
 
-            if ( tx.verifiedOn < m_lastBlockWithBornTransactions )
-                try {
-                    bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
-                    Executive::verifyTransaction( tx, latestInfo.timestamp(), latestInfo,
-                        m_client.state().createReadOnlySnapBasedCopy(), m_client.chainParams(), 0,
-                        getGasPrice(), isMtmEnabled );
-                } catch ( const exception& ex ) {
-                    if ( to_delete.count( tx.sha3() ) == 0 )
-                        clog( VerbosityInfo, "skale-host" )
-                            << "Dropped now-invalid transaction in pending queue " << tx.sha3()
-                            << ":" << ex.what();
-                    to_delete.insert( tx.sha3() );
-                    return false;
-                }
+            try {
+                bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
+                Executive::verifyTransaction( tx, latestInfo.timestamp(), latestInfo,
+                    m_client.state().createReadOnlySnapBasedCopy(), m_client.chainParams(), 0,
+                    getGasPrice(), isMtmEnabled );
+            } catch ( const exception& ex ) {
+                if ( to_delete.count( tx.sha3() ) == 0 )
+                    clog( VerbosityInfo, "skale-host" )
+                        << "Dropped now-invalid transaction in pending queue " << tx.sha3() << ":"
+                        << ex.what();
+                to_delete.insert( tx.sha3() );
+                return false;
+            }
 
             return true;
         } );
@@ -456,19 +457,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     txns.erase( first_to_drop_it, txns.end() );
 
     m_debugTracer.tracepoint( "drop_bad_transactions" );
-
-    {
-        std::lock_guard< std::mutex > localGuard( m_receivedMutex );
-        //
-
-        for ( auto sha : to_delete ) {
-            m_debugTracer.tracepoint( "drop_bad" );
-            m_tq.drop( sha );
-            if ( m_received.count( sha ) != 0 )
-                m_received.erase( sha );
-            LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
-        }
-    }
 
     if ( this->emptyBlockIntervalMsForRestore.has_value() )
         need_restore_emptyBlockInterval = true;
@@ -570,8 +558,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::vector< Transaction > out_txns;  // resultant Transaction vector
 
-    std::atomic_bool haveConsensusBorn = false;  // means we need to re-verify old txns
-
     size_t n_succeeded;
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
@@ -592,10 +578,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
-            {
-                std::lock_guard< std::mutex > localGuard( m_receivedMutex );
-                m_received.erase( sha );
-            }
+
 
             if ( SkaleDebugInterface::g_isEnabled && m_tq.isTransactionKnown( sha ) != 0 ) {
                 // this trace is expensive since it will aquire a read lock on transaction queue
@@ -603,7 +586,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                     << "Consensus returned future transaction that we didn't yet send";
                 m_debugTracer.tracepoint( "import_future" );
             }
-
         }
 
         total_arrived += out_txns.size();
@@ -643,9 +625,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     latestBlockTime = skaledTimeFinish;
     LOG( m_debugLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
-
-    if ( haveConsensusBorn )
-        this->m_lastBlockWithBornTransactions = _blockID;
 
     logState();
 
@@ -792,43 +771,44 @@ void SkaleHost::broadcastFunc() {
         try {
             m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
 
-            dev::eth::Transactions txns = m_tq.topTransactionsSync( 1, 0, 1 );
-            if ( txns.empty() )  // means timeout
-                continue;
-
             this->logState();
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 
-            assert( txns.size() == 1 );
-            Transaction& txn = txns[0];
-            h256 sha = txn.sha3();
 
-            // TODO XXX such blocks are bad :(
-            size_t received;
+            // Wait for the queue to have transactions
+
+            static auto MAX_WAIT_TIME = std::chrono::milliseconds( 100 );
+
+            std::list< Transaction > queueCopy;
+
             {
-                std::lock_guard< std::mutex > lock( m_receivedMutex );
-                received = m_received.count( sha );
+                std::unique_lock< std::mutex > lock( m_broadcastQueueMutex );
+
+                m_broadcastQueueCondition.wait_for( lock, MAX_WAIT_TIME );
+
+
+                if ( m_broadcastPauseFlag ) {
+                    continue;
+                }
+
+                queueCopy = m_broadcastQueue;
+                m_broadcastQueue = std::list< Transaction >();
             }
 
-            if ( received == 0 ) {
+
+            for ( auto&& txn : queueCopy ) {
                 try {
-                    if ( !m_broadcastPauseFlag ) {
-                        MICROPROFILE_SCOPEI(
-                            "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
-                        std::string rlp = toJS( txn.toBytes() );
-                        std::string h = toJS( txn.sha3() );
-                        m_debugTracer.tracepoint( "broadcast" );
-                        m_broadcaster->broadcast( rlp );
-                    }
+                    MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
+                    std::string rlp = toJS( txn.toBytes() );
+                    std::string h = toJS( txn.sha3() );
+                    m_debugTracer.tracepoint( "broadcast" );
+                    m_broadcaster->broadcast( rlp );
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT";
                     cwarn << ex.what();
                 }  // catch
-
-            }  // if
-            else
-                m_debugTracer.tracepoint( "broadcast_already_have" );
+            }
 
             ++m_bcast_counter;
 

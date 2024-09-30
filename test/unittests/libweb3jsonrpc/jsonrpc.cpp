@@ -4492,9 +4492,9 @@ BOOST_AUTO_TEST_CASE( mtm_import_sequential_txs ) {
     pair< bool, Secret > ar3 = fixture.accountHolder->authenticate( ts3 );
     Transaction tx3( ts3, ar3.second );
 
-    h256 h1 = fixture.client->importTransaction( tx1 );
-    h256 h2 = fixture.client->importTransaction( tx2 );
-    h256 h3 = fixture.client->importTransaction( tx3 );
+    h256 h1 = fixture.client->importTransaction( tx1, TransactionBroadcast::DontBroadcast );
+    h256 h2 = fixture.client->importTransaction( tx2, TransactionBroadcast::DontBroadcast);
+    h256 h3 = fixture.client->importTransaction( tx3, TransactionBroadcast::DontBroadcast);
     BOOST_REQUIRE( h1 );
     BOOST_REQUIRE( h2 );
     BOOST_REQUIRE( h3 );

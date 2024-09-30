@@ -1158,7 +1158,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
     h256 txHash = tx.sha3();
 
     // 1 add tx as normal
-    client->importTransaction( tx );
+    client->importTransaction( tx);
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
@@ -1184,7 +1184,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
     json["nonce"] = 1;
     Transaction tx2 = fixture.tx_from_json( json );
 
-    client->importTransaction( tx2 );
+    client->importTransaction( tx2);
 }
 
 // test two blocks with overlapping transactions :)

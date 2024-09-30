@@ -97,8 +97,6 @@ public:
     /// @param _txHash Transaction hash
     void drop( h256 const& _txHash );
 
-    int getCategory( const h256& hash ) { return m_currentByHash[hash]->category; }
-
     /// Get number of pending transactions for account.
     /// @returns Pending transaction count.
     unsigned waiting( Address const& _a ) const;
@@ -111,7 +109,7 @@ public:
     Transactions topTransactions( unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
 
     // same with categories
-    Transactions topTransactions( unsigned _limit, int _maxCategory = 0, int _setCategory = -1 );
+    Transactions topTransactions( unsigned _limit);
 
     // generalization of previous
     template < class Pred >
@@ -215,7 +213,6 @@ public:
         VerifiedTransaction& operator=( VerifiedTransaction const& ) = delete;
 
         Transaction transaction;  ///< Transaction data
-        int category = 0;         // for sorting
 
         Counter< VerifiedTransaction > c;
 
@@ -257,17 +254,15 @@ public:
         /// Compare transaction by nonce height and gas price.
         bool operator()(
             VerifiedTransaction const& _first, VerifiedTransaction const& _second ) const {
-            int cat1 = _first.category;
-            int cat2 = _second.category;
 
             // HACK special case for "dummy" transaction - it is always to the left of others with
             // the same category
             if ( !_first.transaction && _second.transaction )
-                return cat1 >= cat2;
+                return false;
             else if ( _first.transaction && !_second.transaction )
-                return cat1 > cat2;
+                return true;
             else if ( !_first.transaction && !_second.transaction )
-                return cat1 < cat2;
+                return false;
 
             u256 const& height1 =
                 _first.transaction.nonce() -
@@ -277,11 +272,9 @@ public:
                 _second.transaction.nonce() -
                 queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
 
-            return cat1 > cat2 ||
-                   ( cat1 == cat2 &&
-                       ( height1 < height2 ||
+            return( height1 < height2 ||
                            ( height1 == height2 &&
-                               _first.transaction.gasPrice() > _second.transaction.gasPrice() ) ) );
+                               _first.transaction.gasPrice() > _second.transaction.gasPrice())) ;
         }
     };
 
@@ -300,7 +293,7 @@ private:
     template < class Pred >
     Transactions topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const;
     Transactions topTransactions_WITH_LOCK(
-        unsigned _limit, int _maxCategory = 0, int _setCategory = -1 );
+        unsigned _limit);
 
     void insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
     void makeCurrent_WITH_LOCK( Transaction const& _t );

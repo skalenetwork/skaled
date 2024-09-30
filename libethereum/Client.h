@@ -85,6 +85,8 @@ constexpr size_t MAX_BLOCK_TRACES_CACHE_SIZE = 64 * 1024 * 1024;
 constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
 #endif
 
+
+
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -124,7 +126,8 @@ public:
     h256 submitTransaction( TransactionSkeleton const& _t, Secret const& _secret ) override;
 
     /// Imports the given transaction into the transaction queue
-    h256 importTransaction( Transaction const& _t ) override;
+    h256 importTransaction( Transaction const& _t,
+        TransactionBroadcast _txOrigin = TransactionBroadcast::DontBroadcast ) override;
 
 
     /// Makes the given call. Nothing is recorded into the state.

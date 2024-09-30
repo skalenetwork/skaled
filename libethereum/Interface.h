@@ -59,6 +59,11 @@ using fnClientWatchHandlerMulti_t = skutils::multifunction< void( unsigned iw ) 
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
+
+
+
+enum TransactionBroadcast { BroadcastToAll, DontBroadcast };
+
 class Interface {
 public:
     /// Constructor.
@@ -79,7 +84,7 @@ public:
         u256 const& _gasPrice = DefaultGasPrice, u256 const& _nonce = Invalid256 );
 
     /// Imports the given transaction into the transaction queue
-    virtual h256 importTransaction( Transaction const& _t ) = 0;
+    virtual h256 importTransaction( Transaction const& _t, TransactionBroadcast _txOrigin ) = 0;
 
     /// Blocks until all pending transactions have been processed.
     virtual void flushTransactions() = 0;

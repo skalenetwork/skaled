@@ -122,6 +122,8 @@ public:
 
     dev::h256 receiveTransaction( std::string );
 
+    void pushToBroadcastQueue(const dev::eth::Transaction& _transaction);
+
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom() const;
     dev::eth::SyncStatus syncStatus() const;
@@ -172,8 +174,11 @@ private:
 
     std::thread m_broadcastThread;
     void broadcastFunc();
-    dev::h256Hash m_received;
-    std::mutex m_receivedMutex;
+
+
+    list<dev::eth::Transaction> m_broadcastQueue;
+    std::mutex m_broadcastQueueMutex;
+    std::condition_variable m_broadcastQueueCondition;
 
     // TODO implement more nicely and more fine-grained!
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
@@ -182,8 +187,6 @@ private:
     std::atomic_int m_bcast_counter = 0;
 
     void penalizePeer(){};  // fake function for now
-
-    int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
 
     std::thread m_consensusThread;
 

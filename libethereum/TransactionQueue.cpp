@@ -173,21 +173,19 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
         _limit, [&]( const Transaction& t ) -> bool { return _avoid.count( t.sha3() ) == 0; } );
 }
 
-Transactions TransactionQueue::topTransactions(
-    unsigned _limit, int _maxCategory, int _setCategory ) {
+Transactions TransactionQueue::topTransactions( unsigned _limit ) {
     ReadGuard l( m_lock );
-    return topTransactions_WITH_LOCK( _limit, _maxCategory, _setCategory );
+    return topTransactions_WITH_LOCK( _limit );
 }
 
-Transactions TransactionQueue::topTransactions_WITH_LOCK(
-    unsigned _limit, int _maxCategory, int _setCategory ) {
+Transactions TransactionQueue::topTransactions_WITH_LOCK( unsigned _limit ) {
     MICROPROFILE_SCOPEI( "TransactionQueue", "topTransactions_WITH_LOCK_cat", MP_PAPAYAWHIP );
 
     Transactions top_transactions;
     std::vector< PriorityQueue::node_type > found;
 
     VerifiedTransaction dummy = VerifiedTransaction( Transaction() );
-    dummy.category = _maxCategory;
+
 
     PriorityQueue::iterator my_begin = m_current.lower_bound( dummy );
 
@@ -195,18 +193,14 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
           top_transactions.size() < _limit && transaction_ptr != m_current.end();
           ++transaction_ptr ) {
         top_transactions.push_back( transaction_ptr->transaction );
-        if ( _setCategory >= 0 ) {
-            found.push_back( m_current.extract( transaction_ptr ) );
-        }
+        found.push_back( m_current.extract( transaction_ptr ) );
     }
 
     // set all at once
-    if ( _setCategory >= 0 ) {
-        for ( PriorityQueue::node_type& queue_node : found ) {
-            queue_node.value().category = _setCategory;
-            m_current.insert( std::move( queue_node ) );
-        }
+    for ( PriorityQueue::node_type& queue_node : found ) {
+        m_current.insert( std::move( queue_node ) );
     }
+
 
     // HACK For IS-348
     auto saved_txns = top_transactions;
