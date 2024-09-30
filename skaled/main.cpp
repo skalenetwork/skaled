@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <filesystem>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -134,19 +135,23 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" )
-              << cc::attention( ver ) << "\n";
+    std::cout << "Skaled"  <<  "............................"  <<  ver << "\n";
     if ( !commit.empty() )
-        cout << cc::info( "Commit" ) << cc::debug( "............................" )
-             << cc::attention( commit ) << "\n";
-    std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
-              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." )
+        cout << "Commit"  <<  "............................"
+             <<  commit  << "\n";
+    std::cout <<  "Skale network protocol version" <<  "...."
+              << cc::num10( dev::eth::c_protocolVersion ) << "."
               << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." )
+    std::cout <<  "Client database version"  <<  "..........."
               << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << cc::info( "Build" ) << cc::debug( "............................." )
-              << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
-              << cc::attention( buildinfo->build_type ) << "\n";
+    std::cout <<  "Build"  <<  "............................."
+              <<  buildinfo->system_name  <<  "/"
+              <<  buildinfo->build_type  << "\n";
+    std::cout <<  "Build"  <<  "............................."
+                  <<  buildinfo->system_name  <<  "/"
+                  <<  buildinfo->build_type  << "\n";
+    std::cout <<  "Working dir"  <<  "......................"
+                  <<  std::filesystem::current_path().string() << endl ;
     std::cout.flush();
 }
 
@@ -1066,6 +1071,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
+            std::cout << "Using config file:" << configPath << endl;
             if ( !fs::is_regular_file( configPath.string() ) )
                 throw std::runtime_error( "Bad config file path" );
             configJSON = contentsString( configPath.string() );
