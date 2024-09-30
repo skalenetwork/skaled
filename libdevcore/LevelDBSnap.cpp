@@ -65,7 +65,7 @@ void LevelDBSnap::close( std::unique_ptr< leveldb::DB >& _parentDB, uint64_t _pa
 }
 LevelDBSnap::~LevelDBSnap() {
     if ( !m_isClosed ) {
-        cerror << "LevelDB error: destroying active snap. This will leak a handle" << std::endl;
+        cnote << "LevelDB: destroying active snap." << std::endl;
     }
 }
 
