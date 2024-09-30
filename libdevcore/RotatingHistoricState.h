@@ -18,10 +18,6 @@ private:
     mutable std::set< WriteBatchFace* > batch_cache;
     mutable std::shared_mutex m_mutex;
 
-    std::vector< uint64_t > getPiecesByTimestamp() const {
-        return ioBackend->getPiecesByTimestamp();
-    }
-
 public:
     RotatingHistoricState( std::shared_ptr< batched_io::BatchedRotatingHistoricDbIO > ioBackend );
     void rotate( uint64_t timestamp );
