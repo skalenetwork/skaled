@@ -1111,10 +1111,6 @@ BOOST_AUTO_TEST_CASE( stZeroCallsTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( stZeroCallsRevert,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-// BOOST_AUTO_TEST_CASE( stCodeSizeLimit,
-//                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-// BOOST_AUTO_TEST_CASE( stCreateTest,
-//                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( stRevertTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 
