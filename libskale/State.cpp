@@ -731,6 +731,8 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
+    cout << "Set storage for " << _contract << " and now have key " << m_cache.begin()->first << endl;
+
     int count = 0;
 
     if ( ( _value > 0 && _currentValue > 0 ) || ( _value == 0 && _currentValue == 0 ) ) {

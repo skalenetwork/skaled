@@ -202,7 +202,7 @@ public:
         state.mutableHistoricState().saveRootForBlock( 0 );
     }
     TransientDirectory m_tempDirState;
-    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
+    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32 );
     Address address1{1}, address2{2};
 };
 
@@ -323,33 +323,47 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
 
     {
         State sw = state.createStateModifyCopyAndPassLock();
+        sw.incNonce(address1);
+        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        sw.mutableHistoricState().saveRootForBlock( 1 );
+    }
+
+    {
+        State sw = state.createStateModifyCopyAndPassLock();
         sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
         //sw.incNonce(address1);
         sw.setStorage(address1, location, 1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
-        sw.mutableHistoricState().saveRootForBlock( 1 );
+        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        sw.mutableHistoricState().saveRootForBlock( 2 );
     }
 
     {
         State sw = state.createStateModifyCopyAndPassLock();
         sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
         sw.setStorage(address1, location, 2);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
-        sw.mutableHistoricState().saveRootForBlock( 2 );
+        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        sw.mutableHistoricState().saveRootForBlock( 3 );
     }
 
     // check
 
+    {
     State sr = state.createStateReadOnlyCopy();
-
-    sr.mutableHistoricState().setRootByBlockNumber( 0 );
+        sr.mutableHistoricState().setRootByBlockNumber( 1 );
     BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(0) );
+    }
 
-    sr.mutableHistoricState().setRootByBlockNumber( 1 );
+    {
+        State sr = state.createStateReadOnlyCopy();
+        sr.mutableHistoricState().setRootByBlockNumber( 2 );
     BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(1) );
+    }
 
-    sr.mutableHistoricState().setRootByBlockNumber( 2 );
+    {
+        State sr = state.createStateReadOnlyCopy();
+        sr.mutableHistoricState().setRootByBlockNumber( 3 );
     BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(2) );
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
