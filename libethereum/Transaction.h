@@ -127,7 +127,7 @@ public:
 
     void ignoreExternalGas() {
         m_externalGasIsChecked = true;
-        m_externalGas = 0;
+        m_externalGas.reset();
     }
 
 private:
