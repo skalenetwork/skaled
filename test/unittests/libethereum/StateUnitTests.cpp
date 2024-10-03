@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
     {
         State sw = state.createStateModifyCopyAndPassLock();
         sw.incNonce(address1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
         sw.mutableHistoricState().saveRootForBlock( 1 );
     }
 
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
         sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
         //sw.incNonce(address1);
         sw.setStorage(address1, location, 1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
         sw.mutableHistoricState().saveRootForBlock( 2 );
     }
 
@@ -341,28 +341,28 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
         State sw = state.createStateModifyCopyAndPassLock();
         sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
         sw.setStorage(address1, location, 2);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 );
         sw.mutableHistoricState().saveRootForBlock( 3 );
     }
 
     // check
 
     {
-    State sr = state.createStateReadOnlyCopy();
+        State sr = state.createStateReadOnlyCopy();
         sr.mutableHistoricState().setRootByBlockNumber( 1 );
-    BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(0) );
+        BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(0) );
     }
 
     {
         State sr = state.createStateReadOnlyCopy();
         sr.mutableHistoricState().setRootByBlockNumber( 2 );
-    BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(1) );
+        BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(1) );
     }
 
     {
         State sr = state.createStateReadOnlyCopy();
         sr.mutableHistoricState().setRootByBlockNumber( 3 );
-    BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(2) );
+        BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(2) );
     }
 }
 
