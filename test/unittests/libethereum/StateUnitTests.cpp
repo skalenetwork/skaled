@@ -326,23 +326,28 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
         sw.incNonce(address1);
         sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
         sw.mutableHistoricState().saveRootForBlock( 1 );
+        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
     }
 
     {
         State sw = state.createStateModifyCopyAndPassLock();
+        sw.mutableHistoricState().setRootByBlockNumber(1);
         sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
-        //sw.incNonce(address1);
+        sw.incNonce(address1);
         sw.setStorage(address1, location, 1);
         sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
         sw.mutableHistoricState().saveRootForBlock( 2 );
+        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
     }
 
     {
         State sw = state.createStateModifyCopyAndPassLock();
+        sw.mutableHistoricState().setRootByBlockNumber(2);
         sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
         sw.setStorage(address1, location, 2);
         sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 );
         sw.mutableHistoricState().saveRootForBlock( 3 );
+        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
     }
 
     // check
