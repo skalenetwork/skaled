@@ -202,7 +202,7 @@ public:
         state.mutableHistoricState().saveRootForBlock( 0 );
     }
     TransientDirectory m_tempDirState;
-    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32 );
+    State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
     Address address1{1}, address2{2};
 };
 
