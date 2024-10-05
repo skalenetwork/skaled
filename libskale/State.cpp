@@ -69,6 +69,7 @@ const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkip
     { { 1482601649, "d3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" }, 32151 },
     { { 974399131, "fcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e988b27a237693" }, 23700 },
     { { 1482601649, "6f2074cfe73a258c049ac2222101b7020461c2d40dcd5ab9587d5bbdd13e4c68" }, 55293 },
+    { { 1482601649, "cefc5c9bed32dc178e463d7e52868a421264c3a29591dd21bea2e12ab4f930ec" }, 62773 },
     { { 21, "95fb5557db8cc6de0aff3a64c18a6d9378b0d312b24f5d77e8dbf5cc0612d74f" }, 23232 }
 };  // the last value is for the test
 
