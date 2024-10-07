@@ -76,7 +76,6 @@ public:
         errors = 0;
     }
 
-
     std::atomic<uint64_t> calls;
     std::atomic<uint64_t> answers;
     std::atomic<uint64_t> errors;
@@ -116,6 +115,7 @@ protected:
 public:
 
     static std::map<std::string, StatsCounter> statsCounters;
+    static void initStatsCounters();
 };
 
 
