@@ -559,7 +559,6 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     skutils::signal::init_common_signal_handling( ExitHandler::exitHandler );
-    bool isExposeAllDebugInfo = false;
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -1963,23 +1962,11 @@ int main( int argc, char** argv ) try {
             argv_string = ss.str();
         }  // block
 
-        if ( chainConfigParsed ) {
-            try {
-                isExposeAllDebugInfo =
-                    joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
-            } catch ( ... ) {
-            }
-        }
-        if ( vm.count( "expose-all-debug-info" ) )
-            isExposeAllDebugInfo = true;
-
-
         auto pNetFace = new rpc::Net( chainParams );
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
         auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
         auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
-        pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
         auto pPersonalFace = bEnabledAPIs_personal ?
                                  new rpc::Personal( keyManager, *accountHolder, *g_client ) :
                                  nullptr;

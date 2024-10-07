@@ -579,28 +579,6 @@ static std::string stat_encode_eth_call_data_chunck_size_t(
     return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
 }
 
-bool SkaleStats::isEnabledImaMessageSigning() const {
-    bool isEnabled = true;
-    try {
-        nlohmann::json joConfig = getConfigJSON();
-        if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
-        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
-        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
-            throw std::runtime_error(
-                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
-        if ( joSkaleConfig_nodeInfo.count( "no-ima-signing" ) == 0 )
-            throw std::runtime_error(
-                "error in config.json file, cannot find "
-                "\"skaleConfig\"/\"nodeInfo\"/\"no-ima-signing\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo_isEnabled =
-            joSkaleConfig_nodeInfo["no-ima-signing"];
-        isEnabled = joSkaleConfig_nodeInfo_isEnabled.get< bool >() ? false : true;
-    } catch ( ... ) {
-    }
-    return isEnabled;
-}
 
 static void stat_array_invert( uint8_t* arr, size_t cnt ) {
     size_t n = cnt / 2;
@@ -670,13 +648,6 @@ static dev::bytes& stat_remove_leading_zeros( dev::bytes& vec ) {
     return vec;
 }
 
-// static dev::u256 stat_h256_2_u256( const dev::h256& h ) {
-//     std::string s = h.hex();
-//     std::string sh = stat_ensure_have_0x_at_start( stat_ensure_have_0x_at_start( s ) );
-//     const dev::u256 val( sh );
-//     return val;
-// }
-
 static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::string& s ) {
     dev::u256 val( s );
     bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
@@ -710,10 +681,6 @@ static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
     vec = stat_hex_string_2_bytes( s );
     return vec;
 }
-
-// static dev::bytes& stat_append_h256_2_vec( dev::bytes& vec, const dev::h256& val ) {
-//     return stat_append_u256_2_vec( vec, stat_h256_2_u256( val ) );
-// }
 
 std::string SkaleStats::pick_own_s_chain_url_s() {
     std::string strURL;
@@ -803,51 +770,3 @@ skutils::url SkaleStats::pick_own_s_chain_url() {
 };  // namespace rpc
 };  // namespace dev
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void ttt123() {
-//    const char strLogPrefix[] = "----------- ";
-//    dev::bytes vecComputeMessagesHash;
-//    vecComputeMessagesHash.push_back( 'M' );
-//    vecComputeMessagesHash.push_back( 'a' );
-//    vecComputeMessagesHash.push_back( 'i' );
-//    vecComputeMessagesHash.push_back( 'n' );
-//    vecComputeMessagesHash.push_back( 'n' );
-//    vecComputeMessagesHash.push_back( 'e' );
-//    vecComputeMessagesHash.push_back( 't' );
-//    std::cout << ( strLogPrefix + cc::debug( " Accumulated vector " ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                         vecComputeMessagesHash.size(), "" ) )
-//              << "\n";
-//    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
-//    std::cout << ( strLogPrefix + cc::debug( " Computed hash from vector " ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                         vecComputeMessagesHash.size(), "" ) )
-//              << "\n";
-//    // we should get 8d646f556e5d9d6f1edcf7a39b77f5ac253776eb34efcfd688aacbee518efc26
-//}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void ttt123() {
-//    const char strLogPrefix[] = "----------- ";
-//    dev::bytes vecComputeMessagesHash;
-//    dev::u256 uAddr( "0xd2aaa00300000000000000000000000000000000" );
-//    std::cout << ( strLogPrefix + cc::debug( " Test address " ) + cc::notice( dev::toJS( uAddr ) )
-//    )
-//              << "\n";
-//    std::cout << ( strLogPrefix + cc::debug( " Initial vector " ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                         vecComputeMessagesHash.size(), "" ) )
-//              << "\n";
-//    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, uAddr );
-//    std::cout << ( strLogPrefix + cc::debug( " Vector with appended address " ) +
-//                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
-//                         vecComputeMessagesHash.size(), "" ) )
-//              << "\n";
-//}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
