@@ -16,6 +16,10 @@ BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesyste
     if ( piecesByTimestamp.empty() )
         piecesByTimestamp.push_back( 0 );
 
+    // initialize current with the latest existing db
+    std::sort( piecesByTimestamp.begin(), piecesByTimestamp.end() );
+    current.reset( new LevelDB( basePath / std::to_string( piecesByTimestamp.back() ) ) );
+
     lastCleanup = std::chrono::system_clock::now();
 
     test_crash_before_commit( "after_recover" );
