@@ -57,6 +57,9 @@
 #undef MSIZE
 #endif
 
+#include "libweb3jsonrpc/SkaleStats.h"
+
+
 #include <libethereum/Block.h>
 #include <libethereum/Transaction.h>
 #include <libweb3jsonrpc/Eth.h>
@@ -67,6 +70,8 @@
 #include <skutils/network.h>
 #include <skutils/task_performance.h>
 #include <skutils/url.h>
+
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <iostream>
 
@@ -270,6 +275,30 @@ struct map_method_call_stats_t : public std::map< string, skutils::stats::named_
 
 map_method_call_stats_t g_map_method_call_stats;
 
+static nlohmann::json generate_subsystem_stats( string _subSystem ) {
+    nlohmann::json jo = nlohmann::json::object();
+
+    // note that no lock is needed here since the map is read only after being populated at init
+    // and we use atomic ints
+
+    for ( auto&& iterator : dev::rpc::SkaleStats::statsCounters ) {
+        auto strSubsystemAndMethodName = iterator.first;
+        if ( boost::algorithm::starts_with( strSubsystemAndMethodName, _subSystem ) ) {
+            nlohmann::json joMethod = nlohmann::json::object();
+            auto methodName = strSubsystemAndMethodName.substr( _subSystem.size() );
+            joMethod["calls"] = ( uint64_t ) iterator.second.calls;
+            joMethod["answers"] = ( uint64_t ) iterator.second.answers;
+            joMethod["errors"] = ( uint64_t ) iterator.second.errors;
+            // reset counter
+            iterator.second.reset();
+            jo[methodName] = joMethod;
+        }
+    }
+
+
+    return jo;
+}
+
 
 };  // namespace stats
 
@@ -387,6 +416,7 @@ bool SkaleStatsSubscriptionManager::unsubscribe(
         return false;
     }
 }
+
 
 void SkaleStatsSubscriptionManager::unsubscribeAll() {
     lock_type lock( mtx_ );
@@ -2472,9 +2502,23 @@ SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsS
     return ( *this );
 }
 
-json SkaleServerOverride::provideSkaleStats() {  // abstract from
-                                                 // dev::rpc::SkaleStatsProviderImpl
-    json joStats = json::object();
+nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
+                                                           // dev::rpc::SkaleStatsProviderImpl
+    nlohmann::json joStats = nlohmann::json::object();
+
+
+    joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
+    joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
+    joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "WS" );
+    joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
+
+
+    skutils::tools::load_monitor& lm = stat_get_load_monitor();
+    double lfCpuLoad = lm.last_cpu_load();
+    joStats["system"]["cpu_load"] = lfCpuLoad;
+    joStats["system"]["disk_usage"] = lm.last_disk_load();
+    double lfMemUsage = skutils::tools::mem_usage();
+    joStats["system"]["mem_usage"] = lfMemUsage;
     return joStats;
 }
 

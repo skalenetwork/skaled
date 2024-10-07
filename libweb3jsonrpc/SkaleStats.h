@@ -44,6 +44,7 @@
 #include <atomic>
 #include <list>
 #include <set>
+#include <shared_mutex>
 
 
 namespace dev {
@@ -62,6 +63,25 @@ class Interface;
 
 
 namespace rpc {
+
+class StatsCounter {
+
+public:
+
+    StatsCounter() = default;
+
+    void reset() {
+        calls = 0;
+        answers = 0;
+        errors = 0;
+    }
+
+
+    std::atomic<uint64_t> calls;
+    std::atomic<uint64_t> answers;
+    std::atomic<uint64_t> errors;
+};
+
 
 /**
  * @brief JSON-RPC api implementation
@@ -94,6 +114,10 @@ protected:
 
     std::string pick_own_s_chain_url_s();
     skutils::url pick_own_s_chain_url();
+
+public:
+
+    static std::map<std::string, StatsCounter> statsCounters;
 };
 
 

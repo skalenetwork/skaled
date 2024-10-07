@@ -185,12 +185,14 @@ Json::Value SkaleStats::skale_stats() {
     try {
         nlohmann::json joStats = consumeSkaleStats();
 
-        // HACK Add stats from SkalePerformanceTracker
-        // TODO Why we need all this absatract infrastructure?
-        const dev::eth::Client* c = dynamic_cast< dev::eth::Client* const >( this->client() );
+        const dev::eth::Client* c = dynamic_cast< dev::eth::Client* const >( client() );
         if ( c ) {
             nlohmann::json joTrace;
             std::shared_ptr< SkaleHost > h = c->skaleHost();
+
+            if (!h) {
+                throw jsonrpc::JsonRpcException("No skaleHost in client()");
+            }
 
             std::istringstream list( h->getDebugHandler()( "trace list" ) );
             std::string key;
@@ -766,6 +768,11 @@ skutils::url SkaleStats::pick_own_s_chain_url() {
     skutils::url u( strURL );
     return u;
 }
+
+
+std::map<std::string, StatsCounter> SkaleStats::statsCounters;
+
+
 
 };  // namespace rpc
 };  // namespace dev
