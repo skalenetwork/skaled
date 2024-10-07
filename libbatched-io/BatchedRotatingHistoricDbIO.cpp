@@ -43,8 +43,8 @@ void BatchedRotatingHistoricDbIO::rotate( uint64_t timestamp ) {
 void BatchedRotatingHistoricDbIO::checkOpenedDbsAndCloseIfNeeded() {
     std::lock_guard< std::mutex > lock( mutex );
 
-    if ( ( lastCleanup + std::chrono::seconds( 1000 ) > std::chrono::system_clock::now() ) &&
-         dbsInUse.size() < 10 )
+    if ( ( lastCleanup + OPENED_DB_CHECK_INTERVAL > std::chrono::system_clock::now() ) &&
+         dbsInUse.size() < MAX_OPENED_DB_COUNT )
         return;
 
     for ( auto it = dbsInUse.begin(); it != dbsInUse.end(); ) {
