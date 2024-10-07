@@ -157,8 +157,6 @@ public:
     void set_json_err( const json& jsn ) override;
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class queue : public skutils::ref_retain_release,
               public describable,
@@ -185,9 +183,6 @@ public:
     item_ptr new_item( const string& strName, const json& jsn );
     json compose_json( index_type minIndexT = 0 ) const;
 };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class tracker : public skutils::ref_retain_release,
                 public lockable,
@@ -233,44 +228,7 @@ public:
 
 extern tracker_ptr get_default_tracker();
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class action {
-    bool isSkipped_ = false;
-    item_ptr pItem_;
-
-public:
-    action( const string& strQueueName, const string& strActionName, const json& jsnAction,
-        tracker_ptr pTracker );
-    action( const string& strQueueName, const string& strActionName, const json& jsnAction );
-    action( const string& strQueueName, const string& strActionName );
-    action( const action& ) = delete;
-    action( action&& ) = delete;
-    virtual ~action();
-    action& operator=( const action& ) = delete;
-    action& operator=( action&& ) = delete;
-
-private:
-    void init( const string& strQueueName, const string& strActionName, const json& jsnAction,
-        tracker_ptr pTracker );
-
-public:
-    json get_json_in() const;
-    json get_json_out() const;
-    json get_json_err() const;
-    void set_json_in( const json& jsn );
-    void set_json_out( const json& jsn );
-    void set_json_err( const json& jsn );
-    item_ptr get_item() const;
-    queue_ptr get_queue() const;
-    tracker_ptr get_tracker() const;
-    void finish();
-    bool is_skipped() const;
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace performance
 };  // namespace task

@@ -600,8 +600,6 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                     pThis.get_unconst()->nTaskNumberInPeer_++ );
             //
             auto beginTime = chrono::system_clock::now();
-            skutils::task::performance::action a(
-                strPerformanceQueueName, strPerformanceActionName );
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
                 clog( pSO->methodTraceVerbosity( strMethod ),
                     cc::info( pThis->getRelay().nfoGetSchemeUC() ) + cc::debug( "/" ) +
@@ -622,7 +620,6 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 }
 
                 json joResponse = json::parse( strResponse );
-                a.set_json_out( joResponse );
             } catch ( const std::exception& ex ) {
                 clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() + "/" +
                                                to_string( pThis->getRelay().serverIndex() ) )
@@ -637,7 +634,6 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 joErrorObj["message"] = string( ex.what() );
                 joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
-                a.set_json_err( joErrorResponce );
             } catch ( ... ) {
                 const char* e = "unknown exception in SkaleServerOverride";
                 clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() )
@@ -653,7 +649,6 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 joErrorObj["message"] = string( e );
                 joErrorResponce["error"] = joErrorObj;
                 strResponse = joErrorResponce.dump();
-                a.set_json_err( joErrorResponce );
             }
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
                 clog( pSO->methodTraceVerbosity( strMethod ), pThis->getRelay().nfoGetSchemeUC() )
@@ -694,7 +689,6 @@ void SkaleWsPeer::onClose(
                    ", reason=" + reason );
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
     uninstallAllWatches();
-    // unddos
     unregister_ws_conn_for_origin();
 }
 
