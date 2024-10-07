@@ -63,7 +63,6 @@ typedef intptr_t ssize_t;
 #include <skutils/console_colors.h>
 #include <skutils/dispatch.h>
 #include <skutils/http.h>
-#include <skutils/stats.h>
 #include <skutils/unddos.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
@@ -553,7 +552,6 @@ protected:
 
     unsigned iwBlockStats_ = unsigned( -1 ), iwPendingTransactionStats_ = unsigned( -1 );
     mutex_type mtxStats_;
-    skutils::stats::named_event_stats statsBlocks_, statsTransactions_, statsPendingTx_;
     nlohmann::json generateBlocksStats();
 
 protected:

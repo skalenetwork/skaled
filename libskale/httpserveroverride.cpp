@@ -250,30 +250,6 @@ bool checkParamsIsArray( const char* strMethodName, const json& joRequest, json&
 
 namespace stats {
 
-typedef skutils::multithreading::recursive_mutex_type mutex_type_stats;
-typedef std::lock_guard< mutex_type_stats > lock_type_stats;
-static skutils::multithreading::recursive_mutex_type g_mtx_stats( "RMTX-NMA-PEER-ALL" );
-
-struct map_method_call_stats_t : public std::map< string, skutils::stats::named_event_stats* > {
-    typedef std::map< string, skutils::stats::named_event_stats* > my_base_t;
-    void clear() {
-        iterator itWalk = begin(), itEnd = end();
-        for ( ; itWalk != itEnd; ++itWalk ) {
-            skutils::stats::named_event_stats* x = itWalk->second;
-            if ( x )
-                delete x;
-        }
-        my_base_t::clear();
-    }
-    map_method_call_stats_t() = default;
-    ~map_method_call_stats_t() { clear(); }
-    map_method_call_stats_t( const map_method_call_stats_t& ) = delete;
-    map_method_call_stats_t( map_method_call_stats_t&& ) = delete;
-    map_method_call_stats_t& operator=( const map_method_call_stats_t& ) = delete;
-    map_method_call_stats_t& operator=( map_method_call_stats_t&& ) = delete;
-};
-
-map_method_call_stats_t g_map_method_call_stats;
 
 static nlohmann::json generate_subsystem_stats( string _subSystem ) {
     nlohmann::json jo = nlohmann::json::object();
@@ -623,7 +599,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 skutils::tools::format( "%s task %zu", pThis->getRelay().nfoGetSchemeUC().c_str(),
                     pThis.get_unconst()->nTaskNumberInPeer_++ );
             //
-            skutils::stats::time_tracker::element timeTracker;
+            auto beginTime = chrono::system_clock::now();
             skutils::task::performance::action a(
                 strPerformanceQueueName, strPerformanceActionName );
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
@@ -692,8 +668,9 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 jarrBatchAnswer.push_back( joAnswerPart );
             } else
                 pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
-            timeTracker.stop();
-            double lfExecutionDuration = timeTracker.getDurationInSeconds();  // in seconds
+            uint64_t lfExecutionDuration =
+                chrono::duration_cast< chrono::seconds >( chrono::system_clock::now() - beginTime )
+                    .count();  // in seconds
             if ( lfExecutionDuration >= pSO->opts_.lfExecutionDurationMaxForPerformanceWarning_ )
                 pSO->logPerformanceWarning( lfExecutionDuration, -1,
                     pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
@@ -1887,7 +1864,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         string strPerformanceActionName = skutils::tools::format(
             "%s task %zu, %s", _protocol.c_str(), nTaskNumberCall_++, strMethod.c_str() );
 
-        skutils::stats::time_tracker::element timeTracker;
+
+        auto beginTime = chrono::system_clock::now();
         SkaleServerConnectionsTrackHelper sscth( *this );
         if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
             logTraceServerTraffic( true, methodTraceVerbosity( strMethod ), _ipVer,
@@ -1963,8 +1941,9 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
             rslt.isBinary_ = false;
             rslt.joOut_ = json::parse( strResponse );
         }
-        timeTracker.stop();
-        double lfExecutionDuration = timeTracker.getDurationInSeconds();
+        uint64_t lfExecutionDuration =
+            chrono::duration_cast< chrono::seconds >( chrono::system_clock::now() - beginTime )
+                .count();
         if ( lfExecutionDuration >= opts_.lfExecutionDurationMaxForPerformanceWarning_ )
             logPerformanceWarning( lfExecutionDuration, _ipVer, _protocol.c_str(), _serverIndex,
                 _esm, _origin.c_str(), strMethod.c_str(), joID );
