@@ -6,19 +6,23 @@ namespace batched_io {
 
 using namespace dev::db;
 
+const uint64_t BatchedRotatingHistoricDbIO::MAX_OPENED_DB_COUNT = 10;
+const std::chrono::system_clock::duration BatchedRotatingHistoricDbIO::OPENED_DB_CHECK_INTERVAL =
+    std::chrono::seconds( 1000 );
+
 BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path )
     : basePath( _path ) {
     // initialize timestamps
     if ( boost::filesystem::exists( basePath ) )
         for ( const auto& f : boost::filesystem::directory_iterator( basePath ) )
-            piecesByTimestamp.push_back( std::stoull( boost::filesystem::basename( f ) ) );
+            timestamps.push_back( std::stoull( boost::filesystem::basename( f ) ) );
 
-    if ( piecesByTimestamp.empty() )
-        piecesByTimestamp.push_back( 0 );
+    if ( timestamps.empty() )
+        timestamps.push_back( 0 );
 
     // initialize current with the latest existing db
-    std::sort( piecesByTimestamp.begin(), piecesByTimestamp.end() );
-    current.reset( new LevelDB( basePath / std::to_string( piecesByTimestamp.back() ) ) );
+    std::sort( timestamps.begin(), timestamps.end() );
+    current.reset( new LevelDB( basePath / std::to_string( timestamps.back() ) ) );
 
     lastCleanup = std::chrono::system_clock::now();
 
@@ -30,39 +34,43 @@ void BatchedRotatingHistoricDbIO::rotate( uint64_t timestamp ) {
     auto storageUsed = currentPiece()->lookup( dev::db::Slice( "storageUsed" ) );
     currentPiece()->kill( dev::db::Slice( "storageUsed" ) );
 
-    piecesByTimestamp.push_back( timestamp );
+    timestamps.push_back( timestamp );
     current.reset( new LevelDB( basePath / std::to_string( timestamp ) ) );
 
     test_crash_before_commit( "after_open_leveldb" );
 }
 
-void BatchedRotatingHistoricDbIO::closeAllOpenedDbs() {
+void BatchedRotatingHistoricDbIO::checkOpenedDbsAndCloseIfNeeded() {
     std::lock_guard< std::mutex > lock( mutex );
-    for ( auto it = dbsInUse.begin(); it != dbsInUse.end(); ++it ) {
+
+    if ( ( lastCleanup + std::chrono::seconds( 1000 ) > std::chrono::system_clock::now() ) &&
+         dbsInUse.size() < 10 )
+        return;
+
+    for ( auto it = dbsInUse.begin(); it != dbsInUse.end(); ) {
         if ( it->second.use_count() == 0 )
-            dbsInUse.erase( it );
+            it = dbsInUse.erase( it );
+        else
+            ++it;
     }
+
+    lastCleanup = std::chrono::system_clock::now();
 }
 
 void BatchedRotatingHistoricDbIO::recover() {}
 
 std::shared_ptr< dev::db::DatabaseFace > BatchedRotatingHistoricDbIO::getPieceByTimestamp(
     uint64_t timestamp ) {
-    if ( lastCleanup + std::chrono::seconds( 1000 ) < std::chrono::system_clock::now() ) {
-        closeAllOpenedDbs();
-        lastCleanup = std::chrono::system_clock::now();
-    }
-
     std::lock_guard< std::mutex > lock( mutex );
 
-    if ( timestamp >= piecesByTimestamp.back() )
+    if ( timestamp >= timestamps.back() )
         return currentPiece();
 
-    if ( timestamp < piecesByTimestamp.front() )
+    if ( timestamp < timestamps.front() )
         throw std::invalid_argument( "Invalid timestamp passed to BatchedRotatingHistoricDbIO." );
 
-    auto it = std::upper_bound( piecesByTimestamp.begin(), piecesByTimestamp.end(), timestamp );
-    auto timestampToLook = it == piecesByTimestamp.begin() ? *it : *( --it );
+    auto it = std::upper_bound( timestamps.begin(), timestamps.end(), timestamp );
+    auto timestampToLook = it == timestamps.begin() ? *it : *( --it );
 
     auto path = basePath / std::to_string( timestampToLook );
     if ( dbsInUse.count( path ) )

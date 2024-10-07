@@ -15,7 +15,7 @@ class BatchedRotatingHistoricDbIO : public batched_face {
 private:
     const boost::filesystem::path basePath;
 
-    std::vector< uint64_t > piecesByTimestamp;
+    std::vector< uint64_t > timestamps;
 
     std::map< boost::filesystem::path, std::shared_ptr< dev::db::DatabaseFace > > dbsInUse;
     std::shared_ptr< dev::db::DatabaseFace > current;
@@ -23,13 +23,16 @@ private:
 
     std::mutex mutex;
 
+    static const uint64_t MAX_OPENED_DB_COUNT;
+    static const std::chrono::system_clock::duration OPENED_DB_CHECK_INTERVAL;
+
 public:
     BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path );
     std::shared_ptr< dev::db::DatabaseFace > currentPiece() const { return current; }
     std::shared_ptr< dev::db::DatabaseFace > getPieceByTimestamp( uint64_t timestamp );
-    std::vector< uint64_t > getPieces() const { return piecesByTimestamp; }
+    std::vector< uint64_t > getPieces() const { return timestamps; }
     void rotate( uint64_t timestamp );
-    void closeAllOpenedDbs();
+    void checkOpenedDbsAndCloseIfNeeded();
     virtual void revert() { /* no need - as all write is in rotate() */
     }
     virtual void commit(

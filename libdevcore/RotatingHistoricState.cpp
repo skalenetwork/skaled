@@ -30,6 +30,8 @@ void RotatingHistoricState::rotate( uint64_t timestamp ) {
 std::string RotatingHistoricState::lookup( Slice _key ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
+    ioBackend->checkOpenedDbsAndCloseIfNeeded();
+
     if ( _key.toString() == std::string( "storageUsed" ) )
         return currentPiece()->lookup( _key );
 
@@ -45,6 +47,8 @@ std::string RotatingHistoricState::lookup( Slice _key ) const {
 bool RotatingHistoricState::exists( Slice _key ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
+    ioBackend->checkOpenedDbsAndCloseIfNeeded();
+
     for ( auto timestamp : ioBackend->getPieces() ) {
         auto db = ioBackend->getPieceByTimestamp( timestamp );
         if ( db->exists( _key ) )
@@ -56,11 +60,16 @@ bool RotatingHistoricState::exists( Slice _key ) const {
 
 void RotatingHistoricState::insert( Slice _key, Slice _value ) {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
+
+    ioBackend->checkOpenedDbsAndCloseIfNeeded();
+
     currentPiece()->insert( _key, _value );
 }
 
 void RotatingHistoricState::kill( Slice _key ) {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
+
+    ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
     for ( auto timestamp : ioBackend->getPieces() ) {
         auto db = ioBackend->getPieceByTimestamp( timestamp );
