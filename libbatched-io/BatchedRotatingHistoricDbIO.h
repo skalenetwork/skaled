@@ -15,18 +15,21 @@ class BatchedRotatingHistoricDbIO : public batched_face {
 private:
     const boost::filesystem::path basePath;
 
-    std::map< uint64_t, std::unique_ptr< dev::db::DatabaseFace > > piecesByTimestamp;
+    std::vector< uint64_t > piecesByTimestamp;
+
+    std::map< boost::filesystem::path, std::shared_ptr< dev::db::DatabaseFace > > dbsInUse;
+    std::shared_ptr< dev::db::DatabaseFace > current;
+    std::chrono::system_clock::time_point lastCleanup;
+
+    std::mutex mutex;
 
 public:
-    using constIterator =
-        std::map< uint64_t, std::unique_ptr< dev::db::DatabaseFace > >::const_iterator;
-
     BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path );
-    dev::db::DatabaseFace* currentPiece() const { return piecesByTimestamp.rbegin()->second.get(); }
-    //    dev::db::DatabaseFace* getPieceByTimestamp( uint64_t timestamp );
-    constIterator begin() const { return piecesByTimestamp.begin(); }
-    constIterator end() const { return piecesByTimestamp.end(); }
+    std::shared_ptr< dev::db::DatabaseFace > currentPiece() const { return current; }
+    std::shared_ptr< dev::db::DatabaseFace > getPieceByTimestamp( uint64_t timestamp );
+    std::vector< uint64_t > getPieces() const { return piecesByTimestamp; }
     void rotate( uint64_t timestamp );
+    void closeAllOpenedDbs();
     virtual void revert() { /* no need - as all write is in rotate() */
     }
     virtual void commit(

@@ -33,8 +33,9 @@ std::string RotatingHistoricState::lookup( Slice _key ) const {
     if ( _key.toString() == std::string( "storageUsed" ) )
         return currentPiece()->lookup( _key );
 
-    for ( const auto& item : *ioBackend ) {
-        auto v = item.second->lookup( _key );
+    for ( auto timestamp : ioBackend->getPieces() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        auto v = db->lookup( _key );
         if ( !v.empty() )
             return v;
     }
@@ -44,8 +45,9 @@ std::string RotatingHistoricState::lookup( Slice _key ) const {
 bool RotatingHistoricState::exists( Slice _key ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    for ( const auto& item : *ioBackend ) {
-        if ( item.second->exists( _key ) )
+    for ( auto timestamp : ioBackend->getPieces() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        if ( db->exists( _key ) )
             return true;
     }
 
@@ -60,8 +62,9 @@ void RotatingHistoricState::insert( Slice _key, Slice _value ) {
 void RotatingHistoricState::kill( Slice _key ) {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    for ( const auto& item : *ioBackend ) {
-        item.second->kill( _key );
+    for ( auto timestamp : ioBackend->getPieces() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        db->kill( _key );
     }
 }
 
@@ -81,8 +84,9 @@ void RotatingHistoricState::commit( std::unique_ptr< WriteBatchFace > _batch ) {
 void RotatingHistoricState::forEach( std::function< bool( Slice, Slice ) > f ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    for ( const auto& item : *ioBackend ) {
-        item.second->forEach( f );
+    for ( auto timestamp : ioBackend->getPieces() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        db->forEach( f );
     }
 }
 
@@ -90,8 +94,9 @@ void RotatingHistoricState::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    for ( const auto& item : *ioBackend ) {
-        item.second->forEachWithPrefix( _prefix, f );
+    for ( auto timestamp : ioBackend->getPieces() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        db->forEachWithPrefix( _prefix, f );
     }
 }
 
@@ -100,8 +105,9 @@ h256 RotatingHistoricState::hashBase() const {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
-    for ( const auto& item : *ioBackend ) {
-        h256 h = item.second->hashBase();
+    for ( auto timestamp : ioBackend->getPieces() ) {
+        auto db = ioBackend->getPieceByTimestamp( timestamp );
+        h256 h = db->hashBase();
         secp256k1_sha256_write( &ctx, h.data(), h.size );
     }
 

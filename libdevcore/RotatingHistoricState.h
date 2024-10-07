@@ -21,7 +21,9 @@ private:
 public:
     RotatingHistoricState( std::shared_ptr< batched_io::BatchedRotatingHistoricDbIO > ioBackend );
     void rotate( uint64_t timestamp );
-    DatabaseFace* currentPiece() const { return ioBackend->currentPiece(); }
+    std::shared_ptr< dev::db::DatabaseFace > currentPiece() const {
+        return ioBackend->currentPiece();
+    }
 
     virtual std::string lookup( Slice _key ) const;
     virtual bool exists( Slice _key ) const;
