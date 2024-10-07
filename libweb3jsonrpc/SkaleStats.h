@@ -112,8 +112,6 @@ protected:
     eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
 
-    std::string pick_own_s_chain_url_s();
-    skutils::url pick_own_s_chain_url();
 
 public:
 

@@ -14,7 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with skaled.  If not, see <http://www.gnu.org/licenses/>.
+    along with skaled.  If not, see <http:www.gnu.org/licenses/>.
 */
 /** @file SkaleStats.cpp
  * @authors:
@@ -52,80 +52,14 @@
 #include <stdio.h>
 #include <time.h>
 
-//#include "../libconsensus/libBLS/bls/bls.h"
 
 #include <bls/bls.h>
-
-#include <skutils/console_colors.h>
 #include <skutils/utils.h>
 
 #include <libconsensus/SkaleCommon.h>
-#include <libconsensus/crypto/OpenSSLECDSAKey.h>
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace dev {
 
-static dev::u256 stat_str2u256( const std::string& saIn ) {
-    std::string sa;
-    if ( !( saIn.length() > 2 && saIn[0] == '0' && ( saIn[1] == 'x' || saIn[1] == 'X' ) ) )
-        sa = "0x" + saIn;
-    else
-        sa = saIn;
-    dev::u256 u( sa.c_str() );
-    return u;
-}
-
-static nlohmann::json stat_parse_json_with_error_conversion(
-    const std::string& s, bool isThrowException = false ) {
-    nlohmann::json joAnswer;
-    std::string strError;
-    try {
-        joAnswer = nlohmann::json::parse( s );
-        return joAnswer;
-    } catch ( std::exception const& ex ) {
-        strError = ex.what();
-        if ( strError.empty() )
-            strError = "exception without description";
-    } catch ( ... ) {
-        strError = "unknown exception";
-    }
-    if ( strError.empty() )
-        strError = "unknown error";
-    std::string strErrorDescription =
-        "JSON parser error \"" + strError + "\" while parsing JSON text \"" + s + "\"";
-    if ( isThrowException )
-        throw std::runtime_error( strErrorDescription );
-    joAnswer = nlohmann::json::object();
-    joAnswer["error"] = strErrorDescription;
-    return joAnswer;
-}
-
-static bool stat_trim_func_with_quotes( unsigned char ch ) {
-    return skutils::tools::default_trim_what( ch ) || ch == '\"' || ch == '\'';
-}
-
-static void stat_check_rpc_call_error_and_throw(
-    const nlohmann::json& joAnswer, const std::string& strMethodName ) {
-    if ( joAnswer.count( "error" ) > 0 ) {
-        std::string strError = joAnswer["error"].dump();
-        strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
-        if ( !strError.empty() )
-            throw std::runtime_error(
-                "Got \"" + strMethodName + "\" call error \"" + strError + "\"" );
-    }
-    if ( joAnswer.count( "errorMessage" ) > 0 ) {
-        std::string strError = joAnswer["errorMessage"].dump();
-        strError = skutils::tools::trim_copy( strError, stat_trim_func_with_quotes );
-        if ( !strError.empty() )
-            throw std::runtime_error(
-                "Got \"" + strMethodName + "\" call error \"" + strError + "\"" );
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace rpc {
 
@@ -361,18 +295,18 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
             jo["schainName"] = joSkaleConfig_sChain["schainName"].get< std::string >();
         else
             joThisNode["schainName"] = "";
-        //
+
         nlohmann::json jarrNetwork = nlohmann::json::array();
         size_t i, cnt = joSkaleConfig_sChain_nodes.size();
         for ( i = 0; i < cnt; ++i ) {
             const nlohmann::json& joNC = joSkaleConfig_sChain_nodes[i];
             nlohmann::json joNode = nlohmann::json::object();
-            //
+
             if ( joNC.count( "nodeID" ) > 0 && joNC["nodeID"].is_number() )
                 joNode["nodeID"] = joNC["nodeID"].get< int >();
             else
                 joNode["nodeID"] = 1;
-            //
+
             if ( joNC.count( "publicIP" ) > 0 && joNC["publicIP"].is_string() )
                 joNode["ip"] = joNC["publicIP"].get< std::string >();
             else {
@@ -381,7 +315,7 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
                 else
                     joNode["ip"] = "";
             }
-            //
+
             if ( joNC.count( "publicIP6" ) > 0 && joNC["publicIP6"].is_string() )
                 joNode["ip6"] = joNC["publicIP6"].get< std::string >();
             else {
@@ -390,55 +324,55 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
                 else
                     joNode["ip6"] = "";
             }
-            //
+
             if ( joNC.count( "schainIndex" ) > 0 && joNC["schainIndex"].is_number() )
                 joNode["schainIndex"] = joNC["schainIndex"].get< int >();
             else
                 joNode["schainIndex"] = -1;
-            //
+
             if ( joNC.count( "httpRpcPort" ) > 0 && joNC["httpRpcPort"].is_number() )
                 joNode["httpRpcPort"] = joNC["httpRpcPort"].get< int >();
             else
                 joNode["httpRpcPort"] = 0;
-            //
+
             if ( joNC.count( "httpsRpcPort" ) > 0 && joNC["httpsRpcPort"].is_number() )
                 joNode["httpsRpcPort"] = joNC["httpsRpcPort"].get< int >();
             else
                 joNode["httpsRpcPort"] = 0;
-            //
+
             if ( joNC.count( "wsRpcPort" ) > 0 && joNC["wsRpcPort"].is_number() )
                 joNode["wsRpcPort"] = joNC["wsRpcPort"].get< int >();
             else
                 joNode["wsRpcPort"] = 0;
-            //
+
             if ( joNC.count( "wssRpcPort" ) > 0 && joNC["wssRpcPort"].is_number() )
                 joNode["wssRpcPort"] = joNC["wssRpcPort"].get< int >();
             else
                 joNode["wssRpcPort"] = 0;
-            //
+
             if ( joNC.count( "httpRpcPort6" ) > 0 && joNC["httpRpcPort6"].is_number() )
                 joNode["httpRpcPort6"] = joNC["httpRpcPort6"].get< int >();
             else
                 joNode["httpRpcPort6"] = 0;
-            //
+
             if ( joNC.count( "httpsRpcPort6" ) > 0 && joNC["httpsRpcPort6"].is_number() )
                 joNode["httpsRpcPort6"] = joNC["httpsRpcPort6"].get< int >();
             else
                 joNode["httpsRpcPort6"] = 0;
-            //
+
             if ( joNC.count( "wsRpcPort6" ) > 0 && joNC["wsRpcPort6"].is_number() )
                 joNode["wsRpcPort6"] = joNC["wsRpcPort6"].get< int >();
             else
                 joNode["wsRpcPort6"] = 0;
-            //
+
             if ( joNC.count( "wssRpcPort6" ) > 0 && joNC["wssRpcPort6"].is_number() )
                 joNode["wssRpcPort6"] = joNC["wssRpcPort6"].get< int >();
             else
                 joNode["wssRpcPort6"] = 0;
-            //
+
             jarrNetwork.push_back( joNode );
         }
-        //
+
         jo["node"] = joThisNode;
         jo["network"] = jarrNetwork;
         jo["node"] = joThisNode;
@@ -459,24 +393,24 @@ Json::Value SkaleStats::skale_imaInfo() {
         if ( joConfig.count( "skaleConfig" ) == 0 )
             throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
         const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
-        //
+
         if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
             throw std::runtime_error(
                 "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
-        //
+
         if ( joSkaleConfig_nodeInfo.count( "wallets" ) == 0 )
             throw std::runtime_error(
                 "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"/\"wallets\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets = joSkaleConfig_nodeInfo["wallets"];
-        //
+
         if ( joSkaleConfig_nodeInfo_wallets.count( "ima" ) == 0 )
             throw std::runtime_error(
                 "error in config.json file, cannot find "
                 "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"" );
         const nlohmann::json& joSkaleConfig_nodeInfo_wallets_ima =
             joSkaleConfig_nodeInfo_wallets["ima"];
-        //
+
         // validate wallet description
         static const char* g_arrMustHaveWalletFields[] = { // "url",
             "keyShareName", "t", "n", "BLSPublicKey0", "BLSPublicKey1", "BLSPublicKey2",
@@ -507,14 +441,14 @@ Json::Value SkaleStats::skale_imaInfo() {
                     "\"skaleConfig\"/\"nodeInfo\"/\"wallets\"/\"ima\"/" +
                     strFieldName + " must be a string" );
         }
-        //
+
         nlohmann::json jo = nlohmann::json::object();
-        //
+
         jo["thisNodeIndex"] = nThisNodeIndex_;  // 1-based "schainIndex"
-        //
+
         jo["t"] = joSkaleConfig_nodeInfo_wallets_ima["t"];
         jo["n"] = joSkaleConfig_nodeInfo_wallets_ima["n"];
-        //
+
         jo["BLSPublicKey0"] =
             joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey0"].get< std::string >();
         jo["BLSPublicKey1"] =
@@ -523,7 +457,7 @@ Json::Value SkaleStats::skale_imaInfo() {
             joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey2"].get< std::string >();
         jo["BLSPublicKey3"] =
             joSkaleConfig_nodeInfo_wallets_ima["BLSPublicKey3"].get< std::string >();
-        //
+
         jo["commonBLSPublicKey0"] =
             joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey0"].get< std::string >();
         jo["commonBLSPublicKey1"] =
@@ -532,7 +466,7 @@ Json::Value SkaleStats::skale_imaInfo() {
             joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey2"].get< std::string >();
         jo["commonBLSPublicKey3"] =
             joSkaleConfig_nodeInfo_wallets_ima["commonBLSPublicKey3"].get< std::string >();
-        //
+
         std::string s = jo.dump();
         Json::Value ret;
         Json::Reader().parse( s, ret );
@@ -542,231 +476,6 @@ Json::Value SkaleStats::skale_imaInfo() {
     } catch ( const std::exception& ex ) {
         throw jsonrpc::JsonRpcException( ex.what() );
     }
-}
-
-static std::string stat_prefix_align( const std::string& strSrc, size_t n, char ch ) {
-    std::string strDst = strSrc;
-    while ( strDst.length() < n )
-        strDst.insert( 0, 1, ch );
-    return strDst;
-}
-
-static std::string stat_encode_eth_call_data_chunck_address(
-    const std::string& strSrc, size_t alignWithZerosTo = 64 ) {
-    std::string strDst = strSrc;
-    strDst = skutils::tools::replace_all_copy( strDst, "0x", "" );
-    strDst = skutils::tools::replace_all_copy( strDst, "0X", "" );
-    strDst = stat_prefix_align( strDst, alignWithZerosTo, '0' );
-    return strDst;
-}
-
-static std::string stat_encode_eth_call_data_chunck_size_t(
-    const dev::u256& uSrc, size_t alignWithZerosTo = 64 ) {
-    std::string strDst = dev::toJS( uSrc );
-    strDst = skutils::tools::replace_all_copy( strDst, "0x", "" );
-    strDst = skutils::tools::replace_all_copy( strDst, "0X", "" );
-    strDst = stat_prefix_align( strDst, alignWithZerosTo, '0' );
-    return strDst;
-}
-
-static std::string stat_encode_eth_call_data_chunck_size_t(
-    const std::string& strSrc, size_t alignWithZerosTo = 64 ) {
-    dev::u256 uSrc( strSrc );
-    return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
-}
-
-static std::string stat_encode_eth_call_data_chunck_size_t(
-    const size_t nSrc, size_t alignWithZerosTo = 64 ) {
-    dev::u256 uSrc( nSrc );
-    return stat_encode_eth_call_data_chunck_size_t( uSrc, alignWithZerosTo );
-}
-
-
-static void stat_array_invert( uint8_t* arr, size_t cnt ) {
-    size_t n = cnt / 2;
-    for ( size_t i = 0; i < n; ++i ) {
-        uint8_t b1 = arr[i];
-        uint8_t b2 = arr[cnt - i - 1];
-        arr[i] = b2;
-        arr[cnt - i - 1] = b1;
-    }
-}
-
-static dev::bytes& stat_bytes_align_left( dev::bytes& vec, size_t cnt ) {
-    while ( vec.size() < cnt )
-        vec.insert( vec.begin(), 0 );
-    return vec;
-}
-
-static dev::bytes& stat_array_align_right( dev::bytes& vec, size_t cnt ) {
-    while ( vec.size() < cnt )
-        vec.push_back( 0 );
-    return vec;
-}
-
-static std::string stat_data_2_hex_string( const uint8_t* p, size_t cnt ) {
-    std::string s;
-    if ( p == nullptr || cnt == 0 )
-        return s;
-    char hs[10];
-    for ( size_t i = 0; i < cnt; ++i ) {
-        sprintf( hs, "%02x", p[i] );
-        s += hs;
-    }
-    return s;  // there is no "0x" prefix at start of return value
-}
-
-static std::string stat_bytes_2_hex_string( const dev::bytes& vec ) {
-    return stat_data_2_hex_string(
-        ( uint8_t* ) vec.data(), vec.size() );  // there is no "0x" prefix at start of return value
-}
-
-static dev::bytes stat_hex_string_2_bytes( const std::string& src ) {
-    std::string s = src;
-    if ( ( s.length() % 2 ) != 0 )
-        s = "0" + s;
-    bytes vec = dev::fromHex( s );
-    return vec;
-}
-
-static std::string& stat_ensure_have_0x_at_start( std::string& s ) {
-    if ( s.length() < 2 || ( !( s[0] == '0' && ( s[1] == 'x' || s[1] == 'X' ) ) ) )
-        s = "0x" + s;
-    return s;
-}
-
-static std::string& stat_remove_0x_from_start( std::string& s ) {
-    if ( s.length() >= 2 && s[0] == '0' && ( s[1] == 'x' || s[1] == 'X' ) )
-        s = s.substr( 2 );
-    return s;
-}
-
-static dev::bytes& stat_remove_leading_zeros( dev::bytes& vec ) {
-    while ( vec.size() > 0 ) {
-        if ( vec[0] != 0 )
-            break;
-        vec.erase( vec.begin(), vec.begin() + 1 );
-    }
-    return vec;
-}
-
-static dev::bytes& stat_append_hash_str_2_vec( dev::bytes& vec, const std::string& s ) {
-    dev::u256 val( s );
-    bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-    stat_bytes_align_left( v, 32 );
-    vec.insert( vec.end(), v.begin(), v.end() );
-    return vec;
-}
-
-static dev::bytes& stat_append_u256_2_vec( dev::bytes& vec, const dev::u256& val ) {
-    bytes v = dev::BMPBN::encode2vec< dev::u256 >( val, true );
-    stat_bytes_align_left( v, 32 );
-    vec.insert( vec.end(), v.begin(), v.end() );
-    return vec;
-}
-
-static dev::bytes& stat_append_address_2_vec( dev::bytes& vec, const dev::u256& val ) {
-    std::string s = dev::toJS( val );
-    s = stat_remove_0x_from_start( s );
-    dev::bytes v = stat_hex_string_2_bytes( s );
-    stat_remove_leading_zeros( v );
-    stat_bytes_align_left( v, 32 );
-    vec.insert( vec.end(), v.begin(), v.end() );
-    return vec;
-}
-
-static dev::bytes stat_re_compute_vec_2_h256vec( dev::bytes& vec ) {
-    dev::h256 h = dev::sha3( vec );
-    std::string s = h.hex();
-    stat_remove_0x_from_start( s );
-    vec.clear();
-    vec = stat_hex_string_2_bytes( s );
-    return vec;
-}
-
-std::string SkaleStats::pick_own_s_chain_url_s() {
-    std::string strURL;
-    try {
-        nlohmann::json joConfig = getConfigJSON();
-        //
-        if ( joConfig.count( "skaleConfig" ) == 0 )
-            throw std::runtime_error( "error in config.json file, cannot find \"skaleConfig\"" );
-        const nlohmann::json& joSkaleConfig = joConfig["skaleConfig"];
-        //
-        if ( joSkaleConfig.count( "nodeInfo" ) == 0 )
-            throw std::runtime_error(
-                "error in config.json file, cannot find \"skaleConfig\"/\"nodeInfo\"" );
-        const nlohmann::json& joSkaleConfig_nodeInfo = joSkaleConfig["nodeInfo"];
-        //
-        if ( joSkaleConfig_nodeInfo.count( "bindIP" ) > 0 ) {
-            std::string strIpAddress =
-                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
-            if ( !strIpAddress.empty() ) {
-                if ( joSkaleConfig_nodeInfo.count( "httpRpcPort" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["httpRpcPort"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "http://" ) + strIpAddress + ":" +
-                               skutils::tools::format( "%d", nPort );
-                }
-                if ( joSkaleConfig_nodeInfo.count( "wsRpcPort" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["wsRpcPort"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "ws://" ) + strIpAddress + ":" +
-                               skutils::tools::format( "%d", nPort );
-                }
-                if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["httpsRpcPort"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "https://" ) + strIpAddress + ":" +
-                               skutils::tools::format( "%d", nPort );
-                }
-                if ( joSkaleConfig_nodeInfo.count( "wssRpcPort" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["wssRpcPort"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "wss://" ) + strIpAddress + ":" +
-                               skutils::tools::format( "%d", nPort );
-                }
-            }  // if ( !strIpAddress.empty() )
-        } else if ( joSkaleConfig_nodeInfo.count( "bindIP6" ) > 0 ) {
-            std::string strIpAddress =
-                skutils::tools::trim_copy( joSkaleConfig_nodeInfo["bindIP"].get< std::string >() );
-            if ( !strIpAddress.empty() ) {
-                if ( joSkaleConfig_nodeInfo.count( "httpRpcPort6" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["httpRpcPort6"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "http://[" ) + strIpAddress +
-                               "]:" + skutils::tools::format( "%d", nPort );
-                }
-                if ( joSkaleConfig_nodeInfo.count( "wsRpcPort6" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["wsRpcPort6"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "ws://[" ) + strIpAddress +
-                               "]:" + skutils::tools::format( "%d", nPort );
-                }
-                if ( joSkaleConfig_nodeInfo.count( "httpsRpcPort6" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["httpsRpcPort6"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "https://[" ) + strIpAddress +
-                               "]:" + skutils::tools::format( "%d", nPort );
-                }
-                if ( joSkaleConfig_nodeInfo.count( "wssRpcPort6" ) > 0 ) {
-                    int nPort = joSkaleConfig_nodeInfo["wssRpcPort6"].get< int >();
-                    if ( 0 < nPort && nPort <= 65535 )
-                        return std::string( "wss://[" ) + strIpAddress +
-                               "]:" + skutils::tools::format( "%d", nPort );
-                }
-            }  // if ( !strIpAddress.empty() )
-        }
-    } catch ( ... ) {
-    }
-    strURL.clear();
-    return strURL;
-}
-
-skutils::url SkaleStats::pick_own_s_chain_url() {
-    std::string strURL = pick_own_s_chain_url_s();
-    skutils::url u( strURL );
-    return u;
 }
 
 
