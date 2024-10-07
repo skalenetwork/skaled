@@ -322,11 +322,20 @@ void SkaleHost::logState() {
                          << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
 }
 
+constexpr uint64_t MAX_BROADCAST_QUEUE_SIZE = 2048;
 
 void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
     {
         std::lock_guard< std::mutex > lock( m_broadcastQueueMutex );
         this->m_broadcastQueue.push_back( _t );
+        // normally broadcast queue will never be large since
+        // it is an intermediate queue on the way to zeromq
+        // and zeromq writes do not block
+        // we still keep its size limited
+        while (m_broadcastQueue.size() > MAX_BROADCAST_QUEUE_SIZE) {
+            // behavior on overflow similar to ZeroMQ - erase the latest
+            m_broadcastQueue.erase( m_broadcastQueue.begin());
+        }
     }
     m_broadcastQueueCondition.notify_all();  // Notify the condition variable
 }
@@ -769,7 +778,7 @@ void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
     while ( !m_exitNeeded ) {
         try {
-            m_broadcaster->broadcast( "" );  // HACK this is just to initialize sockets
+            m_broadcaster->initSocket();
 
             this->logState();
 
