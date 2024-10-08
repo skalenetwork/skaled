@@ -331,7 +331,6 @@ void HistoricState::setRoot( GlobalRoot const& _r ) {
     m_state.setRoot( _r );
 }
 
-
 void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
     auto key = h256( _blockNumber );
     if ( !m_blockToStateRootDB.exists( key ) ) {
@@ -341,7 +340,6 @@ void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
     auto root = h256( value, h256::ConstructFromStringType::FromBinary );
     setRoot( GlobalRoot( root ) );
 }
-
 
 void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
     auto key = h256( _blockNumber );

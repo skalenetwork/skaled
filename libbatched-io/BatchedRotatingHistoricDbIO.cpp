@@ -79,6 +79,28 @@ std::shared_ptr< dev::db::DatabaseFace > BatchedRotatingHistoricDbIO::getPieceBy
     return dbsInUse[path];
 }
 
+uint64_t BatchedRotatingHistoricDbIO::getTimestampFromKey( Slice& _key ) {
+    auto keyStr = _key.toString();
+    size_t pos = keyStr.find( ':' );
+    if ( pos == std::string::npos )
+        return -1;
+    uint64_t timestamp = std::stoull( keyStr.substr( pos ) );
+    _key = Slice( _key.begin(), pos + 1 );
+    return timestamp;
+}
+
+std::pair< std::vector< uint64_t >::const_iterator, std::vector< uint64_t >::const_iterator >
+BatchedRotatingHistoricDbIO::getRangeForKey( dev::db::Slice& _key ) {
+    auto timestamps = getTimestamps();
+    auto timestampForCall = getTimestampFromKey( _key );
+    auto it = timestampForCall == uint64_t( -1 ) ?
+                  timestamps.begin() :
+                  std::lower_bound( timestamps.begin(), timestamps.end(), timestampForCall );
+    if ( it != timestamps.begin() )
+        --it;
+    return { it, timestamps.end() };
+}
+
 BatchedRotatingHistoricDbIO::~BatchedRotatingHistoricDbIO() {}
 
 }  // namespace batched_io

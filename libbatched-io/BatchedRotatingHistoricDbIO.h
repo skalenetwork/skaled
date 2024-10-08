@@ -30,7 +30,9 @@ public:
     BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path );
     std::shared_ptr< dev::db::DatabaseFace > currentPiece() const { return current; }
     std::shared_ptr< dev::db::DatabaseFace > getPieceByTimestamp( uint64_t timestamp );
-    std::vector< uint64_t > getPieces() const { return timestamps; }
+    std::vector< uint64_t > getTimestamps() const { return timestamps; }
+    std::pair< std::vector< uint64_t >::const_iterator, std::vector< uint64_t >::const_iterator >
+    getRangeForKey( dev::db::Slice& _key );
     void rotate( uint64_t timestamp );
     void checkOpenedDbsAndCloseIfNeeded();
     virtual void revert() { /* no need - as all write is in rotate() */
@@ -43,6 +45,9 @@ public:
 
 protected:
     virtual void recover();
+
+private:
+    static uint64_t getTimestampFromKey( dev::db::Slice& _key );
 };
 
 }  // namespace batched_io
