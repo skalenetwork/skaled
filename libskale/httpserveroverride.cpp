@@ -257,21 +257,19 @@ static nlohmann::json generate_subsystem_stats( string _subSystem ) {
     // note that no lock is needed here since the map is read only after being populated at init
     // and we use atomic ints
 
+
     for ( auto&& iterator : dev::rpc::SkaleStats::statsCounters ) {
-        auto strSubsystemAndMethodName = _subSystem + iterator.first;
+        auto strSubsystemAndMethodName = iterator.first;
         if ( boost::algorithm::starts_with( strSubsystemAndMethodName, _subSystem ) ) {
             nlohmann::json joMethod = nlohmann::json::object();
             auto methodName = strSubsystemAndMethodName.substr( _subSystem.size() );
+            LDB_CHECK( methodName.find( ':' )  == string::npos );
             joMethod["calls"] = ( uint64_t ) iterator.second.calls;
             joMethod["answers"] = ( uint64_t ) iterator.second.answers;
             joMethod["errors"] = ( uint64_t ) iterator.second.errors;
-            // reset counter
-            iterator.second.reset();
             jo[methodName] = joMethod;
         }
     }
-
-
     return jo;
 }
 
@@ -2466,11 +2464,6 @@ void SkaleServerOverride::on_connection_overflow_peer_closed(
            << " closed peer because of connection limit overflow" << ( int ) esm;
 }
 
-skutils::tools::load_monitor& stat_get_load_monitor() {
-    static skutils::tools::load_monitor g_lm;
-    return g_lm;
-}
-
 SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSubscriptionManager
     return ( *this );
 }
@@ -2486,12 +2479,6 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
     joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "wss:" );
 
 
-    skutils::tools::load_monitor& lm = stat_get_load_monitor();
-    double lfCpuLoad = lm.last_cpu_load();
-    joStats["system"]["cpu_load"] = lfCpuLoad;
-    joStats["system"]["disk_usage"] = lm.last_disk_load();
-    double lfMemUsage = skutils::tools::mem_usage();
-    joStats["system"]["mem_usage"] = lfMemUsage;
     return joStats;
 }
 

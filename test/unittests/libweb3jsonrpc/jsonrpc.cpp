@@ -1081,6 +1081,8 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
         fixture.splitAccountInHalves( firstAccount, dst, gasPrice,
             TransactionWait::WAIT_FOR_COMPLETION);
     }
+
+    cerr << fixture.rpcClient()->skale_stats() << endl;
 }
 
 
