@@ -159,10 +159,6 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
         return joResponse;
     }
 
-    bool forArchiveNode = false;
-    if ( client.chainParams().nodeInfo.archiveMode )
-        forArchiveNode = joRequest["forArchiveNode"].get< bool >();
-
     // exit if too early
     if ( currentSnapshotBlockNumber >= 0 ) {
         joResponse["error"] =
@@ -194,7 +190,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     }
 
     try {
-        currentSnapshotPath = client.createSnapshotFile( blockNumber, forArchiveNode );
+        currentSnapshotPath = client.createSnapshotFile( blockNumber );
     } catch ( ... ) {
         if ( m_shared_space )
             m_shared_space->unlock();

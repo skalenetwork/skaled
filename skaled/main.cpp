@@ -469,13 +469,18 @@ bool tryDownloadSnapshot( std::shared_ptr< SnapshotManager >& snapshotManager,
 
 bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManager,
     const ChainParams& chainParams, const std::array< std::string, 4 >& arrayCommonPublicKey,
-    const std::string& urlToDownloadSnapshotFrom, bool isRegularSnapshot ) {
+    const std::string& urlToDownloadSnapshotFrom, bool isRegularSnapshot,
+    bool forceDownload = false ) {
     unsigned blockNumber = 0;
     if ( isRegularSnapshot )
         blockNumber = getBlockToDownladSnapshot( urlToDownloadSnapshotFrom );
 
-    std::unique_ptr< SnapshotHashAgent > snapshotHashAgent(
-        new SnapshotHashAgent( chainParams, arrayCommonPublicKey, urlToDownloadSnapshotFrom ) );
+    std::unique_ptr< SnapshotHashAgent > snapshotHashAgent;
+    if ( forceDownload )
+        snapshotHashAgent.reset(
+            new SnapshotHashAgent( chainParams, arrayCommonPublicKey, urlToDownloadSnapshotFrom ) );
+    else
+        snapshotHashAgent.reset( new SnapshotHashAgent( chainParams, arrayCommonPublicKey ) );
 
     libff::init_alt_bn128_params();
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
@@ -511,11 +516,11 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
 
     if ( !urlToDownloadSnapshotFrom.empty() )
         successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
-            arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot );
+            arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot, true );
     else {
         for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
             try {
-                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes[idx].id )
+                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes.at( idx ).id )
                     continue;
 
                 std::string nodeUrl =

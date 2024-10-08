@@ -67,7 +67,7 @@ class SnapshotHashAgent {
 public:
     SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
         const std::array< std::string, 4 >& commonPublicKey,
-        const std::string& urlToDownloadSnapshotFrom );
+        const std::string& urlToDownloadSnapshotFrom = "" );
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned blockNumber );
 
@@ -93,7 +93,7 @@ private:
     void readPublicKeyFromConfig();
     std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > askNodeForHash(
         const std::string& url, unsigned blockNumber );
-    std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
+    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;
 
     size_t verifyAllData() const;
 };

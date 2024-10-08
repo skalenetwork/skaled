@@ -26,8 +26,7 @@ public:
     void finishHashComputingAndUpdateHashesIfNeeded( int64_t _timestamp );
     void doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _timestamp );
 
-    boost::filesystem::path createSnapshotFile(
-        unsigned _blockNumber, bool _forArchiveNode = false );
+    boost::filesystem::path createSnapshotFile( unsigned _blockNumber );
 
     void terminate();
 

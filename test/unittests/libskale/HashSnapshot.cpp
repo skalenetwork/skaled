@@ -124,7 +124,7 @@ public:
                 continue;
             }
 
-            if ( this->hashAgent_->hashes_[i] == this->hashAgent_->voted_hash_.first ) {
+            if ( this->hashAgent_->hashes_[i] == this->hashAgent_->votedHash_.first ) {
                 ret.push_back( i );
             }
         }

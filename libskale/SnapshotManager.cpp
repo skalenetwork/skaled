@@ -65,6 +65,8 @@ SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
 
 #ifdef HISTORIC_STATE
     archiveVolumes = { "historic_roots", "historic_state" };
+#else
+    archiveVolumes = {};
 #endif
 
     allVolumes.reserve( coreVolumes.size() + archiveVolumes.size() );
@@ -185,8 +187,7 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 // - no such snapshots
 // - cannot read
 // - cannot create tmp file
-// - archive/core node
-boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock, bool _forArchiveNode ) {
+boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
     fs::path path = getDiffPath( _toBlock );
 
     try {
@@ -202,13 +203,9 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock, bool 
         std::throw_with_nested( CannotRead( ex.path1() ) );
     }
 
-    if ( _forArchiveNode && !chainParams.nodeInfo.archiveMode )
-        throw std::runtime_error( "Cannot create diff for an archvie node from the core node." );
-
     stringstream volumes_cat;
 
-    std::vector< std::string > volumes =
-        ( _forArchiveNode && _toBlock > 0 ) ? allVolumes : coreVolumes;
+    std::vector< std::string > volumes = _toBlock > 0 ? allVolumes : coreVolumes;
     for ( auto it = volumes.begin(); it != volumes.end(); ++it ) {
         const string& vol = *it;
         if ( it + 1 != volumes.end() )
