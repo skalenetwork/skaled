@@ -258,7 +258,7 @@ static nlohmann::json generate_subsystem_stats( string _subSystem ) {
     // and we use atomic ints
 
     for ( auto&& iterator : dev::rpc::SkaleStats::statsCounters ) {
-        auto strSubsystemAndMethodName = iterator.first;
+        auto strSubsystemAndMethodName = _subSystem + iterator.first;
         if ( boost::algorithm::starts_with( strSubsystemAndMethodName, _subSystem ) ) {
             nlohmann::json joMethod = nlohmann::json::object();
             auto methodName = strSubsystemAndMethodName.substr( _subSystem.size() );
@@ -2480,10 +2480,10 @@ nlohmann::json SkaleServerOverride::provideSkaleStats() {  // abstract from
     nlohmann::json joStats = nlohmann::json::object();
 
 
-    joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "HTTP" );
-    joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "HTTPS" );
-    joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "WS" );
-    joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "WSS" );
+    joStats["protocols"]["http"]["stats"] = stats::generate_subsystem_stats( "http:" );
+    joStats["protocols"]["https"]["stats"] = stats::generate_subsystem_stats( "https:" );
+    joStats["protocols"]["ws"]["stats"] = stats::generate_subsystem_stats( "ws:" );
+    joStats["protocols"]["wss"]["stats"] = stats::generate_subsystem_stats( "wss:" );
 
 
     skutils::tools::load_monitor& lm = stat_get_load_monitor();
@@ -2645,9 +2645,22 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( const string& strOrigin
     const rapidjson::Document& joRequest, rapidjson::Document& joResponse ) {
     string strMethod = joRequest["method"].GetString();
     protocol_rpc_map_t::const_iterator itFind = g_protocol_rpc_map.find( strMethod );
+
     if ( itFind == g_protocol_rpc_map.end() )
         return false;
-    ( ( *this ).*( itFind->second ) )( strOrigin, joRequest, joResponse );
+
+    using dev::rpc::SkaleStats;
+    SkaleStats::countCall( strOrigin, strMethod );
+
+   try {
+       ( this->*( itFind->second ) )( strOrigin, joRequest, joResponse );
+   } catch (...) {
+       SkaleStats::countError( strOrigin, strMethod );
+       throw;
+   }
+
+    SkaleStats::countAnswer( strOrigin, strMethod );
+
     return true;
 }
 

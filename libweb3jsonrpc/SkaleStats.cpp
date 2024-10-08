@@ -541,16 +541,16 @@ void SkaleStats::initStatsCounters() {
 
     for (auto&& methodName : ethJsonRpcMethods) {
         // this will initiate counters with zeros
-        statsCounters["http" + methodName];
-        statsCounters["https" + methodName];
-        statsCounters["ws" + methodName];
-        statsCounters["wss" + methodName];
+        statsCounters["http:" + methodName];
+        statsCounters["https:" + methodName];
+        statsCounters["ws:" + methodName];
+        statsCounters["wss:" + methodName];
     }
 
 }
 
 
-std::map<std::string, StatsCounter> SkaleStats::statsCounters;
+std::unordered_map<std::string, StatsCounter> SkaleStats::statsCounters;
 
 
 

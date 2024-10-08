@@ -32,7 +32,7 @@
 
 #include <libethereum/ChainParams.h>
 
-//#include <nlohmann/json.hpp>
+// #include <nlohmann/json.hpp>
 #include <json.hpp>
 
 #include <time.h>
@@ -61,13 +61,10 @@ class Interface;
 };  // namespace eth
 
 
-
 namespace rpc {
 
 class StatsCounter {
-
 public:
-
     StatsCounter() = default;
 
     void reset() {
@@ -76,9 +73,9 @@ public:
         errors = 0;
     }
 
-    std::atomic<uint64_t> calls;
-    std::atomic<uint64_t> answers;
-    std::atomic<uint64_t> errors;
+    std::atomic< uint64_t > calls;
+    std::atomic< uint64_t > answers;
+    std::atomic< uint64_t > errors;
 };
 
 
@@ -94,7 +91,6 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
     const dev::eth::ChainParams& chainParams_;
 
 public:
-
     SkaleStats( const std::string& configPath, eth::Interface& _eth,
         const dev::eth::ChainParams& chainParams );
 
@@ -103,9 +99,44 @@ public:
     }
 
 
-    virtual Json::Value skale_stats() override;
-    virtual Json::Value skale_nodesRpcInfo() override;
-    virtual Json::Value skale_imaInfo() override;
+    Json::Value skale_stats() override;
+    Json::Value skale_nodesRpcInfo() override;
+    Json::Value skale_imaInfo() override;
+
+    static void countCall( const std::string& _origin, const std::string& _method ) {
+        auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
+
+        if ( iterator != statsCounters.end() ) {
+            ++iterator->second.calls;
+        }
+    }
+
+    static void countAnswer( const std::string& _origin, const std::string& _method ) {
+        auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
+
+        if ( iterator != statsCounters.end() ) {
+            ++iterator->second.answers;
+        }
+    }
+
+    static void countError( const std::string& _origin, const std::string& _method ) {
+        auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
+
+        if ( iterator != statsCounters.end() ) {
+            ++iterator->second.errors;
+        }
+    }
+
+    // return http: https: ws: or wss:
+    static std::string getProtocol( const std::string& _origin ) {
+        auto pos = _origin.find( ':' );
+
+        if ( pos == std::string::npos ) {
+            return "";
+        }
+        return _origin.substr( 0, pos  + 1);
+    }
+
 
 protected:
     eth::Interface* client() const { return &m_eth; }
@@ -113,8 +144,7 @@ protected:
 
 
 public:
-
-    static std::map<std::string, StatsCounter> statsCounters;
+    static std::unordered_map< std::string, StatsCounter > statsCounters;
     static void initStatsCounters();
 };
 
