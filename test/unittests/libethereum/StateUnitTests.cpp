@@ -26,7 +26,10 @@
 #include <libethereum/Defaults.h>
 #include <test/tools/libtesteth/TestHelper.h>
 
+#include <filesystem>
+
 using namespace std;
+using namespace std::filesystem;
 using namespace dev;
 using namespace dev::eth;
 using skale::BaseState;
@@ -204,9 +207,29 @@ public:
     TransientDirectory m_tempDirState;
     State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
     Address address1{1}, address2{2};
+    size_t countDbPieces(){
+        auto di = directory_iterator(m_tempDirState.path() + "/historic_state/00000000/state");
+        return std::distance(begin(di), end(di));
+    }
 };
 
 BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
+
+// write, then read from historic state
+BOOST_AUTO_TEST_CASE( writeAndRead ) {
+    State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.incNonce(address1);
+    BOOST_CHECK_EQUAL(sw.getNonce(address1), 1);
+    sw.incNonce(address1);
+    BOOST_CHECK_EQUAL(sw.getNonce(address1), 2);
+
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
+
+    BOOST_CHECK_EQUAL(sw.getNonce(address1), 2);
+    sw.incNonce(address1);
+    BOOST_CHECK_EQUAL(sw.getNonce(address1), 3);
+}
 
 // make two changes in two blocks and try to access state in each block
 BOOST_AUTO_TEST_CASE( twoChanges ) {
@@ -235,6 +258,9 @@ BOOST_AUTO_TEST_CASE( twoChanges ) {
     sw.mutableHistoricState().setRootByBlockNumber( 2 );
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+
+    // check that rotation happened
+    BOOST_CHECK_EQUAL(countDbPieces(), 2);
 }
 
 // same, but add empty block between
@@ -288,6 +314,9 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     sw.mutableHistoricState().setRootByBlockNumber( 5 );
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+
+    // check that rotation happened
+    BOOST_CHECK_EQUAL(countDbPieces(), 5);
 }
 
 // change 1 address 2 times in 2 blocks, check it on all blocks
@@ -314,6 +343,9 @@ BOOST_AUTO_TEST_CASE( update ) {
 
     sw.mutableHistoricState().setRootByBlockNumber( 2 );
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 2 );
+
+    // check that rotation happened
+    BOOST_CHECK_EQUAL(countDbPieces(), 2);
 }
 
 // change storage of 1 address 2 times in 2 blocks, check it on all blocks
@@ -321,54 +353,41 @@ BOOST_AUTO_TEST_CASE( update ) {
 BOOST_AUTO_TEST_CASE( updateStorage ) {
     h256 location = h256(123456);
 
-    {
-        State sw = state.createStateModifyCopyAndPassLock();
-        sw.incNonce(address1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
-        sw.mutableHistoricState().saveRootForBlock( 1 );
-        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
-    }
+    State sw = state.createStateModifyCopy();
 
-    {
-        State sw = state.createStateModifyCopyAndPassLock();
-        sw.mutableHistoricState().setRootByBlockNumber(1);
-        sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
-        sw.incNonce(address1);
-        sw.setStorage(address1, location, 1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
-        sw.mutableHistoricState().saveRootForBlock( 2 );
-        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
-    }
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
 
-    {
-        State sw = state.createStateModifyCopyAndPassLock();
-        sw.mutableHistoricState().setRootByBlockNumber(2);
-        sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
-        sw.setStorage(address1, location, 2);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 );
-        sw.mutableHistoricState().saveRootForBlock( 3 );
-        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
-    }
+    sw.incNonce(address1);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
+    sw.mutableHistoricState().saveRootForBlock( 1 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
+
+    sw.setStorage(address1, location, 1);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
+    sw.mutableHistoricState().saveRootForBlock( 2 );
+
+    sw.mutableHistoricState().rotateDbsIfNeeded( 1003 );
+
+    sw.setStorage(address1, location, 2);
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 );
+    sw.mutableHistoricState().saveRootForBlock( 3 );
+
+    state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot());
 
     // check
 
-    {
-        State sr = state.createStateReadOnlyCopy();
-        sr.mutableHistoricState().setRootByBlockNumber( 1 );
-        BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(0) );
-    }
+    sw.mutableHistoricState().setRootByBlockNumber( 1 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(0) );
 
-    {
-        State sr = state.createStateReadOnlyCopy();
-        sr.mutableHistoricState().setRootByBlockNumber( 2 );
-        BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(1) );
-    }
+    sw.mutableHistoricState().setRootByBlockNumber( 2 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(1) );
 
-    {
-        State sr = state.createStateReadOnlyCopy();
-        sr.mutableHistoricState().setRootByBlockNumber( 3 );
-        BOOST_CHECK_EQUAL(sr.mutableHistoricState().storage(address1, location), u256(2) );
-    }
+    sw.mutableHistoricState().setRootByBlockNumber( 3 );
+    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(2) );
+
+    // check that rotation happened
+    BOOST_CHECK_EQUAL(countDbPieces(), 3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
