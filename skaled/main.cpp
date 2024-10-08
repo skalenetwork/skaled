@@ -519,8 +519,8 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     continue;
 
                 std::string nodeUrl =
-                    std::string( "http://" ) + std::string( chainParams.sChain.nodes.at( idx ).ip ) +
-                    std::string( ":" ) +
+                    std::string( "http://" ) +
+                    std::string( chainParams.sChain.nodes.at( idx ).ip ) + std::string( ":" ) +
                     ( chainParams.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
 
                 successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,

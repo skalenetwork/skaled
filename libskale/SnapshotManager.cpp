@@ -808,8 +808,8 @@ uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
 
     fs::path db_dir = this->snapshotsDir / std::to_string( _blockNumber );
 
-    int res =
-        btrfs.subvolume.property_set( ( db_dir / coreVolumes.at( 0 ) ).string().c_str(), "ro", "false" );
+    int res = btrfs.subvolume.property_set(
+        ( db_dir / coreVolumes.at( 0 ) ).string().c_str(), "ro", "false" );
 
     if ( res != 0 ) {
         throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
@@ -819,8 +819,8 @@ uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
     dev::h256 hash = bc.numberHash( _blockNumber );
     uint64_t timestamp = dev::eth::BlockHeader( bc.block( hash ) ).timestamp();
 
-    res =
-        btrfs.subvolume.property_set( ( db_dir / coreVolumes.at( 0 ) ).string().c_str(), "ro", "true" );
+    res = btrfs.subvolume.property_set(
+        ( db_dir / coreVolumes.at( 0 ) ).string().c_str(), "ro", "true" );
 
     if ( res != 0 ) {
         throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
