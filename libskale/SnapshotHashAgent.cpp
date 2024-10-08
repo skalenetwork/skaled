@@ -76,17 +76,18 @@ void SnapshotHashAgent::readPublicKeyFromConfig() {
 size_t SnapshotHashAgent::verifyAllData() const {
     size_t verified = 0;
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
+        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
             continue;
         }
 
-        if ( this->isReceived_[i] ) {
+        if ( this->isReceived_.at( i ) ) {
             bool is_verified = false;
             libff::inhibit_profiling_info = true;
             try {
-                is_verified = this->bls_->Verification(
-                    std::make_shared< std::array< uint8_t, 32 > >( this->hashes_[i].asArray() ),
-                    this->signatures_[i], this->public_keys_[i] );
+                is_verified =
+                    this->bls_->Verification( std::make_shared< std::array< uint8_t, 32 > >(
+                                                  this->hashes_.at( i ).asArray() ),
+                        this->signatures_.at( i ), this->public_keys_.at( i ) );
             } catch ( std::exception& ex ) {
                 cerror << ex.what();
             }
@@ -114,11 +115,11 @@ bool SnapshotHashAgent::voteForHash() {
     const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
+        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
             continue;
         }
 
-        map_hash[this->hashes_[i]] += 1;
+        map_hash[this->hashes_.at( i )] += 1;
     }
 
     std::map< dev::h256, size_t >::iterator it;
@@ -136,14 +137,15 @@ bool SnapshotHashAgent::voteForHash() {
             std::vector< size_t > idx;
             std::vector< libff::alt_bn128_G1 > signatures;
             for ( size_t i = 0; i < this->n_; ++i ) {
-                if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
+                if ( this->chainParams_.nodeInfo.id ==
+                     this->chainParams_.sChain.nodes.at( i ).id ) {
                     continue;
                 }
 
-                if ( this->hashes_[i] == ( *it ).first ) {
+                if ( this->hashes_.at( i ) == ( *it ).first ) {
                     this->nodesToDownloadSnapshotFrom_.push_back( i );
                     idx.push_back( i + 1 );
-                    signatures.push_back( this->signatures_[i] );
+                    signatures.push_back( this->signatures_.at( i ) );
                 }
             }
 
@@ -303,23 +305,24 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     if ( urlToDownloadSnapshotFrom_.empty() ) {
         for ( size_t i = 0; i < this->n_; ++i ) {
-            if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes[i].id ) {
+            if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
                 continue;
             }
 
             threads.push_back( std::thread( [this, i, blockNumber]() {
                 try {
-                    std::string nodeUrl =
-                        "http://" + this->chainParams_.sChain.nodes[i].ip + ':' +
-                        ( this->chainParams_.sChain.nodes[i].port + 3 ).convert_to< std::string >();
+                    std::string nodeUrl = "http://" + this->chainParams_.sChain.nodes.at( i ).ip +
+                                          ':' +
+                                          ( this->chainParams_.sChain.nodes.at( i ).port + 3 )
+                                              .convert_to< std::string >();
                     auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
                     if ( std::get< 0 >( snapshotData ).size ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
-                        this->isReceived_[i] = true;
-                        this->hashes_[i] = std::get< 0 >( snapshotData );
-                        this->signatures_[i] = std::get< 1 >( snapshotData );
-                        this->public_keys_[i] = std::get< 2 >( snapshotData );
+                        this->isReceived_.at( i ) = true;
+                        this->hashes_.at( i ) = std::get< 0 >( snapshotData );
+                        this->signatures_.at( i ) = std::get< 1 >( snapshotData );
+                        this->public_keys_.at( i ) = std::get< 2 >( snapshotData );
                     }
                 } catch ( std::exception& ex ) {
                     cerror << "Exception while collecting snapshot signatures from other skaleds: "
@@ -344,20 +347,20 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
         auto majorityNodesIds = AmsterdamFixPatch::majorityNodesIds();
         dev::h256 common_hash;  // should be same everywhere!
         for ( size_t pos = 0; pos < this->n_; ++pos ) {
-            if ( !this->isReceived_[pos] )
+            if ( !this->isReceived_.at( pos ) )
                 continue;
 
-            u256 id = this->chainParams_.sChain.nodes[pos].id;
+            u256 id = this->chainParams_.sChain.nodes.at( pos ).id;
             bool good = majorityNodesIds.end() !=
                         std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
             if ( !good )
                 continue;
 
             if ( common_hash == dev::h256() ) {
-                common_hash = this->hashes_[pos];
+                common_hash = this->hashes_.at( pos );
                 this->voted_hash_.first = common_hash;
                 // .second will ne ignored!
-            } else if ( this->hashes_[pos] != common_hash ) {
+            } else if ( this->hashes_.at( pos ) != common_hash ) {
                 result = false;
                 break;
             }
@@ -383,9 +386,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodesToDownloadSnapshotFrom_ ) {
         std::string ret_value =
-            std::string( "http://" ) + std::string( this->chainParams_.sChain.nodes[idx].ip ) +
+            std::string( "http://" ) + std::string( this->chainParams_.sChain.nodes.at( idx ).ip ) +
             std::string( ":" ) +
-            ( this->chainParams_.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+            ( this->chainParams_.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
         ret.push_back( ret_value );
     }
 

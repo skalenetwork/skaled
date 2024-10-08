@@ -519,9 +519,9 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     continue;
 
                 std::string nodeUrl =
-                    std::string( "http://" ) + std::string( chainParams.sChain.nodes[idx].ip ) +
+                    std::string( "http://" ) + std::string( chainParams.sChain.nodes.at( idx ).ip ) +
                     std::string( ":" ) +
-                    ( chainParams.sChain.nodes[idx].port + 3 ).convert_to< std::string >();
+                    ( chainParams.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
 
                 successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
                     arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
@@ -1607,9 +1607,6 @@ int main( int argc, char** argv ) try {
             archiveVolumes.insert( archiveVolumes.end(), { "historic_roots", "historic_state" } );
 #endif
         }
-        //        snapshotManager.reset( new SnapshotManager( chainParams, getDataDir(),
-        //        coreVolumes,
-        //            archiveVolumes, sharedSpace ? sharedSpace->getPath() : "" ) );
         snapshotManager.reset( new SnapshotManager(
             chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
     }
@@ -1644,8 +1641,7 @@ int main( int argc, char** argv ) try {
                         snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
                     snapshotManager->restoreSnapshot( 0 );
                 } catch ( SnapshotManager::SnapshotAbsent& ) {
-                    clog( VerbosityWarning, "main" )
-                        << cc::warn( "Snapshot for 0 block is not found" );
+                    clog( VerbosityWarning, "main" ) << "Snapshot for 0 block is not found";
                 }
             }
 
