@@ -772,9 +772,7 @@ public:
     nlohmann::json toJSON( bool bSkipEmptyStats = true ) const override;
 };  /// class server
 
-class client : public basic_socket,
-               public basic_sender,
-               public security_args {
+class client : public basic_socket, public basic_sender, public security_args {
     client_api api_;
     skutils::async::timer<> restart_timer_;
     bool isRestartTimerEnabled_ = true;

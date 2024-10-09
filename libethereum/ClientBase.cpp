@@ -81,7 +81,6 @@ void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
 }
 
 
-
 std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Block& _latestBlock,
     Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
     u256 const& _gasPrice, bytes const& _data ) {
@@ -596,5 +595,3 @@ h256 ClientBase::codeHashAt( Address _a ) const {
 map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
     return getReadOnlyLatestBlockCopy().state().storage( _a );
 }
-
-

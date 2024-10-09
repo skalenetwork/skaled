@@ -332,9 +332,9 @@ void SkaleHost::pushToBroadcastQueue( const Transaction& _t ) {
         // it is an intermediate queue on the way to zeromq
         // and zeromq writes do not block
         // we still keep its size limited
-        while (m_broadcastQueue.size() > MAX_BROADCAST_QUEUE_SIZE) {
+        while ( m_broadcastQueue.size() > MAX_BROADCAST_QUEUE_SIZE ) {
             // behavior on overflow similar to ZeroMQ - erase the latest
-            m_broadcastQueue.erase( m_broadcastQueue.begin());
+            m_broadcastQueue.erase( m_broadcastQueue.begin() );
         }
     }
     m_broadcastQueueCondition.notify_all();  // Notify the condition variable
@@ -646,7 +646,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
             LOG( m_infoLogger ) << "Rotation is completed. Instance is exiting";
         }
-
     }
 
 

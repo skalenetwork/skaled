@@ -43,7 +43,6 @@ struct ISkaleStatsProvider {
 };
 
 
-
 struct ISkaleStatsConsumer {
     ISkaleStatsConsumer() {}
     virtual ~ISkaleStatsConsumer() {}

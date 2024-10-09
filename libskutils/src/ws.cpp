@@ -2853,12 +2853,9 @@ std::string peer::unique_string_identifier( bool isColored /*= false*/ ) const {
     ss << strCid << strSlash << strPeerSerialNumber;
     return ss.str();
 }
-void peer::onPeerRegister() {
-
-}
+void peer::onPeerRegister() {}
 void peer::onPeerUnregister() {  // peer will no longer receive onMessage after call to this
     opened_ = false;
-
 }
 bool peer::isServerSide() const {
     return true;

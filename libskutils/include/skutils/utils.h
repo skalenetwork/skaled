@@ -257,9 +257,6 @@ constexpr static int MAX_NAME_LEN = 128;
 constexpr static int MAX_LINE_LEN = 256;
 
 
-
-
-
 extern std::string create_random_uuid( const char* strSeparator );
 extern std::string create_random_uuid();
 extern std::string create_uuid();
