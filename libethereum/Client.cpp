@@ -1052,7 +1052,7 @@ h256 Client::submitTransaction( TransactionSkeleton const& _t, Secret const& _se
     TransactionSkeleton ts = populateTransactionWithDefaults( _t );
     ts.from = toAddress( _secret );
     Transaction t( ts, _secret );
-    auto result =  importTransaction( t, TransactionBroadcast::BroadcastToAll );
+    auto result = importTransaction( t, TransactionBroadcast::BroadcastToAll );
 
     return result;
 }
@@ -1107,8 +1107,8 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     m_new_pending_transaction_watch.invoke( _t );
 
     // since the transaction was received fom the user, we broadcast it
-    if (_txOrigin == TransactionBroadcast::BroadcastToAll && m_skaleHost) {
-        m_skaleHost->pushToBroadcastQueue(_t);
+    if ( _txOrigin == TransactionBroadcast::BroadcastToAll && m_skaleHost ) {
+        m_skaleHost->pushToBroadcastQueue( _t );
     }
 
     return _t.sha3();

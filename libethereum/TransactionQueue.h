@@ -109,7 +109,7 @@ public:
     Transactions topTransactions( unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
 
     // same with categories
-    Transactions topTransactions( unsigned _limit);
+    Transactions topTransactions( unsigned _limit );
 
     // generalization of previous
     template < class Pred >
@@ -254,7 +254,6 @@ public:
         /// Compare transaction by nonce height and gas price.
         bool operator()(
             VerifiedTransaction const& _first, VerifiedTransaction const& _second ) const {
-
             // HACK special case for "dummy" transaction - it is always to the left of others with
             // the same category
 
@@ -265,7 +264,7 @@ public:
             else if ( !_first.transaction && !_second.transaction )
                 return false;
 
-            return( _first.transaction.gasPrice() > _second.transaction.gasPrice()) ;
+            return ( _first.transaction.gasPrice() > _second.transaction.gasPrice() );
         }
     };
 
@@ -283,8 +282,7 @@ private:
         unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
     template < class Pred >
     Transactions topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const;
-    Transactions topTransactions_WITH_LOCK(
-        unsigned _limit);
+    Transactions topTransactions_WITH_LOCK( unsigned _limit );
 
     void insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
     void makeCurrent_WITH_LOCK( Transaction const& _t );
