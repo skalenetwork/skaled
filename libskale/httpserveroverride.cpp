@@ -263,10 +263,38 @@ static nlohmann::json generate_subsystem_stats( string _subSystem ) {
         if ( boost::algorithm::starts_with( strSubsystemAndMethodName, _subSystem ) ) {
             nlohmann::json joMethod = nlohmann::json::object();
             auto methodName = strSubsystemAndMethodName.substr( _subSystem.size() );
-            LDB_CHECK( methodName.find( ':' )  == string::npos );
-            joMethod["calls"] = ( uint64_t ) iterator.second.calls;
-            joMethod["answers"] = ( uint64_t ) iterator.second.answers;
-            joMethod["errors"] = ( uint64_t ) iterator.second.errors;
+            LDB_CHECK( methodName.find( ':' ) == string::npos );
+            dev::rpc::StatsCounter& statsCounter = iterator.second;
+            joMethod["calls"] = ( uint64_t ) statsCounter.calls;
+            joMethod["answers"] = ( uint64_t ) statsCounter.answers;
+            joMethod["errors"] = ( uint64_t ) statsCounter.errors;
+
+            if ( statsCounter.answers != 0 ) {
+                auto answersToProcess = std::min(
+                    ( uint64_t ) statsCounter.answers, statsCounter.answerTimeHistory.size() );
+
+                uint64_t minAnswerTime = statsCounter.answerTimeHistory.front();
+                uint64_t maxAnswerTime = minAnswerTime;
+                uint64_t totalAnswerTime = minAnswerTime;
+
+
+                for ( uint64_t i = 1; i < answersToProcess; i++ ) {
+                    uint64_t answerTime = statsCounter.answerTimeHistory.at( i );
+                    totalAnswerTime += answerTime;
+                    minAnswerTime = std::min( minAnswerTime, answerTime );
+                    maxAnswerTime = std::max( maxAnswerTime, answerTime );
+                }
+
+                joMethod["calls"] = ( uint64_t ) statsCounter.calls;
+                joMethod["answers"] = ( uint64_t ) statsCounter.answers;
+                joMethod["errors"] = ( uint64_t ) statsCounter.errors;
+                joMethod["maxAnswerTime"] = ( ( double ) maxAnswerTime ) / 1000000.0;
+                joMethod["minAnswerTime"] = ( ( double ) minAnswerTime ) / 1000000.0;
+                joMethod["avgAnswerTime"] =
+                    ( ( double ) totalAnswerTime ) / ( 1000000.0 * answersToProcess );
+            }
+
+
             jo[methodName] = joMethod;
         }
     }
@@ -2636,17 +2664,22 @@ bool SkaleServerOverride::handleProtocolSpecificRequest( const string& strOrigin
     if ( itFind == g_protocol_rpc_map.end() )
         return false;
 
+
+    auto beginTime = std::chrono::duration_cast< std::chrono::microseconds >(
+        chrono::system_clock::now().time_since_epoch() );
+
+
     using dev::rpc::SkaleStats;
     SkaleStats::countCall( strOrigin, strMethod );
 
-   try {
-       ( this->*( itFind->second ) )( strOrigin, joRequest, joResponse );
-   } catch (...) {
-       SkaleStats::countError( strOrigin, strMethod );
-       throw;
-   }
+    try {
+        ( this->*( itFind->second ) )( strOrigin, joRequest, joResponse );
+    } catch ( ... ) {
+        SkaleStats::countError( strOrigin, strMethod );
+        throw;
+    }
 
-    SkaleStats::countAnswer( strOrigin, strMethod );
+    SkaleStats::countAnswer( strOrigin, strMethod, beginTime );
 
     return true;
 }

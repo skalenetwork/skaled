@@ -1082,7 +1082,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
             TransactionWait::WAIT_FOR_COMPLETION);
     }
 
-    cerr << fixture.rpcClient()->skale_stats() << endl;
+    cout << fixture.rpcClient()->skale_stats() << endl;
 }
 
 

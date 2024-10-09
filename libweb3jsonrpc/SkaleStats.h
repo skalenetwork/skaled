@@ -63,6 +63,8 @@ class Interface;
 
 namespace rpc {
 
+constexpr uint64_t ANSWER_TIME_HISTORY_SIZE = 128;
+
 class StatsCounter {
 public:
     StatsCounter() = default;
@@ -76,6 +78,7 @@ public:
     std::atomic< uint64_t > calls;
     std::atomic< uint64_t > answers;
     std::atomic< uint64_t > errors;
+    std::array< std::atomic< uint64_t >, ANSWER_TIME_HISTORY_SIZE > answerTimeHistory;
 };
 
 
@@ -111,11 +114,19 @@ public:
         }
     }
 
-    static void countAnswer( const std::string& _origin, const std::string& _method ) {
+    static void countAnswer( const std::string& _origin, const std::string& _method,
+        std::chrono::microseconds _beginTime ) {
         auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
 
         if ( iterator != statsCounters.end() ) {
-            ++iterator->second.answers;
+            StatsCounter& statsCounter = iterator->second;
+            int64_t answerTime = ( std::chrono::duration_cast< std::chrono::microseconds >(
+                                       std::chrono::system_clock::now().time_since_epoch() ) -
+                                   _beginTime )
+                                     .count();
+            statsCounter.answerTimeHistory.at( statsCounter.answers % ANSWER_TIME_HISTORY_SIZE )
+                .store( answerTime );
+            ++statsCounter.answers;
         }
     }
 
@@ -134,7 +145,7 @@ public:
         if ( pos == std::string::npos ) {
             return "";
         }
-        return _origin.substr( 0, pos  + 1);
+        return _origin.substr( 0, pos + 1 );
     }
 
 
