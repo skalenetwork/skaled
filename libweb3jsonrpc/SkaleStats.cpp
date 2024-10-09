@@ -125,8 +125,8 @@ Json::Value SkaleStats::skale_stats() {
             nlohmann::json joTrace;
             std::shared_ptr< SkaleHost > h = c->skaleHost();
 
-            if (!h) {
-                throw jsonrpc::JsonRpcException("No skaleHost in client()");
+            if ( !h ) {
+                throw jsonrpc::JsonRpcException( "No skaleHost in client()" );
             }
 
             std::istringstream list( h->getDebugHandler()( "trace list" ) );
@@ -480,80 +480,43 @@ Json::Value SkaleStats::skale_imaInfo() {
 }
 
 
-
-
-
-
 void SkaleStats::initStatsCounters() {
-
-    if (!statsCounters.empty() > 0) {
+    if ( !statsCounters.empty() > 0 ) {
         return;
     }
 
-    std::vector<std::string> ethJsonRpcMethods = {
-        // Web3 Namespace
-        "web3_clientVersion",
-        "web3_sha3",
+    std::vector< std::string > ethJsonRpcMethods = { // Web3 Namespace
+        "web3_clientVersion", "web3_sha3",
 
         // Net Namespace
-        "net_version",
-        "net_peerCount",
-        "net_listening",
+        "net_version", "net_peerCount", "net_listening",
 
         // Eth Namespace
-        "eth_protocolVersion",
-        "eth_syncing",
-        "eth_gasPrice",
-        "eth_blockNumber",
-        "eth_getBlockByNumber",
-        "eth_getBlockByHash",
-        "eth_getBlockTransactionCountByHash",
-        "eth_getBlockTransactionCountByNumber",
-        "eth_getUncleCountByBlockHash",
-        "eth_getUncleCountByBlockNumber",
-        "eth_getTransactionByHash",
-        "eth_getTransactionByBlockHashAndIndex",
-        "eth_getTransactionByBlockNumberAndIndex",
-        "eth_getTransactionReceipt",
-        "eth_getTransactionCount",
-        "eth_sendRawTransaction",
-        "eth_call",
-        "eth_estimateGas",
-        "eth_getCode",
-        "eth_getBalance",
-        "eth_getStorageAt",
-        "eth_newFilter",
-        "eth_newBlockFilter",
-        "eth_newPendingTransactionFilter",
-        "eth_uninstallFilter",
-        "eth_getFilterChanges",
-        "eth_getFilterLogs",
-        "eth_getLogs",
-        "eth_accounts",
-        "eth_sign",
-        "eth_signTransaction",
-        "eth_sendTransaction",
-        "eth_coinbase",
-        "debug_traceTransaction",
-        "debug_traceBlock",
-        "debug_getRawTransaction"
+        "eth_protocolVersion", "eth_syncing", "eth_gasPrice", "eth_blockNumber",
+        "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getBlockTransactionCountByHash",
+        "eth_getBlockTransactionCountByNumber", "eth_getUncleCountByBlockHash",
+        "eth_getUncleCountByBlockNumber", "eth_getTransactionByHash",
+        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex",
+        "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_sendRawTransaction",
+        "eth_call", "eth_estimateGas", "eth_getCode", "eth_getBalance", "eth_getStorageAt",
+        "eth_newFilter", "eth_newBlockFilter", "eth_newPendingTransactionFilter",
+        "eth_uninstallFilter", "eth_getFilterChanges", "eth_getFilterLogs", "eth_getLogs",
+        "eth_accounts", "eth_sign", "eth_signTransaction", "eth_sendTransaction", "eth_coinbase",
+        "debug_traceTransaction", "debug_traceBlock", "debug_getRawTransaction"
     };
 
-    for (auto&& methodName : ethJsonRpcMethods) {
+    for ( auto&& methodName : ethJsonRpcMethods ) {
         // this will initiate counters with zeros
         statsCounters["http:" + methodName];
         statsCounters["https:" + methodName];
         statsCounters["ws:" + methodName];
         statsCounters["wss:" + methodName];
     }
-
 }
 
 
-std::unordered_map<std::string, StatsCounter> SkaleStats::statsCounters;
-
+std::unordered_map< std::string, StatsCounter > SkaleStats::statsCounters;
 
 
 };  // namespace rpc
 };  // namespace dev
-

@@ -229,7 +229,6 @@ public:
 extern tracker_ptr get_default_tracker();
 
 
-
 };  // namespace performance
 };  // namespace task
 };  // namespace skutils

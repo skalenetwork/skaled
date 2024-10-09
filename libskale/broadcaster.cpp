@@ -243,13 +243,11 @@ void ZmqBroadcaster::stopService() {
 
 
 void ZmqBroadcaster::initSocket() {
-        server_socket();
+    server_socket();
 }
 
 
-
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
-
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
         clog( dev::VerbosityWarning, "zmq-broadcaster" )

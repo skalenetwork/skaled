@@ -122,7 +122,7 @@ public:
 
     dev::h256 receiveTransaction( std::string );
 
-    void pushToBroadcastQueue(const dev::eth::Transaction& _transaction);
+    void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom() const;
@@ -176,7 +176,7 @@ private:
     void broadcastFunc();
 
 
-    list<dev::eth::Transaction> m_broadcastQueue;
+    list< dev::eth::Transaction > m_broadcastQueue;
     std::mutex m_broadcastQueueMutex;
     std::condition_variable m_broadcastQueueCondition;
 

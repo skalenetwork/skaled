@@ -429,7 +429,7 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
     try {
-        return toJS( client()->importTransaction( t , TransactionBroadcast::BroadcastToAll) );
+        return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
     } catch ( PendingTransactionAlreadyExists& ) {
         throw std::runtime_error( "Transaction with same nonce already exists in the queue." );
     } catch ( TransactionAlreadyInChain& ) {

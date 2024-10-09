@@ -61,7 +61,6 @@ using fnClientWatchHandlerMulti_t = skutils::multifunction< void( unsigned iw ) 
  */
 
 
-
 enum TransactionBroadcast { BroadcastToAll, DontBroadcast };
 
 class Interface {

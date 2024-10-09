@@ -52,7 +52,7 @@ public:
     Broadcaster() {}
     virtual ~Broadcaster();
 
-    virtual void initSocket() {};
+    virtual void initSocket(){};
     virtual void broadcast( const std::string& _rlp ) = 0;
 
     virtual void startService() = 0;

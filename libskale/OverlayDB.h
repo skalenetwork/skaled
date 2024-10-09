@@ -108,7 +108,7 @@ public:
 
     std::unordered_map< dev::u256, dev::u256 > storage( dev::h160 const& address ) const;
 
-    static std::string uint64ToFixedLengthHex(uint64_t value);
+    static std::string uint64ToFixedLengthHex( uint64_t value );
 
 private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;

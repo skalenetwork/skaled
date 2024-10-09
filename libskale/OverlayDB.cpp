@@ -101,7 +101,8 @@ std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
     dev::eth::BlockNumber _blockNumber ) const {
     std::vector< dev::bytes > partialTransactionReceipts;
 
-    string prefix( "safeLastTransactionReceipts." + uint64ToFixedLengthHex(   (uint64_t) _blockNumber ) + "." );
+    string prefix( "safeLastTransactionReceipts." +
+                   uint64ToFixedLengthHex( ( uint64_t ) _blockNumber ) + "." );
 
     if ( m_db_face ) {
         m_db_face->forEachWithPrefix( prefix, [&partialTransactionReceipts]( Slice, Slice value ) {
@@ -145,16 +146,16 @@ void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
 
 // transform uin564_t to hex format of fixed length prepending zeros
 // if needed. This is needed to put keys into LevelDB in lexicographic order
-std::string OverlayDB::uint64ToFixedLengthHex(uint64_t value) {
+std::string OverlayDB::uint64ToFixedLengthHex( uint64_t value ) {
     // Create a stringstream to hold the hex representation
     std::stringstream res;
 
     // Set formatting options: hex, fill with zeros, and a width of 16 characters
     // (uint64_t can have a maximum of 16 hex characters).
-    res << std::hex << std::setw(16) << std::setfill('0') << value;
+    res << std::hex << std::setw( 16 ) << std::setfill( '0' ) << value;
 
     // Convert the stream to a string
-    return  res.str();
+    return res.str();
 }
 
 void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,

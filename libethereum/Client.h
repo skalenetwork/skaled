@@ -86,7 +86,6 @@ constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
 #endif
 
 
-
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */

@@ -78,7 +78,6 @@ public:
 };
 
 
-
 class ClientBase : public Interface {
 public:
     class CreationException : public std::exception {

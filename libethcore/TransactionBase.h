@@ -143,9 +143,7 @@ public:
     }
 
     /// Force gas limit. This is used in tests
-    void forceGasPrice( const u256& _gasPrice ) {
-        m_gasPrice = _gasPrice;
-    }
+    void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
 
     /// @throws TransactionIsUnsigned if signature was not initialized
