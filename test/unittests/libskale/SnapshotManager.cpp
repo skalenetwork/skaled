@@ -522,7 +522,7 @@ BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" / "d41" ) );
 
     // make diff for archive node
-    BOOST_REQUIRE_NO_THROW( mgr.makeOrGetDiff( 1, true ) );
+    BOOST_REQUIRE_NO_THROW( mgr.makeOrGetDiff( 1 ) );
 
     // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName ).c_str() );
@@ -532,7 +532,6 @@ BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" );
 
     BOOST_REQUIRE_NO_THROW( mgr.importDiff( 1 ) );
-//    mgr.importDiff( 1 );
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
