@@ -22,7 +22,6 @@ on:
         options: 
         - Debug
         - RelWithDebInfo
-        - Release
         default: RelWithDebInfo
 
 jobs:
