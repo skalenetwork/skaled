@@ -135,23 +135,24 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << "Skaled"  <<  "............................"  <<  ver << "\n";
+    std::cout << "Skaled"
+              << "............................" << ver << "\n";
     if ( !commit.empty() )
-        cout << "Commit"  <<  "............................"
-             <<  commit  << "\n";
-    std::cout <<  "Skale network protocol version" <<  "...."
-              << cc::num10( dev::eth::c_protocolVersion ) << "."
+        cout << "Commit"
+             << "............................" << commit << "\n";
+    std::cout << "Skale network protocol version"
+              << "...." << cc::num10( dev::eth::c_protocolVersion ) << "."
               << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout <<  "Client database version"  <<  "..........."
-              << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout <<  "Build"  <<  "............................."
-              <<  buildinfo->system_name  <<  "/"
-              <<  buildinfo->build_type  << "\n";
-    std::cout <<  "Build"  <<  "............................."
-                  <<  buildinfo->system_name  <<  "/"
-                  <<  buildinfo->build_type  << "\n";
-    std::cout <<  "Working dir"  <<  "......................"
-                  <<  std::filesystem::current_path().string() << endl ;
+    std::cout << "Client database version"
+              << "..........." << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << "Build"
+              << "............................." << buildinfo->system_name << "/"
+              << buildinfo->build_type << "\n";
+    std::cout << "Build"
+              << "............................." << buildinfo->system_name << "/"
+              << buildinfo->build_type << "\n";
+    std::cout << "Working dir"
+              << "......................" << std::filesystem::current_path().string() << endl;
     std::cout.flush();
 }
 
