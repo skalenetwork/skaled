@@ -519,10 +519,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
-    auto milliseconds = std::chrono::duration_cast< std::chrono::microseconds >(
-        std::chrono::system_clock::now().time_since_epoch() )
-                            .count();
-
     if ( m_ignoreNewBlocks ) {
         LOG( m_warningLogger ) << "WARNING: skaled got new block #" << _blockID
                                << " after timestamp-related exit initiated!";
@@ -651,11 +647,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             LOG( m_infoLogger ) << "Rotation is completed. Instance is exiting";
         }
 
-        std::cerr << std::chrono::duration_cast< std::chrono::microseconds >(
-                         std::chrono::system_clock::now().time_since_epoch() )
-                             .count() -
-                         milliseconds
-                  << std::endl;
     }
 
 
