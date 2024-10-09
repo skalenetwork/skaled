@@ -522,9 +522,7 @@ BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
 
-    auto nodesToDownloadSnapshotFrom = test_agent.getNodesToDownloadSnapshotFrom();
-    BOOST_REQUIRE( nodesToDownloadSnapshotFrom.size() == 1 );
-    BOOST_REQUIRE( nodesToDownloadSnapshotFrom[0] == 3 );
+    BOOST_REQUIRE_THROW( test_agent.getNodesToDownloadSnapshotFrom(), NotEnoughVotesException );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
