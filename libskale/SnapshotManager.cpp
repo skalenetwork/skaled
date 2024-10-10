@@ -710,26 +710,27 @@ void SnapshotManager::computeAllVolumesHash(
             std::throw_with_nested( SnapshotManager::CannotCreate( hashFile ) );
         }
 
-        if ( _blockNumber > 0 ) {
-            // archive blocks
-            for ( auto& content : contents ) {
-                if ( content.leaf().string().find( "archive" ) == std::string::npos )
-                    continue;
-                this->computeDatabaseHash( content, ctx );
-            }
+        // disable this code until further notice
+        //        if ( _blockNumber > 0 ) {
+        //            // archive blocks
+        //            for ( auto& content : contents ) {
+        //                if ( content.leaf().string().find( "archive" ) == std::string::npos )
+        //                    continue;
+        //                this->computeDatabaseHash( content, ctx );
+        //            }
 
-#ifdef HISTORIC_STATE
-            // historic dbs
-            this->computeDatabaseHash(
-                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
-                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-                ctx );
-            this->computeDatabaseHash(
-                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
-                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-                ctx );
-#endif
-        }
+        //#ifdef HISTORIC_STATE
+        //            // historic dbs
+        //            this->computeDatabaseHash(
+        //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
+        //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+        //                ctx );
+        //            this->computeDatabaseHash(
+        //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
+        //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+        //                ctx );
+        //#endif
+        //        }
     }
 }
 
