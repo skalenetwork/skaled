@@ -64,6 +64,14 @@ using dev::eth::TransactionReceipt;
 #define ETH_VMTRACE 0
 #endif
 
+const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkipExecution{
+    { { 1020352220, "3464b9a165a29fde2ce644882e82d99edbff5f530413f6cc18b26bf97e6478fb" }, 40729 },
+    { { 1482601649, "d3f25440b752f4ad048b618554f71cec08a73af7bf88b6a7d55581f3a792d823" }, 32151 },
+    { { 974399131, "fcd7ecb7c359af0a93a02e5d84957e0c6f90da4584c058e9c5e988b27a237693" }, 23700 },
+    { { 1482601649, "6f2074cfe73a258c049ac2222101b7020461c2d40dcd5ab9587d5bbdd13e4c68" }, 55293 },
+    { { 21, "95fb5557db8cc6de0aff3a64c18a6d9378b0d312b24f5d77e8dbf5cc0612d74f" }, 23232 }
+};  // the last value is for the test
+
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
     dev::s256 _contractStorageLimit )
@@ -1004,6 +1012,14 @@ bool State::empty() const {
     return false;
 }
 
+bool State::ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash ) {
+    return txnsToSkipExecution.count( { _chainId, _hash.hex() } ) > 0;
+}
+
+uint64_t State::getGasUsedForSkippedTransaction( uint64_t _chainId, const dev::h256& _hash ) {
+    return txnsToSkipExecution.at( { _chainId, _hash.hex() } );
+}
+
 std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& _envInfo,
     eth::ChainOperationParams const& _chainParams, Transaction const& _t, Permanence _p,
     OnOpFunc const& _onOp ) {
@@ -1024,7 +1040,15 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         onOp = e.simpleTrace();
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
-    bool const statusCode = executeTransaction( e, _t, onOp );
+    bool statusCodeTmp = false;
+    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+        e.initialize( _t );
+        e.execute();
+        statusCodeTmp = false;
+    } else {
+        statusCodeTmp = executeTransaction( e, _t, onOp );
+    }
+    bool const statusCode = statusCodeTmp;
 
     std::string strRevertReason;
     if ( res.excepted == dev::eth::TransactionException::RevertInstruction ) {
@@ -1056,9 +1080,17 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         // shaLastTx.hex() << "\n";
 
         TransactionReceipt receipt =
-            _envInfo.number() >= _chainParams.byzantiumForkBlock ?
-                TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-                TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+            TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
+        if ( _p == Permanence::Committed &&
+             ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+            receipt = TransactionReceipt( statusCode,
+                startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+                e.logs() );
+        } else {
+            receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+                          TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                          TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+        }
         receipt.setRevertReason( strRevertReason );
         m_db_ptr->addReceiptToPartials( receipt );
         m_fs_ptr->commit();
@@ -1075,9 +1107,16 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     }
 
     TransactionReceipt receipt =
-        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
-            TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
-            TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+        TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
+    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+        receipt = TransactionReceipt( statusCode,
+            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+            e.logs() );
+    } else {
+        receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+                      TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
+                      TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
+    }
     receipt.setRevertReason( strRevertReason );
 
     return make_pair( res, receipt );

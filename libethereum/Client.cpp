@@ -1172,7 +1172,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
         // We need to check external gas under mutex to be sure about current block number
         // correctness
         const_cast< Transaction& >( _t ).checkOutExternalGas(
-            chainParams(), bc().info().timestamp(), number(), false );
+            chainParams(), bc().info().timestamp(), number() );
     }
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
@@ -1348,7 +1348,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
             Transaction tx = transactions.at( k );
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
-            tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number(), false );
+            tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =
