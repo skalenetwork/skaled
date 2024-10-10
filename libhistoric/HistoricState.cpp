@@ -32,7 +32,7 @@ HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricS
     skale::BaseState _bs )
     : m_db( _db.first ),
       m_rotatingTreeDb( _db.second ),
-      m_blockToStateRootDB( _blockToStateRootDB.first ),
+      m_timestampToStateRootDB( _blockToStateRootDB.first ),
       m_rotatingRootsDb( _blockToStateRootDB.second ),
       m_state( &m_db ),
       m_accountStartNonce( _accountStartNonce ),
@@ -48,7 +48,7 @@ HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricS
 HistoricState::HistoricState( HistoricState const& _s )
     : m_db( _s.m_db ),
       m_rotatingTreeDb( _s.m_rotatingTreeDb ),
-      m_blockToStateRootDB( _s.m_blockToStateRootDB ),
+      m_timestampToStateRootDB( _s.m_timestampToStateRootDB ),
       m_rotatingRootsDb( _s.m_rotatingRootsDb ),
       m_state( &m_db, _s.m_state.root(), Verification::Skip ),
       m_cache( _s.m_cache ),
@@ -155,7 +155,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
 
     m_db = _s.m_db;
     m_rotatingTreeDb = _s.m_rotatingTreeDb;
-    m_blockToStateRootDB = _s.m_blockToStateRootDB;
+    m_timestampToStateRootDB = _s.m_timestampToStateRootDB;
     m_rotatingRootsDb = _s.m_rotatingRootsDb;
     m_state.open( &m_db, _s.m_state.root(), Verification::Skip );
     m_cache = _s.m_cache;
@@ -324,42 +324,42 @@ std::pair< HistoricState::AddressMap, h256 > HistoricState::addresses(
     return { addresses, nextKey };
 }
 
-void HistoricState::setRoot( GlobalRoot const& _r ) {
+void HistoricState::setRoot( GlobalRoot const& _r, uint64_t _rootTimestamp ) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
-    m_state.setRoot( _r );
+    m_state.setRoot( _r, Verification::Normal, _rootTimestamp );
 }
 
-void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
-    auto key = h256( _blockNumber );
-    if ( !m_blockToStateRootDB.exists( key ) ) {
+void HistoricState::setRootByBlockTimestamp( uint64_t _timestamp ) {
+    auto key = h256( _timestamp );
+    if ( !m_timestampToStateRootDB.exists( key ) ) {
         BOOST_THROW_EXCEPTION( UnknownBlockNumberInRootDB() );
     }
-    auto value = m_blockToStateRootDB.lookup( key );
+    auto value = m_timestampToStateRootDB.lookup( key );
     auto root = h256( value, h256::ConstructFromStringType::FromBinary );
-    setRoot( GlobalRoot( root ) );
+    setRoot( GlobalRoot( root ), _timestamp );
 }
 
-void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
-    auto key = h256( _blockNumber );
-    m_blockToStateRootDB.insert( key, m_state.root().ref() );
-    auto bn = to_string( _blockNumber );
+void HistoricState::saveRootForBlockTimestamp( uint64_t _timestamp ) {
+    auto key = h256( _timestamp );
+    m_timestampToStateRootDB.insert( key, m_state.root().ref() );
+    auto str = to_string( _timestamp );
 
     // record the latest block number
     auto bnk = sha3( "latest" );
-    m_blockToStateRootDB.insert( bnk, &bn );
-    m_blockToStateRootDB.commit( "0", true );
+    m_timestampToStateRootDB.insert( bnk, &str );
+    m_timestampToStateRootDB.commit( "0", true );
 }
 
 void HistoricState::setRootFromDB() {
     auto key = sha3( "latest" );
-    if ( !m_blockToStateRootDB.exists( key ) ) {
+    if ( !m_timestampToStateRootDB.exists( key ) ) {
         // new database
         return;
     }
-    auto latest = m_blockToStateRootDB.lookup( key );
-    setRootByBlockNumber( boost::lexical_cast< uint64_t >( latest ) );
+    auto latest = m_timestampToStateRootDB.lookup( key );
+    setRootByBlockTimestamp( boost::lexical_cast< uint64_t >( latest ) );
 }
 
 bool HistoricState::addressInUse( Address const& _id ) const {

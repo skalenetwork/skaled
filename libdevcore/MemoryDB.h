@@ -48,7 +48,11 @@ public:
     }  // WARNING !!!! didn't originally clear m_refCount!!!
     std::unordered_map< h256, std::string > get() const;
 
-    std::string lookup( h256 const& _h ) const;
+    std::string lookup( dev::h256 const& _h ) const;
+    std::string lookup( dev::h256 const& _h, uint64_t _rootTimestamp ) const {
+        assert( _rootTimestamp == 0 );
+        return lookup( _h );
+    }
     bool exists( h256 const& _h ) const;
     virtual void insert( h256 const& _h, bytesConstRef _v );
     bool kill( h256 const& _h );

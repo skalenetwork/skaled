@@ -19,7 +19,7 @@ void RotatingHistoricState::rotate( uint64_t timestamp ) {
     ioBackend->rotate( timestamp );
 }
 
-std::string RotatingHistoricState::lookup( Slice _key ) const {
+std::string RotatingHistoricState::lookup( Slice _key, uint64_t _rootBlockTimestamp ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
@@ -27,7 +27,7 @@ std::string RotatingHistoricState::lookup( Slice _key ) const {
     if ( _key.toString() == std::string( "storageUsed" ) )
         return currentPiece()->lookup( _key );
 
-    auto range = ioBackend->getRangeForKey( _key );
+    auto range = ioBackend->getRangeForBlockTimestamp( _rootBlockTimestamp );
 
     for ( auto it = range.first; it != range.second; ++it ) {
         auto db = ioBackend->getPieceByTimestamp( *it );
@@ -44,7 +44,7 @@ bool RotatingHistoricState::exists( Slice _key ) const {
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
-    auto range = ioBackend->getRangeForKey( _key );
+    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX ); // TODO check if it needs real _timestamp
 
     for ( auto it = range.first; it != range.second; ++it ) {
         auto db = ioBackend->getPieceByTimestamp( *it );
@@ -68,7 +68,7 @@ void RotatingHistoricState::kill( Slice _key ) {
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
-    auto range = ioBackend->getRangeForKey( _key );
+    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX ); // TODO check if it needs real _timestamp
 
     for ( auto it = range.first; it != range.second; ++it ) {
         auto db = ioBackend->getPieceByTimestamp( *it );

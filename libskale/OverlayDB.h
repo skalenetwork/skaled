@@ -110,8 +110,13 @@ public:
     // block for HistoricState
     void insert( dev::h256 const& _h, dev::bytesConstRef _v );
 
-    std::string lookup( dev::h256 const& _h ) const;
+    std::string lookup( dev::h256 const& _h ) const {
+        return lookup( _h, UINT64_MAX);
+    }
+    std::string lookup( dev::h256 const& _h, uint64_t _rootBlockTimestamp ) const;
+
     bool exists( dev::h256 const& _h ) const;
+
     void kill( dev::h256 const& _h );
 
     dev::bytes lookupAux( dev::h256 const& _h ) const;

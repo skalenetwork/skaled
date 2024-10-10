@@ -539,7 +539,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
     }
 
 #ifdef HISTORIC_STATE
-    m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
+    m_state.mutableHistoricState().saveRootForBlockTimestamp( m_currentBlock.timestamp() );
 #endif
 
     m_state.releaseWriteLock();

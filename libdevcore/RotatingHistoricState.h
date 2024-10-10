@@ -25,7 +25,7 @@ public:
         return ioBackend->currentPiece();
     }
 
-    virtual std::string lookup( Slice _key ) const;
+    virtual std::string lookup( Slice _key, uint64_t _rootBlockTimestamp ) const;
     virtual bool exists( Slice _key ) const;
     virtual void insert( Slice _key, Slice _value );
     virtual void kill( Slice _key );

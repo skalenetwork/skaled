@@ -15,7 +15,13 @@ public:
     virtual void kill( dev::db::Slice _key ) = 0;
 
     // readonly
-    virtual std::string lookup( dev::db::Slice _key ) const = 0;
+    virtual std::string lookup( dev::db::Slice _key ) const {
+        return lookup(_key, UINT64_MAX);
+    }
+    virtual std::string lookup( dev::db::Slice _key, uint64_t _rootBlockTimestamp ) const {
+        assert( _rootBlockTimestamp == UINT64_MAX );
+        return lookup( _key );
+    }
     virtual bool exists( dev::db::Slice _key ) const = 0;
     virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const = 0;
     virtual void forEachWithPrefix(
@@ -63,7 +69,7 @@ public:
     }
 
     // readonly
-    virtual std::string lookup( dev::db::Slice _key ) const { return m_db->lookup( _key ); }
+    virtual std::string lookup( dev::db::Slice _key, uint64_t _rootBlockTimestamp ) const { return m_db->lookup( _key, _rootBlockTimestamp ); }
     virtual bool exists( dev::db::Slice _key ) const { return m_db->exists( _key ); }
     virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );

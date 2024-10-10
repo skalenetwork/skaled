@@ -89,16 +89,17 @@ uint64_t BatchedRotatingHistoricDbIO::getTimestampFromKey( Slice& _key ) {
     return timestamp;
 }
 
-std::pair< std::vector< uint64_t >::const_iterator, std::vector< uint64_t >::const_iterator >
-BatchedRotatingHistoricDbIO::getRangeForKey( dev::db::Slice& _key ) {
-    auto timestamps = getTimestamps();
-    auto timestampForCall = getTimestampFromKey( _key );
-    auto it = timestampForCall == uint64_t( -1 ) ?
-                  timestamps.begin() :
-                  std::lower_bound( timestamps.begin(), timestamps.end(), timestampForCall );
-    if ( it != timestamps.begin() )
-        --it;
-    return { it, timestamps.end() };
+std::pair< std::vector< uint64_t >::const_reverse_iterator, std::vector< uint64_t >::const_reverse_iterator >
+BatchedRotatingHistoricDbIO::getRangeForBlockTimestamp( uint64_t _timestamp ) {
+    return {timestamps.rbegin(), timestamps.rend()};
+    // auto timestamps = getTimestamps();
+    // auto timestampForCall = getTimestampFromKey( _key );
+    // auto it = timestampForCall == uint64_t( -1 ) ?
+    //               timestamps.begin() :
+    //               std::lower_bound( timestamps.begin(), timestamps.end(), timestampForCall );
+    // if ( it != timestamps.begin() )
+    //     --it;
+    // return { it, timestamps.end() };
 }
 
 BatchedRotatingHistoricDbIO::~BatchedRotatingHistoricDbIO() {}

@@ -62,9 +62,9 @@ public:
     ~GenericTrieDB() {}
 
     void open( DB* _db ) { m_db = _db; }
-    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal ) {
+    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal, uint64_t _rootTimestamp = UINT64_MAX ) {
         m_db = _db;
-        setRoot( _root, _v );
+        setRoot( _root, _v, _rootTimestamp );
     }
 
     void init() {
@@ -72,8 +72,9 @@ public:
         assert( node( m_root ).size() );
     }
 
-    void setRoot( h256 const& _root, Verification _v = Verification::Normal ) {
+    void setRoot( h256 const& _root, Verification _v = Verification::Normal, uint64_t _rootTimestamp = UINT64_MAX ) {
         m_root = _root;
+        m_rootTimestamp = _rootTimestamp;
         if ( _v == Verification::Normal ) {
             if ( m_root == EmptyTrie && !m_db->exists( m_root ) )
                 init();
@@ -94,6 +95,10 @@ public:
             BOOST_THROW_EXCEPTION( BadRoot() << errinfo_hash256( m_root ) );
         return m_root;
     }  // patch the root in the case of the empty trie. TODO: handle this properly.
+
+    uint64_t rootTimestamp() const {
+        return m_rootTimestamp;
+    }
 
     std::string at( bytes const& _key ) const { return at( &_key ); }
     std::string at( bytesConstRef _key ) const;
@@ -282,7 +287,7 @@ private:
     bool isTwoItemNode( RLP const& _n ) const;
     std::string deref( RLP const& _n ) const;
 
-    std::string node( h256 const& _h ) const { return m_db->lookup( _h ); }
+    std::string node( h256 const& _h ) const { return m_db->lookup( _h, m_rootTimestamp ); }
 
     // These are low-level node insertion functions that just go straight through into the DB.
     h256 forceInsertNode( bytesConstRef _v ) {
@@ -308,6 +313,7 @@ private:
 
     h256 m_root;
     DB* m_db = nullptr;
+    uint64_t m_rootTimestamp = UINT64_MAX;        // timestamp of block with this root, used for optimized scan of DBs in BatchedRotatingHistoricDbIO
 };
 
 template < class DB >
@@ -454,6 +460,7 @@ public:
     using Super::leftOvers;
     using Super::open;
     using Super::root;
+    using Super::rootTimestamp;
     using Super::setRoot;
 
     std::string at( bytesConstRef _key ) const { return Super::at( sha3( _key ) ); }

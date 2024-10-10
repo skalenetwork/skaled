@@ -31,8 +31,8 @@ public:
     std::shared_ptr< dev::db::DatabaseFace > currentPiece() const { return current; }
     std::shared_ptr< dev::db::DatabaseFace > getPieceByTimestamp( uint64_t timestamp );
     std::vector< uint64_t > getTimestamps() const { return timestamps; }
-    std::pair< std::vector< uint64_t >::const_iterator, std::vector< uint64_t >::const_iterator >
-    getRangeForKey( dev::db::Slice& _key );
+    std::pair< std::vector< uint64_t >::const_reverse_iterator, std::vector< uint64_t >::const_reverse_iterator >
+    getRangeForBlockTimestamp( uint64_t _timestamp );
     void rotate( uint64_t timestamp );
     void checkOpenedDbsAndCloseIfNeeded();
     virtual void revert() { /* no need - as all write is in rotate() */

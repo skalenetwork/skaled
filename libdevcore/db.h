@@ -54,7 +54,13 @@ protected:
 class DatabaseFace {
 public:
     virtual ~DatabaseFace() = default;
-    virtual std::string lookup( Slice _key ) const = 0;
+    virtual std::string lookup( Slice _key ) const {
+        return lookup( _key, UINT64_MAX );
+    }
+    virtual std::string lookup( Slice _key, uint64_t _rootBlockTimestamp ) const {
+        assert( _rootBlockTimestamp == UINT64_MAX );
+        return lookup( _key );
+    }
     virtual bool exists( Slice _key ) const = 0;
     virtual void insert( Slice _key, Slice _value ) = 0;
     virtual void kill( Slice _key ) = 0;

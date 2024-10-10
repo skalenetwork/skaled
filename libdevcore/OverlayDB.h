@@ -50,7 +50,11 @@ public:
 
     void insert( h256 const& _h, bytesConstRef _v ) override;
 
-    std::string lookup( h256 const& _h ) const;
+    std::string lookup( dev::h256 const& _h ) const;
+    std::string lookup( dev::h256 const& _h, dev::h256 const& _trieRoot ) const {
+        assert( _trieRoot == dev::h256() );
+        return lookup( _h );
+    }
     bool exists( h256 const& _h ) const;
     void kill( h256 const& _h );
 

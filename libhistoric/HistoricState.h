@@ -266,14 +266,16 @@ public:
     /// The hash of the root of our state tree.
     GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
+    uint64_t globalRootTimestamp() const { return m_state.rootTimestamp(); }
+
     void commitExternalChanges( AccountMap const& _cache, uint64_t _blockTimestamp = -1 );
 
     /// Resets any uncommitted changes to the cache.
-    void setRoot( GlobalRoot const& _root );
+    void setRoot( GlobalRoot const& _root, uint64_t _rootTimestamp );
 
     // Sets root by reading the block number from DB
 
-    void setRootByBlockNumber( uint64_t _blockNumber );
+    void setRootByBlockTimestamp( uint64_t _timestamp );
 
     /// Get the account start nonce. May be required.
     u256 const& accountStartNonce() const { return m_accountStartNonce; }
@@ -292,7 +294,7 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    void saveRootForBlock( uint64_t _blockNumber );
+    void saveRootForBlockTimestamp( uint64_t _timestamp );
 
     void setRootFromDB();
 
@@ -326,7 +328,7 @@ private:
     /// Interface for rotating db for the state tree
     std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingTreeDb;
     /// Overlay DB for the block id state root mapping
-    skale::OverlayDB m_blockToStateRootDB;
+    skale::OverlayDB m_timestampToStateRootDB;
     /// Interface for rotating db for the state root mapping
     std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingRootsDb;
 

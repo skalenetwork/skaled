@@ -53,7 +53,6 @@
 #include "InstanceMonitor.h"
 #include "SkaleHost.h"
 #include "SnapshotAgent.h"
-#include "StateImporter.h"
 #include "ThreadSafeQueue.h"
 
 #include <libhistoric/AlethStandardTrace.h>
@@ -261,11 +260,6 @@ public:
     void setExtraData( bytes const& _extraData ) { m_extraData = _extraData; }
     /// Rescue the chain.
     void rescue() { bc().rescue( m_state ); }
-
-    std::unique_ptr< StateImporterFace > createStateImporter() {
-        throw std::logic_error( "createStateImporter is not implemented" );
-        //        return dev::eth::createStateImporter(m_state);
-    }
 
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
