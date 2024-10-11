@@ -15,13 +15,15 @@ class BatchedRotatingHistoricDbIO : public batched_face {
 private:
     const boost::filesystem::path basePath;
 
+    // non-decreasing list of all db pieces
     std::vector< uint64_t > timestamps;
 
     std::map< boost::filesystem::path, std::shared_ptr< dev::db::DatabaseFace > > dbsInUse;
+    // it's always last in timestamps
     std::shared_ptr< dev::db::DatabaseFace > current;
     std::chrono::system_clock::time_point lastCleanup;
 
-    std::mutex mutex;
+    mutable std::mutex mutex;
 
     static const uint64_t MAX_OPENED_DB_COUNT;
     static const std::chrono::system_clock::duration OPENED_DB_CHECK_INTERVAL;
@@ -29,10 +31,11 @@ private:
 public:
     BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path );
     std::shared_ptr< dev::db::DatabaseFace > currentPiece() const { return current; }
+    // get piece with last timestamp that is <= supplied value
     std::shared_ptr< dev::db::DatabaseFace > getPieceByTimestamp( uint64_t timestamp );
     std::vector< uint64_t > getTimestamps() const { return timestamps; }
     std::pair< std::vector< uint64_t >::const_reverse_iterator, std::vector< uint64_t >::const_reverse_iterator >
-    getRangeForBlockTimestamp( uint64_t _timestamp );
+    getRangeForBlockTimestamp( uint64_t _timestamp ) const;
     void rotate( uint64_t timestamp );
     void checkOpenedDbsAndCloseIfNeeded();
     virtual void revert() { /* no need - as all write is in rotate() */
@@ -45,9 +48,7 @@ public:
 
 protected:
     virtual void recover();
-
-private:
-    static uint64_t getTimestampFromKey( dev::db::Slice& _key );
+    size_t elementByTimestamp( uint64_t timestamp ) const;
 };
 
 }  // namespace batched_io
