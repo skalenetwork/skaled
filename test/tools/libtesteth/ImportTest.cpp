@@ -417,6 +417,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                        importData( _o ), toInt( _o.at( "nonce" ) ),
                        Secret( _o.at( "secretKey" ).get_str() ) );
+        o_tr.ignoreExternalGas();
     } else {
         requireJsonFields( _o, "transaction",
             {{"data", jsonVType::str_type}, {"gasLimit", jsonVType::str_type},
@@ -428,6 +429,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         RLP transactionRLP( transactionRLPStream.out() );
         try {
             o_tr = Transaction( transactionRLP.data(), CheckTransaction::Everything );
+            o_tr.ignoreExternalGas();
         } catch ( InvalidSignature const& ) {
             // create unsigned transaction
             o_tr = _o.at( "to" ).get_str().empty() ?
@@ -437,6 +439,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
                        Transaction( toInt( _o.at( "value" ) ), toInt( _o.at( "gasPrice" ) ),
                            toInt( _o.at( "gasLimit" ) ), Address( _o.at( "to" ).get_str() ),
                            importData( _o ), toInt( _o.at( "nonce" ) ) );
+            o_tr.ignoreExternalGas();
         } catch ( Exception& _e ) {
             cnote << "invalid transaction" << boost::diagnostic_information( _e );
         }

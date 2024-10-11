@@ -369,8 +369,7 @@ pair< TransactionReceipts, bool > Block::sync(
                                                                     // caller if we hit the limit
 
     for ( Transaction& transaction : transactions ) {
-        transaction.checkOutExternalGas(
-            _bc.chainParams(), _bc.info().timestamp(), _bc.number(), false );
+        transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
@@ -675,7 +674,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
             const_cast< Transaction& >( tr ).checkOutExternalGas(
-                _bc.chainParams(), _bc.info().timestamp(), _bc.number(), false );
+                _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
             execute( _bc.lastBlockHashes(), tr );
             // cerr << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;

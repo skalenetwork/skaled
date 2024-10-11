@@ -900,7 +900,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -964,7 +964,7 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1025,7 +1025,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1094,7 +1094,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // receive it!
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );

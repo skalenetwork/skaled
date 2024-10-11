@@ -576,14 +576,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             h256 sha = sha3( data );
             LOG( m_traceLogger ) << "Arrived txn: " << sha;
 
+
             Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
             t.checkOutExternalGas(
-                m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
+                m_client.chainParams(), latestInfo.timestamp(), m_client.number());
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
-
 
             if ( SkaleDebugInterface::g_isEnabled && m_tq.isTransactionKnown( sha ) != 0 ) {
                 // this trace is expensive since it will aquire a read lock on transaction queue
