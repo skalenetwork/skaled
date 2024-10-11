@@ -136,24 +136,22 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << "Skaled"
-              << "............................" << ver << "\n";
+    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" )
+              << cc::attention( ver ) << "\n";
     if ( !commit.empty() )
-        cout << "Commit"
-             << "............................" << commit << "\n";
-    std::cout << "Skale network protocol version"
-              << "...." << cc::num10( dev::eth::c_protocolVersion ) << "."
+        cout << cc::info( "Commit" ) << cc::debug( "............................" )
+             << cc::attention( commit ) << "\n";
+    std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
+              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." )
               << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout << "Client database version"
-              << "..........." << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << "Build"
-              << "............................." << buildinfo->system_name << "/"
-              << buildinfo->build_type << "\n";
-    std::cout << "Build"
-              << "............................." << buildinfo->system_name << "/"
-              << buildinfo->build_type << "\n";
+    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." )
+              << cc::num10( dev::eth::c_databaseVersion ) << "\n";
+    std::cout << cc::info( "Build" ) << cc::debug( "............................." )
+              << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
+              << cc::attention( buildinfo->build_type ) << "\n";
     std::cout << "Working dir"
               << "......................" << std::filesystem::current_path().string() << endl;
+
     std::cout.flush();
 }
 
@@ -561,6 +559,7 @@ int main( int argc, char** argv ) try {
     srand( time( nullptr ) );
     setCLocale();
     skutils::signal::init_common_signal_handling( ExitHandler::exitHandler );
+    bool isExposeAllDebugInfo = false;
 
     // Init secp256k1 context by calling one of the functions.
     toPublic( {} );
@@ -594,6 +593,7 @@ int main( int argc, char** argv ) try {
     bool bTraceJsonRpcSpecialCalls = false;
     bool bEnabledAPIs_personal = false;
     bool bEnabledAPIs_admin = false;
+    bool bEnabledAPIs_debug = false;
     bool bEnabledAPIs_performanceTracker = false;
 
     const std::list< std::pair< std::string, std::string > >& listIfaceInfos4 =
@@ -1041,7 +1041,7 @@ int main( int argc, char** argv ) try {
 
     setupLogging( loggingOptions );
 
-    // we do not really use these much threads anymore
+    // we do not really use these threads anymore
     // so setting default value to 1
     size_t nDispatchThreads = 1;
     if ( vm.count( "dispatch-threads" ) ) {
@@ -1275,7 +1275,7 @@ int main( int argc, char** argv ) try {
         }
         try {
             if ( joConfig["skaleConfig"]["nodeInfo"].count( "enable-debug-behavior-apis" ) )
-                SkaleDebugInterface::g_isEnabled =
+                bEnabledAPIs_debug =
                     joConfig["skaleConfig"]["nodeInfo"]["enable-debug-behavior-apis"].get< bool >();
         } catch ( ... ) {
         }
@@ -1292,7 +1292,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "enable-admin-apis" ) )
         bEnabledAPIs_admin = true;
     if ( vm.count( "enable-debug-behavior-apis" ) )
-        SkaleDebugInterface::g_isEnabled = true;
+        bEnabledAPIs_debug = true;
     if ( vm.count( "enable-performance-tracker-apis" ) )
         bEnabledAPIs_performanceTracker = true;
     clog( VerbosityWarning, "main" )
@@ -1306,7 +1306,7 @@ int main( int argc, char** argv ) try {
     clog( VerbosityWarning, "main" )
         << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "enable-debug-behavior-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( SkaleDebugInterface::g_isEnabled );
+        << cc::flag_ed( bEnabledAPIs_debug );
     clog( VerbosityWarning, "main" )
         << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
         << cc::info( "enable-performance-tracker-apis" ) << cc::debug( " mode is " )
@@ -1964,18 +1964,29 @@ int main( int argc, char** argv ) try {
             argv_string = ss.str();
         }  // block
 
+        if ( chainConfigParsed ) {
+            try {
+                isExposeAllDebugInfo =
+                    joConfig["skaleConfig"]["nodeInfo"]["expose-all-debug-info"].get< bool >();
+            } catch ( ... ) {
+            }
+        }
+        if ( vm.count( "expose-all-debug-info" ) )
+            isExposeAllDebugInfo = true;
+
+
         auto pNetFace = new rpc::Net( chainParams );
         auto pWeb3Face = new rpc::Web3( clientVersion() );
         auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
         auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
         auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client, chainParams );
+        pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
         auto pPersonalFace = bEnabledAPIs_personal ?
                                  new rpc::Personal( keyManager, *accountHolder, *g_client ) :
                                  nullptr;
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
-
         auto pDebugFace = bEnabledAPIs_debug ?
                               new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                               nullptr;

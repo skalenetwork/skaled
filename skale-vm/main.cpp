@@ -393,7 +393,6 @@ int main( int argc, char** argv ) {
         cout << "exec time: " << fixed << setprecision( 6 ) << execTime << '\n';
     }
 
-    state.releaseWriteLock();
 
     return 0;
 }

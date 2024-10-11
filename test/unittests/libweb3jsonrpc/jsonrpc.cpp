@@ -815,6 +815,10 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 }
 
 
+
+const string skaledConfigFileName = "../../test/historicstate/configs/basic_config.json";
+
+
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
     SkaledFixture fixture( skaledConfigFileName );
     fixture.setupFirstKey();
