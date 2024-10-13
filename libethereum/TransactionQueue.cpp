@@ -187,9 +187,7 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK( unsigned _limit ) {
     VerifiedTransaction dummy = VerifiedTransaction( Transaction() );
 
 
-    PriorityQueue::iterator my_begin = m_current.lower_bound( dummy );
-
-    for ( PriorityQueue::iterator transaction_ptr = my_begin;
+    for ( PriorityQueue::iterator transaction_ptr = m_current.begin();
           top_transactions.size() < _limit && transaction_ptr != m_current.end();
           ++transaction_ptr ) {
         top_transactions.push_back( transaction_ptr->transaction );
