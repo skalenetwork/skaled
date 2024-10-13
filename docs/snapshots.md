@@ -23,7 +23,7 @@ Additionally, a node can be restarted from a snapshot it the node was offline fo
 Skaled uses the btrfs file system to create snapshots.
 
 Assumptions:
-1. First block on SKALE chain occured at T<sub>firstBlock</sub>
+1. First block on SKALE chain occurred at T<sub>firstBlock</sub>
 2. node does snapshot every T<sub>snapshotInterval</sub> seconds (configurable number, stored in SKALE chain config, so it is similar for all nodes in SKALE chain )
 
 Assume `k` snapshots were already done. Lets see when `k+1`-th will be done and ready to be used:
