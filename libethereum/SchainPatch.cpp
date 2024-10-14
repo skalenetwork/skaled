@@ -36,6 +36,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::VerifyBlsSyncPatch;
     else if ( _patchName == "FlexibleDeploymentPatch" )
         return SchainPatchEnum::FlexibleDeploymentPatch;
+    else if ( _patchName == "ExternalGasPatch" )
+        return SchainPatchEnum::ExternalGasPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -72,6 +74,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "VerifyBlsSyncPatch";
     case SchainPatchEnum::FlexibleDeploymentPatch:
         return "FlexibleDeploymentPatch";
+    case SchainPatchEnum::ExternalGasPatch:
+        return "ExternalGasPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );

@@ -659,7 +659,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             if ( m_m_transaction_cache.find( sha.asArray() ) != m_m_transaction_cache.cend() ) {
                 Transaction t = m_m_transaction_cache.at( sha.asArray() );
                 t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), true );
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
                 m_debugTracer.tracepoint( "drop_good" );
@@ -675,7 +675,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 Transaction t( data, CheckTransaction::Everything, true,
                     EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
                 t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number(), false );
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
                 out_txns.push_back( t );
                 LOG( m_debugLogger ) << "Will import consensus-born txn";
                 m_debugTracer.tracepoint( "import_consensus_born" );
