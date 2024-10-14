@@ -23,7 +23,6 @@ BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesyste
     // initialize current with the latest existing db
     std::sort( timestamps.begin(), timestamps.end() );
     current.reset( new LevelDB( basePath / std::to_string( timestamps.back() ) ) );
-    dbsInUse[basePath / std::to_string( timestamps.back() )] = current;
 
     lastCleanup = std::chrono::system_clock::now();
 
@@ -37,7 +36,6 @@ void BatchedRotatingHistoricDbIO::rotate( uint64_t timestamp ) {
 
     timestamps.push_back( timestamp );
     current.reset( new LevelDB( basePath / std::to_string( timestamp ) ) );
-    dbsInUse[basePath / std::to_string( timestamps.back() )] = current;
 
     test_crash_before_commit( "after_open_leveldb" );
 }
@@ -61,24 +59,28 @@ void BatchedRotatingHistoricDbIO::checkOpenedDbsAndCloseIfNeeded() {
 
 void BatchedRotatingHistoricDbIO::recover() {}
 
-size_t BatchedRotatingHistoricDbIO::elementByTimestamp(uint64_t timestamp) const {
+size_t BatchedRotatingHistoricDbIO::elementByTimestamp_WITH_LOCK( uint64_t timestamp ) const {
     if ( timestamp >= timestamps.back() )
-        return timestamps.size()-1;
+        return timestamps.size() - 1;
 
     if ( timestamp < timestamps.front() )
         throw std::invalid_argument( "Invalid timestamp passed to BatchedRotatingHistoricDbIO." );
 
     auto it = std::upper_bound( timestamps.begin(), timestamps.end(), timestamp );
-    it = ( it == timestamps.begin() ? it : it-1 );
+    it = ( it == timestamps.begin() ? it : it - 1 );
     return std::distance( timestamps.begin(), it );
 }
 
 std::shared_ptr< dev::db::DatabaseFace > BatchedRotatingHistoricDbIO::getPieceByTimestamp(
-    uint64_t timestamp ){
-
+    uint64_t timestamp ) {
     std::lock_guard< std::mutex > lock( mutex );
 
-    auto pos = elementByTimestamp( timestamp );
+    auto pos = elementByTimestamp_WITH_LOCK( timestamp );
+
+    // if it's current
+    if ( pos == timestamps.size() - 1 )
+        return current;
+
     auto timestampToLook = timestamps[pos];
 
     auto path = basePath / std::to_string( timestampToLook );
@@ -88,11 +90,12 @@ std::shared_ptr< dev::db::DatabaseFace > BatchedRotatingHistoricDbIO::getPieceBy
     return dbsInUse[path];
 }
 
-std::pair< std::vector< uint64_t >::const_reverse_iterator, std::vector< uint64_t >::const_reverse_iterator >
+std::pair< std::vector< uint64_t >::const_reverse_iterator,
+    std::vector< uint64_t >::const_reverse_iterator >
 BatchedRotatingHistoricDbIO::getRangeForBlockTimestamp( uint64_t _timestamp ) const {
     std::lock_guard< std::mutex > lock( mutex );
-    auto pos = elementByTimestamp( _timestamp );
-    return { timestamps.rbegin(), timestamps.rend() };
+    auto pos = elementByTimestamp_WITH_LOCK( _timestamp );
+    return { timestamps.rend() - 1 - pos, timestamps.rend() };
 }
 
 BatchedRotatingHistoricDbIO::~BatchedRotatingHistoricDbIO() {}

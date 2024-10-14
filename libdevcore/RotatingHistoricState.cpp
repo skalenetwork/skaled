@@ -44,7 +44,8 @@ bool RotatingHistoricState::exists( Slice _key ) const {
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
-    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX ); // TODO check if it needs real _timestamp
+    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX );  // TODO check if it needs real
+                                                                      // _timestamp
 
     for ( auto it = range.first; it != range.second; ++it ) {
         auto db = ioBackend->getPieceByTimestamp( *it );
@@ -68,7 +69,8 @@ void RotatingHistoricState::kill( Slice _key ) {
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
-    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX ); // TODO check if it needs real _timestamp
+    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX );  // TODO check if it needs real
+                                                                      // _timestamp
 
     for ( auto it = range.first; it != range.second; ++it ) {
         auto db = ioBackend->getPieceByTimestamp( *it );

@@ -62,7 +62,8 @@ public:
     ~GenericTrieDB() {}
 
     void open( DB* _db ) { m_db = _db; }
-    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal, uint64_t _rootTimestamp = UINT64_MAX ) {
+    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal,
+        uint64_t _rootTimestamp = UINT64_MAX ) {
         m_db = _db;
         setRoot( _root, _v, _rootTimestamp );
     }
@@ -72,7 +73,8 @@ public:
         assert( node( m_root ).size() );
     }
 
-    void setRoot( h256 const& _root, Verification _v = Verification::Normal, uint64_t _rootTimestamp = UINT64_MAX ) {
+    void setRoot( h256 const& _root, Verification _v = Verification::Normal,
+        uint64_t _rootTimestamp = UINT64_MAX ) {
         m_root = _root;
         m_rootTimestamp = _rootTimestamp;
         if ( _v == Verification::Normal ) {
@@ -96,9 +98,7 @@ public:
         return m_root;
     }  // patch the root in the case of the empty trie. TODO: handle this properly.
 
-    uint64_t rootTimestamp() const {
-        return m_rootTimestamp;
-    }
+    uint64_t rootTimestamp() const { return m_rootTimestamp; }
 
     std::string at( bytes const& _key ) const { return at( &_key ); }
     std::string at( bytesConstRef _key ) const;
@@ -313,7 +313,8 @@ private:
 
     h256 m_root;
     DB* m_db = nullptr;
-    uint64_t m_rootTimestamp = UINT64_MAX;        // timestamp of block with this root, used for optimized scan of DBs in BatchedRotatingHistoricDbIO
+    uint64_t m_rootTimestamp = UINT64_MAX;  // timestamp of block with this root, used for optimized
+                                            // scan of DBs in BatchedRotatingHistoricDbIO
 };
 
 template < class DB >

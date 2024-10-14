@@ -54,9 +54,7 @@ protected:
 class DatabaseFace {
 public:
     virtual ~DatabaseFace() = default;
-    virtual std::string lookup( Slice _key ) const {
-        return lookup( _key, UINT64_MAX );
-    }
+    virtual std::string lookup( Slice _key ) const { return lookup( _key, UINT64_MAX ); }
     virtual std::string lookup( Slice _key, uint64_t _rootBlockTimestamp ) const {
         assert( _rootBlockTimestamp == UINT64_MAX );
         return lookup( _key );

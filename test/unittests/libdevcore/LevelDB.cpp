@@ -14,8 +14,6 @@ using namespace std;
 using namespace dev::test;
 using namespace dev;
 
-BOOST_FIXTURE_TEST_SUITE( LevelDBTests, TestOutputHelperFixture )
-
 void test_leveldb( db::DatabaseFace* db ) {
     string r = "0";
     r[0] = ( unsigned char ) ( rand() % 256 );
@@ -49,7 +47,7 @@ void test_leveldb( db::DatabaseFace* db ) {
     int cnt = 0;
     db->forEach( [&cnt, r]( db::Slice _key, db::Slice ) -> bool {
         BOOST_REQUIRE( _key.contentsEqual( db::Slice( r + "other key" ).toVector() ) ||
-                       _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
+                      _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
         ++cnt;
         return true;
     } );
@@ -69,9 +67,9 @@ void test_leveldb( db::DatabaseFace* db ) {
     cnt = 0;
     db->forEach( [&cnt, str_with_0, r]( db::Slice _key, db::Slice ) -> bool {
         BOOST_REQUIRE( _key.contentsEqual( db::Slice( r + "b-other key" ).toVector() ) ||
-                       _key.contentsEqual( db::Slice( str_with_0 ).toVector() ) ||
-                       _key.contentsEqual( db::Slice( r + "b-key for 0" ).toVector() ) ||
-                       _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
+                      _key.contentsEqual( db::Slice( str_with_0 ).toVector() ) ||
+                      _key.contentsEqual( db::Slice( r + "b-key for 0" ).toVector() ) ||
+                      _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
         ++cnt;
         return true;
     } );
@@ -81,6 +79,8 @@ void test_leveldb( db::DatabaseFace* db ) {
     BOOST_REQUIRE( db->hashBase() != initial_hash );
     BOOST_REQUIRE( db->hashBase() != middle_hash );
 }
+
+BOOST_FIXTURE_TEST_SUITE( LevelDBTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( ordinary_test ) {
     TransientDirectory td;
@@ -225,5 +225,85 @@ BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
 
     }// for pre_rotate
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE( HistoricDBTests, TestOutputHelperFixture )
+
+BOOST_AUTO_TEST_CASE( simple_whole_test ) {
+    TransientDirectory td;
+    auto bio = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+    db::RotatingHistoricState rhs( bio );
+
+    rhs.rotate(1001);
+    rhs.rotate(1002);
+
+    test_leveldb( &rhs );
+}
+
+BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
+    TransientDirectory td;
+
+    auto batcher = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+    db::RotatingHistoricState rdb( batcher );
+
+    rdb.insert( string( "a" ), string( "va" ) );
+    rdb.insert( string( "b" ), string( "vb" ) );
+
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb" ) );
+
+    rdb.insert( string( "a" ), string( "va_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new" ) );
+
+    rdb.rotate(1001);  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb" ) );
+
+    rdb.insert( string( "b" ), string( "vb_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb_new" ) );
+    rdb.insert( string( "a" ), string( "va_new_new" ) );
+    BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new_new" ) );
+}
+
+BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
+    TransientDirectory td;
+
+    // make 2 rotations, then reopen
+
+    // scope 1
+    {
+        auto batcher = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+        db::RotatingHistoricState rdb( batcher );
+
+        rdb.insert( string( "a" ), to_string(0) );
+        for(int i=1; i<=2; ++i){
+            rdb.rotate(i*1000);
+            rdb.insert( string( "a" ), to_string(i) );
+        }
+
+        BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(2));
+    }
+
+    // scope 2
+    {
+        auto batcher = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+        db::RotatingHistoricState rdb( batcher );
+        BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(2));
+    }
+
+}
+
+BOOST_AUTO_TEST_CASE( basic_io_test ) {
+    TransientDirectory td;
+    batched_io::BatchedRotatingHistoricDbIO io( td.path() );
+
+    auto ts = io.getTimestamps();
+    BOOST_REQUIRE_EQUAL(ts.size(), 1);
+    auto db = io.currentPiece();
+    db->insert(db::Slice( "1" ), db::Slice( "foobar" ));
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

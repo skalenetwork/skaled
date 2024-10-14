@@ -223,7 +223,8 @@ void Client::populateNewChainStateFromGenesis() {
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateModifyCopy();
     m_state.populateFrom( bc().chainParams().genesisState );
-    m_state.mutableHistoricState().saveRootForBlockTimestamp( 0 );  // TODO is it safe to assume it's 0?
+    m_state.mutableHistoricState().saveRootForBlockTimestamp( 0 );  // TODO is it safe to assume
+                                                                    // it's 0?
     m_state.mutableHistoricState().db().commit( "0", true );
     m_state.releaseWriteLock();
 #else
@@ -663,9 +664,8 @@ size_t Client::syncTransactions(
         m_state = m_state.createNewCopyWithLocks();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
-        HistoricState &hs = m_working.mutableState().mutableHistoricState();
-        m_state.mutableHistoricState().setRoot(
-            hs.globalRoot(), hs.globalRootTimestamp() );
+        HistoricState& hs = m_working.mutableState().mutableHistoricState();
+        m_state.mutableHistoricState().setRoot( hs.globalRoot(), hs.globalRootTimestamp() );
 #endif
     }
 
@@ -1083,7 +1083,8 @@ Block Client::blockByNumber( BlockNumber _h ) const {
         // blockByNumber is only used for reads
 
         auto readState = m_state.createStateReadOnlyCopy();
-        readState.mutableHistoricState().setRootByBlockTimestamp( this->blockInfo( hash ).timestamp() );
+        readState.mutableHistoricState().setRootByBlockTimestamp(
+            this->blockInfo( hash ).timestamp() );
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed
         return Block( bc(), hash, readState );

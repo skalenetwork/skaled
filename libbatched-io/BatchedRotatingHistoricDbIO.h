@@ -18,8 +18,10 @@ private:
     // non-decreasing list of all db pieces
     std::vector< uint64_t > timestamps;
 
+    // containts all open DBs but NOT current!
     std::map< boost::filesystem::path, std::shared_ptr< dev::db::DatabaseFace > > dbsInUse;
-    // it's always last in timestamps
+
+    // it's always last in timestamps, but NOT in dbsInUse, to prevent it's closing
     std::shared_ptr< dev::db::DatabaseFace > current;
     std::chrono::system_clock::time_point lastCleanup;
 
@@ -34,7 +36,8 @@ public:
     // get piece with last timestamp that is <= supplied value
     std::shared_ptr< dev::db::DatabaseFace > getPieceByTimestamp( uint64_t timestamp );
     std::vector< uint64_t > getTimestamps() const { return timestamps; }
-    std::pair< std::vector< uint64_t >::const_reverse_iterator, std::vector< uint64_t >::const_reverse_iterator >
+    std::pair< std::vector< uint64_t >::const_reverse_iterator,
+        std::vector< uint64_t >::const_reverse_iterator >
     getRangeForBlockTimestamp( uint64_t _timestamp ) const;
     void rotate( uint64_t timestamp );
     void checkOpenedDbsAndCloseIfNeeded();
@@ -48,7 +51,7 @@ public:
 
 protected:
     virtual void recover();
-    size_t elementByTimestamp( uint64_t timestamp ) const;
+    size_t elementByTimestamp_WITH_LOCK( uint64_t timestamp ) const;
 };
 
 }  // namespace batched_io
