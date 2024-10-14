@@ -372,7 +372,7 @@ void ImportTest::importState(
         validation::validateAccountMaskObj( accountMaskJson );
     }
     std::string jsondata = json_spirit::write_string( ( json_spirit::mValue ) o, false );
-    _state.createStateCopyAndClearCaches().populateFrom(jsonToAccountMap(jsondata, 0, &o_mask ) );
+    _state.populateFrom(jsonToAccountMap(jsondata, 0, &o_mask ) );
 }
 
 void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {

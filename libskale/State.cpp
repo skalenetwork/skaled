@@ -536,8 +536,6 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
 #endif
 
     m_changeLog.clear();
-    m_cache.clear();
-    m_unchangedCacheEntries.clear();
 }
 
 
