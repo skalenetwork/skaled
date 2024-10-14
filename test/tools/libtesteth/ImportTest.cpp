@@ -249,7 +249,7 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
     assert( m_envInfo );
 
     bool removeEmptyAccounts = false;
-    State initialState = _preState.createStateCopyAndClearCaches();
+    State initialState = _preState;
     initialState.addBalance( _env.author(), 0 );  // imitate mining reward
     ExecOutput out( std::make_pair(
         eth::ExecutionResult(), eth::TransactionReceipt( h256(), u256(), eth::LogEntries() ) ) );
@@ -556,7 +556,7 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
                 for ( auto const& s : _statePost.storage( a.first ) )
                     CHECK( ( expectedStorage[s.first] == s.second ),
                         TestOutputHelper::get().testName() + " Check State: "
-                            << a.first << ": incorrect storage ["
+                            << a.first << ": unexpected incorrect storage ["
                             << toCompactHexPrefixed( s.second.first )
                             << "] = " << toCompactHexPrefixed( s.second.second ) << ", expected ["
                             << toCompactHexPrefixed( s.second.first )
