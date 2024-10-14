@@ -536,8 +536,15 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
 #endif
 
     m_changeLog.clear();
-    m_db_ptr->commit();
-    m_cache.clear();
+    // normally we clear caches after commit, since the data goes to the db
+    // during commit
+    // for testeth GeneralState tests, though, there is no db connected to the
+    // State , so we do not clear caches
+    // since they play the role of the db
+    if (m_db_ptr->connected()) {
+        m_cache.clear();
+        m_unchangedCacheEntries.clear();
+    }
 }
 
 
