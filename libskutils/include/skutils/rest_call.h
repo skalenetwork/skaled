@@ -38,6 +38,7 @@ namespace skutils {
 namespace rest {
 
 extern long g_nClientConnectionTimeoutMS;
+extern long g_nRpcIdleTimeoutMS;
 
 enum class e_data_fetch_strategy {
     edfs_by_equal_json_id,
