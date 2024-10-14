@@ -1007,8 +1007,8 @@ static std::string const c_skaleConfigString = R"E(
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
-            "snapshotIntervalSec": 10,
-            "emptyBlockIntervalMs": -1,
+            "snapshotIntervalSec": 5,
+            "emptyBlockIntervalMs": 4000,
             "nodes": [
               { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
             ]
@@ -1038,12 +1038,9 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
-    BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
+    std::this_thread::sleep_for( 5000ms );
 
-    testClient->importTransactionsAsBlock(
-        Transactions(), 1000, testClient->latestBlock().info().timestamp() + 86410 );
-
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "3" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" ) );
 
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
@@ -1055,13 +1052,15 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
     secp256k1_sha256_finalize( &ctx, empty_state_root_hash.data() );
 
     BOOST_REQUIRE( testClient->latestBlock().info().stateRoot() == empty_state_root_hash );
-    std::this_thread::sleep_for( 6000ms );
-    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "3" / "snapshot_hash.txt" ) );
 
-    dev::h256 hash = testClient->hashFromNumber( 3 );
+    std::this_thread::sleep_for( 1000ms );
+
+    BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" / "snapshot_hash.txt" ) );
+
+    dev::h256 hash = testClient->hashFromNumber( 2 );
     uint64_t timestampFromBlockchain = testClient->blockInfo( hash ).timestamp();
 
-    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( 3 ) );
+    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, testClient->getBlockTimestampFromSnapshot( 2 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
