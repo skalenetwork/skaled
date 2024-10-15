@@ -353,31 +353,31 @@ BOOST_AUTO_TEST_CASE( range_test ){
 
     // timestamp: 0 10 20 30 40 50 .. 100
 
-    auto range = io.getRangeForBlockTimestamp(0);
+    auto range = io.getRangeForBlockNumber(0);
     std::equal( range.first, range.second, timestamps.rend()-1 );
 
-    range = io.getRangeForBlockTimestamp(9);
+    range = io.getRangeForBlockNumber(9);
     std::equal( range.first, range.second, timestamps.rend()-1 );
 
-    range = io.getRangeForBlockTimestamp(10);
+    range = io.getRangeForBlockNumber(10);
     std::equal( range.first, range.second, timestamps.rend()-1-1 );
 
-    range = io.getRangeForBlockTimestamp(20);
+    range = io.getRangeForBlockNumber(20);
     std::equal( range.first, range.second, timestamps.rend()-1-2 );
 
-    range = io.getRangeForBlockTimestamp(21);
+    range = io.getRangeForBlockNumber(21);
     std::equal( range.first, range.second, timestamps.rend()-1-2 );
 
-    range = io.getRangeForBlockTimestamp(29);
+    range = io.getRangeForBlockNumber(29);
     std::equal( range.first, range.second, timestamps.rend()-1-2 );
 
-    range = io.getRangeForBlockTimestamp(30);
+    range = io.getRangeForBlockNumber(30);
     std::equal( range.first, range.second, timestamps.rend()-1-3 );
 
-    range = io.getRangeForBlockTimestamp(999);
+    range = io.getRangeForBlockNumber(999);
     std::equal( range.first, range.second, timestamps.rbegin() );
 
-    range = io.getRangeForBlockTimestamp(UINT64_MAX);
+    range = io.getRangeForBlockNumber(UINT64_MAX);
     std::equal( range.first, range.second, timestamps.rbegin() );
 }
 
