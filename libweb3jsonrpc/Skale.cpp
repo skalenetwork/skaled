@@ -206,8 +206,9 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                             m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
                         time( NULL ) - currentSnapshotTime <
                             m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
-                    time( NULL ) - currentSnapshotTime <
-                        m_client.chainParams().sChain.snapshotDownloadTimeout ) {
+                    ( time( NULL ) - currentSnapshotTime <
+                            m_client.chainParams().sChain.snapshotDownloadTimeout ||
+                        m_client.chainParams().nodeInfo.archiveMode ) ) {
                 if ( threadExitRequested )
                     break;
                 sleep( 10 );
