@@ -506,9 +506,10 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
 
     for ( auto const& a : _stateExpect.addresses() ) {
         AccountMask addressOptions( true );
+        auto accountAddress = a.first;
         if ( _expectedStateOptions.size() ) {
             try {
-                addressOptions = _expectedStateOptions.at( a.first );
+                addressOptions = _expectedStateOptions.at( accountAddress );
             } catch ( std::out_of_range const& ) {
                 BOOST_ERROR( TestOutputHelper::get().testName() +
                              " expectedStateOptions map does not match expectedState in "
@@ -518,57 +519,64 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
         }
 
         if ( addressOptions.shouldExist() ) {
-            CHECK( _statePost.addressInUse( a.first ),
+            CHECK( _statePost.addressInUse( accountAddress ),
                 TestOutputHelper::get().testName() + " Compare States: "
-                    << a.first << " missing expected address!" );
+                    << accountAddress << " missing expected address!" );
         } else {
-            CHECK( !_statePost.addressInUse( a.first ),
+            CHECK( !_statePost.addressInUse( accountAddress ),
                 TestOutputHelper::get().testName() + " Compare States: "
-                    << a.first << " address not expected to exist!" );
+                    << accountAddress << " address not expected to exist!" );
         }
 
-        if ( _statePost.addressInUse( a.first ) ) {
+        if ( _statePost.addressInUse( accountAddress ) ) {
             if ( addressOptions.hasBalance() )
-                CHECK( ( _stateExpect.balance( a.first ) == _statePost.balance( a.first ) ),
+                CHECK( ( _stateExpect.balance( accountAddress ) == _statePost.balance( accountAddress ) ),
                     TestOutputHelper::get().testName() + " Check State: "
-                        << a.first << ": incorrect balance " << _statePost.balance( a.first )
-                        << ", expected " << _stateExpect.balance( a.first ) );
+                        << accountAddress << ": incorrect balance " << _statePost.balance( accountAddress )
+                        << ", expected " << _stateExpect.balance( accountAddress ) );
 
             if ( addressOptions.hasNonce() )
-                CHECK( ( _stateExpect.getNonce( a.first ) == _statePost.getNonce( a.first ) ),
+                CHECK( ( _stateExpect.getNonce( accountAddress ) == _statePost.getNonce( accountAddress ) ),
                     TestOutputHelper::get().testName() + " Check State: "
-                        << a.first << ": incorrect nonce " << _statePost.getNonce( a.first )
-                        << ", expected " << _stateExpect.getNonce( a.first ) );
+                        << accountAddress << ": incorrect nonce " << _statePost.getNonce( accountAddress )
+                        << ", expected " << _stateExpect.getNonce( accountAddress ) );
 
             if ( addressOptions.hasStorage() ) {
-                map< h256, pair< u256, u256 > > stateStorage = _statePost.storage( a.first );
-                for ( auto const& s : _stateExpect.storage( a.first ) )
+                map< h256, pair< u256, u256 > > stateStorage = _statePost.storage( accountAddress );
+                for ( auto const& s : _stateExpect.storage( accountAddress ) )
                     CHECK( ( stateStorage[s.first] == s.second ),
                         TestOutputHelper::get().testName() + " Check State: "
-                            << a.first << ": incorrect storage ["
+                            << accountAddress << ": incorrect storage ["
                             << toCompactHexPrefixed( s.second.first )
                             << "] = " << toCompactHexPrefixed( stateStorage[s.first].second )
                             << ", expected [" << toCompactHexPrefixed( s.second.first )
                             << "] = " << toCompactHexPrefixed( s.second.second ) );
 
                 // Check for unexpected storage values
-                map< h256, pair< u256, u256 > > expectedStorage = _stateExpect.storage( a.first );
-                for ( auto const& s : _statePost.storage( a.first ) )
+                map< h256, pair< u256, u256 > > expectedStorage = _stateExpect.storage( accountAddress );
+                for ( auto const& s : _statePost.storage( accountAddress ) ) {
+                    if (s.second.second == 0 && expectedStorage.count( s.first ) == 0 ) {
+                        // take into account fact that storage() in skaled historically
+                        // can return zero values of storage, which could just be omitted
+                        // since Ethereum default value for storage is zero anyway
+                        continue;
+                    }
                     CHECK( ( expectedStorage[s.first] == s.second ),
                         TestOutputHelper::get().testName() + " Check State: "
-                            << a.first << ": unexpected incorrect storage ["
+                            << accountAddress << ": unexpected incorrect storage ["
                             << toCompactHexPrefixed( s.second.first )
                             << "] = " << toCompactHexPrefixed( s.second.second ) << ", expected ["
                             << toCompactHexPrefixed( s.second.first )
                             << "] = " << toCompactHexPrefixed( expectedStorage[s.first].second ) );
+                }
             }
 
             if ( addressOptions.hasCode() )
-                CHECK( ( _stateExpect.code( a.first ) == _statePost.code( a.first ) ),
+                CHECK( ( _stateExpect.code( accountAddress ) == _statePost.code( accountAddress) ),
                     TestOutputHelper::get().testName() + " Check State: "
-                        << a.first << ": incorrect code '"
-                        << toHexPrefixed( _statePost.code( a.first ) ) << "', expected '"
-                        << toHexPrefixed( _stateExpect.code( a.first ) ) << "'" );
+                        << accountAddress << ": incorrect code '"
+                        << toHexPrefixed( _statePost.code( accountAddress ) ) << "', expected '"
+                        << toHexPrefixed( _stateExpect.code( accountAddress ) ) << "'" );
         }
     }
 
