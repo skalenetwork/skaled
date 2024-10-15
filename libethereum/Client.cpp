@@ -656,7 +656,7 @@ size_t Client::syncTransactions(
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
-        m_state.mutableHistoricState().rotateDbsIfNeeded( _timestamp );
+        m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
 
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
@@ -665,7 +665,7 @@ size_t Client::syncTransactions(
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
         HistoricState& hs = m_working.mutableState().mutableHistoricState();
-        m_state.mutableHistoricState().setRoot( hs.globalRoot(), hs.globalRootTimestamp() );
+        m_state.mutableHistoricState().setRoot( hs.globalRoot(), hs.globalRootBlockNumber() );
 #endif
     }
 
@@ -1083,8 +1083,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
         // blockByNumber is only used for reads
 
         auto readState = m_state.createStateReadOnlyCopy();
-        readState.mutableHistoricState().setRootByBlockTimestamp(
-            this->blockInfo( hash ).timestamp() );
+        readState.mutableHistoricState().setRootByBlockNumber( this->blockInfo( hash ).number() );
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed
         return Block( bc(), hash, readState );

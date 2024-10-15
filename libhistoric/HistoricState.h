@@ -266,16 +266,16 @@ public:
     /// The hash of the root of our state tree.
     GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
-    uint64_t globalRootTimestamp() const { return m_state.rootTimestamp(); }
+    uint64_t globalRootBlockNumber() const { return m_state.rootBlockNumber(); }
 
     void commitExternalChanges( AccountMap const& _cache, uint64_t _blockTimestamp = -1 );
 
     /// Resets any uncommitted changes to the cache.
-    void setRoot( GlobalRoot const& _root, uint64_t _rootTimestamp );
+    void setRoot( GlobalRoot const& _root, uint64_t _rootBlockNumber );
 
     // Sets root by reading the block number from DB
 
-    void setRootByBlockTimestamp( uint64_t _timestamp );
+    void setRootByBlockNumber( uint64_t _blockNumber );
 
     /// Get the account start nonce. May be required.
     u256 const& accountStartNonce() const { return m_accountStartNonce; }

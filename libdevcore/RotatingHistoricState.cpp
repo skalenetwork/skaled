@@ -11,15 +11,15 @@ RotatingHistoricState::RotatingHistoricState(
     std::shared_ptr< BatchedRotatingHistoricDbIO > ioBackend_ )
     : ioBackend( ioBackend_ ) {}
 
-void RotatingHistoricState::rotate( uint64_t timestamp ) {
+void RotatingHistoricState::rotate( uint64_t blockNumber ) {
     std::unique_lock< std::shared_mutex > lock( m_mutex );
 
     assert( this->batch_cache.empty() );
 
-    ioBackend->rotate( timestamp );
+    ioBackend->rotate( blockNumber );
 }
 
-std::string RotatingHistoricState::lookup( Slice _key, uint64_t _rootBlockTimestamp ) const {
+std::string RotatingHistoricState::lookup( Slice _key, uint64_t _rootBlockNumber ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
@@ -27,10 +27,10 @@ std::string RotatingHistoricState::lookup( Slice _key, uint64_t _rootBlockTimest
     if ( _key.toString() == std::string( "storageUsed" ) )
         return currentPiece()->lookup( _key );
 
-    auto range = ioBackend->getRangeForBlockTimestamp( _rootBlockTimestamp );
+    auto range = ioBackend->getRangeForBlockNumber( _rootBlockNumber );
 
     for ( auto it = range.first; it != range.second; ++it ) {
-        auto db = ioBackend->getPieceByTimestamp( *it );
+        auto db = ioBackend->getPieceByBlockNumber( *it );
         auto v = db->lookup( _key );
         if ( !v.empty() )
             return v;
@@ -44,11 +44,11 @@ bool RotatingHistoricState::exists( Slice _key ) const {
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
-    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX );  // TODO check if it needs real
-                                                                      // _timestamp
+    auto range = ioBackend->getRangeForBlockNumber( UINT64_MAX );  // TODO check if it needs real
+                                                                   // _timestamp
 
     for ( auto it = range.first; it != range.second; ++it ) {
-        auto db = ioBackend->getPieceByTimestamp( *it );
+        auto db = ioBackend->getPieceByBlockNumber( *it );
         if ( db->exists( _key ) )
             return true;
     }
@@ -69,11 +69,11 @@ void RotatingHistoricState::kill( Slice _key ) {
 
     ioBackend->checkOpenedDbsAndCloseIfNeeded();
 
-    auto range = ioBackend->getRangeForBlockTimestamp( UINT64_MAX );  // TODO check if it needs real
-                                                                      // _timestamp
+    auto range = ioBackend->getRangeForBlockNumber( UINT64_MAX );  // TODO check if it needs real
+                                                                   // _timestamp
 
     for ( auto it = range.first; it != range.second; ++it ) {
-        auto db = ioBackend->getPieceByTimestamp( *it );
+        auto db = ioBackend->getPieceByBlockNumber( *it );
         db->kill( _key );
     }
 }
@@ -97,8 +97,8 @@ void RotatingHistoricState::commit( std::unique_ptr< WriteBatchFace > _batch ) {
 void RotatingHistoricState::forEach( std::function< bool( Slice, Slice ) > f ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    for ( auto timestamp : ioBackend->getTimestamps() ) {
-        auto db = ioBackend->getPieceByTimestamp( timestamp );
+    for ( auto blockNumber : ioBackend->getBlockNumbers() ) {
+        auto db = ioBackend->getPieceByBlockNumber( blockNumber );
         db->forEach( f );
     }
 }
@@ -107,8 +107,8 @@ void RotatingHistoricState::forEachWithPrefix(
     std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
     std::shared_lock< std::shared_mutex > lock( m_mutex );
 
-    for ( auto timestamp : ioBackend->getTimestamps() ) {
-        auto db = ioBackend->getPieceByTimestamp( timestamp );
+    for ( auto blockNumber : ioBackend->getBlockNumbers() ) {
+        auto db = ioBackend->getPieceByBlockNumber( blockNumber );
         db->forEachWithPrefix( _prefix, f );
     }
 }
@@ -118,8 +118,8 @@ h256 RotatingHistoricState::hashBase() const {
     secp256k1_sha256_t ctx;
     secp256k1_sha256_initialize( &ctx );
 
-    for ( auto timestamp : ioBackend->getTimestamps() ) {
-        auto db = ioBackend->getPieceByTimestamp( timestamp );
+    for ( auto blockNumber : ioBackend->getBlockNumbers() ) {
+        auto db = ioBackend->getPieceByBlockNumber( blockNumber );
         h256 h = db->hashBase();
         secp256k1_sha256_write( &ctx, h.data(), h.size );
     }

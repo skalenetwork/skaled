@@ -300,12 +300,12 @@ BOOST_AUTO_TEST_CASE( basic_io_test ) {
     batched_io::BatchedRotatingHistoricDbIO io( td.path() );
 
     // check initial state
-    auto ts = io.getTimestamps();
+    auto ts = io.getBlockNumbers();
     BOOST_REQUIRE_EQUAL(ts.size(), 1);
     BOOST_REQUIRE_EQUAL(ts[0], 0);
 
     // try to get pieces
-    BOOST_REQUIRE_EQUAL(io.getPieceByTimestamp( 0 ), io.getPieceByTimestamp(1));
+    BOOST_REQUIRE_EQUAL(io.getPieceByBlockNumber(0), io.getPieceByBlockNumber(1));
 
     // insert 1
     auto db = io.currentPiece();
@@ -315,26 +315,26 @@ BOOST_AUTO_TEST_CASE( basic_io_test ) {
     io.rotate(1001);
 
     // check rotation
-    ts = io.getTimestamps();
+    ts = io.getBlockNumbers();
     BOOST_REQUIRE_EQUAL(ts.size(), 2);
     BOOST_REQUIRE_EQUAL(ts[0], 0);
     BOOST_REQUIRE_EQUAL(ts[1], 1001);
 
     // check pieces
-    auto piece0 = io.getPieceByTimestamp( 0 );
+    auto piece0 = io.getPieceByBlockNumber( 0 );
     BOOST_REQUIRE( piece0->exists( db::Slice( "1" ) ) );
 
-    auto piece1001 = io.getPieceByTimestamp( 1001 );
+    auto piece1001 = io.getPieceByBlockNumber( 1001 );
     BOOST_REQUIRE( !piece1001->exists( db::Slice( "1" ) ) );
 
     // check non-exact timetamp requests
-    auto piece1000 = io.getPieceByTimestamp( 1000 );
+    auto piece1000 = io.getPieceByBlockNumber( 1000 );
     BOOST_REQUIRE( piece1000->exists( db::Slice( "1" ) ) );
 
-    auto piece1002 = io.getPieceByTimestamp( 1002 );
+    auto piece1002 = io.getPieceByBlockNumber( 1002 );
     BOOST_REQUIRE( !piece1002->exists( db::Slice( "1" ) ) );
 
-    auto piece_max = io.getPieceByTimestamp( UINT64_MAX );
+    auto piece_max = io.getPieceByBlockNumber( UINT64_MAX );
     BOOST_REQUIRE( !piece_max->exists( db::Slice( "1" ) ) );
 }
 

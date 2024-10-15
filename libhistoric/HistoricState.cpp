@@ -324,21 +324,21 @@ std::pair< HistoricState::AddressMap, h256 > HistoricState::addresses(
     return { addresses, nextKey };
 }
 
-void HistoricState::setRoot( GlobalRoot const& _r, uint64_t _rootTimestamp ) {
+void HistoricState::setRoot( GlobalRoot const& _r, uint64_t _rootBlockNumber ) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
-    m_state.setRoot( _r, Verification::Normal, _rootTimestamp );
+    m_state.setRoot( _r, Verification::Normal, _rootBlockNumber );
 }
 
-void HistoricState::setRootByBlockTimestamp( uint64_t _timestamp ) {
-    auto key = h256( _timestamp );
+void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
+    auto key = h256( _blockNumber );
     if ( !m_timestampToStateRootDB.exists( key ) ) {
         BOOST_THROW_EXCEPTION( UnknownBlockNumberInRootDB() );
     }
     auto value = m_timestampToStateRootDB.lookup( key );
     auto root = h256( value, h256::ConstructFromStringType::FromBinary );
-    setRoot( GlobalRoot( root ), _timestamp );
+    setRoot( GlobalRoot( root ), _blockNumber );
 }
 
 void HistoricState::saveRootForBlockTimestamp( uint64_t _timestamp ) {
@@ -359,7 +359,7 @@ void HistoricState::setRootFromDB() {
         return;
     }
     auto latest = m_timestampToStateRootDB.lookup( key );
-    setRootByBlockTimestamp( boost::lexical_cast< uint64_t >( latest ) );
+    setRootByBlockNumber( boost::lexical_cast< uint64_t >( latest ) );
 }
 
 bool HistoricState::addressInUse( Address const& _id ) const {
@@ -853,11 +853,11 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
     return ret;
 }
 
-void HistoricState::rotateDbsIfNeeded( uint64_t _timestamp ) {
+void HistoricState::rotateDbsIfNeeded( uint64_t _blockNumber ) {
     if ( m_maxHistoricStateDbSize < 1 )
         return;
     if ( m_db.storageUsed() > m_maxHistoricStateDbSize ) {
-        m_rotatingTreeDb->rotate( _timestamp );
+        m_rotatingTreeDb->rotate( _blockNumber );
         m_storageUsage = 0;
     }
 }

@@ -26,7 +26,7 @@ public:
     }
 
     using DatabaseFace::lookup;  // 1-argument version
-    virtual std::string lookup( Slice _key, uint64_t _rootBlockTimestamp ) const;
+    virtual std::string lookup( Slice _key, uint64_t _rootBlockNumber ) const;
     virtual bool exists( Slice _key ) const;
     virtual void insert( Slice _key, Slice _value );
     virtual void kill( Slice _key );
