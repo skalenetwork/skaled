@@ -856,6 +856,8 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
 void HistoricState::rotateDbsIfNeeded( uint64_t _timestamp ) {
     if ( m_maxHistoricStateDbSize < 1 )
         return;
-    if ( m_db.storageUsed() > m_maxHistoricStateDbSize )
+    if ( m_db.storageUsed() > m_maxHistoricStateDbSize ) {
         m_rotatingTreeDb->rotate( _timestamp );
+        m_storageUsage = 0;
+    }
 }

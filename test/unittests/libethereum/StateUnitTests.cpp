@@ -316,7 +316,7 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 5);
+    BOOST_CHECK_EQUAL(countDbPieces(), 3);
 }
 
 // change 1 address 2 times in 2 blocks, check it on all blocks
