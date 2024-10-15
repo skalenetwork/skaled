@@ -31,7 +31,7 @@ BatchedRotatingHistoricDbIO::BatchedRotatingHistoricDbIO( const boost::filesyste
 
 void BatchedRotatingHistoricDbIO::rotate( uint64_t timestamp ) {
     std::lock_guard< std::mutex > lock( mutex );
-    assert(timestamp > timestamps.back());
+    assert( timestamp > timestamps.back() );
     auto storageUsed = currentPiece()->lookup( dev::db::Slice( "storageUsed" ) );
     currentPiece()->kill( dev::db::Slice( "storageUsed" ) );
 
