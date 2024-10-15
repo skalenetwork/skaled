@@ -127,6 +127,7 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _re
       m_options( std::move( _dbOptions ) ),
       m_path( _path ),
       m_reopenPeriodMs( _reopenPeriodMs ) {
+    std::cout << "new LevelDB " << _path << std::endl;
     openDBInstanceUnsafe();
 }
 
@@ -153,6 +154,7 @@ uint64_t LevelDB::getCurrentTimeMs() {
 }
 
 LevelDB::~LevelDB() {
+    std::cout << "delete LevelDB " << m_path << std::endl;
     if ( m_db )
         m_db.reset();
     if ( m_options.filter_policy )

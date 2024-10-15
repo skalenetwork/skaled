@@ -34,6 +34,9 @@ void BatchedRotatingHistoricDbIO::rotate( uint64_t timestamp ) {
     auto storageUsed = currentPiece()->lookup( dev::db::Slice( "storageUsed" ) );
     currentPiece()->kill( dev::db::Slice( "storageUsed" ) );
 
+    // move current to used
+    dbsInUse[basePath / std::to_string( timestamps.back() )] = current;
+
     timestamps.push_back( timestamp );
     current.reset( new LevelDB( basePath / std::to_string( timestamp ) ) );
 
@@ -86,6 +89,8 @@ std::shared_ptr< dev::db::DatabaseFace > BatchedRotatingHistoricDbIO::getPieceBy
     auto path = basePath / std::to_string( timestampToLook );
     if ( dbsInUse.count( path ) )
         return dbsInUse.at( path );
+    if ( dbsInUse.size() > 0 )
+        std::cout << "Didn't find " << path << " had only " << dbsInUse.begin()->first << std::endl;
     dbsInUse[path].reset( new LevelDB( path ) );
     return dbsInUse[path];
 }
