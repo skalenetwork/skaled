@@ -367,7 +367,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 
     try {
-        dev::h256 snapshotHash = this->m_client.getSnapshotHash( blockNumber, false );
+        dev::h256 snapshotHash = this->m_client.getSnapshotHash( blockNumber );
         if ( !snapshotHash )
             throw std::runtime_error(
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );

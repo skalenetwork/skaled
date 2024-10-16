@@ -49,7 +49,6 @@ namespace fs = boost::filesystem;
 // For send/receive needs root!
 
 const std::string SnapshotManager::snapshotHashFileName = "snapshot_hash.txt";
-const std::string SnapshotManager::partialSnapshotHashFileName = "partial_snapshot_hash.txt";
 
 // exceptions:
 // - bad data dir
@@ -409,7 +408,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     }      // for
 }
 
-dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number, bool _forArchiveNode ) const {
+dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
     fs::path snapshot_dir = snapshotsDir / to_string( block_number );
 
     try {
@@ -419,15 +418,9 @@ dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number, bool _forArch
         std::throw_with_nested( CannotRead( snapshot_dir ) );
     }  // catch
 
-    std::string hashFile;
-    if ( !_forArchiveNode && chainParams.nodeInfo.archiveMode )
-        hashFile = ( this->snapshotsDir / std::to_string( block_number ) /
-                     this->partialSnapshotHashFileName )
-                       .string();
-    else
-        hashFile =
-            ( this->snapshotsDir / std::to_string( block_number ) / this->snapshotHashFileName )
-                .string();
+    std::string hashFile =
+        ( this->snapshotsDir / std::to_string( block_number ) / this->snapshotHashFileName )
+            .string();
 
     if ( !isSnapshotHashPresent( block_number ) ) {
         BOOST_THROW_EXCEPTION( SnapshotManager::CannotRead( hashFile ) );
@@ -455,19 +448,11 @@ bool SnapshotManager::isSnapshotHashPresent( unsigned _blockNumber ) const {
         std::throw_with_nested( CannotRead( snapshot_dir ) );
     }  // catch
 
-    boost::filesystem::path hashFile =
-        this->snapshotsDir / std::to_string( _blockNumber ) / this->snapshotHashFileName;
+    boost::filesystem::path hashFile = snapshot_dir / this->snapshotHashFileName;
     try {
         std::lock_guard< std::mutex > lock( hashFileMutex );
-        if ( !chainParams.nodeInfo.archiveMode )
-            return boost::filesystem::exists( hashFile );
-        else {
-            boost::filesystem::path partialHashFile = this->snapshotsDir /
-                                                      std::to_string( _blockNumber ) /
-                                                      this->partialSnapshotHashFileName;
-            return boost::filesystem::exists( hashFile ) &&
-                   boost::filesystem::exists( partialHashFile );
-        }
+
+        return boost::filesystem::exists( hashFile );
     } catch ( const fs::filesystem_error& ) {
         std::throw_with_nested( CannotRead( hashFile ) );
     }
@@ -691,47 +676,50 @@ void SnapshotManager::computeAllVolumesHash(
         this->addLastPriceToHash( _blockNumber, ctx );
     }
 
-    if ( chainParams.nodeInfo.archiveMode ) {
-        // save partial snapshot hash
-        secp256k1_sha256_t partialCtx = *ctx;
+    // disable this code until further notice
+    // we haven't implemented hash computation for archive submodules yet
+    //    if ( chainParams.nodeInfo.archiveMode ) {
+    //        // save partial snapshot hash
+    //        secp256k1_sha256_t partialCtx = *ctx;
 
-        dev::h256 partialHash;
-        secp256k1_sha256_finalize( &partialCtx, partialHash.data() );
+    //        dev::h256 partialHash;
+    //        secp256k1_sha256_finalize( &partialCtx, partialHash.data() );
 
-        string hashFile = ( this->snapshotsDir / std::to_string( _blockNumber ) ).string() + '/' +
-                          this->partialSnapshotHashFileName;
+    //        string hashFile = ( this->snapshotsDir / std::to_string( _blockNumber ) ).string() +
+    //        '/' +
+    //                          this->partialSnapshotHashFileName;
 
-        try {
-            std::lock_guard< std::mutex > lock( hashFileMutex );
-            std::ofstream out( hashFile );
-            out.clear();
-            out << partialHash;
-        } catch ( const std::exception& ex ) {
-            std::throw_with_nested( SnapshotManager::CannotCreate( hashFile ) );
-        }
+    //        try {
+    //            std::lock_guard< std::mutex > lock( hashFileMutex );
+    //            std::ofstream out( hashFile );
+    //            out.clear();
+    //            out << partialHash;
+    //        } catch ( const std::exception& ex ) {
+    //            std::throw_with_nested( SnapshotManager::CannotCreate( hashFile ) );
+    //        }
 
-        // disable this code until further notice
-        //        if ( _blockNumber > 0 ) {
-        //            // archive blocks
-        //            for ( auto& content : contents ) {
-        //                if ( content.leaf().string().find( "archive" ) == std::string::npos )
-        //                    continue;
-        //                this->computeDatabaseHash( content, ctx );
-        //            }
 
-        //#ifdef HISTORIC_STATE
-        //            // historic dbs
-        //            this->computeDatabaseHash(
-        //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
-        //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-        //                ctx );
-        //            this->computeDatabaseHash(
-        //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
-        //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-        //                ctx );
-        //#endif
-        //        }
-    }
+    //        if ( _blockNumber > 0 ) {
+    //            // archive blocks
+    //            for ( auto& content : contents ) {
+    //                if ( content.leaf().string().find( "archive" ) == std::string::npos )
+    //                    continue;
+    //                this->computeDatabaseHash( content, ctx );
+    //            }
+
+    //#ifdef HISTORIC_STATE
+    //            // historic dbs
+    //            this->computeDatabaseHash(
+    //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
+    //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+    //                ctx );
+    //            this->computeDatabaseHash(
+    //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
+    //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+    //                ctx );
+    //#endif
+    //        }
+    //    }
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {

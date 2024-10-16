@@ -166,7 +166,7 @@ public:
     void leaveNLastSnapshots( unsigned n );
     void leaveNLastDiffs( unsigned n );
 
-    dev::h256 getSnapshotHash( unsigned _blockNumber, bool _forArchiveNode = false ) const;
+    dev::h256 getSnapshotHash( unsigned _blockNumber ) const;
     std::pair< int, int > getLatestSnapshots() const;
     bool isSnapshotHashPresent( unsigned _blockNumber ) const;
     void computeSnapshotHash( unsigned _blockNumber, bool is_checking = false );
@@ -185,7 +185,6 @@ private:
     boost::filesystem::path diffsDir;
 
     static const std::string snapshotHashFileName;
-    static const std::string partialSnapshotHashFileName;
     mutable std::mutex hashFileMutex;
 
     dev::eth::ChainParams chainParams;

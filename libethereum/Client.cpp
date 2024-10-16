@@ -826,7 +826,7 @@ void Client::rejigSealing() {
                 dev::h256 stateRootToSet;
                 if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
                     dev::h256 stateRootHash = this->m_snapshotAgent->getSnapshotHash(
-                        m_snapshotAgent->getLatestSnapshotBlockNumer(), false );
+                        m_snapshotAgent->getLatestSnapshotBlockNumer() );
                     stateRootToSet = stateRootHash;
                 }
                 // propagate current
@@ -882,7 +882,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         dev::h256 stateRootToSet;
         if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
             dev::h256 stateRootHash = this->m_snapshotAgent->getSnapshotHash(
-                m_snapshotAgent->getLatestSnapshotBlockNumer(), false );
+                m_snapshotAgent->getLatestSnapshotBlockNumer() );
             stateRootToSet = stateRootHash;
         }
         // propagate current
