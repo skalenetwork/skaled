@@ -300,9 +300,9 @@ BOOST_AUTO_TEST_CASE( basic_io_test ) {
     batched_io::BatchedRotatingHistoricDbIO io( td.path() );
 
     // check initial state
-    auto ts = io.getBlockNumbers();
-    BOOST_REQUIRE_EQUAL(ts.size(), 1);
-    BOOST_REQUIRE_EQUAL(ts[0], 0);
+    auto bn = io.getBlockNumbers();
+    BOOST_REQUIRE_EQUAL(bn.size(), 1);
+    BOOST_REQUIRE_EQUAL(bn[0], 0);
 
     // try to get pieces
     BOOST_REQUIRE_EQUAL(io.getPieceByBlockNumber(0), io.getPieceByBlockNumber(1));
@@ -312,27 +312,27 @@ BOOST_AUTO_TEST_CASE( basic_io_test ) {
     db->insert(db::Slice( "1" ), db::Slice( "foobar" ));
 
     // rotate
-    io.rotate(1001);
+    io.rotate(10);
 
     // check rotation
-    ts = io.getBlockNumbers();
-    BOOST_REQUIRE_EQUAL(ts.size(), 2);
-    BOOST_REQUIRE_EQUAL(ts[0], 0);
-    BOOST_REQUIRE_EQUAL(ts[1], 1001);
+    bn = io.getBlockNumbers();
+    BOOST_REQUIRE_EQUAL(bn.size(), 2);
+    BOOST_REQUIRE_EQUAL(bn[0], 0);
+    BOOST_REQUIRE_EQUAL(bn[1], 10);
 
     // check pieces
     auto piece0 = io.getPieceByBlockNumber( 0 );
     BOOST_REQUIRE( piece0->exists( db::Slice( "1" ) ) );
 
-    auto piece1001 = io.getPieceByBlockNumber( 1001 );
-    BOOST_REQUIRE( !piece1001->exists( db::Slice( "1" ) ) );
+    auto piece10 = io.getPieceByBlockNumber( 10 );
+    BOOST_REQUIRE( !piece10->exists( db::Slice( "1" ) ) );
 
-    // check non-exact timetamp requests
-    auto piece1000 = io.getPieceByBlockNumber( 1000 );
-    BOOST_REQUIRE( piece1000->exists( db::Slice( "1" ) ) );
+    // check non-exact requests
+    auto piece9 = io.getPieceByBlockNumber( 9 );
+    BOOST_REQUIRE( piece9->exists( db::Slice( "1" ) ) );
 
-    auto piece1002 = io.getPieceByBlockNumber( 1002 );
-    BOOST_REQUIRE( !piece1002->exists( db::Slice( "1" ) ) );
+    auto piece11 = io.getPieceByBlockNumber( 11 );
+    BOOST_REQUIRE( !piece11->exists( db::Slice( "1" ) ) );
 
     auto piece_max = io.getPieceByBlockNumber( UINT64_MAX );
     BOOST_REQUIRE( !piece_max->exists( db::Slice( "1" ) ) );
@@ -342,43 +342,42 @@ BOOST_AUTO_TEST_CASE( range_test ){
     TransientDirectory td;
     batched_io::BatchedRotatingHistoricDbIO io( td.path() );
 
-    vector<uint64_t> timestamps{0};
-    // create 11 DBs and fill num_seq
+    vector<uint64_t> bn{0};
+    // create 11 DBs and fill bn
     for(size_t i=0; i<10; ++i){
         // insert i
-        auto db = io.currentPiece();
-        timestamps.push_back((i+1)*10);
+        bn.push_back((i+1)*10);
         io.rotate((i+1)*10);
     }
 
-    // timestamp: 0 10 20 30 40 50 .. 100
+    // bn: 0 10 20 30 40 50 .. 100
 
     auto range = io.getRangeForBlockNumber(0);
-    std::equal( range.first, range.second, timestamps.rend()-1 );
+    std::equal( range.first, range.second, bn.rend()-1 );
 
     range = io.getRangeForBlockNumber(9);
-    std::equal( range.first, range.second, timestamps.rend()-1 );
+    std::equal( range.first, range.second, bn.rend()-1 );
 
     range = io.getRangeForBlockNumber(10);
-    std::equal( range.first, range.second, timestamps.rend()-1-1 );
+    std::equal( range.first, range.second, bn.rend()-1-1 );
 
     range = io.getRangeForBlockNumber(20);
-    std::equal( range.first, range.second, timestamps.rend()-1-2 );
+    std::equal( range.first, range.second, bn.rend()-1-2 );
 
     range = io.getRangeForBlockNumber(21);
-    std::equal( range.first, range.second, timestamps.rend()-1-2 );
+    std::equal( range.first, range.second, bn.rend()-1-2 );
 
     range = io.getRangeForBlockNumber(29);
-    std::equal( range.first, range.second, timestamps.rend()-1-2 );
+    std::equal( range.first, range.second, bn.rend()-1-2 );
 
     range = io.getRangeForBlockNumber(30);
-    std::equal( range.first, range.second, timestamps.rend()-1-3 );
+    std::equal( range.first, range.second, bn.rend()-1-3 );
 
     range = io.getRangeForBlockNumber(999);
-    std::equal( range.first, range.second, timestamps.rbegin() );
+    std::equal( range.first, range.second, bn.rbegin() );
 
     range = io.getRangeForBlockNumber(UINT64_MAX);
-    std::equal( range.first, range.second, timestamps.rbegin() );
+    std::equal( range.first, range.second, bn.rbegin() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

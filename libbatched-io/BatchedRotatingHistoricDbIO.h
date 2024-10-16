@@ -15,7 +15,8 @@ class BatchedRotatingHistoricDbIO : public batched_face {
 private:
     const boost::filesystem::path basePath;
 
-    // non-decreasing list of all db pieces
+    // increasing list of all db pieces
+    // numbers indicate 1st block present in a piece
     std::vector< uint64_t > blockNumbers;
 
     // containts all open DBs but NOT current!
@@ -33,7 +34,7 @@ private:
 public:
     BatchedRotatingHistoricDbIO( const boost::filesystem::path& _path );
     std::shared_ptr< dev::db::DatabaseFace > currentPiece() const { return current; }
-    // get piece with last timestamp that is <= supplied value
+    // get last piece with 1st block <= supplied value
     std::shared_ptr< dev::db::DatabaseFace > getPieceByBlockNumber( uint64_t blockNumber );
     std::vector< uint64_t > getBlockNumbers() const { return blockNumbers; }
     std::pair< std::vector< uint64_t >::const_reverse_iterator,
