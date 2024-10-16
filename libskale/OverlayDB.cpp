@@ -573,7 +573,7 @@ void OverlayDB::insert( h256 const& _h, bytesConstRef _v ) {
     }
 }
 
-std::string OverlayDB::lookup( h256 const& _h, uint64_t _rootBlockTimestamp ) const {
+std::string OverlayDB::lookup( h256 const& _h, uint64_t _rootBlockNumber ) const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
@@ -590,7 +590,7 @@ std::string OverlayDB::lookup( h256 const& _h, uint64_t _rootBlockTimestamp ) co
     if ( !ret.empty() || !m_db_face )
         return ret;
 
-    return m_db_face->lookup( skale::slicing::toSlice( _h ), _rootBlockTimestamp );
+    return m_db_face->lookup( skale::slicing::toSlice( _h ), _rootBlockNumber );
 }
 
 bool OverlayDB::exists( h256 const& _h ) const {

@@ -223,8 +223,8 @@ void Client::populateNewChainStateFromGenesis() {
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateModifyCopy();
     m_state.populateFrom( bc().chainParams().genesisState );
-    m_state.mutableHistoricState().saveRootForBlockTimestamp( 0 );  // TODO is it safe to assume
-                                                                    // it's 0?
+    m_state.mutableHistoricState().saveRootForBlockNumber( 0 );  // TODO is it safe to assume
+                                                                 // it's 0?
     m_state.mutableHistoricState().db().commit( "0", true );
     m_state.releaseWriteLock();
 #else
@@ -254,10 +254,10 @@ void Client::initStateFromDiskOrGenesis() {
         // from SKALE state
         if ( !historicStateExists ) {
             m_state.mutableHistoricState().db().setCommitOnEveryInsert(
-                true, bc().info().timestamp() );
-            m_state.populateHistoricStateFromSkaleState();
+                true, bc().info().number() );
+            m_state.populateHistoricStateFromSkaleState( bc().info().number() );
             m_state.mutableHistoricState().db().setCommitOnEveryInsert(
-                false, bc().info().timestamp() );
+                false, bc().info().number() );
         }
 #endif
     }

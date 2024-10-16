@@ -153,7 +153,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 // we do state import in 16 passes to minimize memory consumption
 const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 
-void State::populateHistoricStateFromSkaleState() {
+void State::populateHistoricStateFromSkaleState( uint64_t _blockNumber ) {
     auto allAccountAddresses = this->addresses();
 
     cout << "Number of addresses in statedb:" << allAccountAddresses.size() << endl;
@@ -163,7 +163,7 @@ void State::populateHistoricStateFromSkaleState() {
 
     // this is done to save memory, otherwise OverlayDB will frow
     for ( uint64_t i = 0; i < STATE_IMPORT_BATCH_COUNT; i++ ) {
-        populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
+        populateHistoricStateBatchFromSkaleState( allAccountAddresses, i, _blockNumber );
     }
 
     cout << "Completed state import" << endl;
@@ -199,14 +199,15 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 }
 
 void State::populateHistoricStateBatchFromSkaleState(
-    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber,
+    uint64_t _blockNumber ) {
     cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
     m_db_ptr->copyStorageIntoAccountMap( accountMap );
 
-    m_historicState.commitExternalChanges( accountMap );
+    m_historicState.commitExternalChanges( accountMap, _blockNumber );
 }
 #endif
 
@@ -489,7 +490,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( dev::eth::CommitBehaviour _commitBehaviour, uint64_t _timestamp ) {
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour, uint64_t _blockNumber ) {
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -545,7 +546,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour, uint64_t _timest
 
 
 #ifdef HISTORIC_STATE
-    m_historicState.commitExternalChanges( m_cache, _timestamp );
+    m_historicState.commitExternalChanges( m_cache, _blockNumber );
 #endif
 
     m_changeLog.clear();
@@ -1068,7 +1069,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts,
-            _envInfo.timestamp() );
+            _envInfo.number() );
 
         break;
     }

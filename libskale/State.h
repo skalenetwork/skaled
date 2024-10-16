@@ -341,7 +341,7 @@ public:
 
     void commit(
         dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts,
-        uint64_t timestamp = -1 );
+        uint64_t blockNumber = -1 );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
@@ -465,10 +465,10 @@ public:
     bool checkVersion() const;
 
 #ifdef HISTORIC_STATE
-    void populateHistoricStateFromSkaleState();
+    void populateHistoricStateFromSkaleState( uint64_t _blockNumber );
     void populateHistoricStateBatchFromSkaleState(
-        std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
-        uint64_t _batchNumber );
+        std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses, uint64_t _batchNumber,
+        uint64_t _blockNumber );
 #endif
 
 private:

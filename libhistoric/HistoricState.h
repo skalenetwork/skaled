@@ -268,7 +268,7 @@ public:
 
     uint64_t globalRootBlockNumber() const { return m_state.rootBlockNumber(); }
 
-    void commitExternalChanges( AccountMap const& _cache, uint64_t _blockTimestamp = -1 );
+    void commitExternalChanges( AccountMap const& _cache, uint64_t _blockNumber = -1 );
 
     /// Resets any uncommitted changes to the cache.
     void setRoot( GlobalRoot const& _root, uint64_t _rootBlockNumber );
@@ -294,7 +294,7 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    void saveRootForBlockTimestamp( uint64_t _timestamp );
+    void saveRootForBlockNumber( uint64_t _blockNumber );
 
     void setRootFromDB();
 
@@ -328,7 +328,7 @@ private:
     /// Interface for rotating db for the state tree
     std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingTreeDb;
     /// Overlay DB for the block id state root mapping
-    skale::OverlayDB m_timestampToStateRootDB;
+    skale::OverlayDB m_blockToStateRootDB;
     /// Interface for rotating db for the state root mapping
     std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingRootsDb;
 

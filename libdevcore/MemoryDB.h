@@ -49,8 +49,8 @@ public:
     std::unordered_map< h256, std::string > get() const;
 
     std::string lookup( dev::h256 const& _h ) const;
-    std::string lookup( dev::h256 const& _h, uint64_t _rootTimestamp ) const {
-        assert( _rootTimestamp == 0 );
+    std::string lookup( dev::h256 const& _h, uint64_t _rootBlockNumber ) const {
+        assert( _rootBlockNumber == 0 );
         return lookup( _h );
     }
     bool exists( h256 const& _h ) const;
