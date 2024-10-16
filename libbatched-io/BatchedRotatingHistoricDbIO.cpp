@@ -91,8 +91,6 @@ std::shared_ptr< dev::db::DatabaseFace > BatchedRotatingHistoricDbIO::getPieceBy
     auto path = basePath / std::to_string( blockNumberToLook );
     if ( dbsInUse.count( path ) )
         return dbsInUse.at( path );
-    if ( dbsInUse.size() > 0 )
-        std::cout << "Didn't find " << path << " had only " << dbsInUse.begin()->first << std::endl;
     dbsInUse[path].reset( new LevelDB( path ) );
     return dbsInUse[path];
 }

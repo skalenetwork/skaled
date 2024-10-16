@@ -354,11 +354,6 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-#ifdef HISTORIC_STATE
-    OverlayDB const& historicStateDB() const { return m_historicStateDB; }
-    OverlayDB const& historicBlockToStateRootDB() const { return m_historicBlockToStateRootDB; }
-#endif
-
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
@@ -486,13 +481,6 @@ protected:
                       ///< imported).
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
-
-
-#ifdef HISTORIC_STATE
-    OverlayDB m_historicStateDB;  ///< Acts as the central point for the state database, so multiple
-                                  ///< States can share it.
-    OverlayDB m_historicBlockToStateRootDB;  /// Maps hashes of block IDs to state roots
-#endif
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
 

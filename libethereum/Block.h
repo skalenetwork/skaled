@@ -27,7 +27,6 @@
 #include <unordered_map>
 
 #include <libdevcore/Common.h>
-#include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieDB.h>
 #include <libethcore/BlockHeader.h>
