@@ -353,11 +353,23 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     for ( const auto& p : numbers ) {
         if ( i++ > n ) {
             const fs::path& path = p.second;
-            for ( const string& v : allVolumes ) {
+            for ( const string& v : coreVolumes ) {
                 if ( btrfs.subvolume._delete( ( path / v ).c_str() ) ) {
                     throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
                 }
             }
+
+#ifdef HISTORIC_STATE
+            for ( const string& v : archiveVolumes ) {
+                // ignore as it might indicate that archive volumes weren't snapshotted
+                if ( !fs::exists( path / v ) )
+                    continue;
+                if ( btrfs.subvolume._delete( ( path / v ).c_str() ) ) {
+                    throw CannotPerformBtrfsOperation( btrfs.last_cmd(), btrfs.strerror() );
+                }
+            }
+#endif
+
             fs::remove_all( path );
         }  // if
     }      // for
