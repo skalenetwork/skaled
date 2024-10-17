@@ -169,7 +169,7 @@ jobs:
           sudo rm -rf /tmp/tests/*
           cd build/test
           export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1          
+          export NO_ULIMIT_CHECK=1
           function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }                    
           run_test TransitionTests 
           run_test TransactionTests 
