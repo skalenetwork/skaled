@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "LevelDBSnapManager.h"
 #include "db.h"
 
 #include <leveldb/db.h>
@@ -29,7 +30,17 @@
 #include <secp256k1_sha256.h>
 #include <shared_mutex>
 
+#define LDB_CHECK( _EXPRESSION_ )                                                             \
+    if ( !( _EXPRESSION_ ) ) {                                                                \
+        auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " +          \
+                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );            \
+        BOOST_THROW_EXCEPTION( dev::db::DatabaseError() << dev::errinfo_comment( __msg__ ) ); \
+    }
+
 namespace dev::db {
+
+class LevelDBSnap;
+
 class LevelDB : public DatabaseFace {
 public:
     static leveldb::ReadOptions defaultReadOptions();
@@ -47,6 +58,11 @@ public:
 
     std::string lookup( Slice _key ) const override;
     bool exists( Slice _key ) const override;
+
+    std::string lookup( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    bool exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+
+
     void insert( Slice _key, Slice _value ) override;
     void kill( Slice _key ) override;
 
@@ -58,12 +74,17 @@ public:
     void forEachWithPrefix(
         std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const override;
 
+    void forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > f,
+        const std::shared_ptr< LevelDBSnap >& _snap ) const;
+
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
     bool hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const;
 
     void doCompaction() const;
+
+    void createBlockSnap( uint64_t _blockNumber );
 
     // Return the total count of key deletes  since the start
     static uint64_t getKeyDeletesStats();
@@ -72,9 +93,15 @@ public:
     // count of the keys that are scheduled to be deleted but are not yet deleted
     static std::atomic< uint64_t > g_keysToBeDeletedStats;
     static uint64_t getCurrentTimeMs();
+    std::shared_ptr< LevelDBSnap > getLastBlockSnap() const;
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
+    // this is incremented each time this LevelDB instance is reopened
+    // we reopen states LevelDB every day on archive nodes to avoid
+    // meta file getting too large
+    // in other cases LevelDB is never reopened to this stays zero
+    std::atomic< uint64_t > m_dbReopenId = 0;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
@@ -85,8 +112,11 @@ private:
     uint64_t m_lastDBOpenTimeMs;
     mutable std::shared_mutex m_dbMutex;
 
+    LevelDBSnapManager m_snapManager;
 
-    static const size_t BATCH_CHUNK_SIZE;
+
+    static constexpr size_t BATCH_CHUNK_SIZE = 10000;
+
 
     class SharedDBGuard {
         const LevelDB& m_levedlDB;
@@ -125,6 +155,9 @@ private:
     };
     void openDBInstanceUnsafe();
     void reopenDataBaseIfNeeded();
+    leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
+        std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    void reopen();
 };
 
 }  // namespace dev::db

@@ -192,7 +192,7 @@ double stat_compute_bps_til_now( const traffic_queue_t& qtr, bytes_count_t* p_nS
 
 namespace time_tracker {
 
-class element : public skutils::ref_retain_release {
+class element {
 public:
     typedef std::pair< skutils::stats::time_point, void* > id_t;
 
@@ -202,59 +202,17 @@ public:
     typedef std::chrono::duration< double, std::milli > duration;
 
 private:
-    typedef skutils::multithreading::recursive_mutex_type mutex_type;
-    typedef std::lock_guard< mutex_type > lock_type;
-    static mutex_type& mtx() { return skutils::get_ref_mtx(); }
+    mutable std::atomic< bool > m_isStopped = false;
 
-    mutable volatile bool isError_ = false, isStopped_ = false;
-    mutable std::string strSubSystem_, strProtocol_, strMethod_;
-
-    mutable time_point tpStart_, tpEnd_;
-
-    void do_register();
-    void do_unregister();
+    mutable std::atomic< uint64_t > m_startTime, m_endTime;
 
 public:
-    static const char g_strMethodNameUnknown[];
-
-    element( const char* strSubSystem, const char* strProtocol, const char* strMethod,
-        int /*nServerIndex*/, int /*ipVer*/ );
+    element();
     virtual ~element();
     void stop();
-    void setMethod( const char* strMethod ) const;
-    void setError() const;
     double getDurationInSeconds() const;
-    id_t getID() { return id_t( tpStart_, this ); }
-    const std::string& getProtocol() const { return strProtocol_; }
-    const std::string& getMethod() const { return strMethod_; }
 };  /// class element
 
-typedef skutils::retain_release_ptr< element > element_ptr_t;
-
-class queue : public skutils::ref_retain_release {
-    typedef skutils::multithreading::recursive_mutex_type mutex_type;
-    typedef std::lock_guard< mutex_type > lock_type;
-    static mutex_type& mtx() { return skutils::get_ref_mtx(); }
-
-    typedef std::map< element::id_t, element_ptr_t > map_rtte_t;  // rttID -> rttElement
-    typedef std::map< std::string, map_rtte_t > map_pq_t;         // protocol name -> map_rtte_t
-    map_pq_t map_pq_;
-
-    size_t nMaxItemsInQueue = 100;
-
-public:
-    typedef std::map< std::string, skutils::retain_release_ptr< queue > >
-        map_subsystem_time_trackers_t;
-
-    queue();
-    virtual ~queue();
-    static queue& getQueueForSubsystem( const char* strSubSystem );
-    void do_register( element_ptr_t& rttElement );
-    void do_unregister( element_ptr_t& rttElement );
-    std::list< std::string > getProtocols();
-    nlohmann::json getProtocolStats( const char* strProtocol );
-    nlohmann::json getAllStats();
-};  /// class queue
 
 };  // namespace time_tracker
 

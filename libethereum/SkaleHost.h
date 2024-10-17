@@ -122,6 +122,8 @@ public:
 
     dev::h256 receiveTransaction( std::string );
 
+    void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
+
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom() const;
     dev::eth::SyncStatus syncStatus() const;
@@ -172,8 +174,11 @@ private:
 
     std::thread m_broadcastThread;
     void broadcastFunc();
-    dev::h256Hash m_received;
-    std::mutex m_receivedMutex;
+
+
+    list< dev::eth::Transaction > m_broadcastQueue;
+    std::mutex m_broadcastQueueMutex;
+    std::condition_variable m_broadcastQueueCondition;
 
     // TODO implement more nicely and more fine-grained!
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
@@ -183,8 +188,6 @@ private:
 
     void penalizePeer(){};  // fake function for now
 
-    int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
-
     std::thread m_consensusThread;
 
     std::atomic_bool m_exitNeeded = false;
@@ -193,9 +196,6 @@ private:
     std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
-    std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
-        m_m_transaction_cache;  // used to find Transaction objects when
-                                // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
 

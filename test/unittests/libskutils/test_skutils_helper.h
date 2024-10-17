@@ -10,7 +10,6 @@
 #include <skutils/multifunction.h>
 #include <skutils/multithreading.h>
 #include <skutils/network.h>
-#include <skutils/stats.h>
 #include <skutils/thread_pool.h>
 #include <skutils/url.h>
 #include <skutils/utils.h>

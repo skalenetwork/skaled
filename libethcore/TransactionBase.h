@@ -132,6 +132,20 @@ public:
     /// Force the chainId to a particular value. This will result in an invalid transaction RLP.
     void forceChainId( uint64_t _chainID ) { m_chainId = _chainID; }
 
+    /// Force type. This is used in tests
+    void forceType( TransactionType _type ) { m_txType = _type; }
+
+
+    /// Force Type2 fees. This is used in tests
+    void forceType2Fees( const u256& _maxFeePerGas, const u256& _maxPriorityFeePerGas ) {
+        m_maxFeePerGas = _maxFeePerGas;
+        m_maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    }
+
+    /// Force gas limit. This is used in tests
+    void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
+
+
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
     void checkLowS() const;
@@ -291,7 +305,8 @@ protected:
     ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
     ///< creation transaction.
-    bytes m_rawData;
+    std::shared_ptr< bytes > m_rawData =
+        std::make_shared< bytes >();    ///< Raw data, not owned by this object.>
     std::vector< bytes > m_accessList;  ///< The access list. see more
                                         ///< https://eips.ethereum.org/EIPS/eip-2930. Not valid for
                                         ///< legacy txns

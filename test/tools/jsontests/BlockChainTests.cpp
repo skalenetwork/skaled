@@ -387,13 +387,13 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     }
 
     output["blocks"] = blArray;
-    output["postState"] = fillJsonWithState( testChain.topBlock().state().createStateReadOnlyCopy() );
+    output["postState"] = fillJsonWithState(testChain.topBlock().state().createReadOnlySnapBasedCopy() );
     output["lastblockhash"] = toHexPrefixed( testChain.topBlock().blockHeader().hash( WithSeal ) );
 
     // make all values hex in pre section
     State prestate = State();
     ImportTest::importState( _input.at( "pre" ).get_obj(), prestate );
-    output["pre"] = fillJsonWithState( prestate.createStateReadOnlyCopy() );
+    output["pre"] = fillJsonWithState(prestate.createReadOnlySnapBasedCopy() );
 
     for ( auto iterator = chainMap.begin(); iterator != chainMap.end(); iterator++ )
         delete iterator->second;

@@ -22,8 +22,7 @@ add_library( skutils STATIC
     ./src/multithreading.cpp        ./include/skutils/multithreading.h
     ./src/network.cpp               ./include/skutils/network.h
     ./src/rest_call.cpp             ./include/skutils/rest_call.h
-    ./src/stats.cpp                 ./include/skutils/stats.h
-    ./src/task_performance.cpp      ./include/skutils/task_performance.h
+        ./src/task_performance.cpp      ./include/skutils/task_performance.h
     ./src/thread_pool.cpp           ./include/skutils/thread_pool.h
     ./src/unddos.cpp                ./include/skutils/unddos.h
     ./src/url.cpp                   ./include/skutils/url.h

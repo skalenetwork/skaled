@@ -5,18 +5,39 @@
 #include <cassert>
 #include <sstream>
 
+
+std::atomic< bool > SkaleDebugInterface::g_isEnabled = true;
+
+#define CHECK_ENABLED                          \
+    if ( !SkaleDebugInterface::g_isEnabled ) { \
+        return;                                \
+    };
+
+#define CHECK_ENABLED_STR                      \
+    if ( !SkaleDebugInterface::g_isEnabled ) { \
+        return "";                             \
+    };
+
+#define CHECK_ENABLED_INT                      \
+    if ( !SkaleDebugInterface::g_isEnabled ) { \
+        return 0;                              \
+    };
+
 SkaleDebugInterface::SkaleDebugInterface() {}
 
 int SkaleDebugInterface::add_handler( handler h ) {
+    CHECK_ENABLED_INT;
     handlers.push_back( h );
     return handlers.size() - 1;
 }
 
 void SkaleDebugInterface::remove_handler( int pos ) {
+    CHECK_ENABLED
     handlers.erase( handlers.begin() + pos );
 }
 
 std::string SkaleDebugInterface::call( const std::string& arg ) {
+    CHECK_ENABLED_STR;
     for ( auto handler : handlers ) {
         std::string res = handler( arg );
         if ( !res.empty() )
@@ -27,11 +48,13 @@ std::string SkaleDebugInterface::call( const std::string& arg ) {
 
 void SkaleDebugTracer::call_on_tracepoint(
     const std::function< void( const std::string& ) >& callee ) {
+    CHECK_ENABLED;
     global_callbacks.push_back( callee );
 }
 
 void SkaleDebugTracer::call_on_tracepoint(
     const std::string& name, const std::function< void( const std::string& ) >& callee ) {
+    CHECK_ENABLED;
     tracepoint_struct& tp_obj = find_by_name( name );
 
     std::lock_guard< std::mutex > thread_lock( tp_obj.thread_mutex );
@@ -40,6 +63,7 @@ void SkaleDebugTracer::call_on_tracepoint(
 }
 
 void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count ) {
+    CHECK_ENABLED;
     tracepoint_struct& tp_obj = find_by_name( name );
 
     std::lock_guard< std::mutex > thread_lock( tp_obj.thread_mutex );
@@ -51,6 +75,7 @@ void SkaleDebugTracer::break_on_tracepoint( const std::string& name, int count )
 }
 
 void SkaleDebugTracer::wait_for_tracepoint( const std::string& name ) {
+    CHECK_ENABLED;
     tracepoint_struct& tp_obj = find_by_name( name );
 
     std::unique_lock< std::mutex > lock2( tp_obj.caller_mutex );
@@ -58,6 +83,7 @@ void SkaleDebugTracer::wait_for_tracepoint( const std::string& name ) {
 }
 
 void SkaleDebugTracer::continue_on_tracepoint( const std::string& name ) {
+    CHECK_ENABLED;
     tracepoint_struct& tp_obj = find_by_name( name );
 
     std::lock_guard< std::mutex > thread_lock( tp_obj.thread_mutex );
@@ -66,6 +92,7 @@ void SkaleDebugTracer::continue_on_tracepoint( const std::string& name ) {
 }
 
 void SkaleDebugTracer::tracepoint( const std::string& name ) {
+    CHECK_ENABLED;
     tracepoint_struct& tp_obj = find_by_name( name );
 
     std::unique_lock< std::mutex > lock2( tp_obj.thread_mutex );
@@ -92,6 +119,7 @@ void SkaleDebugTracer::tracepoint( const std::string& name ) {
 }
 
 std::string DebugTracer_handler( const std::string& arg, SkaleDebugTracer& tracer ) {
+    CHECK_ENABLED_STR;
     using namespace std;
 
     if ( arg.find( "trace " ) == 0 ) {

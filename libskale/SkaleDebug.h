@@ -21,6 +21,8 @@ public:
 
     std::string call( const std::string& arg );
 
+    static std::atomic< bool > g_isEnabled;
+
 
 private:
     std::vector< handler > handlers;
@@ -71,5 +73,6 @@ private:
 };
 
 std::string DebugTracer_handler( const std::string& arg, SkaleDebugTracer& tracer );
+
 
 #endif  // SKALEDEBUG_H

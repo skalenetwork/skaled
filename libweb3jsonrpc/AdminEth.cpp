@@ -144,34 +144,9 @@ h256 AdminEth::blockHash( string const& _blockNumberOrHash ) const {
     }
 }
 
-Json::Value AdminEth::admin_eth_vmTrace(
-    string const& /*_blockNumberOrHash*/, int _txIndex, string const& _session ) {
+Json::Value AdminEth::admin_eth_vmTrace( string const&, int, string const& _session ) {
     RPC_ADMIN;
-
-    Json::Value ret;
-
-    if ( _txIndex < 0 )
-        throw jsonrpc::JsonRpcException( "Negative index" );
-    Block block = m_eth.latestBlock();
-    if ( ( unsigned ) _txIndex < block.pending().size() ) {
-        try {
-            Transaction t = block.pending()[_txIndex];
-            State s;
-            throw std::logic_error( "Historical state is not supported in Skale state" );
-            //        Executive e(s, block, _txIndex, m_eth.blockChain());
-            //            StandardTrace st;
-            //            st.setShowMnemonics();
-            //            e.initialize(t);
-            //            if (!e.execute())
-            //                e.go(st.functionToExecuteOnEachOperation());
-            //            e.finalize();
-            //            Json::Reader().parse(st.json(), ret);
-        } catch ( Exception const& _e ) {
-            cwarn << diagnostic_information( _e );
-        }
-    }
-
-    return ret;
+    throw jsonrpc::JsonRpcException( "Usupported API call" );
 }
 
 Json::Value AdminEth::admin_eth_getReceiptByHashAndIndex(
