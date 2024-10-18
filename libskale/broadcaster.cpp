@@ -90,7 +90,8 @@ void* ZmqBroadcaster::server_socket() const {
     if ( !m_zmq_server_socket ) {
         m_zmq_server_socket = zmq_socket( m_zmq_context, ZMQ_PUB );
 
-        int val = 16;
+        // it was 16 before, this caused messages lost during performance tests
+        int val = 1024;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
@@ -232,12 +233,13 @@ void ZmqBroadcaster::stopService() {
     m_thread.join();
 }
 
-void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
-    if ( _rlp.empty() ) {
-        server_socket();
-        return;
-    }
 
+void ZmqBroadcaster::initSocket() {
+    server_socket();
+}
+
+
+void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
         clog( dev::VerbosityWarning, "zmq-broadcaster" )

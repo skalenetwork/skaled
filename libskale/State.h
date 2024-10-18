@@ -43,6 +43,9 @@
 #include "OverlayFS.h"
 #include <libdevcore/DBImpl.h>
 
+#include <openssl/rand.h>
+#include <boost/chrono/io/utility/to_string.hpp>
+
 
 namespace std {
 template <>
@@ -154,11 +157,34 @@ using ChangeLog = std::vector< Change >;
  *
  * Any atomic change to any account is registered and appended in the changelog.
  * In case some changes must be reverted, the changes are popped from the
+ * In case some changes must be reverted, the changes are popped from the
  * changelog and undone. For possible atomic changes list @see Change::Kind.
  * The changelog is managed by savepoint(), rollback() and commit() methods.
  */
 class State {
 public:
+    class SharedDBGuard {
+        const State& m_state;
+
+
+    public:
+        explicit SharedDBGuard( const State& _state ) : m_state( _state ) {
+            if ( m_state.m_isReadOnlySnapBasedState )
+                return;
+            if ( !m_state.x_db_ptr ) {
+                throw std::logic_error( "Null pointer in SharedDBGuard" );
+            };
+            m_state.x_db_ptr->lock_shared();
+        }
+
+        ~SharedDBGuard() {
+            if ( m_state.m_isReadOnlySnapBasedState )
+                return;
+            m_state.x_db_ptr->unlock_shared();
+        }
+    };
+
+
     using AddressMap = std::map< dev::h256, dev::Address >;
 
     /// Default constructor; creates with a blank database prepopulated with the genesis block.
@@ -181,6 +207,27 @@ public:
         dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
     /// which uses it. If you have no preexisting database then set BaseState to something other
 
+    std::string createRandomString() {
+        // random string
+        std::vector< uint8_t > randomBytes( 16 );
+        if ( RAND_bytes( randomBytes.data(), static_cast< int >( randomBytes.size() ) ) != 1 ) {
+            throw std::runtime_error( "Failed to generate random number" );
+        }
+        std::ostringstream oss;
+        for ( auto byte : randomBytes ) {
+            oss << std::hex << std::setw( 2 ) << std::setfill( '0' ) << static_cast< int >( byte );
+        }
+        return oss.str();
+    }
+    void initStateWithRandomTestDb() {
+        std::string path = "/tmp/skaled_test_state_db_" + createRandomString();
+        dev::u256 ZERO( 0 );
+        openDB( path, ZERO, dev::WithExisting::Kill );
+        LDB_CHECK( m_orig_db );
+        m_orig_db->createBlockSnap( 0 );
+    }
+    // this conswtructor is used for tests
+    // we need to create temp stattedb in the /tmp dir
     State()
         : State( dev::Invalid256, skale::OverlayDB(),
 #ifdef HISTORIC_STATE
@@ -200,8 +247,13 @@ public:
     State& operator=( State&& ) = default;
 
     dev::h256 safeLastExecutedTransactionHash();
-    dev::eth::TransactionReceipts safePartialTransactionReceipts();
-    void clearPartialTransactionReceipts();
+    dev::eth::TransactionReceipts safePartialTransactionReceipts(
+        dev::eth::BlockNumber _blockNumber );
+    void safeRemoveAllPartialTransactionReceipts();
+
+
+    void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
+        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
@@ -340,7 +392,7 @@ public:
     std::pair< dev::eth::ExecutionResult, dev::eth::TransactionReceipt > execute(
         dev::eth::EnvInfo const& _envInfo, dev::eth::ChainOperationParams const& _chainParams,
         dev::eth::Transaction const& _t, Permanence _p = Permanence::Committed,
-        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
+        dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc(), int64_t _transactionIndex = -1 );
 
     /// Get the account start nonce. May be required.
     dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }
@@ -356,22 +408,11 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-    /// Create State copy to get access to data.
-    /// Different copies can be safely used in different threads
-    /// but single object is not thread safe.
-    /// No one can change state while returned object exists.
-    State createStateReadOnlyCopy() const;
-
     /// Create State copy to modify data.
-    State createStateModifyCopy() const;
+    State createStateCopyAndClearCaches() const;
 
-    /// Create State copy to modify data and pass writing lock to it
-    State createStateModifyCopyAndPassLock();
-
-
-    void releaseWriteLock();
-
-    State createNewCopyWithLocks();
+    /// Create State copy based on LevedlDB snaps that does not use any locking
+    State createReadOnlySnapBasedCopy() const;
 
     /**
      * @brief connected returns true if state is connected to database
@@ -381,7 +422,7 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    const dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
+    dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
     void resetStorageChanges() {
         storageUsage.clear();
@@ -391,7 +432,7 @@ public:
     dev::s256 storageUsed( const dev::Address& _addr ) const;
 
     dev::s256 storageUsedTotal() const {
-        boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
+        SharedDBGuard( *this );
         return m_db_ptr->storageUsed();
     }
 
@@ -400,8 +441,10 @@ public:
     };  // only for tests
 
 
+    void createReadOnlyStateDBSnap( uint64_t _blockNumber );
+
 private:
-    void updateToLatestVersion();
+    void clearCaches();
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
@@ -455,8 +498,6 @@ private:
     static uint64_t getGasUsedForSkippedTransaction( uint64_t _chainId, const dev::h256& _hash );
 
 public:
-    bool checkVersion() const;
-
 #ifdef HISTORIC_STATE
     void populateHistoricStateFromSkaleState();
     void populateHistoricStateBatchFromSkaleState(
@@ -467,16 +508,10 @@ public:
 private:
     enum Auxiliary { CODE = 1 };
 
-    boost::optional< boost::shared_lock< boost::shared_mutex > > m_db_read_lock;
-    boost::optional< boost::upgrade_lock< boost::shared_mutex > > m_db_write_lock;
-
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
-    // TODO Implement DB-registry, remove it!
     std::shared_ptr< dev::db::DBImpl > m_orig_db;
-    std::shared_ptr< size_t > m_storedVersion;
-    size_t m_currentVersion;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
                                                                             ///< This stores the
                                                                             ///< states of each
@@ -499,6 +534,9 @@ private:
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+    // if the state is based on a LevelDB snap, the instance of the snap goes here
+    std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
+    bool m_isReadOnlySnapBasedState = false;
 
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;
@@ -522,6 +560,8 @@ public:
         return pDB;
     }
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
+
+    void clearAllCaches();
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

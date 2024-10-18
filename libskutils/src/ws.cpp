@@ -138,524 +138,6 @@ bool is_ping_or_pong( const nlohmann::json& jo ) {
 
 };  // namespace utils
 
-traffic_stats::traffic_stats() {
-    init();
-}
-traffic_stats::traffic_stats( traffic_stats::myrct x ) : skutils::stats::named_event_stats( x ) {
-    init();
-    assign( x );
-}
-traffic_stats::traffic_stats( traffic_stats::myrrt x ) : skutils::stats::named_event_stats( x ) {
-    init();
-    move( x );
-}
-traffic_stats::~traffic_stats() {
-    clear();
-}
-
-traffic_stats::bytes_count_t traffic_stats::text_tx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    bytes_count_t n = text_tx_;
-    return n;
-}
-traffic_stats::bytes_count_t traffic_stats::text_rx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    bytes_count_t n = text_rx_;
-    return n;
-}
-traffic_stats::bytes_count_t traffic_stats::bin_tx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    bytes_count_t n = bin_tx_;
-    return n;
-}
-traffic_stats::bytes_count_t traffic_stats::bin_rx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    bytes_count_t n = bin_rx_;
-    return n;
-}
-traffic_stats::bytes_count_t traffic_stats::tx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    bytes_count_t n = text_tx_ + bin_tx_;
-    return n;
-}
-traffic_stats::bytes_count_t traffic_stats::rx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    bytes_count_t n = text_rx_ + bin_rx_;
-    return n;
-}
-
-using namespace skutils::stats;
-double traffic_stats::bps_text_tx( time_point tpNow ) const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps( traffic_queue_text_tx_, tpNow );
-    return lf;
-}
-double traffic_stats::bps_text_tx_last_known() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_last_known( traffic_queue_text_tx_ );
-    return lf;
-}
-double traffic_stats::bps_text_tx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_til_now( traffic_queue_text_tx_ );
-    return lf;
-}
-
-double traffic_stats::bps_text_rx( time_point tpNow ) const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps( traffic_queue_text_rx_, tpNow );
-    return lf;
-}
-double traffic_stats::bps_text_rx_last_known() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_last_known( traffic_queue_text_rx_ );
-    return lf;
-}
-double traffic_stats::bps_text_rx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_til_now( traffic_queue_text_rx_ );
-    return lf;
-}
-
-double traffic_stats::bps_bin_tx( time_point tpNow ) const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps( traffic_queue_bin_tx_, tpNow );
-    return lf;
-}
-double traffic_stats::bps_bin_tx_last_known() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_last_known( traffic_queue_bin_tx_ );
-    return lf;
-}
-double traffic_stats::bps_bin_tx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_til_now( traffic_queue_bin_tx_ );
-    return lf;
-}
-
-double traffic_stats::bps_bin_rx( time_point tpNow ) const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps( traffic_queue_bin_rx_, tpNow );
-    return lf;
-}
-double traffic_stats::bps_bin_rx_last_known() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_last_known( traffic_queue_bin_rx_ );
-    return lf;
-}
-double traffic_stats::bps_bin_rx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_til_now( traffic_queue_bin_rx_ );
-    return lf;
-}
-
-double traffic_stats::bps_tx( time_point tpNow ) const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps( traffic_queue_all_tx_, tpNow );
-    return lf;
-}
-double traffic_stats::bps_tx_last_known() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_last_known( traffic_queue_all_tx_ );
-    return lf;
-}
-double traffic_stats::bps_tx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_til_now( traffic_queue_all_tx_ );
-    return lf;
-}
-
-double traffic_stats::bps_rx( time_point tpNow ) const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps( traffic_queue_all_rx_, tpNow );
-    return lf;
-}
-double traffic_stats::bps_rx_last_known() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_last_known( traffic_queue_all_rx_ );
-    return lf;
-}
-double traffic_stats::bps_rx() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    double lf = named_traffic_stats::stat_compute_bps_til_now( traffic_queue_all_rx_ );
-    return lf;
-}
-
-traffic_stats::myrt traffic_stats::log_text_tx( bytes_count_t n ) {
-    lock_type lock( *this );
-    text_tx_ += n;
-    traffic_record_item_t recNow( n );
-    traffic_queue_all_tx_.push_back( recNow );
-    traffic_queue_text_tx_.push_back( recNow );
-    return ( *this );
-}
-traffic_stats::myrt traffic_stats::log_text_rx( traffic_stats::bytes_count_t n ) {
-    lock_type lock( *this );
-    text_rx_ += n;
-    traffic_record_item_t recNow( n );
-    traffic_queue_all_rx_.push_back( recNow );
-    traffic_queue_text_rx_.push_back( recNow );
-    return ( *this );
-}
-traffic_stats::myrt traffic_stats::log_bin_tx( traffic_stats::bytes_count_t n ) {
-    lock_type lock( *this );
-    bin_tx_ += n;
-    traffic_record_item_t recNow( n );
-    traffic_queue_all_tx_.push_back( recNow );
-    traffic_queue_bin_tx_.push_back( recNow );
-    return ( *this );
-}
-traffic_stats::myrt traffic_stats::log_bin_rx( traffic_stats::bytes_count_t n ) {
-    lock_type lock( *this );
-    bin_rx_ += n;
-    traffic_record_item_t recNow( n );
-    traffic_queue_all_rx_.push_back( recNow );
-    traffic_queue_bin_rx_.push_back( recNow );
-    return ( *this );
-}
-
-traffic_stats::e_last_instance_state_changing_type_t
-traffic_stats::last_instance_state_changing_type() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    e_last_instance_state_changing_type_t e = elisctt_;
-    return e;
-}
-std::string traffic_stats::last_instance_state_changing_type_as_str() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    switch ( elisctt_ ) {
-    case elisctt_instantiated:
-        return "instantiated";
-    case elisctt_opened:
-        return "opened";
-    case elisctt_closed:
-        return "closed";
-    default:
-        return "N/A-state";
-    }
-}
-traffic_stats::time_point traffic_stats::instantiated() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    return time_stamp_instantiated_;
-}
-traffic_stats::nanoseconds traffic_stats::instantiated_ago(
-    traffic_stats::time_point tpNow ) const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    return std::chrono::duration_cast< nanoseconds >( tpNow - instantiated() );
-}
-traffic_stats::nanoseconds traffic_stats::instantiated_ago() const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    return instantiated_ago( clock::now() );
-}
-traffic_stats::time_point traffic_stats::changed() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    switch ( elisctt_ ) {
-    case elisctt_instantiated:
-        return time_stamp_instantiated_;
-    case elisctt_opened:
-        return time_stamp_opened_;
-    case elisctt_closed:
-        return time_stamp_closed_;
-    default:
-        return clock::now();
-    }
-}
-traffic_stats::nanoseconds traffic_stats::changed_ago( traffic_stats::time_point tpNow ) const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    return std::chrono::duration_cast< nanoseconds >( tpNow - changed() );
-}
-traffic_stats::nanoseconds traffic_stats::changed_ago() const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    return changed_ago( clock::now() );
-}
-
-void traffic_stats::log_open() {
-    lock_type lock( *this );
-    elisctt_ = elisctt_opened;
-    time_stamp_opened_ = clock::now();
-}
-void traffic_stats::log_close() {
-    lock_type lock( *this );
-    elisctt_ = elisctt_closed;
-    time_stamp_closed_ = clock::now();
-}
-
-size_t traffic_stats::g_nSizeDefaultOnQueueAdd = 10;
-const char traffic_stats::g_strEventNameWebSocketFail[] = "fail";
-const char traffic_stats::g_strEventNameWebSocketMessagesRecvText[] = "rx-txt";
-const char traffic_stats::g_strEventNameWebSocketMessagesRecvBinary[] = "rx-bin";
-const char traffic_stats::g_strEventNameWebSocketMessagesRecv[] = "rx";
-const char traffic_stats::g_strEventNameWebSocketMessagesSentText[] = "tx-txt";
-const char traffic_stats::g_strEventNameWebSocketMessagesSentBinary[] = "tx-bin";
-const char traffic_stats::g_strEventNameWebSocketMessagesSent[] = "tx";
-void traffic_stats::register_default_event_queues_for_web_socket() {
-    event_queue_add( g_strEventNameWebSocketFail, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketMessagesRecvText, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketMessagesRecvBinary, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketMessagesRecv, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketMessagesSentText, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketMessagesSentBinary, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketMessagesSent, g_nSizeDefaultOnQueueAdd );
-}
-const char traffic_stats::g_strEventNameWebSocketPeerConnect[] = "peer connect";
-const char traffic_stats::g_strEventNameWebSocketPeerDisconnect[] = "peer disconnect";
-const char traffic_stats::g_strEventNameWebSocketPeerDisconnectFail[] = "peer disconnect fail";
-void traffic_stats::register_default_event_queues_for_web_socket_peer() {
-    register_default_event_queues_for_web_socket();
-    event_queue_add( g_strEventNameWebSocketPeerConnect, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketPeerDisconnectFail, g_nSizeDefaultOnQueueAdd );
-}
-const char traffic_stats::g_strEventNameWebSocketServerStart[] = "server start";
-const char traffic_stats::g_strEventNameWebSocketServerStartFail[] = "server start fail";
-const char traffic_stats::g_strEventNameWebSocketServerStop[] = "server stop";
-void traffic_stats::register_default_event_queues_for_web_socket_server() {
-    register_default_event_queues_for_web_socket();
-    event_queue_add( g_strEventNameWebSocketPeerConnect, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketPeerDisconnect, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketPeerDisconnectFail, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketServerStart, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketServerStartFail, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketServerStop, g_nSizeDefaultOnQueueAdd );
-}
-const char traffic_stats::g_strEventNameWebSocketClientConnect[] = "connect";
-const char traffic_stats::g_strEventNameWebSocketClientConnectFail[] = "fail connect";
-const char traffic_stats::g_strEventNameWebSocketClientDisconnect[] = "disconnect";
-const char traffic_stats::g_strEventNameWebSocketClientReconnect[] = "reconnect attempt";
-void traffic_stats::register_default_event_queues_for_web_socket_client() {
-    register_default_event_queues_for_web_socket();
-    event_queue_add( g_strEventNameWebSocketClientConnect, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketClientConnectFail, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketClientDisconnect, g_nSizeDefaultOnQueueAdd );
-    event_queue_add( g_strEventNameWebSocketClientReconnect, g_nSizeDefaultOnQueueAdd );
-}
-
-bool traffic_stats::empty() const {
-    lock_type lock( const_cast< myrt >( *this ) );
-    if ( text_tx_ != 0 || text_rx_ != 0 || bin_tx_ != 0 || bin_rx_ != 0 )
-        return false;
-    return true;
-}
-void traffic_stats::clear() {
-    lock_type lock( *this );
-    text_tx_ = text_rx_ = bin_tx_ = bin_rx_ = 0;
-    elisctt_ = elisctt_instantiated;
-    time_stamp_instantiated_ = time_stamp_opened_ = time_stamp_closed_ = clock::now();
-    traffic_queue_all_tx_.clear();
-    traffic_queue_all_rx_.clear();
-    traffic_queue_text_tx_.clear();
-    traffic_queue_text_rx_.clear();
-    traffic_queue_bin_tx_.clear();
-    traffic_queue_bin_rx_.clear();
-    named_event_stats::clear();
-}
-void traffic_stats::init() {
-    lock_type lock( *this );
-    clear();
-    limit( 50 );
-}
-traffic_stats::myrt traffic_stats::limit( size_t lim ) {
-    traffic_queue_all_tx_.limit( lim );
-    traffic_queue_all_rx_.limit( lim );
-    traffic_queue_text_tx_.limit( lim );
-    traffic_queue_text_rx_.limit( lim );
-    traffic_queue_bin_tx_.limit( lim );
-    traffic_queue_bin_rx_.limit( lim );
-    return ( *this );
-}
-int traffic_stats::compare( traffic_stats::myrct x ) const {
-    lock_type lock1( const_cast< myrt >( *this ) );
-    lock_type lock2( const_cast< myrt >( x ) );
-    if ( int( elisctt_ ) < int( x.elisctt_ ) )
-        return -1;
-    if ( int( elisctt_ ) > int( x.elisctt_ ) )
-        return 1;
-    // time_stamp_instantiated_, time_stamp_opened_, time_stamp_closed_ ... not used
-    if ( bytes_count_t( text_tx_ ) < bytes_count_t( x.text_tx_ ) )
-        return -1;
-    if ( bytes_count_t( text_tx_ ) > bytes_count_t( x.text_tx_ ) )
-        return 1;
-    if ( bytes_count_t( text_rx_ ) < bytes_count_t( x.text_rx_ ) )
-        return -1;
-    if ( bytes_count_t( text_rx_ ) > bytes_count_t( x.text_rx_ ) )
-        return 1;
-    if ( bytes_count_t( bin_tx_ ) < bytes_count_t( x.bin_tx_ ) )
-        return -1;
-    if ( bytes_count_t( bin_tx_ ) > bytes_count_t( x.bin_tx_ ) )
-        return 1;
-    if ( bytes_count_t( bin_rx_ ) < bytes_count_t( x.bin_rx_ ) )
-        return -1;
-    if ( bytes_count_t( bin_rx_ ) > bytes_count_t( x.bin_rx_ ) )
-        return 1;
-    int n;
-    n = traffic_queue_all_tx_.compare( x.traffic_queue_all_tx_ );
-    if ( n )
-        return n;
-    n = traffic_queue_all_rx_.compare( x.traffic_queue_all_rx_ );
-    if ( n )
-        return n;
-    n = traffic_queue_text_tx_.compare( x.traffic_queue_text_tx_ );
-    if ( n )
-        return n;
-    n = traffic_queue_text_rx_.compare( x.traffic_queue_text_rx_ );
-    if ( n )
-        return n;
-    n = traffic_queue_bin_tx_.compare( x.traffic_queue_bin_tx_ );
-    if ( n )
-        return n;
-    n = traffic_queue_bin_rx_.compare( x.traffic_queue_bin_rx_ );
-    if ( n )
-        return n;
-    n = named_event_stats::compare( x );
-    if ( n )
-        return n;
-    return 0;
-}
-traffic_stats::myrt traffic_stats::assign( traffic_stats::myrct x ) {
-    lock_type lock1( *this );
-    lock_type lock2( const_cast< myrt >( x ) );
-    elisctt_ = x.elisctt_;
-    time_stamp_instantiated_ = x.time_stamp_instantiated_;
-    time_stamp_opened_ = x.time_stamp_opened_;
-    time_stamp_closed_ = x.time_stamp_closed_;
-    text_tx_ = bytes_count_t( x.text_tx_ );
-    text_rx_ = bytes_count_t( x.text_rx_ );
-    bin_tx_ = bytes_count_t( x.bin_tx_ );
-    bin_rx_ = bytes_count_t( x.bin_rx_ );
-    traffic_queue_all_tx_ = x.traffic_queue_all_tx_;
-    traffic_queue_all_rx_ = x.traffic_queue_all_rx_;
-    traffic_queue_text_tx_ = x.traffic_queue_text_tx_;
-    traffic_queue_text_rx_ = x.traffic_queue_text_rx_;
-    traffic_queue_bin_tx_ = x.traffic_queue_bin_tx_;
-    traffic_queue_bin_rx_ = x.traffic_queue_bin_rx_;
-    named_event_stats::assign( x );
-    return ( *this );
-}
-traffic_stats::myrt traffic_stats::move( traffic_stats::myrt x ) {
-    lock_type lock1( *this );
-    lock_type lock2( x );
-    assign( x );
-    x.clear();
-    return ( *this );
-}
-
-void traffic_stats::lock() {}
-void traffic_stats::unlock() {}
-
-std::string traffic_stats::getLifeTimeDescription(
-    traffic_stats::time_point tpNow, bool isColored /*= false*/ ) const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    std::string strChangeType( last_instance_state_changing_type_as_str() ), strAgoSuffix( " ago" ),
-        strSpace( " " );
-    if ( isColored ) {
-        strChangeType = cc::debug( strChangeType );
-        strAgoSuffix = cc::debug( strAgoSuffix );
-        strSpace = cc::debug( strSpace );
-    }
-    nanoseconds nsx = changed_ago( tpNow );
-    uint64_t ns = nsx.count();
-    std::stringstream ss;
-    ss << strChangeType << strSpace << skutils::tools::nanoseconds_2_lifetime_str( ns, isColored )
-       << strAgoSuffix;
-    return ss.str();
-}
-std::string traffic_stats::getLifeTimeDescription( bool isColored /*= false*/ ) const {
-    return getLifeTimeDescription( clock::now(), isColored );
-}
-std::string traffic_stats::getTrafficStatsDescription(
-    traffic_stats::time_point tpNow, bool isColored /*= false*/ ) const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    traffic_stats copy_of_this( *this );  // lock-free copy of this
-    std::stringstream ss;
-    bytes_count_t nTx = bytes_count_t( copy_of_this.tx() ), nRx =
-                                                                bytes_count_t( copy_of_this.rx() );
-    double lfTxBPS = copy_of_this.bps_tx( tpNow ), lfRxBPS = copy_of_this.bps_rx( tpNow );
-    std::string strBytesPrefix( "traffic " ), strBytesSuffix( " byte(s)" ), strTx( "Tx" ),
-        strRx( "Rx" ), strTxValue( skutils::tools::to_string( nTx ) ),
-        strRxValue( skutils::tools::to_string( nRx ) ), strBpsPrefix( " at " ),
-        strBpsSuffix( " bps" ), strTxBPS, strRxBPS, strBpsComposed, strSlash( "/" ),
-        strSpace( " " );
-    bool bHaveBpsInfo = ( lfTxBPS > 0.0 || lfRxBPS > 0.0 ) ? true : false;
-    if ( bHaveBpsInfo ) {
-        strTxBPS = skutils::tools::format( "%.03lf", lfTxBPS );
-        strRxBPS = skutils::tools::format( "%.03lf", lfRxBPS );
-    } else {
-        strBpsComposed = "N/A";
-    }
-    if ( isColored ) {
-        strBytesPrefix = cc::debug( strBytesPrefix );
-        strBytesSuffix = cc::debug( strBytesSuffix );
-        strTx = cc::ws_tx( strTx );
-        strRx = cc::ws_rx( strRx );
-        strTxValue = cc::ws_tx( strTxValue );
-        strRxValue = cc::ws_rx( strRxValue );
-        if ( !strTxBPS.empty() )
-            strTxBPS = cc::ws_tx( strTxBPS );
-        if ( !strRxBPS.empty() )
-            strRxBPS = cc::ws_rx( strRxBPS );
-        if ( !strBpsComposed.empty() )
-            strBpsComposed = cc::error( strBpsComposed );
-        strSlash = cc::debug( strSlash );
-        strSpace = cc::debug( strSpace );
-        if ( !strBpsPrefix.empty() )
-            strBpsPrefix = cc::debug( strBpsPrefix );
-        if ( !strBpsSuffix.empty() )
-            strBpsSuffix = cc::debug( strBpsSuffix );
-    }
-    if ( bHaveBpsInfo )
-        strBpsComposed = strTxBPS + strSlash + strRxBPS;
-    ss << strBytesPrefix << strTx << strSlash << strRx << strSpace << strTxValue << strSlash
-       << strRxValue << strBytesSuffix << strBpsPrefix << strBpsComposed << strBpsSuffix;
-    return ss.str();
-}
-std::string traffic_stats::getTrafficStatsDescription( bool isColored /*= false*/ ) const {
-    return getTrafficStatsDescription( clock::now(), isColored );
-}
-
-nlohmann::json traffic_stats::toJSON( time_point tpNow, bool bSkipEmptyStats /*= true*/ ) const {
-    // lock_type lock( const_cast < myrt > ( *this ) );
-    nlohmann::json jo =
-        skutils::stats::named_event_stats::toJSON( tpNow, bSkipEmptyStats, "events" );
-    traffic_stats copy_of_this( *this );  // lock-free copy of this
-    double lfTxBPS = copy_of_this.bps_tx( tpNow );
-    double lfRxBPS = copy_of_this.bps_rx( tpNow );
-    bytes_count_t nTx = bytes_count_t( copy_of_this.tx() );
-    bytes_count_t nRx = bytes_count_t( copy_of_this.rx() );
-    jo["life_time"] = skutils::tools::nanoseconds_2_lifetime_str(
-        copy_of_this.instantiated_ago( tpNow ).count(), false );
-    jo["state"]["name"] = copy_of_this.last_instance_state_changing_type_as_str();
-    jo["state"]["time_stamp"] = skutils::tools::nanoseconds_2_lifetime_str(
-        copy_of_this.changed_ago( tpNow ).count(), false );
-    jo["traffic"]["tx"] = nTx;
-    jo["traffic"]["rx"] = nRx;
-    jo["bps"]["tx"] = lfTxBPS;
-    jo["bps"]["rx"] = lfRxBPS;
-    return jo;
-}
-nlohmann::json traffic_stats::toJSON( bool bSkipEmptyStats /*= false*/ ) const {
-    return toJSON( clock::now(), bSkipEmptyStats );
-}
-
-guarded_traffic_stats::guarded_traffic_stats()
-//: traffic_stats_mtx_( "RMTX-TRAFFIC-STATS" )
-{}
-guarded_traffic_stats::guarded_traffic_stats( traffic_stats::myrct x )
-    : traffic_stats( x )
-//, traffic_stats_mtx_( "RMTX-TRAFFIC-STATS" )
-{}
-guarded_traffic_stats::guarded_traffic_stats( traffic_stats::myrrt x )
-    : traffic_stats( x )
-//, traffic_stats_mtx_( "RMTX-TRAFFIC-STATS" )
-{}
-guarded_traffic_stats::~guarded_traffic_stats() {}
-void guarded_traffic_stats::lock() {
-    // traffic_stats_mtx_.lock();
-    skutils::get_ref_mtx().lock();
-}
-void guarded_traffic_stats::unlock() {
-    // traffic_stats_mtx_.unlock();
-    skutils::get_ref_mtx().unlock();
-}
-
 basic_network_settings::basic_network_settings( basic_network_settings* pBNS )
     // interval_ping_( 20 )  // seconds, ping-pong interval, 0 means not use
     : timeout_pong_( /*300*/ 60 * 60 * 24 * 365 )  // seconds, default value in wspp is 5000, 0
@@ -3313,7 +2795,6 @@ peer::peer( server& srv, const hdl_t& hdl )
       hdl_( hdl ),
       cid_( 0 ),
       was_disconnected_( false ) {
-    traffic_stats::register_default_event_queues_for_web_socket_peer();
     cid_ = stat_getCid( hdl );
 }
 peer::~peer() {
@@ -3330,7 +2811,6 @@ nlohmann::json peer::toJSON( bool bSkipEmptyStats /*= true*/ ) const {
     jo["connection_id"] = getCidString();
     jo["serial_number"] = serial_number();
     jo["scheme"] = srv().last_scheme_cached_;
-    jo["stats"] = traffic_stats::toJSON( bSkipEmptyStats );
     return jo;
 }
 std::string peer::getShortTypeDescrition( bool isColored /*= false*/ ) const {
@@ -3353,13 +2833,9 @@ std::string peer::getShortPeerDescription(
         if ( !strIP.empty() )
             strIP = cc::u( strIP );
     }
-    traffic_stats::time_point tpNow = traffic_stats::clock::now();
+
     ss << unique_string_identifier( isColored ) << strSpace << getShortTypeDescrition( isColored )
        << strSpace << strIP;
-    if ( isLifetime )
-        ss << strCommaSpace << getLifeTimeDescription( tpNow, isColored );
-    if ( isTrafficStats )
-        ss << strCommaSpace << getTrafficStatsDescription( tpNow, isColored );
     return ss.str();
 }
 std::string peer::unique_string_identifier( bool isColored /*= false*/ ) const {
@@ -3377,12 +2853,9 @@ std::string peer::unique_string_identifier( bool isColored /*= false*/ ) const {
     ss << strCid << strSlash << strPeerSerialNumber;
     return ss.str();
 }
-void peer::onPeerRegister() {
-    traffic_stats::log_open();
-}
+void peer::onPeerRegister() {}
 void peer::onPeerUnregister() {  // peer will no longer receive onMessage after call to this
     opened_ = false;
-    traffic_stats::log_close();
 }
 bool peer::isServerSide() const {
     return true;
@@ -3461,7 +2934,6 @@ void peer::close( const std::string& msg,
     ref_retain();
     try {
         srv_.close( hdl_, nCloseStatus, msg );
-        traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnect );
     } catch ( const std::exception& ex ) {
         const char* strWhat = ex.what();
         if ( strWhat == nullptr || strWhat[0] == '\0' )
@@ -3469,16 +2941,11 @@ void peer::close( const std::string& msg,
         std::stringstream ss;
         ss << cc::error( "Exception: " ) << cc::warn( strWhat );
         srv_.onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
-        // clean_up( cid_ );
-        traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnectFail );
     } catch ( ... ) {
         std::stringstream ss;
         ss << cc::error( "Unknown exception" );
         srv_.onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
-        // clean_up( cid_ );
-        traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnectFail );
     }
-    traffic_stats::log_close();
     ref_release();
 }
 void peer::cancel() {
@@ -3496,48 +2963,24 @@ void peer::pause_reading() {
 void peer::onMessage( const std::string& msg, opcv eOpCode ) {
     if ( onPeerMessage_ )
         onPeerMessage_( *this, msg, eOpCode );
-    if ( eOpCode == opcv::text ) {
-        traffic_stats::log_text_rx( msg.length() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvText );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-    } else if ( eOpCode == opcv::binary ) {
-        traffic_stats::log_bin_rx( msg.size() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvBinary );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-    }
 }
 void peer::onClose(
     const std::string& reason, int local_close_code, const std::string& local_close_code_as_str ) {
     opened_ = false;
     if ( onPeerClose_ )
         onPeerClose_( *this, reason, local_close_code, local_close_code_as_str );
-    traffic_stats::log_close();
 }
 void peer::onFail() {
-    traffic_stats::event_add( traffic_stats::g_strEventNameWebSocketFail );
-    srv().event_add( traffic_stats::g_strEventNameWebSocketFail );
     opened_ = false;
     if ( onPeerFail_ )
         onPeerFail_( *this );
-    traffic_stats::log_close();
 }
 bool peer::sendMessage( const std::string& msg, opcv eOpCode ) {
-    // ss << cc::debug(">>> ") << cc::warn(getSender()) << cc::debug(", ") <<
-    // cc::warn(getCidString()) << cc::debug(", ") << cc::c(msg) << "/n";
     std::string strCid = getCidString();
     std::string strRemoteIp = getRemoteIp();
     try {
         if ( !srv_.sendMessage( hdl_, msg, eOpCode ) )
             return false;
-        if ( eOpCode == opcv::text ) {
-            traffic_stats::log_text_tx( msg.length() );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesSentText );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesSent );
-        } else if ( eOpCode == opcv::binary ) {
-            traffic_stats::log_bin_tx( msg.size() );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesSentBinary );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesSent );
-        }
         return true;
     } catch ( const std::exception& ex ) {
         const char* strWhat = ex.what();
@@ -3576,7 +3019,6 @@ std::string peer::getCidString() const {
 
 server::server( basic_network_settings* pBNS )
     : api_( pBNS ), server_serial_number_( 0 ), listen_backlog_( 0 ) {
-    traffic_stats::register_default_event_queues_for_web_socket_server();
     api_.onConnect_ = [this]( connection_identifier_t cid, struct lws* /*wsi*/,
                           const char* /*strPeerClientAddressName*/,
                           const char* /*strPeerRemoteIP*/ ) { onOpen( cid ); };
@@ -3618,7 +3060,6 @@ nlohmann::json server::toJSON( bool bSkipEmptyStats /*= true*/ ) const {
     jo["portal_monitoring"] = "";
     jo["port"] = port();
     jo["scheme"] = last_scheme_cached_;
-    jo["stats"] = traffic_stats::toJSON( bSkipEmptyStats );
     return jo;
 }
 size_t server::request_new_peer_serial_number() {
@@ -3645,19 +3086,13 @@ bool server::open( const std::string& scheme, int nPort, const char* strInterfac
     basic_network_settings &bns_api = api_, bns_this = ( *this );
     bns_api = bns_this;
     if ( !api_.init( isSSL, nPort, this, strInterfaceName ) ) {
-        traffic_stats::event_add( g_strEventNameWebSocketServerStartFail );
         return false;
     }
-    traffic_stats::log_open();
-    traffic_stats::event_add( g_strEventNameWebSocketServerStart );
     return true;
 }
 void server::close() {
     server_api::lock_type lock( api_.mtx_api() );
     api_.deinit();
-    traffic_stats::log_close();
-    // server_serial_number_ = 0;
-    traffic_stats::event_add( g_strEventNameWebSocketServerStop );
 }
 void server::close( hdl_t hdl, int nCloseStatus, const std::string& msg ) {
     api_.close( hdl, nCloseStatus, msg );
@@ -3697,15 +3132,6 @@ bool server::sendMessage( hdl_t hdl, const std::string& msg, opcv eOpCode /*= op
         data.set_text( msg );
     if ( !api_.send( hdl, data ) )
         return false;
-    if ( eOpCode == opcv::text ) {
-        traffic_stats::log_text_tx( msg.length() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSentText );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSent );
-    } else if ( eOpCode == opcv::binary ) {
-        traffic_stats::log_bin_tx( msg.size() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSentBinary );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSent );
-    }
     return true;
 }
 //
@@ -3736,7 +3162,6 @@ bool server::onPeerRegister( peer_ptr_t pPeer ) {
         if ( onPeerRegister_ )
             onPeerRegister_( pPeer );
         pPeer->onPeerRegister();
-        traffic_stats::event_add( g_strEventNameWebSocketPeerConnect );
     } catch ( ... ) {
         return false;
     }
@@ -3748,7 +3173,6 @@ bool server::onPeerUnregister( peer_ptr_t pPeer ) {
     pPeer->ref_retain();  // exrra ref, to protect onPeerUnregister_ specific implementatoion, such
                           // as un-ddos accept
     try {
-        traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnect );
         if ( onPeerUnregister_ )
             onPeerUnregister_( pPeer );
     } catch ( ... ) {
@@ -3804,22 +3228,12 @@ void server::onClose( hdl_t hdl, const std::string& reason, int local_close_code
     }
 }
 void server::onFail( hdl_t hdl ) {
-    traffic_stats::event_add( traffic_stats::g_strEventNameWebSocketFail );
     basic_socket::onFail( hdl );
 }
 void server::onMessage( hdl_t hdl, opcv eOpCode, const std::string& msg ) {
     peer_ptr_t pPeer = getPeer( hdl );
     if ( pPeer ) {
         pPeer->onMessage( msg, eOpCode );
-        if ( eOpCode == opcv::text ) {
-            traffic_stats::log_text_rx( msg.length() );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvText );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-        } else if ( eOpCode == opcv::binary ) {
-            traffic_stats::log_bin_rx( msg.size() );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvBinary );
-            traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-        }
         return;
     }
     //
@@ -3830,15 +3244,6 @@ void server::onMessage( hdl_t hdl, opcv eOpCode, const std::string& msg ) {
     onLogMessage( e_ws_log_message_type_t::eWSLMT_warning, ss.str() );
     //
     basic_socket::onMessage( hdl, eOpCode, msg );
-    if ( eOpCode == opcv::text ) {
-        traffic_stats::log_text_rx( msg.length() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvText );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-    } else if ( eOpCode == opcv::binary ) {
-        traffic_stats::log_bin_rx( msg.size() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvBinary );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-    }
 }
 bool server::onHttp( hdl_t hdl ) {
     return onHttp_ ? onHttp_( *this, hdl ) : false;
@@ -3856,7 +3261,6 @@ const security_args& server::onGetSecurityArgs() const {
 
 
 client::client( basic_network_settings* pBNS ) : api_( pBNS ) {
-    traffic_stats::register_default_event_queues_for_web_socket_client();
     api_.onConnect_ = [this]() {
         onOpen( api_.cid_ );
         setConnected( true );
@@ -3890,7 +3294,6 @@ nlohmann::json client::toJSON( bool bSkipEmptyStats /*= true*/ ) const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "client";
     jo["url"] = uri();
-    jo["stats"] = traffic_stats::toJSON( bSkipEmptyStats );
     return jo;
 }
 bool client::isServerSide() const {
@@ -3914,11 +3317,8 @@ bool client::open( const std::string& uri, const char* strInterfaceName ) {
         basic_network_settings &bns_api = api_, bns_this = ( *this );
         bns_api = bns_this;
         if ( !api_.init( uri, this, strInterfaceName ) ) {
-            traffic_stats::event_add( g_strEventNameWebSocketClientConnectFail );
             return false;
         }
-        traffic_stats::log_open();
-        traffic_stats::event_add( g_strEventNameWebSocketClientConnect );
         return true;
     } catch ( const std::exception& ex ) {
         const char* strWhat = ex.what();
@@ -3932,7 +3332,6 @@ bool client::open( const std::string& uri, const char* strInterfaceName ) {
         ss << cc::error( "open: " ) << cc::warn( "unknown exception" );
         onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     }
-    traffic_stats::event_add( g_strEventNameWebSocketClientConnectFail );
     return false;
 }
 bool client::openLocalHost( int nPort ) {
@@ -3945,8 +3344,6 @@ void client::close() {
     if ( !isRestartTimerEnabled() )
         restart_timer_.stop();
     api_.deinit();
-    traffic_stats::log_close();
-    traffic_stats::event_add( g_strEventNameWebSocketClientDisconnect );
 }
 void client::resetConnection() {
     enableRestartTimer( false );
@@ -3976,9 +3373,6 @@ void client::async_close( const std::string& msg,
 }
 void client::close( const std::string& msg, int nCloseStatus /*= int(close_status::going_away)*/ ) {
     api_.close( nCloseStatus, msg );
-    // api_.deinit();
-    traffic_stats::log_close();
-    traffic_stats::event_add( g_strEventNameWebSocketClientDisconnect );
 }
 void client::cancel() {
     // TO-FIX: cancel() not yet implemented
@@ -4002,33 +3396,14 @@ bool client::sendMessage( const std::string& msg, opcv eOpCode ) {
         data.set_text( msg );
     if ( !api_.send( data ) )
         return false;
-    if ( eOpCode == opcv::text ) {
-        traffic_stats::log_text_tx( msg.length() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSentText );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSent );
-    } else if ( eOpCode == opcv::binary ) {
-        traffic_stats::log_bin_tx( msg.size() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSentBinary );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesSent );
-    }
     return true;
 }
 void client::onMessage( hdl_t hdl, opcv eOpCode, const std::string& msg ) {
     basic_socket::onMessage( hdl, eOpCode, msg );
-    if ( eOpCode == opcv::text ) {
-        traffic_stats::log_text_rx( msg.length() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvText );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-    } else if ( eOpCode == opcv::binary ) {
-        traffic_stats::log_bin_rx( msg.size() );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecvBinary );
-        traffic_stats::event_add( g_strEventNameWebSocketMessagesRecv );
-    }
 }
 void client::onDisconnected() {
     if ( onDisconnected_ )
         onDisconnected_( *this );
-    traffic_stats::log_close();
 }
 void client::onOpen( hdl_t hdl ) {
     basic_socket::onOpen( hdl );
@@ -4056,20 +3431,14 @@ void client::onClose( hdl_t hdl, const std::string& reason, int local_close_code
     const std::string& local_close_code_as_str ) {
     basic_socket::onClose( hdl, reason, local_close_code, local_close_code_as_str );
     impl_ensure_restart_timer_is_running();
-    traffic_stats::log_close();
-    traffic_stats::event_add( g_strEventNameWebSocketClientDisconnect );
 }
 void client::onFail( hdl_t hdl ) {
-    traffic_stats::event_add( traffic_stats::g_strEventNameWebSocketFail );
     basic_socket::onFail( hdl );
     impl_ensure_restart_timer_is_running();
-    traffic_stats::log_close();
 }
 void client::onDelayDeinit() {  // NLWS-specific
 }
-// void client::onStreamSocketInit( int native_fd ) {
-//	basic_socket::onStreamSocketInit( native_fd );
-//}
+
 void client::onLogMessage( e_ws_log_message_type_t eWSLMT, const std::string& msg ) {
     basic_socket::onLogMessage( eWSLMT, msg );
 }

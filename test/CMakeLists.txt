@@ -1,3 +1,15 @@
+# do not use new CMP0110 feature of cmake
+if(POLICY CMP0110)
+    cmake_policy(SET CMP0110 OLD)
+endif()
+
+
+macro(assert condition)
+    if (NOT ${condition})
+        message(FATAL_ERROR "Assertion failed: ${condition}")
+    endif()
+endmacro()
+
 file(GLOB_RECURSE sources "*.cpp" "*.h" "*.sol")
 
 if( NOT CONSENSUS )
@@ -14,24 +26,31 @@ foreach(file ${sources})
     file(STRINGS ${file} test_list_raw REGEX "BOOST_.*TEST_(SUITE|CASE|SUITE_END)")
     set(TestSuite "DEFAULT")
     set(TestSuitePath "")
+    # read source of each test file into a list of string
     foreach(test_raw ${test_list_raw})
+        # we match strings like BOOST_AUTO_TEST_SUITE(JsonRpcSuite) and strip beginning turning them into
+        #  string "SUITE JsonRpcSuite"
         string(REGEX REPLACE ".*TEST_(SUITE|CASE)\\(( [^ ,\\)]*).*" "\\1 \\2" test ${test_raw})
+        assert(test)
 
         #skip disabled
         if (";${excludeSuites};" MATCHES ";${TestSuite};")
             continue()
         endif()
 
+        # we match string like SUITE JsonRpcSuite  These are suite names
         if(test MATCHES "^SUITE .*")
-
+            # now we cut the beginning to get just JsonRpcSuite
             string(SUBSTRING ${test} 6 -1 TestSuite)
+            assert(TestSuite)
             set(TestSuitePath "${TestSuitePath}/${TestSuite}")
-
+            assert(TestSuitePath)
             if(FASTCTEST)
                 if (";${excludeSuites};" MATCHES ";${TestSuite};")
                     continue()
                 endif()
                 if (NOT ";${allSuites};" MATCHES ";${TestSuite};")
+                    message(STATUS "TestSuite value: ${TestSuite}")
                     string(SUBSTRING ${TestSuitePath} 1 -1 TestSuitePathFixed)
                     list(APPEND allSuites ${TestSuite})
                     separate_arguments(TESTETH_ARGS)

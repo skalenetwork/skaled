@@ -26,6 +26,8 @@
 #include "libhistoric/HistoricState.h"
 #include <libethereum/SchainPatch.h>
 
+#include <boost/range/adaptor/map.hpp>
+
 #include <thread>
 
 using std::string;
@@ -36,7 +38,7 @@ using std::vector;
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
 
-//#include "SHA3.h"
+// #include "SHA3.h"
 
 using dev::bytes;
 using dev::bytesConstRef;
@@ -95,49 +97,74 @@ dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
     return shaLastTx;
 }
 
-dev::bytes OverlayDB::getPartialTransactionReceipts() const {
-    if ( lastExecutedTransactionReceipts.has_value() )
-        return lastExecutedTransactionReceipts.value();
+std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
+    dev::eth::BlockNumber _blockNumber ) const {
+    std::vector< dev::bytes > partialTransactionReceipts;
 
-    dev::bytes partialTransactionReceipts;
+    string prefix( "safeLastTransactionReceipts." +
+                   uint64ToFixedLengthHex( ( uint64_t ) _blockNumber ) + "." );
+
     if ( m_db_face ) {
-        const std::string l =
-            m_db_face->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
-        if ( !l.empty() )
-            partialTransactionReceipts.insert(
-                partialTransactionReceipts.end(), l.begin(), l.end() );
+        m_db_face->forEachWithPrefix( prefix, [&partialTransactionReceipts]( Slice, Slice value ) {
+            const std::string l( value.begin(), value.end() );
+            if ( !l.empty() ) {
+                dev::bytes b( l.begin(), l.end() );
+                partialTransactionReceipts.push_back( b );
+            }
+            return true;
+        } );
     }
-
-    lastExecutedTransactionReceipts = partialTransactionReceipts;
     return partialTransactionReceipts;
 }
+
+
+void OverlayDB::removeAllPartialTransactionReceipts() {
+    // first we get all keys
+
+    string prefix( "safeLastTransactionReceipts." );
+    vector< string > keys;
+    if ( m_db_face ) {
+        m_db_face->forEachWithPrefix( prefix, [&keys]( Slice key, Slice ) {
+            const std::string keyStr( key.begin(), key.end() );
+            keys.push_back( keyStr );
+            return true;
+        } );
+
+        for ( auto&& key : keys ) {
+            // now remove all of them
+            m_db_face->kill( key );
+        }
+    }
+
+    m_db_face->commit( "Clean partial keys" );
+}
+
 
 void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
     this->lastExecutedTransactionHash = _newHash;
 }
-void OverlayDB::setPartialTransactionReceipts( const dev::bytes& _newReceipts ) {
-    this->lastExecutedTransactionReceipts = _newReceipts;
+
+// transform uin564_t to hex format of fixed length prepending zeros
+// if needed. This is needed to put keys into LevelDB in lexicographic order
+std::string OverlayDB::uint64ToFixedLengthHex( uint64_t value ) {
+    // Create a stringstream to hold the hex representation
+    std::stringstream res;
+
+    // Set formatting options: hex, fill with zeros, and a width of 16 characters
+    // (uint64_t can have a maximum of 16 hex characters).
+    res << std::hex << std::setw( 16 ) << std::setfill( '0' ) << value;
+
+    // Convert the stream to a string
+    return res.str();
 }
 
-void OverlayDB::addReceiptToPartials( const dev::eth::TransactionReceipt& _receipt ) {
-    auto rawTransactionReceipts = getPartialTransactionReceipts();
+void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
+    dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
+    string key = "safeLastTransactionReceipts." + uint64ToFixedLengthHex( _blockNumber ) + "." +
+                 uint64ToFixedLengthHex( _transactionIndex );
 
-    // TODO Temporary solution - do not (de)serialize forth and back!
 
-    dev::eth::BlockReceipts blockReceipts;
-    if ( !rawTransactionReceipts.empty() ) {
-        dev::RLP rlp( rawTransactionReceipts );
-        blockReceipts = dev::eth::BlockReceipts( rlp );
-    }  // if
-
-    blockReceipts.receipts.push_back( _receipt );
-
-    setPartialTransactionReceipts( blockReceipts.rlp() );
-}
-
-void OverlayDB::clearPartialTransactionReceipts() {
-    dev::eth::BlockReceipts blockReceipts;
-    setPartialTransactionReceipts( blockReceipts.rlp() );
+    m_db_face->insert( skale::slicing::toSlice( key ), skale::slicing::toSlice( _newReceipt ) );
 }
 
 
@@ -168,7 +195,7 @@ void OverlayDB::commitStorageValues() {
 }
 
 
-void OverlayDB::commit( const std::string& _debugCommitId ) {
+void OverlayDB::commit() {
     if ( m_db_face ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
@@ -202,13 +229,10 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
 
                 m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
                     skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
-
-                m_db_face->insert( skale::slicing::toSlice( "safeLastTransactionReceipts" ),
-                    skale::slicing::toSlice( getPartialTransactionReceipts() ) );
             }
 
             try {
-                m_db_face->commit( "OverlayDB_commit_" + _debugCommitId );
+                m_db_face->commit( "OverlayDB_commit" );
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {

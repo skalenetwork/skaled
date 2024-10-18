@@ -112,6 +112,8 @@ public:
     /// Copy state object.
     Block& operator=( Block const& _s );
 
+    Block getReadOnlyCopy() const;
+
     /// Get the author address for any transactions we do and rewards we get.
     Address author() const { return m_author; }
 
@@ -217,7 +219,8 @@ public:
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
-        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
+        skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
+        int64_t _transactionIndex = -1 );
 
 #ifdef HISTORIC_STATE
     ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
@@ -231,6 +234,7 @@ public:
     /// and bool, true iff there are more transactions to be processed.
     std::pair< TransactionReceipts, bool > sync( BlockChain const& _bc, TransactionQueue& _tq,
         GasPricer const& _gp, unsigned _msTimeout = 100 );
+    static void doPartialCatchupTestIfRequested( unsigned _i );
 
     /// Sync our state with the block chain.
     /// This basically involves wiping ourselves if we've been superceded and rebuilding from the
@@ -246,9 +250,7 @@ public:
 
     /// Sync all transactions unconditionally
     std::tuple< TransactionReceipts, unsigned > syncEveryone( BlockChain const& _bc,
-        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice,
-        Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
-    );
+        const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice );
 
     /// Execute all transactions within a given block.
     /// @returns the additional total difficulty.

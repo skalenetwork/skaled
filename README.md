@@ -16,7 +16,9 @@ The SKALE network supports an unlimited number of independent blockchains with z
 
 ## Forklessness
 
-Skaled is forkless, meaning that blockchain a linear chain (and not a tree of forks as with ETH 1.0). Every block is provably finalized within finite time.
+Skaled is forkless, meaning that blockchain a linear chain (and not a tree of forks as with ETH 1.0). Every block is provably finalized immediately after creation.
+Therefore,  finalization time for skaled is equal to block time, which is
+much faster than 13 minutes for Eth main net.
 
 
 ## Asynchronous block production

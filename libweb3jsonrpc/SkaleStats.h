@@ -44,6 +44,7 @@
 #include <atomic>
 #include <list>
 #include <set>
+#include <shared_mutex>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,6 +74,25 @@ class Interface;
 
 namespace rpc {
 
+constexpr uint64_t ANSWER_TIME_HISTORY_SIZE = 128;
+
+class StatsCounter {
+public:
+    StatsCounter() = default;
+
+    void reset() {
+        calls = 0;
+        answers = 0;
+        errors = 0;
+    }
+
+    std::atomic< uint64_t > calls;
+    std::atomic< uint64_t > answers;
+    std::atomic< uint64_t > errors;
+    std::array< std::atomic< uint64_t >, ANSWER_TIME_HISTORY_SIZE > answerTimeHistory;
+};
+
+
 /**
  * @brief JSON-RPC api implementation
  */
@@ -94,18 +114,62 @@ public:
         return RPCModules{ RPCModule{ "skaleStats", "1.0" } };
     }
 
-    bool isEnabledImaMessageSigning() const;
 
-    virtual Json::Value skale_stats() override;
-    virtual Json::Value skale_nodesRpcInfo() override;
-    virtual Json::Value skale_imaInfo() override;
+    Json::Value skale_stats() override;
+    Json::Value skale_nodesRpcInfo() override;
+    Json::Value skale_imaInfo() override;
+
+    static void countCall( const std::string& _origin, const std::string& _method ) {
+        auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
+
+        if ( iterator != statsCounters.end() ) {
+            ++iterator->second.calls;
+        }
+    }
+
+    static void countAnswer( const std::string& _origin, const std::string& _method,
+        std::chrono::microseconds _beginTime ) {
+        auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
+
+        if ( iterator != statsCounters.end() ) {
+            StatsCounter& statsCounter = iterator->second;
+            int64_t answerTime = ( std::chrono::duration_cast< std::chrono::microseconds >(
+                                       std::chrono::system_clock::now().time_since_epoch() ) -
+                                   _beginTime )
+                                     .count();
+            statsCounter.answerTimeHistory.at( statsCounter.answers % ANSWER_TIME_HISTORY_SIZE )
+                .store( answerTime );
+            ++statsCounter.answers;
+        }
+    }
+
+    static void countError( const std::string& _origin, const std::string& _method ) {
+        auto iterator = statsCounters.find( getProtocol( _origin ) + _method );
+
+        if ( iterator != statsCounters.end() ) {
+            ++iterator->second.errors;
+        }
+    }
+
+    // return http: https: ws: or wss:
+    static std::string getProtocol( const std::string& _origin ) {
+        auto pos = _origin.find( ':' );
+
+        if ( pos == std::string::npos ) {
+            return "";
+        }
+        return _origin.substr( 0, pos + 1 );
+    }
+
 
 protected:
     eth::Interface* client() const { return &m_eth; }
     eth::Interface& m_eth;
 
-    std::string pick_own_s_chain_url_s();
-    skutils::url pick_own_s_chain_url();
+
+public:
+    static std::unordered_map< std::string, StatsCounter > statsCounters;
+    static void initStatsCounters();
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -40,6 +40,7 @@ using namespace dev::eth;
 using skale::Permanence;
 using skale::State;
 
+
 static const int64_t c_maxGasEstimate = 50000000;
 
 ClientWatch::ClientWatch() : lastPoll( std::chrono::system_clock::now() ) {}
@@ -78,6 +79,7 @@ void ClientWatch::append_changes( const LocalisedLogEntry& entry ) {
     if ( !changes_.empty() )
         fnOnNewChanges_( iw_ );
 }
+
 
 std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Block& _latestBlock,
     Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
@@ -178,29 +180,6 @@ ImportResult ClientBase::injectBlock( bytes const& _block ) {
     return bc().attemptImport( _block, preSeal().mutableState() ).first;
 }
 
-u256 ClientBase::balanceAt( Address _a ) const {
-    return latestBlock().balance( _a );
-}
-
-u256 ClientBase::countAt( Address _a ) const {
-    return latestBlock().transactionsFrom( _a );
-}
-
-u256 ClientBase::stateAt( Address _a, u256 _l ) const {
-    return latestBlock().storage( _a, _l );
-}
-
-bytes ClientBase::codeAt( Address _a ) const {
-    return latestBlock().code( _a );
-}
-
-h256 ClientBase::codeHashAt( Address _a ) const {
-    return latestBlock().codeHash( _a );
-}
-
-map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
-    return latestBlock().storage( _a );
-}
 
 // TODO: remove try/catch, allow exceptions
 LocalisedLogEntries ClientBase::logs( unsigned _watchId ) const {
@@ -585,10 +564,34 @@ bool ClientBase::isKnownTransaction( h256 const& _blockHash, unsigned _i ) const
 
 Block ClientBase::latestBlock() const {
     Block res = postSeal();
-    res.startReadState();
     return res;
 }
 
 uint64_t ClientBase::chainId() const {
     return bc().chainParams().chainID;
+}
+
+
+u256 ClientBase::countAt( Address _a ) const {
+    return getReadOnlyLatestBlockCopy().state().getNonce( _a );
+}
+
+u256 ClientBase::balanceAt( Address _a ) const {
+    return getReadOnlyLatestBlockCopy().state().balance( _a );
+}
+
+u256 ClientBase::stateAt( Address _a, u256 _l ) const {
+    return getReadOnlyLatestBlockCopy().state().storage( _a, _l );
+}
+
+bytes ClientBase::codeAt( Address _a ) const {
+    return getReadOnlyLatestBlockCopy().state().code( _a );
+}
+
+h256 ClientBase::codeHashAt( Address _a ) const {
+    return getReadOnlyLatestBlockCopy().state().codeHash( _a );
+}
+
+map< h256, pair< u256, u256 > > ClientBase::storageAt( Address _a ) const {
+    return getReadOnlyLatestBlockCopy().state().storage( _a );
 }

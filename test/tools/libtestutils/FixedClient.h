@@ -69,7 +69,7 @@ public:
     h256 submitTransaction( eth::TransactionSkeleton const&, Secret const& ) override {
         return {};
     };
-    h256 importTransaction( eth::Transaction const& ) override { return {}; }
+    h256 importTransaction( eth::Transaction const&, dev::eth::TransactionBroadcast  ) override { return {}; }
     eth::ExecutionResult call(
         Address const&, u256, Address, bytes const&, u256, u256,
 #ifdef HISTORIC_STATE
@@ -101,6 +101,8 @@ private:
     eth::Block m_block;
     mutable SharedMutex x_stateDB;  ///< Lock on the state DB, effectively a lock on m_postSeal.
 };
+
+
 
 }  // namespace test
 }  // namespace dev

@@ -20,9 +20,6 @@
 #include <skutils/async_work.h>
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
-#include <skutils/network.h>
-#include <skutils/stats.h>
-#include <skutils/utils.h>
 
 #include <libwebsockets.h>
 #include <lws_config.h>
@@ -52,143 +49,6 @@ enum class e_ws_log_message_type_t {
     eWSLMT_warning,
     eWSLMT_error
 };  /// enum class e_ws_log_message_type_t
-
-class traffic_stats : public skutils::stats::named_event_stats {
-public:
-    typedef traffic_stats myt;
-    typedef myt& myrt;
-    typedef myt&& myrrt;
-    typedef const myt& myrct;
-    typedef std::lock_guard< myt > lock_type;
-    typedef skutils::stats::clock clock;
-    typedef skutils::stats::time_point time_point;
-    typedef skutils::stats::nanoseconds nanoseconds;
-    typedef skutils::stats::duration_base_t duration_base_t;
-    typedef skutils::stats::duration duration;
-    typedef skutils::stats::event_record_item_t event_record_item_t;
-    typedef skutils::stats::event_queue_t event_queue_t;
-    typedef skutils::stats::named_event_stats named_event_stats;
-    typedef skutils::stats::bytes_count_t bytes_count_t;
-    typedef skutils::stats::traffic_record_item_t traffic_record_item_t;
-    typedef skutils::stats::traffic_queue_t traffic_queue_t;
-    enum e_last_instance_state_changing_type_t {
-        elisctt_instantiated,
-        elisctt_opened,
-        elisctt_closed,
-    };  // enum e_last_instance_state_changing_type_t
-protected:
-    volatile bytes_count_t text_tx_, text_rx_, bin_tx_, bin_rx_;
-    e_last_instance_state_changing_type_t elisctt_;
-    time_point time_stamp_instantiated_, time_stamp_opened_, time_stamp_closed_;
-    traffic_queue_t traffic_queue_all_tx_, traffic_queue_all_rx_, traffic_queue_text_tx_,
-        traffic_queue_text_rx_, traffic_queue_bin_tx_, traffic_queue_bin_rx_;
-    void init();
-    myrt limit( size_t lim );
-
-public:
-    traffic_stats();
-    traffic_stats( myrct x );
-    traffic_stats( myrrt x );
-    virtual ~traffic_stats();
-    myrt operator=( myrct x ) { return assign( x ); }
-    myrt operator=( myrrt x ) { return move( x ); }
-    bool operator==( myrct x ) const { return ( compare( x ) == 0 ) ? true : false; }
-    bool operator!=( myrct x ) const { return ( compare( x ) != 0 ) ? true : false; }
-    bool operator<( myrct x ) const { return ( compare( x ) < 0 ) ? true : false; }
-    bool operator<=( myrct x ) const { return ( compare( x ) <= 0 ) ? true : false; }
-    bool operator>( myrct x ) const { return ( compare( x ) > 0 ) ? true : false; }
-    bool operator>=( myrct x ) const { return ( compare( x ) >= 0 ) ? true : false; }
-    operator bool() const { return ( !empty() ); }
-    bool operator!() const { return empty(); }
-    virtual bytes_count_t text_tx() const;
-    virtual bytes_count_t text_rx() const;
-    virtual bytes_count_t bin_tx() const;
-    virtual bytes_count_t bin_rx() const;
-    virtual bytes_count_t tx() const;
-    virtual bytes_count_t rx() const;
-    double bps_text_tx( time_point tpNow ) const;
-    double bps_text_tx_last_known() const;
-    double bps_text_tx() const;
-    double bps_text_rx( time_point tpNow ) const;
-    double bps_text_rx_last_known() const;
-    double bps_text_rx() const;
-    double bps_bin_tx( time_point tpNow ) const;
-    double bps_bin_tx_last_known() const;
-    double bps_bin_tx() const;
-    double bps_bin_rx( time_point tpNow ) const;
-    double bps_bin_rx_last_known() const;
-    double bps_bin_rx() const;
-    double bps_tx( time_point tpNow ) const;
-    double bps_tx_last_known() const;
-    double bps_tx() const;
-    double bps_rx( time_point tpNow ) const;
-    double bps_rx_last_known() const;
-    double bps_rx() const;
-    virtual myrt log_text_tx( bytes_count_t n );
-    virtual myrt log_text_rx( bytes_count_t n );
-    virtual myrt log_bin_tx( bytes_count_t n );
-    virtual myrt log_bin_rx( bytes_count_t n );
-    e_last_instance_state_changing_type_t last_instance_state_changing_type() const;
-    std::string last_instance_state_changing_type_as_str() const;
-    time_point instantiated() const;
-    nanoseconds instantiated_ago( time_point tpNow ) const;
-    nanoseconds instantiated_ago() const;
-    time_point changed() const;
-    nanoseconds changed_ago( time_point tpNow ) const;
-    nanoseconds changed_ago() const;
-    virtual void log_open();
-    virtual void log_close();
-    bool empty() const;
-    void clear();
-    int compare( myrct x ) const;
-    myrt assign( myrct x );
-    myrt move( myrt x );
-    virtual void lock();
-    virtual void unlock();
-    virtual std::string getLifeTimeDescription( time_point tpNow, bool isColored = false ) const;
-    std::string getLifeTimeDescription( bool isColored = false ) const;
-    virtual std::string getTrafficStatsDescription(
-        time_point tpNow, bool isColored = false ) const;
-    std::string getTrafficStatsDescription( bool isColored = false ) const;
-    nlohmann::json toJSON( time_point tpNow, bool bSkipEmptyStats = true ) const;
-    nlohmann::json toJSON( bool bSkipEmptyStats = true ) const;
-    static size_t g_nSizeDefaultOnQueueAdd;
-    static const char g_strEventNameWebSocketFail[];
-    static const char g_strEventNameWebSocketMessagesRecvText[];
-    static const char g_strEventNameWebSocketMessagesRecvBinary[];
-    static const char g_strEventNameWebSocketMessagesRecv[];
-    static const char g_strEventNameWebSocketMessagesSentText[];
-    static const char g_strEventNameWebSocketMessagesSentBinary[];
-    static const char g_strEventNameWebSocketMessagesSent[];
-    void register_default_event_queues_for_web_socket();
-    static const char g_strEventNameWebSocketPeerConnect[];
-    static const char g_strEventNameWebSocketPeerDisconnect[];
-    static const char g_strEventNameWebSocketPeerDisconnectFail[];
-    void register_default_event_queues_for_web_socket_peer();
-    static const char g_strEventNameWebSocketServerStart[];
-    static const char g_strEventNameWebSocketServerStartFail[];
-    static const char g_strEventNameWebSocketServerStop[];
-    void register_default_event_queues_for_web_socket_server();
-    static const char g_strEventNameWebSocketClientConnect[];
-    static const char g_strEventNameWebSocketClientConnectFail[];
-    static const char g_strEventNameWebSocketClientDisconnect[];
-    static const char g_strEventNameWebSocketClientReconnect[];
-    void register_default_event_queues_for_web_socket_client();
-};  /// class traffic_stats
-
-class guarded_traffic_stats : public traffic_stats {
-    typedef skutils::multithreading::recursive_mutex_type mutex_type;
-
-protected:
-    // mutex_type traffic_stats_mtx_;
-public:
-    guarded_traffic_stats();
-    guarded_traffic_stats( myrct x );
-    guarded_traffic_stats( myrrt x );
-    ~guarded_traffic_stats() override;
-    void lock() override;
-    void unlock() override;
-};  // class guarded_traffic_stats
 
 class security_args {
 public:
@@ -782,7 +642,7 @@ typedef std::function< void( peer& aPeer, const std::string& reason, int local_c
     onPeerClose_t;
 typedef std::function< void( peer& aPeer ) > onPeerFail_t;
 
-class peer : public basic_sender, public guarded_traffic_stats {
+class peer : public basic_sender {
 public:
     onPeerMessage_t onPeerMessage_;
     onPeerClose_t onPeerClose_;
@@ -849,7 +709,7 @@ public:
 typedef std::function< peer_ptr_t( server& srv, hdl_t hdl ) > onPeerInstantiate_t;
 typedef std::function< void( peer_ptr_t& pPeer ) > onPeerEvent_t;
 
-class server : public basic_socket, public security_args, public guarded_traffic_stats {
+class server : public basic_socket, public security_args {
     server_api api_;
     size_t server_serial_number_;
 
@@ -912,10 +772,7 @@ public:
     nlohmann::json toJSON( bool bSkipEmptyStats = true ) const override;
 };  /// class server
 
-class client : public basic_socket,
-               public basic_sender,
-               public security_args,
-               public guarded_traffic_stats {
+class client : public basic_socket, public basic_sender, public security_args {
     client_api api_;
     skutils::async::timer<> restart_timer_;
     bool isRestartTimerEnabled_ = true;

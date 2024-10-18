@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <filesystem>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -148,6 +149,9 @@ static void version() {
     std::cout << cc::info( "Build" ) << cc::debug( "............................." )
               << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
               << cc::attention( buildinfo->build_type ) << "\n";
+    std::cout << "Working dir"
+              << "......................" << std::filesystem::current_path().string() << endl;
+
     std::cout.flush();
 }
 
@@ -1051,8 +1055,9 @@ int main( int argc, char** argv ) try {
 
     setupLogging( loggingOptions );
 
-    const size_t nCpuCount = skutils::tools::cpu_count();
-    size_t nDispatchThreads = nCpuCount * 2;
+    // we do not really use these threads anymore
+    // so setting default value to 1
+    size_t nDispatchThreads = 1;
     if ( vm.count( "dispatch-threads" ) ) {
         size_t n = vm["dispatch-threads"].as< size_t >();
         const size_t nMin = 4;
@@ -1081,6 +1086,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
+            std::cout << "Using config file:" << configPath << endl;
             if ( !fs::is_regular_file( configPath.string() ) )
                 throw std::runtime_error( "Bad config file path" );
             configJSON = contentsString( configPath.string() );

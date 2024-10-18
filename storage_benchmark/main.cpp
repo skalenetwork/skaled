@@ -118,7 +118,7 @@ void testState() {
     cout << "Balances writes:" << endl;
     cout << measure_performance(
                 [&state, &address]() {
-                    State writeState = state.createStateModifyCopy();
+                    State writeState = state.createStateCopyAndClearCaches();
                     writeState.addBalance( address, 1 );
                     writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
@@ -128,7 +128,7 @@ void testState() {
 
     cout << "Balances reads:" << endl;
     cout << measure_performance(
-                [&state, &address]() { state.createStateModifyCopy().balance( address ); },
+                [&state, &address]() { state.createStateCopyAndClearCaches().balance(address ); },
                 100000 ) /
                 1e6
          << " Mreads per second" << endl;
@@ -138,7 +138,7 @@ void testState() {
     size_t memory_address = 0;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {
-                    State writeState = state.createStateModifyCopy();
+                    State writeState = state.createStateCopyAndClearCaches();
                     writeState.setStorage( address, memory_address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
                     writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
@@ -150,7 +150,7 @@ void testState() {
     cout << "EVM storate reads:" << endl;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {
-                    state.createStateReadOnlyCopy().storage( address, memory_address );
+                    state.createReadOnlySnapBasedCopy().storage(address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
                 },
                 1000 ) /
@@ -166,7 +166,7 @@ void testState() {
     }
     cout << measure_performance(
                 [&state, &address, &code]() {
-                    State writeState = state.createStateModifyCopy();
+                    State writeState = state.createStateCopyAndClearCaches();
                     writeState.setCode( address, code, 0 );
                     writeState.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
                 },
@@ -176,8 +176,8 @@ void testState() {
 
     cout << "EVM code reads:" << endl;
     cout << measure_performance(
-                [&state, &address]() { state.createStateReadOnlyCopy().code( address ); }, 1000 ) /
-                1e6
+            [&state, &address]() { state.createReadOnlySnapBasedCopy().code(address ); }, 1000 ) /
+            1e6
          << " Mreads per second" << endl;
 }
 

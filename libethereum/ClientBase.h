@@ -77,6 +77,7 @@ public:
     bool isWS() const { return isWS_; };
 };
 
+
 class ClientBase : public Interface {
 public:
     class CreationException : public std::exception {
@@ -86,20 +87,6 @@ public:
     ClientBase() {}
     virtual ~ClientBase() {}
 
-    /// Estimate gas usage for call/create.
-    /// @param _maxGas An upper bound value for estimation, if not provided default value of
-    /// c_maxGasEstimate will be used.
-    /// @param _callback Optional callback function for progress reporting
-    std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
-        Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
-        GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
-
-    u256 balanceAt( Address _a ) const override;
-    u256 countAt( Address _a ) const override;
-    u256 stateAt( Address _a, u256 _l ) const override;
-    bytes codeAt( Address _a ) const override;
-    h256 codeHashAt( Address _a ) const override;
-    std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
 
     LocalisedLogEntries logs( unsigned _watchId ) const override;
     LocalisedLogEntries logs( LogFilter const& _filter ) const override;
@@ -196,6 +183,20 @@ public:
 
     uint64_t chainId() const override;
 
+    u256 countAt( Address _a ) const override;
+    u256 balanceAt( Address _a ) const override;
+    u256 stateAt( Address _a, u256 _l ) const override;
+    bytes codeAt( Address _a ) const override;
+    h256 codeHashAt( Address _a ) const override;
+    std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
+    std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
+        Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
+        GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
+    std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
+        Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
+        u256 const& _gasPrice, bytes const& _data );
+
+
 protected:
     /// The interface that must be implemented in any class deriving this.
     /// {
@@ -219,11 +220,11 @@ protected:
 
     Logger m_loggerWatch{ createLogger( VerbosityDebug, "watch" ) };
 
-private:
-    std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
-        Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
-        u256 const& _gasPrice, bytes const& _data );
+
+    // get read only latest block copy
+    Block getReadOnlyLatestBlockCopy() const { return postSeal().getReadOnlyCopy(); }
 };
+
 
 }  // namespace eth
 }  // namespace dev
