@@ -371,10 +371,7 @@ async function callDebugTraceCall(_deployedContract: any, _tracer: string, _trac
         data: _deployedContract.interface.encodeFunctionData("getBalance", [])
     };
 
-    const returnData = await ethers.provider.call(transaction, currentBlock - 1);
-
-    const result = _deployedContract.interface.decodeFunctionResult("getBalance", returnData);
-
+    let returnData = await ethers.provider.call(transaction, currentBlock - 1);
 
     console.log("Calling debug_traceCall to generate  " + _traceFileName);
 
