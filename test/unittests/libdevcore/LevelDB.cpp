@@ -6,10 +6,12 @@
 #include <libdevcore/TransientDirectory.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
+#include <filesystem>
 
 #include <skutils/console_colors.h>
 
 using namespace std;
+using namespace std::filesystem;
 
 using namespace dev::test;
 using namespace dev;
@@ -379,5 +381,30 @@ BOOST_AUTO_TEST_CASE( range_test ){
     range = io.getRangeForBlockNumber(UINT64_MAX);
     std::equal( range.first, range.second, bn.rbegin() );
 }
+
+BOOST_AUTO_TEST_CASE( many_pieces ){
+    TransientDirectory td;
+    batched_io::BatchedRotatingHistoricDbIO io( td.path() );
+
+    // create 100 pieces
+    for(size_t i=0; i<100; ++i){
+        auto db = io.currentPiece();
+        db->insert( db::Slice( to_string(i) ), db::Slice( "val" ) );
+        io.rotate(i+1);
+    }
+
+    // check them on disk
+    auto di = directory_iterator(td.path());
+    size_t pieces = std::distance(begin(di), end(di));
+    BOOST_CHECK_EQUAL(pieces, 101);
+
+    // check they are accessible
+    for(size_t i=0; i<100; ++i){
+        auto db = io.getPieceByBlockNumber(i);
+        BOOST_CHECK( db->exists( db::Slice( to_string(i) )) );
+        BOOST_CHECK( !db->exists( db::Slice( to_string(i+1) )) );
+    }
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()

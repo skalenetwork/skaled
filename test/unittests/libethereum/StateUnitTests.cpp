@@ -245,6 +245,8 @@ BOOST_AUTO_TEST_CASE( twoChanges ) {
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1002 );
 
+    sw.mutableHistoricState().setRootByBlockNumber( 1001 );
+
     // check that in block 0 we have nonce 0/0, block 1 - 1/0, block 2 - 1/1
 
     sw.mutableHistoricState().setRootByBlockNumber( 0 );
