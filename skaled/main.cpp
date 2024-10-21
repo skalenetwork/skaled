@@ -251,8 +251,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     fs::path saveTo;
     try {
-        clog( VerbosityInfo, "downloadSnapshot" )
-            << cc::normal( "Will download snapshot from " ) << cc::u( strURLWeb3 ) << std::endl;
+        clog( VerbosityInfo, "downloadSnapshot" ) << "Will download snapshot from " << strURLWeb3;
 
         try {
             bool isBinaryDownload = true;
@@ -262,8 +261,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                 strURLWeb3, block_number, saveTo,
                 [&]( size_t idxChunck, size_t cntChunks ) -> bool {
                     clog( VerbosityInfo, "downloadSnapshot" )
-                        << cc::normal( "... download progress ... " ) << cc::size10( idxChunck )
-                        << cc::normal( " of " ) << cc::size10( cntChunks ) << "\r";
+                        << "... download progress ... " << idxChunck << " of " << cntChunks << "\r";
                     return true;  // continue download
                 },
                 isBinaryDownload, &strErrorDescription );
@@ -281,14 +279,12 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             std::throw_with_nested( std::runtime_error( "Exception while downloading snapshot" ) );
         }
         clog( VerbosityInfo, "downloadSnapshot" )
-            << cc::success( "Snapshot download success for block " )
-            << cc::u( to_string( block_number ) ) << std::endl;
+            << "Snapshot download success for block " << to_string( block_number );
         try {
             snapshotManager->importDiff( block_number );
         } catch ( ... ) {
-            std::throw_with_nested( std::runtime_error(
-                cc::fatal( "FATAL:" ) + " " +
-                cc::error( "Exception while importing downloaded snapshot: " ) ) );
+            std::throw_with_nested(
+                std::runtime_error( "FATAL: Exception while importing downloaded snapshot: " ) );
         }
 
         /// HACK refactor this piece of code! ///
@@ -304,7 +300,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             }
             if ( db_path.empty() ) {
                 clog( VerbosityError, "downloadSnapshot" )
-                    << cc::fatal( "Snapshot downloaded without " + prefix + " db" ) << std::endl;
+                    << "Snapshot downloaded without " + prefix + " db";
                 return;
             }
 
@@ -315,8 +311,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 
     } catch ( ... ) {
         std::throw_with_nested(
-            std::runtime_error( cc::fatal( "FATAL:" ) + " " +
-                                cc::error( "Exception while processing downloaded snapshot: " ) ) );
+            std::runtime_error( "FATAL: Exception while processing downloaded snapshot: " ) );
     }
     if ( !saveTo.empty() )
         fs::remove( saveTo );

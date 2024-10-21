@@ -184,6 +184,19 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
             batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
 
     }  // for
+
+    if ( _blockNumber > 0 ) {
+#ifdef HISTORIC_STATE
+        for ( const string& vol : allVolumes ) {
+            // continue if already present
+            if ( fs::exists( dataDir / vol ) && 0 == btrfs.present( ( dataDir / vol ).c_str() ) )
+                continue;
+
+            // create if not created yet ( only makes sense for historic nodes and 0 block number )
+            btrfs.subvolume.create( ( dataDir / vol ).c_str() );
+        }  // for
+#endif
+    }
 }
 
 // exceptions:
