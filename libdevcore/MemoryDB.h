@@ -51,7 +51,7 @@ public:
     std::string lookup( dev::h256 const& _h ) const;
     std::string lookup( dev::h256 const& _h, uint64_t _rootBlockNumber ) const {
         assert( _rootBlockNumber == UINT64_MAX );
-        (void) _rootBlockNumber;
+        ( void ) _rootBlockNumber;
         return lookup( _h );
     }
     bool exists( h256 const& _h ) const;

@@ -18,7 +18,7 @@ public:
     virtual std::string lookup( dev::db::Slice _key ) const { return lookup( _key, UINT64_MAX ); }
     virtual std::string lookup( dev::db::Slice _key, uint64_t _rootBlockNumber ) const {
         assert( _rootBlockNumber == UINT64_MAX );
-        (void) _rootBlockNumber;
+        ( void ) _rootBlockNumber;
         return lookup( _key );
     }
     virtual bool exists( dev::db::Slice _key ) const = 0;

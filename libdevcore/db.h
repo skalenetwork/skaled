@@ -57,7 +57,7 @@ public:
     virtual std::string lookup( Slice _key ) const { return lookup( _key, UINT64_MAX ); }
     virtual std::string lookup( Slice _key, uint64_t _rootBlockNumber ) const {
         assert( _rootBlockNumber == UINT64_MAX );
-        (void) _rootBlockNumber;
+        ( void ) _rootBlockNumber;
         return lookup( _key );
     }
     virtual bool exists( Slice _key ) const = 0;
