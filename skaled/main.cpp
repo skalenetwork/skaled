@@ -266,7 +266,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                         << cc::normal( " of " ) << cc::size10( cntChunks ) << "\r";
                     return true;  // continue download
                 },
-                isBinaryDownload, &strErrorDescription, chainParams.nodeInfo.archiveMode );
+                isBinaryDownload, &strErrorDescription );
             std::cout << "                                                  \r";  // clear
                                                                                   // progress
                                                                                   // line
