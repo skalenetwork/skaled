@@ -656,8 +656,9 @@ size_t Client::syncTransactions(
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
 
+#ifdef HISTORIC_STATE
         m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
-
+#endif
         // assert(m_state.m_db_write_lock.has_value());
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice, vecMissing );
