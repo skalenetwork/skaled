@@ -152,9 +152,8 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const dev::eth::ChainParams& _chain_params,
-        const boost::filesystem::path& _dataDir, const std::vector< std::string >& _volumes,
-        const std::string& diffs_dir = std::string() );
+    SnapshotManager( const dev::eth::ChainParams& _chainParams,
+        const boost::filesystem::path& _dataDir, const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
     boost::filesystem::path makeOrGetDiff( unsigned _toBlock );
@@ -178,15 +177,17 @@ public:
         const boost::filesystem::path& _dirPath );
 
 private:
-    boost::filesystem::path data_dir;
-    std::vector< std::string > volumes;
-    boost::filesystem::path snapshots_dir;
-    boost::filesystem::path diffs_dir;
+    boost::filesystem::path dataDir;
+    std::vector< std::string > coreVolumes;
+    std::vector< std::string > archiveVolumes;
+    std::vector< std::string > allVolumes;
+    boost::filesystem::path snapshotsDir;
+    boost::filesystem::path diffsDir;
 
-    static const std::string snapshot_hash_file_name;
-    mutable std::mutex hash_file_mutex;
+    static const std::string snapshotHashFileName;
+    mutable std::mutex hashFileMutex;
 
-    dev::eth::ChainParams chain_params;
+    dev::eth::ChainParams chainParams;
 
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );

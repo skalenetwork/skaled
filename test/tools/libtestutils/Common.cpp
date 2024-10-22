@@ -39,7 +39,7 @@ boost::filesystem::path dev::test::getTestPath() {
         return Options::get().testpath;
 
     string testPath;
-    const char* ptestPath = getenv( "ETHEREUM_TEST_PATH" );
+    static const char* ptestPath = getenv( "ETHEREUM_TEST_PATH" );
 
     if ( ptestPath == nullptr ) {
         clog( VerbosityDebug, "test" )

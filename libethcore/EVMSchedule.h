@@ -94,6 +94,8 @@ struct EVMSchedule {
 };
 
 static const EVMSchedule DefaultSchedule = EVMSchedule();
+// Used only in GeneralStateTests --all tests
+static const EVMSchedule FrontierSchedule = EVMSchedule( false, false, 21000 );
 static const EVMSchedule HomesteadSchedule = EVMSchedule( true, true, 53000 );
 
 static const EVMSchedule EIP150Schedule = [] {
