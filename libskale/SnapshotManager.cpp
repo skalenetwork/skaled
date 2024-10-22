@@ -185,7 +185,7 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 
     }  // for
 
-    if ( _blockNumber > 0 ) {
+    if ( _blockNumber == 0 ) {
 #ifdef HISTORIC_STATE
         for ( const string& vol : allVolumes ) {
             // continue if already present
