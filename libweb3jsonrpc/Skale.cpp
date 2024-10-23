@@ -66,6 +66,7 @@ std::string exceptionToErrorMessage();
 volatile bool Skale::g_bShutdownViaWeb3Enabled = false;
 volatile bool Skale::g_bNodeInstanceShouldShutdown = false;
 Skale::list_fn_on_shutdown_t Skale::g_list_fn_on_shutdown;
+const uint64_t Skale::SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS = 10;
 
 Skale::Skale( Client& _client, std::shared_ptr< SharedSpace > _sharedSpace )
     : m_client( _client ), m_shared_space( _sharedSpace ) {}
@@ -211,7 +212,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                         m_client.chainParams().nodeInfo.archiveMode ) ) {
                 if ( threadExitRequested )
                     break;
-                sleep( 10 );
+                sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
             }
 
             clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
