@@ -165,10 +165,6 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
     if ( _blockNumber > 0 )
         volumes = allVolumes;
 #endif
-    //    if ( chainParams.nodeInfo.archiveMode && _blockNumber == 0 )
-    //        volumes = coreVolumes;
-    //    else
-    //        volumes = allVolumes;
 
     int dummy_counter = 0;
     for ( const string& vol : volumes ) {
@@ -769,10 +765,6 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
     if ( _blockNumber > 0 )
         volumes = allVolumes;
 #endif
-    //    if ( chainParams.nodeInfo.archiveMode && _blockNumber == 0 )
-    //        volumes = coreVolumes;
-    //    else
-    //        volumes = allVolumes;
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(

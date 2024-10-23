@@ -1652,9 +1652,9 @@ int main( int argc, char** argv ) try {
                 // sleep before send skale_getSnapshot again - will receive error
                 clog( VerbosityInfo, "main" )
                     << std::string( "Will sleep for " )
-                    << chainParams.sChain.snapshotDownloadInactiveTimeout
+                    << chainParams.sChain.snapshotDownloadInactiveTimeout + 10
                     << std::string( " seconds before downloading 0 snapshot" );
-                sleep( chainParams.sChain.snapshotDownloadInactiveTimeout );
+                sleep( chainParams.sChain.snapshotDownloadInactiveTimeout + 10 );
 
                 downloadAndProccessSnapshot(
                     snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
