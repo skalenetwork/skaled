@@ -160,11 +160,11 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
 
     UnsafeRegion::lock ur_lock;
 
-    std::vector< std::string > volumes;
-    if ( chainParams.nodeInfo.archiveMode && _blockNumber == 0 )
-        volumes = coreVolumes;
-    else
+    std::vector< std::string > volumes = coreVolumes;
+#ifdef HISTORIC_STATE
+    if ( _blockNumber > 0 )
         volumes = allVolumes;
+#endif
 
     int dummy_counter = 0;
     for ( const string& vol : volumes ) {
@@ -180,6 +180,19 @@ void SnapshotManager::restoreSnapshot( unsigned _blockNumber ) {
             batched_io::test_crash_before_commit( "SnapshotManager::doSnapshot" );
 
     }  // for
+
+    if ( _blockNumber == 0 ) {
+#ifdef HISTORIC_STATE
+        for ( const string& vol : allVolumes ) {
+            // continue if already present
+            if ( fs::exists( dataDir / vol ) && 0 == btrfs.present( ( dataDir / vol ).c_str() ) )
+                continue;
+
+            // create if not created yet ( only makes sense for historic nodes and 0 block number )
+            btrfs.subvolume.create( ( dataDir / vol ).c_str() );
+        }  // for
+#endif
+    }
 }
 
 // exceptions:
@@ -747,11 +760,11 @@ void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checki
 
     int dummy_counter = 0;
 
-    std::vector< std::string > volumes;
-    if ( chainParams.nodeInfo.archiveMode && _blockNumber == 0 )
-        volumes = coreVolumes;
-    else
+    std::vector< std::string > volumes = coreVolumes;
+#ifdef HISTORIC_STATE
+    if ( _blockNumber > 0 )
         volumes = allVolumes;
+#endif
 
     for ( const auto& volume : volumes ) {
         int res = btrfs.subvolume.property_set(
