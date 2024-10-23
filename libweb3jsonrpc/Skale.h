@@ -84,6 +84,10 @@ public:
     typedef std::function< void() > fn_on_shutdown_t;
     static void onShutdownInvoke( fn_on_shutdown_t fn );
 
+    static uint64_t snapshotDownloadFragmentMonitorThreadTimeout() {
+        return SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS;
+    }
+
 public:
     nlohmann::json impl_skale_getSnapshot(
         const nlohmann::json& joRequest, dev::eth::Client& client );
@@ -98,6 +102,8 @@ private:
     static volatile bool g_bNodeInstanceShouldShutdown;
     typedef std::list< fn_on_shutdown_t > list_fn_on_shutdown_t;
     static list_fn_on_shutdown_t g_list_fn_on_shutdown;
+
+    static const uint64_t SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS;
 
     dev::eth::Client& m_client;
     std::shared_ptr< SharedSpace > m_shared_space;
@@ -118,7 +124,7 @@ typedef std::function< bool( size_t idxChunck, size_t cntChunks ) > fn_progress_
 
 extern bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::path& saveTo,
     fn_progress_t onProgress, bool isBinaryDownload = true,
-    std::string* pStrErrorDescription = nullptr, bool forArchiveNode = false );
+    std::string* pStrErrorDescription = nullptr );
 
 };  // namespace snapshot
 
