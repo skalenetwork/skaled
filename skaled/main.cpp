@@ -1592,6 +1592,7 @@ int main( int argc, char** argv ) try {
 
     std::string urlToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
+        downloadSnapshotFlag = true;
         urlToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
         clog( VerbosityInfo, "main" )
             << "Manually set url to download snapshot from: " << urlToDownloadSnapshotFrom;
