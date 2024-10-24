@@ -1592,6 +1592,7 @@ int main( int argc, char** argv ) try {
 
     std::string urlToDownloadSnapshotFrom = "";
     if ( vm.count( "no-snapshot-majority" ) ) {
+        downloadSnapshotFlag = true;
         urlToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
         clog( VerbosityInfo, "main" )
             << "Manually set url to download snapshot from: " << urlToDownloadSnapshotFrom;
@@ -1601,25 +1602,8 @@ int main( int argc, char** argv ) try {
         std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( chainParams ),
             "filestorage", "prices_" + chainParams.nodeInfo.id.str() + ".db",
             "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
-        std::vector< std::string > archiveVolumes = {};
-        if ( chainParams.nodeInfo.archiveMode ) {
-#ifdef HISTORIC_STATE
-            archiveVolumes.insert( archiveVolumes.end(), { "historic_roots", "historic_state" } );
-#endif
-        }
         snapshotManager.reset( new SnapshotManager(
             chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );
-    }
-
-    bool downloadGenesisForSyncNode = false;
-    if ( chainParams.nodeInfo.syncNode ) {
-        auto bc = BlockChain( chainParams, getDataDir() );
-        if ( bc.number() == 0 ) {
-            downloadSnapshotFlag = true;
-            if ( chainParams.nodeInfo.syncFromCatchup ) {
-                downloadGenesisForSyncNode = true;
-            }
-        }
     }
 
     if ( downloadSnapshotFlag ) {
@@ -1632,18 +1616,8 @@ int main( int argc, char** argv ) try {
             sharedSpace_lock.reset( new std::lock_guard< SharedSpace >( *sharedSpace ) );
 
         try {
-            if ( !downloadGenesisForSyncNode )
-                downloadAndProccessSnapshot(
-                    snapshotManager, chainParams, urlToDownloadSnapshotFrom, true );
-            else {
-                try {
-                    downloadAndProccessSnapshot(
-                        snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
-                    snapshotManager->restoreSnapshot( 0 );
-                } catch ( SnapshotManager::SnapshotAbsent& ) {
-                    clog( VerbosityWarning, "main" ) << "Snapshot for 0 block is not found";
-                }
-            }
+            downloadAndProccessSnapshot(
+                snapshotManager, chainParams, urlToDownloadSnapshotFrom, true );
 
             // if we dont have 0 snapshot yet
             try {
@@ -1668,6 +1642,26 @@ int main( int argc, char** argv ) try {
         }
 
     }  // if --download-snapshot
+
+    // download 0 snapshot if needed
+    if ( chainParams.nodeInfo.syncNode ) {
+        auto bc = BlockChain( chainParams, getDataDir() );
+        if ( bc.number() == 0 ) {
+            if ( chainParams.nodeInfo.syncFromCatchup && !downloadSnapshotFlag ) {
+                statusAndControl->setExitState( StatusAndControl::StartAgain, true );
+                statusAndControl->setExitState( StatusAndControl::StartFromSnapshot, true );
+                statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, true );
+
+                try {
+                    downloadAndProccessSnapshot(
+                        snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
+                    snapshotManager->restoreSnapshot( 0 );
+                } catch ( SnapshotManager::SnapshotAbsent& ) {
+                    clog( VerbosityWarning, "main" ) << "Snapshot for 0 block is not found";
+                }
+            }
+        }
+    }
 
     statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
 
