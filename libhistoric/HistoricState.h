@@ -355,13 +355,6 @@ private:
     AddressHash commitExternalChangesIntoTrieDB(
         AccountMap const& _cache, SecureTrieDB< Address, skale::OverlayDB >& _state );
 
-    uint64_t calculateNewDataSize( AccountMap const& _cache ) const;
-
-    void updateStorageUsage( uint64_t bytes ) {
-        m_storageUsage += bytes;
-        m_db.updateStorageUsage( m_storageUsage );
-    }
-
     dev::s256 storageUsedTotal() const { return m_db.storageUsed(); }
 
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;

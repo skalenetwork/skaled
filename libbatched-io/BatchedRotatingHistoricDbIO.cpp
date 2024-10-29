@@ -33,7 +33,6 @@ void BatchedRotatingHistoricDbIO::rotate( uint64_t blockNumber ) {
     std::lock_guard< std::mutex > lock( mutex );
     assert( blockNumber > blockNumbers.back() );
 
-    auto storageUsed = currentPiece()->lookup( dev::db::Slice( "storageUsed" ) );
     currentPiece()->kill( dev::db::Slice( "storageUsed" ) );
 
     // move current to used
