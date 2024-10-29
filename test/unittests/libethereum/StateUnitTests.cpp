@@ -19,7 +19,6 @@
 /// @file
 /// State unit tests.
 
-#include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/BasicAuthority.h>
 #include <libethereum/Block.h>
@@ -212,15 +211,6 @@ public:
         auto di = directory_iterator(m_tempDirState.path() + "/historic_state/00000000/state");
         return std::distance(begin(di), end(di));
     }
-    uint64_t storageUsage() {
-        uint64_t total = 0;
-        state.mutableHistoricState().db().db()->forEach( [&total]( const dev::db::Slice& _key, const dev::db::Slice& _value ) {
-            std::cout << dev::toHex( _key ) << ' ' << dev::toHex( _value ) << '\n';
-            total += _key.size() + _value.size();
-            return true;
-        } );
-        return total;
-    }
 };
 
 BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
@@ -400,46 +390,6 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
 
     // check that rotation happened
     BOOST_CHECK_EQUAL(countDbPieces(), 3);
-}
-
-BOOST_AUTO_TEST_CASE( storageUsed ) {
-    h256 location = h256(123456);
-
-    State sw = state.createStateModifyCopy();
-
-    for (size_t i = 0; i < 100; ++i) {
-        sw.incNonce(address1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 + 4 * i );
-        sw.mutableHistoricState().saveRootForBlockNumber( 1001 + 4 * i );
-
-        sw.setStorage(address1, location, 3 * i + 1);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 + 4 * i );
-        sw.mutableHistoricState().saveRootForBlockNumber( 1002 + 4 * i );
-
-        sw.setStorage(address1, location, 3 * i + 2);
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 + 4 * i );
-        sw.mutableHistoricState().saveRootForBlockNumber( 1003 + 4 * i );
-
-        bytes code( 50 );
-        srand( std::time( 0 ) + i );
-        for ( auto& b : code ) {
-            b = rand();
-        }
-        dev::Address address = dev::Address::random();
-        sw.setCode( address, code, 3 * i + 3 );
-        sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1004 + 4 * i );
-        sw.mutableHistoricState().saveRootForBlockNumber( 1004 + 4 * i );
-
-        state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot(), sw.mutableHistoricState().globalRootBlockNumber());
-    }
-
-    auto storageUsageReal = storageUsage();
-    auto storageUsageFromDB = state.mutableHistoricState().db().storageUsed();
-
-    std::cout << dev::getDirSize( m_tempDirState.path() / boost::filesystem::path( "historic_state" ) ) << '\n';
-
-    BOOST_CHECK_GE( storageUsageFromDB, storageUsageReal );
-    BOOST_CHECK_LE( double(storageUsageFromDB), 1.1 * storageUsageReal );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

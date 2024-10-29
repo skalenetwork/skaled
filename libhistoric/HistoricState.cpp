@@ -222,9 +222,27 @@ void HistoricState::clearCacheIfTooLarge() const {
     }
 }
 
+uint64_t HistoricState::calculateNewDataSize( const AccountMap& _cache ) const {
+    uint64_t res = 0;
+    for ( const auto& item : _cache ) {
+        if ( item.second.isDirty() )
+            if ( item.second.isAlive() ) {
+                res += 32 * 2 * item.second.storageOverlay().size();  // for storage
+                if ( item.second.hasNewCode() )
+                    res += 32 + item.second.code().size();           // for new code
+                res += 32 * ( item.second.version() != 0 ? 5 : 4 );  // for account details
+                res += 20;                                           // for address
+            }
+    }
+
+    return res;
+}
+
 void HistoricState::commitExternalChanges( AccountMap const& _accountMap, uint64_t _blockNumber ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
+    auto newDataSize = calculateNewDataSize( _accountMap );
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
+    updateStorageUsage( newDataSize );
     m_state.db()->commit( std::to_string( _blockNumber ), true );
     m_changeLog.clear();
     m_cache.clear();
@@ -839,7 +857,6 @@ void HistoricState::rotateDbsIfNeeded( uint64_t _blockNumber ) {
         return;
     if ( m_db.storageUsed() > m_maxHistoricStateDbSize ) {
         m_rotatingTreeDb->rotate( _blockNumber );
-        m_db.updateStorageUsage( 0 );
         m_storageUsage = 0;
     }
 }

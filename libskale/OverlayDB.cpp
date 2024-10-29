@@ -261,8 +261,6 @@ void OverlayDB::commit( const std::string& _debugCommitId, bool _isHistoricState
             m_cache.clear();
             m_auxiliaryCache.clear();
             m_storageCache.clear();
-            m_historicMain.clear();
-            m_historicAux.clear();
             m_db_face->revert();
         }
     } else {
