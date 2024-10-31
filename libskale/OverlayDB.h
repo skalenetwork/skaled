@@ -72,9 +72,7 @@ public:
     void addReceiptToPartials( const dev::eth::TransactionReceipt& );
     void clearPartialTransactionReceipts();
 
-    // commit key-value pairs in storage
-    void commitStorageValues();
-    void commit( const std::string& _debugCommitId, bool _isHistoricState = false );
+    void commit( const std::string& _debugCommitId );
     void rollback();
     void clearDB();
     bool connected() const;
@@ -107,6 +105,59 @@ public:
 
     std::unordered_map< dev::u256, dev::u256 > storage( dev::h160 const& address ) const;
 
+    void setCommitOnEveryInsert( bool _value, uint64_t _blockNumber ) {
+        commit( std::to_string( _blockNumber ) );
+        m_commitOnEveryInsert = _value;
+    }
+
+private:
+    std::unordered_map< dev::h160, dev::bytes > m_cache;
+    std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
+    std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
+    dev::s256 storageUsed_ = 0;
+
+    std::shared_ptr< batched_io::db_face > m_db_face;
+
+    // commit key-value pairs in storage
+    void commitStorageValues();
+    dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
+    dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
+
+    // a flag to commit to disk on every insert to save memory
+    // this is currently only used for historic state conversion
+    bool m_commitOnEveryInsert = false;
+
+    mutable std::optional< dev::h256 > lastExecutedTransactionHash;
+    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
+
+public:
+    std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
+    void copyStorageIntoAccountMap(
+        std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
+};
+
+// This is (mostly) plain old Aleth's OverlayDB.
+// It doesn't know anything about accounts and storage, it just operates with key-value pairs.
+// Used in HistoricState
+class ClassicOverlayDB {
+public:
+    explicit ClassicOverlayDB( std::unique_ptr< batched_io::db_face > _db_face = nullptr );
+
+    virtual ~ClassicOverlayDB() = default;
+
+    // Copyable
+    ClassicOverlayDB( ClassicOverlayDB const& ) = default;
+    ClassicOverlayDB& operator=( ClassicOverlayDB const& ) = default;
+    // Movable
+    ClassicOverlayDB( ClassicOverlayDB&& ) = default;
+    ClassicOverlayDB& operator=( ClassicOverlayDB&& ) = default;
+
+    void commit( const std::string& _debugCommitId );
+    void rollback();
+    void clearDB();
+    bool connected() const;
+    bool empty() const;
+
     // block for HistoricState
     void insert( dev::h256 const& _h, dev::bytesConstRef _v );
 
@@ -121,32 +172,24 @@ public:
     void removeAux( dev::h256 const& _h );
     void insertAux( dev::h256 const& _h, dev::bytesConstRef _v );
 
+    dev::s256 storageUsed() const;
+    void updateStorageUsage( dev::s256 const& _storageUsed );
+
     void setCommitOnEveryInsert( bool _value, uint64_t _blockNumber ) {
-        commit( std::to_string( _blockNumber ), true );
+        commit( std::to_string( _blockNumber ) );
         m_commitOnEveryInsert = _value;
     }
 
 private:
-    std::unordered_map< dev::h160, dev::bytes > m_cache;
-    std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
-    std::unordered_map< dev::h160, std::unordered_map< dev::h256, dev::h256 > > m_storageCache;
+    std::unordered_map< dev::h256, std::pair< std::string, unsigned > > m_cacheMain;
+    std::unordered_map< dev::h256, std::pair< dev::bytes, bool > > m_cacheAux;
     dev::s256 storageUsed_ = 0;
 
-    // for HistoricState
-    std::unordered_map< dev::h256, std::pair< std::string, unsigned > > m_historicMain;
-    std::unordered_map< dev::h256, std::pair< dev::bytes, bool > > m_historicAux;
-
     std::shared_ptr< batched_io::db_face > m_db_face;
-
-    dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
-    dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
     // a flag to commit to disk on every insert to save memory
     // this is currently only used for historic state conversion
     bool m_commitOnEveryInsert = false;
-
-    mutable std::optional< dev::h256 > lastExecutedTransactionHash;
-    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }

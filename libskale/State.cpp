@@ -111,9 +111,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-    std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+    std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicDb,
-    std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+    std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
     skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit,

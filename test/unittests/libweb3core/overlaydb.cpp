@@ -31,45 +31,40 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( OverlayDBTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( basicUsage ) {
     TransientDirectory td;
 
     auto db = make_unique< batched_io::batched_db >();
     db->open( make_shared<db::DBImpl>( td.path() ) );
-
-    OverlayDB odb( std::move( db ) );
-    // BOOST_CHECK( !odb.get().size() );
+    
+    ClassicOverlayDB odb( std::move( db ) );
 
     // commit nothing
     odb.commit("dummy");
 
     string const value = "\x43";
-    // BOOST_CHECK( !odb.get().size() );
 
     odb.insert( h256( 42 ), &value );
-    // BOOST_CHECK( odb.get().size() );
     BOOST_CHECK( odb.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 42 ) ), value );
 
     odb.commit("dummy");
-    // BOOST_CHECK( !odb.get().size() );
     BOOST_CHECK( odb.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 42 ) ), value );
 
     odb.insert( h256( 41 ), &value );
     odb.commit("dummy");
-    // BOOST_CHECK( !odb.get().size() );
     BOOST_CHECK( odb.exists( h256( 41 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 41 ) ), value );
 }
 
-BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( auxMem ) {
     TransientDirectory td;
 
     auto db = make_unique< batched_io::batched_db >();
     db->open( make_shared<db::DBImpl>( td.path() ) );
-
-    OverlayDB odb( std::move( db ) );
+    
+    ClassicOverlayDB odb( std::move( db ) );
 
     string const value = "\x43";
     bytes valueAux = fromHex( "44" );
@@ -83,8 +78,6 @@ BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_no
     odb.insertAux( h256( numeric_limits< u256 >::max() ), &valueAux );
 
     odb.commit("dummy");
-
-    // BOOST_CHECK( !odb.get().size() );
 
     BOOST_CHECK( odb.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 42 ) ), value );
@@ -105,14 +98,12 @@ BOOST_AUTO_TEST_CASE( rollback ) {
 
     auto db = make_unique< batched_io::batched_db >();
     db->open( make_shared<db::DBImpl>( td.path() ) );
-
-    OverlayDB odb( std::move( db ) );
+    
+    ClassicOverlayDB odb( std::move( db ) );
     bytes value = fromHex( "42" );
 
     odb.insert( h256( 43 ), &value );
-    // BOOST_CHECK( odb.get().size() );
     odb.rollback();
-    // BOOST_CHECK( !odb.get().size() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -166,10 +166,12 @@ public:
     explicit State( dev::u256 const& _accountStartNonce )
         : State( _accountStartNonce, OverlayDB(),
 #ifdef HISTORIC_STATE
-              std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
-              std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< skale::ClassicOverlayDB,
+                  std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< skale::ClassicOverlayDB,
+                  std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
 #endif
               BaseState::Empty ) {
     }
@@ -188,10 +190,12 @@ public:
     State()
         : State( dev::Invalid256, skale::OverlayDB(),
 #ifdef HISTORIC_STATE
-              std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
-              std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< skale::ClassicOverlayDB,
+                  std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< skale::ClassicOverlayDB,
+                  std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
 #endif
               BaseState::Empty ) {
     }
@@ -413,10 +417,10 @@ private:
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-        std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
-            _historicDb,
-        std::pair< skale::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
-            _historicBlockToStateRootDb,
+        std::pair< skale::ClassicOverlayDB,
+            std::shared_ptr< dev::db::RotatingHistoricState > > const& _historicDb,
+        std::pair< skale::ClassicOverlayDB,
+            std::shared_ptr< dev::db::RotatingHistoricState > > const& _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
         dev::s256 _contractStorageLimit = 32, dev::s256 _maxHistoricStateDbSize = -1 );

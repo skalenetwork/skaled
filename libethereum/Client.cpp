@@ -225,7 +225,7 @@ void Client::populateNewChainStateFromGenesis() {
     m_state.populateFrom( bc().chainParams().genesisState );
     m_state.mutableHistoricState().saveRootForBlockNumber( 0 );  // TODO is it safe to assume
                                                                  // it's 0?
-    m_state.mutableHistoricState().db().commit( "0", true );
+    m_state.mutableHistoricState().db().commit( "0" );
     m_state.releaseWriteLock();
 #else
     m_state.createStateModifyCopy().populateFrom( bc().chainParams().genesisState );
