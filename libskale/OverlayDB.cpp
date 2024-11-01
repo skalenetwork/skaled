@@ -556,6 +556,8 @@ void ClassicOverlayDB::commit( const std::string& _debugCommitId ) {
                     m_db_face->insert( skale::slicing::toSlice( i.first ),
                         skale::slicing::toSlice( i.second.first ) );
                     //              cnote << i.first << "#" << m_main[i.first].second;
+                    storageUsed_ += skale::slicing::toSlice( i.first ).size() +
+                                    skale::slicing::toSlice( i.second.first ).size();
                 }
             }
             for ( auto const& i : m_cacheAux )
@@ -564,6 +566,8 @@ void ClassicOverlayDB::commit( const std::string& _debugCommitId ) {
                     b.push_back( 255 );  // for aux
                     m_db_face->insert(
                         skale::slicing::toSlice( b ), skale::slicing::toSlice( i.second.first ) );
+                    storageUsed_ += skale::slicing::toSlice( b ).size() +
+                                    skale::slicing::toSlice( i.second.first ).size();
                 }
 
             m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
