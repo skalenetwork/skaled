@@ -65,7 +65,12 @@ using dev::eth::TransactionReceipt;
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
-    dev::s256 _contractStorageLimit, dev::s256 _maxHistoricStateDbSize )
+    dev::s256 _contractStorageLimit
+#ifdef HISTORIC_STATE
+    ,
+    dev::s256 _maxHistoricStateDbSize
+#endif
+    )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
       m_currentVersion( *m_storedVersion ),
@@ -116,8 +121,12 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
-    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit,
-    s256 _maxHistoricStateDbSize )
+    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit
+#ifdef HISTORIC_STATE
+    ,
+    s256 _maxHistoricStateDbSize
+#endif
+    )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_storedVersion( make_shared< size_t >( 0 ) ),
@@ -490,7 +499,12 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( dev::eth::CommitBehaviour _commitBehaviour, uint64_t _blockNumber ) {
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour
+#ifdef HISTORIC_STATE
+    ,
+    uint64_t _blockNumber
+#endif
+) {
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -1068,8 +1082,12 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                      dev::eth::CommitBehaviour::KeepEmptyAccounts,
-            _envInfo.number() );
+                                      dev::eth::CommitBehaviour::KeepEmptyAccounts
+#ifdef HISTORIC_STATE
+            ,
+            _envInfo.number()
+#endif
+        );
 
         break;
     }

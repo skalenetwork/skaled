@@ -183,8 +183,12 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32,
-        dev::s256 _maxHistoricStateDbSize = -1 );
+        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32
+#ifdef HISTORIC_STATE
+        ,
+        dev::s256 _maxHistoricStateDbSize = -1
+#endif
+    );
     /// which uses it. If you have no preexisting database then set BaseState to something other
 
     State()
@@ -344,8 +348,12 @@ public:
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
 
     void commit(
-        dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts,
-        uint64_t blockNumber = -1 );
+        dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts
+#ifdef HISTORIC_STATE
+        ,
+        uint64_t blockNumber = -1
+#endif
+    );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
@@ -423,7 +431,12 @@ private:
             std::shared_ptr< dev::db::RotatingHistoricState > > const& _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
-        dev::s256 _contractStorageLimit = 32, dev::s256 _maxHistoricStateDbSize = -1 );
+        dev::s256 _contractStorageLimit = 32
+#ifdef HISTORIC_STATE
+        ,
+        dev::s256 _maxHistoricStateDbSize = -1
+#endif
+    );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.

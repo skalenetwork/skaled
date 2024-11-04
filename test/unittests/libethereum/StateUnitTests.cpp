@@ -59,7 +59,9 @@ public:
             writer.addBalance( hashAndAddr.second, 100 );
         writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
+#ifdef HISTORIC_STATE
         writer.mutableHistoricState().saveRootForBlockNumber(1001);
+#endif
     }
 
     TransientDirectory m_tempDirState;
@@ -79,23 +81,29 @@ BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
     s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
     s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
+#ifdef HISTORIC_STATE
     s.mutableHistoricState().saveRootForBlockNumber(1002);
     s.mutableHistoricState().setRootByBlockNumber(1002);
+#endif
 
     auto& loadedCode = s.code( addr );
     BOOST_CHECK(
         std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedCode ) ) );
 
+#ifdef HISTORIC_STATE
     auto& loadedHistoricCode = s.mutableHistoricState().code( addr );
     BOOST_CHECK(
         std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedHistoricCode ) ) );
+#endif
 }
 
 
 BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
 
     State sr = state.createStateReadOnlyCopy();
+#ifdef HISTORIC_STATE
     sr.mutableHistoricState().setRootFromDB();
+#endif
 
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
         sr.addresses( h256{}, addressCount * 2 );
@@ -105,6 +113,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
     BOOST_CHECK( addresses == hashToAddress );
     BOOST_CHECK_EQUAL( addressesAndNextKey.second, h256{} );
 
+#ifdef HISTORIC_STATE
     std::pair< State::AddressMap, h256 > historicAddressesAndNextKey =
         sr.mutableHistoricState().addresses( h256{}, addressCount * 2 );
     State::AddressMap historicAddresses = historicAddressesAndNextKey.first;
@@ -112,12 +121,15 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
     BOOST_CHECK_EQUAL( historicAddresses.size(), addressCount );
     BOOST_CHECK( historicAddresses == hashToAddress );
     BOOST_CHECK_EQUAL( historicAddressesAndNextKey.second, h256{} );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     uint maxResults = 3;
     State sr = state.createStateReadOnlyCopy();
+#ifdef HISTORIC_STATE
     sr.mutableHistoricState().setRootFromDB();
+#endif
 
     // 1 check State
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
@@ -138,6 +150,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
     BOOST_CHECK( addresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
 
+#ifdef HISTORIC_STATE
     // 2 check historic state
     addressesAndNextKey =
         sr.mutableHistoricState().addresses( h256{}, maxResults );
@@ -156,6 +169,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     BOOST_CHECK_EQUAL( historicAddresses2.size(), maxResults );
     itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
     BOOST_CHECK( historicAddresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
@@ -199,6 +213,8 @@ BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#ifdef HISTORIC_STATE
 
 class DbRotationFixture : public TestOutputHelperFixture {
 public:
@@ -411,6 +427,7 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 
