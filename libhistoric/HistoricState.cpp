@@ -119,7 +119,6 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
     }
 }
 
-
 u256 const& HistoricState::requireAccountStartNonce() const {
     if ( m_accountStartNonce == Invalid256 )
         BOOST_THROW_EXCEPTION( InvalidAccountStartNonceInState() );
@@ -234,7 +233,6 @@ uint64_t HistoricState::getAndResetBlockCommitTime() {
     m_totalTimeSpentInStateCommitsPerBlock = 0;
     return retVal;
 }
-
 
 unordered_map< Address, u256 > HistoricState::addresses() const {
 #if ETH_FATDB
@@ -658,7 +656,6 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
     return make_pair( res, receipt );
 }
 
-
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
 bool HistoricState::executeTransaction(
@@ -762,7 +759,6 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
     return _out;
 }
 
-
 /*HistoricState &dev::eth::createIntermediateState(HistoricState &o_s, Block const &_block, unsigned
 _txIndex, BlockChain const &_bc) {
     // o_s = _block.state().historicState();
@@ -837,5 +833,9 @@ void HistoricState::rotateDbsIfNeeded( uint64_t _blockNumber ) {
     if ( m_db.storageUsed() > m_maxHistoricStateDbSize ) {
         m_rotatingTreeDb->rotate( _blockNumber );
         m_db.updateStorageUsage( 0 );
+    }
+    if ( m_blockToStateRootDB.storageUsed() > m_maxHistoricStateDbSize ) {
+        m_rotatingRootsDb->rotate( _blockNumber );
+        m_blockToStateRootDB.updateStorageUsage( 0 );
     }
 }

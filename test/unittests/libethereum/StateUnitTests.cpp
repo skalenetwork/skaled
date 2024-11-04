@@ -224,15 +224,20 @@ public:
     TransientDirectory m_tempDirState;
     State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
     Address address1{1}, address2{2};
-    size_t countDbPieces(){
+
+    size_t countStateDbPieces(){
         auto di = directory_iterator(m_tempDirState.path() + "/historic_state/00000000/state");
+        return std::distance(begin(di), end(di));
+    }
+
+    size_t countRootsDbPieces(){
+        auto di = directory_iterator(m_tempDirState.path() + "/historic_roots/00000000/state");
         return std::distance(begin(di), end(di));
     }
 
     uint64_t storageUsage() {
         uint64_t total = 0;
         state.mutableHistoricState().db().db()->forEach( [&total]( const dev::db::Slice& _key, const dev::db::Slice& _value ) {
-            std::cout << dev::toHex( _key ) << ' ' << dev::toHex( _value ) << '\n';
             total += _key.size() + _value.size();
             return true;
         } );
@@ -292,7 +297,8 @@ BOOST_AUTO_TEST_CASE( twoChanges ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 3);
+    BOOST_CHECK_EQUAL(countStateDbPieces(), 3);
+    BOOST_CHECK_EQUAL(countRootsDbPieces(), 3);
 }
 
 // same, but add empty block between
@@ -350,7 +356,8 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 4);
+    BOOST_CHECK_EQUAL(countStateDbPieces(), 4);
+    BOOST_CHECK_EQUAL(countRootsDbPieces(), 6);
 }
 
 // change 1 address 2 times in 2 blocks, check it on all blocks
@@ -381,7 +388,7 @@ BOOST_AUTO_TEST_CASE( update ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 2 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 3);
+    BOOST_CHECK_EQUAL(countStateDbPieces(), 3);
 }
 
 // change storage of 1 address 2 times in 2 blocks, check it on all blocks
@@ -423,7 +430,8 @@ BOOST_AUTO_TEST_CASE( updateStorage ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(2) );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 3);
+    BOOST_CHECK_EQUAL(countStateDbPieces(), 3);
+    BOOST_CHECK_EQUAL(countRootsDbPieces(), 4);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
