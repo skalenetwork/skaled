@@ -629,19 +629,12 @@ std::string ClassicOverlayDB::lookup( h256 const& _h, uint64_t _rootBlockNumber 
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
-    std::string ret = "";
     auto it = m_cacheMain.find( _h );
-    if ( it != m_cacheMain.end() ) {
-        if ( it->second.second > 0 )
-            return it->second.first;
-        else
-            cwarn << "Lookup required for value with refcount == 0. This is probably a critical "
-                     "trie issue"
-                  << _h;
-    }
-    if ( !ret.empty() || !m_db_face )
-        return ret;
+    if ( it != m_cacheMain.end() )
+        return it->second.first;
 
+    if ( !m_db_face )
+        return "";
     return m_db_face->lookup( skale::slicing::toSlice( _h ), _rootBlockNumber );
 }
 
@@ -650,7 +643,7 @@ bool ClassicOverlayDB::exists( h256 const& _h ) const {
     ReadGuard l( x_this );
 #endif
     auto it = m_cacheMain.find( _h );
-    if ( it != m_cacheMain.end() && it->second.second > 0 )
+    if ( it != m_cacheMain.end() )
         return true;
     return m_db_face && m_db_face->exists( skale::slicing::toSlice( _h ) );
 }
@@ -694,12 +687,11 @@ bytes ClassicOverlayDB::lookupAux( h256 const& _h ) const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
 #endif
-    bytes ret = bytes();
     auto it = m_cacheAux.find( _h );
-    if ( it != m_cacheAux.end() && it->second.second )
+    if ( it != m_cacheAux.end() )
         return it->second.first;
-    if ( !ret.empty() || !m_db_face )
-        return ret;
+    if ( !m_db_face )
+        return bytes();
 
     bytes b = _h.asBytes();
     b.push_back( 255 );  // for aux
