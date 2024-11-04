@@ -19,6 +19,7 @@
 /// @file
 /// State unit tests.
 
+#include <libdevcore/FileSystem.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/BasicAuthority.h>
 #include <libethereum/Block.h>
@@ -211,6 +212,16 @@ public:
         auto di = directory_iterator(m_tempDirState.path() + "/historic_state/00000000/state");
         return std::distance(begin(di), end(di));
     }
+
+    uint64_t storageUsage() {
+        uint64_t total = 0;
+        state.mutableHistoricState().db().db()->forEach( [&total]( const dev::db::Slice& _key, const dev::db::Slice& _value ) {
+            std::cout << dev::toHex( _key ) << ' ' << dev::toHex( _value ) << '\n';
+            total += _key.size() + _value.size();
+            return true;
+        } );
+        return total;
+    }
 };
 
 BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
@@ -234,6 +245,8 @@ BOOST_AUTO_TEST_CASE( writeAndRead ) {
 // make two changes in two blocks and try to access state in each block
 BOOST_AUTO_TEST_CASE( twoChanges ) {
     State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 0 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
     sw.incNonce(address1);
@@ -271,6 +284,8 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     State sw = state.createStateModifyCopyAndPassLock();
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
+    // here comes forceInsertNode for init() that was called in HistoricState constructor
+    // expect rotation here
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1001 );
 
@@ -319,12 +334,14 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 3);
+    BOOST_CHECK_EQUAL(countDbPieces(), 4);
 }
 
 // change 1 address 2 times in 2 blocks, check it on all blocks
 BOOST_AUTO_TEST_CASE( update ) {
     State sw = state.createStateModifyCopyAndPassLock();
+
+    sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 0 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
     sw.incNonce(address1);
@@ -348,7 +365,7 @@ BOOST_AUTO_TEST_CASE( update ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 2 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 2);
+    BOOST_CHECK_EQUAL(countDbPieces(), 3);
 }
 
 // change storage of 1 address 2 times in 2 blocks, check it on all blocks
