@@ -41,8 +41,6 @@ HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricS
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
         m_state.init();
-
-    m_storageUsage = m_db.storageUsed().convert_to< uint64_t >();
 }
 
 HistoricState::HistoricState( HistoricState const& _s )
@@ -57,8 +55,7 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
       m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
-      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ),
-      m_storageUsage( _s.storageUsedTotal().convert_to< uint64_t >() ) {}
+      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
 
 std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
 HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
@@ -165,7 +162,6 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_totalTimeSpentInStateCommitsPerBlock = _s.m_totalTimeSpentInStateCommitsPerBlock;
     m_maxHistoricStateDbSize = _s.m_maxHistoricStateDbSize;
-    m_storageUsage = _s.storageUsedTotal().convert_to< uint64_t >();
     return *this;
 }
 
@@ -841,6 +837,5 @@ void HistoricState::rotateDbsIfNeeded( uint64_t _blockNumber ) {
     if ( m_db.storageUsed() > m_maxHistoricStateDbSize ) {
         m_rotatingTreeDb->rotate( _blockNumber );
         m_db.updateStorageUsage( 0 );
-        m_storageUsage = 0;
     }
 }

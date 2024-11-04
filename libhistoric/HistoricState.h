@@ -355,16 +355,10 @@ private:
     AddressHash commitExternalChangesIntoTrieDB(
         AccountMap const& _cache, SecureTrieDB< Address, skale::ClassicOverlayDB >& _state );
 
-    void updateStorageUsage( uint64_t bytes ) {
-        m_storageUsage += bytes;
-        m_db.updateStorageUsage( m_storageUsage );
-    }
-
     dev::s256 storageUsedTotal() const { return m_db.storageUsed(); }
 
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
     dev::s256 m_maxHistoricStateDbSize = -1;
-    uint64_t m_storageUsage = 0;
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );
