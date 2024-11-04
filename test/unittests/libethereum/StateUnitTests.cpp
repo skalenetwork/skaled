@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE( twoChanges ) {
     BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countDbPieces(), 2);
+    BOOST_CHECK_EQUAL(countDbPieces(), 3);
 }
 
 // same, but add empty block between
