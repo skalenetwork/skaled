@@ -1018,12 +1018,8 @@ BOOST_FIXTURE_TEST_SUITE( BlockchainTests, bcTestFixture )
 BOOST_AUTO_TEST_CASE( bcStateTests ) {}
 BOOST_AUTO_TEST_CASE( bcBlockGasLimitTest ) {}
 BOOST_AUTO_TEST_CASE( bcGasPricerTest ) {}
-// Commenting this out as we do not support this
-//BOOST_AUTO_TEST_CASE( bcInvalidHeaderTest ) {}
 BOOST_AUTO_TEST_CASE( bcUncleHeaderValidity ) {}
 // Commenting this out as we do not support this
-//BOOST_AUTO_TEST_CASE( bcInvalidHeaderTest ) {}
-BOOST_AUTO_TEST_CASE( bcUncleTest ) {}
 BOOST_AUTO_TEST_CASE( bcValidBlockTest ) {}
 BOOST_AUTO_TEST_CASE( bcWalletTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
