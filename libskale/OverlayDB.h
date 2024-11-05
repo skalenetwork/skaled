@@ -180,7 +180,7 @@ public:
         m_commitOnEveryInsert = _value;
     }
 
-private:
+protected:
     std::unordered_map< dev::h256, std::pair< std::string, unsigned > > m_cacheMain;
     std::unordered_map< dev::h256, std::pair< dev::bytes, bool > > m_cacheAux;
     dev::s256 storageUsed_ = 0;
@@ -195,6 +195,14 @@ public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
     void copyStorageIntoAccountMap(
         std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
+    // for debugging
+    dev::h256Hash keys() const {
+        dev::h256Hash ret;
+        for ( auto const& i : m_cacheMain )
+            if ( i.second.second )
+                ret.insert( i.first );
+        return ret;
+    }
 };
 
 }  // namespace skale
