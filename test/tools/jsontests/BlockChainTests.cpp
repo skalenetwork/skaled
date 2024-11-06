@@ -387,13 +387,13 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     }
 
     output["blocks"] = blArray;
-    output["postState"] = fillJsonWithState(testChain.topBlock().state().createReadOnlySnapBasedCopy() );
+    output["postState"] = fillJsonWithState(testChain.topBlock().state() );
     output["lastblockhash"] = toHexPrefixed( testChain.topBlock().blockHeader().hash( WithSeal ) );
 
     // make all values hex in pre section
     State prestate = State();
     ImportTest::importState( _input.at( "pre" ).get_obj(), prestate );
-    output["pre"] = fillJsonWithState(prestate.createReadOnlySnapBasedCopy() );
+    output["pre"] = fillJsonWithState(prestate );
 
     for ( auto iterator = chainMap.begin(); iterator != chainMap.end(); iterator++ )
         delete iterator->second;
@@ -1026,7 +1026,6 @@ BOOST_AUTO_TEST_CASE( bcWalletTest,
 BOOST_AUTO_TEST_CASE( bcForgedTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( bcRandomBlockhashTest ) {}
-BOOST_AUTO_TEST_CASE( bcExploitTest ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 
