@@ -30,12 +30,12 @@ npm install
 Now run test against skaled
 
 ```shell
-npx hardhat run scripts/trace.js --network skaled
+npx hardhat run scripts/trace.ts --network skaled
 ```
 
 To run the same test against geth
 
 ```shell
-npx hardhat run scripts/trace.js --network geth
+npx hardhat run scripts/trace.ts --network geth
 ```
 
