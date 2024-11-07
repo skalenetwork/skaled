@@ -954,6 +954,7 @@ void State::updateToLatestVersion() {
         boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
         m_currentVersion = *m_storedVersion;
     }
+    m_historicState.db().updateStorageUsage( m_historicState.db().storageUsed() );
 }
 
 State State::createStateReadOnlyCopy() const {

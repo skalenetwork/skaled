@@ -572,6 +572,7 @@ void ClassicOverlayDB::commit( const std::string& _debugCommitId ) {
 
             m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
                 skale::slicing::toSlice( storageUsed_.str() ) );
+            clog( dev::VerbosityDebug, "overlaydb" ) << "storageUsed = " << storageUsed_.str();
 
             try {
                 m_db_face->commit( "OverlayDB_commit_" + _debugCommitId );
