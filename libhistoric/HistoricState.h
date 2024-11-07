@@ -147,6 +147,9 @@ public:
     skale::ClassicOverlayDB const& db() const { return m_db; }
     skale::ClassicOverlayDB& db() { return m_db; }
 
+    skale::ClassicOverlayDB const& blocksToStateRootDB() const { return m_blockToStateRootDB; }
+    skale::ClassicOverlayDB& blocksToStateRootDB() { return m_blockToStateRootDB; }
+
     /// @returns the set containing all addresses currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
     /// or minutes at a time.

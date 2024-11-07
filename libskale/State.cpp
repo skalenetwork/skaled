@@ -955,6 +955,7 @@ void State::updateToLatestVersion() {
         m_currentVersion = *m_storedVersion;
     }
     m_historicState.db().updateStorageUsage( m_historicState.db().storageUsed() );
+    m_historicState.blocksToStateRootDB().updateStorageUsage( m_historicState.blocksToStateRootDB().storageUsed() );
 }
 
 State State::createStateReadOnlyCopy() const {
