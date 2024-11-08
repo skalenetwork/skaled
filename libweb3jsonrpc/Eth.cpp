@@ -50,6 +50,9 @@ const uint64_t MAX_CALL_CACHE_ENTRIES = 1024;
 const uint64_t MAX_RECEIPT_CACHE_ENTRIES = 1024;
 const u256 MAX_BLOCK_RANGE = 1024;
 
+// Geth compatible error code for a revert
+const uint64_t REVERT_RPC_ERROR_CODE = 3;
+
 #ifdef HISTORIC_STATE
 
 using namespace dev::rpc::_detail;
@@ -486,11 +489,13 @@ string Eth::eth_call( TransactionSkeleton& t, string const&
         strRevertReason = skutils::eth::call_error_message_2_str( er.output );
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
-        std::string strTx = t.toString();
-        std::string strOut = "Error message from eth_call(): " + strRevertReason +
-                             ", with call arguments: " + strTx +
-                             ", and using blockNumber=" + blockNumber;
-        cerror << strOut;
+
+        if ( !er.output.empty() ) {
+            Json::Value output = toJS( er.output );
+            BOOST_THROW_EXCEPTION(
+                JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+        }
+
         throw std::logic_error( strRevertReason );
     }
 
@@ -515,10 +520,19 @@ string Eth::eth_estimateGas( Json::Value const& _json ) {
             strRevertReason = skutils::eth::call_error_message_2_str( result.second.output );
             if ( strRevertReason.empty() )
                 strRevertReason = "EVM revert instruction without description message";
+
+            if ( !result.second.output.empty() ) {
+                Json::Value output = toJS( result.second.output );
+                BOOST_THROW_EXCEPTION(
+                    JsonRpcException( REVERT_RPC_ERROR_CODE, strRevertReason, output ) );
+            }
+
             throw std::logic_error( strRevertReason );
         }
         return toJS( result.first );
     } catch ( std::logic_error& error ) {
+        throw error;
+    } catch ( jsonrpc::JsonRpcException& error ) {
         throw error;
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );

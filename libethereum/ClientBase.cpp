@@ -92,8 +92,8 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     t.forceChainId( chainId() );
     t.ignoreExternalGas();
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
-        _pendingBlock.previousInfo().timestamp(), 0, _gas );
-    // Make a copy of state!! It will be deleted after step!
+        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().chainID );
+    // Make a copy of the state, it will be deleted after this step
     State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
     ExecutionResult executionResult =

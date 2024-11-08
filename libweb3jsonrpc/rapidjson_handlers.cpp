@@ -22,8 +22,7 @@ void wrapJsonRpcException( const rapidjson::Document& /*joRequest*/,
     Json::Value joData = exception.GetData();
     if ( joData != Json::nullValue ) {
         joError.AddMember( "data", rapidjson::Value(), joResponse.GetAllocator() );
-        Json::FastWriter fastWriter;
-        std::string data = fastWriter.write( joData );
+        std::string data = joData.asString();
         joError["data"].SetString( data.c_str(), data.size(), joResponse.GetAllocator() );
     }
 

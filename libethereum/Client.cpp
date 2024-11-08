@@ -810,12 +810,12 @@ void Client::onPostStateChanged() {
 void Client::startSealing() {
     if ( m_wouldSeal == true )
         return;
-    LOG( m_logger ) << cc::notice( "Client::startSealing: " ) << author();
+    LOG( m_logger ) << "Client::startSealing: " << author();
     if ( author() ) {
         m_wouldSeal = true;
         m_signalled.notify_all();
     } else
-        LOG( m_logger ) << cc::warn( "You need to set an author in order to seal!" );
+        LOG( m_logger ) << "You need to set an author in order to seal!";
 }
 
 void Client::rejigSealing() {
@@ -823,24 +823,24 @@ void Client::rejigSealing() {
         if ( sealEngine()->shouldSeal( this ) ) {
             m_wouldButShouldnot = false;
 
-            LOG( m_loggerDetail ) << cc::notice( "Rejigging seal engine..." );
+            LOG( m_loggerDetail ) << "Rejigging seal engine...";
             DEV_WRITE_GUARDED( x_working ) {
                 if ( m_working.isSealed() ) {
-                    LOG( m_logger ) << cc::notice( "Tried to seal sealed block..." );
+                    LOG( m_logger ) << "Tried to seal sealed block...";
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " "
-                                      << cc::warn( "#" ) << cc::num10( m_working.info().number() );
+                LOG( m_loggerDetail ) << "Starting to seal block"
+                                      << " #" << m_working.info().number();
 
-                // TODO Deduplicate code!
+                // TODO Deduplicate code
                 dev::h256 stateRootToSet;
                 if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
-                    dev::h256 state_root_hash = this->m_snapshotAgent->getSnapshotHash(
+                    dev::h256 stateRootHash = this->m_snapshotAgent->getSnapshotHash(
                         m_snapshotAgent->getLatestSnapshotBlockNumer() );
-                    stateRootToSet = state_root_hash;
+                    stateRootToSet = stateRootHash;
                 }
-                // propagate current!
+                // propagate current
                 else if ( this->number() > 0 ) {
                     stateRootToSet =
                         blockInfo( this->hashFromNumber( this->number() ) ).stateRoot();
@@ -858,15 +858,15 @@ void Client::rejigSealing() {
 
             if ( wouldSeal() ) {
                 sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
-                    LOG( m_logger ) << cc::success( "Block sealed" ) << " " << cc::warn( "#" )
-                                    << cc::num10( BlockHeader( _header, HeaderData ).number() );
+                    LOG( m_logger ) << "Block sealed"
+                                    << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else
-                        LOG( m_logger ) << cc::error( "Submitting block failed..." );
+                        LOG( m_logger ) << "Submitting block failed...";
                 } );
-                ctrace << cc::notice( "Generating seal on " ) << m_sealingInfo.hash( WithoutSeal )
-                       << " " << cc::warn( "#" ) << cc::num10( m_sealingInfo.number() );
+                ctrace << "Generating seal on " << m_sealingInfo.hash( WithoutSeal ) << " #"
+                       << m_sealingInfo.number();
                 sealEngine()->generateSeal( m_sealingInfo );
             }
         } else
@@ -879,24 +879,24 @@ void Client::rejigSealing() {
 void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_wouldButShouldnot = false;
 
-    LOG( m_loggerDetail ) << cc::notice( "Rejigging seal engine..." );
+    LOG( m_loggerDetail ) << "Rejigging seal engine...";
     DEV_WRITE_GUARDED( x_working ) {
         if ( m_working.isSealed() ) {
-            LOG( m_logger ) << cc::notice( "Tried to seal sealed block..." );
+            LOG( m_logger ) << "Tried to seal sealed block...";
             return;
         }
         // TODO is that needed? we have "Generating seal on" below
-        LOG( m_loggerDetail ) << cc::notice( "Starting to seal block" ) << " " << cc::warn( "#" )
-                              << cc::num10( m_working.info().number() );
-        // latest hash is really updated after NEXT snapshot already started hash computation!
-        // TODO Deduplicate code!
+        LOG( m_loggerDetail ) << "Starting to seal block"
+                              << " #" << m_working.info().number();
+        // latest hash is really updated after NEXT snapshot already started hash computation
+        // TODO Deduplicate code
         dev::h256 stateRootToSet;
         if ( m_snapshotAgent->getLatestSnapshotBlockNumer() > 0 ) {
-            dev::h256 state_root_hash = this->m_snapshotAgent->getSnapshotHash(
+            dev::h256 stateRootHash = this->m_snapshotAgent->getSnapshotHash(
                 m_snapshotAgent->getLatestSnapshotBlockNumer() );
-            stateRootToSet = state_root_hash;
+            stateRootToSet = stateRootHash;
         }
-        // propagate current!
+        // propagate current
         else if ( this->number() > 0 ) {
             stateRootToSet = blockInfo( this->hashFromNumber( this->number() ) ).stateRoot();
         } else {
@@ -1183,7 +1183,7 @@ h256 Client::importTransaction( Transaction const& _t ) {
         // We need to check external gas under mutex to be sure about current block number
         // correctness
         const_cast< Transaction& >( _t ).checkOutExternalGas(
-            chainParams(), bc().info().timestamp(), number(), false );
+            chainParams(), bc().info().timestamp(), number() );
     }
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
@@ -1359,7 +1359,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
             Transaction tx = transactions.at( k );
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
-            tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number(), false );
+            tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =
