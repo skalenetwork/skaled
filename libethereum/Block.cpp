@@ -890,12 +890,6 @@ ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const
     uncommitToSeal();
 
 
-    // if we are processing the block, m_state is already write-locked
-    // by the outer function. Otherwise, we need to do write-lock ourselves
-    // since the
-    State stateSnapshot =
-            _p != Permanence::Reverted ? m_state.createStateCopyAndClearCaches() : m_state;
-
     EnvInfo envInfo = EnvInfo(
             info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID);
 
@@ -912,7 +906,7 @@ ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const
         if (_t.isInvalid())
             throw -1;  // will catch below
 
-        resultReceipt = stateSnapshot.execute(
+        resultReceipt = m_state.execute(
                 envInfo, m_sealEngine->chainParams(), _t, _p, _onOp, _transactionIndex);
 
         // use fake receipt created above if execution throws!!
@@ -944,8 +938,16 @@ ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const
             m_transactionSet.insert(_t.sha3());
         }
     }
-    if (_p == Permanence::Committed || _p == Permanence::Uncommitted) {
-        m_state = stateSnapshot.createStateCopyAndClearCaches();
+
+
+    // if we are doing real block processing with commit, we currently clear cache
+    // on each transaction. This can be done safely because state changes are committed to
+    // disk. In other cases we do not clear cache. This is specifically handy for tests
+    // because we do not commit to disk in some of the tests
+    // In the future we can test performance of not clearing
+    // cache on each commit
+    if (_p == Permanence::Committed) {
+        m_state = m_state.createStateCopyAndClearCaches();
     }
 
     return resultReceipt.first;
