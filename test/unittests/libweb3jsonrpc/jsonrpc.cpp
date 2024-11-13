@@ -418,6 +418,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             rpcClient->eth_sendRawTransaction( _t );
             BOOST_FAIL( "Exception expected." );
         } catch ( jsonrpc::JsonRpcException const& _e ) {
+            cerr << _e.GetMessage() << endl;
             return _e.GetMessage();
         }
         return string();
@@ -819,127 +820,9 @@ BOOST_AUTO_TEST_CASE( eth_signTransaction ) {
 const string skaledConfigFileName = "../../test/historicstate/configs/basic_config.json";
 
 
-BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    fixture.setupFirstKey();
-    auto firstAccount = fixture.testAccounts.begin()->second;
-    auto gasPrice = fixture.getCurrentGasPrice();
-    for ( uint64_t i = 0; i < 3; i++ ) {
-        auto dst = SkaledAccount::generate();
-        fixture.splitAccountInHalves( firstAccount, dst, gasPrice,
-            TransactionWait::WAIT_FOR_COMPLETION);
-    }
-
-    cout << fixture.rpcClient()->skale_stats() << endl;
-}
-
-
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    vector< Secret > accountPieces;
-
-    fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
-    fixture.mtmBatchSize = 1;
-
-    fixture.setupFirstKey();
-    fixture.deployERC20();
-
-    fixture.setupTwoToTheNKeys(12);
-
-    fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
-
-}
-
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    vector< Secret > accountPieces;
-
-    fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
-    fixture.mtmBatchSize = 5;
-
-    fixture.setupFirstKey();
-    fixture.setupTwoToTheNKeys(8);
-
-    fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
-
-}
 
 
 
-
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    vector< Secret > accountPieces;
-
-    fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
-    fixture.transactionType = TransactionType::Type1;
-
-    fixture.setupFirstKey();
-    fixture.deployERC20();
-
-    fixture.setupTwoToTheNKeys(12);
-
-    fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
-
-}
-
-
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    vector< Secret > accountPieces;
-
-    fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
-    fixture.transactionType = TransactionType::Type2;
-
-    fixture.setupFirstKey();
-    fixture.deployERC20();
-
-    fixture.setupTwoToTheNKeys(12);
-
-    fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
-
-}
-
-
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    vector< Secret > accountPieces;
-
-    fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
-    fixture.usePow = true;
-
-    fixture.setupFirstKey();
-    fixture.deployERC20();
-
-    fixture.setupTwoToTheNKeys(4);
-
-    fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
-
-}
-
-
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers ) {
-    SkaledFixture fixture( skaledConfigFileName );
-    vector< Secret > accountPieces;
-
-    fixture.verifyTransactions = false;
-    fixture.threadsCountForTestTransactions = 8;
-
-    fixture.setupFirstKey();
-
-    fixture.deployERC20();
-
-    fixture.setupTwoToTheNKeys(12);
-    fixture.mintAllKeysWithERC20();
-
-    fixture.sendTinyTransfersForAllAccounts(10, TransferType::ERC20);
-
-}
 
 
 BOOST_AUTO_TEST_CASE( simple_contract ) {
@@ -1880,7 +1763,6 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     Json::Value ret;
     Json::Reader().parse( _config, ret );
 
-    // Set chainID = 21
     std::string chainID = "0x15";
     ret["params"]["chainID"] = chainID;
 
@@ -3760,6 +3642,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
     BOOST_REQUIRE( !txHash.empty() );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
 
     // partially retrieve 1000000
@@ -4492,6 +4375,128 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_NO_THROW( r2 = fixture.rpcClient->eth_getTransactionReceipt( toJS( h2 ) ) );
     BOOST_REQUIRE_EQUAL( r2["blockNumber"], toJS( fixture.client->number() ) );
 #endif
+}
+
+
+BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    fixture.setupFirstKey();
+    auto firstAccount = fixture.testAccounts.begin()->second;
+    auto gasPrice = fixture.getCurrentGasPrice();
+    for ( uint64_t i = 0; i < 3; i++ ) {
+        auto dst = SkaledAccount::generate();
+        fixture.splitAccountInHalves( firstAccount, dst, gasPrice,
+            TransactionWait::WAIT_FOR_COMPLETION);
+    }
+
+    cout << fixture.rpcClient()->skale_stats() << endl;
+}
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+    fixture.mtmBatchSize = 1;
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+
+    fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
+
+}
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+    fixture.mtmBatchSize = 5;
+
+    fixture.setupFirstKey();
+    fixture.setupTwoToTheNKeys(8);
+
+    fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
+
+}
+
+
+
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+    fixture.transactionType = TransactionType::Type1;
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+
+    fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
+
+}
+
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+    fixture.transactionType = TransactionType::Type2;
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+
+    fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
+
+}
+
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+    fixture.usePow = true;
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(4);
+
+    fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
+
+}
+
+
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.verifyTransactions = false;
+    fixture.threadsCountForTestTransactions = 8;
+
+    fixture.setupFirstKey();
+
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+    fixture.mintAllKeysWithERC20();
+
+    fixture.sendTinyTransfersForAllAccounts(10, TransferType::ERC20);
+
 }
 
 
