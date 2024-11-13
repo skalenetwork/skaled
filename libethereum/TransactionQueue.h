@@ -264,7 +264,17 @@ public:
             else if ( !_first.transaction && !_second.transaction )
                 return false;
 
-            return ( _first.transaction.gasPrice() > _second.transaction.gasPrice() );
+            u256 const& height1 =
+                _first.transaction.nonce() -
+                queue.m_currentByAddressAndNonce[_first.transaction.sender()].begin()->first;
+
+            u256 const& height2 =
+                _second.transaction.nonce() -
+                queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
+
+            return ( height1 < height2 ||
+                           ( height1 == height2 &&
+                               _first.transaction.gasPrice() > _second.transaction.gasPrice() ) );
         }
     };
 
