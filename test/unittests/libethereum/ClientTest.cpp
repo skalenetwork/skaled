@@ -186,6 +186,7 @@ public:
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::debug( "Mining transaction..." ) );
             dev::eth::mineTransaction(*(m_ethereum), 1);
+            m_ethereum->state().getOriginalDb()->createBlockSnap( 2 );
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::debug( "Getting transaction receipt..." ) );
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
