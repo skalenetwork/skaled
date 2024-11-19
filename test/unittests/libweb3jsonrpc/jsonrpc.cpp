@@ -3336,6 +3336,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     JsonRpcFixture fixture( config );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
     string senderAddress = toJS( fixture.coinbase.address() );
 
     Json::Value txRefill;
@@ -3346,6 +3347,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     txRefill["value"] = 100000000000000000;
     string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
@@ -3378,6 +3380,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     txRefill["value"] = 0;
     txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x0" );
@@ -3450,7 +3453,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE(
         result.isMember( "maxPriorityFeePerGas" ) && result["maxPriorityFeePerGas"].isString() );
     BOOST_REQUIRE( result.isMember( "maxFeePerGas" ) && result["maxFeePerGas"].isString() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
@@ -3460,7 +3463,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
 
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x4", "0x0" );
@@ -3470,7 +3473,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
 
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
     BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
 
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_getBlockByNumber( "0x0", false ) );
