@@ -3686,6 +3686,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     txHash = fixture.rpcClient->eth_sendTransaction( partiallyRetrieveTx );
     BOOST_REQUIRE( !txHash.empty() );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
         etherbaseBalance +
@@ -3718,6 +3719,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     txHash = fixture.rpcClient->eth_sendTransaction( retrieveTx );
     BOOST_REQUIRE( !txHash.empty() );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
     t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
     BOOST_REQUIRE_EQUAL( jsToU256( t["gasUsed"].asString() ) *
