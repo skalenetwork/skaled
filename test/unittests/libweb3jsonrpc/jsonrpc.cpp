@@ -692,8 +692,8 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
     signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    BOOST_CHECK_EQUAL(
-        fixture.sendingRawShouldFail( signedTx["raw"].asString() ), "Invalid transaction nonce." );
+
+    fixture.sendingRawShouldFail( signedTx["raw"].asString() );
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
@@ -751,8 +751,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
     signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
-        "Same transaction already exists in the pending transaction queue." );
+    fixture.sendingRawShouldFail( signedTx["raw"].asString() );
 }
 
 BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {

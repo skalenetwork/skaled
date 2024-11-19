@@ -438,10 +438,10 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     } catch ( InvalidNonce& ) {
         if ( !client()->chainParams().sChain.multiTransactionMode ) {
             // make it similar  to what geth does
-            throw std::runtime_error( "Nonce in the future. No MTM mode enabled" );
+            throw std::runtime_error( "Nonce in the future." );
         } else {
             // make it similar  to what geth does
-            throw std::runtime_error( "Invalid nonce. MTM mode enabled." );
+            throw std::runtime_error( "Invalid nonce." );
         }
     }
 }
