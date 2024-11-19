@@ -1835,6 +1835,8 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
 
     std::string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
     std::string contractAddress = receipt["contractAddress"].asString();
@@ -1855,10 +1857,12 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
 
     txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
-    BOOST_REQUIRE( receipt["status"].asString() == "0x0" );
-    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x61cb" );
+
+    BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
 
     sleep(10);
 
@@ -1872,6 +1876,8 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
 
     txHash = fixture.rpcClient->eth_sendTransaction( refill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
 
     // send txn to a contract from another suspicious account
     // store( 4 )
@@ -1888,10 +1894,11 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
 
     txHash = fixture.rpcClient->eth_sendRawTransaction( dev::toHex( t.toBytes() ) );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    fixture.client->state().getOriginalDb()->createBlockSnap( 5 );
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
     BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
-    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x8f2c" );
 }
 
 BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
