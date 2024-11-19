@@ -1684,6 +1684,10 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
 }
 
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
+
+    u256 ESTIMATE_AFTER_PATCH = u256( 21000 + 1024 * 16 );
+    u256 ESTIMATE_BEFORE_PATCH = u256( 21000 + 1024 * 68 );
+
     // 1s empty block interval
     JsonRpcFixture fixture( "", true, true, false, false, false, 1000 );
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -1703,17 +1707,19 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     u256 gasEstimate = jsToU256( gasEstimateStr );
 
     // old estimate before patch
-    BOOST_REQUIRE_EQUAL( gasEstimate, u256( 21000 + 1024 * 68 ) );
+    BOOST_REQUIRE_EQUAL( gasEstimate, ESTIMATE_BEFORE_PATCH );
 
     u256 powGasPrice = 0;
-    u256 correctEstimate = u256( 21000 + 1024 * 16 );
+
+
     do {
+        // mine enough POW to tun transaction after PATCH but not before patch
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
         u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
-        if ( externalGas >= correctEstimate &&
-             externalGas < correctEstimate + correctEstimate / 10 ) {
+        if ( externalGas >= ESTIMATE_AFTER_PATCH &&
+             externalGas < ESTIMATE_AFTER_PATCH + ESTIMATE_AFTER_PATCH / 10 ) {
             powGasPrice = candidate;
         }
     } while ( !powGasPrice );
@@ -1725,10 +1731,11 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     BlockHeader badInfo, goodInfo;
     uint64_t blockCounter = 2;
     for ( ;; ) {
-        string gasStr = fixture.rpcClient->eth_estimateGas( transact );
-        u256 gasEst = jsToU256( gasStr );
+        gasEstimateStr = fixture.rpcClient->eth_estimateGas( transact );
+        gasEstimate = jsToU256( gasEstimateStr );
         // old
-        if ( gasEst == u256( 21000 + 1024 * 68 ) ) {
+        if ( gasEstimate == ESTIMATE_BEFORE_PATCH ) {
+            // we are before patch. Sending show fail since we do not have enough PoW gas
             try {
                 fixture.rpcClient->eth_sendTransaction( transact );
                 BOOST_REQUIRE( false );
@@ -1739,16 +1746,14 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
                 dev::eth::mineTransaction( *( fixture.client ), 1 );  // empty block
                 fixture.client->state().getOriginalDb()->createBlockSnap( blockCounter );
                 blockCounter++;
-            }                                                         // catch
-        }
-        // new
-        else {
-            //BOOST_REQUIRE_EQUAL( gasEstimate, correctEstimate );
+            }
+        } else { // now we are after patch
+            BOOST_REQUIRE_EQUAL( gasEstimate, ESTIMATE_AFTER_PATCH );
             txHash = fixture.rpcClient->eth_sendTransaction( transact );
             goodInfo = fixture.client->blockInfo( fixture.client->hashFromNumber( LatestBlock ) );
             break;
-        }  // else
-    }      // for
+        }
+    }
 
     BOOST_REQUIRE_LT( badInfo.timestamp(), fixture.powPatchActivationTimestamp );
     BOOST_REQUIRE_GE( goodInfo.timestamp(), fixture.powPatchActivationTimestamp );
