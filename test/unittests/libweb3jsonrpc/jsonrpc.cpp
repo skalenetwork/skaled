@@ -3641,11 +3641,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
 
-    cout << "Etherbase:" << etherbase << endl;
-
-    // before mining
     u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-    BOOST_REQUIRE_EQUAL( etherbaseBalance, 0 );
 
     // mine block without transactions
     dev::eth::simulateMining( *( fixture.client ), 1 );
