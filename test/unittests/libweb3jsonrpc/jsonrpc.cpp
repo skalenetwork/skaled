@@ -1328,7 +1328,7 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas_chainId ) {
     Json::Reader().parse( _config, ret );
 
     // Set chainID = 65535
-    ret["params"]["chainID"] = "0xffff"; 
+    ret["params"]["chainID"] = "0xffff";
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -1353,7 +1353,7 @@ BOOST_AUTO_TEST_CASE( eth_estimateGas_chainId ) {
         BOOST_CHECK_EQUAL(ex.GetCode(), 3);
         BOOST_CHECK_EQUAL(ex.GetData().asString(), "0xc04eeb4c000000000000000000000000000000000000000000000000000000000000ffff");
         BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
-    } 
+    }
 }
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasLimitExceeded ) {
@@ -1608,7 +1608,7 @@ BOOST_AUTO_TEST_CASE( call_with_error ) {
     Json::Value create;
     create["from"] = toJS( senderAddress );
     create["code"] = compiled;
-    create["gas"] = "180000"; 
+    create["gas"] = "180000";
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -1625,7 +1625,7 @@ BOOST_AUTO_TEST_CASE( call_with_error ) {
         BOOST_CHECK_EQUAL(ex.GetCode(), 3);
         BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
         BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
-    } 
+    }
 }
 
 BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
@@ -1657,13 +1657,13 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
         "208201905061012c6000830184610108565b9291505056fea264697066735822122013"
         "2ca0f4158a0540a7e67f304c94305f81bbe52de2314e2b9cee92a2c74e103a64736f6c"
         "63430008120033";
-    
+
     auto senderAddress = fixture.coinbase.address();
 
     Json::Value create;
     create["from"] = toJS( senderAddress );
     create["code"] = compiled;
-    create["gas"] = "180000"; 
+    create["gas"] = "180000";
     string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -1680,7 +1680,7 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
         BOOST_CHECK_EQUAL(ex.GetCode(), 3);
         BOOST_CHECK_EQUAL(ex.GetData().asString(), "0x82b42900");
         BOOST_CHECK_EQUAL(ex.GetMessage(), "EVM revert instruction without description message");
-    } 
+    }
 }
 
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
@@ -3217,7 +3217,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( block["transactions"][0]["type"] == "0x1" );
 
     BOOST_REQUIRE( block["transactions"][0]["yParity"].asString() == block["transactions"][0]["v"].asString() );
-  
+
     BOOST_REQUIRE( block["transactions"][0]["accessList"].isArray() );
     BOOST_REQUIRE( block["transactions"][0]["accessList"].size() == 0 );
     BOOST_REQUIRE( block["transactions"][0].isMember( "chainId" ) );
@@ -4396,7 +4396,8 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
+BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     fixture.setupFirstKey();
     auto firstAccount = fixture.testAccounts.begin()->second;
@@ -4410,7 +4411,8 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction ) {
     cout << fixture.rpcClient()->skale_stats() << endl;
 }
 
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4427,7 +4429,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers ) {
 
 }
 
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers,
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4445,7 +4448,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers ) {
 
 
 
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers,
+    *boost::unit_test::precondition( dev::test::run_not_express )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4463,7 +4467,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers,
+    *boost::unit_test::precondition( dev::test::run_not_express )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4481,7 +4486,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
+    *boost::unit_test::precondition( dev::test::run_not_express )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4499,7 +4505,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers ) {
 }
 
 
-BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers ) {
+BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
+    *boost::unit_test::precondition( dev::test::run_not_express )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
