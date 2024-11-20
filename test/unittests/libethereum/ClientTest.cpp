@@ -186,7 +186,6 @@ public:
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::debug( "Mining transaction..." ) );
             dev::eth::mineTransaction(*(m_ethereum), 1);
-            m_ethereum->state().getOriginalDb()->createBlockSnap( 2 );
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::debug( "Getting transaction receipt..." ) );
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
@@ -656,6 +655,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 
     estimateTransaction["gas"] = toJS(estimate - 1);
     BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+    fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
     estimateTransaction["gas"] = toJS(estimate);
     BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
@@ -689,6 +689,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     //    }
 
     Address from = fixture.coinbase.address();
+
+    u256 balance = testClient->balanceAt( from );
+    BOOST_CHECK( balance > 0 );
+
     Address contractAddress( "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b" );
 
     // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
@@ -709,6 +713,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
 
     estimateTransaction["gas"] = toJS(estimate - 1);
     BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+    fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
     estimateTransaction["gas"] = toJS(estimate);
     BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
