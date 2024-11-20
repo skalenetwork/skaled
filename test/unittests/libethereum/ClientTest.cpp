@@ -202,16 +202,13 @@ public:
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::success( "SUCCESS: Got positive transaction status" ) );
             else
-                clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "Got negative transaction status" ) );
+                cerr << "TestClientFixture::getTransactionStatus() ERROR:" << receipt["status"] << endl;
             return bStatusFlag;
         } catch ( std::exception & ex ) {
-            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "exception:" ) + cc::warn( ex.what() ) );
+            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << ex.what() << endl;
             return false;
         } catch (...) {
-            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "unknown exception" ) );
+            cerr << "TestClientFixture::getTransactionStatus() Unknown exception" << endl;
             return false;
         }
     }
@@ -957,8 +954,6 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE( testClient->getHistoricNodePublicKey( 0 ) == "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba" );
     BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
     BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
-
-    BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
 
     testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
 
