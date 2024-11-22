@@ -273,8 +273,8 @@ public:
                 queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
 
             return ( height1 < height2 ||
-                           ( height1 == height2 &&
-                               _first.transaction.gasPrice() > _second.transaction.gasPrice() ) );
+                     ( height1 == height2 &&
+                         _first.transaction.gasPrice() > _second.transaction.gasPrice() ) );
         }
     };
 

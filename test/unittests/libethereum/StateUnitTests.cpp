@@ -36,20 +36,19 @@ namespace dev {
 namespace test {
 BOOST_FIXTURE_TEST_SUITE( StateUnitTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( Basic, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( Basic, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     Block s( Block::Null );
 }
 
 BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
-    Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+    Address addr{ "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
     State state( 0 );
     State s = state.createStateCopyAndClearCaches();
     s.createContract( addr );
-    uint8_t codeData[] = {'c', 'o', 'd', 'e'};
+    uint8_t codeData[] = { 'c', 'o', 'd', 'e' };
     u256 version = 123;
-    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
-    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+    s.setCode( addr, { std::begin( codeData ), std::end( codeData ) }, version );
+    s.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
     auto& loadedCode = s.code( addr );
     BOOST_CHECK(
@@ -61,7 +60,7 @@ public:
     AddressRangeTestFixture() {
         // get some random addresses and their hashes
         for ( unsigned i = 0; i < addressCount; ++i ) {
-            Address addr{i};
+            Address addr{ i };
             hashToAddress[sha3( addr )] = addr;
         }
 
@@ -81,10 +80,10 @@ public:
 BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 
 
-BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    addressesReturnsAllAddresses, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-            state.addresses(h256{}, addressCount * 2 );
+        state.addresses( h256{}, addressCount * 2 );
     State::AddressMap addresses = addressesAndNextKey.first;
 
     BOOST_CHECK_EQUAL( addresses.size(), addressCount );
@@ -95,7 +94,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses,
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     uint maxResults = 3;
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
-            state.addresses(h256{}, maxResults );
+        state.addresses( h256{}, maxResults );
     State::AddressMap& addresses = addressesAndNextKey.first;
     h256& nextKey = addressesAndNextKey.second;
 
@@ -106,7 +105,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 
     // request next chunk
     std::pair< State::AddressMap, h256 > addressesAndNextKey2 =
-            state.addresses(nextKey, maxResults );
+        state.addresses( nextKey, maxResults );
     State::AddressMap& addresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( addresses2.size(), maxResults );
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
@@ -131,15 +130,15 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
 }
 
 BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-   State s = state;
+    State s = state;
 
     // create some accounts
     unsigned createCount = 3;
     std::map< h256, Address > newHashToAddress;
     for ( unsigned i = addressCount; i < addressCount + createCount; ++i ) {
-        Address addr{i};
+        Address addr{ i };
         newHashToAddress[sha3( addr )] = addr;
     }
 

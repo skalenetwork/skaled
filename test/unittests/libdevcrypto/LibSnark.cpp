@@ -82,7 +82,8 @@ BOOST_AUTO_TEST_CASE( ecadd, *boost::unit_test::precondition( run_not_express ) 
 
 BOOST_AUTO_TEST_CASE( fieldPointInvalid, *boost::unit_test::precondition( run_not_express ) ) {
     u256 const pMod{
-        "21888242871839275222246405745257275088696311157297823662689037894645226208583"};
+        "21888242871839275222246405745257275088696311157297823662689037894645226208583"
+    };
 
     bytes input = toBigEndian( pMod );
     BOOST_CHECK( !alt_bn128_G1_add( ref( input ) ).first );
@@ -512,7 +513,7 @@ BOOST_AUTO_TEST_CASE( benchECMULWorstCase1, *boost::unit_test::precondition( run
     bytes v = fromHex(
         "1fa111cf23c269b75957c715b762ef37074d341c280d113707ff342211b794571db10707e7cb4ba3c851f6bbb4"
         "3399701da0c7675ca0f9cfc595774fd055b2fb" );
-    u256 const k{"21888242871839275222246405745257275088696311157297823662689037894645226208582"};
+    u256 const k{ "21888242871839275222246405745257275088696311157297823662689037894645226208582" };
 
     for ( int i = 0; i < 1000; ++i ) {
         bool success = false;
@@ -531,7 +532,7 @@ BOOST_AUTO_TEST_CASE( benchECMULWorstCase2, *boost::unit_test::precondition( run
     bytes v = fromHex(
         "1fa111cf23c269b75957c715b762ef37074d341c280d113707ff342211b794571db10707e7cb4ba3c851f6bbb4"
         "3399701da0c7675ca0f9cfc595774fd055b2fb" );
-    u256 const k{"10944121435919637611123202872628637544348155578648911831344518947322613104291"};
+    u256 const k{ "10944121435919637611123202872628637544348155578648911831344518947322613104291" };
 
     for ( int i = 0; i < 1000; ++i ) {
         bool success = false;
@@ -564,7 +565,8 @@ BOOST_AUTO_TEST_CASE( benchECMULIdentity, *boost::unit_test::precondition( run_n
     BOOST_CHECK_EQUAL( toHex( v ), toHex( w ) );
 }
 
-BOOST_AUTO_TEST_CASE( ECMULuseCaseFromRopsten, *boost::unit_test::precondition( run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    ECMULuseCaseFromRopsten, *boost::unit_test::precondition( run_not_express ) ) {
     bytes const input = fromHex(
         "277a420332215ead37ba61fee84f0d216a345e762af8efd15453697170b3cdc5"
         "1b312cd37d4ad474fc299c9689fc0f347a2ec2b5b474a41b343142ee5fdd097a"

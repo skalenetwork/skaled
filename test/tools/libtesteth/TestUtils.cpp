@@ -92,7 +92,7 @@ void ClientBaseFixture::enumerateClients(
         cerr << "void ClientBaseFixture::enumerateClients. FixedClient now accepts block not sate!"
              << endl;
         _state.commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );  // unused variable. remove
-                                                                     // this line
+                                                                        // this line
         eth::Block b( Block::Null );
         b.noteChain( _bc );
         FixedClient client( _bc, b );

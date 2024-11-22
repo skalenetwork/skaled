@@ -352,7 +352,6 @@ int main( int argc, char** argv ) {
     bytes output = std::move( res.output );
 
     if ( mode == Mode::Statistics ) {
-
         cout << "Gas used: " << res.gasUsed << " (+" << t.baseGasRequired( evmSchedule )
              << " for transaction, -" << res.gasRefunded << " refunded)\n";
 

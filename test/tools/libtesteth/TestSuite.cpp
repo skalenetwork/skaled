@@ -143,7 +143,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                               string() :
                               test::Options::get().singleTestName;
     vector< fs::path > const compiledFiles =
-        test::getFiles( getFullPath( _testFolder ), {".json", ".yml"}, filter );
+        test::getFiles( getFullPath( _testFolder ), { ".json", ".yml" }, filter );
     for ( auto const& file : compiledFiles ) {
         fs::path const expectedFillerName =
             getFullPathFiller( _testFolder ) /
@@ -177,7 +177,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
 
     // run all tests
     vector< fs::path > const files = test::getFiles( getFullPathFiller( _testFolder ),
-        {".json", ".yml"}, filter.empty() ? filter : filter + "Filler" );
+        { ".json", ".yml" }, filter.empty() ? filter : filter + "Filler" );
 
     auto& testOutput = test::TestOutputHelper::get();
     testOutput.initTest( files.size() );

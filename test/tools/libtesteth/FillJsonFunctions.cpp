@@ -61,7 +61,9 @@ json_spirit::mObject fillJsonWithStateChange(
     // Sort the vector by address field
     skale::ChangeLog changeLog = _changeLog;
     std::sort( changeLog.begin(), changeLog.end(),
-        []( const skale::Change& lhs, const skale::Change& rhs ) { return lhs.address < rhs.address; } );
+        []( const skale::Change& lhs, const skale::Change& rhs ) {
+            return lhs.address < rhs.address;
+        } );
 
     std::ostringstream log;
     json_spirit::mObject o;

@@ -942,4 +942,4 @@ static std::string const c_genesisGeneration2ConfigString = R"(
 }
 )";
 
-#endif // GENESISGENERATION2CONFIG_H
+#endif  // GENESISGENERATION2CONFIG_H

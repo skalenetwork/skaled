@@ -1,6 +1,6 @@
 #include "test_skutils_helper.h"
-#include <boost/test/unit_test.hpp>
 #include <test/tools/libtesteth/TestHelper.h>
+#include <boost/test/unit_test.hpp>
 
 static const bool g_bShowDetailedJobLogs = false;  // useful for dispatch development only
 
@@ -131,7 +131,8 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
         //
         volatile size_t nCallCountOnce = 0;
         const uint64_t nOnceJobTimeout = 500;  // milliseconds
-        pLoop->job_add_once( "once uppon a time",
+        pLoop->job_add_once(
+            "once uppon a time",
             [&]() -> void {
                 ++nCallCountOnce;
                 skutils::test::test_log_e( thread_prefix_str() +
@@ -140,7 +141,8 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
             },
             skutils::dispatch::duration_from_milliseconds( nOnceJobTimeout ) );
         //
-        pLoop->job_add_once( "bad job",
+        pLoop->job_add_once(
+            "bad job",
             [&]() -> void {
                 skutils::test::test_log_e(
                     thread_prefix_str() + cc::warn( "bad job invoked, throwing someting" ) );
@@ -157,7 +159,8 @@ BOOST_AUTO_TEST_CASE( loop_functionality_alive ) {
         skutils::test::test_log_e(
             thread_prefix_str() + cc::debug( "expecting periodical job to be invoked " ) +
             cc::size10( nExpectedCallCountPeriodical ) + cc::debug( " time(s), at least" ) );
-        pLoop->job_add_periodic( "some periodical work",
+        pLoop->job_add_periodic(
+            "some periodical work",
             [&]() -> void {
                 ++nCallCountPeriodical;
                 skutils::test::test_log_e( thread_prefix_str() +
@@ -227,18 +230,19 @@ BOOST_AUTO_TEST_CASE( domain_functionality_alive ) {
             //
             //
             static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
-            for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
-              skutils::test::test_log_e( thread_prefix_str()
-                                        + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
-                                        + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
-                                        + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-              sleep( nSleepSeconds );
-              skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                        cc::size10( nSleepSeconds ) +
-                                        cc::warn( " second(s), end of domain life time..." ) );
-              if( size_t( nExpectedCallCount ) == size_t( nCallCounter ) )
-                break;
-            } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+            for ( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++nWaitRound ) {
+                skutils::test::test_log_e(
+                    thread_prefix_str() + cc::warn( "waiting for test to complete in round " ) +
+                    cc::size10( nWaitRound + 1 ) + cc::warn( " of " ) +
+                    cc::size10( nWaitRoundCount ) + cc::warn( ", will sleep " ) +
+                    cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+                sleep( nSleepSeconds );
+                skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                           cc::size10( nSleepSeconds ) +
+                                           cc::warn( " second(s), end of domain life time..." ) );
+                if ( size_t( nExpectedCallCount ) == size_t( nCallCounter ) )
+                    break;
+            }  // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
             //
             //
             skutils::test::test_log_e(
@@ -257,8 +261,8 @@ BOOST_AUTO_TEST_CASE( domain_functionality_alive ) {
 BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
     skutils::test::test_print_header_name( "SkUtils/dispatch/job_priorities_alive" );
     skutils::test::with_test_environment( [&]() {
-        size_t g_arrThreadCounts[] = {1, 2, 4 /*, 8, 16, 32, 64*/};  // tests with different count
-                                                                     // of threads
+        size_t g_arrThreadCounts[] = { 1, 2, 4 /*, 8, 16, 32, 64*/ };  // tests with different count
+                                                                       // of threads
         for ( const size_t& nThreadCount : g_arrThreadCounts ) {
             skutils::test::test_log_e( cc::trace(
                 "# "
@@ -277,17 +281,17 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                 const size_t push_count_at_step_;
                 const size_t sleep_milliseconds_;
             } g_arrTestDataByPriority[] = {
-                {"-GOD-------", SKUTILS_DISPATCH_PRIORITY_GOD, 0, 0, false, 10, 1},
-                {"-BELOW-GOD-", SKUTILS_DISPATCH_PRIORITY_BELOW_GOD, 0, 0, false, 50, 1},
-                {"-ABSOLUTE--", SKUTILS_DISPATCH_PRIORITY_ABSOLUTE, 0, 0, false, 800, 1},
-                {"-HIGHEST---", SKUTILS_DISPATCH_PRIORITY_HIGHEST, 0, 0, false, 600, 1},
-                {"-HIGH------", SKUTILS_DISPATCH_PRIORITY_HIGH, 0, 0, false, 400, 1},
-                {"-NORMAL----", SKUTILS_DISPATCH_PRIORITY_NORMAL, 0, 0, false, 250, 1},
-                {"-LOW-------", SKUTILS_DISPATCH_PRIORITY_LOW, 0, 0, false, 80, 1},
-                {"-LOWEST----", SKUTILS_DISPATCH_PRIORITY_LOWEST, 0, 0, false, 50, 1},
-                {"-TOO-LOW---", SKUTILS_DISPATCH_PRIORITY_LOWEST * 10, 0, 0, false, 40, 1},
-                {"-EXTRA-LOW-", SKUTILS_DISPATCH_PRIORITY_LOWEST * 100, 0, 0, false, 30, 1},
-                {"-HELL-LOW--", SKUTILS_DISPATCH_PRIORITY_LOWEST * 1000, 0, 0, false, 20, 1},
+                { "-GOD-------", SKUTILS_DISPATCH_PRIORITY_GOD, 0, 0, false, 10, 1 },
+                { "-BELOW-GOD-", SKUTILS_DISPATCH_PRIORITY_BELOW_GOD, 0, 0, false, 50, 1 },
+                { "-ABSOLUTE--", SKUTILS_DISPATCH_PRIORITY_ABSOLUTE, 0, 0, false, 800, 1 },
+                { "-HIGHEST---", SKUTILS_DISPATCH_PRIORITY_HIGHEST, 0, 0, false, 600, 1 },
+                { "-HIGH------", SKUTILS_DISPATCH_PRIORITY_HIGH, 0, 0, false, 400, 1 },
+                { "-NORMAL----", SKUTILS_DISPATCH_PRIORITY_NORMAL, 0, 0, false, 250, 1 },
+                { "-LOW-------", SKUTILS_DISPATCH_PRIORITY_LOW, 0, 0, false, 80, 1 },
+                { "-LOWEST----", SKUTILS_DISPATCH_PRIORITY_LOWEST, 0, 0, false, 50, 1 },
+                { "-TOO-LOW---", SKUTILS_DISPATCH_PRIORITY_LOWEST * 10, 0, 0, false, 40, 1 },
+                { "-EXTRA-LOW-", SKUTILS_DISPATCH_PRIORITY_LOWEST * 100, 0, 0, false, 30, 1 },
+                { "-HELL-LOW--", SKUTILS_DISPATCH_PRIORITY_LOWEST * 1000, 0, 0, false, 20, 1 },
             };
             static const size_t cntPriorities =
                 sizeof( g_arrTestDataByPriority ) / sizeof( g_arrTestDataByPriority[0] );
@@ -387,8 +391,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                     g_bThreadStoppedFlag = true;
                     skutils::test::test_log_e(
                         thread_prefix_str() + cc::debug( "test thread is about to leave..." ) );
-                } )
-                    .detach();
+                } ).detach();
                 //
                 //
                 static const size_t nSleepMilliSeconds = 5000;
@@ -596,22 +599,22 @@ BOOST_AUTO_TEST_CASE( domain_timing_functionality_alive ) {
             //
             //
             static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
-            for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
-              skutils::test::test_log_e( thread_prefix_str()
-                                        + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
-                                        + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
-                                        + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-              sleep( nSleepSeconds );
-              skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                        cc::size10( nSleepSeconds ) +
-                                        cc::warn( " second(s), end of domain life time..." ) );
-              if( size_t( nCallCounterOnce ) >= 1
-                  && size_t( nCallCounterPeriodic ) >= size_t( nCallCounterPeriodicExpected )
-                  && size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
-                  && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
-                  )
-                break;
-            } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+            for ( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++nWaitRound ) {
+                skutils::test::test_log_e(
+                    thread_prefix_str() + cc::warn( "waiting for test to complete in round " ) +
+                    cc::size10( nWaitRound + 1 ) + cc::warn( " of " ) +
+                    cc::size10( nWaitRoundCount ) + cc::warn( ", will sleep " ) +
+                    cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+                sleep( nSleepSeconds );
+                skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                           cc::size10( nSleepSeconds ) +
+                                           cc::warn( " second(s), end of domain life time..." ) );
+                if ( size_t( nCallCounterOnce ) >= 1 &&
+                     size_t( nCallCounterPeriodic ) >= size_t( nCallCounterPeriodicExpected ) &&
+                     size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected ) &&
+                     size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected ) )
+                    break;
+            }  // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
             //
             //
             skutils::test::test_log_e(
@@ -684,7 +687,8 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::debug( "adding " ) +
                                    cc::notice( "once job" ) + cc::debug( " to queue" ) );
-        skutils::dispatch::once( skutils::dispatch::get_default_queue_id(),
+        skutils::dispatch::once(
+            skutils::dispatch::get_default_queue_id(),
             [&]() {
                 BOOST_REQUIRE( !bool( bInsideCallOnce ) );
                 bInsideCallOnce = true;
@@ -699,7 +703,8 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::debug( "adding " ) +
                                    cc::warn( "periodic job" ) + cc::debug( " to queue" ) );
-        skutils::dispatch::repeat( skutils::dispatch::get_default_queue_id(),
+        skutils::dispatch::repeat(
+            skutils::dispatch::get_default_queue_id(),
             [&]() {
                 BOOST_REQUIRE( !bool( bInsideCallPeriodic ) );
                 bInsideCallPeriodic = true;
@@ -716,7 +721,8 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         skutils::test::test_log_e( thread_prefix_str() + cc::debug( "adding " ) +
                                    cc::note( "async job" ) + cc::debug( " to queue" ) );
-        skutils::dispatch::async( skutils::dispatch::get_default_queue_id(),
+        skutils::dispatch::async(
+            skutils::dispatch::get_default_queue_id(),
             [&]() {
                 BOOST_REQUIRE( !bool( bInsideCallAsync ) );
                 bInsideCallAsync = true;
@@ -750,22 +756,22 @@ BOOST_AUTO_TEST_CASE( simple_api ) {
         //
         //
         static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
-        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
-          skutils::test::test_log_e( thread_prefix_str()
-              + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
-              + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
-              + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-          sleep( nSleepSeconds );
-          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                     cc::size10( nSleepSeconds ) +
-                                     cc::warn( " second(s), end of domain life time..." ) );
-          if( size_t( nCallCounterOnce ) == 1
-              && size_t( nCallCounterPeriodic ) >= size_t( nCallCounterPeriodicExpected )
-              && size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
-              && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
-              )
-              break;
-        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+        for ( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++nWaitRound ) {
+            skutils::test::test_log_e( thread_prefix_str() +
+                                       cc::warn( "waiting for test to complete in round " ) +
+                                       cc::size10( nWaitRound + 1 ) + cc::warn( " of " ) +
+                                       cc::size10( nWaitRoundCount ) + cc::warn( ", will sleep " ) +
+                                       cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+            sleep( nSleepSeconds );
+            skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                       cc::size10( nSleepSeconds ) +
+                                       cc::warn( " second(s), end of domain life time..." ) );
+            if ( size_t( nCallCounterOnce ) == 1 &&
+                 size_t( nCallCounterPeriodic ) >= size_t( nCallCounterPeriodicExpected ) &&
+                 size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected ) &&
+                 size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected ) )
+                break;
+        }  // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
         //
         //
         skutils::test::test_log_e(
@@ -881,23 +887,23 @@ BOOST_AUTO_TEST_CASE( auto_queues ) {
         //
         //
         static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
-        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
-          skutils::test::test_log_e( thread_prefix_str()
-              + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
-              + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
-              + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-          sleep( nSleepSeconds );
-          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                    cc::size10( nSleepSeconds ) +
-                                    cc::warn( " second(s), end of domain life time..." ) );
-          if( size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
-              && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
-              && size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected )
-              && size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected )
-              && size_t( nCallCounterSync ) >= size_t( nCallCounterAsync )
-              )
-              break;
-        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+        for ( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++nWaitRound ) {
+            skutils::test::test_log_e( thread_prefix_str() +
+                                       cc::warn( "waiting for test to complete in round " ) +
+                                       cc::size10( nWaitRound + 1 ) + cc::warn( " of " ) +
+                                       cc::size10( nWaitRoundCount ) + cc::warn( ", will sleep " ) +
+                                       cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+            sleep( nSleepSeconds );
+            skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                       cc::size10( nSleepSeconds ) +
+                                       cc::warn( " second(s), end of domain life time..." ) );
+            if ( size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected ) &&
+                 size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected ) &&
+                 size_t( nCallCounterAsync ) >= size_t( nCallCounterAsyncExpected ) &&
+                 size_t( nCallCounterSync ) >= size_t( nCallCounterSyncExpected ) &&
+                 size_t( nCallCounterSync ) >= size_t( nCallCounterAsync ) )
+                break;
+        }  // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
         //
         //
         skutils::test::test_log_e( thread_prefix_str() +
@@ -1017,52 +1023,53 @@ BOOST_AUTO_TEST_CASE( cross_jobs ) {
         }
         //
         //
-        bool isEverythingOKay = true; // assume good thing
+        bool isEverythingOKay = true;  // assume good thing
         static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
-        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
-          skutils::test::test_log_e( thread_prefix_str()
-                                    + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
-                                    + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
-                                    + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-          sleep( nSleepSeconds );
-          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                    cc::size10( nSleepSeconds ) +
-                                    cc::warn( " second(s), end of domain life time..." ) );
-          //
-          //
-          // pre-liminary attempt to find out everything is OKay
-          skutils::test::test_log_e(
-              thread_prefix_str() + cc::info( "performing preliminary state test..." ) );
-          isEverythingOKay = true; // assume good thing
-          for ( i = 0; i < nQueueCount; ++i ) {
-            bool bInside = bool( vecInside[i] );
+        for ( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++nWaitRound ) {
+            skutils::test::test_log_e( thread_prefix_str() +
+                                       cc::warn( "waiting for test to complete in round " ) +
+                                       cc::size10( nWaitRound + 1 ) + cc::warn( " of " ) +
+                                       cc::size10( nWaitRoundCount ) + cc::warn( ", will sleep " ) +
+                                       cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+            sleep( nSleepSeconds );
+            skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                       cc::size10( nSleepSeconds ) +
+                                       cc::warn( " second(s), end of domain life time..." ) );
+            //
+            //
+            // pre-liminary attempt to find out everything is OKay
             skutils::test::test_log_e(
-                thread_prefix_str() + cc::debug( "queue " ) + cc::size10( i ) +
-                cc::debug( " is " ) +
-                ( ( !bInside ) ? cc::success( "OKay" ) : cc::fatal( "STILL WORKING - FAIL" ) ) );
-            if ( bInside ) {
-              isEverythingOKay = false;
-              break;
+                thread_prefix_str() + cc::info( "performing preliminary state test..." ) );
+            isEverythingOKay = true;  // assume good thing
+            for ( i = 0; i < nQueueCount; ++i ) {
+                bool bInside = bool( vecInside[i] );
+                skutils::test::test_log_e( thread_prefix_str() + cc::debug( "queue " ) +
+                                           cc::size10( i ) + cc::debug( " is " ) +
+                                           ( ( !bInside ) ? cc::success( "OKay" ) :
+                                                            cc::fatal( "STILL WORKING - FAIL" ) ) );
+                if ( bInside ) {
+                    isEverythingOKay = false;
+                    break;
+                }
+                skutils::dispatch::queue_id_t id_queue_current =
+                    skutils::tools::format( "queue_%zu", i );
+                skutils::dispatch::queue_ptr_t pQueue =
+                    skutils::dispatch::get( id_queue_current, false );
+                size_t nQueueJobCount = pQueue->async_job_count();
+                // BOOST_REQUIRE( nQueueJobCount == 0 );
+                skutils::test::test_log_e(
+                    thread_prefix_str() + cc::debug( "worker " ) + cc::bright( id_queue_current ) +
+                    cc::debug( " has " ) + cc::size10( nQueueJobCount ) +
+                    cc::debug( " job(s) unfinished " ) +
+                    ( ( nQueueJobCount == 0 ) ? cc::success( "OKay" ) :
+                                                cc::fatal( "FAIL, MUST BE ZERO" ) ) );
             }
-            skutils::dispatch::queue_id_t id_queue_current =
-                skutils::tools::format( "queue_%zu", i );
-            skutils::dispatch::queue_ptr_t pQueue =
-                skutils::dispatch::get( id_queue_current, false );
-            size_t nQueueJobCount = pQueue->async_job_count();
-            // BOOST_REQUIRE( nQueueJobCount == 0 );
             skutils::test::test_log_e(
-                thread_prefix_str() + cc::debug( "worker " ) + cc::bright( id_queue_current ) +
-                cc::debug( " has " ) + cc::size10( nQueueJobCount ) +
-                cc::debug( " job(s) unfinished " ) +
-                ( ( nQueueJobCount == 0 ) ? cc::success( "OKay" ) :
-                                       cc::fatal( "FAIL, MUST BE ZERO" ) ) );
-          }
-          skutils::test::test_log_e(
-              thread_prefix_str() + cc::info( "done preliminary state test - " ) +
-              ( isEverythingOKay ? cc::success( "PASSED" ) : cc::fatal( "FAILED" ) ) );
-          if( isEverythingOKay )
-            break;
-        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+                thread_prefix_str() + cc::info( "done preliminary state test - " ) +
+                ( isEverythingOKay ? cc::success( "PASSED" ) : cc::fatal( "FAILED" ) ) );
+            if ( isEverythingOKay )
+                break;
+        }  // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
         //
         //
         if ( !isEverythingOKay ) {
@@ -1144,10 +1151,10 @@ BOOST_AUTO_TEST_CASE( enqueue_while_busy ) {
             log_sequence.push_back( s );
             skutils::test::test_log_e( thread_prefix_str() + cc::debug( "--- " ) + cc::info( s ) );
         };
-        auto fnLogSequenceSize = [&]( ) -> size_t {
-          lock_type lock( mtx );
-          size_t n = log_sequence.size();
-          return n;
+        auto fnLogSequenceSize = [&]() -> size_t {
+            lock_type lock( mtx );
+            size_t n = log_sequence.size();
+            return n;
         };
         const char g_strLogText_LengthyWork_begin[] = "lengthy work begin";
         const char g_strLogText_LengthyWork_end[] = "lengthy work end";
@@ -1304,19 +1311,20 @@ BOOST_AUTO_TEST_CASE( enqueue_while_busy ) {
         //
         //
         static const size_t nSleepSeconds = 5, nWaitRoundCount = 5;
-        for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound ) {
-          skutils::test::test_log_e( thread_prefix_str()
-                                    + cc::warn( "waiting for test to complete in round " ) + cc::size10( nWaitRound+1 )
-                                    + cc::warn( " of " ) + cc::size10( nWaitRoundCount )
-                                    + cc::warn( ", will sleep " ) + cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-          sleep( nSleepSeconds );
-          skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                    cc::size10( nSleepSeconds ) +
-                                    cc::warn( " second(s), end of domain life time..." ) );
-          size_t n = fnLogSequenceSize();
-          if( n >= 10 )
-            break;
-        } // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
+        for ( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++nWaitRound ) {
+            skutils::test::test_log_e( thread_prefix_str() +
+                                       cc::warn( "waiting for test to complete in round " ) +
+                                       cc::size10( nWaitRound + 1 ) + cc::warn( " of " ) +
+                                       cc::size10( nWaitRoundCount ) + cc::warn( ", will sleep " ) +
+                                       cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+            sleep( nSleepSeconds );
+            skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+                                       cc::size10( nSleepSeconds ) +
+                                       cc::warn( " second(s), end of domain life time..." ) );
+            size_t n = fnLogSequenceSize();
+            if ( n >= 10 )
+                break;
+        }  // for( size_t nWaitRound = 0; nWaitRound < nWaitRoundCount; ++ nWaitRound )
         //
         //
         skutils::test::test_log_e(

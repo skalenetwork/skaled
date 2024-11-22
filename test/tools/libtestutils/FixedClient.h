@@ -69,13 +69,14 @@ public:
     h256 submitTransaction( eth::TransactionSkeleton const&, Secret const& ) override {
         return {};
     };
-    h256 importTransaction( eth::Transaction const&, dev::eth::TransactionBroadcast  ) override { return {}; }
-    eth::ExecutionResult call(
-        Address const&, u256, Address, bytes const&, u256, u256,
+    h256 importTransaction( eth::Transaction const&, dev::eth::TransactionBroadcast ) override {
+        return {};
+    }
+    eth::ExecutionResult call( Address const&, u256, Address, bytes const&, u256, u256,
 #ifdef HISTORIC_STATE
-                                  BlockNumber,
+        BlockNumber,
 #endif
-eth::FudgeFactor ) override {
+        eth::FudgeFactor ) override {
         return {};
     };
     eth::TransactionSkeleton populateTransactionWithDefaults(
@@ -84,16 +85,11 @@ eth::FudgeFactor ) override {
     };
 
 #ifdef HISTORIC_STATE
-        u256 historicStateBalanceAt(Address, BlockNumber) const override
-           {return 0;}
-        u256 historicStateCountAt(Address, BlockNumber) const override
-           {return 0;}
-        u256 historicStateAt(Address, u256, BlockNumber) const override
-            {return 0;}
-        h256 historicStateRootAt(Address, BlockNumber) const override
-            {return h256();}
-        bytes historicStateCodeAt(Address, BlockNumber) const override
-            {return bytes();};
+    u256 historicStateBalanceAt( Address, BlockNumber ) const override { return 0; }
+    u256 historicStateCountAt( Address, BlockNumber ) const override { return 0; }
+    u256 historicStateAt( Address, u256, BlockNumber ) const override { return 0; }
+    h256 historicStateRootAt( Address, BlockNumber ) const override { return h256(); }
+    bytes historicStateCodeAt( Address, BlockNumber ) const override { return bytes(); };
 #endif
 
 private:
@@ -101,7 +97,6 @@ private:
     eth::Block m_block;
     mutable SharedMutex x_stateDB;  ///< Lock on the state DB, effectively a lock on m_postSeal.
 };
-
 
 
 }  // namespace test

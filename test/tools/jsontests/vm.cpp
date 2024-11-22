@@ -50,13 +50,13 @@ CreateResult FakeExtVM::create(
     u256 _endowment, u256& io_gas, bytesConstRef _init, Instruction, u256, OnOpFunc const& ) {
     Address address = right160( sha3( rlpList( myAddress, get< 1 >( addresses[myAddress] ) ) ) );
     callcreates.emplace_back( _endowment, gasPrice, io_gas, _init.toBytes() );
-    return {EVMC_SUCCESS, {}, address};
+    return { EVMC_SUCCESS, {}, address };
 }
 
 CallResult FakeExtVM::call( CallParameters& _p ) {
     Transaction t( _p.valueTransfer, gasPrice, _p.gas, _p.receiveAddress, _p.data.toVector() );
     callcreates.push_back( t );
-    return {EVMC_SUCCESS, {}};  // Return empty output.
+    return { EVMC_SUCCESS, {} };  // Return empty output.
 }
 
 h256 FakeExtVM::blockHash( u256 _number ) {
@@ -92,7 +92,8 @@ mObject FakeExtVM::exportEnv() {
     return ret;
 }
 
-EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes, time_t _committedBlockTimestamp ) {
+EnvInfo FakeExtVM::importEnv( mObject const& _o, LastBlockHashesFace const& _lastBlockHashes,
+    time_t _committedBlockTimestamp ) {
     // cant use BOOST_REQUIRE, because this function is used outside boost test (createRandomTest)
     assert( _o.count( "currentGasLimit" ) > 0 );
     assert( _o.count( "currentDifficulty" ) > 0 );
@@ -313,7 +314,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
             BOOST_REQUIRE_MESSAGE( testInput.count( "expect" ) == 0, testname + " expect set!" );
 
         TestLastBlockHashes lastBlockHashes( h256s( 256, h256() ) );
-        eth::EnvInfo env = FakeExtVM::importEnv( testInput.at( "env" ).get_obj(), lastBlockHashes, 0 );
+        eth::EnvInfo env =
+            FakeExtVM::importEnv( testInput.at( "env" ).get_obj(), lastBlockHashes, 0 );
         FakeExtVM fev( env );
         fev.importState( testInput.at( "pre" ).get_obj() );
 
@@ -336,7 +338,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
             auto vm = eth::VMFactory::create();
             auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
             {
-                Listener::ExecTimeGuard guard{i.first};
+                Listener::ExecTimeGuard guard{ i.first };
                 auto gas = static_cast< int64_t >( fev.gas );
                 output = vm->exec( fev.gas, fev, vmtrace );
                 gas -= static_cast< int64_t >( fev.gas );
@@ -368,9 +370,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
                     State postState = State();
-                    postState.setStorageLimit(1000000000);
+                    postState.setStorageLimit( 1000000000 );
                     State expectState = State();
-                    expectState.setStorageLimit(1000000000);
+                    expectState.setStorageLimit( 1000000000 );
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
@@ -390,9 +392,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
                     State postState = State();
-                    postState.setStorageLimit(1000000000);
+                    postState.setStorageLimit( 1000000000 );
                     State expectState = State();
-                    expectState.setStorageLimit(1000000000);
+                    expectState.setStorageLimit( 1000000000 );
                     AccountMaskMap expectStateMap;
 
                     // json_spirit::mObject const& debug_var = testOutput.at("post").get_obj();
@@ -447,7 +449,8 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     testname + " logs field is not a string." );
 
                 // use all patches here ("1")
-                dev::test::FakeExtVM test( eth::EnvInfo{BlockHeader{}, lastBlockHashes, 1, 0, 0} );
+                dev::test::FakeExtVM test(
+                    eth::EnvInfo{ BlockHeader{}, lastBlockHashes, 1, 0, 0 } );
                 test.importState( testInput.at( "post" ).get_obj() );
                 test.importCallCreates( testInput.at( "callcreates" ).get_array() );
 
@@ -456,9 +459,9 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
                 State postState = State();
-                postState.setStorageLimit(1000000000);
+                postState.setStorageLimit( 1000000000 );
                 State expectState = State();
-                expectState.setStorageLimit(1000000000);
+                expectState.setStorageLimit( 1000000000 );
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
@@ -505,21 +508,20 @@ public:
 BOOST_FIXTURE_TEST_SUITE( VMTests, VmTestFixture )
 
 BOOST_AUTO_TEST_CASE( vmArithmeticTest ) {}
-BOOST_AUTO_TEST_CASE( vmBitwiseLogicOperation,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmBlockInfoTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmEnvironmentalInfo,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmBitwiseLogicOperation, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmBlockInfoTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmEnvironmentalInfo, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmIOandFlowOperations ) {}
 BOOST_AUTO_TEST_CASE( vmLogTest ) {}
-BOOST_AUTO_TEST_CASE( vmPerformance,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmPerformance, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmPushDupSwapTest ) {}
-BOOST_AUTO_TEST_CASE( vmRandomTest,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( vmSha3Test,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE(
+    vmRandomTest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
+BOOST_AUTO_TEST_CASE( vmSha3Test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( vmSystemOperations ) {}
 BOOST_AUTO_TEST_CASE( vmTests ) {}
 

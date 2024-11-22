@@ -128,7 +128,7 @@ void testState() {
 
     cout << "Balances reads:" << endl;
     cout << measure_performance(
-                [&state, &address]() { state.createStateCopyAndClearCaches().balance(address ); },
+                [&state, &address]() { state.createStateCopyAndClearCaches().balance( address ); },
                 100000 ) /
                 1e6
          << " Mreads per second" << endl;
@@ -150,7 +150,7 @@ void testState() {
     cout << "EVM storate reads:" << endl;
     cout << measure_performance(
                 [&state, &address, &memory_address]() {
-                    state.createReadOnlySnapBasedCopy().storage(address, memory_address );
+                    state.createReadOnlySnapBasedCopy().storage( address, memory_address );
                     memory_address = ( memory_address + 1 ) % 1024;
                 },
                 1000 ) /
@@ -176,8 +176,9 @@ void testState() {
 
     cout << "EVM code reads:" << endl;
     cout << measure_performance(
-            [&state, &address]() { state.createReadOnlySnapBasedCopy().code(address ); }, 1000 ) /
-            1e6
+                [&state, &address]() { state.createReadOnlySnapBasedCopy().code( address ); },
+                1000 ) /
+                1e6
          << " Mreads per second" << endl;
 }
 

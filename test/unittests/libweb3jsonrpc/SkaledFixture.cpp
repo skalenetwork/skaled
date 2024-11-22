@@ -104,27 +104,27 @@ Json::Value CurlClient::doRequestResponse() {
         // Accessing JSON data
         if ( root.isMember( "result" ) ) {
             return root["result"];
-        } else if (root.isMember( "error" )) {
+        } else if ( root.isMember( "error" ) ) {
             CHECK( root["error"].isObject() );
             auto errorDescription = root["error"];
             string description = "JSON-RPC error:";
-            if (errorDescription.isMember( "code" )) {
+            if ( errorDescription.isMember( "code" ) ) {
                 description += errorDescription["code"].asString() + ":";
             }
 
-            if (errorDescription.isMember( "message" )) {
+            if ( errorDescription.isMember( "message" ) ) {
                 description += errorDescription["message"].asString() + ":";
             };
 
-            throw std::runtime_error( description);
+            throw std::runtime_error( description );
         } else {
             throw std::runtime_error( "No result  or error in response" );
             Json::StreamWriterBuilder writer;
-            writer["indentation"] = "  "; // Set indentation level (2 spaces here)
+            writer["indentation"] = "  ";  // Set indentation level (2 spaces here)
 
             // Convert the Json::Value to a string
-            std::string output = Json::writeString(writer, root);
-            throw std::runtime_error( "No result  or error in response:"  + output);
+            std::string output = Json::writeString( writer, root );
+            throw std::runtime_error( "No result  or error in response:" + output );
         }
     } else {
         // Output error message if parsing fails
@@ -453,16 +453,16 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
     }
 
 
-    cout << 1000.0 * testAccounts.size() * mtmBatchSize / ( getCurrentTimeMs() - begin ) <<
-        " submission tps" << endl;
+    cout << 1000.0 * testAccounts.size() * mtmBatchSize / ( getCurrentTimeMs() - begin )
+         << " submission tps" << endl;
 
 
     for ( auto&& account : testAccounts ) {
-        waitForTransactionOrBatch(account.second, mtmBatchSize );
+        waitForTransactionOrBatch( account.second, mtmBatchSize );
     };
 
-    cout <<  1000.0 * testAccounts.size() * mtmBatchSize / ( getCurrentTimeMs() - begin )
-    << " total tps" << endl;
+    cout << 1000.0 * testAccounts.size() * mtmBatchSize / ( getCurrentTimeMs() - begin )
+         << " total tps" << endl;
 
     for ( auto&& account : testAccountsVector ) {
         checkReceiptStatusAndGetGasUsed( account->getLastTxHash() );
@@ -671,10 +671,10 @@ string SkaledFixture::getTxPayload( Transaction& transaction ) {
 // this call sends ether a single transfer, or multiple copies of same transfer.
 // the latter is used in MTM mode testing. For a single transder _batchSize = 1
 void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    const string& _to, const u256& _gasPrice,  uint64_t _batchSize, TransferType _transferType,
+    const string& _to, const u256& _gasPrice, uint64_t _batchSize, TransferType _transferType,
     TransactionWait _wait ) {
     auto from = _from->getAddressAsString();
-    auto accountNonce = _from->computeNonceForNextTransactionOrBatch(_batchSize);
+    auto accountNonce = _from->computeNonceForNextTransactionOrBatch( _batchSize );
     u256 dstBalanceBefore;
 
 
@@ -713,9 +713,9 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
     ts.gas = 90000;
     ts.gasPrice = _gasPrice;
 
-    vector<string> txHashes;
+    vector< string > txHashes;
 
-    for (uint64_t i = 0; i < _batchSize; i++) {
+    for ( uint64_t i = 0; i < _batchSize; i++ ) {
         Transaction transaction( ts );
         transaction.forceChainId( chainId );
         transaction.forceType( this->transactionType );
@@ -723,8 +723,8 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
             transaction.forceType2Fees( _gasPrice, _gasPrice );
         }
 
-        if (usePow) {
-            calculateAndSetPowGas(transaction);
+        if ( usePow ) {
+            calculateAndSetPowGas( transaction );
         }
 
         transaction.sign( _from->getKey() );
@@ -736,8 +736,8 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
             auto txHash = getThreadLocalCurlClient()->eth_sendRawTransaction( payload );
             txHashes.push_back( txHash );
         } catch ( std::exception& e ) {
-            cerr << "Exception in eth_sendRawTransaction from: " << transaction.from() <<
-                ": nonce: " << transaction.nonce() << endl;
+            cerr << "Exception in eth_sendRawTransaction from: " << transaction.from()
+                 << ": nonce: " << transaction.nonce() << endl;
             cerr << e.what() << endl;
             throw e;
         }
@@ -753,7 +753,7 @@ void SkaledFixture::sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< Sk
         ++ts.nonce;
     }
 
-    _from->setLastTxHash( txHashes.back());
+    _from->setLastTxHash( txHashes.back() );
 }
 
 
@@ -836,8 +836,8 @@ string SkaledFixture::sendSingleDeployOrSolidityCall( u256 _amount,
 }
 
 
-void SkaledFixture::waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > _account,
-    uint64_t _batchSize) {
+void SkaledFixture::waitForTransactionOrBatch(
+    std::shared_ptr< SkaledAccount > _account, uint64_t _batchSize ) {
     u256 transactionCount;
 
     auto lastSentNonce = _account->getLastSentNonce();
@@ -846,8 +846,7 @@ void SkaledFixture::waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > 
 
 
     while ( ( transactionCount = getThreadLocalCurlClient()->eth_getTransactionCount(
-                  _account->getAddressAsString() ) ) < lastSentNonce + 1) {
-
+                  _account->getAddressAsString() ) ) < lastSentNonce + 1 ) {
         if ( this->verifyTransactions ) {
             CHECK( getTransactionCount( _account->getAddressAsString() ) == transactionCount )
         }
@@ -861,9 +860,9 @@ void SkaledFixture::waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > 
     }
 
     // the count should now be one more than the last transaction nonce
-    CHECK( transactionCount == lastSentNonce + 1);
+    CHECK( transactionCount == lastSentNonce + 1 );
 
-    _account->notifyLastTransactionOrBatchCompleted(  _batchSize);
+    _account->notifyLastTransactionOrBatchCompleted( _batchSize );
 }
 
 void SkaledFixture::splitAccountInHalves( std::shared_ptr< SkaledAccount > _from,
@@ -893,8 +892,8 @@ void SkaledFixture::sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, co
         CHECK( fee <= getBalance( _from->getAddressAsString() ) )
     }
 
-    sendSingleTransferOrBatch( 1, _from, _from->getAddressAsString(), _gasPrice,
-        this->mtmBatchSize, _transferType, _wait );
+    sendSingleTransferOrBatch( 1, _from, _from->getAddressAsString(), _gasPrice, this->mtmBatchSize,
+        _transferType, _wait );
 }
 
 
@@ -906,12 +905,11 @@ unique_ptr< WebThreeStubClient > SkaledFixture::rpcClient() const {
 }
 
 void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
-
     for ( u256 i = 1;; i++ ) {
         _t.forceGasPrice( i );
 
-        h256 hash = dev::sha3( _t.sender().ref() ) ^
-            dev::sha3( _t.nonce() ) ^ dev::sha3( _t.gasPrice() );
+        h256 hash =
+            dev::sha3( _t.sender().ref() ) ^ dev::sha3( _t.nonce() ) ^ dev::sha3( _t.gasPrice() );
 
         u256 externalGas = ~u256( 0 ) / u256( hash ) / powDiffuculty;
 

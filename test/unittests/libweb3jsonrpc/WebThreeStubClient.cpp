@@ -167,8 +167,6 @@ std::string WebThreeStubClient::skale_stats() {
 }
 
 
-
-
 std::string WebThreeStubClient::eth_protocolVersion() {
     Json::Value p;
     p = Json::nullValue;
@@ -407,10 +405,11 @@ std::string WebThreeStubClient::eth_sendTransaction( const Json::Value& param1 )
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-std::string WebThreeStubClient::eth_estimateGas( const Json::Value& param1, const std::string& param2 ) {
+std::string WebThreeStubClient::eth_estimateGas(
+    const Json::Value& param1, const std::string& param2 ) {
     Json::Value p;
     p.append( param1 );
-    if(!param2.empty())
+    if ( !param2.empty() )
         p.append( param2 );
     Json::Value result = this->CallMethod( "eth_estimateGas", p );
     if ( result.isString() )
@@ -432,7 +431,8 @@ std::string WebThreeStubClient::eth_call( const Json::Value& param1, const std::
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-std::string WebThreeStubClient::eth_callEIP1898( const Json::Value& param1, const Json::Value& param2 ) {
+std::string WebThreeStubClient::eth_callEIP1898(
+    const Json::Value& param1, const Json::Value& param2 ) {
     Json::Value p;
     p.append( param1 );
     p.append( param2 );
@@ -841,7 +841,8 @@ std::string WebThreeStubClient::eth_maxPriorityFeePerGas() {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value WebThreeStubClient::eth_createAccessList( const Json::Value& param1, const std::string& param2 ) {
+Json::Value WebThreeStubClient::eth_createAccessList(
+    const Json::Value& param1, const std::string& param2 ) {
     Json::Value p;
     p.append( param1 );
     p.append( param2 );
@@ -853,7 +854,8 @@ Json::Value WebThreeStubClient::eth_createAccessList( const Json::Value& param1,
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value WebThreeStubClient::eth_feeHistory( const Json::Value& param1, const std::string& param2, const Json::Value& param3 ) {
+Json::Value WebThreeStubClient::eth_feeHistory(
+    const Json::Value& param1, const std::string& param2, const Json::Value& param3 ) {
     Json::Value p;
     if ( param1.isString() )
         p.append( param1.asString() );
@@ -1345,7 +1347,8 @@ std::string WebThreeStubClient::debug_preimage( const std::string& param1 ) {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-Json::Value WebThreeStubClient::debug_traceBlockByNumber( const std::string& param1, const Json::Value& param2 ) {
+Json::Value WebThreeStubClient::debug_traceBlockByNumber(
+    const std::string& param1, const Json::Value& param2 ) {
     Json::Value p;
     p.append( param1 );
     p.append( param2 );
