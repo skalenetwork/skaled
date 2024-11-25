@@ -632,10 +632,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     //            function setA(uint x) public {
     //                a[x] = true;
     //                a[x] = false;
-    //            }
     //    }
 
     Address from = fixture.coinbase.address();
+    //            }
     Address contractAddress( "0xD2001300000000000000000000000000000000D3" );
 
     // data to call method setA(0)
@@ -643,10 +643,16 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
             jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
 
     int64_t maxGas = 100000;
+
+    u256 balance = testClient->balanceAt( from );
+    BOOST_CHECK( balance > 0 );
+
     u256 estimate = testClient
             ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                            GasEstimationCallback() )
             .first;
+
+
 
     Json::Value estimateTransaction;
     estimateTransaction["from"] = toJS(from );

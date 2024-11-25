@@ -38,7 +38,6 @@
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
 #include "SkaledFixture.h"
-#include <libweb3jsonrpc/JsonHelper.h>
 #include <libconsensus/SkaleCommon.h>
 #include <libconsensus/oracle/OracleRequestSpec.h>
 #include "genesisGeneration2Config.h"
@@ -4223,6 +4222,7 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 
 // historic node shall ignore invalid transactions in block
 BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
+    sleep(1);
     JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
     dev::eth::simulateMining( *( fixture.client ), 1 );  // 2 Ether
 
