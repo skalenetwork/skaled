@@ -71,7 +71,6 @@ using namespace skale::error;
 
 static_assert( BOOST_VERSION >= 106400, "Wrong boost headers version" );
 
-
 namespace {
 std::string filtersToString( h256Hash const& _fs ) {
     std::stringstream str;

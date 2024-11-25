@@ -61,13 +61,11 @@
 #include <skutils/multithreading.h>
 
 class ConsensusHost;
-
 class SnapshotManager;
 
 namespace dev {
 namespace eth {
 class Client;
-
 class DownloadMan;
 
 enum ClientWorkState { Active = 0, Deleting, Deleted };
@@ -85,7 +83,6 @@ constexpr size_t MAX_BLOCK_TRACES_CACHE_SIZE = 64 * 1024 * 1024;
 constexpr size_t MAX_BLOCK_TRACES_CACHE_ITEMS = 1024 * 1024;
 #endif
 
-
 /**
  * @brief Main API hub for interfacing with Ethereum.
  */
@@ -100,7 +97,6 @@ public:
         WithExisting _forceAction = WithExisting::Trust,
         TransactionQueue::Limits const& _l = TransactionQueue::Limits{
             1024, 1024, 12322916, 24645833 } );
-
     /// Destructor.
     virtual ~Client();
 
@@ -112,12 +108,10 @@ public:
     ChainParams const& chainParams() const { return bc().chainParams(); }
 
     clock_t dbRotationPeriod() const { return bc().clockDbRotationPeriod_; }
-
     void dbRotationPeriod( clock_t clockPeriod ) { bc().clockDbRotationPeriod_ = clockPeriod; }
 
     /// Resets the gas pricer to some other object.
     void setGasPricer( std::shared_ptr< GasPricer > _gp ) { m_gp = _gp; }
-
     std::shared_ptr< GasPricer > gasPricer() const { return m_gp; }
 
     /// Submits the given transaction.
@@ -138,16 +132,12 @@ public:
         FudgeFactor _ff = FudgeFactor::Strict ) override;
 
 #ifdef HISTORIC_STATE
-
     Json::Value traceCall( Address const& _from, u256 _value, Address _to, bytes const& _data,
         u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
-
     Json::Value traceBlock( BlockNumber _blockNumber, Json::Value const& _jsonTraceConfig );
-
     Transaction createTransactionForCallOrTraceCall( const Address& _from, const u256& _value,
         const Address& _to, const bytes& _data, const u256& _gasLimit, const u256& _gasPrice,
         const u256& nonce ) const;
-
 #endif
 
 
@@ -168,7 +158,6 @@ public:
 
     /// Get the remaining gas limit in this block.
     u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
-
     /// Get the gas bid price
     u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const override {
         return m_gp->bid( _blockNumber );
@@ -183,31 +172,22 @@ public:
         ReadGuard l( x_postSeal );
         return m_postSeal;
     }
-
     /// Get the object representing the current canonical blockchain.
     BlockChain const& blockChain() const { return bc(); }
-
     /// Get some information on the block queue.
     BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
-
     /// Get some information on the block syncing.
     SyncStatus syncStatus() const override;
-
     /// Populate the uninitialized fields in the supplied transaction with default values
     TransactionSkeleton populateTransactionWithDefaults(
         TransactionSkeleton const& _t ) const override;
-
     /// Get the block queue.
     BlockQueue const& blockQueue() const { return m_bq; }
-
     /// Get the state database.
     skale::State const& state() const { return m_state; }
-
     /// Get some information on the transaction queue.
     TransactionQueue::Status transactionQueueStatus() const { return m_tq.status(); }
-
     TransactionQueue::Limits transactionQueueLimits() const { return m_tq.limits(); }
-
     TransactionQueue* debugGetTransactionQueue() { return &m_tq; }
 
     /// Freeze worker thread and sync some of the block queue.
@@ -220,28 +200,24 @@ public:
         ReadGuard l( x_preSeal );
         return m_preSeal.author();
     }
-
     void setAuthor( Address const& _us ) override {
-        DEV_WRITE_GUARDED( x_preSeal ) m_preSeal.setAuthor( _us );
+        DEV_WRITE_GUARDED( x_preSeal )
+        m_preSeal.setAuthor( _us );
         restartMining();
     }
 
     /// Type of sealers available for this seal engine.
     strings sealers() const { return sealEngine()->sealers(); }
-
     /// Current sealer in use.
     std::string sealer() const { return sealEngine()->sealer(); }
-
     /// Change sealer.
     void setSealer( std::string const& _id ) {
         sealEngine()->setSealer( _id );
         if ( wouldSeal() )
             startSealing();
     }
-
     /// Review option for the sealer.
     bytes sealOption( std::string const& _name ) const { return sealEngine()->option( _name ); }
-
     /// Set option for the sealer.
     bool setSealOption( std::string const& _name, bytes const& _value ) {
         auto ret = sealEngine()->setOption( _name, _value );
@@ -252,22 +228,18 @@ public:
 
     /// Start sealing.
     void startSealing() override;
-
     /// Stop sealing.
     void stopSealing() override { m_wouldSeal = false; }
-
     /// Are we sealing now?
     bool wouldSeal() const override { return m_wouldSeal; }
 
     /// Are we updating the chain (syncing or importing a new block)?
     bool isSyncing() const override;
-
     /// Are we syncing the chain?
     bool isMajorSyncing() const override;
 
     /// Gets the network id.
     u256 networkId() const override;
-
     /// Sets the network id.
     void setNetworkId( u256 const& _n ) override;
 
@@ -277,23 +249,18 @@ public:
     // Debug stuff:
 
     DownloadMan const* downloadMan() const;
-
     /// Clears pending transactions. Just for debug use.
     void clearPending();
-
     /// Retries all blocks with unknown parents.
     void retryUnknown() { m_bq.retryAllUnknown(); }
-
     /// Get a report of activity.
     ActivityReport activityReport() {
         ActivityReport ret;
         std::swap( m_report, ret );
         return ret;
     }
-
     /// Set the extra data that goes into sealed blocks.
     void setExtraData( bytes const& _extraData ) { m_extraData = _extraData; }
-
     /// Rescue the chain.
     void rescue() { bc().rescue( m_state ); }
 
@@ -317,7 +284,6 @@ public:
         std::function< void( BlockHeader const& ) > _handler ) {
         return m_onBlockImport.add( _handler );
     }
-
     /// Change the function that is called when a new block is sealed
     Handler< bytes const& > setOnBlockSealed( std::function< void( bytes const& ) > _handler ) {
         return m_onBlockSealed.add( _handler );
@@ -387,25 +353,18 @@ public:
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
 
 #ifdef HISTORIC_STATE
-
     uint64_t getHistoricStateDbUsage() const;
-
     uint64_t getHistoricRootsDbUsage() const;
-
 #endif  // HISTORIC_STATE
 
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
-
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
 #ifdef HISTORIC_STATE
-
     OverlayDB const& historicStateDB() const { return m_historicStateDB; }
-
     OverlayDB const& historicBlockToStateRootDB() const { return m_historicBlockToStateRootDB; }
-
 #endif
 
 protected:
@@ -428,7 +387,6 @@ protected:
 
     /// InterfaceStub methods
     BlockChain& bc() override { return m_bc; }
-
     BlockChain const& bc() const override { return m_bc; }
 
     /// Returns the state object for the full block (i.e. the terminal state) for index _h.
@@ -445,7 +403,6 @@ protected:
         ReadGuard l( x_postSeal );
         return m_postSeal;
     }
-
     void prepareForTransaction() override;
 
     /// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -466,9 +423,7 @@ protected:
 
 
 #ifdef HISTORIC_STATE
-
     Block blockByNumber( BlockNumber _h ) const;
-
 #endif
 
 protected:
@@ -477,7 +432,6 @@ protected:
 
     /// Do some work. Handles blockchain maintenance and sealing.
     void doWork( bool _doWait );
-
     void doWork() override { doWork( true ); }
 
     /// Called when Worker is exiting.
@@ -494,7 +448,6 @@ protected:
 
     /// Called after processing blocks by onChainChanged(_ir)
     void resyncStateFromChain();
-
     /// Update m_preSeal, m_working, m_postSeal blocks from the latest state of the chain
     void restartMining();
 
@@ -540,14 +493,14 @@ protected:
 
     BlockChain m_bc;  ///< Maintains block database and owns the seal engine.
     BlockQueue m_bq;  ///< Maintains a list of incoming blocks not yet on the blockchain (to be
-    ///< imported).
+                      ///< imported).
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
 
 
 #ifdef HISTORIC_STATE
     OverlayDB m_historicStateDB;  ///< Acts as the central point for the state database, so multiple
-    ///< States can share it.
+                                  ///< States can share it.
     OverlayDB m_historicBlockToStateRootDB;  /// Maps hashes of block IDs to state roots
 #endif
 
@@ -558,21 +511,21 @@ protected:
     Block m_preSeal;                 ///< The present state of the client.
     mutable SharedMutex x_postSeal;  ///< Lock on m_postSeal.
     Block m_postSeal;  ///< The state of the client which we're sealing (i.e. it'll have all the
-    ///< rewards added).
+                       ///< rewards added).
     mutable SharedMutex x_working;  ///< Lock on m_working.
     Block m_working;  ///< The state of the client which we're sealing (i.e. it'll have all the
-    ///< rewards added), while we're actually working on it.
+                      ///< rewards added), while we're actually working on it.
     BlockHeader m_sealingInfo;  ///< The header we're attempting to seal on (derived from
-    ///< m_postSeal).
+                                ///< m_postSeal).
 
     mutable Mutex m_blockImportMutex;  /// synchronize state and latest block update
 
     bool remoteActive() const;     ///< Is there an active and valid remote worker?
     bool m_remoteWorking = false;  ///< Has the remote worker recently been reset?
-    std::atomic< bool > m_needStateReset = { false };  ///< Need reset working state to premin on
-    ///< next sync
+    std::atomic< bool > m_needStateReset = { false };     ///< Need reset working state to premin on
+                                                          ///< next sync
     std::chrono::system_clock::time_point m_lastGetWork;  ///< Is there an active and valid remote
-    ///< worker?
+                                                          ///< worker?
 
     dev::u256 m_networkId;  // TODO delegate this to someone? (like m_host)
     // TODO Add here m_isSyncing or use special BlockchainSync class (ask Stan)
@@ -586,7 +539,7 @@ protected:
 
     bool m_wouldSeal = false;          ///< True if we /should/ be sealing.
     bool m_wouldButShouldnot = false;  ///< True if the last time we called rejigSealing wouldSeal()
-    ///< was true but sealer's shouldSeal() was false.
+                                       ///< was true but sealer's shouldSeal() was false.
 
     mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
     ///< When did we last both doing GC on the watches?
@@ -599,7 +552,7 @@ protected:
 
     SharedMutex x_functionQueue;
     std::queue< std::function< void() > > m_functionQueue;  ///< Functions waiting to be executed in
-    ///< the main thread.
+                                                            ///< the main thread.
 
     std::atomic< bool > m_syncTransactionQueue = { false };
     std::atomic< bool > m_syncBlockQueue = { false };
@@ -607,8 +560,8 @@ protected:
     bytes m_extraData;
 
     Signal< BlockHeader const& > m_onBlockImport;  ///< Called if we have imported a new block into
-    ///< the DB
-    Signal< bytes const& > m_onBlockSealed;  ///< Called if we have sealed a new block
+                                                   ///< the DB
+    Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
     Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
     Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
@@ -629,7 +582,6 @@ protected:
 
 private:
     void initHistoricGroupIndex();
-
     void updateHistoricGroupIndex();
 
     // which group corresponds to the current block timestamp on this node
@@ -648,7 +600,6 @@ protected:
     private:
         typedef skutils::multithreading::recursive_mutex_type mutex_type;
         typedef std::lock_guard< mutex_type > lock_type;
-
         static mutex_type& mtx() { return skutils::get_ref_mtx(); }
 
         typedef std::map< key_type, handler_type > map_type;
@@ -658,18 +609,14 @@ protected:
 
     public:
         genericWatch() {}
-
         virtual ~genericWatch() { uninstallAll(); }
-
         key_type create_subscription_id() { return subscription_counter_++; }
-
         virtual bool is_installed( const key_type& k ) const {
             lock_type lock( mtx() );
             if ( map_.find( k ) == map_.end() )
                 return false;
             return true;
         }
-
         virtual key_type install( handler_type& h ) {
             if ( !h )
                 return false;  // not call-able
@@ -678,7 +625,6 @@ protected:
             map_[k] = h;
             return k;
         }
-
         virtual bool uninstall( const key_type& k ) {
             lock_type lock( mtx() );
             auto itFind = map_.find( k );
@@ -687,12 +633,10 @@ protected:
             map_.erase( itFind );
             return true;
         }
-
         virtual void uninstallAll() {
             lock_type lock( mtx() );
             map_.clear();
         }
-
         virtual void invoke( const parameter_type& p ) {
             map_type map2;
             {  // block
@@ -708,7 +652,6 @@ protected:
             }
         }
     };
-
     // new block watch
     typedef genericWatch< Block > blockWatch;
     blockWatch m_new_block_watch;
@@ -720,32 +663,22 @@ public:
     // new block watch
     virtual unsigned installNewBlockWatch(
         std::function< void( const unsigned&, const Block& ) >& ) override;
-
     virtual bool uninstallNewBlockWatch( const unsigned& ) override;
 
     // new pending transation watch
     virtual unsigned installNewPendingTransactionWatch(
         std::function< void( const unsigned&, const Transaction& ) >& ) override;
-
     virtual bool uninstallNewPendingTransactionWatch( const unsigned& ) override;
 
 
 #ifdef HISTORIC_STATE
-
     u256 historicStateBalanceAt( Address _a, BlockNumber _block ) const override;
-
     u256 historicStateCountAt( Address _a, BlockNumber _block ) const override;
-
     u256 historicStateAt( Address _a, u256 _l, BlockNumber _block ) const override;
-
     h256 historicStateRootAt( Address _a, BlockNumber _block ) const override;
-
     bytes historicStateCodeAt( Address _a, BlockNumber _block ) const override;
-
 #endif
-
     void initStateFromDiskOrGenesis();
-
     void populateNewChainStateFromGenesis();
 };
 
