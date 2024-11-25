@@ -305,6 +305,7 @@ protected:
     ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
     ///< creation transaction.
+    // use shared pointer here speed up copy of transaction objects and save memory
     std::shared_ptr< bytes > m_rawData =
         std::make_shared< bytes >();    ///< Raw data, not owned by this object.>
     std::vector< bytes > m_accessList;  ///< The access list. see more

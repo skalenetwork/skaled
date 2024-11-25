@@ -58,11 +58,6 @@ public:
 
     std::string lookup( Slice _key ) const override;
     bool exists( Slice _key ) const override;
-
-    std::string lookup( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
-    bool exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
-
-
     void insert( Slice _key, Slice _value ) override;
     void kill( Slice _key ) override;
 
@@ -74,6 +69,15 @@ public:
     void forEachWithPrefix(
         std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const override;
 
+    // create a read only snap after blockl processing
+    void createBlockSnap( uint64_t _blockNumber );
+
+    // get block snap for the lasty block
+    std::shared_ptr< LevelDBSnap > getLastBlockSnap() const;
+
+    // perform operations with respect to a particular read only snap
+    std::string lookup( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    bool exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
     void forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > f,
         const std::shared_ptr< LevelDBSnap >& _snap ) const;
 
@@ -84,8 +88,6 @@ public:
 
     void doCompaction() const;
 
-    void createBlockSnap( uint64_t _blockNumber );
-
     // Return the total count of key deletes  since the start
     static uint64_t getKeyDeletesStats();
     // count of the keys that were deleted since the start of skaled
@@ -93,10 +95,12 @@ public:
     // count of the keys that are scheduled to be deleted but are not yet deleted
     static std::atomic< uint64_t > g_keysToBeDeletedStats;
     static uint64_t getCurrentTimeMs();
-    std::shared_ptr< LevelDBSnap > getLastBlockSnap() const;
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
+
+    // stores and manages snap objects
+    LevelDBSnapManager m_snapManager;
     // this is incremented each time this LevelDB instance is reopened
     // we reopen states LevelDB every day on archive nodes to avoid
     // meta file getting too large
@@ -112,11 +116,8 @@ private:
     uint64_t m_lastDBOpenTimeMs;
     mutable std::shared_mutex m_dbMutex;
 
-    LevelDBSnapManager m_snapManager;
 
-
-    static constexpr size_t BATCH_CHUNK_SIZE = 10000;
-
+    static const size_t BATCH_CHUNK_SIZE;
 
     class SharedDBGuard {
         const LevelDB& m_levedlDB;

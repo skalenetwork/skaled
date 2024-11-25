@@ -112,8 +112,6 @@ public:
     /// Copy state object.
     Block& operator=( Block const& _s );
 
-    Block getReadOnlyCopy() const;
-
     /// Get the author address for any transactions we do and rewards we get.
     Address author() const { return m_author; }
 
@@ -218,9 +216,14 @@ public:
 
     /// Execute a given transaction.
     /// This will append @a _t to the transaction list and change the state accordingly.
+    /// If transaction is part of the block we pass transaction index in the block
     ExecutionResult execute( LastBlockHashesFace const& _lh, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc(),
         int64_t _transactionIndex = -1 );
+
+    // this returns a read only copy of the block that uses
+    // snap-based state object
+    Block getReadOnlyCopy() const;
 
 #ifdef HISTORIC_STATE
     ExecutionResult executeHistoricCall( LastBlockHashesFace const& _lh, Transaction const& _t,
@@ -234,7 +237,9 @@ public:
     /// and bool, true iff there are more transactions to be processed.
     std::pair< TransactionReceipts, bool > sync( BlockChain const& _bc, TransactionQueue& _tq,
         GasPricer const& _gp, unsigned _msTimeout = 100 );
-    static void doPartialCatchupTestIfRequested( unsigned _i );
+
+    // this will crash skaled during after execution of a particular transaction
+    static void doPartialCatchupTestIfRequested( unsigned _transactionIndexWhereToCrash );
 
     /// Sync our state with the block chain.
     /// This basically involves wiping ourselves if we've been superceded and rebuilding from the

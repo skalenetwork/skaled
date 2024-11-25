@@ -30,6 +30,8 @@ namespace dev::db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
 
+const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
+
 namespace {
 inline leveldb::Slice toLDBSlice( Slice _slice ) {
     return leveldb::Slice( _slice.data(), _slice.size() );
@@ -328,8 +330,20 @@ void LevelDB::forEachWithPrefix( std::string& _prefix, std::function< bool( Slic
     }
 }
 
+void LevelDB::createBlockSnap( uint64_t _blockNumber ) {
+    SharedDBGuard lock( *this );  // protect so db is not reopened during snap creation
+    m_snapManager.addSnapForBlock( _blockNumber, m_db, m_dbReopenId );
+}
+
+std::shared_ptr< LevelDBSnap > LevelDB::getLastBlockSnap() const {
+    SharedDBGuard lock( *this );  // protect so db is not reopened when while we get snap
+    auto snap = m_snapManager.getLastBlockSnap();
+    LDB_CHECK( snap );
+    return snap;
+}
+
 h256 LevelDB::hashBase() const {
-    SharedDBGuard lock( *this );  // protect so db is not reopened during iteration
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -357,7 +371,7 @@ h256 LevelDB::hashBase() const {
 }
 
 h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
-    SharedDBGuard lock( *this );  // protect so db is not reopened during iteration
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -381,7 +395,7 @@ h256 LevelDB::hashBaseWithPrefix( char _prefix ) const {
 }
 
 bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashedKey ) const {
-    SharedDBGuard lock( *this );  // protect so db is not reopened during iteration
+    SharedDBGuard lock( *this );
     std::unique_ptr< leveldb::Iterator > it( m_db->NewIterator( m_readOptions ) );
     if ( it == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -415,21 +429,8 @@ bool LevelDB::hashBasePartially( secp256k1_sha256_t* ctx, std::string& lastHashe
 }
 
 void LevelDB::doCompaction() const {
-    SharedDBGuard lock( *this );  // protect so db is not reopened during compaction
+    SharedDBGuard lock( *this );
     m_db->CompactRange( nullptr, nullptr );
-}
-
-
-void LevelDB::createBlockSnap( uint64_t _blockNumber ) {
-    SharedDBGuard lock( *this );  // protect so db is not reopened during snap creation
-    m_snapManager.addSnapForBlock( _blockNumber, m_db, m_dbReopenId );
-}
-
-std::shared_ptr< LevelDBSnap > LevelDB::getLastBlockSnap() const {
-    SharedDBGuard lock( *this );  // protect so db is not reopened when while we get snap
-    auto snap = m_snapManager.getLastBlockSnap();
-    LDB_CHECK( snap );
-    return snap;
 }
 
 std::atomic< uint64_t > LevelDB::g_keysToBeDeletedStats = 0;
@@ -438,6 +439,5 @@ std::atomic< uint64_t > LevelDB::g_keyDeletesStats = 0;
 uint64_t LevelDB::getKeyDeletesStats() {
     return g_keyDeletesStats;
 }
-
 
 }  // namespace dev::db
