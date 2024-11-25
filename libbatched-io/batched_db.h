@@ -40,23 +40,23 @@ private:
 public:
     void open( std::shared_ptr< dev::db::DatabaseFace > _db ) { m_db = _db; }
     bool is_open() const { return !!m_db; }
-    void insert( dev::db::Slice _key, dev::db::Slice _value ) override {
+    void insert( dev::db::Slice _key, dev::db::Slice _value ) {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
         m_batch->insert( _key, _value );
     }
-    void kill( dev::db::Slice _key ) override {
+    void kill( dev::db::Slice _key ) {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
         m_batch->kill( _key );
     }
-    void revert() override {
+    virtual void revert() {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         if ( m_batch )
             m_batch.reset();
         m_db->discardCreatedBatches();
     }
-    void commit( const std::string& test_crash_string = std::string() ) override {
+    virtual void commit( const std::string& test_crash_string = std::string() ) {
         std::lock_guard< std::mutex > batch_lock( m_batch_mutex );
         ensure_batch();
         test_crash_before_commit( test_crash_string );
@@ -64,28 +64,23 @@ public:
     }
 
     // readonly
-    std::string lookup( dev::db::Slice _key ) const override { return m_db->lookup( _key ); }
-
-    bool exists( dev::db::Slice _key ) const override { return m_db->exists( _key ); }
-
-    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const override {
+    virtual std::string lookup( dev::db::Slice _key ) const { return m_db->lookup( _key ); }
+    virtual bool exists( dev::db::Slice _key ) const { return m_db->exists( _key ); }
+    virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
         m_db->forEach( f );
     }
 
-    void forEachWithPrefix( std::string& _prefix,
-        std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const override {
+    virtual void forEachWithPrefix(
+        std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
         m_db->forEachWithPrefix( _prefix, f );
     }
 
-    ~batched_db() override {
-        // all batches should be either commit()'ted or revert()'ed!
-        assert( !m_batch );
-    }
+    virtual ~batched_db() = default;
 
 protected:
-    void recover() override { /*nothing*/
+    void recover() { /*nothing*/
     }
 };
 
@@ -142,10 +137,9 @@ public:
     virtual ~read_only_snap_based_batched_db() = default;
 
 protected:
-    void recover() override { /*nothing*/
+    void recover() { /*nothing*/
     }
 };
-
 
 class db_splitter {
 private:

@@ -271,7 +271,12 @@ void Client::initStateFromDiskOrGenesis() {
 void Client::init( WithExisting _forceAction, u256 _networkId ) {
     DEV_TIMED_FUNCTION_ABOVE( 500 );
     m_networkId = _networkId;
+
     initStateFromDiskOrGenesis();
+
+    // LAZY. TODO: move genesis state construction/commiting to stateDB opening and have this
+    // just take the root from the genesis block.
+
     m_preSeal = bc().genesisBlock( m_state );
 
     m_postSeal = m_preSeal;
