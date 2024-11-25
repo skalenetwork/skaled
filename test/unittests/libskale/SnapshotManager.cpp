@@ -160,13 +160,15 @@ BOOST_AUTO_TEST_SUITE( BtrfsTestSuite,
 BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+
+    std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
 
     // add files 1
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" );
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
 
     auto latest0 = mgr.getLatestSnapshots();
     std::pair< int, int > expected0 { 0, 0 };
@@ -174,14 +176,14 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
 
     // create snapshot 1 and check its presense
     mgr.doSnapshot( 1 );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "vol1" / "d11" ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "vol2" / "d21" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
 
     // add and remove something
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" );
-    fs::remove( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" );
+    fs::remove( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
 
     auto latest1 = mgr.getLatestSnapshots();
     std::pair< int, int > expected1 { 0, 1 };
@@ -189,31 +191,31 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
 
     // create snapshot 2 and check files 1 and files 2
     mgr.doSnapshot( 2 );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d11" ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d12" ) );
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol2" / "d21" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d12" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" / "d21" ) );
 
     // check that files appear/disappear on restore
     mgr.restoreSnapshot( 1 );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" ) );
 
     fs::path diff12 = mgr.makeOrGetDiff( 2 );
-    btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/vol1" ).c_str() );
-    btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/vol2" ).c_str() );
+    btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/" + chainDirName ).c_str() );
+    btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/filestorage" ).c_str() );
     fs::remove_all( BTRFS_DIR_PATH + "/snapshots/2" );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
 
     mgr.importDiff( 2 );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d11" ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" / "d12" ) );
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol2" / "d21" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d12" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" / "d21" ) );
 
     mgr.restoreSnapshot( 2 );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d11" ) );
-    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" / "d12" ) );
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" / "d21" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
 
     auto latest2 = mgr.getLatestSnapshots();
     std::pair< int, int > expected2 { 1, 2 };
@@ -231,14 +233,14 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    BOOST_REQUIRE_THROW( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} ),
+    BOOST_REQUIRE_THROW( SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) ),
         SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     BOOST_REQUIRE_EXCEPTION(
-        SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_invalid", {"vol1", "vol2"} ),
+        SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_invalid" ),
         SnapshotManager::InvalidPath, [this]( const SnapshotManager::InvalidPath& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_invalid";
         } );
@@ -246,14 +248,16 @@ BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
     *boost::unit_test::precondition( []( unsigned long ) -> bool { return false; } ) ) {
+    std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
+
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_w" );
     chmod( ( BTRFS_DIR_PATH + "/_no_w" ).c_str(), 0775 );
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_w" / "vol1" );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_w" / chainDirName );
     chmod( ( BTRFS_DIR_PATH + "/_no_w/vol1" ).c_str(), 0777 );
 
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_x" );
     chmod( ( BTRFS_DIR_PATH + "/_no_x" ).c_str(), 0774 );
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_x" / "vol1" );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_x" / chainDirName );
     chmod( ( BTRFS_DIR_PATH + "/_no_x/vol1" ).c_str(), 0777 );
 
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "_no_r" );
@@ -267,17 +271,17 @@ BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
 
     dropRoot();
 
-    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_w", {"vol1"} ),
+    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_w" ),
         SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_w" / "snapshots";
         } );
 
-    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_x", {"vol1"} ),
+    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_x" ),
         SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_x" / "snapshots";
         } );
 
-    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_r", {"vol1"} ),
+    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_r" ),
         SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_x" / "snapshots";
         } );
@@ -285,7 +289,7 @@ BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
     BOOST_REQUIRE_THROW( mgr.doSnapshot( 2 ), SnapshotManager::SnapshotPresent );
@@ -314,7 +318,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::SnapshotAbsent );
 
@@ -324,15 +328,15 @@ BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
 
     BOOST_REQUIRE_EQUAL(
         0, btrfs.subvolume._delete(
-               ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" ).c_str() ) );
+               ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" ).c_str() ) );
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
     mgr.doSnapshot( 2 );
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "vol1" / "dir" );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "dir" );
     mgr.doSnapshot( 4 );
 
     BOOST_REQUIRE_THROW( mgr.makeOrGetDiff( 3 ), SnapshotManager::SnapshotAbsent );
@@ -353,7 +357,7 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     BOOST_REQUIRE_GT( fs::file_size( tmp ), 0 );
     fs::remove( tmp );
 
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "filestorage" ).c_str() );
 
     BOOST_REQUIRE_THROW(
         tmp = mgr.makeOrGetDiff( 4 ), SnapshotManager::CannotPerformBtrfsOperation );
@@ -363,7 +367,7 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_THROW( mgr.importDiff( 8 ), SnapshotManager::InvalidPath );
 
@@ -375,24 +379,26 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 
     BOOST_REQUIRE_THROW( mgr.importDiff( 4 ), SnapshotManager::SnapshotPresent );
 
+    std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
+
     // delete dest
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol2" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / chainDirName ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "filestorage" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
     BOOST_REQUIRE_NO_THROW( mgr.importDiff( 4 ) );
 
     // delete dest
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol1" ).c_str() );
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "vol2" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / chainDirName ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "filestorage" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
     // no source
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol1" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName ).c_str() );
 
     // BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 
-    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "vol2" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" );
     // BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
@@ -400,7 +406,7 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 1 ) );
     sleep( 1 );
@@ -421,7 +427,7 @@ BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     fs::path diff12 = mgr.getDiffPath( 2 );
     {
@@ -451,7 +457,7 @@ BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     mgr.doSnapshot( 1 );
     mgr.doSnapshot( 2 );
@@ -469,7 +475,7 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ), {"vol1", "vol2"} );
+    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
 
     mgr.doSnapshot( 1 );
     mgr.doSnapshot( 2 );
@@ -482,8 +488,56 @@ BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "diffs" ) );
 
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol1" ) );
-    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "vol2" ) );
+    std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
+
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName ) );
+    BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" ) );
 }
+
+#ifdef HISTORIC_STATE
+BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
+                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    auto chainParams = dev::eth::ChainParams();
+    chainParams.nodeInfo.archiveMode = true;
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
+
+    std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
+
+    // add files to core volumes
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+    // archive part
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "historic_roots" / "d31" );
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "historic_state" / "d41" );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "historic_roots" / "d31" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "historic_state" / "d41" ) );
+
+    // create snapshot 1 and check its presense
+    mgr.doSnapshot( 1 );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_roots" / "d31" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" / "d41" ) );
+
+    // make diff for archive node
+    BOOST_REQUIRE_NO_THROW( mgr.makeOrGetDiff( 1 ) );
+
+    // delete dest
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_roots" ).c_str() );
+    btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" ).c_str() );
+    fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" );
+
+    BOOST_REQUIRE_NO_THROW( mgr.importDiff( 1 ) );
+
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_roots" / "d31" ) );
+    BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" / "d41" ) );
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

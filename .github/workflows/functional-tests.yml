@@ -24,7 +24,7 @@
       with:
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
-        ref: master
+        ref: v3.20.0
         submodules: recursive
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0
