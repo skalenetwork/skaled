@@ -580,7 +580,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
             t.checkOutExternalGas(
-                m_client.chainParams(), latestInfo.timestamp(), m_client.number());
+                m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );

@@ -1077,10 +1077,10 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     gasBidPrice = this->gasBidPrice();
 
 
-        // We need to check external gas under mutex to be sure about current block number
-        // correctness
-        const_cast< Transaction& >( _t ).checkOutExternalGas(
-            chainParams(), bc().info().timestamp(), number() );
+    // We need to check external gas under mutex to be sure about current block number
+    // correctness
+    const_cast< Transaction& >( _t ).checkOutExternalGas(
+        chainParams(), bc().info().timestamp(), number() );
 
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),

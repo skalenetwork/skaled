@@ -541,7 +541,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
     // for testeth GeneralState tests, though, there is no db connected to the
     // State , so we do not clear caches
     // since they play the role of the db
-    if (m_db_ptr->connected()) {
+    if ( m_db_ptr->connected() ) {
         m_cache.clear();
         m_unchangedCacheEntries.clear();
     }

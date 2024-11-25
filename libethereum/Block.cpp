@@ -151,7 +151,7 @@ Block& Block::operator=( Block const& _s ) {
 // in particular we do not copy receipts and transactions
 // as well as raw bytes
 Block Block::getReadOnlyCopy() const {
-    Block copy(Null);
+    Block copy( Null );
     copy.m_state = m_state.createReadOnlySnapBasedCopy();
     copy.m_author = m_author;
     copy.m_sealEngine = m_sealEngine;
@@ -163,7 +163,7 @@ Block Block::getReadOnlyCopy() const {
 };
 
 
-void Block::resetCurrent(int64_t _timestamp) {
+void Block::resetCurrent( int64_t _timestamp ) {
     m_transactions.clear();
     m_receipts.clear();
     m_transactionSet.clear();
@@ -346,15 +346,15 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         ret = true;
     }
 #endif
-    resetCurrent(m_currentBlock.timestamp());
+    resetCurrent( m_currentBlock.timestamp() );
     return ret;
 }
 
 
 // Note - this function is only used in tests
-pair<TransactionReceipts, bool> Block::sync(
-        BlockChain const &_bc, TransactionQueue &_tq, GasPricer const &_gp, unsigned msTimeout) {
-    MICROPROFILE_SCOPEI("Block", "sync tq", MP_BURLYWOOD);
+pair< TransactionReceipts, bool > Block::sync(
+    BlockChain const& _bc, TransactionQueue& _tq, GasPricer const& _gp, unsigned msTimeout ) {
+    MICROPROFILE_SCOPEI( "Block", "sync tq", MP_BURLYWOOD );
 
     if ( isSealed() )
         BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
@@ -368,8 +368,8 @@ pair<TransactionReceipts, bool> Block::sync(
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
 
-    for (Transaction &transaction: transactions) {
-        transaction.checkOutExternalGas(_bc.chainParams(), _bc.info().timestamp(), _bc.number());
+    for ( Transaction& transaction : transactions ) {
+        transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
@@ -448,52 +448,51 @@ pair<TransactionReceipts, bool> Block::sync(
     return ret;
 }
 
-inline void Block::doPartialCatchupTestIfRequested(unsigned i) {
-    static const char *FAIL_AT_TX_NUM = std::getenv("TEST_FAIL_AT_TX_NUM");
+inline void Block::doPartialCatchupTestIfRequested( unsigned i ) {
+    static const char* FAIL_AT_TX_NUM = std::getenv( "TEST_FAIL_AT_TX_NUM" );
     static int64_t transactionCount = 0;
 
-    if (FAIL_AT_TX_NUM) {
-        if (transactionCount == std::stoi(FAIL_AT_TX_NUM)) {
+    if ( FAIL_AT_TX_NUM ) {
+        if ( transactionCount == std::stoi( FAIL_AT_TX_NUM ) ) {
             // fail hard for test
             cerror << "Test: crashing skaled on purpose after processing  " << i
                    << " transactions in block";
-            exit(-1);
+            exit( -1 );
         }
 
         transactionCount++;
     }
 }
 
-tuple<TransactionReceipts, unsigned> Block::syncEveryone(BlockChain const &_bc,
-                                                         const Transactions &_transactions, uint64_t _timestamp,
-                                                         u256 _gasPrice) {
-    if (isSealed())
-        BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
+tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _bc,
+    const Transactions& _transactions, uint64_t _timestamp, u256 _gasPrice ) {
+    if ( isSealed() )
+        BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
-    noteChain(_bc);
+    noteChain( _bc );
 
 
-    assert(_bc.currentHash() == m_currentBlock.parentHash());
+    assert( _bc.currentHash() == m_currentBlock.parentHash() );
 
-    this->resetCurrent(_timestamp);
+    this->resetCurrent( _timestamp );
 
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
 
     TransactionReceipts saved_receipts =
 
-            m_receipts = m_state.safePartialTransactionReceipts(info().number());
+        m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     TransactionReceipts receipts = m_receipts;
 
     unsigned countBad = 0;
 
-    if (m_receipts.size() > 0) {
+    if ( m_receipts.size() > 0 ) {
         cwarn << "Recovering from a previous crash while processing TRANSACTION:"
               << m_receipts.size() << ":BLOCK:" << info().number();
         // count bad transactions in previously executed transactions
         // a bad transaction is in the block but does not use any gas
         u256 cumulativeGas = 0;
-        for (auto const &receipt: m_receipts) {
-            if (receipt.cumulativeGasUsed() == cumulativeGas) {
+        for ( auto const& receipt : m_receipts ) {
+            if ( receipt.cumulativeGasUsed() == cumulativeGas ) {
                 countBad++;
             }
             cumulativeGas = receipt.cumulativeGasUsed();
@@ -501,44 +500,45 @@ tuple<TransactionReceipts, unsigned> Block::syncEveryone(BlockChain const &_bc,
     }
 
 
-    for (unsigned i = 0; i < _transactions.size(); ++i) {
-        Transaction const &tr = _transactions[i];
+    for ( unsigned i = 0; i < _transactions.size(); ++i ) {
+        Transaction const& tr = _transactions[i];
         try {
-            if (i < saved_receipts.size()) {
+            if ( i < saved_receipts.size() ) {
                 // this transaction has already been executed and we have a
                 // receipt for it. We do not need to execute it again
-                m_transactions.push_back(tr);
-                m_transactionSet.insert(tr.sha3());
-                continue;;
+                m_transactions.push_back( tr );
+                m_transactionSet.insert( tr.sha3() );
+                continue;
+                ;
             }
 
 
             // Tell skaled to fail in a middle of blog processing
             // this is used in partial catchup tests
-            doPartialCatchupTestIfRequested(i);
+            doPartialCatchupTestIfRequested( i );
 
 
-            if (!tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice) {
-                        LOG(m_logger) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
-                                      << tr.gasPrice() << " < " << _gasPrice;
+            if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
+                LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
+                                << tr.gasPrice() << " < " << _gasPrice;
 
-                if (SkipInvalidTransactionsPatch::isEnabledInWorkingBlock()) {
+                if ( SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ) {
                     // Add to the user-originated transactions that we've executed.
-                    m_transactions.push_back(tr);
-                    m_transactionSet.insert(tr.sha3());
+                    m_transactions.push_back( tr );
+                    m_transactionSet.insert( tr.sha3() );
 
                     // TODO deduplicate
                     // "bad" transaction receipt for failed transactions
                     TransactionReceipt const null_receipt =
-                            info().number() >= sealEngine()->chainParams().byzantiumForkBlock ?
-                            TransactionReceipt(0, info().gasUsed(), LogEntries()) :
-                            TransactionReceipt(EmptyTrie, info().gasUsed(), LogEntries());
+                        info().number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+                            TransactionReceipt( 0, info().gasUsed(), LogEntries() ) :
+                            TransactionReceipt( EmptyTrie, info().gasUsed(), LogEntries() );
 
-                    m_receipts.push_back(null_receipt);
-                    receipts.push_back(null_receipt);
+                    m_receipts.push_back( null_receipt );
+                    receipts.push_back( null_receipt );
                     // we need to record the receipt in case we crash
                     m_state.safeSetAndCommitPartialTransactionReceipt(
-                            null_receipt.rlp(), info().number(), i);
+                        null_receipt.rlp(), info().number(), i );
                     ++countBad;
                 }
 
@@ -546,14 +546,14 @@ tuple<TransactionReceipts, unsigned> Block::syncEveryone(BlockChain const &_bc,
             }
 
             ExecutionResult res =
-                    execute(_bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i);
+                execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
 
                 // if added but bad
-                if (res.excepted == TransactionException::WouldNotBeInBlock)
+                if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++countBad;
             }
 
@@ -576,24 +576,24 @@ tuple<TransactionReceipts, unsigned> Block::syncEveryone(BlockChain const &_bc,
 
     // since we committed changes corresponding to a particular block
     // we need to create a new readonly snap
-    LDB_CHECK(m_state.getOriginalDb());
-    m_state.getOriginalDb()->createBlockSnap(info().number());
+    LDB_CHECK( m_state.getOriginalDb() );
+    m_state.getOriginalDb()->createBlockSnap( info().number() );
 
     // do a simple sanity check from time to time
     static uint64_t sanityCheckCounter = 0;
-    if (sanityCheckCounter++ % 10000 == 0) {
-        LDB_CHECK(m_state.safePartialTransactionReceipts(info().number()).empty());
+    if ( sanityCheckCounter++ % 10000 == 0 ) {
+        LDB_CHECK( m_state.safePartialTransactionReceipts( info().number() ).empty() );
     }
 
-    LDB_CHECK(receipts.size() >= countBad);
+    LDB_CHECK( receipts.size() >= countBad );
 
-    return make_tuple(receipts, receipts.size() - countBad);
+    return make_tuple( receipts, receipts.size() - countBad );
 }
 
-u256 Block::enactOn(VerifiedBlockRef const &_block, BlockChain const &_bc) {
-    MICROPROFILE_SCOPEI("Block", "enactOn", MP_INDIANRED);
+u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
+    MICROPROFILE_SCOPEI( "Block", "enactOn", MP_INDIANRED );
 
-    noteChain(_bc);
+    noteChain( _bc );
 
 #if ETH_TIMED_ENACTMENTS
     Timer t;
@@ -669,26 +669,24 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     // All ok with the block generally. Play back the transactions now...
     unsigned i = 0;
-    DEV_TIMED_ABOVE("txExec", 500)for (Transaction const &tr: _block.transactions) {
-            try {
-                const_cast< Transaction & >( tr ).checkOutExternalGas(
-                        _bc.chainParams(), _bc.info().timestamp(), _bc.number());
-                execute(_bc.lastBlockHashes(), tr,
-                        skale::Permanence::Committed, OnOpFunc(),
-                        i);
-            } catch (Exception &ex) {
-                ex << errinfo_transactionIndex(i);
-                throw;
-            }
-
-            RLPStream receiptRLP;
-            m_receipts.back().streamRLP(receiptRLP);
-            receipts.push_back(receiptRLP.out());
-            ++i;
+    DEV_TIMED_ABOVE( "txExec", 500 ) for ( Transaction const& tr : _block.transactions ) {
+        try {
+            const_cast< Transaction& >( tr ).checkOutExternalGas(
+                _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
+            execute( _bc.lastBlockHashes(), tr, skale::Permanence::Committed, OnOpFunc(), i );
+        } catch ( Exception& ex ) {
+            ex << errinfo_transactionIndex( i );
+            throw;
         }
 
+        RLPStream receiptRLP;
+        m_receipts.back().streamRLP( receiptRLP );
+        receipts.push_back( receiptRLP.out() );
+        ++i;
+    }
+
     h256 receiptsRoot;
-    DEV_TIMED_ABOVE(".receiptsRoot()", 500)receiptsRoot = orderedTrieRoot(receipts);
+    DEV_TIMED_ABOVE( ".receiptsRoot()", 500 ) receiptsRoot = orderedTrieRoot( receipts );
 
     if ( receiptsRoot != m_currentBlock.receiptsRoot() ) {
         InvalidReceiptsStateRoot ex;
@@ -891,11 +889,11 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
 #endif
 
 
-ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const &_t,
-                               Permanence _p, OnOpFunc const &_onOp, int64_t _transactionIndex) {
-    MICROPROFILE_SCOPEI("Block", "execute transaction", MP_CORNFLOWERBLUE);
-    if (isSealed())
-        BOOST_THROW_EXCEPTION(InvalidOperationOnSealedBlock());
+ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction const& _t,
+    Permanence _p, OnOpFunc const& _onOp, int64_t _transactionIndex ) {
+    MICROPROFILE_SCOPEI( "Block", "execute transaction", MP_CORNFLOWERBLUE );
+    if ( isSealed() )
+        BOOST_THROW_EXCEPTION( InvalidOperationOnSealedBlock() );
 
     // Uncommitting is a non-trivial operation - only do it once we've verified as much of the
     // transaction as possible.
@@ -903,39 +901,39 @@ ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const
 
 
     EnvInfo envInfo = EnvInfo(
-            info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID);
+        info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );
 
     // "bad" transaction receipt for failed transactions
     TransactionReceipt const null_receipt =
-            envInfo.number() >= sealEngine()->chainParams().byzantiumForkBlock ?
-            TransactionReceipt(0, envInfo.gasUsed(), LogEntries()) :
-            TransactionReceipt(EmptyTrie, envInfo.gasUsed(), LogEntries());
+        envInfo.number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+            TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
+            TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
 
-    std::pair<ExecutionResult, TransactionReceipt> resultReceipt{ExecutionResult(),
-                                                                 null_receipt};
+    std::pair< ExecutionResult, TransactionReceipt > resultReceipt{ ExecutionResult(),
+        null_receipt };
 
     try {
         if ( _t.isInvalid() )
             throw -1;  // will catch below
 
         resultReceipt = m_state.execute(
-                envInfo, m_sealEngine->chainParams(), _t, _p, _onOp, _transactionIndex);
+            envInfo, m_sealEngine->chainParams(), _t, _p, _onOp, _transactionIndex );
 
         // use fake receipt created above if execution throws!!
-    } catch (const TransactionException &ex) {
+    } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
         cerror << DETAILED_ERROR;
-        assert(false);
-    } catch (const std::exception &ex) {
-        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3(WithoutSignature);
-                LOG(m_logger) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
-        if (_p != Permanence::Reverted)  // if it is not call
+        assert( false );
+    } catch ( const std::exception& ex ) {
+        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
+        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
+        if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
-    } catch (...) {
-        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3(WithoutSignature);
-                LOG(m_logger) << "Transaction " << sha << " WouldNotBeInBlock: ...";
-        if (_p != Permanence::Reverted)  // if it is not call
+    } catch ( ... ) {
+        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
+        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
+        if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
@@ -958,7 +956,7 @@ ExecutionResult Block::execute(LastBlockHashesFace const &_lh, Transaction const
     // because we do not commit to disk in some of the tests
     // In the future we can test performance of not clearing
     // cache on each commit
-    if (_p == Permanence::Committed) {
+    if ( _p == Permanence::Committed ) {
         m_state = m_state.createStateCopyAndClearCaches();
     }
 
