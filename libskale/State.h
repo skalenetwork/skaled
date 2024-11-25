@@ -157,7 +157,6 @@ using ChangeLog = std::vector< Change >;
  *
  * Any atomic change to any account is registered and appended in the changelog.
  * In case some changes must be reverted, the changes are popped from the
- * In case some changes must be reverted, the changes are popped from the
  * changelog and undone. For possible atomic changes list @see Change::Kind.
  * The changelog is managed by savepoint(), rollback() and commit() methods.
  */

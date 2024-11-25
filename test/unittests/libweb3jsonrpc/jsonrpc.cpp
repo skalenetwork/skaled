@@ -4407,8 +4407,6 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction,
         fixture.splitAccountInHalves( firstAccount, dst, gasPrice,
             TransactionWait::WAIT_FOR_COMPLETION);
     }
-
-    cout << fixture.rpcClient()->skale_stats() << endl;
 }
 
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,

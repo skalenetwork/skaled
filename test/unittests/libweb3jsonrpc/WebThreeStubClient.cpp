@@ -158,17 +158,6 @@ std::string WebThreeStubClient::skale_protocolVersion() {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
-
-std::string WebThreeStubClient::skale_stats() {
-    Json::Value p;
-    p = Json::nullValue;
-    Json::Value result = this->CallMethod( "skale_stats", p );
-    return result.toStyledString();
-}
-
-
-
-
 std::string WebThreeStubClient::eth_protocolVersion() {
     Json::Value p;
     p = Json::nullValue;

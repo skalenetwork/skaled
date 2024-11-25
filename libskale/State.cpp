@@ -1028,10 +1028,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
+        // TODO: review logic|^
 
-        h256 shaLastTx = _t.sha3();
-
+        h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
+                                     // dev::eth::WithoutSignature );
         this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
+        // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
+        // shaLastTx.hex() << "\n";
 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );

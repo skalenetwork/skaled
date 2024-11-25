@@ -583,13 +583,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
-
-            if ( SkaleDebugInterface::g_isEnabled && m_tq.isTransactionKnown( sha ) != 0 ) {
-                // this trace is expensive since it will aquire a read lock on transaction queue
-                LOG( m_traceLogger )
-                    << "Consensus returned future transaction that we didn't yet send";
-                m_debugTracer.tracepoint( "import_future" );
-            }
         }
 
         total_arrived += out_txns.size();
