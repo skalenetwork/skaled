@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: update apt
         run: | 
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true
+          echo "Test PoC" && sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true
           sudo apt-get update || true
       - name: install packages
         run: |
