@@ -29,7 +29,7 @@ Skaled is the only provably secure ETH compatible PoS client. Security is proven
 
 ## Survivability
 
-The network is assumed to bef fully asynchronous meaning that there is no upper limit for the packet delivery time. In case of a temporarily network split, the protocol can wait indefinitely long until the split is resolved and then resume normal block production.
+The network is assumed to be fully asynchronous meaning that there is no upper limit for the packet delivery time. In case of a temporarily network split, the protocol can wait indefinitely long until the split is resolved and then resume normal block production.
 
 ##  Historic origins
 
