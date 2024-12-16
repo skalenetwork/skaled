@@ -429,11 +429,11 @@ public:
         ExtVM extVm( state, envInfo, se->chainParams(), to, from, from, value, gasPrice, inputData, ref( code ),
             sha3( code ), version, depth, isCreate, staticCall );
 
-//        u256 gasBefore = gas;
+        u256 gasBefore = gas;
         owning_bytes_ref ret = vm->exec( gas, extVm, OnOpFunc{} );
 
-//        BOOST_CHECK_EQUAL( gasBefore - gas, _expectedGasConsumed );
-//        BOOST_CHECK_EQUAL( extVm.sub.refunds, _expectedRefund );
+        BOOST_CHECK_EQUAL( gasBefore - gas, _expectedGasConsumed );
+        BOOST_CHECK_EQUAL( extVm.sub.refunds, _expectedRefund );
     }
 
 
