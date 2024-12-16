@@ -412,6 +412,7 @@ Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
 }
 
 
+
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
         return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),
@@ -428,17 +429,7 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
-    try {
-        return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
-    } catch ( PendingTransactionAlreadyExists& ) {
-        throw JsonRpcException(
-            "Same transaction already exists in the pending transaction queue." );
-    } catch ( TransactionAlreadyInChain& ) {
-        // make it similar to what geth does
-        throw JsonRpcException( "Nonce too low." );
-    } catch ( InvalidNonce& ) {
-        throw JsonRpcException( "Invalid transaction nonce." );
-    }
+    return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
 
