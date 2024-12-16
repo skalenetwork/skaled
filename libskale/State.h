@@ -206,25 +206,6 @@ public:
         dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
     /// which uses it. If you have no preexisting database then set BaseState to something other
 
-    std::string createRandomString() {
-        // random string
-        std::vector< uint8_t > randomBytes( 16 );
-        if ( RAND_bytes( randomBytes.data(), static_cast< int >( randomBytes.size() ) ) != 1 ) {
-            throw std::runtime_error( "Failed to generate random number" );
-        }
-        std::ostringstream oss;
-        for ( auto byte : randomBytes ) {
-            oss << std::hex << std::setw( 2 ) << std::setfill( '0' ) << static_cast< int >( byte );
-        }
-        return oss.str();
-    }
-    void initStateWithRandomTestDb() {
-        std::string path = "/tmp/skaled_test_state_db_" + createRandomString();
-        dev::u256 ZERO( 0 );
-        openDB( path, ZERO, dev::WithExisting::Kill );
-        LDB_CHECK( m_orig_db );
-        m_orig_db->createBlockSnap( 0 );
-    }
     // this conswtructor is used for tests
     // we need to create temp stattedb in the /tmp dir
     State()
