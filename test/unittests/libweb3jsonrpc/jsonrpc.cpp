@@ -417,7 +417,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             rpcClient->eth_sendRawTransaction( _t );
             BOOST_FAIL( "Exception expected." );
         } catch ( jsonrpc::JsonRpcException const& _e ) {
-            cerr << _e.GetMessage() << endl;
             return _e.GetMessage();
         }
         return string();
@@ -691,11 +690,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
     signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-
-    fixture.sendingRawShouldFail( signedTx["raw"].asString() );
+    BOOST_CHECK_EQUAL(
+        fixture.sendingRawShouldFail( signedTx["raw"].asString() ), "Invalid transaction nonce." );
 }
 
-BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
+    BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
     JsonRpcFixture fixture;
     auto senderAddress = fixture.coinbase.address();
     auto receiver = KeyPair::create();
@@ -750,7 +749,9 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
     signedTx = fixture.rpcClient->eth_signTransaction( t );
     BOOST_REQUIRE( !signedTx["raw"].empty() );
 
-    fixture.sendingRawShouldFail( signedTx["raw"].asString() );
+    BOOST_CHECK_EQUAL( fixture.sendingRawShouldFail( signedTx["raw"].asString() ),
+        "Same transaction already exists in the pending transaction queue." );
+
 }
 
 BOOST_AUTO_TEST_CASE( send_raw_tx_sync ) {

@@ -431,18 +431,13 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     try {
         return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
     } catch ( PendingTransactionAlreadyExists& ) {
-        throw std::runtime_error( "Transaction with same nonce already exists in the queue." );
+        throw JsonRpcException(
+            "Same transaction already exists in the pending transaction queue." );
     } catch ( TransactionAlreadyInChain& ) {
         // make it similar to what geth does
-        throw std::runtime_error( "Nonce too low." );
+        throw JsonRpcException( "Nonce too low." );
     } catch ( InvalidNonce& ) {
-        if ( !client()->chainParams().sChain.multiTransactionMode ) {
-            // make it similar  to what geth does
-            throw std::runtime_error( "Nonce in the future." );
-        } else {
-            // make it similar  to what geth does
-            throw std::runtime_error( "Invalid nonce." );
-        }
+        throw JsonRpcException( "Invalid transaction nonce." );
     }
 }
 
