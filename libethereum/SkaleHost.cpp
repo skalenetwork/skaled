@@ -580,6 +580,18 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+
+            if ( !ExternalGasPatch::isEnabledWhen( latestInfo.timestamp() ) ) {
+                auto hash = t.sha3();
+                if ( m_client.m_tq.isTransactionKnown( hash ) ) {
+                    // if a transaction is in the pending queue
+                    // do checkOutExternal gas twice to repeat incorrect behavior that
+                    // existed before the patch
+                    t.checkOutExternalGas(
+                        m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+                }
+            }
+
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );

@@ -1860,8 +1860,9 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
 
-    BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
-    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
+    BOOST_REQUIRE( receipt["status"].asString() == "0x0" );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x61cb" );
+
 
     sleep(10);
 
@@ -1897,7 +1898,7 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 
     BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
-    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x8f2c" );
+    BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4");
 }
 
 BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
