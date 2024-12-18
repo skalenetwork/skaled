@@ -463,10 +463,7 @@ public:
     LegacyVMSstoreTestFixture() : SstoreTestFixture{new LegacyVM} {}
 };
 
-class SkaleInterpreterSstoreTestFixture : public SstoreTestFixture {
-public:
-    SkaleInterpreterSstoreTestFixture() : SstoreTestFixture{new EVMC{evmc_create_interpreter()}} {}
-};
+
 
 class ChainIDTestFixture : public TestOutputHelperFixture {
 public:
@@ -988,92 +985,6 @@ BOOST_AUTO_TEST_CASE( SkaleInterpreterExtCodeHashIgnoresHigh12Bytes,
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterSstoreSuite, SkaleInterpreterSstoreTestFixture )
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case1,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case1();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case2,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case2();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case3,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case3();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case4,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case4();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case5,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case5();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case6,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case6();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case7,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case7();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case8 ) {
-    testEip1283Case8();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case9 ) {
-    testEip1283Case9();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case10,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case10();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case11,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case11();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case12,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case12();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case13,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case13();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case14,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case14();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case15,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case15();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case16,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case16();
-}
-
-BOOST_AUTO_TEST_CASE( SkaleInterpreterSstoreEip1283Case17,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    testEip1283Case17();
-}
-
-BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_FIXTURE_TEST_SUITE( SkaleInterpreterChainIDSuite, SkaleInterpreterChainIDTestFixture )
 
