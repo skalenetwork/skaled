@@ -65,33 +65,35 @@ public:
 
 class SnapshotHashAgent {
 public:
-    SnapshotHashAgent( const dev::eth::ChainParams& chain_params,
-        const std::array< std::string, 4 >& common_public_key,
-        const std::string& ipToDownloadSnapshotFrom );
+    SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
+        const std::array< std::string, 4 >& commonPublicKey,
+        const std::string& urlToDownloadSnapshotFrom = "" );
 
-    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned block_number );
+    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned blockNumber );
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
 
     friend class dev::test::SnapshotHashAgentTest;
 
 private:
-    dev::eth::ChainParams chain_params_;
+    dev::eth::ChainParams chainParams_;
     unsigned n_;
-    std::string ipToDownloadSnapshotFrom_;
+    std::string urlToDownloadSnapshotFrom_;
     std::shared_ptr< libBLS::Bls > bls_;
 
     std::vector< dev::h256 > hashes_;
     std::vector< libff::alt_bn128_G1 > signatures_;
     std::vector< libff::alt_bn128_G2 > public_keys_;
-    std::vector< size_t > nodes_to_download_snapshot_from_;
-    std::vector< bool > is_received_;
-    std::mutex hashes_mutex;
-    libff::alt_bn128_G2 common_public_key_;
+    std::vector< size_t > nodesToDownloadSnapshotFrom_;
+    std::vector< bool > isReceived_;
+    std::mutex hashesMutex;
+    libff::alt_bn128_G2 commonPublicKey_;
 
     bool voteForHash();
     void readPublicKeyFromConfig();
-    std::pair< dev::h256, libff::alt_bn128_G1 > voted_hash_;
+    std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > askNodeForHash(
+        const std::string& url, unsigned blockNumber );
+    std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;
 
     size_t verifyAllData() const;
 };

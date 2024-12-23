@@ -502,8 +502,6 @@ Get details about block
 2. Include transactions: boolean literal - true/false
 #### Return format
 Same as `eth_getBlockByHash`
-#### Exceptions
-Raises "block not found" error if block is "rotated out"
 
 ### `eth_getTransactionByHash`
 | Compatibility |   |
@@ -746,6 +744,8 @@ Get all events matching a filter
 Same as `eth_getFilterChanges`
 #### Exceptions
 Throws `INVALID_PARAMS` if filter cannot be found or if response size is exceeded
+#### Notes
+Response size is limited by number of consecutive blocks that can be requested. It is set in `getLogsBlocksLimit` config parameter, which currenly is 2000 blocks.
 
 ### `eth_getLogs`
 | Compatibility |   |
@@ -771,6 +771,8 @@ Same as `eth_getFilterLogs`, but doesn't require filter creation
 Same as `eth_getFilterChanges`
 #### Exceptions
 Throws `INVALID_PARAMS` if block does not exist, if response size is exceeded, or `fromBlock` or `toBlock` are present together with `blockHash`
+#### Notes
+Response size limit is determined by `getLogsBlocksLimit` config parameter, and currenly is 2000 logs per request.
 
 ### `eth_compile*` and `eth_getCompilers`
 Not supported
@@ -868,35 +870,6 @@ Returns empty access list
 Object:
  - "accessList" - empty list;
  - "gasUsed" - "0x" prefixed hex `String` - result of `eth_estimateGas`.
-
-### `eth_getBlockTransactionCountByHash`
-| Compatibility |   |
-|-----|-----------|
-| Core vs ETH | Unknown |
-| Historic vs ETH | Unknown |
-
-#### Description
-Get number of transactions in a block
-#### Parameters
-1. Block hash: "0x"-prefixed hex `String`, 32 bytes
-#### Return format
-"0x"-prefixed hex `String`
-
-### `eth_getBlockTransactionCountByNumber`
-| Compatibility |   |
-|-----|-----------|
-| Core vs ETH | Unknown |
-| Historic vs ETH | Unknown |
-
-#### Description
-Get number of transactions in a block
-#### Parameters
-1. Block number:
- - "latest" or "pending" - latest block is used;
- - "earliest" - block 0;
- - `String` representation of an integer block number, either decimal or "0x"-prefixed hexadecimal;
-#### Return format
-"0x"-prefixed hex `String`
 
 ### `eth_getFilterChangesEx`
 | Compatibility |   |

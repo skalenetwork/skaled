@@ -450,6 +450,10 @@ private:
         }
     };
 
+    static bool ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash );
+
+    static uint64_t getGasUsedForSkippedTransaction( uint64_t _chainId, const dev::h256& _hash );
+
 public:
     bool checkVersion() const;
 
@@ -507,6 +511,8 @@ public:
         std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
         uint64_t _batchNumber );
 #endif
+
+    static const std::map< std::pair< uint64_t, std::string >, uint64_t > txnsToSkipExecution;
 
 public:
     std::shared_ptr< batched_io::db_face > db() {

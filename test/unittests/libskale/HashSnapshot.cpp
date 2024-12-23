@@ -40,7 +40,7 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest {
 public:
-    SnapshotHashAgentTest( ChainParams& _chainParams, const std::string& ipToDownloadSnapshotFrom ) {
+    SnapshotHashAgentTest( ChainParams& _chainParams, const std::string& urlToDownloadSnapshotFrom ) {
         std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
@@ -84,16 +84,16 @@ public:
 
         this->secret_as_is = keys.first;
 
-        isSnapshotMajorityRequired = !ipToDownloadSnapshotFrom.empty();
+        isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
-        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, ipToDownloadSnapshotFrom ) );
+        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
         this->hashAgent_->hashes_ = snapshot_hashes;
 
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
-            this->hashAgent_->is_received_[i] = true;
+            this->hashAgent_->isReceived_[i] = true;
             this->hashAgent_->public_keys_[i] =
                 this->blsPrivateKeys_[i] * libff::alt_bn128_G2::one();
             this->hashAgent_->signatures_[i] = libBLS::Bls::Signing(
@@ -115,16 +115,16 @@ public:
         }
 
         if ( isSnapshotMajorityRequired )
-            return this->hashAgent_->nodes_to_download_snapshot_from_;
+            return this->hashAgent_->nodesToDownloadSnapshotFrom_;
 
         std::vector< size_t > ret;
         for ( size_t i = 0; i < this->hashAgent_->n_; ++i ) {
-            if ( this->hashAgent_->chain_params_.nodeInfo.id ==
-                 this->hashAgent_->chain_params_.sChain.nodes[i].id ) {
+            if ( this->hashAgent_->chainParams_.nodeInfo.id ==
+                 this->hashAgent_->chainParams_.sChain.nodes[i].id ) {
                 continue;
             }
 
-            if ( this->hashAgent_->hashes_[i] == this->hashAgent_->voted_hash_.first ) {
+            if ( this->hashAgent_->hashes_[i] == this->hashAgent_->votedHash_.first ) {
                 ret.push_back( i );
             }
         }
@@ -283,8 +283,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
         //            true ) );
 
-        mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ),
-            {BlockChain::getChainDirName( chainParams ), "filestorage"} ) );
+        mgr.reset( new SnapshotManager( chainParams, boost::filesystem::path( BTRFS_DIR_PATH ) ) );
 
         boost::filesystem::create_directory(
             boost::filesystem::path( BTRFS_DIR_PATH ) / "filestorage" / "test_dir" );
@@ -510,22 +509,32 @@ BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
     }
     chainParams.nodeInfo.id = 3;
 
-    chainParams.sChain.nodes[3].ip = "123.45.67.89";
+    chainParams.sChain.nodes[0].ip = "123.45.68.89";
+    chainParams.sChain.nodes[1].ip = "123.45.87.89";
+    chainParams.sChain.nodes[2].ip = "123.45.77.89";
 
-    SnapshotHashAgentTest test_agent( chainParams, chainParams.sChain.nodes[3].ip );
+    chainParams.sChain.nodes[3].ip = "123.45.67.89";
+    std::string url = chainParams.sChain.nodes[3].ip + std::string( ":1234" );
+
+    SnapshotHashAgentTest test_agent( chainParams, url );
     dev::h256 hash = dev::h256::random();
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
 
-    auto nodesToDownloadSnapshotFrom = test_agent.getNodesToDownloadSnapshotFrom();
-    BOOST_REQUIRE( nodesToDownloadSnapshotFrom.size() == 1 );
-    BOOST_REQUIRE( nodesToDownloadSnapshotFrom[0] == 3 );
+    BOOST_REQUIRE_THROW( test_agent.getNodesToDownloadSnapshotFrom(), NotEnoughVotesException );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
+
+#define WAIT_FOR_THE_NEXT_BLOCK() { \
+    auto bn = client->number(); \
+    while ( client->number() == bn ) { \
+        usleep( 100 ); \
+    } \
+}
 
 BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
@@ -537,20 +546,25 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     t["to"] = toJS( receiver.address() );
     t["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
 
+    BOOST_REQUIRE( client->getLatestSnapshotBlockNumer() == -1 );
+
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
     dev::eth::simulateMining( *( client ), blocksToMine );
 
     mgr->doSnapshot( 1 );
     mgr->computeSnapshotHash( 1 );
-
-    dev::eth::simulateMining( *( client ), blocksToMine );
-    mgr->doSnapshot( 2 );
-
-    mgr->computeSnapshotHash( 2 );
-
     BOOST_REQUIRE( mgr->isSnapshotHashPresent( 1 ) );
+
+    BOOST_REQUIRE( client->number() == 1 );
+    WAIT_FOR_THE_NEXT_BLOCK();
+
+    mgr->doSnapshot( 2 );
+    mgr->computeSnapshotHash( 2 );
     BOOST_REQUIRE( mgr->isSnapshotHashPresent( 2 ) );
+
+    BOOST_REQUIRE( client->number() == 2 );
+    WAIT_FOR_THE_NEXT_BLOCK();
 
     auto hash1 = mgr->getSnapshotHash( 1 );
     auto hash2 = mgr->getSnapshotHash( 2 );
@@ -562,25 +576,30 @@ BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     BOOST_REQUIRE_THROW( mgr->getSnapshotHash( 3 ), SnapshotManager::SnapshotAbsent );
 
     // TODO check hash absence separately
-}
 
-BOOST_FIXTURE_TEST_CASE( SnapshotHashingFileStorageTest, SnapshotHashingFixture,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    mgr->doSnapshot( 4 );
+    BOOST_REQUIRE( client->number() == 3 );
+    WAIT_FOR_THE_NEXT_BLOCK();
 
-    mgr->computeSnapshotHash( 4, true );
+    mgr->doSnapshot( 3 );
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+    mgr->computeSnapshotHash( 3, true );
 
-    dev::h256 hash4_dbl = mgr->getSnapshotHash( 4 );
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
 
-    mgr->computeSnapshotHash( 4 );
+    dev::h256 hash3_dbl = mgr->getSnapshotHash( 3 );
 
-    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 4 ) );
+    mgr->computeSnapshotHash( 3 );
 
-    dev::h256 hash4 = mgr->getSnapshotHash( 4 );
+    BOOST_REQUIRE( mgr->isSnapshotHashPresent( 3 ) );
 
-    BOOST_REQUIRE( hash4_dbl == hash4 );
+    dev::h256 hash3 = mgr->getSnapshotHash( 3 );
+
+    BOOST_REQUIRE( hash3_dbl == hash3 );
+
+    dev::h256 hash = client->hashFromNumber( 3 );
+    uint64_t timestampFromBlockchain = client->blockInfo( hash ).timestamp();
+
+    BOOST_REQUIRE_EQUAL( timestampFromBlockchain, mgr->getBlockTimestamp( 3 ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
