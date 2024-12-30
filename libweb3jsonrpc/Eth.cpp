@@ -412,7 +412,6 @@ Json::Value Eth::setSchainExitTime( Json::Value const& /*_transaction*/ ) {
 }
 
 
-
 Json::Value Eth::eth_inspectTransaction( std::string const& _rlp ) {
     try {
         return toJson( Transaction( jsToBytes( _rlp, OnFailed::Throw ),

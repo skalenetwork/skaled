@@ -194,7 +194,6 @@ public:
         GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
 
 protected:
-
     std::pair< bool, ExecutionResult > estimateGasStep( int64_t _gas, Block& _latestBlock,
         Block& _pendingBlock, Address const& _from, Address const& _destination, u256 const& _value,
         u256 const& _gasPrice, bytes const& _data );
