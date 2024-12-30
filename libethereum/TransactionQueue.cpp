@@ -184,9 +184,6 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK( unsigned _limit ) {
     Transactions top_transactions;
     std::vector< PriorityQueue::node_type > found;
 
-    VerifiedTransaction dummy = VerifiedTransaction( Transaction() );
-
-
     for ( PriorityQueue::iterator transaction_ptr = m_current.begin();
           top_transactions.size() < _limit && transaction_ptr != m_current.end();
           ++transaction_ptr ) {
