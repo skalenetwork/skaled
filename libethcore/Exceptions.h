@@ -48,7 +48,6 @@ DEV_SIMPLE_EXCEPTION( NotEnoughAvailableSpace );
 DEV_SIMPLE_EXCEPTION( NotEnoughCash );
 DEV_SIMPLE_EXCEPTION( GasPriceTooLow );
 DEV_SIMPLE_EXCEPTION( SameNonceAlreadyInQueue );
-DEV_SIMPLE_EXCEPTION( NonceTooMuchInTheFuture );
 DEV_SIMPLE_EXCEPTION( BlockGasLimitReached );
 DEV_SIMPLE_EXCEPTION( FeeTooSmall );
 DEV_SIMPLE_EXCEPTION( TooMuchGasUsed );
