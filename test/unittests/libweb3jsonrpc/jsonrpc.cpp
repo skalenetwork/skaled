@@ -4719,6 +4719,10 @@ BOOST_AUTO_TEST_CASE( test_blocks ) {
 BOOST_AUTO_TEST_CASE( test_transactions ) {
     simulateMining( *client, 1, Address( "0xf6c2a4ba2350e58a45916a03d0faa70dcc5dcfbf" ) );
 
+    // give it some time since testing fixture is not reliable
+    // to do - move to real skaled testing
+    sleep(3);
+
     dev::rpc::_detail::GappedTransactionIndexCache cache( 10, *client );
 
     Transaction invalid( fromHex( "0x00112233445566778899001122334455667788990011223344556677889900"
@@ -4734,6 +4738,11 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
     valid.ignoreExternalGas();
+
+
+    // give it some time since testing fixture is not reliable
+    // to do - move to real skaled testing
+    sleep(3);
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid }, 1 );
 
