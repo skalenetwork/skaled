@@ -38,7 +38,6 @@
 
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
-#include "test/tools/libtestutils/FixedClient.h"
 
 #include <skutils/console_colors.h>
 #include <skutils/eth_utils.h>
@@ -1056,7 +1055,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         RLPStream stream;
         receipt.streamRLP( stream );
         m_db_ptr->setPartialTransactionReceipt(
-            stream.out(), ( BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
+            stream.out(), ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
         m_fs_ptr->commit();
 
