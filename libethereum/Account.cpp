@@ -201,7 +201,7 @@ AccountMap dev::eth::jsonToAccountMap( std::string const& _json, u256 const& _de
             }
 
             if ( haveStorage )
-                for ( pair< string, js::mValue > const& j :
+                for ( pair< string, js::mValue > const j :
                     accountMaskJson.at( c_storage ).get_obj() )
                     ret[a].setStorage( u256( j.first ), u256( j.second.get_str() ) );
         }
