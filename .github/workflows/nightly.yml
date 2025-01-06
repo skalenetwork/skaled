@@ -166,7 +166,19 @@ jobs:
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          sudo ./testeth --report_level=detailed -- --all --verbosity 4
+          ./testeth --report_level=detailed -- --verbosity 4 # run everything but tests
+                                                            # that are run with `--all`
+          
+          # run skutils tests
+          ./teseth --report_level=detailed -t SkUtils/dispatch -- --verbosity 4
+          ./teseth --report_level=detailed -t SkUtils/http -- --verbosity 4
+          ./teseth --report_level=detailed -t SkUtils/unddos -- --verbosity 4
+          ./teseth --report_level=detailed -t SkUtils/ws -- --verbosity 4
+          
+          # run btrfs tests separately
+          sudo ./testeth --report_level=detailed -t BtrfsTestSuite -- --all --verbosity 4
+          sudo ./testeth --report_level=detailed -t HashSnapshotTestSuite -- --all --verbosity 4
+          sudo ./testeth --report_level=detailed -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
 
       - name: Configure all as historic
