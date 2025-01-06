@@ -70,7 +70,7 @@ sudo apt-get install libv8-dev
 NB cmake needs to be of version >=3.21, git of version >=2.18
 
 ### (for Ubuntu 20.10 or later) Set  gcc-11 as default compiler
-```
+```bash
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
 sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
@@ -81,7 +81,7 @@ gcc --version
 
 # Install latest cmake 
 
-```
+```bash
 sudo apt-get purge cmake
 sudo snap install cmake --classic
 ```
@@ -89,7 +89,7 @@ sudo snap install cmake --classic
 
 ### Build dependencies
 
-```
+```bash
 cd deps
 ./build.sh DEBUG=1
 ```
