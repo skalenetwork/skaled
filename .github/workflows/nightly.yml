@@ -166,10 +166,7 @@ jobs:
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          ./testeth --report_level=detailed -- --all --verbosity 4
-          sudo ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          sudo ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          sudo ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
+          sudo ./testeth --report_level=detailed -- --all --verbosity 4
           cd ..
 
       - name: Configure all as historic
