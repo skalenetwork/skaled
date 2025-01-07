@@ -1081,7 +1081,7 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "config" ) ) {
         try {
             configPath = vm["config"].as< string >();
-            clog( VerbosityInfo, "main") << "Using config file:" << configPath;
+            clog( VerbosityInfo, "main" ) << "Using config file:" << configPath;
             if ( !fs::is_regular_file( configPath.string() ) )
                 throw std::runtime_error( "Bad config file path" );
             configJSON = contentsString( configPath.string() );
