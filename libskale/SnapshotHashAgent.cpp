@@ -292,7 +292,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                           ( this->chainParams_.sChain.nodes.at( i ).port + 3 )
                                               .convert_to< std::string >();
                     auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
-                    if ( std::get< 0 >( snapshotData ).size ) {
+                    if ( std::get< 0 >( snapshotData ).size > 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
                         this->isReceived_.at( i ) = true;

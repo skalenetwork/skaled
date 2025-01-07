@@ -37,6 +37,8 @@ set(binaryen_other_libraries
 
 set(BINARYEN_VERSION 1.37.35)
 
+set(BINARYEN_CMAKE_CXX_FLAGS "-Wno-implicit-fallthrough -Wno-maybe-uninitialized -Wno-range-loop-construct ${CMAKE_CXX_FLAGS}")
+
 ExternalProject_Add(binaryen
     PREFIX ${prefix}
     DOWNLOAD_NAME binaryen-${BINARYEN_VERSION}.tar.gz
@@ -46,13 +48,13 @@ ExternalProject_Add(binaryen
     URL https://github.com/WebAssembly/binaryen/archive/${BINARYEN_VERSION}.tar.gz
     URL_HASH SHA256=19439e41dc576446eaae0c4a8e07d4cd4c40aea7dfb0a6475b925686852f8006
     CMAKE_ARGS
-    -DCMAKE_INSTALL_PREFIX=${prefix}
-    -DCMAKE_INSTALL_LIBDIR=lib
-    -DCMAKE_BUILD_TYPE=Release
-    -DBUILD_STATIC_LIB=ON
-    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    -DCMAKE_CXX_FLAGS=-Wno-implicit-fallthrough ${CMAKE_CXX_FLAGS}
+        -DCMAKE_INSTALL_PREFIX=${prefix}
+        -DCMAKE_INSTALL_LIBDIR=lib
+        -DCMAKE_BUILD_TYPE=Release
+        -DBUILD_STATIC_LIB=ON
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_CXX_FLAGS=${BINARYEN_CMAKE_CXX_FLAGS}
     ${build_command}
     ${install_command}
     BUILD_BYPRODUCTS ${binaryen_library} ${binaryen_other_libraries}
