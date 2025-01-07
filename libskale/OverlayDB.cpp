@@ -38,8 +38,6 @@ using std::vector;
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
 
-// #include "SHA3.h"
-
 using dev::bytes;
 using dev::bytesConstRef;
 using dev::h160;

@@ -314,7 +314,7 @@ int main( int argc, char** argv ) {
 
     state.addBalance( sender, value );
 
-    // H1st 0 here is for gasPrice
+    // First 0 here is for gasPrice
     Executive executive( state, envInfo, chainParams, 0, 0 );
 
     ExecutionResult res;

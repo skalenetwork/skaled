@@ -189,6 +189,11 @@ public:
     bytes codeAt( Address _a ) const override;
     h256 codeHashAt( Address _a ) const override;
     std::map< h256, std::pair< u256, u256 > > storageAt( Address _a ) const override;
+
+    /// Estimate gas usage for call/create.
+    /// @param _maxGas An upper bound value for estimation, if not provided default value of
+    /// c_maxGasEstimate will be used.
+    /// @param _callback Optional callback function for progress reporting
     std::pair< u256, ExecutionResult > estimateGas( Address const& _from, u256 _value,
         Address _dest, bytes const& _data, int64_t _maxGas, u256 _gasPrice,
         GasEstimationCallback const& _callback = GasEstimationCallback() ) override;
