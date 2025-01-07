@@ -2099,7 +2099,7 @@ then
 				eval tar -xzf folly-from-git.tar.gz
 			fi
 			echo -e "${COLOR_INFO}fixing it${COLOR_DOTS}...${COLOR_RESET}"
-            sed -i 's/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES})/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES} lzma)/' ./folly/CMake/folly-deps.cmake
+                        sed -i 's/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES})/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES} lzma)/' ./folly/CMake/folly-deps.cmake
 			sed -i 's/google::InstallFailureFunction(abort);/google::InstallFailureFunction( reinterpret_cast < google::logging_fail_func_t > ( abort ) );/g' ./folly/folly/init/Init.cpp
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd folly
@@ -2123,8 +2123,8 @@ then
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
 		if [ "$DEBUG" = "0" ]; then
-            eval strip --strip-debug "${INSTALL_ROOT}"/lib/libfolly*.a
-        fi
+                    eval strip --strip-debug "${INSTALL_ROOT}"/lib/libfolly*.a
+                fi
 		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
