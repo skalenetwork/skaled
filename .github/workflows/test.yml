@@ -44,16 +44,16 @@ jobs:
       - name: install packages
         run: |
           sudo apt-get -y remove libzmq* || true
-          sudo apt-get -y install software-properties-common gcc-9 g++-9 || true
+          sudo apt-get -y install software-properties-common gcc-11 g++-11 || true
 
-      - name: Use g++-9 and gcov-9 by default
+      - name: Use g++-11 and gcov-11 by default
         run: |
           echo "Updating all needed alternatives"
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
-          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
-          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
+          sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
+          sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
+          sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
           echo "Checking alternative for gcc"
           which gcc
           gcc --version
@@ -102,16 +102,16 @@ jobs:
           string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
           message("::set-output name=timestamp::${current_date}")
       - name: Ccache cache files
-        uses: actions/cache@v1.1.0
+        uses: actions/cache@v4.2.0
         with:
           path: .ccache
           key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
           restore-keys: |
             ${ { matrix.config.name } }-ccache-
-      - name: Update gcc-9
+      - name: Update gcc-11
         run: |
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
       - name: Configure ccache cache size, zero ccache counters and print ccache stats before start
         run: |
           ccache --max-size=15G
@@ -120,8 +120,8 @@ jobs:
       - name: Build dependencies
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
@@ -134,8 +134,8 @@ jobs:
       - name: Configure all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
@@ -150,8 +150,8 @@ jobs:
       - name: Build all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
@@ -211,9 +211,9 @@ jobs:
           run_test JsonRpcSuite   
           run_test SingleConsensusTests  
           run_test ConsensusTests
-          sudo ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
-          sudo ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
-          sudo ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
           cd ..
       - name: Testeth verbosity 4
         run : |
@@ -270,8 +270,8 @@ jobs:
       - name: Configure all as historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON
@@ -283,8 +283,8 @@ jobs:
       - name: Build all historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-9
-          export CXX=g++-9
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           export CODE_COVERAGE=ON

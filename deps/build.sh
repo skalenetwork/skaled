@@ -297,6 +297,10 @@ setup_variable WITH_WANGLE "yes"
 setup_variable WITH_GTEST "yes"
 setup_variable WITH_FIZZ "yes"
 setup_variable WITH_PROXYGEN "yes"
+setup_variable WITH_SNAPPY "yes"
+setup_variable WITH_LIBSCRYPT "yes"
+setup_variable WITH_ETHASH "yes"
+setup_variable WITH_YAML "yes"
 
 if [ -z "${PARALLEL_COUNT}" ];
 then
@@ -331,9 +335,6 @@ export TOOLCHAINS_DOWNLOADED_PATH=$TOOLCHAINS_PATH/downloads
 
 export ARM_TOOLCHAIN_NAME=gcc7.2-arm
 export ARM_GCC_VER=7.2.0
-
-#export ARM_TOOLCHAIN_NAME=gcc4.8-arm
-#export ARM_GCC_VER=4.8.4
 
 export ARM_TOOLCHAIN_PATH=$TOOLCHAINS_PATH/$ARM_TOOLCHAIN_NAME
 
@@ -378,12 +379,12 @@ then
 	else
 		if [ "$UNIX_SYSTEM_NAME" = "Linux" ];
 		then
-			export CC=$(which gcc-9)
+                        export CC=$(which gcc-11)
 			if [ -z "${CC}" ];
 			then
 				export CC=$(which gcc)
 			fi
-			export CXX=$(which g++-9)
+                        export CXX=$(which g++-11)
 			if [ -z "${CXX}" ];
 			then
 				export CXX=$(which g++)
@@ -610,6 +611,10 @@ echo -e "${COLOR_VAR_NAME}WITH_WANGLE${COLOR_DOTS}............${COLOR_VAR_DESC}L
 echo -e "${COLOR_VAR_NAME}WITH_GTEST${COLOR_DOTS}.............${COLOR_VAR_DESC}LibGTEST${COLOR_DOTS}...............................${COLOR_VAR_VAL}$WITH_GTEST${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_FIZZ${COLOR_DOTS}..............${COLOR_VAR_DESC}LibFIZZ${COLOR_DOTS}................................${COLOR_VAR_VAL}$WITH_FIZZ${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_PROXYGEN${COLOR_DOTS}..........${COLOR_VAR_DESC}LibProxygen${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_PROXYGEN${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_SNAPPY${COLOR_DOTS}............${COLOR_VAR_DESC}LibSnappy${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_SNAPPY${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_LIBSCRYPT${COLOR_DOTS}.........${COLOR_VAR_DESC}LibSCRYPT${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_LIBSCRYPT${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_ETHASH${COLOR_DOTS}.........${COLOR_VAR_DESC}LibEthash${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_ETHASH${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_YAML${COLOR_DOTS}.........${COLOR_VAR_DESC}LibYAMLCPP${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_YAML${COLOR_RESET}"
 
 #
 #
@@ -2101,18 +2106,20 @@ then
 			eval mkdir -p build2
                         cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" -DBoost_NO_WARN_NEW_VERSIONS=1 -DBoost_DEBUG=ON \
+                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_INCLUDEDIR="${INSTALL_ROOT}/include" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" \
+                                -DBoost_NO_BOOST_CMAKE=ON -DBoost_NO_WARN_NEW_VERSIONS=1 -DBoost_DEBUG=ON \
 				-DBUILD_SHARED_LIBS=OFF \
 				-DBUILD_TESTS=OFF -DBUILD_BROKEN_TESTS=OFF -DBUILD_HANGING_TESTS=OFF -DBUILD_SLOW_TESTS=OFF \
-                -DCMAKE_INCLUDE_PATH="${INSTALL_ROOT}/include" \
-                -DCMAKE_LIBRARY_PATH="${INSTALL_ROOT}/lib" \
+                                -DCMAKE_INCLUDE_PATH="${INSTALL_ROOT}/include" \
+                                -DCMAKE_LIBRARY_PATH="${INSTALL_ROOT}/lib" \
+                                -DCMAKE_PREFIX_PATH=${INSTALL_ROOT} \
 				..
 			cd ..
 		else
 			cd folly
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
-		cd build2
+                cd build2
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
 		if [ "$DEBUG" = "0" ]; then
@@ -2235,7 +2242,11 @@ then
 			eval mkdir -p build2
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
+                                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
+                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_INCLUDEDIR="${INSTALL_ROOT}/include" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" \
+                                -DBoost_NO_BOOST_CMAKE=ON -DCMAKE_INCLUDE_PATH="${INSTALL_ROOT}/include" \
+                                -DCMAKE_LIBRARY_PATH="${INSTALL_ROOT}/lib" \
+                                -DCMAKE_PREFIX_PATH=${INSTALL_ROOT} \
 				..
 			cd ..
 		else
@@ -2280,7 +2291,12 @@ then
 			eval mkdir -p build2
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-				-DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+                                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
+                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_INCLUDEDIR="${INSTALL_ROOT}/include" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" \
+                                -DBoost_NO_BOOST_CMAKE=ON -DCMAKE_INCLUDE_PATH="${INSTALL_ROOT}/include" \
+                                -DCMAKE_LIBRARY_PATH="${INSTALL_ROOT}/lib" \
+                                -DCMAKE_PREFIX_PATH=${INSTALL_ROOT} \
+                                ..
 			cd ..
 		else
 			cd wangle/wangle
@@ -2312,9 +2328,9 @@ then
 			then
 				echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
 				eval git clone https://github.com/facebook/proxygen.git --recursive
-                cd proxygen
-                eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
-                cd ..
+                                cd proxygen
+                                eval git checkout f666fe2d938a1b06a3281c958cdeb46743a2fa49
+                                cd ..
 				echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -czf proxygen-from-git.tar.gz ./proxygen
 			else
@@ -2326,7 +2342,12 @@ then
 			eval mkdir -p build2
 			cd build2
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF ..
+                                -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SAMPLES=OFF -DBUILD_SHARED_LIBS=OFF \
+                                -DBOOST_ROOT="$INSTALL_ROOT" -DBOOST_INCLUDEDIR="${INSTALL_ROOT}/include" -DBOOST_LIBRARYDIR="$INSTALL_ROOT/lib" \
+                                -DBoost_NO_BOOST_CMAKE=ON -DCMAKE_INCLUDE_PATH="${INSTALL_ROOT}/include" \
+                                -DCMAKE_LIBRARY_PATH="${INSTALL_ROOT}/lib" \
+                                -DCMAKE_PREFIX_PATH=${INSTALL_ROOT} \
+                                ..
 			cd ..
 		else
 			cd proxygen
@@ -2343,6 +2364,170 @@ then
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
 	fi
+fi
+
+if [ "$WITH_SNAPPY" = "yes" ];
+then
+        echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libSnappy${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+        if [ ! -f "$INSTALL_ROOT/lib/libsnappy.a" ];
+        then
+                env_restore
+                cd "$SOURCES_ROOT"
+                if [ ! -d "snappy" ];
+                then
+                        if [ ! -f "snappy-from-git.tar.gz" ];
+                        then
+                                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                                eval git clone https://github.com/google/snappy.git --recursive
+                                cd snappy
+                                eval git checkout 1.1.7
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -czf snappy-from-git.tar.gz ./snappy
+                        else
+                                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -xzf snappy-from-git.tar.gz
+                        fi
+                        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+                        cd snappy
+                        eval mkdir -p build
+                        cd build
+                        eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                                -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF ..
+                        cd ..
+                else
+                        cd snappy
+                fi
+                echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+                cd build
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
+                cd "$SOURCES_ROOT"
+        else
+                echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+        fi
+fi
+
+if [ "$WITH_LIBSCRYPT" = "yes" ];
+then
+        echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libScrypt${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+        if [ ! -f "$INSTALL_ROOT/lib/libscrypt.a" ];
+        then
+                env_restore
+                cd "$SOURCES_ROOT"
+                if [ ! -d "libscrypt" ];
+                then
+                        if [ ! -f "libscrypt-from-git.tar.gz" ];
+                        then
+                                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                                eval git clone https://github.com/technion/libscrypt.git --recursive
+                                cd libscrypt
+                                eval git checkout v1.22
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -czf libscrypt-from-git.tar.gz ./libscrypt
+                        else
+                                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -xzf libscrypt-from-git.tar.gz
+                        fi
+                        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+                        cd libscrypt
+                else
+                        cd libscrypt
+                fi
+                echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+                eval "$MAKE" install "${PARALLEL_MAKE_OPTIONS}" PREFIX="$INSTALL_ROOT" LIBDIR="${INSTALL_ROOT}/lib" INCLUDEDIR="${INSTALL_ROOT}/include"
+                eval "$MAKE" install-static "${PARALLEL_MAKE_OPTIONS}" PREFIX="$INSTALL_ROOT" LIBDIR="${INSTALL_ROOT}/lib" INCLUDEDIR="${INSTALL_ROOT}/include"
+                echo ${INSTALL_ROOT}
+                rm "${INSTALL_ROOT}/lib/libscrypt.so.0" "${INSTALL_ROOT}/lib/libscrypt.so"
+                cd "$SOURCES_ROOT"
+        else
+                echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+        fi
+fi
+
+if [ "$WITH_ETHASH" = "yes" ];
+then
+        echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libEthash${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+        if [ ! -f "$INSTALL_ROOT/lib/libethash.a" ];
+        then
+                env_restore
+                cd "$SOURCES_ROOT"
+                if [ ! -d "ethash" ];
+                then
+                        if [ ! -f "ethash-from-git.tar.gz" ];
+                        then
+                                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                                eval git clone https://github.com/chfast/ethash.git --recursive
+                                cd ethash
+                                eval git checkout v0.5.0
+                                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -czf ethash-from-git.tar.gz ./ethash
+                        else
+                                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -xzf ethash-from-git.tar.gz
+                        fi
+                        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+                        cd ethash
+                        eval mkdir -p build
+                        cd build
+                        eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" \
+                                -DETHASH_BUILD_TESTS=OFF ..
+                        cd ..
+                else
+                        cd ethash
+                fi
+                echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+                cd build
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
+                cd "$SOURCES_ROOT"
+        else
+                echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+        fi
+fi
+
+if [ "$WITH_YAML" = "yes" ];
+then
+        echo -e "${COLOR_SEPARATOR}==================== ${COLOR_PROJECT_NAME}libYamlCpp${COLOR_SEPARATOR} ==================================${COLOR_RESET}"
+        if [ ! -f "$INSTALL_ROOT/lib/libyaml-cpp.a" ];
+        then
+                env_restore
+                cd "$SOURCES_ROOT"
+                if [ ! -d "yaml-cpp" ];
+                then
+                        if [ ! -f "yaml-cpp-from-git.tar.gz" ];
+                        then
+                                echo -e "${COLOR_INFO}getting it from git${COLOR_DOTS}...${COLOR_RESET}"
+                                eval git clone https://github.com/jbeder/yaml-cpp.git --recursive
+                cd yaml-cpp
+                eval git checkout yaml-cpp-0.6.2
+                cd ..
+                                echo -e "${COLOR_INFO}archiving it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -czf yaml-cpp-from-git.tar.gz ./yaml-cpp
+                        else
+                                echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
+                                eval tar -xzf yaml-cpp-from-git.tar.gz
+                        fi
+                        echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
+                        cd yaml-cpp
+                        eval mkdir -p build
+                        cd build
+                        eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                                -DYAML_BUILD_SHARED_LIBS=OFF -DYAML_CPP_BUILD_TESTS=OFF -DYAML_CPP_BUILD_TOOLS=OFF ..
+                        cd ..
+                else
+                        cd yaml-cpp
+                fi
+                echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
+                cd build
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+                eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
+                cd "$SOURCES_ROOT"
+        else
+                echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
+        fi
 fi
 
 echo -e "${COLOR_SEPARATOR}===================================================================${COLOR_RESET}"

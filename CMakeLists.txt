@@ -77,9 +77,6 @@ list( APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR} )
 set( CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release )
 set( CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release )
 
-set( HUNTER_CONFIGURATION_TYPES Release )
-set( HUNTER_JOBS_NUMBER 4 )
-
 find_program( CCACHE_FOUND ccache )
 if( CCACHE_FOUND )
     set_property( GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache )
@@ -93,11 +90,6 @@ if( "$ENV{CI}" AND NOT "$ENV{GITHUB_USER_PASSWORD}" STREQUAL "" )
 else()
     set( run_upload NO )
 endif()
-option( HUNTER_RUN_UPLOAD "Upload binaries to the cache server" ${run_upload} )
-
-include( HunterGate )
-#HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.76.tar.gz" SHA1 "c7b60993e841850e2c449afd454f5d5aa4ec04e4" LOCAL )
-HunterGate( URL "https://github.com/ruslo/hunter/archive/v0.23.214.tar.gz" SHA1 "e14bc153a7f16d6a5eeec845fb0283c8fad8c358" LOCAL ) #leveldb 1.22
 
 set( CMAKE_CXX_STANDARD 17 )
 
@@ -135,25 +127,19 @@ include( FindClangFormat )
 
 set( Boost_USE_STATIC_LIBS ON )
 set( Boost_USE_MULTITHREADED ON )
-hunter_add_package( Boost COMPONENTS program_options filesystem system thread context fiber log chrono test)
-find_package( Boost CONFIG REQUIRED program_options filesystem system thread context fiber log chrono)
-
-set( SKALE_HAVE_BOOST_FROM_HUNTER true )
+set( Boost_NO_BOOST_CMAKE ON )
+find_package( Boost MODULE REQUIRED program_options filesystem system thread context fiber log chrono)
 
 option( BUILD_LEVELDB "Build leveldb from leveldb directory" OFF )
 
 if( BUILD_LEVELDB )
     add_subdirectory( leveldb )
 else()
-    hunter_add_package( leveldb )
     find_package( leveldb CONFIG REQUIRED )
 endif()
 
-#hunter_add_package( jsoncpp )
-#find_package( jsoncpp PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" ) #( jsoncpp CONFIG REQUIRED )
-
-hunter_add_package( Snappy )
 find_package( Snappy CONFIG REQUIRED )
+find_package( Crc32c CONFIG REQUIRED )
 
 set( LIB_NAME_cryptopp "cryptopp" )
 
@@ -161,10 +147,8 @@ set( LIB_NAME_cryptopp "cryptopp" )
 #find_package( MHD PATHS "${DEPS_INSTALL_ROOT}/libs/cmake" )
 #find_library( MHD microhttpd )
 
-hunter_add_package( libscrypt )
-find_package( libscrypt CONFIG REQUIRED )
+find_library( SCRYPT_LIBRARIES NAMES scrypt HINTS "${DEPS_INSTALL_ROOT}/lib")
 
-hunter_add_package( ethash )
 find_package( ethash CONFIG REQUIRED )
 
 include( ProjectSecp256k1 )
@@ -184,7 +168,6 @@ if( TESTS )
     # TODO: remove this once testeth uses binaryen as a CLI tool.
     include( ProjectBinaryen )
 endif()
-
 
 if (HISTORIC_STATE)
 add_definitions(-DHISTORIC_STATE=1)
@@ -250,8 +233,11 @@ if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
     add_subdirectory( libconsensus EXCLUDE_FROM_ALL)
+    target_compile_options( consensus PRIVATE -Wno-unused-variable ) # silence libff warnings
+    target_compile_options( bls PRIVATE -Wno-unused-variable ) # silence libff warnings
 else()
     add_subdirectory( libconsensus/libBLS )
+    target_compile_options( bls PRIVATE -Wno-unused-variable ) # silence libff warnings
     set( BUILD_TESTS OFF CACHE BOOL "Build tests" ) # do not build libbls tests
 endif()
 
