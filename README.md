@@ -41,7 +41,7 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 
 ### OS requirements
 
-Skaled builds and runs on Ubuntu 20.04 and 22.04
+Skaled officially builds and runsb and is tested on on Ubuntu 22.04. You may build and run it on other Ubuntu versions at your own risk.
 
 ### Clone repository
 
@@ -70,11 +70,11 @@ NB cmake needs to be of version >=3.21, git of version >=2.18
 
 ### (for Ubuntu 20.10 or later) Set  gcc-9 as default compiler
 ```
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
-sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
-sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
-sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
+sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
+sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
+sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
 gcc --version
 ```
 
