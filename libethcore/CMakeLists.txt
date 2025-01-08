@@ -14,5 +14,5 @@ target_include_directories( ethcore PRIVATE
 target_link_libraries( ethcore PUBLIC
 	devcrypto
 	devcore
-	skale
+        skale
 	)
