@@ -41,7 +41,7 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 
 ### OS requirements
 
-Skaled officially builds and runsb and is tested on on Ubuntu 22.04. You may build and run it on other Ubuntu versions at your own risk.
+Skaled officially builds, runs, and is tested on on Ubuntu 22.04. You may build and run it on other Ubuntu versions at your own risk.
 
 ### Clone repository
 
@@ -59,7 +59,7 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 ```
 sudo apt update
 sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen 
-sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-9 g++-9 gperf clang-format-11 gnutls-dev
+sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-11 g++-11 gperf clang-format-11 gnutls-dev
 sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov sudo apt-get install libv8-dev
 ```
 
@@ -68,7 +68,7 @@ sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoog
 
 NB cmake needs to be of version >=3.21, git of version >=2.18
 
-### (for Ubuntu 20.10 or later) Set  gcc-9 as default compiler
+###  Set  gcc-11 as default compiler
 ```
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
