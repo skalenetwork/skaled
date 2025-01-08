@@ -57,22 +57,22 @@ foreach(file ${sources})
     endforeach(test_raw)
 endforeach(file)
 
-hunter_add_package(yaml-cpp)
-find_package(yaml-cpp CONFIG REQUIRED)
+find_library( YAML_CPP_LIBRARIES NAMES yaml-cpp HINTS "${DEPS_INSTALL_ROOT}/lib")
 
 add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
 target_compile_options( testeth PRIVATE
-    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-unused-parameter -Wno-error=unused-variable -Wno-maybe-uninitialized
     -Wno-error=pessimizing-move
     -Wno-error=format-overflow
     -Wno-error=stringop-truncation
+    -Wno-unused-variable
     )
 if( APPLE )
 	target_compile_definitions( testeth PRIVATE __BUILDING_4_MAC_OS_X__=1 )
 endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR} ../libconsensus/spdlog/include)
 target_link_libraries(testeth PRIVATE
-    ethereum historic ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp::yaml-cpp binaryen::binaryen
+    ethereum historic ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp binaryen::binaryen
     skutils
     Boost::system Boost::program_options
     jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a

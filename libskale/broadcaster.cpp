@@ -90,8 +90,16 @@ void* ZmqBroadcaster::server_socket() const {
     if ( !m_zmq_server_socket ) {
         m_zmq_server_socket = zmq_socket( m_zmq_context, ZMQ_PUB );
 
-        int val = 16;
+        int val = 15000;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_IVL, &val, sizeof( val ) );
+        val = 3000;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TIMEOUT, &val, sizeof( val ) );
+        val = 60000;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
+
+        val = 1024;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
+
 
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
@@ -116,11 +124,11 @@ void* ZmqBroadcaster::client_socket() const {
         int value = 1;
 
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE, &value, sizeof( value ) );
-        value = 15;
+        value = 300;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_IDLE, &value, sizeof( value ) );
         value = 10;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_CNT, &value, sizeof( value ) );
-        value = 15;
+        value = 300;
         zmq_setsockopt( m_zmq_client_socket, ZMQ_TCP_KEEPALIVE_INTVL, &value, sizeof( value ) );
 
         value = 16;
@@ -232,12 +240,13 @@ void ZmqBroadcaster::stopService() {
     m_thread.join();
 }
 
-void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
-    if ( _rlp.empty() ) {
-        server_socket();
-        return;
-    }
 
+void ZmqBroadcaster::initSocket() {
+    server_socket();
+}
+
+
+void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
         clog( dev::VerbosityWarning, "zmq-broadcaster" )

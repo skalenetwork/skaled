@@ -355,7 +355,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 if ( s.second == 0 )
                     keystoDelete.push_back( s.first );
             }
-            for ( auto const key : keystoDelete ) {
+            for ( auto const& key : keystoDelete ) {
                 get< 2 >( a.second ).erase( key );
             }
         }

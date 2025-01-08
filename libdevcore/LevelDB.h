@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "LevelDBSnapManager.h"
 #include "db.h"
 
 #include <leveldb/db.h>
@@ -29,7 +30,17 @@
 #include <secp256k1_sha256.h>
 #include <shared_mutex>
 
+#define LDB_CHECK( _EXPRESSION_ )                                                             \
+    if ( !( _EXPRESSION_ ) ) {                                                                \
+        auto __msg__ = std::string( "State check failed::" ) + #_EXPRESSION_ + " " +          \
+                       std::string( __FILE__ ) + ":" + std::to_string( __LINE__ );            \
+        BOOST_THROW_EXCEPTION( dev::db::DatabaseError() << dev::errinfo_comment( __msg__ ) ); \
+    }
+
 namespace dev::db {
+
+class LevelDBSnap;
+
 class LevelDB : public DatabaseFace {
 public:
     static leveldb::ReadOptions defaultReadOptions();
@@ -58,6 +69,18 @@ public:
     void forEachWithPrefix(
         std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const override;
 
+    // create a read only snap after blockl processing
+    void createBlockSnap( uint64_t _blockNumber );
+
+    // get block snap for the lasty block
+    std::shared_ptr< LevelDBSnap > getLastBlockSnap() const;
+
+    // perform operations with respect to a particular read only snap
+    std::string lookup( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    bool exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    void forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > f,
+        const std::shared_ptr< LevelDBSnap >& _snap ) const;
+
     h256 hashBase() const override;
     h256 hashBaseWithPrefix( char _prefix ) const;
 
@@ -75,6 +98,14 @@ public:
 
 private:
     std::unique_ptr< leveldb::DB > m_db;
+
+    // stores and manages snap objects
+    LevelDBSnapManager m_snapManager;
+    // this is incremented each time this LevelDB instance is reopened
+    // we reopen states LevelDB every day on archive nodes to avoid
+    // meta file getting too large
+    // in other cases LevelDB is never reopened to this stays zero
+    std::atomic< uint64_t > m_dbReopenId = 0;
     leveldb::ReadOptions const m_readOptions;
     leveldb::WriteOptions const m_writeOptions;
     leveldb::Options m_options;
@@ -125,6 +156,9 @@ private:
     };
     void openDBInstanceUnsafe();
     void reopenDataBaseIfNeeded();
+    leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
+        std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
+    void reopen();
 };
 
 }  // namespace dev::db
