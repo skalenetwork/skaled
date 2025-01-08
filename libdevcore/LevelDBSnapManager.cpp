@@ -23,6 +23,7 @@
 #include "LevelDB.h"
 #include "LevelDBSnap.h"
 
+#include <mutex>
 
 using std::string, std::runtime_error;
 

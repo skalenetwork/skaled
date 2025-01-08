@@ -22,6 +22,8 @@
 #include "Assertions.h"
 #include "LevelDB.h"
 
+#include <mutex>
+
 using std::string, std::runtime_error;
 
 namespace dev::db {
