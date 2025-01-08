@@ -249,7 +249,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();
 
-        auto toCompare = _maxFeePerGasPatchEnabled ? m_maxPriorityFeePerGas : m_maxFeePerGas;
+        auto toCompare = _maxFeePerGasPatchEnabled ? m_maxFeePerGas : m_maxPriorityFeePerGas;
         if ( m_maxPriorityFeePerGas > toCompare )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
                                        "maxFeePerGas cannot be less than maxPriorityFeePerGas (The "
