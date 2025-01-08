@@ -211,11 +211,11 @@ void ZmqBroadcaster::startService() {
 
             } catch ( const std::exception& ex ) {
                 cerror << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
-                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             } catch ( ... ) {
                 cerror << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
-                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             }
 

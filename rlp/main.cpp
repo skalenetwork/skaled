@@ -406,7 +406,7 @@ int main( int argc, char** argv ) {
             strings addedInputs;
             for ( auto i : otherInputs )
                 if ( !boost::filesystem::is_regular_file( i ) )
-                    cerr << "Skipped " << i << std::endl;
+                    cerr << "Skipped " << i;
                 else
                     addedInputs.push_back( i );
 

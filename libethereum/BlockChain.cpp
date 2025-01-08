@@ -82,7 +82,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, BlockChain const& _bc ) 
             try {
                 BlockHeader d( bytesConstRef{ _value } );
                 _out << toHex( key ) << ":   " << d.number() << " @ " << d.parentHash()
-                     << ( cmp == key ? "  BEST" : "" ) << std::endl;
+                     << ( cmp == key ? "  BEST" : "" ) << "\n";
             } catch ( ... ) {
                 cwarn << "Invalid DB entry:" << toHex( key ) << " -> "
                       << toHex( bytesConstRef( _value ) );

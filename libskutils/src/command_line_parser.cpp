@@ -420,18 +420,18 @@ void parser::stat_network_interfaces_info( std::ostream& os ) {
     std::list< std::pair< std::string, std::string > >::const_iterator itWalk, itEnd;
     lst = skutils::network::get_machine_ip_addresses( true, false );  // try IP4
     os << cc::info( "Number of of found IPv4 interfaces" ) + cc::debug( "..................." )
-       << cc::size10( lst.size() ) << std::endl;
+       << cc::size10( lst.size() ) << "\n";
     for ( itWalk = lst.cbegin(), itEnd = lst.cend(); itWalk != itEnd; ++itWalk )
         os << cc::debug( "...." )
            << cc::info( "IPv4 interface" ) + cc::debug( "..................................." )
-           << stat_gen_if( *itWalk ) << std::endl;
+           << stat_gen_if( *itWalk ) << "\n";
     lst = skutils::network::get_machine_ip_addresses( false, true );  // try IP6
     os << cc::info( "Number of of found IPv6 interfaces" ) + cc::debug( "..................." )
-       << cc::size10( lst.size() ) << std::endl;
+       << cc::size10( lst.size() ) << "\n";
     for ( itWalk = lst.cbegin(), itEnd = lst.cend(); itWalk != itEnd; ++itWalk )
         os << cc::debug( "...." )
            << cc::info( "IPv6 interface" ) + cc::debug( "..................................." )
-           << stat_gen_if( *itWalk ) << std::endl;
+           << stat_gen_if( *itWalk ) << "\n";
 }
 
 };  // namespace command_line

@@ -1177,7 +1177,7 @@ bool State::checkVersion() const {
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
-    _out << cc::debug( "--- Cache ---" ) << std::endl;
+    _out << cc::debug( "--- Cache ---" ) << "\n";
     std::set< Address > d;
     for ( auto i : _s.m_cache )
         d.insert( i.first );
@@ -1188,7 +1188,7 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
         assert( cache );
 
         if ( cache && !cache->isAlive() )
-            _out << cc::debug( "XXX  " ) << i << std::endl;
+            _out << cc::debug( "XXX  " ) << i << "\n";
         else {
             string lead = cc::debug( " +   " );
             if ( cache )
@@ -1221,7 +1221,7 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
 
                 for ( auto const& j : mem )
                     if ( j.second )
-                        contout << std::endl
+                        contout << "\n"
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
                                        cached.count( j.first ) ? " .     " :
@@ -1229,14 +1229,14 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
-                        contout << std::endl
+                        contout << "\n"
                                 << cc::debug( "XXX    " ) << std::hex << nouppercase
                                 << std::setw( 64 ) << j.first << "";
             } else
                 contout << cc::debug( " [SIMPLE]" );
             _out << lead << i << cc::debug( ": " ) << std::dec
                  << ( cache ? cache->nonce() : u256( 0 ) ) << cc::debug( " #:" )
-                 << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << std::endl;
+                 << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << "\n";
         }
     }
     return _out;

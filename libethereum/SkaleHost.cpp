@@ -352,7 +352,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     {
         std::lock_guard< std::mutex > localGuard( m_receivedMutex );
         m_received.insert( sha );
-        LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+        LOG( m_debugLogger ) << "m_received = " << m_received.size();
     }
 
 #if ( defined _DEBUG )
@@ -505,7 +505,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             m_tq.drop( sha );
             if ( m_received.count( sha ) != 0 )
                 m_received.erase( sha );
-            LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+            LOG( m_debugLogger ) << "m_received = " << m_received.size();
         }
     }
 
@@ -535,7 +535,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 #ifdef DEBUG_TX_BALANCE
             if ( sent.count( sha ) != 0 ) {
                 int prev = sent[sha];
-                std::cerr << "Prev no = " << prev << std::endl;
+                std::cerr << "Prev no = " << prev << "\n";
 
                 if ( sent.count( sha ) != 0 ) {
                     // TODO fix this!!?
@@ -547,7 +547,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 #endif
 
             m_debugTracer.tracepoint( "sent_txn" );
-            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+            LOG( m_traceLogger ) << "Sent txn: " << sha;
         }
     } catch ( ... ) {
         clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
@@ -660,14 +660,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 t.checkOutExternalGas(
                     m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
                 out_txns.push_back( t );
-                LOG( m_debugLogger ) << "Dropping good txn " << sha << std::endl;
+                LOG( m_debugLogger ) << "Dropping good txn " << sha;
                 m_debugTracer.tracepoint( "drop_good" );
                 m_tq.dropGood( t );
                 MICROPROFILE_SCOPEI( "SkaleHost", "erase from caches", MP_GAINSBORO );
                 m_m_transaction_cache.erase( sha.asArray() );
                 std::lock_guard< std::mutex > localGuard( m_receivedMutex );
                 m_received.erase( sha );
-                LOG( m_debugLogger ) << "m_received = " << m_received.size() << std::endl;
+                LOG( m_debugLogger ) << "m_received = " << m_received.size();
                 // for test std::thread( [t, this]() { m_client.importTransaction( t ); }
                 // ).detach();
             } else {
@@ -929,11 +929,11 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
             sleep( 2 );
         } catch ( ... ) {
             cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
             sleep( 2 );
         }
     }  // while

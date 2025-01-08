@@ -74,7 +74,7 @@ dev::db::Slice toSlice( std::string const& _s ) {
 OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
     : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
           // clog(dev::VerbosityDebug, "overlaydb") << "Closing state DB";
-          //        std::cerr << "!!! Closing state DB !!!" << std::endl;
+          //        std::cerr << "!!! Closing state DB !!!" << "\n";
           //        std::cerr.flush();
           delete db;
       } ) {}
@@ -386,7 +386,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
             return true;
         } );
 
-        std::cout << std::endl;
+        std::cout << "\n";
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }

@@ -1066,7 +1066,7 @@ unsigned char* md5::raw_digest() {
     if ( !finalized ) {
         delete[] s;
         // std::cerr << "md5::raw_digest: cannot get digest if you haven't finalized the digest" <<
-        // std::endl;
+        // "\n";
         s = nullptr;
     } else
         memcpy( s, digest, 16 );
@@ -1078,7 +1078,7 @@ char* md5::hex_digest() {
     ::memset( s, 0, 33 );
     if ( !finalized ) {
         // std::cerr << "md5::hex_digest: cannot get digest if you haven't finalized the digest!" <<
-        // std::endl;
+        // "\n";
         return s;
     }
     for ( i = 0; i < 16; i++ )

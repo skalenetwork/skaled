@@ -657,7 +657,7 @@ bool HistoricState::executeTransaction(
 }
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s ) {
-    _out << "--- " << _s.globalRoot() << std::endl;
+    _out << "--- " << _s.globalRoot() << "\n";
     std::set< Address > d;
     std::set< Address > dtr;
     auto trie =
@@ -675,7 +675,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
         assert( cache || r );
 
         if ( cache && !cache->isAlive() )
-            _out << "XXX  " << i << std::endl;
+            _out << "XXX  " << i << "\n";
         else {
             string lead = ( cache ? r ? " *   " : " +   " : "     " );
             if ( cache && r && cache->nonce() == r[0].toInt< u256 >() &&
@@ -719,7 +719,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
 
                 for ( auto const& j : mem )
                     if ( j.second )
-                        contout << std::endl
+                        contout << "\n"
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
                                        cached.count( j.first ) ? " .     " :
@@ -727,7 +727,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
-                        contout << std::endl
+                        contout << "\n"
                                 << "XXX    " << std::hex << nouppercase << std::setw( 64 )
                                 << j.first << "";
             } else
@@ -735,7 +735,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
             _out << lead << i << ": " << std::dec
                  << ( cache ? cache->nonce() : r[0].toInt< u256 >() )
                  << " #:" << ( cache ? cache->balance() : r[1].toInt< u256 >() ) << contout.str()
-                 << std::endl;
+                 << "\n";
         }
     }
     return _out;

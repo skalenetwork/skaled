@@ -1265,11 +1265,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
-                        << boost::current_exception_diagnostic_information() << std::endl;
+                        << boost::current_exception_diagnostic_information();
         throw std::runtime_error( "call with invalid nonce" );
     } catch ( ... ) {
         LOG( m_logger ) << "exception in client call(2):"
-                        << boost::current_exception_diagnostic_information() << std::endl;
+                        << boost::current_exception_diagnostic_information();
         throw;
     }
     return ret;

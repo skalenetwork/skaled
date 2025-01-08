@@ -505,7 +505,7 @@ void SnapshotManager::computeDatabaseHash(
 
     dev::h256 dbHash;
     secp256k1_sha256_finalize( &dbCtx, dbHash.data() );
-    cnote << _dbDir << " hash is: " << dbHash << std::endl;
+    cnote << _dbDir << " hash is: " << dbHash;
 
     secp256k1_sha256_write( ctx, dbHash.data(), dbHash.size );
 } catch ( const fs::filesystem_error& ex ) {
@@ -543,7 +543,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     }
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
-    cnote << "Latest price hash is: " << last_price_hash << std::endl;
+    cnote << "Latest price hash is: " << last_price_hash;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 

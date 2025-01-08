@@ -1056,7 +1056,7 @@ int main( int argc, char** argv ) try {
         nDispatchThreads = n;
     }
     clog( VerbosityInfo, "main" ) << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
-                                  << cc::debug( " threads in task dispatcher" ) << std::endl;
+                                  << cc::debug( " threads in task dispatcher" );
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
@@ -1680,7 +1680,7 @@ int main( int argc, char** argv ) try {
 
     if ( time( NULL ) < startTimestamp ) {
         statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
-        std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << std::endl;
+        std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << "\n";
         do
             sleep( 1 );
         while ( time( NULL ) < startTimestamp );
@@ -2814,7 +2814,7 @@ int main( int argc, char** argv ) try {
         g_client.reset( nullptr );
     }
 
-    std::cerr << localeconv()->decimal_point << std::endl;
+    std::cerr << localeconv()->decimal_point << "\n";
 
     std::string basename = "profile" + chainParams.nodeInfo.id.str();
     MicroProfileDumpFileImmediately(
@@ -2843,8 +2843,7 @@ int main( int argc, char** argv ) try {
 } catch ( const std::exception& ex ) {
     clog( VerbosityError, "main" ) << "CRITICAL " << dev::nested_exception_what( ex );
     clog( VerbosityError, "main" ) << "\n"
-                                   << skutils::signal::generate_stack_trace() << "\n"
-                                   << std::endl;
+                                   << skutils::signal::generate_stack_trace() << "\n";
     g_client.reset( nullptr );
     return int( ExitHandler::ec_failure );
 } catch ( ... ) {

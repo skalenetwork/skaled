@@ -2017,7 +2017,7 @@ bool server::listen_internal() {
             }
         }
     } catch ( const std::exception& ex ) {
-        std::cerr << ex.what() << std::endl;
+        std::cerr << ex.what() << "\n";
     }
     is_running_ = false;
     is_in_loop_ = false;
