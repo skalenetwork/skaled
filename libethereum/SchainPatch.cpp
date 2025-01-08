@@ -38,6 +38,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::FlexibleDeploymentPatch;
     else if ( _patchName == "ExternalGasPatch" )
         return SchainPatchEnum::ExternalGasPatch;
+    else if ( _patchName == "MaxFeePerGasPatch" )
+        return SchainPatchEnum::MaxFeePerGasPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -76,6 +78,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "FlexibleDeploymentPatch";
     case SchainPatchEnum::ExternalGasPatch:
         return "ExternalGasPatch";
+    case SchainPatchEnum::MaxFeePerGasPatch:
+        return "MaxFeePerGasPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );
