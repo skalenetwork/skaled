@@ -22,7 +22,7 @@
 
 namespace dev {
 namespace eth {
-enum class VMKind { Interpreter, Legacy, DLL };
+enum class VMKind { Legacy, DLL };
 
 /// Returns the EVMC options parsed from command line.
 std::vector< std::pair< std::string, std::string > >& evmcOptions() noexcept;

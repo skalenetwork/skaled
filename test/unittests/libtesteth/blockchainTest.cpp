@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE( fillingExpectationOnSingleNetwork,
 }
 
 
-BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( fillingWithWrongExpectation, 2 )
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES( fillingWithWrongExpectation, 1 )
 BOOST_AUTO_TEST_CASE( fillingWithWrongExpectation ) {
     cout << "BlockChainTestSuite/fillingWithWrongExpectation test - failure is expected\n";
 

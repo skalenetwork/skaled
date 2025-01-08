@@ -72,4 +72,5 @@ private:
 
 std::string DebugTracer_handler( const std::string& arg, SkaleDebugTracer& tracer );
 
+
 #endif  // SKALEDEBUG_H
