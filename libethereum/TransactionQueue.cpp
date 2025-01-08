@@ -96,7 +96,8 @@ ImportResult TransactionQueue::import(
     bytesConstRef _transactionRLP, IfDropped _ik, bool _isFuture ) {
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
-            EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+            EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+            MaxFeePerGasPatch::isEnabledInWorkingBlock() );
         return import( t, _ik, _isFuture );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;
@@ -527,8 +528,9 @@ void TransactionQueue::verifierBody() {
 
         try {
             Transaction t( work.transaction, CheckTransaction::Cheap, false,
-                EIP1559TransactionsPatch::isEnabledInWorkingBlock() );  // Signature will be
-                                                                        // checked later
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                MaxFeePerGasPatch::isEnabledInWorkingBlock() );  // Signature will be
+                                                                 // checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );
         } catch ( ... ) {

@@ -1742,6 +1742,8 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
                         CheckTransaction::None,
                     false,
                     EIP1559TransactionsPatch::isEnabledWhen(
+                        this->info( numberHash( h.number() - 1 ) ).timestamp() ),
+                    MaxFeePerGasPatch::isEnabledWhen(
                         this->info( numberHash( h.number() - 1 ) ).timestamp() ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
