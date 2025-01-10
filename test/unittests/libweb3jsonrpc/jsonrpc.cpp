@@ -3699,6 +3699,25 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
     BOOST_REQUIRE( joAnswer.count("jsonrpc") > 0 );
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
+
+    // try to send legit eth_call as well
+    joIn = nlohmann::json::object();
+    joIn["jsonrpc"] = "2.0";
+    joIn["method"] = "eth_call";
+    params = nlohmann::json::array();
+    callDetails = nlohmann::json::object();
+    callDetails["data"] = "0x2e64cec1";
+    callDetails["to"] = contractAddress;
+    callDetails["from"] = senderAddress;
+    callDetails["value"] = "0x0";
+    params.push_back(callDetails);
+    params.push_back("latest");
+    joIn["params"] = params;
+    d = cli.call( joIn );
+
+    joAnswer = nlohmann::json::parse( d.s_ );
+    BOOST_REQUIRE( joAnswer.count("jsonrpc") > 0 );
+    BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
