@@ -3708,7 +3708,7 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     callDetails = nlohmann::json::object();
     callDetails["data"] = "0x2e64cec1";
     callDetails["to"] = contractAddress;
-    callDetails["from"] = senderAddress;
+    callDetails["from"] = senderAddress.hex();
     callDetails["value"] = "0x0";
     params.push_back(callDetails);
     params.push_back("latest");
