@@ -34,6 +34,7 @@
 #include <libethereum/ClientTest.h>
 #include <libethereum/SchainPatch.h>
 #include <libskale/httpserveroverride.h>
+#include <libskutils/include/skutils/rest_call.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
 #include <libweb3jsonrpc/JsonHelper.h>
@@ -3626,6 +3627,78 @@ BOOST_AUTO_TEST_CASE( vInTxnSignature ) {
     txn = fixture.rpcClient->eth_getTransactionByHash( txHash );
     v = dev::jsToU256( txn["v"].asString() );
     BOOST_REQUIRE( v < 2 && v >= 0 );
+}
+
+BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
+    JsonRpcFixture fixture;
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+//    pragma solidity >=0.8.2 <0.9.0;
+
+//    /**
+//     * @title Storage
+//     * @dev Store & retrieve value in a variable
+//     * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
+//     */
+//    contract Storage {
+
+//        uint256 number;
+//        uint256 number1;
+//        uint256 number2;
+
+//        /**
+//         * @dev Store value in variable
+//         * @param num value to store
+//         */
+//        function store(uint256 num) public {
+//            number = num;
+//            number1 = num;
+//            number2 = num;
+//        }
+
+//        /**
+//         * @dev Return value
+//         * @return value of 'number'
+//         */
+//        function retrieve() public view returns (uint256){
+//            return number;
+//        }
+//    }
+    std::string bytecode = "6080604052348015600f57600080fd5b5061015e8061001f6000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b5780636057361d14610059575b600080fd5b610043610075565b60405161005091906100af565b60405180910390f35b610073600480360381019061006e91906100fb565b61007e565b005b60008054905090565b80600081905550806001819055508060028190555050565b6000819050919050565b6100a981610096565b82525050565b60006020820190506100c460008301846100a0565b92915050565b600080fd5b6100d881610096565b81146100e357600080fd5b50565b6000813590506100f5816100cf565b92915050565b600060208284031215610111576101106100ca565b5b600061011f848285016100e6565b9150509291505056fea264697066735822122081840c9060f8fb10a0bdf054a92c6bd15ea462286507fad9a9fe26e653e2f2e264736f6c634300081a0033";
+    auto senderAddress = fixture.coinbase.address();
+
+    Json::Value create1;
+    create1["from"] = toJS( senderAddress );
+    create1["data"] = bytecode;
+    create1["gas"] = "1800000";
+    string txHash = fixture.rpcClient->eth_sendTransaction( create1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    string contractAddress = receipt["contractAddress"].asString();
+
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
+    std::string url = std::string("http://") + fixture.skale_server_connector->opts_.netOpts_.bindOptsStandard_.strAddrHTTP4_ + std::string(":") +
+                    std::to_string( fixture.skale_server_connector->opts_.netOpts_.bindOptsStandard_.nBasePortHTTP4_ );
+    BOOST_REQUIRE( cli.open( url ) );
+
+    // try to send bad call to trigger EVM reverted w/o description error
+    nlohmann::json joIn = nlohmann::json::object();
+    joIn["jsonrpc"] = "2.0";
+    joIn["method"] = "eth_call";
+    nlohmann::json params = nlohmann::json::array();
+    nlohmann::json callDetails = nlohmann::json::object();
+    callDetails["data"] = "0x01ffc9a7d9b67a2600000000000000000000000000000000000000000000000000000000";
+    callDetails["to"] = contractAddress;
+    params.push_back(callDetails);
+    params.push_back("latest");
+    joIn["params"] = params;
+    skutils::rest::data_t d = cli.call( joIn );
+
+    nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
+    BOOST_REQUIRE( joAnswer.count("jsonrpc") > 0 );
+    BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
