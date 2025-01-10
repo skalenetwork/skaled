@@ -9,9 +9,9 @@
 #include <iostream>
 #include <stdexcept>
 
-//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ 1
-//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ 1
-//#define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ 1
+// #define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ 1
+// #define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ 1
+// #define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ 1
 
 #define LOCAL_DEBUG_TRACE( x )
 // static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty()
@@ -363,8 +363,8 @@ void loop::run() {
                         pLoop->pending_timer_init();
                 } );
             }  // if ( p_uvAsyncInitForTimers_ != nullptr )
-#endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
-               // )
+#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+        // )
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
         }
@@ -488,10 +488,10 @@ void loop::pending_timer_init() {
 //}
 
 void loop::on_state_check() {
-    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop state check %p\n",
-    //    this ); std::cout.flush();
-    //#endif
+    // #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //     std::cout << skutils::tools::format( "dispatch loop state check %p\n",
+    //     this ); std::cout.flush();
+    // #endif
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
@@ -500,10 +500,10 @@ void loop::on_state_check() {
 }
 
 bool loop::on_check_cancel_mode() {
-    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop check cancel mode
-    //    %p\n", this ); std::cout.flush();
-    //#endif
+    // #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //     std::cout << skutils::tools::format( "dispatch loop check cancel mode
+    //     %p\n", this ); std::cout.flush();
+    // #endif
     if ( cancelMode_ ) {
         // cancelMode_ = false;
         uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) p_uvLoop_;
@@ -517,10 +517,10 @@ bool loop::on_check_cancel_mode() {
 void loop::on_check_jobs() {
     if ( cancelMode_ )
         return;
-    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //    std::cout << skutils::tools::format( "dispatch loop check jobs %p\n",
-    //    this ); std::cout.flush();
-    //#endif
+    // #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
+    //     std::cout << skutils::tools::format( "dispatch loop check jobs %p\n",
+    //     this ); std::cout.flush();
+    // #endif
     if ( on_check_jobs_ )
         on_check_jobs_();
 }
@@ -996,7 +996,7 @@ bool queue::impl_job_run() {  // fetch first asynchronously stored job and run
         fn = jobs_.front();
         jobs_.pop_front();
         --async_job_count_;  // cached value of jobs_.size()
-    }                        // block
+    }  // block
     --pDomain->async_job_count_;
     if ( !impl_job_run( fn ) )
         return false;
@@ -1492,7 +1492,7 @@ void domain::impl_shutdown() {
                 break;
             std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
         }  // for( ; true; )
-    }      // if( cntThreads > 0 )
+    }  // if( cntThreads > 0 )
     std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All threads stopped" ) + "\n";
     std::cout.flush();
     // wait loop to shutdown
@@ -1592,7 +1592,7 @@ void domain::impl_decrease_accumulators( priority_t acc_subtract ) {
         if ( rest )
             return;                          // skip
         decrease_accumulators_counter_ = 0;  // reset
-    }                                        // if( period > 1 )
+    }  // if( period > 1 )
     if ( accumulator_base_ >= acc_subtract )
         accumulator_base_ -= acc_subtract;
     else

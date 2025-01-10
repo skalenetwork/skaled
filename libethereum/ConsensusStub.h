@@ -29,6 +29,7 @@ using namespace std;
 #include <libconsensus/node/ConsensusInterface.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/FixedHash.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/Worker.h>
 #include <map>
 #include <vector>
@@ -63,6 +64,8 @@ private:
     ConsensusExtFace& m_extFace;
     int64_t blockCounter = 0;
     u256 stateRoot = 0;
+
+    dev::Logger m_logger{ dev::createLogger( dev::VerbosityDebug, "ConsensusStub" ) };
 };
 
 #endif /* LIBETHEREUM_CONSENSUSSTUB_H_ */

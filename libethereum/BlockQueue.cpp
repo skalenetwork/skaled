@@ -135,7 +135,8 @@ void BlockQueue::verifierBody() try {
             m_readySet.erase( work.hash );
             m_knownBad.insert( work.hash );
             if ( !m_verifying.remove( work.hash ) )
-                cwarn << "Unexpected exception when verifying block: " << _ex.what();
+                LOG( m_loggerWarning )
+                    << "Unexpected exception when verifying block: " << _ex.what();
             drainVerified_WITH_BOTH_LOCKS();
             continue;
         }
@@ -158,18 +159,18 @@ void BlockQueue::verifierBody() try {
                 ready = true;
             } else {
                 if ( !m_verifying.replace( work.hash, move( res ) ) )
-                    cwarn << "BlockQueue missing our job: was there a GM?";
+                    LOG( m_loggerWarning ) << "BlockQueue missing our job: was there a GM?";
             }
         }
         if ( ready )
             m_onReady();
     }
 } catch ( const std::exception& ex ) {
-    cerror << "CRITICAL " << ex.what();
-    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
+    LOG( m_loggerError ) << "CRITICAL " << ex.what();
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
 } catch ( ... ) {
-    cerror << "CRITICAL unknown exception";
-    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
+    LOG( m_loggerError ) << "CRITICAL unknown exception";
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
 }
 
 void BlockQueue::drainVerified_WITH_BOTH_LOCKS() {
@@ -206,7 +207,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
         // VERIFY: populates from the block and checks the block is internally coherent.
         bi = m_bc->verifyBlock( _block, m_onBad, ImportRequirements::PostGenesis ).info;
     } catch ( Exception const& _e ) {
-        cwarn << "Ignoring malformed block: " << diagnostic_information( _e );
+        LOG( m_loggerWarning ) << "Ignoring malformed block: " << diagnostic_information( _e );
         return ImportResult::Malformed;
     }
 

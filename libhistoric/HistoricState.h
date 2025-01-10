@@ -349,6 +349,12 @@ private:
         AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
 
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
+
+    /// Loggers
+    static inline Logger m_loggerInfo{ createLogger( VerbosityInfo, "HistoricState" ) };
+    static inline Logger m_loggerTrace{ createLogger( VerbosityTrace, "HistoricState" ) };
+    static inline Logger m_loggerDebug{ createLogger( VerbosityDebug, "HistoricState" ) };
+    static inline Logger m_loggerError{ createLogger( VerbosityError, "HistoricState" ) };
 };
 
 std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );

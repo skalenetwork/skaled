@@ -84,6 +84,8 @@ private:
     ChainParams loadGenesis( std::string const& _json ) const;
 
     mutable std::string originalJSON;
+
+    Logger m_logger{ createLogger( VerbosityDebug, "ChainParams" ) };
 };
 
 }  // namespace dev::eth

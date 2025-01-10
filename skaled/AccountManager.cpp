@@ -56,12 +56,12 @@ bool AccountManager::execute( int argc, char** argv ) {
                 } );
                 m_keyManager->import(
                     k.secret(), name, pw, "Same passphrase as used for presale key" );
-                cout << "  Address: {" << k.address().hex() << "}\n";
+                LOG( m_loggerInfo ) << "  Address: {" << k.address().hex() << "}\n";
             } catch ( Exception const& _e ) {
                 if ( auto err = boost::get_error_info< errinfo_comment >( _e ) )
-                    cout << "  Decryption failed: " << *err << "\n";
+                    LOG( m_loggerWarning ) << "  Decryption failed: " << *err << "\n";
                 else
-                    cout << "  Decryption failed: Unknown reason.\n";
+                    LOG( m_loggerWarning ) << "  Decryption failed: Unknown reason.\n";
                 return false;
             }
         } else
@@ -71,7 +71,7 @@ bool AccountManager::execute( int argc, char** argv ) {
         if ( argc < 3 || string( argv[2] ) == "list" ) {
             openWallet();
             if ( m_keyManager->store().keys().empty() )
-                cout << "No keys found.\n";
+                LOG( m_loggerInfo ) << "No keys found.\n";
             else {
                 vector< u128 > bare;
                 AddressHash got;
@@ -79,19 +79,19 @@ bool AccountManager::execute( int argc, char** argv ) {
                 for ( auto const& u : m_keyManager->store().keys() ) {
                     if ( Address a = m_keyManager->address( u ) ) {
                         got.insert( a );
-                        cout << "Account #" << k << ": {" << a.hex() << "}\n";
+                        LOG( m_loggerInfo ) << "Account #" << k << ": {" << a.hex() << "}\n";
                         k++;
                     } else
                         bare.push_back( u );
                 }
                 for ( auto const& a : m_keyManager->accounts() )
                     if ( !got.count( a ) ) {
-                        cout << "Account #" << k << ": {" << a.hex() << "}"
-                             << " (Brain)\n";
+                        LOG( m_loggerInfo )
+                            << "Account #" << k << ": {" << a.hex() << "}" << " (Brain)\n";
                         k++;
                     }
                 for ( auto const& u : bare ) {
-                    cout << "Account #" << k << ": " << toUUID( u ) << " (Bare)\n";
+                    LOG( m_loggerInfo ) << "Account #" << k << ": " << toUUID( u ) << " (Bare)\n";
                     k++;
                 }
             }
@@ -103,28 +103,28 @@ bool AccountManager::execute( int argc, char** argv ) {
             lock = createPassword( "Enter a passphrase with which to secure this account:" );
             auto k = makeKey();
             h128 u = m_keyManager->import( k.secret(), name, lock, lockHint );
-            cout << "Created key " << toUUID( u ) << "\n";
-            cout << "  Address: " << k.address().hex() << "\n";
+            LOG( m_loggerInfo ) << "Created key " << toUUID( u ) << "\n";
+            LOG( m_loggerInfo ) << "  Address: " << k.address().hex() << "\n";
         } else if ( 3 < argc && string( argv[2] ) == "import" ) {
             openWallet();
             h128 u = m_keyManager->store().importKey( argv[3] );
             if ( !u ) {
-                cerr << "Error: reading key file failed\n";
+                LOG( m_loggerError ) << "Error: reading key file failed\n";
                 return false;
             }
             string pw;
             bytesSec s = m_keyManager->store().secret(
                 u, [&]() { return ( pw = getPassword( "Enter the passphrase for the key: " ) ); } );
             if ( s.empty() ) {
-                cerr << "Error: couldn't decode key or invalid secret size.\n";
+                LOG( m_loggerError ) << "Error: couldn't decode key or invalid secret size.\n";
                 return false;
             } else {
                 string lockHint;
                 string name;
                 m_keyManager->importExisting( u, name, pw, lockHint );
                 auto a = m_keyManager->address( u );
-                cout << "Imported key " << toUUID( u ) << "\n";
-                cout << "  Address: " << a.hex() << "\n";
+                LOG( m_loggerInfo ) << "Imported key " << toUUID( u ) << "\n";
+                LOG( m_loggerInfo ) << "  Address: " << a.hex() << "\n";
             }
         } else if ( 3 < argc && string( argv[2] ) == "update" ) {
             openWallet();
@@ -145,14 +145,15 @@ bool AccountManager::execute( int argc, char** argv ) {
                         recoded = m_keyManager->store().recode( u, newP, oldP, dev::KDF::Scrypt );
                     }
                     if ( recoded )
-                        cerr << "Re-encoded " << i << "\n";
+                        LOG( m_loggerError ) << "Re-encoded " << i << "\n";
                     else
-                        cerr << "Couldn't re-encode " << i
-                             << "; key does not exist, corrupt or incorrect passphrase supplied."
-                             << "\n";
+                        LOG( m_loggerError )
+                            << "Couldn't re-encode " << i
+                            << "; key does not exist, corrupt or incorrect passphrase supplied."
+                            << "\n";
                 } else
-                    cerr << "Couldn't re-encode " << i << "; does not represent an address or uuid."
-                         << "\n";
+                    LOG( m_loggerError ) << "Couldn't re-encode " << i
+                                         << "; does not represent an address or uuid." << "\n";
             }
         } else
             streamAccountHelp( cout );
@@ -168,8 +169,8 @@ string AccountManager::createPassword( string const& _prompt ) const {
         string confirm = getPassword( "Please confirm the passphrase by entering it again: " );
         if ( ret == confirm )
             break;
-        cout << "Passwords were different. Try again."
-             << "\n";
+        // cannot use LOG - function is const
+        cnote << "Passwords were different. Try again." << "\n";
     }
     return ret;
 }
@@ -190,13 +191,11 @@ bool AccountManager::openWallet() {
                  m_keyManager->load( getPassword( "Please enter your MASTER passphrase: " ) ) )
                 return true;
             else {
-                cerr << "Couldn't open wallet. Please check passphrase."
-                     << "\n";
+                LOG( m_loggerError ) << "Couldn't open wallet. Please check passphrase." << "\n";
                 return false;
             }
         } else {
-            cerr << "Couldn't open wallet. Does it exist?"
-                 << "\n";
+            LOG( m_loggerError ) << "Couldn't open wallet. Does it exist?" << "\n";
             return false;
         }
     }

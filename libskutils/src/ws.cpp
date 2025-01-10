@@ -664,7 +664,7 @@ basic_network_settings::basic_network_settings( basic_network_settings* pBNS )
       timeout_handshake_open_( 60 )  // seconds, default value in wspp is 5000, 0 means not use
       ,
       timeout_handshake_close_( 60 )  // seconds, default value in wspp is 5000, 0 means not use
-                                      //#if(defined __HAVE_skutils_WS_BACKEND_NLWS__)
+                                      // #if(defined __HAVE_skutils_WS_BACKEND_NLWS__)
                                       //			, max_message_size_( 0 ) // bytes, 0 is
                                       // unlimited 			, max_body_size_( 0 ) // bytes, 0 is
                                       // unlimited #else /// (defined
@@ -673,7 +673,7 @@ basic_network_settings::basic_network_settings( basic_network_settings* pBNS )
       max_message_size_( 32 * 1000 * 1000 )  // bytes, default value in wspp is 32000000
       ,
       max_body_size_( 32 * 1000 * 1000 )  // bytes, default value in wspp is 32000000
-      //#endif /// else from (defined __HAVE_skutils_WS_BACKEND_NLWS__)
+      // #endif /// else from (defined __HAVE_skutils_WS_BACKEND_NLWS__)
       ,
       timeout_restart_on_close_( 3 )  // seconds
       ,
@@ -1174,12 +1174,12 @@ void basic_api::do_writable_callbacks_all_protocol() {
     ::lws_callback_on_writable_all_protocol( ctx_, &vec_lws_protocols_[default_protocol_index_] );
 }
 
-static enum pending_timeout g_arrPingPongTimeoutTypes[]{
+static enum pending_timeout g_arrPingPongTimeoutTypes[] {
     PENDING_TIMEOUT_AWAITING_PING,
     PENDING_TIMEOUT_WS_PONG_CHECK_SEND_PING,
     PENDING_TIMEOUT_WS_PONG_CHECK_GET_PONG,
 };
-static enum pending_timeout g_arrOpenTimeoutTypes[]{
+static enum pending_timeout g_arrOpenTimeoutTypes[] {
     PENDING_TIMEOUT_ESTABLISH_WITH_SERVER,
     PENDING_TIMEOUT_SENT_CLIENT_HANDSHAKE,
     PENDING_TIMEOUT_SSL_ACCEPT,
@@ -1190,7 +1190,7 @@ static enum pending_timeout g_arrOpenTimeoutTypes[]{
     PENDING_TIMEOUT_AWAITING_SOCKS_CONNECT_REPLY,
     PENDING_TIMEOUT_AWAITING_SOCKS_AUTH_REPLY,
 };
-static enum pending_timeout g_arrCloseTimeoutTypes[]{
+static enum pending_timeout g_arrCloseTimeoutTypes[] {
     PENDING_TIMEOUT_SHUTDOWN_FLUSH,
     PENDING_FLUSH_STORED_SEND_BEFORE_CLOSE,
     PENDING_TIMEOUT_KILLED_BY_SSL_INFO,
@@ -1198,7 +1198,7 @@ static enum pending_timeout g_arrCloseTimeoutTypes[]{
     PENDING_TIMEOUT_CLOSE_SEND,
     PENDING_TIMEOUT_CLOSE_ACK,
 };
-static enum pending_timeout g_arrNetworkTimeoutTypes[]{
+static enum pending_timeout g_arrNetworkTimeoutTypes[] {
     PENDING_TIMEOUT_HTTP_CONTENT,
     PENDING_TIMEOUT_AWAITING_SERVER_RESPONSE,
     //					PENDING_TIMEOUT_AWAITING_EXTENSION_CONNECT_RESPONSE,
@@ -1393,7 +1393,7 @@ int basic_api::stat_callback_client(
                         if ( cntLeft > 0 )
                             break;
                         pq.pop_front();  // only pop the message if it was sent successfully
-                    }                    // while( ! pq.empty() )
+                    }  // while( ! pq.empty() )
                     if ( self->delayed_adjustment_pong_timeout_ >=
                          0 ) {  // -1 for no adjustment, otherwise change pong timeout
                         int64_t timeout_pong = self->delayed_adjustment_pong_timeout_;
@@ -1409,7 +1409,7 @@ int basic_api::stat_callback_client(
                         }
                     }
                 }  // else from if( ! cached_delayed_close_reason.empty() )
-            }      // block
+            }  // block
             if ( bCloseAction )
                 return -1;  // this closes connection according to
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
@@ -1554,8 +1554,8 @@ int basic_api::stat_callback_server(
                         // bCallWriteable = true;
                     }
                 }  // else from if( ! cached_delayed_close_reason.empty() )
-            }      // block
-                   // if( bCallWriteable )
+            }  // block
+               // if( bCallWriteable )
             ::lws_callback_on_writable( wsi );
             if ( bCloseAction )
                 return -1;  // this closes connection according to
@@ -2087,21 +2087,21 @@ std::string list_srvmodes_as_str() {
 int g_lws_service_timeout_ms = 1000;
 
 srvmode_t g_default_srvmode = srvmode_t::
-    //#if ( defined LWS_WITH_LIBUV )
-    //    srvmode_uv;
-    //#else
-    //#if ( defined LWS_WITH_LIBEV )
-    //    srvmode_ev;
-    //#else
-    //#if ( defined LWS_WITH_LIBEVENT )
-    //    srvmode_event;
-    //#else
+    // #if ( defined LWS_WITH_LIBUV )
+    //     srvmode_uv;
+    // #else
+    // #if ( defined LWS_WITH_LIBEV )
+    //     srvmode_ev;
+    // #else
+    // #if ( defined LWS_WITH_LIBEVENT )
+    //     srvmode_event;
+    // #else
 
     srvmode_simple;
 
-//#endif
-//#endif
-//#endif
+// #endif
+// #endif
+// #endif
 
 bool g_default_explicit_vhost_enable = true;  // srvmode_simple and srvmode_external_poll only
 bool g_default_dynamic_vhost_enable = false;

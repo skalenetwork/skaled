@@ -52,47 +52,45 @@ OverlayDB HistoricState::openDB(
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
         if ( _we == WithExisting::Kill ) {
-            clog( VerbosityInfo, "statedb" ) << "Deleting state database: " << dbPaths.statePath();
+            LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
             fs::remove_all( dbPaths.statePath() );
         }
 
-        clog( VerbosityDebug, "statedb" )
-            << "Verifying path exists (and creating if not present): " << dbPaths.chainPath();
+        LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
+                             << dbPaths.chainPath();
         fs::create_directories( dbPaths.chainPath() );
-        clog( VerbosityDebug, "statedb" )
-            << "Ensuring permissions are set for path: " << dbPaths.chainPath();
+        LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
     }
 
     try {
-        clog( VerbosityTrace, "statedb" ) << "Opening state database";
+        LOG( m_loggerTrace ) << "Opening state database";
         std::unique_ptr< db::DatabaseFace > db =
             db::DBFactory::createHistoric( db::DatabaseKind::LevelDB, dbPaths.statePath() );
         return OverlayDB( std::move( db ) );
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
-            clog( VerbosityError, "statedb" )
-                << "Error opening state database: " << dbPaths.statePath();
+            LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
             db::DatabaseStatus const dbStatus =
                 *boost::get_error_info< db::errinfo_dbStatusCode >( ex );
             if ( fs::space( dbPaths.statePath() ).available < 1024 ) {
-                clog( VerbosityError, "statedb" )
+                LOG( m_loggerError )
                     << "Not enough available space found on hard drive. Please free some up and "
                        "then re-run. Bailing.";
                 BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
             } else if ( dbStatus == db::DatabaseStatus::Corruption ) {
-                clog( VerbosityError, "statedb" )
+                LOG( m_loggerError )
                     << "Database corruption detected. Please see the exception for corruption "
                        "details. Exception: "
                     << boost::diagnostic_information( ex );
                 BOOST_THROW_EXCEPTION( DatabaseCorruption() );
             } else if ( dbStatus == db::DatabaseStatus::IOError ) {
-                clog( VerbosityError, "statedb" ) << "Database already open. You appear to have "
-                                                     "another instance of Aleth running.";
+                LOG( m_loggerError ) << "Database already open. You appear to have "
+                                        "another instance of Aleth running.";
                 BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
             }
         }
-        clog( VerbosityError, "statedb" )
+        LOG( m_loggerError )
             << "Unknown error encountered when opening state database. Exception details: "
             << boost::diagnostic_information( ex );
         throw;

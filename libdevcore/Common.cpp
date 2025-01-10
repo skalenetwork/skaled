@@ -58,7 +58,7 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                                string( "\nInternal exit requested while already exiting. " ) :
                                "\nInternal exit initiated. ";
     }
-    std::cerr << strMessagePrefix << skutils::signal::signal2str( nSignalNo ) << "\n\n";
+    cerror << strMessagePrefix << skutils::signal::signal2str( nSignalNo ) << "\n\n";
 
     switch ( nSignalNo ) {
     case SIGINT:
@@ -85,10 +85,9 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
     case SIGFPE:
     case SIGSEGV:
         // abort signals
-        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
-        std::cout.flush();
-        std::cout << skutils::signal::read_maps() << "\n";
-        std::cout.flush();
+        // purposely use std::endl to also flush out char stream
+        cerror << "\n" << skutils::signal::generate_stack_trace() << std::endl;
+        cerror << skutils::signal::read_maps() << std::endl;
 
         _exit( nSignalNo + 128 );
 
@@ -106,10 +105,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
             auto start_time = std::chrono::steady_clock::now();
 
             std::thread( [nSignalNo, start_time]() {
-                std::cerr << ( "\n" + string( "SELF-KILL:" ) + " " + "Will sleep " +
-                                 cc::size10( ExitHandler::KILL_TIMEOUT ) +
-                                 " seconds before force exit..." ) +
-                                 "\n\n";
+                cerror << ( "\n" + string( "SELF-KILL:" ) + " " + "Will sleep " +
+                              cc::size10( ExitHandler::KILL_TIMEOUT ) +
+                              " seconds before force exit..." ) +
+                              "\n\n";
 
                 clog( VerbosityInfo, "exit" ) << "THREADS timer started";
 
@@ -125,10 +124,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                         threads = new_threads;
 
                         if ( threads_diff.size() ) {
-                            cerr << seconds << " THREADS " << threads.size() << ":";
+                            cerror << seconds << " THREADS " << threads.size() << ":";
                             for ( const string& t : threads_diff )
-                                cerr << " " << t;
-                            cerr << endl;
+                                cerror << " " << t;
+                            cerror << endl;
                         }
                     } catch ( ... ) {
                         // swallow it
@@ -137,10 +136,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                     std::this_thread::sleep_for( 100ms );
                 }
 
-                std::cerr << ( "\n" + string( "SELF-KILL:" ) + " " +
-                               "Will force exit after sleeping " +
-                               cc::size10( ExitHandler::KILL_TIMEOUT ) + cc::error( " second(s)" ) +
-                               "\n\n" );
+                cerror << ( "\n" + string( "SELF-KILL:" ) + " " +
+                            "Will force exit after sleeping " +
+                            cc::size10( ExitHandler::KILL_TIMEOUT ) + cc::error( " second(s)" ) +
+                            "\n\n" );
 
                 // TODO deduplicate this with main() before return
                 ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
@@ -152,13 +151,13 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                 _exit( ec );
             } ).detach();
         }  // if( ! g_bSelfKillStarted )
-    }      // if ( !skutils::signal::g_bStop )
+    }  // if ( !skutils::signal::g_bStop )
 
     // nice exit here:
 
     // TODO deduplicate with first if()
     if ( ExitHandler::shouldExit() && s_nStopSignal > 0 && nSignalNo > 0 ) {
-        std::cerr << ( "\n" + string( "SIGNAL-HANDLER:" ) + " " + "Will force exit now...\n\n" );
+        cerror << ( "\n" + string( "SIGNAL-HANDLER:" ) + " " + "Will force exit now...\n\n" );
         _exit( 13 );
     }
 

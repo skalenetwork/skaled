@@ -145,8 +145,8 @@ Client::Client( ChainParams const& _params, int _networkID,
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
-        clog( VerbosityTrace, "client" )
-            << "TRACEPOINT " << name << " " << m_debugTracer.get_tracepoint_count( name );
+        LOG( m_loggerDetail ) << "TRACEPOINT " << name << " "
+                              << m_debugTracer.get_tracepoint_count( name );
     } );
 
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -172,7 +172,7 @@ void Client::stopWorking() {
         m_skaleHost->stopWorking();  // TODO Find and document a systematic way to start/stop all
                                      // workers
     else
-        cerror << "Instance of SkaleHost was not properly created.";
+        LOG( m_loggerError ) << "Instance of SkaleHost was not properly created.";
 
     m_snapshotAgent->terminate();
 
@@ -597,7 +597,7 @@ size_t Client::importTransactionsAsBlock(
                                      .count()
                               << " seconds";
     } else
-        cwarn << "Warning: UnsafeRegion still active!";
+        LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
     if ( bIsPartial )
         cntSucceeded += cntPassed;
@@ -639,7 +639,7 @@ size_t Client::syncTransactions(
     // HACK remove block verification and put it directly in blockchain!!
     // TODO remove block verification and put it directly in blockchain!!
     while ( m_working.isSealed() ) {
-        cnote << "m_working.isSealed. sleeping";
+        LOG( m_logger ) << "m_working.isSealed. sleeping";
         usleep( 1000 );
     }
 
@@ -674,8 +674,9 @@ size_t Client::syncTransactions(
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
 
-    ctrace << "Processed " << newPendingReceipts.size() << " transactions in "
-           << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue << ")";
+    LOG( m_loggerDetail ) << "Processed " << newPendingReceipts.size() << " transactions in "
+                          << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue
+                          << ")";
 
 #ifdef HISTORIC_STATE
     LOG( m_logger ) << "HSCT: "
@@ -691,8 +692,8 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
         for ( auto const& t : bc().transactions( h ) ) {
             LOG( m_loggerDetail ) << cc::debug( "Resubmitting dead-block transaction " )
                                   << Transaction( t, CheckTransaction::None );
-            ctrace << cc::debug( "Resubmitting dead-block transaction " )
-                   << Transaction( t, CheckTransaction::None );
+            LOG( m_loggerDetail ) << cc::debug( "Resubmitting dead-block transaction " )
+                                  << Transaction( t, CheckTransaction::None );
             m_tq.import( t, IfDropped::Retry );
         }
     }
@@ -819,8 +820,8 @@ void Client::rejigSealing() {
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG( m_loggerDetail ) << "Starting to seal block"
-                                      << " #" << m_working.info().number();
+                LOG( m_loggerDetail )
+                    << "Starting to seal block" << " #" << m_working.info().number();
 
                 // TODO Deduplicate code
                 dev::h256 stateRootToSet;
@@ -847,15 +848,15 @@ void Client::rejigSealing() {
 
             if ( wouldSeal() ) {
                 sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
-                    LOG( m_logger ) << "Block sealed"
-                                    << " #" << BlockHeader( _header, HeaderData ).number();
+                    LOG( m_logger )
+                        << "Block sealed" << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else
                         LOG( m_logger ) << "Submitting block failed...";
                 } );
-                ctrace << "Generating seal on " << m_sealingInfo.hash( WithoutSeal ) << " #"
-                       << m_sealingInfo.number();
+                LOG( m_loggerDetail ) << "Generating seal on " << m_sealingInfo.hash( WithoutSeal )
+                                      << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal( m_sealingInfo );
             }
         } else
@@ -875,8 +876,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             return;
         }
         // TODO is that needed? we have "Generating seal on" below
-        LOG( m_loggerDetail ) << "Starting to seal block"
-                              << " #" << m_working.info().number();
+        LOG( m_loggerDetail ) << "Starting to seal block" << " #" << m_working.info().number();
         // latest hash is really updated after NEXT snapshot already started hash computation
         // TODO Deduplicate code
         dev::h256 stateRootToSet;
@@ -1237,7 +1237,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
                 historicBlock.mutableState().mutableHistoricState().addBalance(
-                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1261,7 +1261,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance(
+                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
@@ -1294,7 +1295,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         // lots of gas to it
         auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer =
             make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );

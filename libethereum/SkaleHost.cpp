@@ -290,7 +290,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_extFace.reset( new ConsensusExtImpl( *this ) );
 
     } catch ( const std::exception& e ) {
-        clog( Verbosity::VerbosityError, "main" ) << "Could not init SkaleHost" << e.what();
+        LOG( m_errorLogger ) << "Could not init SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
     }
 
@@ -303,8 +303,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
             m_consensus = _consFactory->create( *m_extFace );
 
     } catch ( const std::exception& e ) {
-        clog( Verbosity::VerbosityError, "main" )
-            << "Could not create consensus in SkaleHost" << e.what();
+        LOG( m_errorLogger ) << "Could not create consensus in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
     }
 
@@ -312,8 +311,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
     } catch ( const std::exception& e ) {
-        clog( Verbosity::VerbosityError, "main" )
-            << "Could not create parse consensus config in SkaleHost" << e.what();
+        LOG( m_errorLogger ) << "Could not create parse consensus config in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
     }
 }
@@ -454,9 +452,8 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                         getGasPrice(), isMtmEnabled );
                 } catch ( const exception& ex ) {
                     if ( to_delete.count( tx.sha3() ) == 0 )
-                        clog( VerbosityInfo, "skale-host" )
-                            << "Dropped now-invalid transaction in pending queue " << tx.sha3()
-                            << ":" << ex.what();
+                        LOG( m_infoLogger ) << "Dropped now-invalid transaction in pending queue "
+                                            << tx.sha3() << ":" << ex.what();
                     to_delete.insert( tx.sha3() );
                     return false;
                 }
@@ -535,11 +532,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 #ifdef DEBUG_TX_BALANCE
             if ( sent.count( sha ) != 0 ) {
                 int prev = sent[sha];
-                std::cerr << "Prev no = " << prev << "\n";
+                LOG( m_errorLogger ) << "Prev no = " << prev << "\n";
 
                 if ( sent.count( sha ) != 0 ) {
                     // TODO fix this!!?
-                    clog( VerbosityWarning, "skale-host" )
+                    LOG( m_warningLogger )
                         << "Sending to consensus duplicate transaction (sent before!)";
                 }
             }
@@ -550,7 +547,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             LOG( m_traceLogger ) << "Sent txn: " << sha;
         }
     } catch ( ... ) {
-        clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
+        LOG( m_errorLogger ) << "BAD exception in pendingTransactions!";
     }
 
     logState();
@@ -783,42 +780,43 @@ void SkaleHost::startWorking() {
     auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( broadcastFunction );
 
-    auto consensusFunction = [&]() {
-        try {
-            m_consensus->startAll();
-        } catch ( ... ) {
-            // cleanup
-            m_exitNeeded = true;
-            m_broadcastThread.join();
-            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
-            return;
-        }
+    auto consensusFunction =
+        [&]() {
+            try {
+                m_consensus->startAll();
+            } catch ( ... ) {
+                // cleanup
+                m_exitNeeded = true;
+                m_broadcastThread.join();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+                return;
+            }
 
-        // comment out as this hack is in consensus now
-        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-        //        m_consensus->setEmptyBlockIntervalMs( 50 );
-        try {
-            static const char g_strThreadName[] = "bootStrapAll";
-            dev::setThreadName( g_strThreadName );
-            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " started\n";
-            m_consensus->bootStrapAll();
-            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " will exit\n";
-        } catch ( std::exception& ex ) {
-            std::string s = ex.what();
-            if ( s.empty() )
-                s = "no description";
-            clog( VerbosityError, "skale-host" )
-                << "Consensus thread in skale host will exit with exception: " << s << "\n";
-        } catch ( ... ) {
-            clog( VerbosityError, "skale-host" )
-                << "Consensus thread in skale host will exit with unknown exception\n"
-                << skutils::signal::generate_stack_trace() << "\n";
-        }
+            // comment out as this hack is in consensus now
+            // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
+            //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+            //        m_consensus->setEmptyBlockIntervalMs( 50 );
+            try {
+                static const char g_strThreadName[] = "bootStrapAll";
+                dev::setThreadName( g_strThreadName );
+                LOG( m_infoLogger ) << "Thread " << g_strThreadName << " started\n";
+                m_consensus->bootStrapAll();
+                LOG( m_infoLogger ) << "Thread " << g_strThreadName << " will exit\n";
+            } catch ( std::exception& ex ) {
+                std::string s = ex.what();
+                if ( s.empty() )
+                    s = "no description";
+                LOG( m_errorLogger )
+                    << "Consensus thread in skale host will exit with exception: " << s << "\n";
+            } catch ( ... ) {
+                LOG( m_errorLogger )
+                    << "Consensus thread in skale host will exit with unknown exception\n"
+                    << skutils::signal::generate_stack_trace() << "\n";
+            }
 
-        // comment out as this hack is in consensus now
-        //        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
-    };  // func
+            // comment out as this hack is in consensus now
+            //        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
+        };  // func
 
     m_consensusThread = std::thread( consensusFunction );
 }
@@ -831,32 +829,32 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    cnote << "1 before exitGracefully()";
+    LOG( m_infoLogger ) << "1 before exitGracefully()";
 
     if ( ExitHandler::shouldExit() ) {
         // requested exit
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
         if ( signal > 0 )
-            clog( VerbosityInfo, "skale-host" ) << cc::info( "Exit requested with signal " )
-                                                << signal << " and exit code " << exitCode;
+            LOG( m_infoLogger ) << cc::info( "Exit requested with signal " ) << signal
+                                << " and exit code " << exitCode;
         else
-            clog( VerbosityInfo, "skale-host" )
-                << cc::info( "Exit requested internally with exit code " ) << exitCode;
+            LOG( m_infoLogger ) << cc::info( "Exit requested internally with exit code " )
+                                << exitCode;
     } else {
-        clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
+        LOG( m_infoLogger ) << cc::info( "Exiting without request" );
     }
 
     m_consensus->exitGracefully();
 
-    cnote << "2 after exitGracefully()";
+    LOG( m_infoLogger ) << "2 after exitGracefully()";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    cnote << "3 after wait loop";
+    LOG( m_infoLogger ) << "3 after wait loop";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -866,7 +864,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    cnote << "4 before dtor";
+    LOG( m_infoLogger ) << "4 before dtor";
 }
 
 void SkaleHost::broadcastFunc() {
@@ -916,8 +914,8 @@ void SkaleHost::broadcastFunc() {
                         m_broadcaster->broadcast( rlp );
                     }
                 } catch ( const std::exception& ex ) {
-                    cwarn << "BROADCAST EXCEPTION CAUGHT";
-                    cwarn << ex.what();
+                    LOG( m_warningLogger ) << "BROADCAST EXCEPTION CAUGHT";
+                    LOG( m_warningLogger ) << ex.what();
                 }  // catch
 
             }  // if
@@ -928,12 +926,12 @@ void SkaleHost::broadcastFunc() {
 
             logState();
         } catch ( const std::exception& ex ) {
-            cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            LOG( m_errorLogger ) << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            LOG( m_errorLogger ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             sleep( 2 );
         } catch ( ... ) {
-            cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            LOG( m_errorLogger ) << "CRITICAL unknown exception (restarting broadcastFunc)";
+            LOG( m_errorLogger ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             sleep( 2 );
         }
     }  // while

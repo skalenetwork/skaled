@@ -331,6 +331,8 @@ private:
 
     Logger m_logger{ createLogger( VerbosityDebug, "bq" ) };
     Logger m_loggerDetail{ createLogger( VerbosityTrace, "bq" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "bq" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "bq" ) };
 
     Counter< BlockQueue > c;
 

@@ -58,6 +58,7 @@ private:
 
     dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "SnapshotAgent" ) };
     dev::Logger m_loggerDetail{ createLogger( dev::VerbosityTrace, "SnapshotAgent" ) };
+    dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SnapshotAgent" ) };
 
     SkaleDebugTracer& m_debugTracer;
 };

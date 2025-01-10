@@ -197,7 +197,7 @@ static bool stat_validator( pthread_lockable* pLockable, pthread_mutex_t* pMtx,
                 pMtx, name.c_str(), recursive_suffix_str, operation_name );
             break;
         }  // switch( emat )
-    }      // block for g_mtx
+    }  // block for g_mtx
     if ( !e.empty() )
         stat_exception( e );
     return true;

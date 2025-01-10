@@ -86,7 +86,7 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
 
     if ( !_bc.isKnown( _hash ) ) {
         // Might be worth throwing here.
-        cwarn << "Invalid block given for state population: " << _hash;
+        LOG( m_loggerWarning ) << "Invalid block given for state population: " << _hash;
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _hash ) );
     }
 
@@ -189,7 +189,7 @@ PopulationStatistics Block::populateFromChain(
 
     if ( !_bc.isKnown( _h ) ) {
         // Might be worth throwing here.
-        cwarn << "Invalid block given for state population: " << _h;
+        LOG( m_loggerWarning ) << "Invalid block given for state population: " << _h;
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _h ) );
     }
 
@@ -255,14 +255,16 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
                 break;
             } catch ( Exception const& _e ) {
                 // TODO: Slightly nicer handling? :-)
-                cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
-                     << endl;
-                cerr << diagnostic_information( _e ) << endl;
+                LOG( m_loggerError )
+                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
+                    << endl;
+                LOG( m_loggerError ) << diagnostic_information( _e ) << endl;
             } catch ( std::exception const& _e ) {
                 // TODO: Slightly nicer handling? :-)
-                cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
-                     << endl;
-                cerr << _e.what() << endl;
+                LOG( m_loggerError )
+                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
+                    << endl;
+                LOG( m_loggerError ) << _e.what() << endl;
             }
         }
 #endif
@@ -282,11 +284,13 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
 
         //        if (m_state.db().lookup(bi.stateRoot()).empty())  // TODO: API in State for this?
         //        {
-        //            cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot()
+        //            LOG( m_loggerWarning ) << "Unable to sync to" << bi.hash() << "; state root"
+        //            << bi.stateRoot()
         //                  << "not found in database.";
-        //            cwarn << "Database corrupt: contains block without stateRoot:" << bi;
-        //            cwarn << "Try rescuing the database by running: eth --rescue";
-        //            BOOST_THROW_EXCEPTION(InvalidStateRoot() << errinfo_target(bi.stateRoot()));
+        //            LOG( m_loggerWarning ) << "Database corrupt: contains block without
+        //            stateRoot:" << bi; LOG( m_loggerWarning ) << "Try rescuing the database by
+        //            running: eth --rescue"; BOOST_THROW_EXCEPTION(InvalidStateRoot() <<
+        //            errinfo_target(bi.stateRoot()));
         //        }
         m_previousBlock = bi;
         resetCurrent();
@@ -319,8 +323,9 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
             }
         } catch ( ... ) {
             // TODO: Slightly nicer handling? :-)
-            cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-            cerr << boost::current_exception_diagnostic_information() << endl;
+            LOG( m_loggerError )
+                << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
+            LOG( m_loggerError ) << boost::current_exception_diagnostic_information() << endl;
             exit( 1 );
         }
 
@@ -416,7 +421,8 @@ pair< TransactionReceipts, bool > Block::sync(
                 } catch ( std::exception const& ) {
                     // Something else went wrong - drop it.
                     _tq.drop( t.sha3() );
-                    cwarn << t.sha3() << "Transaction caused low-level exception :(";
+                    LOG( m_loggerWarning )
+                        << t.sha3() << "Transaction caused low-level exception :(";
                 }
             }
         if ( chrono::steady_clock::now() > deadline ) {
@@ -476,7 +482,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                     receipts.push_back( saved_receipts[i] );
                     continue;  // skip this transaction, it was already executed before PARTIAL
                                // CATCHUP
-                }              // if
+                }  // if
             }
 
             // TODO Move this checking logic into some single place - not in execute, of course
@@ -521,7 +527,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // Debug only, related SKALE-2814 partial catchup testing
             //
             // if ( i == 3 ) {
-            // std::cout << "\n\n"
+            // LOG( m_logger ) << "\n\n"
             //          << cc::warn( "--- EXITING AS CRASH EMULATION AT TX# " ) << cc::num10( i )
             //          << cc::warn( " with hash " ) << cc::info( tr.sha3().hex() ) << "\n\n\n";
             // std::cout.flush();
@@ -533,7 +539,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             ex << errinfo_transactionIndex( i );
             // throw;
             // just ignore invalid transactions
-            clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
+            LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
 
@@ -627,14 +633,15 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     DEV_TIMED_ABOVE( "txExec", 500 )
     for ( Transaction const& tr : _block.transactions ) {
         try {
-            //            cerr << "Enacting transaction: #" << tr.nonce() << " from " << tr.from()
+            //            LOG( m_loggerError ) << "Enacting transaction: #" << tr.nonce() << " from
+            //            " << tr.from()
             //            << " (state #"
             //                 << state().getNonce( tr.from() ) << ") value = " << tr.value() <<
             //                 endl;
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
             execute( _bc.lastBlockHashes(), tr );
-            // cerr << "Now: "
+            // LOG( m_loggerError ) << "Now: "
             // << "State #" << state().getNonce( tr.from() ) << endl;
             // cnote << m_state;
         } catch ( Exception& ex ) {
@@ -659,7 +666,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
-                cwarn << "Skale does not support state root in receipt";
+                LOG( m_loggerWarning ) << "Skale does not support state root in receipt";
                 break;
             }
         }
@@ -891,7 +898,7 @@ ExecutionResult Block::execute(
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
-        cerror << DETAILED_ERROR;
+        LOG( m_loggerError ) << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );

@@ -108,7 +108,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 #endif
     m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
-        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        LOG( m_loggerDebug ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -142,7 +142,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
     m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
-        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        LOG( m_loggerDebug ) << cc::debug( "Using existing database" );
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -160,9 +160,11 @@ const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 void State::populateHistoricStateFromSkaleState() {
     auto allAccountAddresses = this->addresses();
 
-    cout << "Number of addresses in statedb:" << allAccountAddresses.size() << endl;
-    cout << "Historic state does not yet exist. Populating historic state ..." << endl;
-    cout << "Please be patient as it may take up to several hours for a large state" << endl;
+    LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size() << "\n";
+    LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ..."
+                        << "\n";
+    LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state"
+                        << "\n";
 
 
     // this is done to save memory, otherwise OverlayDB will frow
@@ -170,7 +172,7 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
-    cout << "Completed state import" << endl;
+    LOG( m_loggerInfo ) << "Completed state import" << "\n";
 }
 
 
@@ -204,7 +206,8 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 
 void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
-    cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
+    LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
+                        << STATE_IMPORT_BATCH_COUNT << "\n";
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
@@ -219,7 +222,7 @@ skale::OverlayDB State::openDB(
     fs::path path = _basePath.empty() ? eth::Defaults::dbPath() : _basePath;
 
     if ( _we == WithExisting::Kill ) {
-        clog( VerbosityDebug, "statedb" ) << "Killing state database (WithExisting::Kill).";
+        LOG( m_loggerDebug ) << "Killing state database (WithExisting::Kill).";
         fs::remove_all( path / fs::path( "state" ) );
     }
 
@@ -234,19 +237,21 @@ skale::OverlayDB State::openDB(
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );
-        clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
+        LOG( m_loggerDebug ) << cc::success( "Opened state DB." );
         return OverlayDB( std::move( bdb ) );
     } catch ( boost::exception const& ex ) {
-        cwarn << boost::diagnostic_information( ex ) << '\n';
+        LOG( m_loggerWarning ) << boost::diagnostic_information( ex ) << '\n';
         if ( fs::space( path / fs::path( "state" ) ).available < 1024 ) {
-            cwarn << "Not enough available space found on hard drive. Please free some up and "
-                     "then "
-                     "re-run. Bailing.";
+            LOG( m_loggerWarning )
+                << "Not enough available space found on hard drive. Please free some up and "
+                   "then "
+                   "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( eth::NotEnoughAvailableSpace() );
         } else {
-            cwarn << "Database " << ( path / fs::path( "state" ) )
-                  << "already open. You appear to have another instance of ethereum running. "
-                     "Bailing.";
+            LOG( m_loggerWarning )
+                << "Database " << ( path / fs::path( "state" ) )
+                << "already open. You appear to have another instance of ethereum running. "
+                   "Bailing.";
             BOOST_THROW_EXCEPTION( eth::DatabaseAlreadyOpen() );
         }
     }
@@ -363,6 +368,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
+        // cannot use LOG - function is const
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
@@ -445,8 +451,8 @@ eth::Account* State::account( Address const& _address ) {
         boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
 
         if ( !checkVersion() ) {
-            cerror << "Current state version is " << m_currentVersion << " but stored version is "
-                   << *m_storedVersion;
+            LOG( m_loggerError ) << "Current state version is " << m_currentVersion
+                                 << " but stored version is " << *m_storedVersion;
             BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
         }
 
@@ -673,6 +679,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
 std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     const Address& _contract ) const {
     if ( !checkVersion() ) {
+        // cannot use LOG - function is const
         cerror << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );

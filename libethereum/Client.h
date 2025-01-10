@@ -561,6 +561,8 @@ protected:
 
     Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
     Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "client" ) };
 
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;

@@ -385,7 +385,7 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
 
             fs::remove_all( path );
         }  // if
-    }      // for
+    }  // for
 }
 
 std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
@@ -430,7 +430,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
             const fs::path& path = p.second;
             fs::remove( path );
         }  // if
-    }      // for
+    }  // for
 }
 
 dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {
@@ -505,6 +505,7 @@ void SnapshotManager::computeDatabaseHash(
 
     dev::h256 dbHash;
     secp256k1_sha256_finalize( &dbCtx, dbHash.data() );
+    // cannot use LOG - function is const
     cnote << _dbDir << " hash is: " << dbHash;
 
     secp256k1_sha256_write( ctx, dbHash.data(), dbHash.size );
@@ -543,6 +544,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     }
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
+    // cannot use LOG - function is const
     cnote << "Latest price hash is: " << last_price_hash;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
@@ -732,19 +734,19 @@ void SnapshotManager::computeAllVolumesHash(
     //                this->computeDatabaseHash( content, ctx );
     //            }
 
-    //#ifdef HISTORIC_STATE
-    //            // historic dbs
-    //            this->computeDatabaseHash(
-    //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
-    //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-    //                ctx );
-    //            this->computeDatabaseHash(
-    //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
-    //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-    //                ctx );
-    //#endif
-    //        }
-    //    }
+    // #ifdef HISTORIC_STATE
+    //             // historic dbs
+    //             this->computeDatabaseHash(
+    //                 this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
+    //                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+    //                 ctx );
+    //             this->computeDatabaseHash(
+    //                 this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
+    //                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+    //                 ctx );
+    // #endif
+    //         }
+    //     }
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {

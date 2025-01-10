@@ -8,7 +8,7 @@
 #include <string>
 #include <thread>
 
-//#define __SKUTILS_MULTITHREADING_DEBUG__ 1
+// #define __SKUTILS_MULTITHREADING_DEBUG__ 1
 
 namespace skutils {
 

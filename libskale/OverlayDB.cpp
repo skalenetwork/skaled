@@ -36,7 +36,7 @@ using std::vector;
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
 
-//#include "SHA3.h"
+// #include "SHA3.h"
 
 using dev::bytes;
 using dev::bytesConstRef;
@@ -212,24 +212,28 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail(1) writing to state database. Bombing out. ";
-                    cwarn << DETAILED_ERROR;
+                    LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): "
                        << boost::diagnostic_information( ex );
-                cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
-                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                LOG( m_loggerWarning )
+                    << "Error writing to state database: " << boost::diagnostic_information( ex );
+                LOG( m_loggerWarning )
+                    << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail(2) writing to state database. Bombing out. ";
-                    cwarn << DETAILED_ERROR;
+                    LOG( m_loggerWarning ) << "Fail(2) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
-                cerror << "Error(2) writing to state database (during DB commit): " << ex.what();
-                cwarn << "Error(2) writing to state database: " << ex.what();
-                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                LOG( m_loggerError )
+                    << "Error(2) writing to state database (during DB commit): " << ex.what();
+                LOG( m_loggerWarning ) << "Error(2) writing to state database: " << ex.what();
+                LOG( m_loggerWarning )
+                    << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
         }
@@ -243,7 +247,7 @@ void OverlayDB::commit( const std::string& _debugCommitId ) {
             m_db_face->revert();
         }
     } else {
-        cnote << "Try to commit into closed or not initialized DB";
+        LOG( m_loggerInfo ) << "Try to commit into closed or not initialized DB";
     }
 }
 
@@ -262,6 +266,7 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
     std::string const loadedValue =
         m_db_face->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
+        // cannot use LOG - function is const
         cwarn << "Aux not found: " << _address;
 
     return loadedValue;
@@ -287,7 +292,8 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
             } else {
-                ctrace << "Try to delete non existing key " << _address << "(" << _space << ")";
+                LOG( m_loggerTrace )
+                    << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
         }
     }
@@ -309,6 +315,7 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
+    // cannot use LOG - function is const
     cnote << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
@@ -345,6 +352,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
                         h256::ConstructFromStringType::FromBinary );
                     storage[memoryAddress] = memoryValue;
                 } else {
+                    // cannot use LOG - function is const
                     cerror << "Address mismatch in:" << __FUNCTION__;
                 }
             }
@@ -379,8 +387,9 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
                 _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
                 if ( counter % 1000000 == 0 ) {
-                    std::cout << ".";
-                    std::cout.flush();
+                    // cannot use LOG - function is const
+                    cdebug << ".";
+                    cdebug.flush();
                 }
             }
             return true;
@@ -475,7 +484,7 @@ void OverlayDB::kill( h160 const& _h ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
             } else {
-                ctrace << "Try to delete non existing key " << _h;
+                LOG( m_loggerTrace ) << "Try to delete non existing key " << _h;
             }
         }
     }

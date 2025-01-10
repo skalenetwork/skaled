@@ -348,6 +348,8 @@ private:
 
     Logger m_logger{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerDetailed{ createLogger( VerbosityTrace, "block" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "block" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "block" ) };
 
     Counter< Block > c;
     ;

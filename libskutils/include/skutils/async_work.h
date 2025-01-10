@@ -129,7 +129,7 @@ public:
             dst = itResult->second;
             map_results_.erase( itResult );
             return true;  // good, we do have successful result
-        }                 // for( ; true; )
+        }  // for( ; true; )
         return false;
     }
 };  /// template class work

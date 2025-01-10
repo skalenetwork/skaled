@@ -58,8 +58,8 @@ int64_t maxBlockGasLimit() {
 
 void version() {
     const auto* buildinfo = skale_get_buildinfo();
-    cout << "skale-vm " << buildinfo->project_version << "\n";
-    cout << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
+    cnote << "skale-vm " << buildinfo->project_version << "\n";
+    cnote << "Build: " << buildinfo->system_name << "/" << buildinfo->build_type << "\n";
     exit( 0 );
 }
 
@@ -208,12 +208,12 @@ int main( int argc, char** argv ) {
         else if ( inputFile.empty() )
             inputFile = arg;  // Assign input file name only once.
         else {
-            cerr << "Unknown argument: " << arg << '\n';
+            cerror << "Unknown argument: " << arg << '\n';
             return -1;
         }
     }
     if ( vm.count( "help" ) ) {
-        cout << allowedOptions;
+        cnote << allowedOptions;
         return 0;
     }
     if ( vm.count( "version" ) ) {
@@ -256,7 +256,7 @@ int main( int argc, char** argv ) {
         else if ( network == "Main" )
             networkName = Network::MainNetwork;
         else {
-            cerr << "Unknown network type: " << network << "\n";
+            cerror << "Unknown network type: " << network << "\n";
             return -1;
         }
     }
@@ -268,7 +268,7 @@ int main( int argc, char** argv ) {
     // Read code from input file.
     if ( !inputFile.empty() ) {
         if ( !code.empty() )
-            cerr << "--code argument overwritten by input file " << inputFile << '\n';
+            cerror << "--code argument overwritten by input file " << inputFile << '\n';
 
         if ( inputFile == "-" )
             for ( int i = cin.get(); i != -1; i = cin.get() )
@@ -281,8 +281,7 @@ int main( int argc, char** argv ) {
             std::string strCode{ reinterpret_cast< char const* >( code.data() ), code.size() };
             strCode.erase( strCode.find_last_not_of( " \t\n\r" ) + 1 );  // Right trim.
             code = fromHex( strCode, WhenError::Throw );
-        }
-        catch ( BadHexCharacter const& ) {
+        } catch ( BadHexCharacter const& ) {
         }  // Ignore decoding errors.
     }
 
@@ -351,43 +350,43 @@ int main( int argc, char** argv ) {
     bytes output = std::move( res.output );
 
     if ( mode == Mode::Statistics ) {
-        cout << "Gas used: " << res.gasUsed << " (+" << t.baseGasRequired( evmSchedule )
-             << " for transaction, -" << res.gasRefunded << " refunded)\n";
-        cout << "Output: " << toHex( output ) << "\n";
+        cnote << "Gas used: " << res.gasUsed << " (+" << t.baseGasRequired( evmSchedule )
+              << " for transaction, -" << res.gasRefunded << " refunded)\n";
+        cnote << "Output: " << toHex( output ) << "\n";
         LogEntries logs = executive.logs();
-        cout << logs.size() << " logs" << ( logs.empty() ? "." : ":" ) << "\n";
+        cnote << logs.size() << " logs" << ( logs.empty() ? "." : ":" ) << "\n";
         for ( LogEntry const& l : logs ) {
-            cout << "  " << l.address.hex() << ": " << toHex( t.data() ) << "\n";
+            cnote << "  " << l.address.hex() << ": " << toHex( t.data() ) << "\n";
             for ( h256 const& topic : l.topics )
-                cout << "    " << topic.hex() << "\n";
+                cnote << "    " << topic.hex() << "\n";
         }
 
-        cout << total << " operations in " << execTime << " seconds.\n";
-        cout << "Maximum memory usage: " << memTotal * 32 << " bytes\n";
-        cout << "Expensive operations:\n";
+        cnote << total << " operations in " << execTime << " seconds.\n";
+        cnote << "Maximum memory usage: " << memTotal * 32 << " bytes\n";
+        cnote << "Expensive operations:\n";
         for ( auto const inst :
             { Instruction::SSTORE, Instruction::SLOAD, Instruction::CALL, Instruction::CREATE,
                 Instruction::CALLCODE, Instruction::DELEGATECALL, Instruction::MSTORE8,
                 Instruction::MSTORE, Instruction::MLOAD, Instruction::SHA3 } ) {
             auto const& count = counts[static_cast< _byte_ >( inst )];
             if ( count.first != 0 )
-                cout << "  " << instructionInfo( inst ).name << " x " << count.first << " ("
-                     << count.second << " gas)\n";
+                cnote << "  " << instructionInfo( inst ).name << " x " << count.first << " ("
+                      << count.second << " gas)\n";
         }
     } else if ( mode == Mode::Trace )
-        cout << st.json( styledJson );
+        cnote << st.json( styledJson );
     else if ( mode == Mode::OutputOnly )
-        cout << toHex( output ) << '\n';
+        cnote << toHex( output ) << '\n';
     else if ( mode == Mode::Test ) {
         // Output information needed for test verification and benchmarking
         // in YAML-like dictionaly format.
         auto exception = res.excepted != TransactionException::None;
-        cout << "output: '" << toHex( output ) << "'\n";
-        cout << "exception: " << boolalpha << exception << '\n';
-        cout << "gas used: " << res.gasUsed << '\n';
-        cout << "gas/sec: " << scientific << setprecision( 3 ) << uint64_t( res.gasUsed ) / execTime
-             << '\n';
-        cout << "exec time: " << fixed << setprecision( 6 ) << execTime << '\n';
+        cnote << "output: '" << toHex( output ) << "'\n";
+        cnote << "exception: " << boolalpha << exception << '\n';
+        cnote << "gas used: " << res.gasUsed << '\n';
+        cnote << "gas/sec: " << scientific << setprecision( 3 )
+              << uint64_t( res.gasUsed ) / execTime << '\n';
+        cnote << "exec time: " << fixed << setprecision( 6 ) << execTime << '\n';
     }
 
     state.releaseWriteLock();

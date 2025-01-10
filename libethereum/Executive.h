@@ -77,6 +77,9 @@ private:
     std::vector< Instruction > m_lastInst;
     Json::Value m_trace;
     DebugOptions m_options;
+
+    Logger m_logger{ createLogger( VerbosityDebug, "StandardTrace" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "StandardTrace" ) };
 };
 
 /**
@@ -243,8 +246,9 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-    Logger m_execLogger{ createLogger( VerbosityDebug, "exec" ) };
-    Logger m_detailsLogger{ createLogger( VerbosityTrace, "exec" ) };
+    Logger m_logger{ createLogger( VerbosityDebug, "exec" ) };
+    Logger m_loggerDetail{ createLogger( VerbosityTrace, "exec" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "exec" ) };
     Logger m_vmTraceLogger{ createLogger( VerbosityTrace, "vmtrace" ) };
 };
 

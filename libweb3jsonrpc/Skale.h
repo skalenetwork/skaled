@@ -29,6 +29,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/SharedSpace.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/SkaleFace.h>
@@ -114,6 +115,28 @@ private:
     std::unique_ptr< std::thread > snapshotDownloadFragmentMonitorThread;
     std::atomic_bool threadExitRequested = false;
     mutable std::mutex m_snapshot_mutex;
+
+    /// Loggers
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "Skale" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "Skale" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "Skale" ) };
+    // downloadSnapshotFragmentMonitor
+    Logger m_loggerInfoSnapshotThread{ createLogger(
+        VerbosityInfo, "Skale_downloadSnapshotFragmentMonitorThread" ) };
+    // downloadSnapshotFragment
+    Logger m_loggerInfoDownloadSnapshotFragment{ createLogger(
+        VerbosityInfo, "Skale_downloadSnapshotFragment" ) };
+    // getSnapshotSignature
+    Logger m_loggerInfoGetSnapshotSignature{ createLogger(
+        VerbosityInfo, "Skale_getSnapshotSignature" ) };
+    Logger m_loggerErrorGetSnapshotSignature{ createLogger(
+        VerbosityInfo, "Skale_getSnapshotSignature" ) };
+    // oracle_submitRequest
+    Logger m_loggerDebugOracleSubmitRequest{ createLogger(
+        VerbosityDebug, "Skale_oracle_submitRequest" ) };
+    // oracle_checkResult
+    Logger m_loggerDebugOracleCheckResult{ createLogger(
+        VerbosityDebug, "Skale_oracle_checkResult" ) };
 };
 
 namespace snapshot {

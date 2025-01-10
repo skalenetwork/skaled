@@ -315,8 +315,8 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
             s._patchTimestamps[static_cast< size_t >( patchEnum )] =
                 it.second.get_int64();  // time_t is signed
-        }                               // if
-    }                                   // for
+        }  // if
+    }  // for
 
     if ( sChainObj.count( "nodeGroups" ) ) {
         vector< NodeGroup > nodeGroups;
@@ -483,10 +483,10 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 
     auto b = genesisBlock();
     if ( b != _genesisRLP ) {
-        cdebug << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
-        cdebug << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
-        cdebug << RLP( b );
-        cdebug << RLP( _genesisRLP );
+        LOG( m_logger ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
+        LOG( m_logger ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
+        LOG( m_logger ) << RLP( b );
+        LOG( m_logger ) << RLP( _genesisRLP );
         throw 0;
     }
 }

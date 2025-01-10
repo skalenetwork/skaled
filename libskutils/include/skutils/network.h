@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 
-//#include <nlohmann/json.hpp>
+// #include <nlohmann/json.hpp>
 #include <json.hpp>
 
-//#define SKUTILS_WITH_SSL 1
+// #define SKUTILS_WITH_SSL 1
 
 extern "C" {
 #include <netinet/in.h>

@@ -255,10 +255,10 @@ int get_address_info46( int ipVersion, const char* ads, sockaddr46** result ) {
     ::memset( &hints, 0, sizeof( hints ) );
     ( *result ) = nullptr;
     if ( ipVersion == 6 ) {
-        //#if !defined(__ANDROID__)
+        // #if !defined(__ANDROID__)
         hints.ai_family = AF_INET6;
         hints.ai_flags = AI_V4MAPPED;
-        //#endif
+        // #endif
     } else {
         hints.ai_family = PF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;
@@ -316,7 +316,7 @@ std::string resolve_address_for_client_connection(
                 }
                 res = res->ai_next;
             }
-            //#if defined(LWS_FALLBACK_GETHOSTBYNAME)
+            // #if defined(LWS_FALLBACK_GETHOSTBYNAME)
         } else if ( n == EAI_SYSTEM ) {
             // ...log... ( "getaddrinfo (ipv4) failed, trying gethostbyname" );
             struct hostent* host = gethostbyname( ads );
@@ -326,7 +326,7 @@ std::string resolve_address_for_client_connection(
                 cce = "gethostbyname (ipv4) failed";
                 goto oom4;
             }
-            //#endif
+            // #endif
         } else {
             cce = "getaddrinfo failed";
             goto oom4;
@@ -409,33 +409,33 @@ const std::set< std::string >& get_all_ssl_method_names() {
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L )
         "sslv2", "sslv2_client", "sslv2_server",
 #endif
-            // SSL v3
-            "sslv3", "sslv3_client", "sslv3_server",
-            // TLS v1.0
-            "tlsv1", "tlsv1_client", "tlsv1_server",
-        // TLS v1.1
+        // SSL v3
+        "sslv3", "sslv3_client", "sslv3_server",
+        // TLS v1.0
+        "tlsv1", "tlsv1_client", "tlsv1_server",
+    // TLS v1.1
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L ) && ( !defined LIBRESSL_VERSION_NUMBER )
-            "tlsv11", "tlsv11_client", "tlsv11_server",
+        "tlsv11", "tlsv11_client", "tlsv11_server",
 #elif ( defined SSL_TXT_TLSV1_1 )
-            "tlsv11", "tlsv11_client", "tlsv11_server",
+        "tlsv11", "tlsv11_client", "tlsv11_server",
 #else   // defined(SSL_TXT_TLSV1_1)
         // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // TLS v1.2
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L ) && ( !defined LIBRESSL_VERSION_NUMBER )
-            "tlsv12"
-            "tlsv12_client",
-            "tlsv12_server",
+        "tlsv12"
+        "tlsv12_client",
+        "tlsv12_server",
 #elif defined( SSL_TXT_TLSV1_1 )
-            "tlsv12", "tlsv12_client", "tlsv12_server",
+        "tlsv12", "tlsv12_client", "tlsv12_server",
 #else   // defined(SSL_TXT_TLSV1_1)
         // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // any supported SSL/TLS version
-            "sslv23", "sslv23_client", "sslv23_server",
-            // any supported TLS version
-            "tls", "tls_client",
-            "tls_server"  //,
+        "sslv23", "sslv23_client", "sslv23_server",
+        // any supported TLS version
+        "tls", "tls_client",
+        "tls_server"  //,
     } );
     return g_set;
 }

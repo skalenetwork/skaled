@@ -40,7 +40,7 @@ int const c_bufferSize = 1024;
 
 template < class S >
 IpcServerBase< S >::IpcServerBase( string const& _path ) : m_path( _path ) {
-    clog( VerbosityInfo, "rpc" ) << "JSON-RPC socket path: " << _path;
+    LOG( m_loggerInfo ) << "JSON-RPC socket path: " << _path;
 }
 
 template < class S >
@@ -72,7 +72,7 @@ template < class S >
 bool IpcServerBase< S >::SendResponse( string const& _response, void* _addInfo ) {
     bool fullyWritten = false;
     bool errorOccured = false;
-    S socket = ( S )( reinterpret_cast< intptr_t >( _addInfo ) );
+    S socket = ( S ) ( reinterpret_cast< intptr_t >( _addInfo ) );
     string toSend = _response;
     do {
         size_t bytesWritten = Write( socket, toSend );
@@ -84,7 +84,7 @@ bool IpcServerBase< S >::SendResponse( string const& _response, void* _addInfo )
         } else
             fullyWritten = true;
     } while ( !fullyWritten && !errorOccured );
-    clog( VerbosityTrace, "rpc" ) << _response;
+    LOG( m_loggerTrace ) << _response;
     return fullyWritten && !errorOccured;
 }
 
@@ -124,7 +124,7 @@ void IpcServerBase< S >::GenerateResponse( S _connection ) {
                 if ( depth == 0 ) {
                     std::string r = request.substr( 0, i + 1 );
                     request.erase( 0, i + 1 );
-                    clog( VerbosityTrace, "rpc" ) << r;
+                    LOG( m_loggerTrace ) << r;
                     OnRequest( r, reinterpret_cast< void* >(
                                       ( intptr_t ) _connection ) );  // l_sergiy: migration to new
                                                                      // json-rpc-cpp

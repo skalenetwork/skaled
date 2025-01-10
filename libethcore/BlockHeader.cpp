@@ -244,14 +244,14 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
                 transactionsTrie.insert( &k.out(), txList[i].data() );
 
                 txs.push_back( txList[i].data() );
-                cdebug << toHex( k.out() ) << toHex( txList[i].data() );
+                LOG( m_logger ) << toHex( k.out() ) << toHex( txList[i].data() );
             }
-            cdebug << "trieRootOver" << expectedRoot;
-            cdebug << "orderedTrieRoot" << orderedTrieRoot( txs );
-            cdebug << "TrieDB" << transactionsTrie.root();
-            cdebug << "Contents:";
+            LOG( m_logger ) << "trieRootOver" << expectedRoot;
+            LOG( m_logger ) << "orderedTrieRoot" << orderedTrieRoot( txs );
+            LOG( m_logger ) << "TrieDB" << transactionsTrie.root();
+            LOG( m_logger ) << "Contents:";
             for ( auto const& t : txs )
-                cdebug << toHex( t );
+                LOG( m_logger ) << toHex( t );
 
             BOOST_THROW_EXCEPTION( InvalidTransactionsRoot()
                                    << Hash256RequirementError( expectedRoot, m_transactionsRoot ) );

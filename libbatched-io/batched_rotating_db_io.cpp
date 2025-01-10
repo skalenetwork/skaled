@@ -33,7 +33,7 @@ rotating_db_io::rotating_db_io(
             current_i = i;
             break;
         }  // if
-    }      // for
+    }  // for
 
     // if newly created DB
     // TODO Correctly, we should write here into current_piece_mark_key
@@ -63,7 +63,7 @@ rotating_db_io::rotating_db_io(
             DatabaseFace* db = new LevelDB( path );
             pieces.emplace_back( db );
         }  // for
-    }      // archive_mode
+    }  // archive_mode
 }
 
 void rotating_db_io::rotate() {
@@ -123,8 +123,8 @@ void rotating_db_io::recover() {
                 pieces[i]->kill( current_piece_mark_key );
                 test_crash_before_commit( "after_pieces_kill" );
             }  // if
-        }      // if
-    }          // for
+        }  // if
+    }  // for
 }
 
 rotating_db_io::~rotating_db_io() {}

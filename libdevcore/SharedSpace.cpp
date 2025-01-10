@@ -36,7 +36,7 @@ bool SharedSpace::lock() {
                 boost::filesystem::remove_all( it->path() );
             ++it;
         }  // while
-    }      // res == 0
+    }  // res == 0
     return res == 0;
 }
 bool SharedSpace::try_lock() {
@@ -59,7 +59,7 @@ bool SharedSpace::try_lock() {
                 boost::filesystem::remove_all( it->path() );
             ++it;
         }  // while
-    }      // res == 0
+    }  // res == 0
     return res == 0;
 }
 void SharedSpace::unlock() {

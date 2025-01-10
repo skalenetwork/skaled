@@ -177,7 +177,7 @@ bool AlethExecutive::call(
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 )( _p.gas - g );
+            m_gas = ( u256 ) ( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) =
@@ -307,8 +307,7 @@ OnOpFunc AlethExecutive::simpleTrace() {
         LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
                            << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
                            << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32"
-                           << " >";
+                           << gasCost << " : " << newMemSize << "x32" << " >";
     };
 }
 
@@ -356,8 +355,8 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_excepted = toTransactionException( _e );
             revert();
         } catch ( InternalVMError const& _e ) {
-            cerror << "Internal VM Error (EVMC status code: "
-                   << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
+            LOG( m_loggerError ) << "Internal VM Error (EVMC status code: "
+                                 << *boost::get_error_info< errinfo_evmcStatusCode >( _e ) << ")";
             revert();
             throw;
 #ifdef HISTORIC_STATE
@@ -369,15 +368,17 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
         } catch ( Exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            cerror << "Unexpected exception in VM. There may be a bug in this implementation. "
-                   << diagnostic_information( _e );
+            LOG( m_loggerError )
+                << "Unexpected exception in VM. There may be a bug in this implementation. "
+                << diagnostic_information( _e );
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
         } catch ( std::exception const& _e ) {
             // TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it
             // does.
-            cerror << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
+            LOG( m_loggerError ) << "Unexpected std::exception in VM. Not enough RAM? "
+                                 << _e.what();
             exit( 1 );
             // Another solution would be to reject this transaction, but that also
             // has drawbacks. Essentially, the amount of ram has to be increased here.
@@ -388,7 +389,7 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_res->output = m_output.toVector();
 
 #if ETH_TIMED_EXECUTIONS
-        cnote << "VM took:" << t.elapsed() << "; gas used: " << ( sgas - m_endGas );
+        LOG( m_loggerInfo ) << "VM took:" << t.elapsed() << "; gas used: " << ( sgas - m_endGas );
 #endif
     }
     return true;

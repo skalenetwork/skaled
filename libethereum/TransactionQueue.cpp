@@ -137,13 +137,13 @@ ImportResult TransactionQueue::import(
                 --m_futureSize;
                 m_futureSizeBytes -= t->second.transaction.toBytes().size();
                 auto erasedHash = t->second.transaction.sha3();
-                LOG( m_loggerDetail ) << "Re-inserting future transaction " << erasedHash;
+                LOG( m_loggerTrace ) << "Re-inserting future transaction " << erasedHash;
                 m_known.erase( erasedHash );
                 fs->second.erase( t->second.transaction.nonce() );
                 if ( fs->second.empty() )
                     m_future.erase( fs );
             }  // if found
-        }      // if fs->second
+        }  // if fs->second
 
         auto ir = check_WITH_LOCK( h, _ik );
         if ( ir != ImportResult::Success )
@@ -218,12 +218,12 @@ Transactions TransactionQueue::topTransactions_WITH_LOCK(
             found_difference = true;
     }
     if ( found_difference ) {
-        clog( VerbosityError, "skale-host" ) << "IS-348 bug detected. Wrong transaction order in "
-                                                "block proposal was fixed by workaround :(";
-        clog( VerbosityTrace, "skale-host" ) << "<i> <old> <new>";
+        LOG( m_loggerError ) << "IS-348 bug detected. Wrong transaction order in "
+                                "block proposal was fixed by workaround :(";
+        LOG( m_loggerTrace ) << "<i> <old> <new>";
         for ( size_t i = 0; i < top_transactions.size(); ++i ) {
-            clog( VerbosityTrace, "skale-host" )
-                << i << " " << saved_txns[i].sha3() << " " << top_transactions[i].sha3();
+            LOG( m_loggerTrace ) << i << " " << saved_txns[i].sha3() << " "
+                                 << top_transactions[i].sha3();
         }
     }
 
@@ -259,23 +259,23 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(
             if ( t != fs->second.end() ) {
                 return ImportResult::SameNonceAlreadyInQueue;
             }  // if found
-        }      // if fs->second
+        }  // if fs->second
 
         // If valid, append to transactions.
         insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
-        LOG( m_loggerDetail ) << "Queued vaguely legit-looking transaction " << _h;
+        LOG( m_loggerTrace ) << "Queued vaguely legit-looking transaction " << _h;
 
         while ( m_current.size() > m_limit || m_currentSizeBytes > m_currentSizeBytesLimit ) {
-            LOG( m_loggerDetail ) << "Dropping out of bounds transaction " << _h;
+            LOG( m_loggerTrace ) << "Dropping out of bounds transaction " << _h;
             remove_WITH_LOCK( m_current.rbegin()->transaction.sha3() );
         }
 
         m_onReady();
     } catch ( Exception const& _e ) {
-        LOG( m_loggerDetail ) << "Ignoring invalid transaction: " << diagnostic_information( _e );
+        LOG( m_loggerTrace ) << "Ignoring invalid transaction: " << diagnostic_information( _e );
         return ImportResult::Malformed;
     } catch ( std::exception const& _e ) {
-        LOG( m_loggerDetail ) << "Ignoring invalid transaction: " << _e.what();
+        LOG( m_loggerTrace ) << "Ignoring invalid transaction: " << _e.what();
         return ImportResult::Malformed;
     }
 
@@ -313,7 +313,7 @@ u256 TransactionQueue::maxCurrentNonce_WITH_LOCK( Address const& _a ) const {
 
 void TransactionQueue::insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p ) {
     if ( m_currentByHash.count( _p.first ) ) {
-        cwarn << "Transaction hash" << _p.first << "already in current?!";
+        LOG( m_loggerWarning ) << "Transaction hash" << _p.first << "already in current?!";
         return;
     }
 
@@ -398,7 +398,7 @@ void TransactionQueue::setFuture_WITH_LOCK( h256 const& _txHash ) {
         --m_futureSize;
         m_futureSizeBytes -= m_future.begin()->second.rbegin()->second.transaction.toBytes().size();
         auto erasedHash = m_future.begin()->second.rbegin()->second.transaction.sha3();
-        LOG( m_loggerDetail ) << "Dropping out of bounds future transaction " << erasedHash;
+        LOG( m_loggerTrace ) << "Dropping out of bounds future transaction " << erasedHash;
         m_known.erase( erasedHash );
         m_future.begin()->second.erase( --m_future.begin()->second.end() );
         if ( m_future.begin()->second.empty() )
@@ -493,8 +493,8 @@ void TransactionQueue::enqueue( RLP const& _data, h512 const& _nodeId ) {
         unsigned itemCount = _data.itemCount();
         for ( unsigned i = 0; i < itemCount; ++i ) {
             if ( m_unverified.size() >= c_maxVerificationQueueSize ) {
-                LOG( m_logger ) << "Transaction verification queue is full. Dropping "
-                                << itemCount - i << " transactions";
+                LOG( m_loggerInfo ) << "Transaction verification queue is full. Dropping "
+                                    << itemCount - i << " transactions";
                 break;
             }
             m_unverified.emplace_back( UnverifiedTransaction( _data[i].data(), _nodeId ) );
@@ -533,7 +533,8 @@ void TransactionQueue::verifierBody() {
             m_onImport( ir, t.sha3(), work.nodeId );
         } catch ( ... ) {
             // should not happen as exceptions are handled in import.
-            cwarn << "Bad transaction:" << boost::current_exception_diagnostic_information();
+            LOG( m_loggerWarning )
+                << "Bad transaction:" << boost::current_exception_diagnostic_information();
         }
         MICROPROFILE_LEAVE();
     }
@@ -546,6 +547,6 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
         for ( auto nonceAndTransaction : addressAndMap.second ) {
             res.push_back( nonceAndTransaction.second.transaction );
         }  // for nonce
-    }      // for address
+    }  // for address
     return res;
 }

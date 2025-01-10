@@ -18,11 +18,11 @@
 #endif  // _MSC_VER
 
 #ifndef S_ISREG
-#define S_ISREG( m ) ( ( ( m ) &S_IFREG ) == S_IFREG )
+#define S_ISREG( m ) ( ( ( m ) & S_IFREG ) == S_IFREG )
 #endif  // S_ISREG
 
 #ifndef S_ISDIR
-#define S_ISDIR( m ) ( ( ( m ) &S_IFDIR ) == S_IFDIR )
+#define S_ISDIR( m ) ( ( ( m ) & S_IFDIR ) == S_IFDIR )
 #endif  // S_ISDIR
 
 #ifndef NOMINMAX
@@ -82,7 +82,7 @@ typedef int socket_t;
 #include <skutils/url.h>
 #include <skutils/utils.h>
 
-//#include <nlohmann/json.hpp>
+// #include <nlohmann/json.hpp>
 #include <json.hpp>
 
 /// configuration
@@ -102,7 +102,7 @@ typedef int socket_t;
 
 #define __SKUTILS_HTTP_CLIENT_CONNECT_TIMEOUT_MILLISECONDS__ ( 60 * 1000 )
 
-//#define #define __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING 1
+// #define #define __SKUTILS_HTTP_ENABLE_FILE_REQUEST_HANDLING 1
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

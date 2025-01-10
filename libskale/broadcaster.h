@@ -73,6 +73,8 @@ private:
 
     void initClients( dev::eth::SChain, dev::eth::NodeInfo );
     std::string getHttpUrl( const dev::eth::sChainNode& );
+
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "HttpBroadcaster" ) };
 };
 
 class ZmqBroadcaster : public Broadcaster {
@@ -100,6 +102,12 @@ private:
     // threading
     std::atomic_bool m_need_exit;
     std::thread m_thread;
+
+    /// Logger
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "ZmqBroadcaster" ) };
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "ZmqBroadcaster" ) };
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ZmqBroadcaster" ) };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "ZmqBroadcaster" ) };
 };
 
 #endif  // BROADCASTER_H

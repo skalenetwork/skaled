@@ -116,7 +116,7 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
             this->snapshot_calculation_time_ms =
                 boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
         } catch ( SnapshotManager::SnapshotPresent& ex ) {
-            cerror << "WARNING " << dev::nested_exception_what( ex );
+            LOG( m_loggerError ) << "WARNING " << dev::nested_exception_what( ex );
         }
 
         this->last_snapshot_creation_time = _timestamp;
@@ -198,16 +198,17 @@ void SnapshotAgent::startHashComputingThread() {
             m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 
         } catch ( const std::exception& ex ) {
-            cerror << cc::fatal( "CRITICAL" ) << " " << cc::warn( dev::nested_exception_what( ex ) )
-                   << cc::error( " in computeSnapshotHash(). Exiting..." );
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            LOG( m_loggerError ) << cc::fatal( "CRITICAL" ) << " "
+                                 << cc::warn( dev::nested_exception_what( ex ) )
+                                 << cc::error( " in computeSnapshotHash(). Exiting..." );
+            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );
         } catch ( ... ) {
-            cerror << cc::fatal( "CRITICAL" )
-                   << cc::error(
-                          " unknown exception in computeSnapshotHash(). "
-                          "Exiting..." );
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            LOG( m_loggerError ) << cc::fatal( "CRITICAL" )
+                                 << cc::error(
+                                        " unknown exception in computeSnapshotHash(). "
+                                        "Exiting..." );
+            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );
         }
     } ) );

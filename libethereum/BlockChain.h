@@ -621,6 +621,7 @@ private:
     mutable Logger m_logger{ createLogger( VerbosityDebug, "chain" ) };
     mutable Logger m_loggerDetail{ createLogger( VerbosityTrace, "chain" ) };
     mutable Logger m_loggerError{ createLogger( VerbosityError, "chain" ) };
+    mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "chain" ) };
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };

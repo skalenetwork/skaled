@@ -556,8 +556,8 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             try {
                 baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) - 1 );
             } catch ( std::invalid_argument& _e ) {
-                cdebug << "Cannot get gas price for block " << h;
-                cdebug << _e.what();
+                LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
+                LOG( m_loggerDebug ) << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
                 baseFeePerGas = client()->gasBidPrice();
@@ -621,8 +621,8 @@ Json::Value Eth::eth_getBlockByNumber( string const& _blockNumber, bool _include
             try {
                 baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
-                cdebug << "Cannot get gas price for block " << bn;
-                cdebug << _e.what();
+                LOG( m_loggerDebug ) << "Cannot get gas price for block " << bn;
+                LOG( m_loggerDebug ) << _e.what();
                 // set default gasPrice
                 // probably the price was rotated out as we are asking the price for the old block
                 baseFeePerGas = client()->gasBidPrice();
@@ -844,7 +844,7 @@ Json::Value Eth::eth_getFilterChanges( string const& _filterId ) {
         unsigned int id = static_cast< unsigned int >( jsToInt( _filterId ) );
         auto entries = client()->checkWatch( id );
         //		if (entries.size())
-        //			cnote << "FIRING WATCH" << id << entries.size();
+        //			LOG( m_loggerDebug ) << "FIRING WATCH" << id << entries.size();
         return toJson( entries );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -856,7 +856,7 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
         unsigned int id = static_cast< unsigned int >( jsToInt( _filterId ) );
         auto entries = client()->checkWatch( id );
         //		if (entries.size())
-        //			cnote << "FIRING WATCH" << id << entries.size();
+        //			LOG( m_loggerDebug ) << "FIRING WATCH" << id << entries.size();
         return toJsonByBlock( entries );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );

@@ -10,6 +10,7 @@ using namespace std;
 
 #include <libdevcore/Address.h>
 #include <libdevcore/FileSystem.h>
+#include <libdevcore/Log.h>
 
 #include <libskale/State.h>
 
