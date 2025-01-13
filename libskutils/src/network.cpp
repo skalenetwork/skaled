@@ -408,33 +408,33 @@ const std::set< std::string >& get_all_ssl_method_names() {
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L )
         "sslv2", "sslv2_client", "sslv2_server",
 #endif
-        // SSL v3
-        "sslv3", "sslv3_client", "sslv3_server",
-        // TLS v1.0
-        "tlsv1", "tlsv1_client", "tlsv1_server",
-    // TLS v1.1
+            // SSL v3
+            "sslv3", "sslv3_client", "sslv3_server",
+            // TLS v1.0
+            "tlsv1", "tlsv1_client", "tlsv1_server",
+        // TLS v1.1
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L ) && ( !defined LIBRESSL_VERSION_NUMBER )
-        "tlsv11", "tlsv11_client", "tlsv11_server",
+            "tlsv11", "tlsv11_client", "tlsv11_server",
 #elif ( defined SSL_TXT_TLSV1_1 )
-        "tlsv11", "tlsv11_client", "tlsv11_server",
+            "tlsv11", "tlsv11_client", "tlsv11_server",
 #else   // defined(SSL_TXT_TLSV1_1)
         // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // TLS v1.2
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L ) && ( !defined LIBRESSL_VERSION_NUMBER )
-        "tlsv12"
-        "tlsv12_client",
-        "tlsv12_server",
+            "tlsv12"
+            "tlsv12_client",
+            "tlsv12_server",
 #elif defined( SSL_TXT_TLSV1_1 )
-        "tlsv12", "tlsv12_client", "tlsv12_server",
+            "tlsv12", "tlsv12_client", "tlsv12_server",
 #else   // defined(SSL_TXT_TLSV1_1)
         // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // any supported SSL/TLS version
-        "sslv23", "sslv23_client", "sslv23_server",
-        // any supported TLS version
-        "tls", "tls_client",
-        "tls_server"  //,
+            "sslv23", "sslv23_client", "sslv23_server",
+            // any supported TLS version
+            "tls", "tls_client",
+            "tls_server"  //,
     } );
     return g_set;
 }

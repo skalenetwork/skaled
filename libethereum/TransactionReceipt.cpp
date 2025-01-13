@@ -126,9 +126,11 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionReceipt const
     else
         _out << "Root: " << _r.stateRoot() << "\n";
     _out << "Gas used: " << _r.cumulativeGasUsed() << "\n";
-    _out << "Logs: " << _r.log().size() << " entries:" << "\n";
+    _out << "Logs: " << _r.log().size() << " entries:"
+         << "\n";
     for ( LogEntry const& i : _r.log() ) {
-        _out << "Address " << i.address << ". Topics:" << "\n";
+        _out << "Address " << i.address << ". Topics:"
+             << "\n";
         for ( auto const& j : i.topics )
             _out << "  " << j << "\n";
         _out << "  Data: " << toHex( i.data ) << "\n";

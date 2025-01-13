@@ -56,7 +56,8 @@ inline bool test1( const std::string& s, bool bIsVerbose ) {
         ss << " = " << std::dec << std::setw( 1 ) << x << ", ";
     if ( x != y ) {
         if ( bIsVerbose )
-            std::cout << "    " << ss.str() << "FAILED" << "\n";
+            std::cout << "    " << ss.str() << "FAILED"
+                      << "\n";
         return false;
     }
     // if ( bIsVerbose )
@@ -68,7 +69,8 @@ template < class T >
 inline bool test(
     bool bIncludeNegative, bool bIncludeHuge, bool bIsVerbose, const char* strTypeDescription ) {
     if ( bIsVerbose && strTypeDescription && strTypeDescription[0] )
-        std::cout << "Testing conversion of " << strTypeDescription << "..." << "\n";
+        std::cout << "Testing conversion of " << strTypeDescription << "..."
+                  << "\n";
     bool bOKay = true;
     //
     if ( !test1< T >( std::string( "0" ), bIsVerbose ) )
@@ -157,9 +159,12 @@ inline bool test(
     }
     if ( bIsVerbose && strTypeDescription && strTypeDescription[0] ) {
         if ( bOKay )
-            std::cout << "Successful conversion test of " << strTypeDescription << "." << "\n";
+            std::cout << "Successful conversion test of " << strTypeDescription << "."
+                      << "\n";
         else
-            std::cout << "FAILED" << " conversion test of " << strTypeDescription << "." << "\n";
+            std::cout << "FAILED"
+                      << " conversion test of " << strTypeDescription << "."
+                      << "\n";
     }
     return bOKay;
 }  // namespace BMPBN
@@ -168,7 +173,8 @@ template < class T >
 inline bool test_limit_limbs_and_halves(
     const char* strStartValue, size_t nBits, bool bIsVerbose ) {
     if ( bIsVerbose )
-        std::cout << "Testing limit margin of " << nBits << " bit values..." << "\n";
+        std::cout << "Testing limit margin of " << nBits << " bit values..."
+                  << "\n";
     bool bOKay = true;
     if ( !test1< T >( std::string( strStartValue ), bIsVerbose ) )
         bOKay = false;
@@ -182,9 +188,12 @@ inline bool test_limit_limbs_and_halves(
     }
     if ( bIsVerbose ) {
         if ( bOKay )
-            std::cout << "Successful conversion test of " << nBits << " bit values." << "\n";
+            std::cout << "Successful conversion test of " << nBits << " bit values."
+                      << "\n";
         else
-            std::cout << "FAILED" << " conversion test of " << nBits << " bit values" << "\n";
+            std::cout << "FAILED"
+                      << " conversion test of " << nBits << " bit values"
+                      << "\n";
     }
     return bOKay;
 }

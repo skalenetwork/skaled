@@ -279,7 +279,7 @@ public:
         const std::string& strOptionalPassword,
         bool bRemoveIfEmpty );            // returns true if was updated
     bool strip_user_name_and_password();  // returns true if was updated
-};  /// class url
+};                                        /// class url
 
 extern bool update_url_user_name_and_password( url& an_url, const char* strOptionalUser,
     const char* strOptionalPassword, bool bRemoveIfEmpty );

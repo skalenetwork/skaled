@@ -414,7 +414,8 @@ namespace eth {
 #define DO_CASES        \
     fetchInstruction(); \
     goto* jumpTable[( int ) m_OP];
-#define CASE( name ) name:
+#define CASE( name ) \
+    name:
 #define NEXT            \
     ++m_PC;             \
     fetchInstruction(); \

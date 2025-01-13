@@ -105,8 +105,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
             auto start_time = std::chrono::steady_clock::now();
 
             std::thread( [nSignalNo, start_time]() {
-                cerror << "\nSELF-KILL: " << "Will sleep " << ExitHandler::KILL_TIMEOUT
-                       << " seconds before force exit..." << "\n\n";
+                cerror << "\nSELF-KILL: "
+                       << "Will sleep " << ExitHandler::KILL_TIMEOUT
+                       << " seconds before force exit..."
+                       << "\n\n";
 
                 clog( VerbosityInfo, "exit" ) << "THREADS timer started";
 
@@ -134,8 +136,9 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                     std::this_thread::sleep_for( 100ms );
                 }
 
-                cerror << "\nSELF-KILL: " << "Will force exit after sleeping "
-                       << ExitHandler::KILL_TIMEOUT << " second(s)\n\n";
+                cerror << "\nSELF-KILL: "
+                       << "Will force exit after sleeping " << ExitHandler::KILL_TIMEOUT
+                       << " second(s)\n\n";
 
                 // TODO deduplicate this with main() before return
                 ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
@@ -147,7 +150,7 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                 _exit( ec );
             } ).detach();
         }  // if( ! g_bSelfKillStarted )
-    }  // if ( !skutils::signal::g_bStop )
+    }      // if ( !skutils::signal::g_bStop )
 
     // nice exit here:
 

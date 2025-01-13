@@ -969,8 +969,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     newLastBlockHash = _block.info.hash();
     newLastBlockNumber = ( unsigned ) _block.info.number();
 
-    LOG( m_loggerDetail ) << "   Imported and best " << _totalDifficulty << " (" << "#"
-                          << _block.info.number() << "). Has "
+    LOG( m_loggerDetail ) << "   Imported and best " << _totalDifficulty << " ("
+                          << "#" << _block.info.number() << "). Has "
                           << ( details( _block.info.parentHash() ).children.size() - 1 )
                           << " siblings.";
 
@@ -1425,9 +1425,7 @@ void BlockChain::doLevelDbCompaction() const {
 }
 
 void BlockChain::checkConsistency() {
-    DEV_WRITE_GUARDED( x_details ) {
-        m_details.clear();
-    }
+    DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
     m_blocksDB->forEach( [this]( db::Slice const& _key, db::Slice const& /* _value */ ) {
         if ( _key.size() == 32 ) {

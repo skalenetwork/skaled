@@ -230,8 +230,9 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     try {
         joSignatureResponse = skaleClient.skale_getSnapshotSignature( blockNumber );
     } catch ( jsonrpc::JsonRpcException& ex ) {
-        LOG( m_loggerError ) << "WARNING " << "Error while trying to get snapshot signature from "
-                             << url << " : " << ex.what();
+        LOG( m_loggerError ) << "WARNING "
+                             << "Error while trying to get snapshot signature from " << url << " : "
+                             << ex.what();
         delete jsonRpcClient;
         return {};
     }

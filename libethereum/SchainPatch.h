@@ -36,38 +36,32 @@ protected:
     static std::atomic< time_t > committedBlockTimestamp;
 };
 
-#define DEFINE_AMNESIC_PATCH( CustomPatch )                   \
-    class CustomPatch : public SchainPatch {                  \
-    public:                                                   \
-        static SchainPatchEnum getEnum() {                    \
-            return SchainPatchEnum::CustomPatch;              \
-        }                                                     \
-        static bool isEnabledInWorkingBlock() {               \
-            return isPatchEnabledInWorkingBlock( getEnum() ); \
-        }                                                     \
+#define DEFINE_AMNESIC_PATCH( CustomPatch )                                       \
+    class CustomPatch : public SchainPatch {                                      \
+    public:                                                                       \
+        static SchainPatchEnum getEnum() { return SchainPatchEnum::CustomPatch; } \
+        static bool isEnabledInWorkingBlock() {                                   \
+            return isPatchEnabledInWorkingBlock( getEnum() );                     \
+        }                                                                         \
     };
 
 // TODO One more overload - with EnvInfo?
-#define DEFINE_SIMPLE_PATCH( CustomPatch )                                    \
-    class CustomPatch : public SchainPatch {                                  \
-    public:                                                                   \
-        static SchainPatchEnum getEnum() {                                    \
-            return SchainPatchEnum::CustomPatch;                              \
-        }                                                                     \
-        static bool isEnabledInWorkingBlock() {                               \
-            return isPatchEnabledInWorkingBlock( getEnum() );                 \
-        }                                                                     \
-        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {        \
-            return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp ); \
-        }                                                                     \
+#define DEFINE_SIMPLE_PATCH( CustomPatch )                                        \
+    class CustomPatch : public SchainPatch {                                      \
+    public:                                                                       \
+        static SchainPatchEnum getEnum() { return SchainPatchEnum::CustomPatch; } \
+        static bool isEnabledInWorkingBlock() {                                   \
+            return isPatchEnabledInWorkingBlock( getEnum() );                     \
+        }                                                                         \
+        static bool isEnabledWhen( time_t _committedBlockTimestamp ) {            \
+            return isPatchEnabledWhen( getEnum(), _committedBlockTimestamp );     \
+        }                                                                         \
     };
 
 #define DEFINE_EVM_PATCH( CustomPatch )                                                 \
     class CustomPatch : public SchainPatch {                                            \
     public:                                                                             \
-        static SchainPatchEnum getEnum() {                                              \
-            return SchainPatchEnum::CustomPatch;                                        \
-        }                                                                               \
+        static SchainPatchEnum getEnum() { return SchainPatchEnum::CustomPatch; }       \
         static bool isEnabledInWorkingBlock() {                                         \
             return isPatchEnabledInWorkingBlock( getEnum() );                           \
         }                                                                               \

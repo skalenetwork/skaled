@@ -215,8 +215,8 @@ inline void once( F&& f, duration_t timeout, job_id_t* pJobID, Args&&... args ) 
 // template only: once_with_future() is like once() but returns std::future <
 // specified args >
 template < typename F, typename... Args >
-inline auto once_with_future( const queue_id_t& id, F&& f, duration_t timeout,
-    Args&&... args ) -> std::future< decltype( f( args... ) ) > {
+inline auto once_with_future( const queue_id_t& id, F&& f, duration_t timeout, Args&&... args )
+    -> std::future< decltype( f( args... ) ) > {
     std::function< decltype( f( args... ) )() > fn =
         std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
     auto task_ptr = std::make_shared< std::packaged_task< decltype( f( args... ) )() > >( fn );
@@ -225,8 +225,8 @@ inline auto once_with_future( const queue_id_t& id, F&& f, duration_t timeout,
     return task_ptr->get_future();
 }
 template < typename F, typename... Args >
-inline auto once_with_future(
-    F&& f, duration_t timeout, Args&&... args ) -> std::future< decltype( f( args... ) ) > {
+inline auto once_with_future( F&& f, duration_t timeout, Args&&... args )
+    -> std::future< decltype( f( args... ) ) > {
     std::function< decltype( f( args... ) )() > fn =
         std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
     auto task_ptr = std::make_shared< std::packaged_task< decltype( f( args... ) )() > >( fn );
@@ -238,8 +238,8 @@ inline auto once_with_future(
 // template only: async_with_future() is like once_with_future() without
 // duration_t timeout
 template < typename F, typename... Args >
-inline auto async_with_future(
-    const queue_id_t& id, F&& f, Args&&... args ) -> std::future< decltype( f( args... ) ) > {
+inline auto async_with_future( const queue_id_t& id, F&& f, Args&&... args )
+    -> std::future< decltype( f( args... ) ) > {
     std::function< decltype( f( args... ) )() > fn =
         std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
     auto task_ptr = std::make_shared< std::packaged_task< decltype( f( args... ) )() > >( fn );
@@ -372,7 +372,7 @@ public:
         make_current& operator=( const make_current& ) = delete;
         make_current& operator=( make_current&& ) = delete;
     };  /// class make_current
-};  /// template class one_per_thread
+};      /// template class one_per_thread
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -622,8 +622,8 @@ public:
         return job_add_once( fn, timeout, pJobID );
     }  // like JavaScript setTimeout()
     template < typename F, typename... Args >
-    inline auto job_add_once_with_future(
-        F&& f, duration_t timeout, Args&&... args ) -> std::future< decltype( f( args... ) ) > {
+    inline auto job_add_once_with_future( F&& f, duration_t timeout, Args&&... args )
+        -> std::future< decltype( f( args... ) ) > {
         std::function< decltype( f( args... ) )() > fn =
             std::bind( std::forward< F >( f ), std::forward< Args >( args )... );
         auto task_ptr = std::make_shared< std::packaged_task< decltype( f( args... ) )() > >( fn );

@@ -196,7 +196,9 @@ void Client::stopWorking() {
                         << boost::filesystem::canonical( m_dbPath ).string() +
                                std::string( "/skaled.lock" );
     } else {
-        LOG( m_logger ) << "ATTENTION:" << " " << "Deleted lock file "
+        LOG( m_logger ) << "ATTENTION:"
+                        << " "
+                        << "Deleted lock file "
                         << boost::filesystem::canonical( m_dbPath ).string() +
                                std::string( "/skaled.lock" )
                         << " after forceful exit";
@@ -560,9 +562,9 @@ size_t Client::importTransactionsAsBlock(
     size_t cntMissing = vecMissing.size();
     size_t cntExpected = cntMissing;
     if ( bIsPartial ) {
-        LOG( m_logger ) << "PARTIAL CATCHUP DETECTED:" << " found partially executed block, have "
-                        << cntAll << " transaction(s), " << cntPassed << " passed, " << cntMissing
-                        << " missing";
+        LOG( m_logger ) << "PARTIAL CATCHUP DETECTED:"
+                        << " found partially executed block, have " << cntAll << " transaction(s), "
+                        << cntPassed << " passed, " << cntMissing << " missing";
         LOG( m_logger ).flush();
         LOG( m_logger ) << "PARTIAL CATCHUP:" << stat_transactions2str( _transactions, " All " );
         LOG( m_logger ).flush();
@@ -597,9 +599,10 @@ size_t Client::importTransactionsAsBlock(
     if ( bIsPartial )
         cntSucceeded += cntPassed;
     if ( cntSucceeded != cntAll ) {
-        LOG( m_logger ) << "TX EXECUTION WARNING:" << " expected " << cntAll
-                        << " transaction(s) to pass, when " << cntSucceeded
-                        << " passed with success," << cntExpected << " expected to run and pass";
+        LOG( m_logger ) << "TX EXECUTION WARNING:"
+                        << " expected " << cntAll << " transaction(s) to pass, when "
+                        << cntSucceeded << " passed with success," << cntExpected
+                        << " expected to run and pass";
         LOG( m_logger ).flush();
     }
     if ( bIsPartial ) {
@@ -812,8 +815,8 @@ void Client::rejigSealing() {
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG( m_loggerDetail )
-                    << "Starting to seal block" << " #" << m_working.info().number();
+                LOG( m_loggerDetail ) << "Starting to seal block"
+                                      << " #" << m_working.info().number();
 
                 // TODO Deduplicate code
                 dev::h256 stateRootToSet;
@@ -840,8 +843,8 @@ void Client::rejigSealing() {
 
             if ( wouldSeal() ) {
                 sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
-                    LOG( m_logger )
-                        << "Block sealed" << " #" << BlockHeader( _header, HeaderData ).number();
+                    LOG( m_logger ) << "Block sealed"
+                                    << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else
@@ -868,7 +871,8 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             return;
         }
         // TODO is that needed? we have "Generating seal on" below
-        LOG( m_loggerDetail ) << "Starting to seal block" << " #" << m_working.info().number();
+        LOG( m_loggerDetail ) << "Starting to seal block"
+                              << " #" << m_working.info().number();
         // latest hash is really updated after NEXT snapshot already started hash computation
         // TODO Deduplicate code
         dev::h256 stateRootToSet;
@@ -902,10 +906,11 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
     BlockHeader header_struct( header, HeaderData );
-    LOG( m_logger ) << "Block sealed" << " #" << header_struct.number() << " ("
-                    << header_struct.hash() << ")";
+    LOG( m_logger ) << "Block sealed"
+                    << " #" << header_struct.number() << " (" << header_struct.hash() << ")";
     std::stringstream ssBlockStats;
-    ssBlockStats << "Block stats:" << "BN:" << number() << ":BTS:" << bc().info().timestamp()
+    ssBlockStats << "Block stats:"
+                 << "BN:" << number() << ":BTS:" << bc().info().timestamp()
                  << ":TXS:" << TransactionBase::howMany() << ":HDRS:" << BlockHeader::howMany()
                  << ":LOGS:" << LogEntry::howMany() << ":SENGS:" << SealEngineBase::howMany()
                  << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
@@ -1228,7 +1233,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
                 historicBlock.mutableState().mutableHistoricState().addBalance(
-                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1252,8 +1257,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance(
-                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
@@ -1286,7 +1290,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         // lots of gas to it
         auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer =
             make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );

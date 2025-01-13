@@ -482,7 +482,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                     receipts.push_back( saved_receipts[i] );
                     continue;  // skip this transaction, it was already executed before PARTIAL
                                // CATCHUP
-                }  // if
+                }              // if
             }
 
             // TODO Move this checking logic into some single place - not in execute, of course
@@ -1053,7 +1053,8 @@ void Block::commitToSeal(
     //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
     //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
-    LOG( m_loggerDetailed ) << "Post-reward stateRoot: " << "is not calculated in Skale state";
+    LOG( m_loggerDetailed ) << "Post-reward stateRoot: "
+                            << "is not calculated in Skale state";
     LOG( m_loggerDetailed ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );

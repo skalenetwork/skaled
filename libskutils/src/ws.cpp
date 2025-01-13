@@ -1174,12 +1174,12 @@ void basic_api::do_writable_callbacks_all_protocol() {
     ::lws_callback_on_writable_all_protocol( ctx_, &vec_lws_protocols_[default_protocol_index_] );
 }
 
-static enum pending_timeout g_arrPingPongTimeoutTypes[] {
+static enum pending_timeout g_arrPingPongTimeoutTypes[]{
     PENDING_TIMEOUT_AWAITING_PING,
     PENDING_TIMEOUT_WS_PONG_CHECK_SEND_PING,
     PENDING_TIMEOUT_WS_PONG_CHECK_GET_PONG,
 };
-static enum pending_timeout g_arrOpenTimeoutTypes[] {
+static enum pending_timeout g_arrOpenTimeoutTypes[]{
     PENDING_TIMEOUT_ESTABLISH_WITH_SERVER,
     PENDING_TIMEOUT_SENT_CLIENT_HANDSHAKE,
     PENDING_TIMEOUT_SSL_ACCEPT,
@@ -1190,7 +1190,7 @@ static enum pending_timeout g_arrOpenTimeoutTypes[] {
     PENDING_TIMEOUT_AWAITING_SOCKS_CONNECT_REPLY,
     PENDING_TIMEOUT_AWAITING_SOCKS_AUTH_REPLY,
 };
-static enum pending_timeout g_arrCloseTimeoutTypes[] {
+static enum pending_timeout g_arrCloseTimeoutTypes[]{
     PENDING_TIMEOUT_SHUTDOWN_FLUSH,
     PENDING_FLUSH_STORED_SEND_BEFORE_CLOSE,
     PENDING_TIMEOUT_KILLED_BY_SSL_INFO,
@@ -1198,7 +1198,7 @@ static enum pending_timeout g_arrCloseTimeoutTypes[] {
     PENDING_TIMEOUT_CLOSE_SEND,
     PENDING_TIMEOUT_CLOSE_ACK,
 };
-static enum pending_timeout g_arrNetworkTimeoutTypes[] {
+static enum pending_timeout g_arrNetworkTimeoutTypes[]{
     PENDING_TIMEOUT_HTTP_CONTENT,
     PENDING_TIMEOUT_AWAITING_SERVER_RESPONSE,
     //					PENDING_TIMEOUT_AWAITING_EXTENSION_CONNECT_RESPONSE,
@@ -1393,7 +1393,7 @@ int basic_api::stat_callback_client(
                         if ( cntLeft > 0 )
                             break;
                         pq.pop_front();  // only pop the message if it was sent successfully
-                    }  // while( ! pq.empty() )
+                    }                    // while( ! pq.empty() )
                     if ( self->delayed_adjustment_pong_timeout_ >=
                          0 ) {  // -1 for no adjustment, otherwise change pong timeout
                         int64_t timeout_pong = self->delayed_adjustment_pong_timeout_;
@@ -1409,7 +1409,7 @@ int basic_api::stat_callback_client(
                         }
                     }
                 }  // else from if( ! cached_delayed_close_reason.empty() )
-            }  // block
+            }      // block
             if ( bCloseAction )
                 return -1;  // this closes connection according to
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
@@ -1554,8 +1554,8 @@ int basic_api::stat_callback_server(
                         // bCallWriteable = true;
                     }
                 }  // else from if( ! cached_delayed_close_reason.empty() )
-            }  // block
-               // if( bCallWriteable )
+            }      // block
+                   // if( bCallWriteable )
             ::lws_callback_on_writable( wsi );
             if ( bCloseAction )
                 return -1;  // this closes connection according to
@@ -3912,7 +3912,8 @@ bool client::open( const std::string& uri, const char* strInterfaceName ) {
         onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     } catch ( ... ) {
         std::stringstream ss;
-        ss << "open: " << "unknown exception";
+        ss << "open: "
+           << "unknown exception";
         onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     }
     traffic_stats::event_add( g_strEventNameWebSocketClientConnectFail );

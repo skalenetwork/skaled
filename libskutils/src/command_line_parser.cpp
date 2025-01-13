@@ -421,13 +421,15 @@ void parser::stat_network_interfaces_info( std::ostream& os ) {
     lst = skutils::network::get_machine_ip_addresses( true, false );  // try IP4
     os << "Number of of found IPv4 interfaces ..................." << lst.size() << "\n";
     for ( itWalk = lst.cbegin(), itEnd = lst.cend(); itWalk != itEnd; ++itWalk )
-        os << "...." << "IPv4 interface ..................................."
-           << stat_gen_if( *itWalk ) << "\n";
+        os << "...."
+           << "IPv4 interface ..................................." << stat_gen_if( *itWalk )
+           << "\n";
     lst = skutils::network::get_machine_ip_addresses( false, true );  // try IP6
     os << "Number of of found IPv6 interfaces ..................." << lst.size() << "\n";
     for ( itWalk = lst.cbegin(), itEnd = lst.cend(); itWalk != itEnd; ++itWalk )
-        os << "...." << "IPv6 interface ..................................."
-           << stat_gen_if( *itWalk ) << "\n";
+        os << "...."
+           << "IPv6 interface ..................................." << stat_gen_if( *itWalk )
+           << "\n";
 }
 
 };  // namespace command_line

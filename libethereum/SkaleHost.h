@@ -181,7 +181,7 @@ private:
 
     std::atomic_int m_bcast_counter = 0;
 
-    void penalizePeer() {};  // fake function for now
+    void penalizePeer(){};  // fake function for now
 
     int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
 

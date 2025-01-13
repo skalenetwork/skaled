@@ -29,7 +29,8 @@ public:
     const_iterator end() const { return pieces.end(); }
     size_t pieces_count() const { return n_pieces; }
     void rotate();
-    virtual void revert() { /* no need - as all write is in rotate() */ }
+    virtual void revert() { /* no need - as all write is in rotate() */
+    }
     virtual void commit(
         const std::string& test_crash_string = std::string() ) { /*already implemented in rotate()*/
         ( void ) test_crash_string;

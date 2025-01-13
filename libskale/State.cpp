@@ -172,7 +172,8 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
-    LOG( m_loggerInfo ) << "Completed state import" << "\n";
+    LOG( m_loggerInfo ) << "Completed state import"
+                        << "\n";
 }
 
 
@@ -1184,7 +1185,8 @@ bool State::checkVersion() const {
 }
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
-    _out << "--- Cache ---" << "\n";
+    _out << "--- Cache ---"
+         << "\n";
     std::set< Address > d;
     for ( auto i : _s.m_cache )
         d.insert( i.first );

@@ -315,8 +315,8 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
             s._patchTimestamps[static_cast< size_t >( patchEnum )] =
                 it.second.get_int64();  // time_t is signed
-        }  // if
-    }  // for
+        }                               // if
+    }                                   // for
 
     if ( sChainObj.count( "nodeGroups" ) ) {
         vector< NodeGroup > nodeGroups;

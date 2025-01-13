@@ -86,8 +86,8 @@ bool AccountManager::execute( int argc, char** argv ) {
                 }
                 for ( auto const& a : m_keyManager->accounts() )
                     if ( !got.count( a ) ) {
-                        LOG( m_loggerInfo )
-                            << "Account #" << k << ": {" << a.hex() << "}" << " (Brain)\n";
+                        LOG( m_loggerInfo ) << "Account #" << k << ": {" << a.hex() << "}"
+                                            << " (Brain)\n";
                         k++;
                     }
                 for ( auto const& u : bare ) {
@@ -152,8 +152,9 @@ bool AccountManager::execute( int argc, char** argv ) {
                             << "; key does not exist, corrupt or incorrect passphrase supplied."
                             << "\n";
                 } else
-                    LOG( m_loggerError ) << "Couldn't re-encode " << i
-                                         << "; does not represent an address or uuid." << "\n";
+                    LOG( m_loggerError )
+                        << "Couldn't re-encode " << i << "; does not represent an address or uuid."
+                        << "\n";
             }
         } else
             streamAccountHelp( cout );
@@ -170,7 +171,8 @@ string AccountManager::createPassword( string const& _prompt ) const {
         if ( ret == confirm )
             break;
         // cannot use LOG - function is const
-        cnote << "Passwords were different. Try again." << "\n";
+        cnote << "Passwords were different. Try again."
+              << "\n";
     }
     return ret;
 }
@@ -191,11 +193,13 @@ bool AccountManager::openWallet() {
                  m_keyManager->load( getPassword( "Please enter your MASTER passphrase: " ) ) )
                 return true;
             else {
-                LOG( m_loggerError ) << "Couldn't open wallet. Please check passphrase." << "\n";
+                LOG( m_loggerError ) << "Couldn't open wallet. Please check passphrase."
+                                     << "\n";
                 return false;
             }
         } else {
-            LOG( m_loggerError ) << "Couldn't open wallet. Does it exist?" << "\n";
+            LOG( m_loggerError ) << "Couldn't open wallet. Does it exist?"
+                                 << "\n";
             return false;
         }
     }

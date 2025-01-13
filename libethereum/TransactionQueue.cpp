@@ -143,7 +143,7 @@ ImportResult TransactionQueue::import(
                 if ( fs->second.empty() )
                     m_future.erase( fs );
             }  // if found
-        }  // if fs->second
+        }      // if fs->second
 
         auto ir = check_WITH_LOCK( h, _ik );
         if ( ir != ImportResult::Success )
@@ -259,7 +259,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(
             if ( t != fs->second.end() ) {
                 return ImportResult::SameNonceAlreadyInQueue;
             }  // if found
-        }  // if fs->second
+        }      // if fs->second
 
         // If valid, append to transactions.
         insertCurrent_WITH_LOCK( make_pair( _h, _transaction ) );
@@ -547,6 +547,6 @@ Transactions TransactionQueue::debugGetFutureTransactions() const {
         for ( auto nonceAndTransaction : addressAndMap.second ) {
             res.push_back( nonceAndTransaction.second.transaction );
         }  // for nonce
-    }  // for address
+    }      // for address
     return res;
 }

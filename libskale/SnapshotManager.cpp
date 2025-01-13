@@ -385,7 +385,7 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
 
             fs::remove_all( path );
         }  // if
-    }  // for
+    }      // for
 }
 
 std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
@@ -430,7 +430,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
             const fs::path& path = p.second;
             fs::remove( path );
         }  // if
-    }  // for
+    }      // for
 }
 
 dev::h256 SnapshotManager::getSnapshotHash( unsigned block_number ) const {

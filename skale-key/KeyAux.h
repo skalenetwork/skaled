@@ -290,7 +290,9 @@ public:
             try {
                 wallet.create( m_masterPassword );
             } catch ( Exception const& _e ) {
-                cerror << "unable to create wallet" << "\n" << boost::diagnostic_information( _e );
+                cerror << "unable to create wallet"
+                       << "\n"
+                       << boost::diagnostic_information( _e );
             }
             break;
         }
@@ -301,10 +303,12 @@ public:
                                                            CheckTransaction::None );
                 cdebug << "Transaction " << t.sha3().hex() << "\n";
                 if ( t.isCreation() ) {
-                    cdebug << "  type: creation" << "\n";
+                    cdebug << "  type: creation"
+                           << "\n";
                     cdebug << "  code: " << toHex( t.data() ) << "\n";
                 } else {
-                    cdebug << "  type: message" << "\n";
+                    cdebug << "  type: message"
+                           << "\n";
                     cdebug << "  to: " << t.to() << "\n";
                     cdebug << "  data: " << ( t.data().empty() ? "none" : toHex( t.data() ) )
                            << "\n";
@@ -315,14 +319,16 @@ public:
                         cdebug << "  creates: " << toAddress( s, t.nonce() ) << "\n";
                     cdebug << "  from: " << s << "\n";
                 } catch ( ... ) {
-                    cdebug << "  from: <unsigned>" << "\n";
+                    cdebug << "  from: <unsigned>"
+                           << "\n";
                 }
                 cdebug << "  value: " << formatBalance( t.value() ) << " (" << t.value() << " wei)"
                        << "\n";
                 cdebug << "  nonce: " << t.nonce() << "\n";
                 cdebug << "  gas: " << t.gas() << "\n";
                 cdebug << "  gas price: " << formatBalance( t.gasPrice() ) << " (" << t.gasPrice()
-                       << " wei)" << "\n";
+                       << " wei)"
+                       << "\n";
                 cdebug << "  signing hash: " << t.sha3( WithoutSignature ).hex() << "\n";
                 if ( t.safeSender() ) {
                     cdebug << "  v: " << ( int ) t.signature().v << "\n";
@@ -350,7 +356,8 @@ public:
                     cdebug << t.sha3() << ": ";
                     if ( isFile ) {
                         writeFile( i + ".signed", toHex( t.toBytes() ) );
-                        cdebug << i + ".signed" << "\n";
+                        cdebug << i + ".signed"
+                               << "\n";
                     } else
                         cdebug << toHex( t.toBytes() ) << "\n";
                 } catch ( Exception& ex ) {
@@ -364,7 +371,8 @@ public:
             for ( auto i : m_inputs ) {
                 Address a = userToAddress( i );
                 if ( !keyManager().accountName( a ).empty() )
-                    cdebug << keyManager().accountName( a ) << " (" << a.abridged() << ")" << "\n";
+                    cdebug << keyManager().accountName( a ) << " (" << a.abridged() << ")"
+                           << "\n";
                 else
                     cdebug << a.abridged() << "\n";
                 cdebug << "  Address: " << a.hex() << "\n";
@@ -380,7 +388,8 @@ public:
         }
         case OperationMode::ListBare:
             if ( secretStore().keys().empty() )
-                cdebug << "No keys found." << "\n";
+                cdebug << "No keys found."
+                       << "\n";
             else
                 for ( h128 const& u : std::set< h128 >() + secretStore().keys() )
                     cdebug << toUUID( u ) << "\n";
@@ -409,7 +418,8 @@ public:
                     u = secretStore().importSecret(
                         b, lockPassword( toAddress( Secret( b ) ).abridged() ) );
                 if ( !u ) {
-                    cerror << "Cannot import " << input << " not a file or secret." << "\n";
+                    cerror << "Cannot import " << input << " not a file or secret."
+                           << "\n";
                     continue;
                 }
                 cdebug << "Successfully imported " << input << " as " << toUUID( u );
@@ -421,8 +431,10 @@ public:
                     h128 u = secretStore().readKey( i, false );
                     bytesSec s = secretStore().secret( u,
                         [&]() { return getPassword( "Enter passphrase for key " + i + ": " ); } );
-                    cdebug << "Key " << i << ":" << "\n";
-                    cdebug << "  UUID: " << toUUID( u ) << ":" << "\n";
+                    cdebug << "Key " << i << ":"
+                           << "\n";
+                    cdebug << "  UUID: " << toUUID( u ) << ":"
+                           << "\n";
                     cdebug << "  Address: " << toAddress( Secret( s ) ).hex() << "\n";
                     cdebug << "  Secret: "
                            << ( m_showSecret ? toHex( s.ref() ) :
@@ -432,17 +444,20 @@ public:
                     bytesSec s = secretStore().secret( u, [&]() {
                         return getPassword( "Enter passphrase for key " + toUUID( u ) + ": " );
                     } );
-                    cdebug << "Key " << i << ":" << "\n";
+                    cdebug << "Key " << i << ":"
+                           << "\n";
                     cdebug << "  Address: " << toAddress( Secret( s ) ).hex() << "\n";
                     cdebug << "  Secret: "
                            << ( m_showSecret ? toHex( s.ref() ) :
                                                ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) )
                            << "\n";
                 } else if ( Address a = toAddress( i ) ) {
-                    cdebug << "Key " << a.abridged() << ":" << "\n";
+                    cdebug << "Key " << a.abridged() << ":"
+                           << "\n";
                     cdebug << "  Address: " << a.hex() << "\n";
                 } else
-                    cerror << "Couldn't inspect " << i << "; not found." << "\n";
+                    cerror << "Couldn't inspect " << i << "; not found."
+                           << "\n";
             break;
         case OperationMode::ExportBare:
             break;
@@ -459,16 +474,19 @@ public:
                         cerror << "Re-encoded " << toUUID( u ) << "\n";
                     else
                         cerror << "Couldn't re-encode " << toUUID( u )
-                               << "; key corrupt or incorrect passphrase supplied." << "\n";
+                               << "; key corrupt or incorrect passphrase supplied."
+                               << "\n";
                 else
-                    cerror << "Couldn't re-encode " << i << "; not found." << "\n";
+                    cerror << "Couldn't re-encode " << i << "; not found."
+                           << "\n";
             break;
         case OperationMode::KillBare:
             for ( auto const& i : m_inputs )
                 if ( h128 u = fromUUID( i ) )
                     secretStore().kill( u );
                 else
-                    cerror << "Couldn't kill " << i << "; not found." << "\n";
+                    cerror << "Couldn't kill " << i << "; not found."
+                           << "\n";
             break;
         case OperationMode::New: {
             keyManager();
@@ -483,7 +501,8 @@ public:
             cdebug << "Created key " << toUUID( u ) << "\n";
             cdebug << "  Name: " << m_name << "\n";
             if ( usesMaster )
-                cdebug << "  Uses master passphrase." << "\n";
+                cdebug << "  Uses master passphrase."
+                       << "\n";
             else
                 cdebug << "  Password hint: " << m_lockHint << "\n";
             cdebug << "  Address: " << k.address().hex() << "\n";
@@ -491,7 +510,8 @@ public:
         }
         case OperationMode::Import: {
             if ( m_inputs.size() != 1 ) {
-                cerror << "Error: exactly one key must be given to import." << "\n";
+                cerror << "Error: exactly one key must be given to import."
+                       << "\n";
                 break;
             }
 
@@ -500,7 +520,8 @@ public:
             bytesSec s = keyManager().store().secret(
                 u, [&]() { return ( pw = getPassword( "Enter the passphrase for the key: " ) ); } );
             if ( s.size() != 32 ) {
-                cerror << "Error: couldn't decode key or invalid secret size." << "\n";
+                cerror << "Error: couldn't decode key or invalid secret size."
+                       << "\n";
                 break;
             }
 
@@ -516,7 +537,8 @@ public:
             cdebug << "Imported key " << toUUID( u ) << "\n";
             cdebug << "  Name: " << m_name << "\n";
             if ( usesMaster )
-                cdebug << "  Uses master passphrase." << "\n";
+                cdebug << "  Uses master passphrase."
+                       << "\n";
             else
                 cdebug << "  Password hint: " << m_lockHint << "\n";
             cdebug << "  Address: " << a.hex() << "\n";
@@ -524,7 +546,8 @@ public:
         }
         case OperationMode::ImportWithAddress: {
             if ( m_inputs.size() != 1 ) {
-                cerror << "Error: exactly one key must be given to import." << "\n";
+                cerror << "Error: exactly one key must be given to import."
+                       << "\n";
                 break;
             }
             keyManager();
@@ -579,12 +602,15 @@ public:
                         keyManager(), "Enter new passphrase for key '" + i + "': " );
                     if ( keyManager().recode(
                              a, np.first, np.second, [&]() { return pw; }, kdf() ) )
-                        cdebug << "Re-encoded key '" << i << "' successfully." << "\n";
+                        cdebug << "Re-encoded key '" << i << "' successfully."
+                               << "\n";
                     else
                         cerror << "Couldn't re-encode '" << i
-                               << "''; key corrupt or incorrect passphrase supplied." << "\n";
+                               << "''; key corrupt or incorrect passphrase supplied."
+                               << "\n";
                 } else
-                    cerror << "Couldn't re-encode " << i << "; not found." << "\n";
+                    cerror << "Couldn't re-encode " << i << "; not found."
+                           << "\n";
             break;
         case OperationMode::Kill: {
             unsigned count = 0;
@@ -592,15 +618,18 @@ public:
                 if ( Address a = userToAddress( i ) )
                     keyManager().kill( a );
                 else
-                    cerror << "Couldn't kill " << i << "; not found." << "\n";
+                    cerror << "Couldn't kill " << i << "; not found."
+                           << "\n";
                 ++count;
             }
-            cdebug << count << " key(s) deleted." << "\n";
+            cdebug << count << " key(s) deleted."
+                   << "\n";
             break;
         }
         case OperationMode::List: {
             if ( keyManager().store().keys().empty() ) {
-                cdebug << "No keys found." << "\n";
+                cdebug << "No keys found."
+                       << "\n";
                 break;
             }
 
@@ -615,7 +644,8 @@ public:
                 } else
                     bare.push_back( u );
             for ( auto const& u : bare )
-                cdebug << toUUID( u ) << " (Bare)" << "\n";
+                cdebug << toUUID( u ) << " (Bare)"
+                       << "\n";
             break;
         }
         default:
@@ -630,26 +660,36 @@ public:
     }
 
     static void streamHelp( ostream& _out ) {
-        _out << "Secret-store (\"bare\") operation modes:" << "\n"
-             << "    listbare  List all secret available in secret-store." << "\n"
+        _out << "Secret-store (\"bare\") operation modes:"
+             << "\n"
+             << "    listbare  List all secret available in secret-store."
+             << "\n"
              << "    newbare  Generate and output a key without interacting with wallet and dump "
                 "the JSON."
              << "\n"
              << "    importbare [ <file>|<secret-hex> , ... ] Import keys from given sources."
              << "\n"
-             << "    recodebare [ <uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << "\n"
+             << "    recodebare [ <uuid>|<file> , ... ]  Decrypt and re-encrypt given keys."
+             << "\n"
              << "    inspectbare [ <uuid>|<file> , ... ]  Output information on given keys."
              << "\n"
              //			<< "    exportbare [ <uuid> , ... ]  Export given keys." << "\n"
-             << "    killbare [ <uuid> , ... ]  Delete given keys." << "\n"
-             << "Secret-store configuration:" << "\n"
-             << "    --secrets-path <path>  Specify Web3 secret-store path (default: "
-             << SecretStore::defaultPath() << ")" << "\n"
+             << "    killbare [ <uuid> , ... ]  Delete given keys."
              << "\n"
-             << "Wallet operating modes:" << "\n"
-             << "    createwallet  Create an Ethereum master wallet." << "\n"
-             << "    list  List all keys available in wallet." << "\n"
-             << "    new <name>  Create a new key with given name and add it in the wallet." << "\n"
+             << "Secret-store configuration:"
+             << "\n"
+             << "    --secrets-path <path>  Specify Web3 secret-store path (default: "
+             << SecretStore::defaultPath() << ")"
+             << "\n"
+             << "\n"
+             << "Wallet operating modes:"
+             << "\n"
+             << "    createwallet  Create an Ethereum master wallet."
+             << "\n"
+             << "    list  List all keys available in wallet."
+             << "\n"
+             << "    new <name>  Create a new key with given name and add it in the wallet."
+             << "\n"
              << "    import [<uuid>|<file>|<secret-hex>] <name>  Import keys from given source and "
                 "place in wallet."
              << "\n"
@@ -659,19 +699,26 @@ public:
              << "    importwithaddress [<uuid>|<file>|<secret-hex>] <address> <name>  Import keys "
                 "from given source with given address and place in wallet."
              << "\n"
-             << "    export [ <address>|<uuid> , ... ]  Export given keys." << "\n"
+             << "    export [ <address>|<uuid> , ... ]  Export given keys."
+             << "\n"
              << "    inspect [ <address>|<name>|<uuid> ] ...  Print information on the given keys."
              << "\n"
              //			<< "    recode [ <address>|<uuid>|<file> , ... ]  Decrypt and re-encrypt
              // given keys." << "\n"
-             << "    kill [ <address>|<uuid>, ... ]  Delete given keys." << "\n"
-             << "Wallet configuration:" << "\n"
-             << "    --wallet-path <path>  Specify Ethereum wallet path (default: "
-             << KeyManager::defaultPath() << ")" << "\n"
-             << "    -m, --master <passphrase>  Specify wallet (master) passphrase." << "\n"
+             << "    kill [ <address>|<uuid>, ... ]  Delete given keys."
              << "\n"
-             << "Transaction operating modes:" << "\n"
-             << "    decode ( [ <hex>|<file> ] )  Decode given transaction." << "\n"
+             << "Wallet configuration:"
+             << "\n"
+             << "    --wallet-path <path>  Specify Ethereum wallet path (default: "
+             << KeyManager::defaultPath() << ")"
+             << "\n"
+             << "    -m, --master <passphrase>  Specify wallet (master) passphrase."
+             << "\n"
+             << "\n"
+             << "Transaction operating modes:"
+             << "\n"
+             << "    decode ( [ <hex>|<file> ] )  Decode given transaction."
+             << "\n"
              << "    sign [ <address>|<uuid>|<file> ] ( [ <hex>|<file> , ... ] )  (Re-)Sign given "
                 "transaction."
              << "\n"
@@ -683,16 +730,21 @@ public:
              << "\n"
              << "    --tx-data <hex>  Specify the hex data for the transaction to be signed."
              << "\n"
-             << "    --tx-nonce <n>  Specify the nonce for the transaction to be signed." << "\n"
-             << "    --tx-gas <n>  Specify the gas for the transaction to be signed." << "\n"
+             << "    --tx-nonce <n>  Specify the nonce for the transaction to be signed."
+             << "\n"
+             << "    --tx-gas <n>  Specify the gas for the transaction to be signed."
+             << "\n"
              << "    --tx-gasprice <wei>  Specify the gas price for the transaction to be signed."
              << "\n"
-             << "    --tx-value <wei>  Specify the value for the transaction to be signed." << "\n"
-             << "Transaction signing options:" << "\n"
+             << "    --tx-value <wei>  Specify the value for the transaction to be signed."
+             << "\n"
+             << "Transaction signing options:"
+             << "\n"
              << "    --force-nonce <n>  Override the nonce for any transactions to be signed."
              << "\n"
              << "\n"
-             << "Encryption configuration:" << "\n"
+             << "Encryption configuration:"
+             << "\n"
              << "    --kdf <kdfname>  Specify KDF to use when encrypting (default: sc	rypt)"
              << "\n"
              << "    --kdf-param <name> <value>  Specify a parameter for the KDF."
@@ -703,12 +755,17 @@ public:
              //<< "\n"
              << "    --lock <passphrase>  Specify passphrase for when encrypting a (the) key."
              << "\n"
-             << "    --hint <hint>  Specify hint for the --lock passphrase." << "\n"
+             << "    --hint <hint>  Specify hint for the --lock passphrase."
              << "\n"
-             << "Decryption configuration:" << "\n"
-             << "    --unlock <passphrase>  Specify passphrase for a (the) key." << "\n"
-             << "Key generation configuration:" << "\n"
-             << "    --no-icap  Don't bother to make a direct-ICAP capable key." << "\n";
+             << "\n"
+             << "Decryption configuration:"
+             << "\n"
+             << "    --unlock <passphrase>  Specify passphrase for a (the) key."
+             << "\n"
+             << "Key generation configuration:"
+             << "\n"
+             << "    --no-icap  Don't bother to make a direct-ICAP capable key."
+             << "\n";
     }
 
     static bytes inputData( std::string const& _input, bool* _isFile = nullptr ) {
@@ -732,7 +789,8 @@ private:
             if ( _w.load( m_masterPassword ) )
                 break;
             if ( !m_masterPassword.empty() ) {
-                cdebug << "Password invalid. Try again." << "\n";
+                cdebug << "Password invalid. Try again."
+                       << "\n";
                 m_masterPassword.clear();
             }
             m_masterPassword = getPassword( "Please enter your MASTER passphrase: " );
@@ -757,7 +815,8 @@ private:
             if ( m_keyManager->exists() )
                 openWallet( *m_keyManager );
             else if ( !walletLess ) {
-                cerror << "Couldn't open wallet. Does it exist?" << "\n";
+                cerror << "Couldn't open wallet. Does it exist?"
+                       << "\n";
                 exit( -1 );
             }
         }

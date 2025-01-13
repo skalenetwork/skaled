@@ -695,7 +695,7 @@ std::map< std::string, DiskInfo > disk_load() {
 
 nlohmann::json calculate_load_interval( const std::map< std::string, DiskInfo >& prevLoad,
     const std::map< std::string, DiskInfo >& currentLoad, size_t nSleepMs ) {
-#define S_VALUE( m, n, p ) ( ( ( double ) ( ( n ) - ( m ) ) ) / ( p ) * 100 )
+#define S_VALUE( m, n, p ) ( ( ( double ) ( ( n ) - ( m ) ) ) / ( p ) *100 )
     nlohmann::json jo = nlohmann::json::object();
     if ( prevLoad.size() != currentLoad.size() )
         return jo;  // some device missed
@@ -1038,7 +1038,7 @@ void md5::finalize() {
     // save number of bits
     encode( bits, count, 8 );
     // pad out to 56 mod 64.
-    index = ( uint4 ) ( ( count[0] >> 3 ) & 0x3f );
+    index = ( uint4 )( ( count[0] >> 3 ) & 0x3f );
     padLen = ( index < 56 ) ? ( 56 - index ) : ( 120 - index );
     update( PADDING, padLen );
     update( bits, 8 );                // append length (before padding)
@@ -1203,10 +1203,10 @@ void md5::encode( uint1* output, uint4* input, uint4 len ) {
     // Encodes input (UINT4) into output (unsigned char). Assumes len is a multiple of 4.
     unsigned int i, j;
     for ( i = 0, j = 0; j < len; i++, j += 4 ) {
-        output[j] = ( uint1 ) ( input[i] & 0xff );
-        output[j + 1] = ( uint1 ) ( ( input[i] >> 8 ) & 0xff );
-        output[j + 2] = ( uint1 ) ( ( input[i] >> 16 ) & 0xff );
-        output[j + 3] = ( uint1 ) ( ( input[i] >> 24 ) & 0xff );
+        output[j] = ( uint1 )( input[i] & 0xff );
+        output[j + 1] = ( uint1 )( ( input[i] >> 8 ) & 0xff );
+        output[j + 2] = ( uint1 )( ( input[i] >> 16 ) & 0xff );
+        output[j + 3] = ( uint1 )( ( input[i] >> 24 ) & 0xff );
     }
 }
 void md5::decode( uint4* output, uint1* input, uint4 len ) {
@@ -1439,7 +1439,8 @@ bool get_signal_description( int nSignalNo, std::string& strSignalName,
         int nDistFromMin = nSignalNo - nRangeMin;
         std::stringstream ss;
         ss << "Signal " << nSignalNo << " is in range [SIGRTMIN(" << nRangeMin << ")...SIGRTMAX("
-           << nRangeMax << ")]." << " Distance from SIGRTMIN is " << nDistFromMin << "."
+           << nRangeMax << ")]."
+           << " Distance from SIGRTMIN is " << nDistFromMin << "."
            << "This is a set of signals that varies between systems."
            << " They are labeled SIGRTMIN+1, SIGRTMIN+2, SIGRTMIN+3, ......., and so on (usually "
               "up to 15)."
@@ -1679,7 +1680,8 @@ void json_config_file_accessor::reloadConfigIfNeeded() {
         std::cout << strLogPrefix << " Loading configuration from " << configPath_ << " ... "
                   << "\n";
         std::ifstream ifs( configPath_.c_str() );
-        std::cout << strLogPrefix << " Parsing configuration JSON ... " << "\n";
+        std::cout << strLogPrefix << " Parsing configuration JSON ... "
+                  << "\n";
         nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
         joConfig_ = joNewConfig;
         configModificationTime_ = tt;
@@ -1691,7 +1693,8 @@ void json_config_file_accessor::reloadConfigIfNeeded() {
             std::string( "Failed to reload modified configuration file: " ) + ex.what() );
     } catch ( ... ) {
         std::cout << strLogPrefix << " Failed to reload modified configuration file " << configPath_
-                  << ": " << "unknown exception\n";
+                  << ": "
+                  << "unknown exception\n";
         throw std::runtime_error(
             "Failed to reload modified configuration file: unknown exception" );
     }

@@ -363,7 +363,7 @@ void loop::run() {
                         pLoop->pending_timer_init();
                 } );
             }  // if ( p_uvAsyncInitForTimers_ != nullptr )
-#endif  // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
+#endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
         // )
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
@@ -996,7 +996,7 @@ bool queue::impl_job_run() {  // fetch first asynchronously stored job and run
         fn = jobs_.front();
         jobs_.pop_front();
         --async_job_count_;  // cached value of jobs_.size()
-    }  // block
+    }                        // block
     --pDomain->async_job_count_;
     if ( !impl_job_run( fn ) )
         return false;
@@ -1475,7 +1475,7 @@ void domain::impl_shutdown() {
                 break;
             std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
         }  // for( ; true; )
-    }  // if( cntThreads > 0 )
+    }      // if( cntThreads > 0 )
     std::cout << "Dispatch: All threads stopped\n";
     std::cout.flush();
     // wait loop to shutdown
@@ -1560,7 +1560,7 @@ void domain::impl_decrease_accumulators( priority_t acc_subtract ) {
         if ( rest )
             return;                          // skip
         decrease_accumulators_counter_ = 0;  // reset
-    }  // if( period > 1 )
+    }                                        // if( period > 1 )
     if ( accumulator_base_ >= acc_subtract )
         accumulator_base_ -= acc_subtract;
     else

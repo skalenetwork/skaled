@@ -454,8 +454,8 @@ std::size_t json_extra_space( const std::string& s ) noexcept {
             if ( c >= 0x00 and c <= 0x1f )
                 result += 5;
             break;  // from c (1 byte) to \uxxxx (6 bytes)
-        }  // switch( c )
-    }  // for( const auto & c : s )
+        }           // switch( c )
+    }               // for( const auto & c : s )
     return result;
 }
 std::string json_escape_string( const std::string& s ) noexcept {
@@ -503,7 +503,7 @@ std::string json_escape_string( const std::string& s ) noexcept {
                 result[pos++] = c;  // all other characters are added as-is
             break;
         }  // switch( c )
-    }  // for( const auto & c : s )
+    }      // for( const auto & c : s )
     return result;
 }
 static void json_internal( const nlohmann::json& jo, std::ostream& os, const bool pretty_print,

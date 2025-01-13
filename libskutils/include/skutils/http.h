@@ -18,11 +18,11 @@
 #endif  // _MSC_VER
 
 #ifndef S_ISREG
-#define S_ISREG( m ) ( ( ( m ) & S_IFREG ) == S_IFREG )
+#define S_ISREG( m ) ( ( ( m ) &S_IFREG ) == S_IFREG )
 #endif  // S_ISREG
 
 #ifndef S_ISDIR
-#define S_ISDIR( m ) ( ( ( m ) & S_IFDIR ) == S_IFDIR )
+#define S_ISDIR( m ) ( ( ( m ) &S_IFDIR ) == S_IFDIR )
 #endif  // S_ISDIR
 
 #ifndef NOMINMAX

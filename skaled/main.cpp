@@ -1241,8 +1241,8 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "special-rpc-trace" ) )
         bTraceJsonRpcSpecialCalls = true;
-    LOG( loggerDebug ) << "Special JSON RPC" << " trace logging mode is "
-                       << flag_ed( bTraceJsonRpcSpecialCalls );
+    LOG( loggerDebug ) << "Special JSON RPC"
+                       << " trace logging mode is " << flag_ed( bTraceJsonRpcSpecialCalls );
 
     // First, get "enable-personal-apis", "enable-admin-apis", "enable-debug-behavior-apis",
     // "enable-performance-tracker-apis" from config.json Second, get it from command line parameter
@@ -1498,7 +1498,9 @@ int main( int argc, char** argv ) try {
         else if ( isFalse( m ) )
             upnp = false;
         else {
-            cerr << "Bad " << "--upnp" << " option: " << m << "\n";
+            cerr << "Bad "
+                 << "--upnp"
+                 << " option: " << m << "\n";
             return EX_USAGE;
         }
     }
@@ -1507,8 +1509,9 @@ int main( int argc, char** argv ) try {
         try {
             networkID = vm["network-id"].as< unsigned >();
         } catch ( ... ) {
-            cerr << "Bad " << "--network-id" << " option: " << vm["network-id"].as< string >()
-                 << "\n";
+            cerr << "Bad "
+                 << "--network-id"
+                 << " option: " << vm["network-id"].as< string >() << "\n";
             return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
@@ -1735,7 +1738,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t ) ( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
@@ -1840,7 +1843,9 @@ int main( int argc, char** argv ) try {
         if ( strAA == "yes" || strAA == "no" || strAA == "always" )
             autoAuthAnswer = strAA;
         else {
-            LOG( loggerError ) << "Bad " << "--aa" << " option: " << strAA << "\n";
+            LOG( loggerError ) << "Bad "
+                               << "--aa"
+                               << " option: " << strAA << "\n";
             return EX_USAGE;
         }
         LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;
@@ -1976,12 +1981,13 @@ int main( int argc, char** argv ) try {
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
                 return EX_IOERR;
             }  // catch
-        }  // if ( is_ipc )
+        }      // if ( is_ipc )
 
         auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
             if ( nPort <= 0 || nPort >= 65536 ) {
                 LOG( loggerError ) << "WARNING: No valid port value provided with "
-                                   << std::string( "--" ) + strCommandLineKey << "=" << "number";
+                                   << std::string( "--" ) + strCommandLineKey << "="
+                                   << "number";
                 return false;
             }
             return true;
@@ -2521,7 +2527,8 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo" << " start... ";
+                        LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo"
+                                           << " start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
                         6, e_server_mode_t::esm_informational );

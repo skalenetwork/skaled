@@ -198,7 +198,8 @@ void SnapshotAgent::startHashComputingThread() {
             m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 
         } catch ( const std::exception& ex ) {
-            LOG( m_loggerError ) << "CRITICAL" << " " << dev::nested_exception_what( ex )
+            LOG( m_loggerError ) << "CRITICAL"
+                                 << " " << dev::nested_exception_what( ex )
                                  << " in computeSnapshotHash(). Exiting...";
             LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
             ExitHandler::exitHandler( -1, ExitHandler::ec_compute_snapshot_error );

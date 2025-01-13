@@ -423,13 +423,15 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
                 LOG( m_loggerErrorGetSnapshotSignature )
-                    << "FATAL:" << " Exception while trying to connect to sgx server: "
+                    << "FATAL:"
+                    << " Exception while trying to connect to sgx server: "
                     << "connection refused";
             }
 
             skutils::rest::data_t d;
             while ( true ) {
-                LOG( m_loggerInfoGetSnapshotSignature ) << ">>> SGX call >>>" << " " << joCall;
+                LOG( m_loggerInfoGetSnapshotSignature ) << ">>> SGX call >>>"
+                                                        << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
                      skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -438,11 +440,14 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
                         LOG( m_loggerErrorGetSnapshotSignature )
-                            << "ERROR:" << " Exception while trying to connect to sgx server: "
-                            << " error with connection: " << " retrying... ";
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with connection: "
+                            << " retrying... ";
                     } else {
                         LOG( m_loggerErrorGetSnapshotSignature )
-                            << "ERROR:" << " Exception while trying to connect to sgx server: "
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
                             << " error with ssl certificates " << d.ei_.strError_;
                     }
                 } else {
@@ -452,16 +457,16 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-                LOG( m_loggerErrorGetSnapshotSignature )
-                    << "!!! SGX call error !!!" << " " << g_strErrMsg;
+                LOG( m_loggerErrorGetSnapshotSignature ) << "!!! SGX call error !!!"
+                                                         << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
 
             nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
             nlohmann::json joResponse =
                 ( joAnswer.count( "result" ) > 0 ) ? joAnswer["result"] : joAnswer;
-            clog( VerbosityInfo, "skale_getSnapshotSignature" )
-                << "<<< SGX call <<<" << " " << joResponse;
+            clog( VerbosityInfo, "skale_getSnapshotSignature" ) << "<<< SGX call <<<"
+                                                                << " " << joResponse;
             if ( joResponse["status"] != 0 ) {
                 throw std::runtime_error(
                     "SGX Server call to blsSignMessageHash returned non-zero status" );
@@ -590,7 +595,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST failed to connect to server(1)";
                 clog( VerbosityError, "download snapshot" )
-                    << "FATAL:" << " " << "REST failed to connect to server(1)";
+                    << "FATAL:"
+                    << " "
+                    << "REST failed to connect to server(1)";
                 return false;
             }
 
@@ -602,8 +609,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             if ( d.empty() ) {
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "Failed to get latest bockNumber";
-                clog( VerbosityError, "download snapshot" )
-                    << "FATAL:" << " " << "Failed to get latest bockNumber";
+                clog( VerbosityError, "download snapshot" ) << "FATAL:"
+                                                            << " "
+                                                            << "Failed to get latest bockNumber";
                 return false;
             }
             // TODO catch?
@@ -615,8 +623,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         if ( !cli.open( strURLWeb3 ) ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST failed to connect to server(2)";
-            clog( VerbosityError, "download snapshot" )
-                << "FATAL:" << " " << "REST failed to connect to server(2)";
+            clog( VerbosityError, "download snapshot" ) << "FATAL:"
+                                                        << " "
+                                                        << "REST failed to connect to server(2)";
             return false;
         }
 
@@ -630,14 +639,17 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
         if ( !d.err_s_.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed: " + d.err_s_;
-            clog( VerbosityError, "download snapshot" )
-                << "FATAL:" << " " << "REST call failed: " << d.err_s_;
+            clog( VerbosityError, "download snapshot" ) << "FATAL:"
+                                                        << " "
+                                                        << "REST call failed: " << d.err_s_;
             return false;
         }
         if ( d.empty() ) {
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = "REST call failed";
-            clog( VerbosityError, "download snapshot" ) << "FATAL:" << " " << "REST call failed";
+            clog( VerbosityError, "download snapshot" ) << "FATAL:"
+                                                        << " "
+                                                        << "REST call failed";
             return false;
         }
         nlohmann::json joAnswer = nlohmann::json::parse( d.s_ );
@@ -653,7 +665,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
             }
             if ( pStrErrorDescription )
                 ( *pStrErrorDescription ) = s;
-            clog( VerbosityError, "download snapshot" ) << "FATAL:" << " " << s;
+            clog( VerbosityError, "download snapshot" ) << "FATAL:"
+                                                        << " " << s;
             return false;
         }
         size_t sizeOfFile = joSnapshotInfo["dataSize"].get< size_t >();
@@ -687,7 +700,9 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                 if ( pStrErrorDescription )
                     ( *pStrErrorDescription ) = "REST call failed(fragment downloader)";
                 clog( VerbosityError, "download snapshot" )
-                    << "FATAL:" << " " << "REST call failed(fragment downloader)";
+                    << "FATAL:"
+                    << " "
+                    << "REST call failed(fragment downloader)";
                 return false;
             }
             std::vector< uint8_t > buffer;
@@ -702,7 +717,8 @@ bool download( const std::string& strURLWeb3, unsigned& block_number, const fs::
                     s += joFragment["error"].get< std::string >();
                     if ( pStrErrorDescription )
                         ( *pStrErrorDescription ) = s;
-                    clog( VerbosityError, "download snapshot" ) << "FATAL:" << " " << s;
+                    clog( VerbosityError, "download snapshot" ) << "FATAL:"
+                                                                << " " << s;
                     return false;
                 }
                 // size_t sizeArrived = joFragment["size"];

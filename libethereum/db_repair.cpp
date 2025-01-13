@@ -38,7 +38,8 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
         cdebug << "Block " << bn << "\n";
         if ( transaction_hashes.size() || header.timestamp() == prev_ts ) {
             cdebug << block_json << "\n";
-            cdebug << "Transactions: " << "\n";
+            cdebug << "Transactions: "
+                   << "\n";
             for ( size_t i = 0; i < transaction_hashes.size(); ++i ) {
                 h256 tx_hash = transaction_hashes[i];
                 pair< h256, int > loc = _bc.transactionLocation( tx_hash );
@@ -46,7 +47,8 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
                        << ( loc.first == header.hash() ? "block hash ok" : "block hash error!" )
                        << " " << loc.second << "\n";
             }  // for t
-            cdebug << "Bloom:" << "\n";
+            cdebug << "Bloom:"
+                   << "\n";
             cdebug << bloom.hex() << endl;
         }  // if
 

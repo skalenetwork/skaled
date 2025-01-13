@@ -66,7 +66,7 @@ void VM::throwBadStack( int _removed, int _added ) {
         BOOST_THROW_EXCEPTION( StackUnderflow() << RequirementError( ( bigint ) _removed, size ) );
     else
         BOOST_THROW_EXCEPTION(
-            OutOfStack() << RequirementError( ( bigint ) ( _added - _removed ), size ) );
+            OutOfStack() << RequirementError( ( bigint )( _added - _removed ), size ) );
 }
 
 void VM::throwRevertInstruction( owning_bytes_ref&& _output ) {

@@ -242,7 +242,7 @@ void Executive::verifyTransaction( Transaction const& _transaction, time_t _comm
                                                          _state.balance( _transaction.sender() ) ) )
                                    << errinfo_comment( _transaction.sender().hex() ) );
         }  // if balance
-    }  // if !zero
+    }      // if !zero
 
     _transaction.verifiedOn = _blockHeader.number();
 }
@@ -328,7 +328,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 ) ( _p.gas - g );
+            m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) = m_chainParams.executePrecompiled(
@@ -451,7 +451,8 @@ OnOpFunc Executive::simpleTrace() {
         LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
                            << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
                            << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32" << " >";
+                           << gasCost << " : " << newMemSize << "x32"
+                           << " >";
     };
 }
 

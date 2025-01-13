@@ -177,7 +177,7 @@ bool AlethExecutive::call(
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 ) ( _p.gas - g );
+            m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) =
@@ -307,7 +307,8 @@ OnOpFunc AlethExecutive::simpleTrace() {
         LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
                            << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
                            << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32" << " >";
+                           << gasCost << " : " << newMemSize << "x32"
+                           << " >";
     };
 }
 

@@ -277,11 +277,11 @@ typedef uint16_t MicroProfileGroupId;
 #define MicroProfileDumpFileImmediately( html, csv, gfcontext ) \
     do {                                                        \
     } while ( 0 )
-#define MicroProfileWebServerPort() ( ( uint32_t ) - 1 )
+#define MicroProfileWebServerPort() ( ( uint32_t ) -1 )
 #define MicroProfileStartContextSwitchTrace() \
     do {                                      \
     } while ( 0 )
-#define MicroProfileWebServerPort() ( ( uint32_t ) - 1 )
+#define MicroProfileWebServerPort() ( ( uint32_t ) -1 )
 #define MicroProfileGpuInsertTimeStamp( a ) 1
 #define MicroProfileGpuGetTimeStamp( a ) 0
 #define MicroProfileTicksPerSecondGpu() 1
@@ -491,7 +491,7 @@ typedef uint64_t MicroProfileThreadIdType;
 #define MICROPROFILE_COUNTER_LOCAL_ADD( var, count ) \
     MicroProfileLocalCounterAdd( &g_mp_local_counter##var, ( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SUB( var, count ) \
-    MicroProfileLocalCounterAdd( &g_mp_local_counter##var, -( int64_t ) ( count ) )
+    MicroProfileLocalCounterAdd( &g_mp_local_counter##var, -( int64_t )( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SET( var, count ) \
     MicroProfileLocalCounterSet( &g_mp_local_counter##var, count )
 #define MICROPROFILE_COUNTER_LOCAL_UPDATE_ADD( var ) \
@@ -503,7 +503,7 @@ typedef uint64_t MicroProfileThreadIdType;
 #define MICROPROFILE_COUNTER_LOCAL_ADD_ATOMIC( var, count ) \
     MicroProfileLocalCounterAddAtomic( &g_mp_local_counter##var, ( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SUB_ATOMIC( var, count ) \
-    MicroProfileLocalCounterAddAtomic( &g_mp_local_counter##var, -( int64_t ) ( count ) )
+    MicroProfileLocalCounterAddAtomic( &g_mp_local_counter##var, -( int64_t )( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SET_ATOMIC( var, count ) \
     MicroProfileLocalCounterSetAtomic( &g_mp_local_counter##var, count )
 #define MICROPROFILE_COUNTER_LOCAL_UPDATE_ADD_ATOMIC( var ) \
@@ -677,7 +677,7 @@ struct MicroProfileScopeStateC;
 extern "C" {
 #endif
 
-#define MICROPROFILE_INVALID_TOKEN ( ( uint64_t ) - 1 )
+#define MICROPROFILE_INVALID_TOKEN ( ( uint64_t ) -1 )
 
 MICROPROFILE_API void MicroProfileInit();
 MICROPROFILE_API void MicroProfileShutdown();

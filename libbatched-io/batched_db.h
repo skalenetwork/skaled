@@ -79,7 +79,8 @@ public:
     virtual ~batched_db();
 
 protected:
-    void recover() { /*nothing*/ }
+    void recover() { /*nothing*/
+    }
 };
 
 class db_splitter {
@@ -115,7 +116,8 @@ private:
             std::string& _prefix, std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const;
 
     protected:
-        virtual void recover() { /* nothing */ }
+        virtual void recover() { /* nothing */
+        }
     };
 };
 
