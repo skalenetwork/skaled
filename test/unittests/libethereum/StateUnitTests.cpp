@@ -99,6 +99,7 @@ BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
 
 
 BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
+    state.createReadOnlyStateDBSnap( 0 );
     State sr = state.createReadOnlySnapBasedCopy();
 #ifdef HISTORIC_STATE
     sr.mutableHistoricState().setRootFromDB();
@@ -126,6 +127,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
 
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     uint maxResults = 3;
+    state.createReadOnlyStateDBSnap( 0 );
     State sr = state.createReadOnlySnapBasedCopy();
 #ifdef HISTORIC_STATE
     sr.mutableHistoricState().setRootFromDB();
