@@ -568,13 +568,14 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                                    std::to_string( pThis->getRelay().serverIndex() ) +
                                    "/ERR !!! " ) +
                       pThis->desc() + cc::ws_tx( " !!! " ) + e );
-        json joErrorResponce;
-        joErrorResponce["id"] = joID;
+        json joErrorResponse;
+        joErrorResponse["jsonrpc"] = "2.0";
+        joErrorResponse["id"] = joID;
         json joErrorObj;
         joErrorObj["code"] = -32000;
         joErrorObj["message"] = string( e );
-        joErrorResponce["error"] = joErrorObj;
-        string strResponse = joErrorResponce.dump();
+        joErrorResponse["error"] = joErrorObj;
+        string strResponse = joErrorResponse.dump();
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
         return;
     }
@@ -590,14 +591,15 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                                                                                        // per second
     case skutils::unddos::e_high_load_detection_result_t::ehldr_already_banned:  // still banned
     case skutils::unddos::e_high_load_detection_result_t::ehldr_bad_origin: {
-        json joErrorResponce;
-        joErrorResponce["id"] = joID;
+        json joErrorResponse;
+        joErrorResponse["id"] = joID;
+        joErrorResponse["jsonrpc"] = "2.0";
         json joErrorObj;
         joErrorObj["code"] = -32000;
         joErrorObj["message"] = "Too many request for this method from this IP address";
         ;
-        joErrorResponce["error"] = joErrorObj;
-        string strResponse = joErrorResponce.dump();
+        joErrorResponse["error"] = joErrorObj;
+        string strResponse = joErrorResponse.dump();
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
     }
         return;
@@ -653,13 +655,14 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                                         std::to_string( pThis->getRelay().serverIndex() ) +
                                         "/ERR !!! " ) +
                            pThis->desc() + cc::ws_tx( " !!! " ) + ex.what() );
-                json joErrorResponce;
-                joErrorResponce["id"] = joID;
+                json joErrorResponse;
+                joErrorResponse["jsonrpc"] = "2.0";
+                joErrorResponse["id"] = joID;
                 json joErrorObj;
                 joErrorObj["code"] = -32000;
                 joErrorObj["message"] = string( ex.what() );
-                joErrorResponce["error"] = joErrorObj;
-                strResponse = joErrorResponce.dump();
+                joErrorResponse["error"] = joErrorObj;
+                strResponse = joErrorResponse.dump();
             } catch ( ... ) {
                 const char* e = "unknown exception in SkaleServerOverride";
                 clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() )
@@ -668,13 +671,14 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                                       std::to_string( pThis->getRelay().serverIndex() ) +
                                       "/ERR !!! " )
                     << pThis->desc() + cc::ws_tx( " !!! " ) + e;
-                json joErrorResponce;
-                joErrorResponce["id"] = joID;
+                json joErrorResponse;
+                joErrorResponse["jsonrpc"] = "2.0";
+                joErrorResponse["id"] = joID;
                 json joErrorObj;
                 joErrorObj["code"] = -32000;
                 joErrorObj["message"] = string( e );
-                joErrorResponce["error"] = joErrorObj;
-                strResponse = joErrorResponce.dump();
+                joErrorResponse["error"] = joErrorObj;
+                strResponse = joErrorResponse.dump();
             }
             if ( pSO->methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
                 clog( pSO->methodTraceVerbosity( strMethod ), pThis->getRelay().nfoGetSchemeUC() )
@@ -1923,31 +1927,33 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         } catch ( const std::exception& ex ) {
             logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
                 _serverIndex, _esm, _origin.c_str(), ex.what() );
-            json joErrorResponce;
-            joErrorResponce["id"] = joID;
+            json joErrorResponse;
+            joErrorResponse["jsonrpc"] = "2.0";
+            joErrorResponse["id"] = joID;
             json joErrorObj;
             joErrorObj["code"] = -32000;
             joErrorObj["message"] = string( ex.what() );
-            joErrorResponce["error"] = joErrorObj;
-            strResponse = joErrorResponce.dump();
+            joErrorResponse["error"] = joErrorObj;
+            strResponse = joErrorResponse.dump();
             if ( !isBatch ) {
                 rslt.isBinary_ = false;
-                rslt.joOut_ = joErrorResponce;
+                rslt.joOut_ = joErrorResponse;
             }
         } catch ( ... ) {
             const char* e = "unknown exception in SkaleServerOverride";
             logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
                 _serverIndex, _esm, _origin.c_str(), e );
-            json joErrorResponce;
-            joErrorResponce["id"] = joID;
+            json joErrorResponse;
+            joErrorResponse["id"] = joID;
+            joErrorResponse["jsonrpc"] = "2.0";
             json joErrorObj;
             joErrorObj["code"] = -32000;
             joErrorObj["message"] = string( e );
-            joErrorResponce["error"] = joErrorObj;
-            strResponse = joErrorResponce.dump();
+            joErrorResponse["error"] = joErrorObj;
+            strResponse = joErrorResponse.dump();
             if ( !isBatch ) {
                 rslt.isBinary_ = false;
-                rslt.joOut_ = joErrorResponce;
+                rslt.joOut_ = joErrorResponse;
             }
         }
         if ( methodTraceVerbosity( strMethod ) != dev::VerbositySilent )
