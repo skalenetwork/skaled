@@ -292,8 +292,8 @@ bool stat_remove_all_content_in_directory( const char* s ) {
     strCmd += " 1>/dev/nullptr 2>/dev/nullptr";
     int nErrorCode = ::system( strCmd.c_str() );
     if ( nErrorCode != 0 ) {
-        std::cerr << cc::error( "Command \"" ) << cc::p( strCmd ) << cc::error( "\" returned " )
-                  << cc::c( int64_t( nErrorCode ) ) << cc::error( " error code\n" );
+        std::cerr << "Command \"" << strCmd << "\" returned " << int64_t( nErrorCode )
+                  << " error code\n";
         return false;
     }
     return true;
@@ -480,8 +480,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strDays = skutils::tools::format( "%" PRId64, days );
         strDaysSuffix = "d";
         if ( isColored ) {
-            strDays = cc::note( strDays );
-            strDaysSuffix = cc::debug( strDaysSuffix );
+            strDays = strDays;
+            strDaysSuffix = strDaysSuffix;
         }
         ss << strDays << strDaysSuffix;
     }
@@ -489,8 +489,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strHours = skutils::tools::format( "%02d", int( hours ) );
         strHoursSuffix = "h";
         if ( isColored ) {
-            strHours = cc::note( strHours );
-            strHoursSuffix = cc::debug( strHoursSuffix );
+            strHours = strHours;
+            strHoursSuffix = strHoursSuffix;
         }
         ss << strHours << strHoursSuffix;
     }
@@ -498,8 +498,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strMinutes = skutils::tools::format( "%02d", int( minutes ) );
         strMinutesSuffix = "m";
         if ( isColored ) {
-            strMinutes = cc::note( strMinutes );
-            strMinutesSuffix = cc::debug( strMinutesSuffix );
+            strMinutes = strMinutes;
+            strMinutesSuffix = strMinutesSuffix;
         }
         ss << strMinutes << strMinutesSuffix;
     }
@@ -507,8 +507,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strSeconds = skutils::tools::format( "%02d", int( seconds ) );
         strSecondsSuffix = "s";
         if ( isColored ) {
-            strSeconds = cc::note( strSeconds );
-            strSecondsSuffix = cc::debug( strSecondsSuffix );
+            strSeconds = strSeconds;
+            strSecondsSuffix = strSecondsSuffix;
         }
         ss << strSeconds << strSecondsSuffix;
     }
@@ -516,8 +516,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strMilliSeconds = skutils::tools::format( "%03d", int( milliseconds ) );
         strMilliSecondsSuffix = "ms";
         if ( isColored ) {
-            strMilliSeconds = cc::note( strMilliSeconds );
-            strMilliSecondsSuffix = cc::debug( strMilliSecondsSuffix );
+            strMilliSeconds = strMilliSeconds;
+            strMilliSecondsSuffix = strMilliSecondsSuffix;
         }
         ss << strMilliSeconds << strMilliSecondsSuffix;
     }
@@ -526,8 +526,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strMicroSeconds = skutils::tools::format( "%03d", int( microseconds ) );
         strMicroSecondsSuffix = "μs";
         if ( isColored ) {
-            strMicroSeconds = cc::note( strMicroSeconds );
-            strMicroSecondsSuffix = cc::debug( strMicroSecondsSuffix );
+            strMicroSeconds = strMicroSeconds;
+            strMicroSecondsSuffix = strMicroSecondsSuffix;
         }
         ss << strMicroSeconds << strMicroSecondsSuffix;
     }
@@ -536,8 +536,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strNanoSeconds = skutils::tools::format( "%03d", int( ns ) );
         strNanoSecondsSuffix = "ns";
         if ( isColored ) {
-            strNanoSeconds = cc::note( strNanoSeconds );
-            strNanoSecondsSuffix = cc::debug( strNanoSecondsSuffix );
+            strNanoSeconds = strNanoSeconds;
+            strNanoSecondsSuffix = strNanoSecondsSuffix;
         }
         ss << strNanoSeconds << strNanoSecondsSuffix;
     }
@@ -1674,26 +1674,24 @@ void json_config_file_accessor::reloadConfigIfNeeded() {
         throw std::runtime_error( "Failed to access modified configuration file" );
     if ( configModificationTime_ == tt )
         return;
-    std::string strLogPrefix = cc::deep_info( "Reload configuration file" );
+    std::string strLogPrefix = "Reload configuration file";
     try {
-        std::cout << strLogPrefix << cc::debug( " Loading configuration from " )
-                  << cc::p( configPath_ ) << cc::debug( " ... " ) << "\n";
+        std::cout << strLogPrefix << " Loading configuration from " << configPath_ << " ... "
+                  << "\n";
         std::ifstream ifs( configPath_.c_str() );
-        std::cout << strLogPrefix << cc::debug( " Parsing configuration JSON ... " ) << "\n";
+        std::cout << strLogPrefix << " Parsing configuration JSON ... " << "\n";
         nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
         joConfig_ = joNewConfig;
         configModificationTime_ = tt;
-        std::cout << strLogPrefix << cc::success( " Done, loaded configuration file " )
-                  << cc::p( configPath_ ) << "\n";
+        std::cout << strLogPrefix << " Done, loaded configuration file " << configPath_ << "\n";
     } catch ( std::exception& ex ) {
-        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
-                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( ex.what() ) << "\n";
+        std::cout << strLogPrefix << " Failed to reload modified configuration file " << configPath_
+                  << ": " << ex.what() << "\n";
         throw std::runtime_error(
             std::string( "Failed to reload modified configuration file: " ) + ex.what() );
     } catch ( ... ) {
-        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
-                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( "unknown exception" )
-                  << "\n";
+        std::cout << strLogPrefix << " Failed to reload modified configuration file " << configPath_
+                  << ": " << "unknown exception\n";
         throw std::runtime_error(
             "Failed to reload modified configuration file: unknown exception" );
     }

@@ -1272,11 +1272,9 @@ bool domain::impl_queue_remove( const queue_id_t& id ) {
             } );
         if ( itFound != itTo ) {
             with_jobs_.erase( itFound );
-            LOCAL_DEBUG_TRACE( cc::sunny( "domain::impl_queue_remove()" ) + cc::debug( " did " ) +
-                               cc::error( "erased" ) + cc::debug( " already-removed queue " ) +
-                               cc::bright( id ) + cc::debug( ", " ) +
-                               cc::sunny( "with_jobs_.size()" ) + cc::debug( "=" ) +
-                               cc::size10( with_jobs_.size() ) );
+            LOCAL_DEBUG_TRACE( "domain::impl_queue_remove()" + " did " + "erased" +
+                               " already-removed queue " + id + ", " +
+                               "with_jobs_.size() = " + std::to_string( with_jobs_.size() ) );
         }
     }  // block
     return true;
@@ -1328,12 +1326,10 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                             try {
                                 if ( g_bVerboseDispatchThreadDetailsLogging ) {
                                     std::string strThreadStartupMessage =
-                                        cc::deep_note( "Dispatch:" ) + " " +
-                                        cc::debug( "Started thread " ) + cc::size10( idxThread ) +
-                                        cc::debug( " of " ) + cc::size10( cntThreadsToStart ) +
-                                        cc::debug( ", have " ) +
-                                        cc::size10( size_t( cntRunningThreads_ ) ) +
-                                        cc::debug( " running thread(s)" ) + "\n";
+                                        "Dispatch: Started thread " + std::to_string( idxThread ) +
+                                        " of " + std::to_string( cntThreadsToStart ) + ", have " +
+                                        std::to_string( size_t( cntRunningThreads_ ) ) +
+                                        " running thread(s)" + "\n";
                                     std::cout << strThreadStartupMessage;
                                     std::cout.flush();
                                 }
@@ -1368,38 +1364,30 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                                 if ( strError.empty() )
                                     strError = "Exception without description";
                                 std::string strErrorMessage =
-                                    cc::deep_note( "Dispatch:" ) + " " +
-                                    cc::fatal( "CRITICAL ERROR:" ) +
-                                    cc::error( "Got exception in thread " ) +
-                                    cc::size10( idxThread ) + cc::error( " of " ) +
-                                    cc::size10( cntThreadsToStart ) + cc::error( ", have " ) +
-                                    cc::size10( size_t( cntRunningThreads_ ) ) +
-                                    cc::error( " running threads, exception info: " ) +
-                                    cc::warn( strError ) + "\n";
+                                    "Dispatch: CRITICAL ERROR: Got exception in thread " +
+                                    std::to_string( idxThread ) + " of " +
+                                    std::to_string( cntThreadsToStart ) + ", have " +
+                                    std::to_string( size_t( cntRunningThreads_ ) ) +
+                                    " running threads, exception info: " + strError + "\n";
                                 std::cout << strErrorMessage;
                                 std::cout.flush();
                             } catch ( ... ) {
                                 std::string strErrorMessage =
-                                    cc::deep_note( "Dispatch:" ) + " " +
-                                    cc::fatal( "CRITICAL ERROR:" ) +
-                                    cc::error( "Got exception in thread " ) +
-                                    cc::size10( idxThread ) + cc::error( " of " ) +
-                                    cc::size10( cntThreadsToStart ) + cc::error( ", have " ) +
-                                    cc::size10( size_t( cntRunningThreads_ ) ) +
-                                    cc::error( " running threads, exception info: " ) +
-                                    cc::warn( "Unknown exception" ) + "\n";
+                                    "Dispatch: CRITICAL ERROR: Got exception in thread " +
+                                    std::to_string( idxThread ) + " of " +
+                                    std::to_string( cntThreadsToStart ) + ", have " +
+                                    std::to_string( size_t( cntRunningThreads_ ) ) +
+                                    " running threads, exception info: Unknown exception" + "\n";
                                 std::cout << strErrorMessage;
                                 std::cout.flush();
                             }
                             --cntRunningThreads_;
                             if ( g_bVerboseDispatchThreadDetailsLogging ) {
                                 std::string strThreadFinalMessage =
-                                    cc::deep_note( "Dispatch:" ) + " " +
-                                    cc::debug( "Exiting thread " ) + cc::size10( idxThread ) +
-                                    cc::debug( " of " ) + cc::size10( cntThreadsToStart ) +
-                                    cc::debug( ", have " ) +
-                                    cc::size10( size_t( cntRunningThreads_ ) ) +
-                                    cc::debug( " running thread(s)" ) + "\n";
+                                    "Dispatch: Exiting thread " + std::to_string( idxThread ) +
+                                    " of " + std::to_string( cntThreadsToStart ) + ", have " +
+                                    std::to_string( size_t( cntRunningThreads_ ) ) +
+                                    " running thread(s)" + "\n";
                                 std::cout << strThreadFinalMessage;
                                 std::cout.flush();
                             }
@@ -1414,11 +1402,9 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                 if ( strError.empty() )
                     break;
                 std::string strErrorMessage =
-                    cc::deep_note( "Dispatch:" ) + " " + cc::fatal( "CRITICAL ERROR:" ) +
-                    cc::error( " Failed submit initialization task for the " ) +
-                    cc::info( strPerformanceQueueName ) + cc::error( " queue at attempt " ) +
-                    cc::size10( idxAttempt ) + cc::error( " of " ) + cc::size10( cntAttempts ) +
-                    cc::error( ", error is: " ) + cc::warn( strError ) + "\n";
+                    "Dispatch: CRITICAL ERROR: Failed submit initialization task for the " +
+                    strPerformanceQueueName + " queue at attempt " + std::to_string( idxAttempt ) +
+                    " of " + std::to_string( cntAttempts ) + ", error is: " + strError + "\n";
                 std::cout << strErrorMessage;
                 std::cout.flush();
             }  // for( size_t idxAttempt = 0; idxAttempt < 3; ++ idxAttempt ) {
@@ -1449,18 +1435,15 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
         // throw std::runtime_error(
         //     "dispatch domain failed to initialize all threads in thread pool" );
         std::string strWarningMessage =
-            cc::deep_note( "Dispatch:" ) + " " + cc::warn( "WARNING: expected " ) +
-            cc::size10( size_t( cntThreadsInPool ) ) +
-            cc::warn( " threads in pool to be started at this time but have " ) +
-            cc::size10( size_t( cntStartedAndRunningThreads ) ) + cc::warn( ", startup is slow!" ) +
-            "\n";
+            "Dispatch: WARNING: expected " + std::to_string( size_t( cntThreadsInPool ) ) +
+            " threads in pool to be started at this time but have " +
+            std::to_string( size_t( cntStartedAndRunningThreads ) ) + ", startup is slow!" + "\n";
         std::cout << strWarningMessage;
         std::cout.flush();
     } else {
-        std::string strSuccessMessage = cc::deep_note( "Dispatch:" ) + " " +
-                                        cc::success( "Have all " ) +
-                                        cc::size10( size_t( cntThreadsInPool ) ) +
-                                        cc::success( " threads in pool started fast" ) + "\n";
+        std::string strSuccessMessage = "Dispatch: Have all " +
+                                        std::to_string( size_t( cntThreadsInPool ) ) +
+                                        " threads in pool started fast" + "\n";
         std::cout << strSuccessMessage;
         std::cout.flush();
     }
@@ -1479,9 +1462,9 @@ void domain::impl_shutdown() {
     if ( cntThreads > 0 ) {
         for ( ; true; ) {
             if ( g_bVerboseDispatchThreadDetailsLogging ) {
-                std::string strMessage = cc::deep_note( "Dispatch:" ) + " " + cc::debug( "Have " ) +
-                                         cc::size10( size_t( cntRunningThreads_ ) ) +
-                                         cc::debug( " thread(s) still running..." ) + "\n";
+                std::string strMessage = "Dispatch: Have " +
+                                         std::to_string( size_t( cntRunningThreads_ ) ) +
+                                         " thread(s) still running..." + "\n";
                 std::cout << strMessage;
                 std::cout.flush();
             }
@@ -1493,39 +1476,34 @@ void domain::impl_shutdown() {
             std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
         }  // for( ; true; )
     }  // if( cntThreads > 0 )
-    std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All threads stopped" ) + "\n";
+    std::cout << "Dispatch: All threads stopped\n";
     std::cout.flush();
     // wait loop to shutdown
     if ( pLoop ) {
         if ( g_bVerboseDispatchThreadDetailsLogging ) {
-            std::cout << cc::deep_note( "Dispatch:" ) + " " +
-                             cc::debug( "Waiting for dispatch loop" ) + "\n";
+            std::cout << "Dispatch: Waiting for dispatch loop\n";
             std::cout.flush();
         }
         pLoop->wait();
         try {
             if ( g_bVerboseDispatchThreadDetailsLogging ) {
-                std::cout << cc::deep_note( "Dispatch:" ) + " " +
-                                 cc::debug( "Stopping for dispatch loop" ) + "\n";
+                std::cout << "Dispatch: Stopping for dispatch loop\n";
                 std::cout.flush();
             }
             if ( loop_thread_.joinable() )
                 loop_thread_.join();
-            std::cout << cc::deep_note( "Dispatch:" ) + " " +
-                             cc::success( "Dispatch loop stopped" ) + "\n";
+            std::cout << "Dispatch: Dispatch loop stopped\n";
             std::cout.flush();
         } catch ( ... ) {
         }
     }  // if( pLoop )
     // shutdown, remove all queues
     if ( g_bVerboseDispatchThreadDetailsLogging ) {
-        std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::debug( "Removing dispatch queues" ) +
-                         "\n";
+        std::cout << "Dispatch: Removing dispatch queues\n";
         std::cout.flush();
     }
     queue_remove_all();
-    std::cout << cc::deep_note( "Dispatch:" ) + " " + cc::success( "All dispatch queues removed" ) +
-                     "\n";
+    std::cout << "Dispatch: All dispatch queues removed\n";
     std::cout.flush();
 }
 queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accumulator and
@@ -1538,33 +1516,26 @@ queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accum
     for ( ; itWalk != itEnd; ) {
         queue_ptr_t& pQueue = const_cast< queue_ptr_t& >( *itWalk );
         if ( pQueue->is_removed() ) {
-            LOCAL_DEBUG_TRACE( cc::sunny( "domain::impl_find_queue_to_run()" ) +
-                               cc::debug( " will " ) + cc::success( "erase" ) +
-                               cc::debug( " pre-removed queue " ) + cc::bright( pQueue->get_id() ) +
-                               cc::debug( ", " ) + cc::sunny( "with_jobs_.size()" ) +
-                               cc::debug( "=" ) + cc::size10( with_jobs_.size() ) );
+            LOCAL_DEBUG_TRACE( "domain::impl_find_queue_to_run() will erase pre-removed queue " +
+                               pQueue->get_id() ) +
+                ", with_jobs_.size() = " + std::to_string( with_jobs_.size() );
             itWalk = with_jobs_.erase( itWalk );
             itEnd = with_jobs_.end();
             continue;
         }
         if ( pQueue->async_job_count() == 0 ) {
-            LOCAL_DEBUG_TRACE( cc::sunny( "domain::impl_find_queue_to_run()" ) +
-                               cc::debug( " will " ) + cc::success( "erase" ) +
-                               cc::debug( " no-jobs queue " ) + cc::bright( pQueue->get_id() ) +
-                               cc::debug( ", " ) + cc::sunny( "with_jobs_.size()" ) +
-                               cc::debug( "=" ) + cc::size10( with_jobs_.size() ) );
+            LOCAL_DEBUG_TRACE( "domain::impl_find_queue_to_run() will erase no-jobs queue " +
+                               pQueue->get_id() +
+                               ", with_jobs_.size() = " + std::to_string( with_jobs_.size() ) );
             itWalk = with_jobs_.erase( itWalk );
             itEnd = with_jobs_.end();
             continue;
         }
         if ( pQueue->awaiting_sync_run_ > 0 ) {
             //++ itWalk;
-            LOCAL_DEBUG_TRACE( cc::sunny( "domain::impl_find_queue_to_run()" ) +
-                               cc::debug( " will " ) + cc::success( "erase" ) +
-                               cc::debug( " awaiting sync-run queue " ) +
-                               cc::bright( pQueue->get_id() ) + cc::debug( ", " ) +
-                               cc::sunny( "with_jobs_.size()" ) + cc::debug( "=" ) +
-                               cc::size10( with_jobs_.size() ) );
+            LOCAL_DEBUG_TRACE(
+                "domain::impl_find_queue_to_run() will erase awaiting sync-run queue " +
+                pQueue->get_id() + ", with_jobs_.size() = " + with_jobs_.size() );
             itWalk = with_jobs_.erase( itWalk );
             itEnd = with_jobs_.end();
             continue;
@@ -1572,11 +1543,8 @@ queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accum
         pQueue->is_running_ = true;  // mark it as running
         pQueueFound = pQueue;
         with_jobs_.erase( itWalk );  // remove it from with_jobs_
-        LOCAL_DEBUG_TRACE( cc::sunny( "domain::impl_find_queue_to_run()" ) + cc::debug( " did " ) +
-                           cc::success( "successfully" ) + cc::debug( " fetched queue " ) +
-                           cc::bright( pQueueFound->get_id() ) + cc::debug( ", " ) +
-                           cc::sunny( "with_jobs_.size()" ) + cc::debug( "=" ) +
-                           cc::size10( with_jobs_.size() ) );
+        LOCAL_DEBUG_TRACE( "domain::impl_find_queue_to_run() did successfully fetched queue " +
+                           pQueueFound->get_id() + ", with_jobs_.size() = " + with_jobs_.size() );
         break;
     }  // for( ; itWalk != itEnd; )
     return pQueueFound;
@@ -1726,11 +1694,8 @@ void domain::on_queue_job_added( queue& q ) {
         size_t cntJobs = q.async_job_count();
         if ( cntJobs > 0 && ( !q.is_running() ) ) {
             with_jobs_.insert( &q );
-            LOCAL_DEBUG_TRACE( cc::sunny( "domain::on_queue_job_added()" ) +
-                               cc::debug( " did added work-able queue " ) +
-                               cc::bright( q.get_id() ) + cc::debug( ", " ) +
-                               cc::sunny( "with_jobs_.size()" ) + cc::debug( "=" ) +
-                               cc::size10( with_jobs_.size() ) );
+            LOCAL_DEBUG_TRACE( "domain::on_queue_job_added() did added work-able queue " +
+                               q.get_id() + ", with_jobs_.size() = " + with_jobs_.size() );
         }
     }  // block
     // fetch_lock_.notify_all();
@@ -1742,11 +1707,8 @@ void domain::on_queue_job_complete( queue& q ) {
         size_t cntJobs = q.async_job_count();
         if ( cntJobs > 0 && ( !q.is_running() ) ) {
             with_jobs_.insert( &q );
-            LOCAL_DEBUG_TRACE( cc::sunny( "domain::on_queue_job_complete()" ) +
-                               cc::debug( " did added work-able queue " ) +
-                               cc::bright( q.get_id() ) + cc::debug( ", " ) +
-                               cc::sunny( "with_jobs_.size()" ) + cc::debug( "=" ) +
-                               cc::size10( with_jobs_.size() ) );
+            LOCAL_DEBUG_TRACE( "domain::on_queue_job_complete() did added work-able queue " +
+                               q.get_id() + ", with_jobs_.size() =" + with_jobs_.size() );
         }
     }  // block
     // fetch_lock_.notify_all();

@@ -547,9 +547,9 @@ std::string traffic_stats::getLifeTimeDescription(
     std::string strChangeType( last_instance_state_changing_type_as_str() ), strAgoSuffix( " ago" ),
         strSpace( " " );
     if ( isColored ) {
-        strChangeType = cc::debug( strChangeType );
-        strAgoSuffix = cc::debug( strAgoSuffix );
-        strSpace = cc::debug( strSpace );
+        strChangeType = strChangeType;
+        strAgoSuffix = strAgoSuffix;
+        strSpace = strSpace;
     }
     nanoseconds nsx = changed_ago( tpNow );
     uint64_t ns = nsx.count();
@@ -582,24 +582,24 @@ std::string traffic_stats::getTrafficStatsDescription(
         strBpsComposed = "N/A";
     }
     if ( isColored ) {
-        strBytesPrefix = cc::debug( strBytesPrefix );
-        strBytesSuffix = cc::debug( strBytesSuffix );
-        strTx = cc::ws_tx( strTx );
-        strRx = cc::ws_rx( strRx );
-        strTxValue = cc::ws_tx( strTxValue );
-        strRxValue = cc::ws_rx( strRxValue );
+        strBytesPrefix = strBytesPrefix;
+        strBytesSuffix = strBytesSuffix;
+        strTx = strTx;
+        strRx = strRx;
+        strTxValue = strTxValue;
+        strRxValue = strRxValue;
         if ( !strTxBPS.empty() )
-            strTxBPS = cc::ws_tx( strTxBPS );
+            strTxBPS = strTxBPS;
         if ( !strRxBPS.empty() )
-            strRxBPS = cc::ws_rx( strRxBPS );
+            strRxBPS = strRxBPS;
         if ( !strBpsComposed.empty() )
-            strBpsComposed = cc::error( strBpsComposed );
-        strSlash = cc::debug( strSlash );
-        strSpace = cc::debug( strSpace );
+            strBpsComposed = strBpsComposed;
+        strSlash = strSlash;
+        strSpace = strSpace;
         if ( !strBpsPrefix.empty() )
-            strBpsPrefix = cc::debug( strBpsPrefix );
+            strBpsPrefix = strBpsPrefix;
         if ( !strBpsSuffix.empty() )
-            strBpsSuffix = cc::debug( strBpsSuffix );
+            strBpsSuffix = strBpsSuffix;
     }
     if ( bHaveBpsInfo )
         strBpsComposed = strTxBPS + strSlash + strRxBPS;
@@ -1355,7 +1355,7 @@ int basic_api::stat_callback_client(
                 //
                 if ( !cached_delayed_close_reason.empty() ) {
                     self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
-                        cc::debug( "Processing close action for client connection" ) );
+                        "Processing close action for client connection" );
                     ::lws_close_reason( wsi, cached_delayed_close_status,
                         ( unsigned char* ) cached_delayed_close_reason.c_str(),
                         cached_delayed_close_reason.length() );
@@ -1491,12 +1491,12 @@ int basic_api::stat_callback_server(
                 pcd->delayed_close_reason_.clear();
                 pcd->delayed_close_status_ = 0;
                 //
-                // self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, cc::debug("Processing
-                // writable state for ") + strDescC );
+                // self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "Processing
+                // writable state for " + strDescC );
                 if ( !cached_delayed_close_reason.empty() ) {
                     std::string strDescC = pcd->description( true );
                     self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
-                        cc::debug( "Processing close action for " ) + strDescC );
+                        "Processing close action for " + strDescC );
                     ::lws_close_reason( wsi, cached_delayed_close_status,
                         ( unsigned char* ) cached_delayed_close_reason.c_str(),
                         cached_delayed_close_reason.length() );
@@ -2119,7 +2119,7 @@ void server_api::connection_data::setPeer( peer_ptr_t pPeer ) {
         return;
     if ( pPeer_ ) {
         pPeer_->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
-            cc::debug( "Server API entry destruction for " ) + description( true ) );
+            "Server API entry destruction for " + description( true ) );
         pPeer_->ref_release();
         pPeer_ = nullptr;
         sn_ = 0;
@@ -2129,20 +2129,20 @@ void server_api::connection_data::setPeer( peer_ptr_t pPeer ) {
         pPeer_->ref_retain();
         sn_ = pPeer_->serial_number();
         pPeer_->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
-            cc::debug( "Server API entry construction for " ) + description( true ) );
+            "Server API entry construction for " + description( true ) );
     }
 }
 std::string server_api::connection_data::unique_string_identifier(
     bool isColored /*= false*/ ) const {
     std::string strCid( peer::stat_getCidString( cid_ ) ), strSlash( "/" );
     if ( isColored ) {
-        strSlash = cc::debug( strSlash );
+        strSlash = strSlash;
         if ( !strCid.empty() )
-            strCid = cc::bright( strCid );
+            strCid = strCid;
     }
     std::string strPeerSerialNumber = skutils::tools::format( "%" PRIu64, uint64_t( sn_ ) );
     if ( isColored )
-        strPeerSerialNumber = cc::notice( strPeerSerialNumber );
+        strPeerSerialNumber = strPeerSerialNumber;
     std::stringstream ss;
     ss << strCid << strSlash << strPeerSerialNumber;
     return ss.str();
@@ -2152,17 +2152,16 @@ std::string server_api::connection_data::description( bool isColored /*= false*/
         strValueIP( strPeerRemoteIP_ ), strNameCloseStatus( "close status" ),
         strValueCloseStatus( skutils::tools::format( "%d", delayed_close_status_ ) ),
         strNameCloseReason( "close reason" ),
-        strValueCloseReason(
-            isColored ? cc::warn( delayed_close_reason_ ) : delayed_close_reason_ );
+        strValueCloseReason( isColored ? delayed_close_reason_ : delayed_close_reason_ );
     if ( isColored ) {
-        strEq = cc::debug( strEq );
-        strSeparator = cc::debug( strSeparator );
-        strNameUis = cc::notice( strNameUis );
-        strNameIP = cc::notice( strNameIP );
-        strNameCloseStatus = cc::notice( strNameCloseStatus );
-        strNameCloseReason = cc::notice( strNameCloseReason );
-        strValueIP = cc::u( strValueIP );
-        strValueCloseStatus = cc::warn( strValueCloseStatus );
+        strEq = strEq;
+        strSeparator = strSeparator;
+        strNameUis = strNameUis;
+        strNameIP = strNameIP;
+        strNameCloseStatus = strNameCloseStatus;
+        strNameCloseReason = strNameCloseReason;
+        strValueIP = strValueIP;
+        strValueCloseStatus = strValueCloseStatus;
     }
     std::stringstream ss;
     ss << strNameUis << strEq << unique_string_identifier( isColored );
@@ -2978,7 +2977,7 @@ void server_api::onHttp( connection_identifier_t cid ) {
 }
 void server_api::onFail( connection_identifier_t cid, const std::string& strMessage ) {
     onLogMessage( e_ws_log_message_type_t::eWSLMT_error,
-        cc::error( "Error: " ) + cc::warn( strMessage ) + " on cid " + cc::num10( cid ) );
+        "Error: " + strMessage + " on cid " + std::to_string( cid ) );
     lock_type lock( mtx_api() );
     if ( impl_removeConnection( cid ) ) {
         if ( onFail_ )
@@ -3333,13 +3332,10 @@ nlohmann::json peer::toJSON( bool bSkipEmptyStats /*= true*/ ) const {
     jo["stats"] = traffic_stats::toJSON( bSkipEmptyStats );
     return jo;
 }
-std::string peer::getShortTypeDescrition( bool isColored /*= false*/ ) const {
+// TODO - remove unused argument
+std::string peer::getShortTypeDescrition( bool /*= false*/ ) const {
     // lock_type lock( ref_mtx() );
     std::string s( "peer" );
-    if ( isColored ) {
-        if ( !s.empty() )
-            s = cc::info( s );
-    }
     return s;
 }
 std::string peer::getShortPeerDescription(
@@ -3347,12 +3343,6 @@ std::string peer::getShortPeerDescription(
     // lock_type lock( ref_mtx() );
     std::stringstream ss;
     std::string strSpace( " " ), strCommaSpace( ", " ), strIP( getRemoteIp() );
-    if ( isColored ) {
-        strSpace = cc::debug( strSpace );
-        strCommaSpace = cc::debug( strCommaSpace );
-        if ( !strIP.empty() )
-            strIP = cc::u( strIP );
-    }
     traffic_stats::time_point tpNow = traffic_stats::clock::now();
     ss << unique_string_identifier( isColored ) << strSpace << getShortTypeDescrition( isColored )
        << strSpace << strIP;
@@ -3364,15 +3354,10 @@ std::string peer::getShortPeerDescription(
 }
 std::string peer::unique_string_identifier( bool isColored /*= false*/ ) const {
     std::string strCid( getCidString() ), strSlash( "/" );
-    if ( isColored ) {
-        strSlash = cc::debug( strSlash );
-        if ( !strCid.empty() )
-            strCid = cc::bright( strCid );
-    }
     size_t s_no = serial_number();
     std::string strPeerSerialNumber = skutils::tools::format( "%" PRIu64, uint64_t( s_no ) );
     if ( isColored )
-        strPeerSerialNumber = cc::notice( strPeerSerialNumber );
+        strPeerSerialNumber = strPeerSerialNumber;
     std::stringstream ss;
     ss << strCid << strSlash << strPeerSerialNumber;
     return ss.str();
@@ -3467,13 +3452,13 @@ void peer::close( const std::string& msg,
         if ( strWhat == nullptr || strWhat[0] == '\0' )
             strWhat = "unknown exception";
         std::stringstream ss;
-        ss << cc::error( "Exception: " ) << cc::warn( strWhat );
+        ss << "Exception: " << strWhat;
         srv_.onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
         // clean_up( cid_ );
         traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnectFail );
     } catch ( ... ) {
         std::stringstream ss;
-        ss << cc::error( "Unknown exception" );
+        ss << "Unknown exception";
         srv_.onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
         // clean_up( cid_ );
         traffic_stats::event_add( g_strEventNameWebSocketPeerDisconnectFail );
@@ -3522,8 +3507,8 @@ void peer::onFail() {
     traffic_stats::log_close();
 }
 bool peer::sendMessage( const std::string& msg, opcv eOpCode ) {
-    // ss << cc::debug(">>> ") << cc::warn(getSender()) << cc::debug(", ") <<
-    // cc::warn(getCidString()) << cc::debug(", ") << cc::c(msg) << "/n";
+    // ss << ">>> " << getSender() << ", " <<
+    // getCidString() << ", " << msg << "/n";
     std::string strCid = getCidString();
     std::string strRemoteIp = getRemoteIp();
     try {
@@ -3544,13 +3529,13 @@ bool peer::sendMessage( const std::string& msg, opcv eOpCode ) {
         if ( strWhat == nullptr || strWhat[0] == '\0' )
             strWhat = "unknown exception";
         std::stringstream ss;
-        ss << cc::error( "nlws-peer sendMessage(" ) << cc::warn( strCid ) << cc::error( "," )
-           << cc::u( strRemoteIp ) << cc::error( ") failed, exception: " ) << cc::warn( strWhat );
+        ss << "nlws-peer sendMessage(" << strCid << "," << strRemoteIp
+           << ") failed, exception: " << strWhat;
         srv_.onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     } catch ( ... ) {
         std::stringstream ss;
-        ss << cc::error( "nlws-peer sendMessage(" ) << cc::warn( strCid ) << cc::error( "," )
-           << cc::u( strRemoteIp ) << cc::error( ") failed, unknown exception" );
+        ss << "nlws-peer sendMessage(" << strCid << "," << strRemoteIp
+           << ") failed, unknown exception";
         srv_.onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     }
     return false;
@@ -3594,7 +3579,7 @@ server::server( basic_network_settings* pBNS )
     };
     api_.onFail_ = [this]( connection_identifier_t cid, const std::string& strMessage ) {
         if ( !strMessage.empty() )
-            onLogMessage( e_ws_log_message_type_t::eWSLMT_error, cc::error( strMessage ) );
+            onLogMessage( e_ws_log_message_type_t::eWSLMT_error, strMessage );
         onFail( cid );
     };
     api_.onLogMessage_ = [this]( e_ws_log_message_type_t eWSLMT, const std::string& strMessage ) {
@@ -3631,7 +3616,7 @@ bool server::isServerSide() const {
     return true;
 }
 std::string server::type() const {
-    return api_.use_ssl_ ? cc::success( "SSL/TLS" ) : cc::fatal( "non-secure" );
+    return api_.use_ssl_ ? "SSL/TLS" : "non-secure";
 }
 int server::port() const {
     return api_.ctx_info_.port;
@@ -3785,8 +3770,7 @@ void server::onOpen( hdl_t hdl ) {
     if ( !pPeer ) {
         std::string strRemoteIp = getRemoteIp( hdl );
         std::stringstream ss;
-        ss << cc::error( "Failed to instantiate peer(" ) << cc::u( strRemoteIp )
-           << cc::error( ")" );
+        ss << "Failed to instantiate peer(" << strRemoteIp << ")";
         onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
         close( hdl, close_status::internal_endpoint_error, "internal peer initialization error" );
         return;
@@ -3825,8 +3809,7 @@ void server::onMessage( hdl_t hdl, opcv eOpCode, const std::string& msg ) {
     //
     std::string strRemoteIp = getRemoteIp( hdl );
     std::stringstream ss;
-    ss << cc::warn( "No instantiated peer(" ) << cc::u( strRemoteIp )
-       << cc::warn( ") for message (" ) << cc::str( msg ) << cc::warn( "<<" );
+    ss << "No instantiated peer(" << strRemoteIp << ") for message (" << msg << "<<";
     onLogMessage( e_ws_log_message_type_t::eWSLMT_warning, ss.str() );
     //
     basic_socket::onMessage( hdl, eOpCode, msg );
@@ -3873,7 +3856,7 @@ client::client( basic_network_settings* pBNS ) : api_( pBNS ) {
     };
     api_.onFail_ = [this]( const std::string& strMessage ) {
         if ( !strMessage.empty() )
-            onLogMessage( e_ws_log_message_type_t::eWSLMT_error, cc::error( strMessage ) );
+            onLogMessage( e_ws_log_message_type_t::eWSLMT_error, strMessage );
         setConnected( false );
         onFail( api_.cid_ );
     };
@@ -3901,7 +3884,7 @@ bool client::is_ssl() const {
     return api_.ssl_flags_ ? true : false;
 }
 std::string client::type() const {
-    return api_.ssl_flags_ ? cc::success( "SSL/TLS" ) : cc::fatal( "non-secure" );
+    return api_.ssl_flags_ ? "SSL/TLS" : "non-secure";
 }
 std::string client::uri() const {
     return api_.strURL_;
@@ -3925,11 +3908,11 @@ bool client::open( const std::string& uri, const char* strInterfaceName ) {
         if ( strWhat == nullptr || strWhat[0] == '\0' )
             strWhat = "unknown exception";
         std::stringstream ss;
-        ss << cc::error( "open: " ) << cc::warn( strWhat );
+        ss << "open: " << strWhat;
         onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     } catch ( ... ) {
         std::stringstream ss;
-        ss << cc::error( "open: " ) << cc::warn( "unknown exception" );
+        ss << "open: " << "unknown exception";
         onLogMessage( e_ws_log_message_type_t::eWSLMT_error, ss.str() );
     }
     traffic_stats::event_add( g_strEventNameWebSocketClientConnectFail );

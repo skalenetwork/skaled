@@ -409,12 +409,10 @@ public:
                     u = secretStore().importSecret(
                         b, lockPassword( toAddress( Secret( b ) ).abridged() ) );
                 if ( !u ) {
-                    cerror << cc::warn( "Cannot import " ) << input
-                           << cc::warn( " not a file or secret." ) << "\n";
+                    cerror << "Cannot import " << input << " not a file or secret." << "\n";
                     continue;
                 }
-                cdebug << cc::success( "Successfully imported " ) << input << cc::success( " as " )
-                       << toUUID( u );
+                cdebug << "Successfully imported " << input << " as " << toUUID( u );
             }
             break;
         case OperationMode::InspectBare:
@@ -544,15 +542,14 @@ public:
                 u = keyManager().store().importSecret(
                     b, lockPassword( toAddress( Secret( b ) ).abridged() ) );
             if ( !u ) {
-                cerror << cc::warn( "Cannot import " ) << i << cc::warn( " not a file or secret." )
-                       << "\n";
+                cerror << "Cannot import " << i << " not a file or secret.\n";
                 break;
             }
             keyManager().importExisting( u, m_name, m_address );
-            cdebug << cc::success( "Successfully imported " ) << i << cc::success( ":" ) << "\n";
-            cdebug << cc::success( "  Name: " ) << m_name << "\n";
-            cdebug << cc::success( "  UUID: " ) << toUUID( u ) << "\n";
-            cdebug << cc::success( "  Address: " ) << m_address << "\n";
+            cdebug << "Successfully imported " << i << ":\n";
+            cdebug << "  Name: " << m_name << "\n";
+            cdebug << "  UUID: " << toUUID( u ) << "\n";
+            cdebug << "  Address: " << m_address << "\n";
             break;
         }
         case OperationMode::ImportPresale: {

@@ -134,9 +134,9 @@ bytes getMultitransactionCallData() {
 }
 
 static void badBlockInfo( BlockHeader const& _bi, string const& _err ) {
-    string const c_line = cc::debug( string( 80, ' ' ) );
-    string const c_border = cc::debug( string( 2, ' ' ) );
-    string const c_space = cc::debug( string( 76, ' ' ) ) + c_border;
+    string const c_line = string( 80, ' ' );
+    string const c_border = string( 2, ' ' );
+    string const c_space = string( 76, ' ' ) + c_border;
     stringstream ss;
     ss << c_line << "\n";
     ss << c_space << "\n";

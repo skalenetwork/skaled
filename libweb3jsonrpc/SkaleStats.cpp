@@ -816,12 +816,12 @@ skutils::url SkaleStats::pick_own_s_chain_url() {
 //    vecComputeMessagesHash.push_back( 'n' );
 //    vecComputeMessagesHash.push_back( 'e' );
 //    vecComputeMessagesHash.push_back( 't' );
-//    std::cout << ( strLogPrefix + cc::debug( " Accumulated vector " ) +
+//    std::cout << ( strLogPrefix + " Accumulated vector " +
 //                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
 //                         vecComputeMessagesHash.size(), "" ) )
 //              << "\n";
 //    dev::rpc::stat_re_compute_vec_2_h256vec( vecComputeMessagesHash );
-//    std::cout << ( strLogPrefix + cc::debug( " Computed hash from vector " ) +
+//    std::cout << ( strLogPrefix + " Computed hash from vector " +
 //                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
 //                         vecComputeMessagesHash.size(), "" ) )
 //              << "\n";
@@ -835,15 +835,15 @@ skutils::url SkaleStats::pick_own_s_chain_url() {
 //    const char strLogPrefix[] = "----------- ";
 //    dev::bytes vecComputeMessagesHash;
 //    dev::u256 uAddr( "0xd2aaa00300000000000000000000000000000000" );
-//    std::cout << ( strLogPrefix + cc::debug( " Test address " ) + cc::notice( dev::toJS( uAddr ) )
+//    std::cout << ( strLogPrefix + " Test address " + dev::toJS( uAddr )
 //    )
 //              << "\n";
-//    std::cout << ( strLogPrefix + cc::debug( " Initial vector " ) +
+//    std::cout << ( strLogPrefix + " Initial vector " +
 //                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
 //                         vecComputeMessagesHash.size(), "" ) )
 //              << "\n";
 //    dev::rpc::stat_append_address_2_vec( vecComputeMessagesHash, uAddr );
-//    std::cout << ( strLogPrefix + cc::debug( " Vector with appended address " ) +
+//    std::cout << ( strLogPrefix + " Vector with appended address " +
 //                     cc::binary_singleline( ( void* ) vecComputeMessagesHash.data(),
 //                         vecComputeMessagesHash.size(), "" ) )
 //              << "\n";

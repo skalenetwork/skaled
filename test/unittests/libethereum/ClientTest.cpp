@@ -179,38 +179,38 @@ public:
                 std::string s = fastWriter.write( json );
                 nlohmann::json jo = nlohmann::json::parse( s );
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Will compute status of transaction: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+                    "Will compute status of transaction: " + jo.dump() + " ...";
             } // block
             Transaction tx = tx_from_json(json);
             auto txHash = m_ethereum->importTransaction(tx);
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Mining transaction..." ) );
+                    "Mining transaction...";
             dev::eth::mineTransaction(*(m_ethereum), 1);
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Getting transaction receipt..." ) );
+                    "Getting transaction receipt...";
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
             { // block
                 Json::FastWriter fastWriter;
                 std::string s = fastWriter.write( receipt );
                 nlohmann::json jo = nlohmann::json::parse( s );
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Got transaction receipt: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+                    "Got transaction receipt: " + jo.dump() + " ...";
             } // block
             bool bStatusFlag = ( receipt["status"] == "0x1" ) ? true : false;
             if( bStatusFlag )
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::success( "SUCCESS: Got positive transaction status" ) );
+                    "SUCCESS: Got positive transaction status";
             else
                 clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "Got negative transaction status" ) );
+                    "ERROR: Got negative transaction status";
             return bStatusFlag;
         } catch ( std::exception & ex ) {
             clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "exception:" ) + cc::warn( ex.what() ) );
+                    "ERROR: exception:" + std::string(ex.what());
             return false;
         } catch (...) {
             clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::fatal( "ERROR:" ) + " " + cc::error( "unknown exception" ) );
+                    "ERROR: unknown exception";
             return false;
         }
     }

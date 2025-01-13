@@ -528,8 +528,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             //
             // if ( i == 3 ) {
             // LOG( m_logger ) << "\n\n"
-            //          << cc::warn( "--- EXITING AS CRASH EMULATION AT TX# " ) << cc::num10( i )
-            //          << cc::warn( " with hash " ) << cc::info( tr.sha3().hex() ) << "\n\n\n";
+            //          << "--- EXITING AS CRASH EMULATION AT TX# " << i
+            //          << " with hash " << tr.sha3().hex() << "\n\n\n";
             // std::cout.flush();
             //_exit( 200 );
             //}
@@ -1053,8 +1053,7 @@ void Block::commitToSeal(
     //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
     //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
-    LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
-                            << cc::notice( "is not calculated in Skale state" );
+    LOG( m_loggerDetailed ) << "Post-reward stateRoot: " << "is not calculated in Skale state";
     LOG( m_loggerDetailed ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );

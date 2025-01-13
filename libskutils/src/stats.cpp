@@ -236,9 +236,9 @@ std::string named_event_stats::getEventStatsDescription( time_point tpNow,
         return "";
     std::string strSpace( " " ), strCommaSpace( ", " ), strSuffixPerSecond( " p/s" );
     if ( isColored ) {
-        strSpace = cc::debug( strSpace );
-        strCommaSpace = cc::debug( strCommaSpace );
-        strSuffixPerSecond = cc::debug( strSuffixPerSecond );
+        strSpace = strSpace;
+        strCommaSpace = strCommaSpace;
+        strSuffixPerSecond = strSuffixPerSecond;
     }
     std::stringstream ss;
     bool isNotFirst = false;
@@ -256,8 +256,8 @@ std::string named_event_stats::getEventStatsDescription( time_point tpNow,
         else
             strEPS = skutils::tools::format( "%.3lf", lfEPS );
         if ( isColored ) {
-            eventName = cc::info( eventName );
-            strEPS = cc::note( strEPS );
+            eventName = eventName;
+            strEPS = strEPS;
         }
         if ( isNotFirst )
             ss << strCommaSpace;

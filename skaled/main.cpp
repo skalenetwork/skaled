@@ -135,20 +135,19 @@ static void version() {
         ver = pv.substr( 0, pos );
     } else
         ver = pv;
-    std::cout << cc::info( "Skaled" ) << cc::debug( "............................" )
-              << cc::attention( ver ) << "\n";
+    clog( VerbosityInfo, "main - version" ) << "Skaled ............................" << ver << "\n";
     if ( !commit.empty() )
-        cout << cc::info( "Commit" ) << cc::debug( "............................" )
-             << cc::attention( commit ) << "\n";
-    std::cout << cc::info( "Skale network protocol version" ) << cc::debug( "...." )
-              << cc::num10( dev::eth::c_protocolVersion ) << cc::debug( "." )
-              << cc::num10( c_minorProtocolVersion ) << "\n";
-    std::cout << cc::info( "Client database version" ) << cc::debug( "..........." )
-              << cc::num10( dev::eth::c_databaseVersion ) << "\n";
-    std::cout << cc::info( "Build" ) << cc::debug( "............................." )
-              << cc::attention( buildinfo->system_name ) << cc::debug( "/" )
-              << cc::attention( buildinfo->build_type ) << "\n";
-    std::cout.flush();
+        clog( VerbosityInfo, "main - version" )
+            << "Commit ............................." << commit << "\n";
+    clog( VerbosityInfo, "main - version" )
+        << "Skale network protocol version ...." << dev::eth::c_protocolVersion << "."
+        << c_minorProtocolVersion << "\n";
+    clog( VerbosityInfo, "main - version" )
+        << "Client database version ..........." << dev::eth::c_databaseVersion << "\n";
+    clog( VerbosityInfo, "main - version" )
+        << "Build ............................." << buildinfo->system_name << "/"
+        << buildinfo->build_type << "\n";
+    clog( VerbosityInfo, "main - version" ).flush();
 }
 
 static std::string clientVersion() {
@@ -159,10 +158,12 @@ static std::string clientVersion() {
 
 static std::string clientVersionColorized() {
     const auto* buildinfo = skale_get_buildinfo();
-    return cc::info( "skaled" ) + cc::debug( "/" ) + cc::attention( buildinfo->project_version ) +
-           cc::debug( "/" ) + cc::attention( buildinfo->system_name ) + cc::debug( "/" ) +
-           cc::attention( buildinfo->compiler_id ) + cc::notice( buildinfo->compiler_version ) +
-           cc::debug( "/" ) + cc::attention( buildinfo->build_type );
+    return std::string( "skaled/" ) + buildinfo->project_version + "/" + buildinfo->system_name +
+           "/" + buildinfo->compiler_id + buildinfo->compiler_version + "/" + buildinfo->build_type;
+}
+
+static std::string flag_ed( bool flagBool_ ) {
+    return flagBool_ ? "enabled" : "disabled";
 }
 
 /*
@@ -367,8 +368,8 @@ voteForSnapshotHash(
 
         return { listUrlsToDownload, votedHash };
     } catch ( std::exception& ex ) {
-        std::throw_with_nested( std::runtime_error(
-            cc::error( "Exception while collecting snapshot hash from other skaleds " ) ) );
+        std::throw_with_nested(
+            std::runtime_error( "Exception while collecting snapshot hash from other skaleds " ) );
     }
 }
 
@@ -634,6 +635,12 @@ int main( int argc, char** argv ) try {
     strings passwordsToNote;
     Secrets toImport;
 
+    /// Loggers
+    Logger loggerDebug{ createLogger( VerbosityDebug, "main" ) };
+    Logger loggerInfo{ createLogger( VerbosityInfo, "main" ) };
+    Logger loggerWarning{ createLogger( VerbosityWarning, "main" ) };
+    Logger loggerError{ createLogger( VerbosityError, "main" ) };
+
     MinerCLI m( MinerCLI::OperationMode::None );
 
     fs::path configPath;
@@ -892,7 +899,7 @@ int main( int argc, char** argv ) try {
         po::store( parsed, vm );
         po::notify( vm );
     } catch ( po::error const& e ) {
-        cerr << e.what();
+        LOG( loggerError ) << e.what();
         return EX_USAGE;
     }
     for ( size_t i = 0; i < unrecognisedOptions.size(); ++i )
@@ -910,12 +917,12 @@ int main( int argc, char** argv ) try {
         return 0;
     }
     if ( vm.count( "help" ) ) {
-        cout << "NAME:\n"
-             << "   skaled " << Version << '\n'
-             << "USAGE:\n"
-             << "   skaled [options]\n\n";
-        cout << clientDefaultMode << clientTransacting << clientNetworking;
-        cout << vmOptions << loggingProgramOptions << generalOptions;
+        LOG( loggerInfo ) << "NAME:\n"
+                          << "   skaled " << Version << '\n'
+                          << "USAGE:\n"
+                          << "   skaled [options]\n\n";
+        LOG( loggerInfo ) << clientDefaultMode << clientTransacting << clientNetworking;
+        LOG( loggerInfo ) << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
     }
 
@@ -954,52 +961,42 @@ int main( int argc, char** argv ) try {
         skutils::url u;
         try {
             u = skutils::url( strURL );
-            std::cout << ( cc::debug( "Using URL" ) + cc::debug( "................" ) +
-                           cc::u( u.str() ) + "\n" );
+            LOG( loggerDebug ) << "Using URL ................" + u.str() + "\n";
         } catch ( const std::exception& ex ) {
-            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " Failed to parse test URL: " ) +
-                           cc::warn( ex.what() ) + "\n" );
+            LOG( loggerError ) << "ERROR: Failed to parse test URL: " + std::string( ex.what() ) +
+                                      "\n";
             return EX_TEMPFAIL;
         } catch ( ... ) {
-            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " Failed to parse test URL: " ) +
-                           cc::warn( "unknown exception" ) + "\n" );
+            LOG( loggerError ) << "ERROR: Failed to parse test URL: unknown exception\n";
             return EX_TEMPFAIL;
         }
         nlohmann::json joIn, joOut;
         try {
             if ( !strJSON.empty() ) {
                 joIn = nlohmann::json::parse( strJSON );
-                std::cout << ( cc::debug( "Input JSON is" ) + cc::debug( "............" ) +
-                               cc::j( joIn ) + "\n" );
+                LOG( loggerDebug ) << "Input JSON is ............" + joIn.dump() + "\n";
             } else
-                std::cout << ( cc::error( "NOTICE:" ) +
-                               cc::warn( " No valid JSON specified for test call" ) + "\n" );
+                LOG( loggerWarning ) << "NOTICE: No valid JSON specified for test call\n";
         } catch ( const std::exception& ex ) {
-            std::cout << ( cc::fatal( "ERROR:" ) +
-                           cc::error( " Failed to parse specified test JSON: " ) +
-                           cc::warn( ex.what() ) + "\n" );
+            LOG( loggerError ) << "ERROR: Failed to parse specified test JSON: " +
+                                      std::string( ex.what() ) + "\n";
             return EX_TEMPFAIL;
         } catch ( ... ) {
-            std::cout << ( cc::fatal( "ERROR:" ) +
-                           cc::error( " Failed to parse specified test JSON: " ) +
-                           cc::warn( "unknown exception" ) + "\n" );
+            LOG( loggerError ) << "ERROR: Failed to parse specified test JSON: unknown exception\n";
             return EX_TEMPFAIL;
         }
         skutils::http::SSL_client_options optsSSL;
         if ( !strPathCA.empty() ) {
             optsSSL.ca_file = skutils::tools::trim_copy( strPathCA );
-            std::cout << ( cc::debug( "Using CA file " ) + cc::debug( "..........." ) +
-                           cc::p( strPathCA ) + "\n" );
+            LOG( loggerDebug ) << "Using CA file ..........." + strPathCA + "\n";
         }
         if ( !strPathCert.empty() ) {
             optsSSL.client_cert = skutils::tools::trim_copy( strPathCert );
-            std::cout << ( cc::debug( "Using CERT file " ) + cc::debug( "........." ) +
-                           cc::p( strPathCert ) + "\n" );
+            LOG( loggerDebug ) << "Using CERT file ........." + strPathCert + "\n";
         }
         if ( !strPathKey.empty() ) {
             optsSSL.client_key = skutils::tools::trim_copy( strPathKey );
-            std::cout << ( cc::debug( "Using KEY file " ) + cc::debug( ".........." ) +
-                           cc::p( strPathKey ) + "\n" );
+            LOG( loggerDebug ) << "Using KEY file .........." + strPathKey + "\n";
         }
         try {
             skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
@@ -1017,32 +1014,27 @@ int main( int argc, char** argv ) try {
                 throw std::runtime_error( "REST call error: " + d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error( "EMPTY answer received" );
-            std::cout << ( cc::debug( "Raw received data is" ) + cc::debug( "....." ) +
-                           cc::normal( d.s_ ) + "\n" );
+            LOG( loggerDebug ) << "Raw received data is ....." + d.s_ + "\n";
             joOut = nlohmann::json::parse( d.s_ );
-            std::cout << ( cc::debug( "Output JSON is" ) + cc::debug( "..........." ) +
-                           cc::j( joOut ) + "\n" );
+            LOG( loggerDebug ) << "Output JSON is ..........." + joOut.dump() + "\n";
         } catch ( const std::exception& ex ) {
-            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " JSON RPC call failed: " ) +
-                           cc::warn( ex.what() ) + "\n" );
+            LOG( loggerError ) << "ERROR: JSON RPC call failed: " + std::string( ex.what() ) + "\n";
             return EX_TEMPFAIL;
         } catch ( ... ) {
-            std::cout << ( cc::fatal( "ERROR:" ) + cc::error( " JSON RPC call failed: " ) +
-                           cc::warn( "unknown exception" ) + "\n" );
+            LOG( loggerError ) << "ERROR: JSON RPC call failed: unknown exception\n";
             return EX_TEMPFAIL;
         }
         return 0;
     }
 
-    std::cout << cc::bright( "skaled " ) << cc::sunny( Version ) << "\n"
-              << cc::bright( "client " ) << clientVersionColorized() << "\n";
-    std::cout.flush();
+    LOG( loggerInfo ) << "skaled " << Version << "\n"
+                      << "client " << clientVersionColorized() << "\n";
+    LOG( loggerInfo ).flush();
     version();
 
     pid_t this_process_pid = getpid();
-    std::cout << cc::debug( "This process " ) << cc::info( "PID" ) << cc::debug( "=" )
-              << cc::size10( size_t( this_process_pid ) ) << "\n";
-    std::cout.flush();
+    LOG( loggerDebug ) << "This process PID = " << size_t( this_process_pid ) << "\n";
+    LOG( loggerDebug ).flush();
 
     setupLogging( loggingOptions );
 
@@ -1055,8 +1047,8 @@ int main( int argc, char** argv ) try {
             n = nMin;
         nDispatchThreads = n;
     }
-    clog( VerbosityInfo, "main" ) << cc::debug( "Using " ) << cc::size10( nDispatchThreads )
-                                  << cc::debug( " threads in task dispatcher" );
+    LOG( loggerInfo ) << "Using " << std::to_string( nDispatchThreads )
+                      << " threads in task dispatcher";
     skutils::dispatch::default_domain( nDispatchThreads );
     // skutils::dispatch::default_domain( 48 );
 
@@ -1090,21 +1082,21 @@ int main( int argc, char** argv ) try {
                 new skutils::json_config_file_accessor( configPath.string() ) );
             dev::db::DBFactory::setReopenPeriodMs( chainParams.sChain.levelDBReopenIntervalMs );
         } catch ( const char* str ) {
-            clog( VerbosityError, "main" ) << "Error: " << str << ": " << configPath;
+            LOG( loggerError ) << "Error: " << str << ": " << configPath;
             return EX_USAGE;
         } catch ( const json_spirit::Error_position& err ) {
-            clog( VerbosityError, "main" ) << "error in parsing config json:";
-            clog( VerbosityError, "main" ) << configJSON;
-            clog( VerbosityError, "main" ) << err.reason_ << " line " << err.line_;
+            LOG( loggerError ) << "error in parsing config json:";
+            LOG( loggerError ) << configJSON;
+            LOG( loggerError ) << err.reason_ << " line " << err.line_;
             return EX_CONFIG;
         } catch ( const std::exception& ex ) {
-            clog( VerbosityError, "main" ) << "provided configuration is incorrect";
-            clog( VerbosityError, "main" ) << configJSON;
-            clog( VerbosityError, "main" ) << nested_exception_what( ex );
+            LOG( loggerError ) << "provided configuration is incorrect";
+            LOG( loggerError ) << configJSON;
+            LOG( loggerError ) << nested_exception_what( ex );
             return EX_CONFIG;
         } catch ( ... ) {
-            clog( VerbosityError, "main" ) << "provided configuration is incorrect";
-            clog( VerbosityError, "main" ) << configJSON;
+            LOG( loggerError ) << "provided configuration is incorrect";
+            LOG( loggerError ) << configJSON;
             return EX_CONFIG;
         }
     }
@@ -1115,21 +1107,18 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
-            clog( VerbosityError, "main" )
-                << "config=<path> should be specified before --main-net-url=<url>\n";
+            LOG( loggerError ) << "config=<path> should be specified before --main-net-url=<url>\n";
             return EX_SOFTWARE;
         }
         skutils::json_config_file_accessor::g_strImaMainNetURL =
             skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
         if ( !g_configAccesssor->validateImaMainNetURL() ) {
-            clog( VerbosityError, "main" )
-                << "bad --main-net-url=<url> parameter value: "
-                << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
+            LOG( loggerError ) << "bad --main-net-url=<url> parameter value: "
+                               << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
             return EX_SOFTWARE;
         }
-        clog( VerbosityDebug, "main" )
-            << cc::notice( "Main Net URL" ) + cc::debug( " is: " )
-            << cc::u( skutils::json_config_file_accessor::g_strImaMainNetURL );
+        LOG( loggerDebug ) << "Main Net URL is: "
+                           << skutils::json_config_file_accessor::g_strImaMainNetURL;
     }
 
     if ( !chainConfigIsSet )
@@ -1168,8 +1157,7 @@ int main( int argc, char** argv ) try {
         is_ipc = true;
     if ( vm.count( "no-ipc" ) )
         is_ipc = false;
-    clog( VerbosityDebug, "main" ) << cc::notice( "IPC server" ) + cc::debug( " is: " )
-                                   << ( is_ipc ? cc::success( "on" ) : cc::error( "off" ) );
+    LOG( loggerDebug ) << "IPC server is: " << ( is_ipc ? "on" : "off" );
 
     // First, get "httpRpcPort", "httpsRpcPort", "wsRpcPort", "wssRpcPort" ... from config.json
     // Second, get them from command line parameters (higher priority source)
@@ -1185,10 +1173,9 @@ int main( int argc, char** argv ) try {
             if ( !( 0 <= nPort && nPort <= 65535 ) )
                 nPort = -1;
             else
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "Got " )
-                    << cc::notice( strDescription ) + cc::debug( " from configuration JSON: " )
-                    << cc::num10( nPort );
+                LOG( loggerDebug )
+                    << "Got "
+                    << std::string( strDescription ) + " from configuration JSON: " << nPort;
             if ( vm.count( strCommandLineKey ) ) {
                 std::string strPort = vm[strCommandLineKey].as< string >();
                 if ( !strPort.empty() ) {
@@ -1196,10 +1183,9 @@ int main( int argc, char** argv ) try {
                     if ( !( 0 <= nPort && nPort <= 65535 ) )
                         nPort = -1;
                     else
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Got " )
-                            << cc::notice( strDescription ) + cc::debug( " from command line: " )
-                            << cc::num10( nPort );
+                        LOG( loggerDebug )
+                            << "Got "
+                            << std::string( strDescription ) + " from command line: " << nPort;
                 }
             }
             return nPort;
@@ -1240,9 +1226,7 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "web3-trace" ) )
         bTraceJsonRpcCalls = true;
-    clog( VerbosityDebug, "main" )
-        << cc::info( "JSON RPC" ) << cc::debug( " trace logging mode is " )
-        << cc::flag_ed( bTraceJsonRpcCalls );
+    LOG( loggerDebug ) << "JSON RPC trace logging mode is " << flag_ed( bTraceJsonRpcCalls );
 
     // First, get "special-rpc-trace" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1256,9 +1240,8 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "special-rpc-trace" ) )
         bTraceJsonRpcSpecialCalls = true;
-    clog( VerbosityDebug, "main" )
-        << cc::info( "Special JSON RPC" ) << cc::debug( " trace logging mode is " )
-        << cc::flag_ed( bTraceJsonRpcSpecialCalls );
+    LOG( loggerDebug ) << "Special JSON RPC" << " trace logging mode is "
+                       << flag_ed( bTraceJsonRpcSpecialCalls );
 
     // First, get "enable-personal-apis", "enable-admin-apis", "enable-debug-behavior-apis",
     // "enable-performance-tracker-apis" from config.json Second, get it from command line parameter
@@ -1298,22 +1281,15 @@ int main( int argc, char** argv ) try {
         bEnabledAPIs_debug = true;
     if ( vm.count( "enable-performance-tracker-apis" ) )
         bEnabledAPIs_performanceTracker = true;
-    clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
-        << cc::info( "enable-personal-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( bEnabledAPIs_personal );
-    clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
-        << cc::info( "enable-admin-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( bEnabledAPIs_admin );
-    clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
-        << cc::info( "enable-debug-behavior-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( bEnabledAPIs_debug );
-    clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
-        << cc::info( "enable-performance-tracker-apis" ) << cc::debug( " mode is " )
-        << cc::flag_ed( bEnabledAPIs_performanceTracker );
+    LOG( loggerWarning ) << "Important notice: Programmatic enable-personal-apis mode is "
+                         << flag_ed( bEnabledAPIs_personal );
+    LOG( loggerWarning ) << "Important notice: Programmatic enable-admin-apis mode is "
+                         << flag_ed( bEnabledAPIs_admin );
+    LOG( loggerWarning ) << "Important notice: Programmatic enable-debug-behavior-apis mode is "
+                         << flag_ed( bEnabledAPIs_debug );
+    LOG( loggerWarning )
+        << "Important notice: Programmatic enable-performance-tracker-apis mode is "
+        << flag_ed( bEnabledAPIs_performanceTracker );
 
     // First, get "unsafe-transactions" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1327,10 +1303,8 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "unsafe-transactions" ) )
         alwaysConfirm = false;
-    clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
-        << cc::info( "unsafe-transactions" ) << cc::debug( " mode is " )
-        << cc::flag_ed( !alwaysConfirm );
+    LOG( loggerWarning ) << "Important notice: Programmatic unsafe-transactions mode is "
+                         << flag_ed( !alwaysConfirm );
 
     // First, get "web3-shutdown" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1345,10 +1319,8 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "web3-shutdown" ) )
         bEnabledShutdownViaWeb3 = true;
-    clog( VerbosityWarning, "main" )
-        << cc::warn( "Important notice: " ) << cc::debug( "Programmatic " )
-        << cc::info( "web3-shutdown" ) << cc::debug( " mode is " )
-        << cc::flag_ed( bEnabledShutdownViaWeb3 );
+    LOG( loggerWarning ) << "Important notice: Programmatic web3-shutdown mode is "
+                         << flag_ed( bEnabledShutdownViaWeb3 );
 
     // First, get "ipcpath" from config.json
     // Second, get it from command line parameter (higher priority source)
@@ -1360,8 +1332,8 @@ int main( int argc, char** argv ) try {
         } catch ( ... ) {
         }
     }
-    clog( VerbosityDebug, "main" )
-        << cc::notice( "IPC path" ) + cc::debug( " is: " ) << cc::p( strPathIPC );
+
+    LOG( loggerDebug ) << "IPC path is: " << strPathIPC;
     if ( vm.count( "ipcpath" ) )
         strPathIPC = vm["ipcpath"].as< std::string >();
     if ( !strPathIPC.empty() )
@@ -1379,16 +1351,14 @@ int main( int argc, char** argv ) try {
     }
     if ( vm.count( "db-path" ) )
         strPathDB = vm["db-path"].as< std::string >();
-    clog( VerbosityInfo, "main" ) << cc::notice( "DB path" ) + cc::debug( " is: " )
-                                  << cc::p( strPathDB );
+    LOG( loggerInfo ) << "DB path is: " << strPathDB;
 
     if ( !strPathDB.empty() )
         setDataDir( strPathDB );
 
     UnsafeRegion::init( getDataDir() );
     if ( UnsafeRegion::isActive() ) {
-        clog( VerbosityError, "main" )
-            << "FATAL " << "Previous skaled shutdown was too hard, need to repair!";
+        LOG( loggerError ) << "FATAL Previous skaled shutdown was too hard, need to repair!";
         return int( ExitHandler::ec_state_root_mismatch );
     }  // if bad exit
 
@@ -1405,10 +1375,8 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "block-rotation-period" ) )
         clockDbRotationPeriodInSeconds = vm["block-rotation-period"].as< size_t >();
     if ( clockDbRotationPeriodInSeconds > 0 )
-        clog( VerbosityInfo, "main" )
-            << cc::debug( "Timer-based " ) + cc::notice( "Block Rotation" ) +
-                   cc::debug( " period is: " )
-            << cc::size10( clockDbRotationPeriodInSeconds );
+        LOG( loggerInfo ) << "Timer-based Block Rotation period is: "
+                          << clockDbRotationPeriodInSeconds;
 
 
     ///////////////// CACHE PARAMS ///////////////
@@ -1591,8 +1559,8 @@ int main( int argc, char** argv ) try {
     if ( vm.count( "no-snapshot-majority" ) ) {
         downloadSnapshotFlag = true;
         urlToDownloadSnapshotFrom = vm["no-snapshot-majority"].as< string >();
-        clog( VerbosityInfo, "main" )
-            << "Manually set url to download snapshot from: " << urlToDownloadSnapshotFrom;
+        LOG( loggerInfo ) << "Manually set url to download snapshot from: "
+                          << urlToDownloadSnapshotFrom;
     }
 
     if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
@@ -1621,7 +1589,7 @@ int main( int argc, char** argv ) try {
                 snapshotManager->isSnapshotHashPresent( 0 );
             } catch ( SnapshotManager::SnapshotAbsent& ex ) {
                 // sleep before send skale_getSnapshot again - will receive error
-                clog( VerbosityInfo, "main" )
+                LOG( loggerInfo )
                     << std::string( "Will sleep for " )
                     << chainParams.sChain.snapshotDownloadInactiveTimeout +
                            dev::rpc::Skale::snapshotDownloadFragmentMonitorThreadTimeout()
@@ -1654,7 +1622,7 @@ int main( int argc, char** argv ) try {
                         snapshotManager, chainParams, urlToDownloadSnapshotFrom, false );
                     snapshotManager->restoreSnapshot( 0 );
                 } catch ( SnapshotManager::SnapshotAbsent& ) {
-                    clog( VerbosityWarning, "main" ) << "Snapshot for 0 block is not found";
+                    LOG( loggerWarning ) << "Snapshot for 0 block is not found";
                 }
             }
         }
@@ -1685,7 +1653,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( loggingOptions.verbosity > 0 )
-        clog( VerbosityInfo, "main" ) << cc::attention( "skaled, a C++ Skale client" ) << "\n";
+        LOG( loggerInfo ) << "skaled, a C++ Skale client\n";
 
     m.execute();
 
@@ -1846,7 +1814,7 @@ int main( int argc, char** argv ) try {
             g_client->setNetworkId( networkID );
     }
 
-    clog( VerbosityInfo, "main" ) << "Mining Beneficiary: " << g_client->author();
+    LOG( loggerInfo ) << "Mining Beneficiary: " << g_client->author();
 
     unique_ptr< rpc::SessionManager > sessionManager;
     unique_ptr< SimpleAccountHolder > accountHolder;
@@ -1871,11 +1839,10 @@ int main( int argc, char** argv ) try {
         if ( strAA == "yes" || strAA == "no" || strAA == "always" )
             autoAuthAnswer = strAA;
         else {
-            clog( VerbosityError, "main" ) << "Bad " << "--aa" << " option: " << strAA << "\n";
+            LOG( loggerError ) << "Bad " << "--aa" << " option: " << strAA << "\n";
             return EX_USAGE;
         }
-        clog( VerbosityDebug, "main" )
-            << cc::info( "Auto-answer" ) << cc::debug( " mode is set to: " ) << cc::info( strAA );
+        LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;
     }
 
     std::function< bool( TransactionSkeleton const&, bool ) > authenticator;
@@ -1913,17 +1880,14 @@ int main( int argc, char** argv ) try {
             return r == "yes" || r == "always";
         };
     if ( chainParams.nodeInfo.ip.empty() ) {
-        clog( VerbosityWarning, "main" )
-            << cc::info( "IPv4" )
-            << cc::warn( " bind address is not set, will not start RPC on this protocol" );
+        LOG( loggerWarning ) << "IPv4"
+                             << " bind address is not set, will not start RPC on this protocol";
         nExplicitPortHTTP4std = nExplicitPortHTTPS4std = nExplicitPortHTTP4nfo =
             nExplicitPortHTTPS4nfo = nExplicitPortWS4std = nExplicitPortWSS4std =
                 nExplicitPortWS4nfo = nExplicitPortWSS4nfo = -1;
     }
     if ( chainParams.nodeInfo.ip6.empty() ) {
-        clog( VerbosityWarning, "main" )
-            << cc::info( "IPv6" )
-            << cc::warn( " bind address is not set, will not start RPC on this protocol" );
+        LOG( loggerWarning ) << "IPv6 bind address is not set, will not start RPC on this protocol";
         nExplicitPortHTTP6std = nExplicitPortHTTPS6std = nExplicitPortHTTP6nfo =
             nExplicitPortHTTPS6nfo = nExplicitPortWS6std = nExplicitPortWSS6std =
                 nExplicitPortWS6nfo = nExplicitPortWSS6nfo = -1;
@@ -2002,13 +1966,12 @@ int main( int argc, char** argv ) try {
                 auto ipcConnector = new IpcServer( "geth" );
                 g_jsonrpcIpcServer->addConnector( ipcConnector );
                 if ( !ipcConnector->StartListening() ) {
-                    clog( VerbosityError, "main" )
-                        << "Cannot start listening for RPC requests on ipc port: "
-                        << strerror( errno );
+                    LOG( loggerError ) << "Cannot start listening for RPC requests on ipc port: "
+                                       << strerror( errno );
                     return EX_IOERR;
                 }  // error
             } catch ( const std::exception& ex ) {
-                clog( VerbosityError, "main" )
+                LOG( loggerError )
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
                 return EX_IOERR;
             }  // catch
@@ -2016,10 +1979,8 @@ int main( int argc, char** argv ) try {
 
         auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
             if ( nPort <= 0 || nPort >= 65536 ) {
-                clog( VerbosityError, "main" )
-                    << cc::error( "WARNING:" ) << cc::warn( " No valid port value provided with " )
-                    << cc::info( std::string( "--" ) + strCommandLineKey ) << cc::warn( "=" )
-                    << cc::info( "number" );
+                LOG( loggerError ) << "WARNING: No valid port value provided with "
+                                   << std::string( "--" ) + strCommandLineKey << "=" << "number";
                 return false;
             }
             return true;
@@ -2078,8 +2039,7 @@ int main( int argc, char** argv ) try {
              nExplicitPortHTTPS6nfo > 0 || nExplicitPortWS4std > 0 || nExplicitPortWSS4std > 0 ||
              nExplicitPortWS6std > 0 || nExplicitPortWSS6std > 0 || nExplicitPortWS4nfo > 0 ||
              nExplicitPortWSS4nfo > 0 || nExplicitPortWS6nfo > 0 || nExplicitPortWSS6nfo > 0 ) {
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::attention( "RPC params" ) << cc::debug( ":" );
+            LOG( loggerDebug ) << "....RPC params:";
             //
             auto fnPrintPort = [&]( const int& nPort, const char* strDescription ) -> void {
                 static const size_t nAlign = 35;
@@ -2087,9 +2047,8 @@ int main( int argc, char** argv ) try {
                 std::string strDots;
                 for ( ; ( strDots.size() + nDescLen ) < nAlign; )
                     strDots += ".";
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "...." ) << cc::info( strDescription ) << cc::debug( strDots )
-                    << " " << ( ( nPort >= 0 ) ? cc::num10( nPort ) : cc::error( "off" ) );
+                LOG( loggerDebug ) << "...." << strDescription << strDots << " "
+                                   << ( ( nPort >= 0 ) ? std::to_string( nPort ) : "off" );
             };
             fnPrintPort( nExplicitPortHTTP4std, "HTTP/4/std port" );
             fnPrintPort( nExplicitPortHTTP4nfo, "HTTP/4/nfo port" );
@@ -2143,26 +2102,22 @@ int main( int argc, char** argv ) try {
                 size_t maxItemCount = vm["performance-timeline-max-items"].as< size_t >();
                 pTracker->set_safe_max_item_count( maxItemCount );
             }
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::info( "Performance timeline tracker" )
-                << cc::debug( "............. " )
-                << ( pTracker->is_enabled() ? cc::size10( pTracker->get_safe_max_item_count() ) :
-                                              cc::error( "off" ) );
+            LOG( loggerDebug ) << "....Performance timeline tracker............. "
+                               << ( pTracker->is_enabled() ?
+                                          std::to_string( pTracker->get_safe_max_item_count() ) :
+                                          "off" );
 
             if ( !bHaveSSL )
                 nExplicitPortHTTPS4std = nExplicitPortHTTPS6std = nExplicitPortHTTPS4nfo =
                     nExplicitPortHTTPS6nfo = nExplicitPortWSS4std = nExplicitPortWSS6std =
                         nExplicitPortWSS4nfo = nExplicitPortWSS6nfo = -1;
             if ( bHaveSSL ) {
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "...." ) << cc::info( "SSL key is" )
-                    << cc::debug( "............................... " ) << cc::p( strPathSslKey );
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "...." ) + cc::info( "SSL certificate is" )
-                    << cc::debug( "....................... " ) << cc::p( strPathSslCert );
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "...." ) + cc::info( "SSL CA is" )
-                    << cc::debug( "................................ " ) << cc::p( strPathSslCA );
+                LOG( loggerDebug )
+                    << "....SSL key is............................... " << strPathSslKey;
+                LOG( loggerDebug )
+                    << "....SSL certificate is....................... " << strPathSslCert;
+                LOG( loggerDebug )
+                    << "....SSL CA is................................ " << strPathSslCA;
             }
             //
             //
@@ -2312,44 +2267,28 @@ int main( int argc, char** argv ) try {
                 skutils::ws::g_eWSLL = skutils::ws::str2wsll( s );
             }
 
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "WS mode" )
-                << cc::debug( ".................................. " )
-                << skutils::ws::nlws::srvmode2str( skutils::ws::nlws::g_default_srvmode );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "WS logging" )
-                << cc::debug( "............................... " )
-                << cc::info( skutils::ws::wsll2str( skutils::ws::g_eWSLL ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Max RPC connections" )
-                << cc::debug( "...................... " )
-                << ( ( maxConnections > 0 ) ? cc::size10( maxConnections ) :
-                                              cc::error( "disabled" ) );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Max HTTP queues" )
-                << cc::debug( ".......................... " )
-                << ( ( max_http_handler_queues > 0 ) ? cc::size10( max_http_handler_queues ) :
-                                                       cc::notice( "default" ) );
-            clog( VerbosityDebug, "main" ) << cc::debug( "...." ) + cc::info( "Asynchronous HTTP" )
-                                           << cc::debug( "........................ " )
-                                           << cc::yn( is_async_http_transfer_mode );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Proxygen threads" )
-                << cc::debug( "......................... " ) << cc::num10( pg_threads );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Proxygen threads limit" )
-                << cc::debug( "................... " ) << cc::num10( pg_threads_limit );
+            LOG( loggerDebug ) << "....WS mode.................................. "
+                               << skutils::ws::nlws::srvmode2str(
+                                      skutils::ws::nlws::g_default_srvmode );
+            LOG( loggerDebug ) << "....WS logging............................... "
+                               << skutils::ws::wsll2str( skutils::ws::g_eWSLL );
+            LOG( loggerDebug ) << "....Max RPC connections...................... "
+                               << ( ( maxConnections > 0 ) ? std::to_string( maxConnections ) :
+                                                             "disabled" );
+            LOG( loggerDebug ) << "....Max HTTP queues.......................... "
+                               << ( ( max_http_handler_queues > 0 ) ?
+                                          std::to_string( max_http_handler_queues ) :
+                                          "default" );
+            LOG( loggerDebug ) << "....Asynchronous HTTP........................ "
+                               << ( is_async_http_transfer_mode ? "yes" : "no" );
+            LOG( loggerDebug ) << "....Proxygen threads......................... " << pg_threads;
+            LOG( loggerDebug ) << "....Proxygen threads limit................... "
+                               << pg_threads_limit;
 
             //
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Max count in batch JSON RPC request" )
-                << cc::debug( "...... " ) << cc::size10( cntInBatch );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Parallel RPC connection acceptors" )
-                << cc::debug( "........ " ) << cc::size10( cntServersStd );
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) + cc::info( "Parallel informational RPC acceptors" )
-                << cc::debug( "..... " ) << cc::size10( cntServersNfo );
+            LOG( loggerDebug ) << "....Max count in batch JSON RPC request...... " << cntInBatch;
+            LOG( loggerDebug ) << "....Parallel RPC connection acceptors........ " << cntServersStd;
+            LOG( loggerDebug ) << "....Parallel informational RPC acceptors..... " << cntServersNfo;
             SkaleServerOverride::fn_binary_snapshot_download_t fn_binary_snapshot_download =
                 [=]( const nlohmann::json& joRequest ) -> std::vector< uint8_t > {
                 return pSkaleFace->impl_skale_downloadSnapshotFragmentBinary( joRequest );
@@ -2420,15 +2359,12 @@ int main( int argc, char** argv ) try {
                 }
                 if ( serverOpts.strEthErc20Address_.empty() )
                     throw std::runtime_error( "\"ethERC20Address\" was not found in config JSON" );
-                clog( VerbosityDebug, "main" ) << ( cc::debug( "\"ethERC20Address\" is" ) + " " +
-                                                    cc::info( serverOpts.strEthErc20Address_ ) );
+                LOG( loggerDebug ) << "\"ethERC20Address\" is " + serverOpts.strEthErc20Address_;
             } catch ( ... ) {
                 serverOpts.strEthErc20Address_ = "0xd3cdbc1b727b2ed91b8ad21333841d2e96f255af";
-                clog( VerbosityError, "main" )
-                    << ( cc::error( "WARNING:" ) + " " +
-                           cc::warn(
-                               "\"ethERC20Address\" was not found in config JSON, assuming" ) +
-                           " " + cc::info( serverOpts.strEthErc20Address_ ) );
+                LOG( loggerWarning )
+                    << "WARNING: \"ethERC20Address\" was not found in config JSON, assuming " +
+                           serverOpts.strEthErc20Address_;
             }
             auto skale_server_connector =
                 new SkaleServerOverride( chainParams, g_client.get(), serverOpts );
@@ -2440,9 +2376,8 @@ int main( int argc, char** argv ) try {
             } else
                 skale_server_connector->unddos_.get_settings();  // auto-init
             //
-            clog( VerbosityDebug, "main" )
-                << cc::attention( "UN-DDOS" ) + cc::debug( " is using configuration" )
-                << cc::j( skale_server_connector->unddos_.get_settings_json() );
+            LOG( loggerDebug ) << "UN-DDOS is using configuration"
+                               << cc::j( skale_server_connector->unddos_.get_settings_json() );
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
@@ -2458,9 +2393,7 @@ int main( int argc, char** argv ) try {
             skale_server_connector->max_connection_set( maxConnections );
             g_jsonrpcIpcServer->addConnector( skale_server_connector );
             if ( !skale_server_connector->StartListening() ) {  // TODO Will it delete itself?
-                clog( VerbosityError, "main" )
-                    << ( cc::fatal( "FATAL:" ) + " " +
-                           cc::error( "Failed to start JSON RPC, will exit..." ) );
+                LOG( loggerError ) << "FATAL: Failed to start JSON RPC, will exit...";
                 return EX_IOERR;
             }
             int nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
@@ -2503,9 +2436,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/4/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTP/4/std start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP4std = skale_server_connector->getServerPortStatusProxygenHTTP(
                         4, e_server_mode_t::esm_standard );
@@ -2517,9 +2448,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/4/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTP/4/nfo start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP4nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
                         4, e_server_mode_t::esm_informational );
@@ -2531,9 +2460,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/6/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTP/6/std start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP6std = skale_server_connector->getServerPortStatusProxygenHTTP(
                         6, e_server_mode_t::esm_standard );
@@ -2545,9 +2472,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTP/6/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTP/6/nfo start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTP6nfo = skale_server_connector->getServerPortStatusProxygenHTTP(
                         6, e_server_mode_t::esm_informational );
@@ -2559,9 +2484,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/4/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTPS/4/std start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS4std = skale_server_connector->getServerPortStatusProxygenHTTPS(
                         4, e_server_mode_t::esm_standard );
@@ -2573,9 +2496,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/4/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTPS/4/nfo start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS4nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
                         4, e_server_mode_t::esm_informational );
@@ -2587,9 +2508,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/6/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTPS/6/std start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS6std = skale_server_connector->getServerPortStatusProxygenHTTPS(
                         6, e_server_mode_t::esm_standard );
@@ -2601,9 +2520,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "HTTPS/6/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for HTTPS/6/nfo" << " start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatHTTPS6nfo = skale_server_connector->getServerPortStatusProxygenHTTPS(
                         6, e_server_mode_t::esm_informational );
@@ -2615,9 +2532,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WS/4/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WS/4/std start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS4std = skale_server_connector->getServerPortStatusWS(
                         4, e_server_mode_t::esm_standard );
@@ -2629,9 +2544,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WS/4/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WS/4/nfo start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS4nfo = skale_server_connector->getServerPortStatusWS(
                         4, e_server_mode_t::esm_informational );
@@ -2643,9 +2556,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WS/6/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WS/6/std start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS6std = skale_server_connector->getServerPortStatusWS(
                         6, e_server_mode_t::esm_standard );
@@ -2657,9 +2568,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WS/6/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WS/6/nfo start... ";
                     std::this_thread::sleep_for( g_waitAttempt );
                     nStatWS6nfo = skale_server_connector->getServerPortStatusWS(
                         6, e_server_mode_t::esm_informational );
@@ -2671,9 +2580,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WSS/4/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WSS/4/std start... ";
                     nStatWSS4std = skale_server_connector->getServerPortStatusWSS(
                         4, e_server_mode_t::esm_standard );
                 }
@@ -2684,9 +2591,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WSS/4/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WSS/4/nfo start... ";
                     nStatWSS4nfo = skale_server_connector->getServerPortStatusWSS(
                         4, e_server_mode_t::esm_informational );
                 }
@@ -2697,9 +2602,7 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WSS/6/std" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WSS/6/std start... ";
                     nStatWSS6std = skale_server_connector->getServerPortStatusWSS(
                         6, e_server_mode_t::esm_standard );
                 }
@@ -2710,27 +2613,24 @@ int main( int argc, char** argv ) try {
                       ( !ExitHandler::shouldExit() );
                       ++idxWaitAttempt ) {
                     if ( idxWaitAttempt == 0 )
-                        clog( VerbosityDebug, "main" )
-                            << cc::debug( "Waiting for " ) + cc::info( "WSS/6/nfo" )
-                            << cc::debug( " start... " );
+                        LOG( loggerDebug ) << "Waiting for WSS/6/nfo start... ";
                     nStatWSS6nfo = skale_server_connector->getServerPortStatusWSS(
                         6, e_server_mode_t::esm_informational );
                 }
             }
-            clog( VerbosityDebug, "main" )
-                << cc::debug( "...." ) << cc::attention( "RPC status" ) << cc::debug( ":" );
-            auto fnPrintStatus = []( const int& nPort, const int& nStat,
+            LOG( loggerDebug ) << "....RPC status:";
+            auto fnPrintStatus = [&loggerDebug]( const int& nPort, const int& nStat,
                                      const char* strDescription ) -> void {
                 static const size_t nAlign = 35;
                 size_t nDescLen = strnlen( strDescription, 1024 );
                 std::string strDots;
                 for ( ; ( strDots.size() + nDescLen ) < nAlign; )
                     strDots += ".";
-                clog( VerbosityDebug, "main" )
-                    << cc::debug( "...." ) << cc::info( strDescription ) << cc::debug( strDots )
-                    << ( ( nStat >= 0 ) ? ( ( nPort > 0 ) ? cc::num10( nStat ) :
-                                                            cc::warn( "still starting..." ) ) :
-                                          cc::error( "off" ) );
+                LOG( loggerDebug )
+                    << "...." << strDescription << strDots
+                    << ( ( nStat >= 0 ) ?
+                               ( ( nPort > 0 ) ? std::to_string( nStat ) : "still starting..." ) :
+                               "off" );
             };
             fnPrintStatus( nExplicitPortHTTP4std, nStatHTTP4std, "HTTP/4std" );
             fnPrintStatus( nExplicitPortHTTP4nfo, nStatHTTP4nfo, "HTTP/4nfo" );
@@ -2759,24 +2659,19 @@ int main( int argc, char** argv ) try {
             sessionManager->addSession(
                 strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        clog( VerbosityInfo, "main" )
-            << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );
+        LOG( loggerInfo ) << "JSONRPC Admin Session Key: " << strJsonAdminSessionKey;
     }  // if ( is_ipc || nExplicitPort...
 
     if ( bEnabledShutdownViaWeb3 ) {
-        clog( VerbosityWarning, "main" )
-            << cc::warn( "Enabling programmatic shutdown via Web3..." );
+        LOG( loggerWarning ) << "Enabling programmatic shutdown via Web3...";
         dev::rpc::Skale::enableWeb3Shutdown( true );
         dev::rpc::Skale::onShutdownInvoke(
             []() { ExitHandler::exitHandler( -1, ExitHandler::ec_web3_request ); } );
-        clog( VerbosityWarning, "main" )
-            << cc::warn( "Done, programmatic shutdown via Web3 is enabled" );
+        LOG( loggerWarning ) << "Done, programmatic shutdown via Web3 is enabled";
     } else {
-        clog( VerbosityDebug, "main" )
-            << cc::debug( "Disabling programmatic shutdown via Web3..." );
+        LOG( loggerDebug ) << "Disabling programmatic shutdown via Web3...";
         dev::rpc::Skale::enableWeb3Shutdown( false );
-        clog( VerbosityDebug, "main" )
-            << cc::debug( "Done, programmatic shutdown via Web3 is disabled" );
+        LOG( loggerDebug ) << "Done, programmatic shutdown via Web3 is disabled";
     }
 
     if ( g_client ) {
@@ -2816,16 +2711,16 @@ int main( int argc, char** argv ) try {
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
 
-    //    clog( VerbosityDebug, "main" ) << cc::debug( "Stopping task dispatcher..." );
+    //    LOG( loggerDebug ) << cc::debug( "Stopping task dispatcher..." );
     //    skutils::dispatch::shutdown();
-    //    clog( VerbosityDebug, "main" ) << cc::debug( "Done, task dispatcher stopped" );
+    //    LOG( loggerDebug ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
     if ( ec != ExitHandler::ec_success ) {
-        clog( VerbosityError, "main" ) << cc::error( "Exiting main with code " )
-                                       << cc::num10( int( ec ) ) << cc::error( "...\n" );
+        LOG( loggerError ) << "Exiting main with code " << int( ec ) << "...\n";
     }
     return int( ec );
 } catch ( const Client::CreationException& ex ) {
+    // cannot use loggerError - not in scope
     clog( VerbosityError, "main" ) << dev::nested_exception_what( ex );
     // TODO close microprofile!!
     g_client.reset( nullptr );

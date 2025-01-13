@@ -185,21 +185,21 @@ void Client::stopWorking() {
     m_bq.stop();               // l_sergiy: added to stop block queue processing
 
     m_bc.close();
-    LOG( m_logger ) << cc::success( "Blockchain is closed" );
+    LOG( m_logger ) << "Blockchain is closed";
 
 #if ( defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__ )
     bool isForcefulExit =
         ( !m_skaleHost || m_skaleHost->exitedForcefully() == false ) ? false : true;
     if ( !isForcefulExit ) {
         delete_lock_file( m_dbPath );
-        LOG( m_logger ) << cc::success( "Deleted lock file " )
-                        << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
-                                  std::string( "/skaled.lock" ) );
+        LOG( m_logger ) << "Deleted lock file "
+                        << boost::filesystem::canonical( m_dbPath ).string() +
+                               std::string( "/skaled.lock" );
     } else {
-        LOG( m_logger ) << cc::fatal( "ATTENTION:" ) << " " << cc::error( "Deleted lock file " )
-                        << cc::p( boost::filesystem::canonical( m_dbPath ).string() +
-                                  std::string( "/skaled.lock" ) )
-                        << cc::error( " after forceful exit" );
+        LOG( m_logger ) << "ATTENTION:" << " " << "Deleted lock file "
+                        << boost::filesystem::canonical( m_dbPath ).string() +
+                               std::string( "/skaled.lock" )
+                        << " after forceful exit";
     }
     LOG( m_logger ).flush();
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -387,7 +387,7 @@ bool Client::isMajorSyncing() const {
 void Client::startedWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-    LOG( m_loggerDetail ) << cc::debug( "startedWorking()" );
+    LOG( m_loggerDetail ) << "startedWorking()";
 
     DEV_GUARDED( m_blockImportMutex ) {
         DEV_WRITE_GUARDED( x_preSeal )
@@ -512,14 +512,14 @@ static std::string stat_transactions2str(
     std::string s;
     if ( !strPrefix.empty() )
         s += strPrefix;
-    s += cc::size10( cnt ) + " " +
-         cc::debug(
+    s += cnt + " " +
+         string(
              ( cnt > 1 ) ? "transactions: " : ( ( cnt == 1 ) ? "transaction: " : "transactions" ) );
     size_t i = 0;
     for ( const Transactions::value_type& tx : _transactions ) {
         if ( i > 0 )
-            s += cc::normal( ", " );
-        s += cc::debug( "#" ) + cc::size10( i ) + cc::debug( "/" ) + cc::info( tx.sha3().hex() );
+            s += ", ";
+        s += "#" + std::to_string( i ) + "/" + tx.sha3().hex();
         ++i;
     }
     return s;
@@ -560,24 +560,19 @@ size_t Client::importTransactionsAsBlock(
     size_t cntMissing = vecMissing.size();
     size_t cntExpected = cntMissing;
     if ( bIsPartial ) {
-        LOG( m_logger ) << cc::fatal( "PARTIAL CATCHUP DETECTED:" )
-                        << cc::warn( " found partially executed block, have " )
-                        << cc::size10( cntAll ) << cc::warn( " transaction(s), " )
-                        << cc::size10( cntPassed ) << cc::warn( " passed, " )
-                        << cc::size10( cntMissing ) << cc::warn( " missing" );
+        LOG( m_logger ) << "PARTIAL CATCHUP DETECTED:" << " found partially executed block, have "
+                        << cntAll << " transaction(s), " << cntPassed << " passed, " << cntMissing
+                        << " missing";
         LOG( m_logger ).flush();
-        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
-                        << stat_transactions2str( _transactions, cc::notice( " All " ) );
+        LOG( m_logger ) << "PARTIAL CATCHUP:" << stat_transactions2str( _transactions, " All " );
         LOG( m_logger ).flush();
-        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
-                        << stat_transactions2str( vecPassed, cc::notice( " Passed " ) );
+        LOG( m_logger ) << "PARTIAL CATCHUP:" << stat_transactions2str( vecPassed, " Passed " );
         LOG( m_logger ).flush();
-        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" )
-                        << stat_transactions2str( vecMissing, cc::notice( " Missing " ) );
-        //        LOG( m_logger ) << cc::info( "PARTIAL CATCHUP:" ) << cc::attention( " Found " )
-        //                        << cc::size10( partialTransactionReceipts.size() )
-        //                        << cc::attention( " partial transaction receipt(s) inside " )
-        //                        << cc::notice( "SAFETY CACHE" );
+        LOG( m_logger ) << "PARTIAL CATCHUP:" << stat_transactions2str( vecMissing, " Missing " );
+        //        LOG( m_logger ) << "PARTIAL CATCHUP:" << " Found "
+        //                        << partialTransactionReceipts.size()
+        //                        << " partial transaction receipt(s) inside "
+        //                        << "SAFETY CACHE" );
         LOG( m_logger ).flush();
     }
     // end, detect partially executed block
@@ -602,17 +597,14 @@ size_t Client::importTransactionsAsBlock(
     if ( bIsPartial )
         cntSucceeded += cntPassed;
     if ( cntSucceeded != cntAll ) {
-        LOG( m_logger ) << cc::fatal( "TX EXECUTION WARNING:" ) << cc::warn( " expected " )
-                        << cc::size10( cntAll ) << cc::warn( " transaction(s) to pass, when " )
-                        << cc::size10( cntSucceeded ) << cc::warn( " passed with success," )
-                        << cc::size10( cntExpected ) << cc::warn( " expected to run and pass" );
+        LOG( m_logger ) << "TX EXECUTION WARNING:" << " expected " << cntAll
+                        << " transaction(s) to pass, when " << cntSucceeded
+                        << " passed with success," << cntExpected << " expected to run and pass";
         LOG( m_logger ).flush();
     }
     if ( bIsPartial ) {
-        LOG( m_logger ) << cc::success( "PARTIAL CATCHUP SUCCESS: with " ) << cc::size10( cntAll )
-                        << cc::success( " transaction(s), " ) << cc::size10( cntPassed )
-                        << cc::success( " passed, " ) << cc::size10( cntMissing )
-                        << cc::success( " missing" );
+        LOG( m_logger ) << "PARTIAL CATCHUP SUCCESS: with " << cntAll << " transaction(s), "
+                        << cntPassed << " passed, " << cntMissing << " missing";
         LOG( m_logger ).flush();
     }
 
@@ -688,11 +680,11 @@ size_t Client::syncTransactions(
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     // insert transactions that we are declaring the dead part of the chain
     for ( auto const& h : _blocks ) {
-        LOG( m_loggerDetail ) << cc::warn( "Dead block: " ) << h;
+        LOG( m_loggerDetail ) << "Dead block: " << h;
         for ( auto const& t : bc().transactions( h ) ) {
-            LOG( m_loggerDetail ) << cc::debug( "Resubmitting dead-block transaction " )
+            LOG( m_loggerDetail ) << "Resubmitting dead-block transaction "
                                   << Transaction( t, CheckTransaction::None );
-            LOG( m_loggerDetail ) << cc::debug( "Resubmitting dead-block transaction " )
+            LOG( m_loggerDetail ) << "Resubmitting dead-block transaction "
                                   << Transaction( t, CheckTransaction::None );
             m_tq.import( t, IfDropped::Retry );
         }
@@ -792,7 +784,7 @@ bool Client::remoteActive() const {
 }
 
 void Client::onPostStateChanged() {
-    LOG( m_loggerDetail ) << cc::notice( "Post state changed." );
+    LOG( m_loggerDetail ) << "Post state changed.";
     m_signalled.notify_all();
     m_remoteWorking = false;
 }
@@ -910,13 +902,12 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_sealingInfo.streamRLP( headerRlp );
     const bytes& header = headerRlp.out();
     BlockHeader header_struct( header, HeaderData );
-    LOG( m_logger ) << cc::success( "Block sealed" ) << " #" << cc::num10( header_struct.number() )
-                    << " (" << header_struct.hash() << ")";
+    LOG( m_logger ) << "Block sealed" << " #" << header_struct.number() << " ("
+                    << header_struct.hash() << ")";
     std::stringstream ssBlockStats;
-    ssBlockStats << cc::success( "Block stats:" ) << "BN:" << number()
-                 << ":BTS:" << bc().info().timestamp() << ":TXS:" << TransactionBase::howMany()
-                 << ":HDRS:" << BlockHeader::howMany() << ":LOGS:" << LogEntry::howMany()
-                 << ":SENGS:" << SealEngineBase::howMany()
+    ssBlockStats << "Block stats:" << "BN:" << number() << ":BTS:" << bc().info().timestamp()
+                 << ":TXS:" << TransactionBase::howMany() << ":HDRS:" << BlockHeader::howMany()
+                 << ":LOGS:" << LogEntry::howMany() << ":SENGS:" << SealEngineBase::howMany()
                  << ":TXRS:" << TransactionReceipt::howMany() << ":BLCKS:" << Block::howMany()
                  << ":ACCS:" << Account::howMany() << ":BQS:" << BlockQueue::howMany()
                  << ":BDS:" << BlockDetails::howMany() << ":TSS:" << TransactionSkeleton::howMany()
@@ -935,7 +926,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         if ( this->submitSealed( header ) )
             m_onBlockSealed( header );
         else
-            LOG( m_logger ) << cc::error( "Submitting block failed..." );
+            LOG( m_logger ) << "Submitting block failed...";
     } else {
         UpgradableGuard l( x_working );
         {
@@ -943,7 +934,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
             if ( m_working.sealBlock( header ) ) {
                 m_onBlockSealed( header );
             } else {
-                LOG( m_logger ) << cc::error( "Sealing block failed..." );
+                LOG( m_logger ) << "Sealing block failed...";
             }
         }
         DEV_WRITE_GUARDED( x_postSeal )
@@ -961,7 +952,7 @@ void Client::importWorkingBlock() {
 void Client::noteChanged( h256Hash const& _filters ) {
     Guard l( x_filtersWatches );
     if ( _filters.size() )
-        LOG( m_loggerWatch ) << cc::notice( "noteChanged: " ) << filtersToString( _filters );
+        LOG( m_loggerWatch ) << "noteChanged: " << filtersToString( _filters );
     // accrue all changes left in each filter into the watches.
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {

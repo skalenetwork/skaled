@@ -74,8 +74,7 @@ void basic_stream_socket_init( int native_fd, std::ostream& osLog ) {
          || ret_rcv_timeoout || ret_snd_timeoout
 #endif
     )
-        osLog << cc::error( "Failed to enable keep alive on TCP client socket" ) << native_fd
-              << cc::error( "." );
+        osLog << "Failed to enable keep alive on TCP client socket" << native_fd << ".";
 }
 
 std::string get_canonical_host_name() {

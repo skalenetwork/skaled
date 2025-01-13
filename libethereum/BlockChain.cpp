@@ -306,7 +306,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    LOG( m_logger ) << cc::info( "Opened blockchain DB. Latest: " ) << currentHash() << ' '
+    LOG( m_logger ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
                     << m_lastBlockNumber;
 
     //    dump_blocks_and_extras_db( *this, 0 );
@@ -653,8 +653,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
                 true :
                 false;
         if ( isRotate ) {
-            clog( VerbosityTrace, "BlockChain" )
-                << ( cc::debug( "Will perform " ) + cc::notice( "storage-based block rotation" ) );
+            clog( VerbosityTrace, "BlockChain" ) << "Will perform storage-based block rotation";
         }
     }
     if ( clockLastDbRotation_ == 0 )
@@ -664,8 +663,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
         clock_t clockNow = clock();
         if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ ) {
             isRotate = true;
-            LOG( m_loggerDetail ) << ( cc::debug( "Will perform " ) +
-                                       cc::notice( "timer-based block rotation" ) );
+            LOG( m_loggerDetail ) << "Will perform timer-based block rotation";
         }
     }
     if ( !isRotate )
@@ -971,11 +969,10 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     newLastBlockHash = _block.info.hash();
     newLastBlockNumber = ( unsigned ) _block.info.number();
 
-    LOG( m_loggerDetail ) << cc::debug( "   Imported and best " ) << _totalDifficulty
-                          << cc::debug( " (" ) << cc::warn( "#" )
-                          << cc::num10( _block.info.number() ) << cc::debug( "). Has " )
+    LOG( m_loggerDetail ) << "   Imported and best " << _totalDifficulty << " (" << "#"
+                          << _block.info.number() << "). Has "
                           << ( details( _block.info.parentHash() ).children.size() - 1 )
-                          << cc::debug( " siblings." );
+                          << " siblings.";
 
 #if ETH_PARANOIA
     if ( isKnown( _block.info.hash() ) && !details( _block.info.hash() ) ) {
@@ -1047,8 +1044,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     h256s fresh;
     fresh.push_back( tbi.hash() );
 
-    LOG( m_loggerDetail ) << cc::debug( "Insterted block with " ) << _block.transactions.size()
-                          << cc::debug( " transactions" );
+    LOG( m_loggerDetail ) << "Insterted block with " << _block.transactions.size()
+                          << " transactions";
 
     return ImportRoute{ dead, fresh, _block.transactions };
 }
@@ -1108,7 +1105,7 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    LOG( m_loggerDetail ) << cc::debug( "Finding last likely block number..." );
+    LOG( m_loggerDetail ) << "Finding last likely block number...";
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
         LOG( m_loggerDetail ) << " " << m << flush;
@@ -1120,15 +1117,14 @@ void BlockChain::rescue( State const& /*_state*/ ) {
     LOG( m_loggerDetail ) << "  lowest is " << l;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        LOG( m_loggerDetail ) << cc::debug( "Checking validity of " ) << l << cc::debug( " (" ) << h
-                              << cc::debug( ")..." ) << flush;
+        LOG( m_loggerDetail ) << "Checking validity of " << l << " (" << h << ")..." << flush;
         try {
-            LOG( m_loggerDetail ) << cc::debug( "block..." ) << flush;
+            LOG( m_loggerDetail ) << "block..." << flush;
             BlockHeader bi( block( h ) );
-            LOG( m_loggerDetail ) << cc::debug( "extras..." ) << flush;
+            LOG( m_loggerDetail ) << "extras..." << flush;
             details( h );
-            LOG( m_loggerDetail ) << cc::debug( "state..." ) << flush;
-            LOG( m_loggerDetail ) << cc::warn( "STATE VALIDITY CHECK IS NOT SUPPORTED" ) << flush;
+            LOG( m_loggerDetail ) << "state..." << flush;
+            LOG( m_loggerDetail ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {

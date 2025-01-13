@@ -73,7 +73,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     //
     clog( VerbosityInfo, "skale-host" )
-        << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() ) << "\n";
+        << "NOTE: Block number at startup is " << nfo.number() << "\n";
     //
     auto ts = nfo.timestamp();
 
@@ -319,11 +319,11 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 SkaleHost::~SkaleHost() {}
 
 void SkaleHost::logState() {
-    LOG( m_traceLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
-                         << cc::debug( " got_from_consensus = " ) << total_arrived
-                         << cc::debug( " m_transaction_cache = " ) << m_m_transaction_cache.size()
-                         << cc::debug( " m_tq = " ) << m_tq.status().current
-                         << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
+    LOG( m_traceLogger ) << " sent_to_consensus = " << total_sent
+                         << " got_from_consensus = " << total_arrived
+                         << " m_transaction_cache = " << m_m_transaction_cache.size()
+                         << " m_tq = " << m_tq.status().current
+                         << " m_bcast_counter = " << m_bcast_counter;
 }
 
 h256 SkaleHost::receiveTransaction( std::string _rlp ) {
@@ -836,13 +836,12 @@ void SkaleHost::stopWorking() {
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
         if ( signal > 0 )
-            LOG( m_infoLogger ) << cc::info( "Exit requested with signal " ) << signal
-                                << " and exit code " << exitCode;
-        else
-            LOG( m_infoLogger ) << cc::info( "Exit requested internally with exit code " )
+            LOG( m_infoLogger ) << "Exit requested with signal " << signal << " and exit code "
                                 << exitCode;
+        else
+            LOG( m_infoLogger ) << "Exit requested internally with exit code " << exitCode;
     } else {
-        LOG( m_infoLogger ) << cc::info( "Exiting without request" );
+        LOG( m_infoLogger ) << "Exiting without request";
     }
 
     m_consensus->exitGracefully();
