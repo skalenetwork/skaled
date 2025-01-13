@@ -31,6 +31,7 @@
 #include <libdevcore/Address.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
+#include <libethcore/Common.h>
 //#include <libethereum/Account.h>
 
 namespace dev {
@@ -121,8 +122,6 @@ private:
 
     std::shared_ptr< batched_io::db_face > m_db_face;
 
-    // commit key-value pairs in storage
-    void commitStorageValues();
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 

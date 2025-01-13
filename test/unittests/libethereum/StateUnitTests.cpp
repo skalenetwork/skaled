@@ -44,27 +44,12 @@ BOOST_AUTO_TEST_CASE( Basic ) {
     Block s( Block::Null );
 }
 
-BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
-    Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
-    State state( 0 );
-    State s = state.createStateCopyAndClearCaches();
-    s.createContract( addr );
-    uint8_t codeData[] = {'c', 'o', 'd', 'e'};
-    u256 version = 123;
-    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
-    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
-
-    auto& loadedCode = s.code( addr );
-    BOOST_CHECK(
-        std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedCode ) ) );
-}
-
 class AddressRangeTestFixture : public TestOutputHelperFixture {
 public:
     AddressRangeTestFixture() {
         // get some random addresses and their hashes
         for ( unsigned i = 0; i < addressCount; ++i ) {
-            Address addr{i};
+            Address addr{ i };
             hashToAddress[sha3( addr )] = addr;
         }
 
@@ -75,7 +60,7 @@ public:
         writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
 #ifdef HISTORIC_STATE
-        writer.mutableHistoricState().saveRootForBlockNumber(1001);
+        writer.mutableHistoricState().saveRootForBlockNumber( 1001 );
 #endif
     }
 
@@ -88,17 +73,17 @@ public:
 BOOST_FIXTURE_TEST_SUITE( StateAddressRangeTests, AddressRangeTestFixture )
 
 BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
-    Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
-    State s = state.createStateModifyCopy();
+    Address addr{ "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
+    State s = state.createStateCopyAndClearCaches();
     s.createContract( addr );
-    uint8_t codeData[] = {'c', 'o', 'd', 'e'};
+    uint8_t codeData[] = { 'c', 'o', 'd', 'e' };
     u256 version = 123;
-    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
-    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+    s.setCode( addr, { std::begin( codeData ), std::end( codeData ) }, version );
+    s.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
 #ifdef HISTORIC_STATE
-    s.mutableHistoricState().saveRootForBlockNumber(1002);
-    s.mutableHistoricState().setRootByBlockNumber(1002);
+    s.mutableHistoricState().saveRootForBlockNumber( 1002 );
+    s.mutableHistoricState().setRootByBlockNumber( 1002 );
 #endif
 
     auto& loadedCode = s.code( addr );
@@ -107,15 +92,14 @@ BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
 
 #ifdef HISTORIC_STATE
     auto& loadedHistoricCode = s.mutableHistoricState().code( addr );
-    BOOST_CHECK(
-        std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedHistoricCode ) ) );
+    BOOST_CHECK( std::equal(
+        std::begin( codeData ), std::end( codeData ), std::begin( loadedHistoricCode ) ) );
 #endif
 }
 
 
 BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
-
-    State sr = state.createStateReadOnlyCopy();
+    State sr = state.createReadOnlySnapBasedCopy();
 #ifdef HISTORIC_STATE
     sr.mutableHistoricState().setRootFromDB();
 #endif
@@ -142,14 +126,13 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
 
 BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     uint maxResults = 3;
-    State sr = state.createStateReadOnlyCopy();
+    State sr = state.createReadOnlySnapBasedCopy();
 #ifdef HISTORIC_STATE
     sr.mutableHistoricState().setRootFromDB();
 #endif
 
     // 1 check State
-    std::pair< State::AddressMap, h256 > addressesAndNextKey =
-        sr.addresses( h256{}, maxResults );
+    std::pair< State::AddressMap, h256 > addressesAndNextKey = sr.addresses( h256{}, maxResults );
     State::AddressMap& addresses = addressesAndNextKey.first;
     h256& nextKey = addressesAndNextKey.second;
 
@@ -159,8 +142,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     BOOST_CHECK_EQUAL( nextKey, itHashToAddressEnd->first );
 
     // request next chunk
-    std::pair< State::AddressMap, h256 > addressesAndNextKey2 =
-        sr.addresses( nextKey, maxResults );
+    std::pair< State::AddressMap, h256 > addressesAndNextKey2 = sr.addresses( nextKey, maxResults );
     State::AddressMap& addresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( addresses2.size(), maxResults );
     auto itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
@@ -168,8 +150,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 
 #ifdef HISTORIC_STATE
     // 2 check historic state
-    addressesAndNextKey =
-        sr.mutableHistoricState().addresses( h256{}, maxResults );
+    addressesAndNextKey = sr.mutableHistoricState().addresses( h256{}, maxResults );
     addresses = addressesAndNextKey.first;
     h256& historicNextKey = addressesAndNextKey.second;
 
@@ -179,12 +160,12 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
     BOOST_CHECK_EQUAL( historicNextKey, itHashToAddressEnd->first );
 
     // request next chunk
-    addressesAndNextKey2 =
-        sr.mutableHistoricState().addresses( nextKey, maxResults );
+    addressesAndNextKey2 = sr.mutableHistoricState().addresses( nextKey, maxResults );
     State::AddressMap& historicAddresses2 = addressesAndNextKey2.first;
     BOOST_CHECK_EQUAL( historicAddresses2.size(), maxResults );
     itHashToAddressEnd2 = std::next( itHashToAddressEnd, maxResults );
-    BOOST_CHECK( historicAddresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
+    BOOST_CHECK(
+        historicAddresses2 == State::AddressMap( itHashToAddressEnd, itHashToAddressEnd2 ) );
 #endif
 }
 
@@ -205,15 +186,15 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
     BOOST_CHECK( addresses == State::AddressMap( it, hashToAddress.end() ) );
 }
 
-BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,    
+BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-   State s = state;
+    State s = state;
 
     // create some accounts
     unsigned createCount = 3;
     std::map< h256, Address > newHashToAddress;
     for ( unsigned i = addressCount; i < addressCount + createCount; ++i ) {
-        Address addr{i};
+        Address addr{ i };
         newHashToAddress[sha3( addr )] = addr;
     }
 
@@ -235,29 +216,28 @@ BOOST_AUTO_TEST_SUITE_END()
 
 class DbRotationFixture : public TestOutputHelperFixture {
 public:
-    DbRotationFixture() {
-        state.mutableHistoricState().saveRootForBlockNumber( 0 );
-    }
+    DbRotationFixture() { state.mutableHistoricState().saveRootForBlockNumber( 0 ); }
     TransientDirectory m_tempDirState;
     State state = State( 0, m_tempDirState.path(), h256{}, BaseState::Empty, 0, 32, 1 );
-    Address address1{1}, address2{2};
+    Address address1{ 1 }, address2{ 2 };
 
-    size_t countStateDbPieces(){
-        auto di = directory_iterator(m_tempDirState.path() + "/historic_state/00000000/state");
-        return std::distance(begin(di), end(di));
+    size_t countStateDbPieces() {
+        auto di = directory_iterator( m_tempDirState.path() + "/historic_state/00000000/state" );
+        return std::distance( begin( di ), end( di ) );
     }
 
-    size_t countRootsDbPieces(){
-        auto di = directory_iterator(m_tempDirState.path() + "/historic_roots/00000000/state");
-        return std::distance(begin(di), end(di));
+    size_t countRootsDbPieces() {
+        auto di = directory_iterator( m_tempDirState.path() + "/historic_roots/00000000/state" );
+        return std::distance( begin( di ), end( di ) );
     }
 
     uint64_t storageUsage() {
         uint64_t total = 0;
-        state.mutableHistoricState().db().db()->forEach( [&total]( const dev::db::Slice& _key, const dev::db::Slice& _value ) {
-            total += _key.size() + _value.size();
-            return true;
-        } );
+        state.mutableHistoricState().db().db()->forEach(
+            [&total]( const dev::db::Slice& _key, const dev::db::Slice& _value ) {
+                total += _key.size() + _value.size();
+                return true;
+            } );
         return total;
     }
 };
@@ -266,28 +246,28 @@ BOOST_FIXTURE_TEST_SUITE( DbRotationSuite, DbRotationFixture )
 
 // write, then read from historic state
 BOOST_AUTO_TEST_CASE( writeAndRead ) {
-    State sw = state.createStateModifyCopyAndPassLock();
+    State sw = state.createStateCopyAndClearCaches();
 
-    sw.incNonce(address1);
-    BOOST_CHECK_EQUAL(sw.getNonce(address1), 1);
-    sw.incNonce(address1);
-    BOOST_CHECK_EQUAL(sw.getNonce(address1), 2);
+    sw.incNonce( address1 );
+    BOOST_CHECK_EQUAL( sw.getNonce( address1 ), 1 );
+    sw.incNonce( address1 );
+    BOOST_CHECK_EQUAL( sw.getNonce( address1 ), 2 );
 
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
 
-    BOOST_CHECK_EQUAL(sw.getNonce(address1), 2);
-    sw.incNonce(address1);
-    BOOST_CHECK_EQUAL(sw.getNonce(address1), 3);
+    BOOST_CHECK_EQUAL( sw.getNonce( address1 ), 2 );
+    sw.incNonce( address1 );
+    BOOST_CHECK_EQUAL( sw.getNonce( address1 ), 3 );
 }
 
 // make two changes in two blocks and try to access state in each block
 BOOST_AUTO_TEST_CASE( twoChanges ) {
-    State sw = state.createStateModifyCopyAndPassLock();
+    State sw = state.createStateCopyAndClearCaches();
 
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 0 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
-    sw.incNonce(address1);
+    sw.incNonce( address1 );
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1001 );
 
@@ -299,25 +279,25 @@ BOOST_AUTO_TEST_CASE( twoChanges ) {
     // check that in block 0 we have nonce 0/0, block 1 - 1/0, block 2 - 1/1
 
     sw.mutableHistoricState().setRootByBlockNumber( 0 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1001 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1002 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countStateDbPieces(), 3);
-    BOOST_CHECK_EQUAL(countRootsDbPieces(), 3);
+    BOOST_CHECK_EQUAL( countStateDbPieces(), 3 );
+    BOOST_CHECK_EQUAL( countRootsDbPieces(), 3 );
 }
 
 // same, but add empty block between
 BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
-    State sw = state.createStateModifyCopyAndPassLock();
+    State sw = state.createStateCopyAndClearCaches();
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
     // here comes forceInsertNode for init() that was called in HistoricState constructor
@@ -326,7 +306,7 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     sw.mutableHistoricState().saveRootForBlockNumber( 1001 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
-    sw.incNonce(address1);
+    sw.incNonce( address1 );
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1002 );
 
@@ -346,42 +326,42 @@ BOOST_AUTO_TEST_CASE( twoChangesWithInterval ) {
     // check that in block 0 and 1 we have nonce 0/0, block 2 and 3 - 1/0, block 4 and 5 - 1/1
 
     sw.mutableHistoricState().setRootByBlockNumber( 0 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1001 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1002 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1003 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1004 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1005 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address2 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address2 ), 1 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countStateDbPieces(), 4);
-    BOOST_CHECK_EQUAL(countRootsDbPieces(), 6);
+    BOOST_CHECK_EQUAL( countStateDbPieces(), 4 );
+    BOOST_CHECK_EQUAL( countRootsDbPieces(), 6 );
 }
 
 // change 1 address 2 times in 2 blocks, check it on all blocks
 BOOST_AUTO_TEST_CASE( update ) {
-    State sw = state.createStateModifyCopyAndPassLock();
+    State sw = state.createStateCopyAndClearCaches();
 
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 0 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
-    sw.incNonce(address1);
+    sw.incNonce( address1 );
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1001 );
 
@@ -393,59 +373,60 @@ BOOST_AUTO_TEST_CASE( update ) {
     // check that in block 0 we have nonce 0/0, block 1 - 1/0, block 2 - 1/1
 
     sw.mutableHistoricState().setRootByBlockNumber( 0 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 0 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 0 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1001 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 1 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 1 );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1002 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().getNonce( address1 ), 2 );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().getNonce( address1 ), 2 );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countStateDbPieces(), 3);
+    BOOST_CHECK_EQUAL( countStateDbPieces(), 3 );
 }
 
 // change storage of 1 address 2 times in 2 blocks, check it on all blocks
 // with unrelated blocks in between
 BOOST_AUTO_TEST_CASE( updateStorage ) {
-    h256 location = h256(123456);
+    h256 location = h256( 123456 );
 
-    State sw = state.createStateModifyCopy();
+    State sw = state.createStateCopyAndClearCaches();
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1001 );
 
-    sw.incNonce(address1);
+    sw.incNonce( address1 );
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1001 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1001 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1002 );
 
-    sw.setStorage(address1, location, 1);
+    sw.setStorage( address1, location, 1 );
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1002 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1002 );
 
     sw.mutableHistoricState().rotateDbsIfNeeded( 1003 );
 
-    sw.setStorage(address1, location, 2);
+    sw.setStorage( address1, location, 2 );
     sw.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts, 1003 );
     sw.mutableHistoricState().saveRootForBlockNumber( 1003 );
 
-    state.mutableHistoricState().setRoot(sw.mutableHistoricState().globalRoot(), sw.mutableHistoricState().globalRootBlockNumber());
+    state.mutableHistoricState().setRoot(
+        sw.mutableHistoricState().globalRoot(), sw.mutableHistoricState().globalRootBlockNumber() );
 
     // check
 
     sw.mutableHistoricState().setRootByBlockNumber( 1001 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(0) );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().storage( address1, location ), u256( 0 ) );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1002 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(1) );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().storage( address1, location ), u256( 1 ) );
 
     sw.mutableHistoricState().setRootByBlockNumber( 1003 );
-    BOOST_CHECK_EQUAL(sw.mutableHistoricState().storage(address1, location), u256(2) );
+    BOOST_CHECK_EQUAL( sw.mutableHistoricState().storage( address1, location ), u256( 2 ) );
 
     // check that rotation happened
-    BOOST_CHECK_EQUAL(countStateDbPieces(), 3);
-    BOOST_CHECK_EQUAL(countRootsDbPieces(), 4);
+    BOOST_CHECK_EQUAL( countStateDbPieces(), 3 );
+    BOOST_CHECK_EQUAL( countRootsDbPieces(), 4 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

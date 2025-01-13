@@ -1000,8 +1000,7 @@ Block Client::blockByNumber( BlockNumber _h ) const {
         }
 
         // blockByNumber is only used for reads
-
-        auto readState = m_state.createStateReadOnlyCopy();
+        auto readState = m_state.createStateCopyAndClearCaches();
         readState.mutableHistoricState().setRootByBlockNumber( this->blockInfo( hash ).number() );
 
         // removed m_blockImportMutex here

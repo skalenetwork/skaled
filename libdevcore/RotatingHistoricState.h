@@ -5,6 +5,7 @@
 
 #include <libbatched-io/BatchedRotatingHistoricDbIO.h>
 
+#include <mutex>
 #include <set>
 #include <shared_mutex>
 
