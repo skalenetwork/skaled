@@ -2823,7 +2823,7 @@ std::string peer::getShortTypeDescrition( bool isColored /*= false*/ ) const {
     return s;
 }
 std::string peer::getShortPeerDescription(
-    bool isColored /*= false*/, bool isTrafficStats /*= true*/ ) const {
+    bool isColored /*= false*/, bool /*= true*/ ) const {
     std::stringstream ss;
     std::string strSpace( " " ), strCommaSpace( ", " ), strIP( getRemoteIp() );
     if ( isColored ) {
