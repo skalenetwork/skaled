@@ -364,7 +364,7 @@ void loop::run() {
                 } );
             }  // if ( p_uvAsyncInitForTimers_ != nullptr )
 #endif         // ( defined __SKUTILS_DISPATCH_ENABLE_ASYNC_INIT_CALL_FOR_TASK_TIMERS__
-        // )
+            // )
         } catch ( ... ) {
             p_uvLoop_ = nullptr;
         }
