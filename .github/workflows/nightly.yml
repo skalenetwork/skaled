@@ -158,26 +158,108 @@ jobs:
       - name: Print ccache stats after full build
         run : |
           ccache --show-stats
-      - name: Testeth verbosity 4
+      - name: Testeth verbosity 1
         run : |
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
           cd build/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          ./testeth --report_level=detailed -- --verbosity 4 # run everything but tests
-                                                            # that are run with `--all`
-          
-          # run skutils tests
-          ./teseth --report_level=detailed -t SkUtils/dispatch -- --all --verbosity 4
-          ./teseth --report_level=detailed -t SkUtils/http -- --all --verbosity 4
-          ./teseth --report_level=detailed -t SkUtils/unddos -- --all --verbosity 4
-          ./teseth --report_level=detailed -t SkUtils/ws -- --all --verbosity 4
-          
-          # run btrfs tests separately
-          sudo ./testeth --report_level=detailed -t BtrfsTestSuite -- --all --verbosity 4
-          sudo ./testeth --report_level=detailed -t HashSnapshotTestSuite -- --all --verbosity 4
-          sudo ./testeth --report_level=detailed -t ClientSnapshotsSuite -- --all --verbosity 4
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --all && touch "/tmp/tests/${1}Passed"; }                    
+          run_test TransitionTests 
+          run_test TransactionTests 
+          run_test VMTests 
+          run_test LevelDBTests 
+          run_test CoreLibTests 
+          run_test RlpTests 
+          run_test SharedSpaceTests 
+          run_test EthashTests 
+          run_test SealEngineTests 
+          run_test DifficultyTests 
+          run_test BlockSuite
+          run_test BlockChainMainNetworkSuite
+          run_test BlockChainFrontierSuite
+          run_test BlockQueueSuite 
+          run_test ClientBase
+          run_test EstimateGas 
+          run_test getHistoricNodesData
+          run_test ExtVmSuite
+          run_test GasPricer
+          run_test BasicTests
+          run_test InstanceMonitorSuite
+          run_test PrecompiledTests 
+          run_test SkaleHostSuite 
+          run_test StateUnitTests 
+          run_test libethereum 
+          run_test TransactionQueueSuite 
+          run_test LegacyVMSuite 
+          run_test SkaleInterpreterSuite 
+          run_test SnapshotSigningTestSuite 
+          run_test SkUtils 
+          run_test BlockChainTestSuite 
+          run_test TestHelperSuite 
+          run_test LevelDBHashBase 
+          run_test memDB 
+          run_test OverlayDBTests 
+          run_test AccountHolderTest 
+          run_test ClientTests 
+          run_test JsonRpcSuite   
+          run_test SingleConsensusTests  
+          run_test ConsensusTests
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
+          cd ..
+      - name: Testeth verbosity 4
+        run : |
+          # Since a tests failed, we are rerunning the failed test with higher verbosity          
+          cd build/test      
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1          
+          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --all --verbosity 4; }                      
+          rerun_test TransitionTests 
+          rerun_test TransactionTests 
+          rerun_test VMTests 
+          rerun_test LevelDBTests 
+          rerun_test CoreLibTests 
+          rerun_test RlpTests 
+          rerun_test SharedSpaceTests 
+          rerun_test EthashTests 
+          rerun_test SealEngineTests 
+          rerun_test DifficultyTests 
+          rerun_test BlockSuite
+          rerun_test BlockChainMainNetworkSuite
+          rerun_test BlockChainFrontierSuite
+          rerun_test BlockQueueSuite 
+          rerun_test ClientBase
+          rerun_test EstimateGas 
+          rerun_test getHistoricNodesData
+          rerun_test ExtVmSuite
+          rerun_test GasPricer
+          rerun_test BasicTests
+          rerun_test InstanceMonitorSuite
+          rerun_test PrecompiledTests 
+          rerun_test SkaleHostSuite 
+          rerun_test StateUnitTests 
+          rerun_test libethereum 
+          rerun_test TransactionQueueSuite 
+          rerun_test LegacyVMSuite 
+          rerun_test SkaleInterpreterSuite 
+          rerun_test SnapshotSigningTestSuite 
+          rerun_test SkUtils 
+          rerun_test BlockChainTestSuite 
+          rerun_test TestHelperSuite 
+          rerun_test LevelDBHashBase 
+          rerun_test memDB 
+          rerun_test OverlayDBTests 
+          rerun_test AccountHolderTest 
+          rerun_test ClientTests 
+          rerun_test JsonRpcSuite   
+          rerun_test SingleConsensusTests  
+          rerun_test ConsensusTests
+          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
 
       - name: Configure all as historic
