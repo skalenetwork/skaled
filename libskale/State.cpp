@@ -936,7 +936,9 @@ void State::clearAllCaches() {
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
 
+#ifdef HISTORIC_STATE
     m_historicState.db().updateStorageUsage( m_historicState.db().storageUsed() );
+#endif
 }
 
 
