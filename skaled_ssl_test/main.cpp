@@ -88,10 +88,8 @@ void helper_ssl_cert_and_key_holder::auto_init() {
     std::string strPrefix = skutils::tools::get_tmp_file_path();
     strFilePathKey_ = strPrefix + ".key.pem";
     strFilePathCert_ = strPrefix + ".cert.pem";
-    // TODO cnote
     std::cout << "Will generate " + strFilePathKey_ + " and " +
                    strFilePathCert_ + "...\n";
-    // TODO cdebug
     std::cout << "Will create " + strFilePathKey_ + " and " +
                    strFilePathCert_ + "...\n";
     std::string strCmd;
@@ -109,7 +107,7 @@ void helper_ssl_cert_and_key_holder::auto_init() {
         std::cerr << g_err_msg << "\n";
         throw std::runtime_error( g_err_msg );
     }
-    // TODO cnote
+
     std::cout << "OKay created " + strFilePathKey_ +
                    " and " + strFilePathCert_ + ".\n";
     need_remove_files_ = true;
@@ -163,10 +161,10 @@ void helper_server::run_parallel() {
     check_can_listen();
     std::thread( [&]() -> void {
         thread_is_running_ = true;
-        // TODO cnote
+
         std::cout << strScheme_ + " network server thread started\n" ;
         run();
-        // TODO cnote
+
         std::cout << strScheme_ + " network server thread will exit\n";
         thread_is_running_ = false;
     } )
@@ -255,14 +253,14 @@ void helper_ws_peer::onMessage( const std::string& msg, skutils::ws::opcv eOpCod
 
 void helper_ws_peer::onClose(
     const std::string& reason, int local_close_code, const std::string& local_close_code_as_str ) {
-    // TODO cwarn
+
     std::cout << desc() + " peer close event with code=" + std::to_string(local_close_code) +
                    ", reason=" + reason + "\n";
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
 }
 
 void helper_ws_peer::onFail() {
-    // TODO cerror
+
     std::cout << desc() + " peer fail event\n";
     skutils::ws::peer::onFail();
 }
@@ -513,7 +511,7 @@ helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTa
         nLocalCloseCode_ = local_close_code;
         strLocalCloseCode_ = local_close_code_as_str;
         strCloseReason_ = reason;
-        // TODO cwarn
+
         std::cout << strClientName_ +  ": client got close event close with code = " +  std::to_string(local_close_code) +
                        ", code explanation is " +
                        ( local_close_code_as_str.empty() ?  "empty text" :

@@ -266,9 +266,10 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
                     return true;  // continue download
                 },
                 isBinaryDownload, &strErrorDescription );
-            std::cout << "                                                  \r";  // clear
-                                                                                  // progress
-                                                                                  // line
+            clog( VerbosityInfo, "downloadSnapshot" )
+                << "                                                  \r";  // clear
+                                                                            // progress
+                                                                            // line
             if ( !bOK ) {
                 if ( strErrorDescription.empty() )
                     strErrorDescription = "download failed, connection problem during download";
@@ -1645,7 +1646,7 @@ int main( int argc, char** argv ) try {
 
     if ( time( NULL ) < startTimestamp ) {
         statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
-        std::cout << "\nWill start at localtime " << ctime( &startTimestamp ) << "\n";
+        LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp ) << "\n";
         do
             sleep( 1 );
         while ( time( NULL ) < startTimestamp );

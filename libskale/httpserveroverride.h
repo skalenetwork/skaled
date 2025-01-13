@@ -193,6 +193,9 @@ private:
     void register_ws_conn_for_origin();
     void unregister_ws_conn_for_origin();
 
+    /// Loggers
+    std::string getLoggerName() const;
+
 public:
     std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
     std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;

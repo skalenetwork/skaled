@@ -675,14 +675,14 @@ SkaleWsPeer::SkaleWsPeer( skutils::ws::server& srv, const skutils::ws::hdl_t& hd
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::VerbosityTrace,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " peer ctor";
 }
 SkaleWsPeer::~SkaleWsPeer() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::VerbosityTrace,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " peer dtor";
     uninstallAllWatches();
     skutils::dispatch::remove( m_strPeerQueueID );
@@ -703,7 +703,7 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
         if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
             m_strUnDdosOrigin.clear();
             clog( dev::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "UN-DDOS:" + " " +
                        " cannot accept connection - UN-DDOS protection reported "
                        "connection count overflow" );
@@ -722,11 +722,15 @@ void SkaleWsPeer::unregister_ws_conn_for_origin() {
     }
 }
 
+std::string SkaleWsPeer::getLoggerName() const {
+    return getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex());
+}
+
 void SkaleWsPeer::onPeerRegister() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::VerbosityDebug,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " peer registered";
     skutils::ws::peer::onPeerRegister();
     //
@@ -739,7 +743,7 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::VerbosityDebug,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " peer unregistered";
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
@@ -754,21 +758,15 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->isShutdownMode() ) {
-        clog( dev::VerbosityWarning,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
-            << ( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                   std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + " >>> " + "";
+        clog( dev::VerbosityWarning, getLoggerName() )
+            << ( " >>> " + getLoggerName() + "/RX >>> " ) + desc() + " >>> " + "";
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
-        clog( dev::VerbosityWarning,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
-            << ( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                   std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + " >>> " +
+        clog( dev::VerbosityWarning, getLoggerName() )
+            << ( " >>> " + getLoggerName() + "/RX >>> " ) + desc() + " >>> " +
                    " got binary message and will try to interpret it as text: " + msg;
     }
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
@@ -1019,7 +1017,7 @@ void SkaleWsPeer::onClose(
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::VerbosityDebug,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " peer close event with code=" + std::to_string( local_close_code ) +
                    ", reason=" + reason;
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
@@ -1043,7 +1041,7 @@ void SkaleWsPeer::onLogMessage(
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( skale::server::helper::dv_from_ws_msg_type( eWSLMT ),
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " peer log: " + msg;
     skutils::ws::peer::onLogMessage( eWSLMT, msg );
 }
@@ -1206,7 +1204,7 @@ void SkaleWsPeer::eth_subscribe(
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::Verbosity::VerbosityError,
-            getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+            getLoggerName() )
             << desc() + " " + "error in " + "eth_subscribe" +
                    " rpc method, missing valid subscription type in parameters, was "
                    "specifiedL " +
@@ -1334,14 +1332,14 @@ void SkaleWsPeer::eth_subscribe_logs(
         std::string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityTrace,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "eth_subscribe/logs" ) + " rpc method did installed watch " +
                        strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << desc() + " " + "error in " + "eth_subscribe/logs" + " rpc method, exception " +
                        ex.what();
         nlohmann::json joError = nlohmann::json::object();
@@ -1353,7 +1351,7 @@ void SkaleWsPeer::eth_subscribe_logs(
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << desc() + " " + "error in " + "eth_subscribe/logs" +
                        " rpc method, unknown exception ";
         nlohmann::json joError = nlohmann::json::object();
@@ -1437,14 +1435,14 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         std::string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityTrace,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "eth_subscribe/newPendingTransactions" ) +
                        " rpc method did installed watch " + strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "error in " + "eth_subscribe/newPendingTransactions" +
                        " rpc method, exception " + ex.what() );
         nlohmann::json joError = nlohmann::json::object();
@@ -1458,7 +1456,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "error in " + "eth_subscribe/newPendingTransactions" +
                        " rpc method, unknown exception " );
         nlohmann::json joError = nlohmann::json::object();
@@ -1555,14 +1553,14 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
         std::string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityTrace,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "eth_subscribe/newHeads" ) +
                        " rpc method did installed watch " + strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "error in " + "eth_subscribe/newHeads(" +
                        " rpc method, exception " + ex.what() );
         nlohmann::json joError = nlohmann::json::object();
@@ -1575,7 +1573,7 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "error in " + "eth_subscribe/newHeads(" +
                        " rpc method, unknown exception " );
         nlohmann::json joError = nlohmann::json::object();
@@ -1602,14 +1600,14 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
         std::string strIW = dev::toJS( idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityTrace,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "eth_subscribe/skaleStats" ) +
                        " rpc method did installed watch " + strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "error in " + "eth_subscribe/newHeads(" +
                        " rpc method, exception " + ex.what() );
         nlohmann::json joError = nlohmann::json::object();
@@ -1622,7 +1620,7 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
             clog( dev::Verbosity::VerbosityError,
-                getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                getLoggerName() )
                 << ( desc() + " " + "error in " + "eth_subscribe/newHeads(" +
                        " rpc method, unknown exception " );
         nlohmann::json joError = nlohmann::json::object();
@@ -1653,7 +1651,7 @@ void SkaleWsPeer::eth_unsubscribe(
         if ( iw == unsigned( -1 ) ) {
             if ( pSO->opts_.isTraceCalls_ )
                 clog( dev::Verbosity::VerbosityError,
-                    getRelay().nfoGetSchemeUC() + "/" + std::to_string( getRelay().serverIndex() ) )
+                    getLoggerName() )
                     << ( desc() + " " + "error in " + "eth_unsubscribe" +
                            " rpc method, bad subscription ID " + joParamItem.dump() );
             nlohmann::json joError = nlohmann::json::object();
@@ -1670,9 +1668,7 @@ void SkaleWsPeer::eth_unsubscribe(
                  setInstalledWatchesNewPendingTransactions_.end() ) {
                 std::string strIW = dev::toJS( iw );
                 if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::Verbosity::VerbosityError,
-                        getRelay().nfoGetSchemeUC() + "/" +
-                            std::to_string( getRelay().serverIndex() ) )
+                    clog( dev::Verbosity::VerbosityError, getLoggerName() )
                         << ( desc() + " " + "error in " +
                                "eth_unsubscribe/newPendingTransactionWatch" +
                                " rpc method, bad subscription ID " + strIW );
@@ -1694,9 +1690,7 @@ void SkaleWsPeer::eth_unsubscribe(
                  setInstalledWatchesNewBlocks_.end() ) {
                 std::string strIW = dev::toJS( iw );
                 if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::Verbosity::VerbosityError,
-                        getRelay().nfoGetSchemeUC() + "/" +
-                            std::to_string( getRelay().serverIndex() ) )
+                    clog( dev::Verbosity::VerbosityError, getLoggerName() )
                         << ( desc() + " " + "error in " + "eth_unsubscribe/newHeads" +
                                " rpc method, bad subscription ID " + strIW );
                 nlohmann::json joError = nlohmann::json::object();
@@ -1716,9 +1710,7 @@ void SkaleWsPeer::eth_unsubscribe(
             if ( !bWasUnsubscribed ) {
                 std::string strIW = dev::toJS( iw );
                 if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::Verbosity::VerbosityError,
-                        getRelay().nfoGetSchemeUC() + "/" +
-                            std::to_string( getRelay().serverIndex() ) )
+                    clog( dev::Verbosity::VerbosityError, getLoggerName() )
                         << ( desc() + " " + "error in " + "eth_unsubscribe/newHeads" +
                                " rpc method, bad subscription ID " + strIW );
                 nlohmann::json joError = nlohmann::json::object();
@@ -1733,9 +1725,7 @@ void SkaleWsPeer::eth_unsubscribe(
             if ( setInstalledWatchesLogs_.find( iw ) == setInstalledWatchesLogs_.end() ) {
                 std::string strIW = dev::toJS( iw );
                 if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::Verbosity::VerbosityError,
-                        getRelay().nfoGetSchemeUC() + "/" +
-                            std::to_string( getRelay().serverIndex() ) )
+                    clog( dev::Verbosity::VerbosityError, getLoggerName() )
                         << ( desc() + " " + "error in " + "eth_unsubscribe/logs" +
                                " rpc method, bad subscription ID " + strIW );
                 nlohmann::json joError = nlohmann::json::object();
