@@ -14,7 +14,7 @@
  jobs:
   functional-tests:
     name: Functional tests for ${{ inputs.version }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       SKALED_RELEASE: ${{ inputs.version }}
@@ -24,7 +24,7 @@
       with:
         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         repository: skalenetwork/skale-ci-integration_tests
-        ref: master
+        ref: v3.20.0
         submodules: recursive
     - name: Set up Node 
       uses: actions/setup-node@v3.4.0

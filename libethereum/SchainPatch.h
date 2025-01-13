@@ -146,4 +146,9 @@ DEFINE_AMNESIC_PATCH( VerifyBlsSyncPatch );
  */
 DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
 
+/*
+ * Context: fix externalGas calculation
+ */
+DEFINE_SIMPLE_PATCH( ExternalGasPatch );
+
 #endif  // SCHAINPATCH_H

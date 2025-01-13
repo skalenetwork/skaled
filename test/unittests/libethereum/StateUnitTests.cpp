@@ -44,6 +44,21 @@ BOOST_AUTO_TEST_CASE( Basic ) {
     Block s( Block::Null );
 }
 
+BOOST_AUTO_TEST_CASE( LoadAccountCode ) {
+    Address addr{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"};
+    State state( 0 );
+    State s = state.createStateCopyAndClearCaches();
+    s.createContract( addr );
+    uint8_t codeData[] = {'c', 'o', 'd', 'e'};
+    u256 version = 123;
+    s.setCode( addr, {std::begin( codeData ), std::end( codeData )}, version );
+    s.commit(dev::eth::CommitBehaviour::RemoveEmptyAccounts );
+
+    auto& loadedCode = s.code( addr );
+    BOOST_CHECK(
+        std::equal( std::begin( codeData ), std::end( codeData ), std::begin( loadedCode ) ) );
+}
+
 class AddressRangeTestFixture : public TestOutputHelperFixture {
 public:
     AddressRangeTestFixture() {
@@ -54,7 +69,7 @@ public:
         }
 
         // create accounts in the state
-        State writer = state.createStateModifyCopy();
+        State writer = state.createStateCopyAndClearCaches();
         for ( auto const& hashAndAddr : hashToAddress )
             writer.addBalance( hashAndAddr.second, 100 );
         writer.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
@@ -107,6 +122,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsAllAddresses ) {
 
     std::pair< State::AddressMap, h256 > addressesAndNextKey =
         sr.addresses( h256{}, addressCount * 2 );
+
     State::AddressMap addresses = addressesAndNextKey.first;
 
     BOOST_CHECK_EQUAL( addresses.size(), addressCount );
@@ -173,7 +189,7 @@ BOOST_AUTO_TEST_CASE( addressesReturnsNoMoreThanRequested ) {
 }
 
 BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
-    State s = state.createStateReadOnlyCopy();
+    State s = state;
 
     // delete some accounts
     unsigned deleteCount = 3;
@@ -189,8 +205,9 @@ BOOST_AUTO_TEST_CASE( addressesDoesntReturnDeletedInCache ) {
     BOOST_CHECK( addresses == State::AddressMap( it, hashToAddress.end() ) );
 }
 
-BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache ) {
-    State s = state.createStateReadOnlyCopy();
+BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,    
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+   State s = state;
 
     // create some accounts
     unsigned createCount = 3;

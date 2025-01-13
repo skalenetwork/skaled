@@ -65,14 +65,20 @@ public:
     OverlayDB& operator=( OverlayDB&& ) = default;
 
     dev::h256 getLastExecutedTransactionHash() const;
-    dev::bytes getPartialTransactionReceipts() const;
+    std::vector< dev::bytes > getPartialTransactionReceipts(
+        dev::eth::BlockNumber _blockNumber ) const;
+
+    void removeAllPartialTransactionReceipts();
+
     void setLastExecutedTransactionHash( const dev::h256& );
-    void setPartialTransactionReceipts( const dev::bytes& );
 
-    void addReceiptToPartials( const dev::eth::TransactionReceipt& );
-    void clearPartialTransactionReceipts();
+    void setPartialTransactionReceipt( const dev::bytes& _newReceipt,
+        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
-    void commit( const std::string& _debugCommitId );
+    // commit key-value pairs in storage
+    void commitStorageValues();
+    void commit();
+
     void rollback();
     void clearDB();
     bool connected() const;
@@ -105,10 +111,7 @@ public:
 
     std::unordered_map< dev::u256, dev::u256 > storage( dev::h160 const& address ) const;
 
-    void setCommitOnEveryInsert( bool _value, uint64_t _blockNumber ) {
-        commit( std::to_string( _blockNumber ) );
-        m_commitOnEveryInsert = _value;
-    }
+    static std::string uint64ToFixedLengthHex( uint64_t value );
 
 private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
@@ -128,7 +131,7 @@ private:
     bool m_commitOnEveryInsert = false;
 
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
-    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
+
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }

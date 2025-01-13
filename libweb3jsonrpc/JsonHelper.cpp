@@ -101,12 +101,18 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
         res["blockHash"] = toJS( _location.first );
         res["transactionIndex"] = toJS( _location.second );
         res["blockNumber"] = toJS( _blockNumber );
-        res["v"] = _t.isReplayProtected() ? toJS( 2 * _t.chainId() + 35 + _t.signature().v ) :
-                                            toJS( 27 + _t.signature().v );
+        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+            if ( _t.isReplayProtected() )
+                res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
+            else
+                res["v"] = toJS( 27 + _t.signature().v );
+        else
+            res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["chainId"] = toJS( _t.chainId() );
             res["yParity"] = toJS( _t.signature().v );
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
@@ -119,7 +125,7 @@ Json::Value toJson( dev::eth::Transaction const& _t, std::pair< h256, unsigned >
                 }
                 res["accessList"].append( accessList );
             }
-            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+            if ( _t.txType() == dev::eth::TransactionType::Type2 ) {
                 res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
                 res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
             }
@@ -349,9 +355,16 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
         res["nonce"] = toJS( _t.nonce() );
         res["r"] = toJS( _t.signature().r );
         res["s"] = toJS( _t.signature().s );
-        res["v"] = toJS( _t.signature().v );
+        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+            if ( _t.isReplayProtected() )
+                res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
+            else
+                res["v"] = toJS( 27 + _t.signature().v );
+        else
+            res["v"] = toJS( _t.signature().v );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["chainId"] = toJS( _t.chainId() );
             res["yParity"] = toJS( _t.signature().v );
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
@@ -364,7 +377,7 @@ Json::Value toJson( dev::eth::Transaction const& _t ) {
                 }
                 res["accessList"].append( accessList );
             }
-            if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
+            if ( _t.txType() == dev::eth::TransactionType::Type2 ) {
                 res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
                 res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
             }
@@ -398,12 +411,18 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
         res["to"] = _t.isCreation() ? Json::Value() : toJS( _t.receiveAddress() );
         res["transactionIndex"] = toJS( _t.transactionIndex() );
         res["value"] = toJS( _t.value() );
-        res["v"] = _t.isReplayProtected() ? toJS( 2 * _t.chainId() + 35 + _t.signature().v ) :
-                                            toJS( 27 + _t.signature().v );
+        if ( _t.txType() == dev::eth::TransactionType::Legacy )
+            if ( _t.isReplayProtected() )
+                res["v"] = toJS( 2 * _t.chainId() + 35 + _t.signature().v );
+            else
+                res["v"] = toJS( 27 + _t.signature().v );
+        else
+            res["v"] = toJS( _t.signature().v );
         res["r"] = toJS( _t.signature().r.hex() );
         res["s"] = toJS( _t.signature().s.hex() );
         res["type"] = toJS( int( _t.txType() ) );
         if ( _t.txType() != dev::eth::TransactionType::Legacy ) {
+            res["chainId"] = toJS( _t.chainId() );
             res["yParity"] = toJS( _t.signature().v );
             res["accessList"] = Json::Value( Json::arrayValue );
             for ( const auto& d : _t.accessList() ) {
@@ -418,7 +437,7 @@ Json::Value toJson( dev::eth::LocalisedTransaction const& _t ) {
             }
             if ( _t.txType() != dev::eth::TransactionType::Type1 ) {
                 res["maxPriorityFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
-                res["maxFeePerGas"] = toJS( _t.maxPriorityFeePerGas() );
+                res["maxFeePerGas"] = toJS( _t.maxFeePerGas() );
             }
         }
     }

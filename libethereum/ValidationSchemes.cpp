@@ -223,7 +223,12 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "archiveMode", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "syncFromCatchup", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "testSignatures", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } } } );
+            { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
+            { "catchupTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "syncNodeCatchupTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "readJsonHeaderTimeoutSec", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "syncNodeReadJsonHeaderTimeoutSec",
+                { { js::int_type }, JsonFieldPresence::Optional } } } );
 
     std::string keyShareName = "";
     try {

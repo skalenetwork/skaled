@@ -6,6 +6,7 @@
 #include <libbatched-io/batched_rotating_db_io.h>
 
 #include <deque>
+#include <mutex>
 #include <set>
 #include <shared_mutex>
 

@@ -387,13 +387,13 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
     }
 
     output["blocks"] = blArray;
-    output["postState"] = fillJsonWithState( testChain.topBlock().state().createStateReadOnlyCopy() );
+    output["postState"] = fillJsonWithState(testChain.topBlock().state() );
     output["lastblockhash"] = toHexPrefixed( testChain.topBlock().blockHeader().hash( WithSeal ) );
 
     // make all values hex in pre section
     State prestate = State();
     ImportTest::importState( _input.at( "pre" ).get_obj(), prestate );
-    output["pre"] = fillJsonWithState( prestate.createStateReadOnlyCopy() );
+    output["pre"] = fillJsonWithState(prestate );
 
     for ( auto iterator = chainMap.begin(); iterator != chainMap.end(); iterator++ )
         delete iterator->second;
@@ -1018,16 +1018,14 @@ BOOST_FIXTURE_TEST_SUITE( BlockchainTests, bcTestFixture )
 BOOST_AUTO_TEST_CASE( bcStateTests ) {}
 BOOST_AUTO_TEST_CASE( bcBlockGasLimitTest ) {}
 BOOST_AUTO_TEST_CASE( bcGasPricerTest ) {}
-BOOST_AUTO_TEST_CASE( bcInvalidHeaderTest ) {}
 BOOST_AUTO_TEST_CASE( bcUncleHeaderValidity ) {}
-BOOST_AUTO_TEST_CASE( bcUncleTest ) {}
+// Commenting this out as we do not support this
 BOOST_AUTO_TEST_CASE( bcValidBlockTest ) {}
 BOOST_AUTO_TEST_CASE( bcWalletTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( bcForgedTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( bcRandomBlockhashTest ) {}
-BOOST_AUTO_TEST_CASE( bcExploitTest ) {}
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -1110,10 +1108,6 @@ BOOST_AUTO_TEST_CASE( stNonZeroCallsTest,
 BOOST_AUTO_TEST_CASE( stZeroCallsTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( stZeroCallsRevert,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stCodeSizeLimit,
-                         *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
-BOOST_AUTO_TEST_CASE( stCreateTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}
 BOOST_AUTO_TEST_CASE( stRevertTest,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {}

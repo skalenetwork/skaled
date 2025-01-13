@@ -12,17 +12,17 @@
 #include <libethereum/ConsensusStub.h>
 #include <libethereum/GasPricer.h>
 #include <libp2p/Network.h>
+#include <libskale/SkipInvalidTransactionsPatch.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/JsonHelper.h>
-#include <libskale/SkipInvalidTransactionsPatch.h>
 
 #include <libethcore/SealEngine.h>
 
 #include <libdevcore/TransientDirectory.h>
 
-#include <boost/test/unit_test.hpp>
-#include <boost/test/data/test_case.hpp>
 #include <boost/test/data/monomorphic.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <memory>
 
@@ -44,13 +44,13 @@ public:
         block_gas_prices.push_back( 1000 );
     }
     ~ConsensusTestStub() override {}
-    void parseFullConfigAndCreateNode( const std::string& /*_jsonConfig */,
-                 const string& /*_gethURL*/ ) override {}
+    void parseFullConfigAndCreateNode(
+        const std::string& /*_jsonConfig */, const string& /*_gethURL*/ ) override {}
     void startAll() override {}
     void bootStrapAll() override {}
     void exitGracefully() override { need_exit = true; }
     consensus_engine_status getStatus() const override {
-        return need_exit? CONSENSUS_EXITED : CONSENSUS_ACTIVE;
+        return need_exit ? CONSENSUS_EXITED : CONSENSUS_ACTIVE;
     }
     void stop() {}
 
@@ -59,9 +59,10 @@ public:
         return m_extFace.pendingTransactions( _limit, stateRoot );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
-        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0, uint64_t _winningNodeIndex = -1 ) {
-        m_extFace.createBlock(
-            _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
+        uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
+        uint64_t _winningNodeIndex = -1 ) {
+        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice,
+            _stateRoot, _winningNodeIndex );
         setPriceForBlockId( _blockID, _gasPrice );
     }
 
@@ -70,9 +71,7 @@ public:
         return block_gas_prices.at( _blockId );
     }
 
-    u256 getRandomForBlockId( uint64_t _blockId ) const override {
-        return 0;
-    }
+    u256 getRandomForBlockId( uint64_t _blockId ) const override { return 0; }
 
     u256 setPriceForBlockId( uint64_t _blockId, u256 _gasPrice ) {
         assert( _blockId <= block_gas_prices.size() );
@@ -83,13 +82,16 @@ public:
         return 0;
     }
 
-    uint64_t submitOracleRequest( const string& /*_spec*/, string&
-                          /*_receipt*/, string& /*error*/) override {
+    uint64_t submitOracleRequest( const string& /*_spec*/,
+        string&
+        /*_receipt*/,
+        string& /*error*/ ) override {
         return 0;
     }
 
     uint64_t checkOracleResult( const string&
-           /*_receipt*/, string& /*_result */) override {
+        /*_receipt*/,
+        string& /*_result */ ) override {
         return 0;
     }
 
@@ -100,7 +102,6 @@ public:
     virtual ConsensusInterface::SyncInfo getSyncInfo() override {
         return ConsensusInterface::SyncInfo{};
     };
-
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {
@@ -115,7 +116,8 @@ public:
 
 // TODO Do not copy&paste from JsonRpcFixture
 struct SkaleHostFixture : public TestOutputHelperFixture {
-    SkaleHostFixture( const std::map<std::string, std::string>& params = std::map<std::string, std::string>() ) {
+    SkaleHostFixture( const std::map< std::string, std::string >& params =
+                          std::map< std::string, std::string >() ) {
         dev::p2p::NetworkPreferences nprefs;
 
         ChainParams chainParams;
@@ -128,7 +130,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
         chainParams.extraData = h256::random().asBytes();
-        chainParams.sChain.nodeGroups = { { {}, uint64_t(-1), {"0", "0", "1", "0"} } };
+        chainParams.sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
         chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
         chainParams.nodeInfo.testSignatures = true;
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
@@ -136,18 +138,21 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
         // not 0-timestamp genesis - to test patch
         chainParams.timestamp = std::time( NULL ) - 5;
 
-        if( params.count("multiTransactionMode") && stoi( params.at( "multiTransactionMode" ) ) )
+        if ( params.count( "multiTransactionMode" ) && stoi( params.at( "multiTransactionMode" ) ) )
             chainParams.sChain.multiTransactionMode = true;
-        if( params.count("skipInvalidTransactionsPatchTimestamp") && stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) ) )
-            chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::SkipInvalidTransactionsPatch)] = stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) );
+        if ( params.count( "skipInvalidTransactionsPatchTimestamp" ) &&
+             stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) ) )
+            chainParams.sChain._patchTimestamps[static_cast< size_t >(
+                SchainPatchEnum::SkipInvalidTransactionsPatch )] =
+                stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) );
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
-        accountHolder->setAccounts( {coinbase, account2} );
+        accountHolder->setAccounts( { coinbase, account2 } );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
-        auto monitor = make_shared< InstanceMonitor >("test");
+        auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv("DATA_DIR", tempDir.path().c_str(), 1);
+        setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
         client = make_unique< Client >(
             chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
@@ -185,11 +190,11 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
     TransactionQueue* tq;
 
-    TransientDirectory tempDir; // ! should exist before client!
+    TransientDirectory tempDir;  // ! should exist before client!
     unique_ptr< Client > client;
 
-    dev::KeyPair coinbase{KeyPair::create()};
-    dev::KeyPair account2{KeyPair::create()};
+    dev::KeyPair coinbase{ KeyPair::create() };
+    dev::KeyPair account2{ KeyPair::create() };
     unique_ptr< FixedAccountHolder > accountHolder;
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
 
@@ -199,9 +204,11 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
 #define CHECK_BLOCK_BEGIN auto blockBefore = client->number()
 
-#define REQUIRE_BLOCK_INCREASE( increase ) \
-    { auto blockAfter = client->number();    \
-    BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase ); }
+#define REQUIRE_BLOCK_INCREASE( increase )                         \
+    {                                                              \
+        auto blockAfter = client->number();                        \
+        BOOST_REQUIRE_EQUAL( blockAfter - blockBefore, increase ); \
+    }
 
 #define REQUIRE_BLOCK_SIZE( number, s )                                             \
     {                                                                               \
@@ -219,27 +226,35 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
 #define CHECK_NONCE_BEGIN( senderAddress ) u256 nonceBefore = client->countAt( senderAddress )
 
-#define REQUIRE_NONCE_INCREASE( senderAddress, increase ) \
-    { u256 nonceAfter = client->countAt( senderAddress );   \
-    BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase ); }
+#define REQUIRE_NONCE_INCREASE( senderAddress, increase )          \
+    {                                                              \
+        u256 nonceAfter = client->countAt( senderAddress );        \
+        BOOST_REQUIRE_EQUAL( nonceAfter - nonceBefore, increase ); \
+    }
 
 #define CHECK_BALANCE_BEGIN( senderAddress ) u256 balanceBefore = client->balanceAt( senderAddress )
 
-#define REQUIRE_BALANCE_DECREASE( senderAddress, decrease ) \
-    { u256 balanceAfter = client->balanceAt( senderAddress ); \
-    BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease ); }
+#define REQUIRE_BALANCE_DECREASE( senderAddress, decrease )            \
+    {                                                                  \
+        u256 balanceAfter = client->balanceAt( senderAddress );        \
+        BOOST_REQUIRE_EQUAL( balanceBefore - balanceAfter, decrease ); \
+    }
 
-#define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease ) \
-    { u256 balanceAfter = client->balanceAt( senderAddress );    \
-    BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease ); }
+#define REQUIRE_BALANCE_DECREASE_GE( senderAddress, decrease )      \
+    {                                                               \
+        u256 balanceAfter = client->balanceAt( senderAddress );     \
+        BOOST_REQUIRE_GE( balanceBefore - balanceAfter, decrease ); \
+    }
 
 BOOST_AUTO_TEST_SUITE( SkaleHostSuite )  //, *boost::unit_test::disabled() )
 
-auto skipInvalidTransactionsVariants = boost::unit_test::data::make({false, true});
+auto skipInvalidTransactionsVariants = boost::unit_test::data::make( { false, true } );
 
-BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    validTransaction, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -268,7 +283,7 @@ BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInv
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -278,16 +293,16 @@ BOOST_DATA_TEST_CASE( validTransaction, skipInvalidTransactionsVariants, skipInv
     REQUIRE_BALANCE_DECREASE( senderAddress, value + gasPrice * 21000 );
 }
 
-// Transaction should be IGNORED or EXCLUDED during execution (depending on skipInvalidTransactionsFlag)
-// Proposer should be penalized
-// 1 Small amount of random bytes
-// 2 110 random bytes
-// 3 110 bytes of semi-correct RLP
-BOOST_DATA_TEST_CASE( transactionRlpBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+// Transaction should be IGNORED or EXCLUDED during execution (depending on
+// skipInvalidTransactionsFlag) Proposer should be penalized 1 Small amount of random bytes 2 110
+// random bytes 3 110 bytes of semi-correct RLP
+BOOST_DATA_TEST_CASE(
+    transactionRlpBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& stub = fixture.stub;
@@ -310,15 +325,14 @@ BOOST_DATA_TEST_CASE( transactionRlpBad, skipInvalidTransactionsVariants, skipIn
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{small_tx1, small_tx2, bad_tx1, bad_tx2}, utcTime(),
+        ConsensusExtFace::transactions_vector{ small_tx1, small_tx2, bad_tx1, bad_tx2 }, utcTime(),
         1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 0 );
-    }
-    else{
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 3 );
     }
 
@@ -329,7 +343,7 @@ BOOST_DATA_TEST_CASE( transactionRlpBad, skipInvalidTransactionsVariants, skipIn
     Transactions txns = client->transactions( 1 );
     //    cerr << toJson( txns );
 
-    if(!skipInvalidTransactionsFlag){
+    if ( !skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txns[0].sha3() );
         REQUIRE_BLOCK_TRANSACTION( 1, 1, txns[1].sha3() );
         REQUIRE_BLOCK_TRANSACTION( 1, 2, txns[2].sha3() );
@@ -369,11 +383,13 @@ public:
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // zero signature
-BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionSigZero, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -402,14 +418,13 @@ BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipI
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 0 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
         h256 txHash = sha3( tx.toBytes() );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
@@ -422,11 +437,13 @@ BOOST_DATA_TEST_CASE( transactionSigZero, skipInvalidTransactionsVariants, skipI
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // corrupted signature
-BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionSigBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -455,15 +472,14 @@ BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipIn
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{data}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ data }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 0 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
         h256 txHash = sha3( data );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
@@ -476,11 +492,13 @@ BOOST_DATA_TEST_CASE( transactionSigBad, skipInvalidTransactionsVariants, skipIn
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // gas < min_gas
-BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionGasIncorrect, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -507,14 +525,13 @@ BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, 
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 0 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
     }
@@ -527,11 +544,13 @@ BOOST_DATA_TEST_CASE( transactionGasIncorrect, skipInvalidTransactionsVariants, 
 // Sender should be charged for gas consumed
 // Proposer should NOT be penalized
 // transaction exceedes it's gas limit
-BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionGasNotEnough, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -574,7 +593,7 @@ BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, 
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
@@ -588,9 +607,11 @@ BOOST_DATA_TEST_CASE( transactionGasNotEnough, skipInvalidTransactionsVariants, 
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // nonce too big
-BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionNonceBig, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -617,14 +638,13 @@ BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skip
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 0 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
     }
@@ -636,11 +656,13 @@ BOOST_DATA_TEST_CASE( transactionNonceBig, skipInvalidTransactionsVariants, skip
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // nonce too small
-BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      //, *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionNonceSmall, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    //, *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -661,8 +683,8 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     Transaction tx1( ts, ar.second );
 
     // create 1 txns in 1 block
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ tx1.toBytes() }, utcTime(), 1U ) );
 
     // now our test txn
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
@@ -677,15 +699,14 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 2U ) );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ tx2.toBytes() }, utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 2, 0 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 2, 1 );
         REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
     }
@@ -697,9 +718,11 @@ BOOST_DATA_TEST_CASE( transactionNonceSmall, skipInvalidTransactionsVariants, sk
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // not enough cash
-BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionBalanceBad, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& accountHolder = fixture.accountHolder;
@@ -726,14 +749,13 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 0 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 1 );
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash );
     }
@@ -741,41 +763,44 @@ BOOST_DATA_TEST_CASE( transactionBalanceBad, skipInvalidTransactionsVariants, sk
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );
 
-    // step 2: check that receipt "moved" to another block after successfull re-execution of the same transaction
+    // step 2: check that receipt "moved" to another block after successfull re-execution of the
+    // same transaction
 
-    if(!skipInvalidTransactionsFlag){
-        LocalisedTransactionReceipt r1 = client->localisedTransactionReceipt(txHash);
-        BOOST_REQUIRE_EQUAL(r1.blockNumber(), 1);
-        BOOST_REQUIRE_EQUAL(r1.gasUsed(), 0);
-        LocalisedTransaction lt = client->localisedTransaction(txHash);
-        BOOST_REQUIRE_EQUAL(lt.blockNumber(), 1);
+    if ( !skipInvalidTransactionsFlag ) {
+        LocalisedTransactionReceipt r1 = client->localisedTransactionReceipt( txHash );
+        BOOST_REQUIRE_EQUAL( r1.blockNumber(), 1 );
+        BOOST_REQUIRE_EQUAL( r1.gasUsed(), 0 );
+        LocalisedTransaction lt = client->localisedTransaction( txHash );
+        BOOST_REQUIRE_EQUAL( lt.blockNumber(), 1 );
     }
 
     // make money
     dev::eth::simulateMining( *client, 1, senderAddress );
 
-    stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 2U );
+    stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 2U );
 
     REQUIRE_BLOCK_SIZE( 2, 1 );
     REQUIRE_BLOCK_TRANSACTION( 2, 0, txHash );
     REQUIRE_NONCE_INCREASE( senderAddress, 1 );
     REQUIRE_BALANCE_DECREASE_GE( senderAddress, 1 );
 
-    LocalisedTransactionReceipt r2 = client->localisedTransactionReceipt(txHash);
-    BOOST_REQUIRE_EQUAL(r2.blockNumber(), 2);
-    BOOST_REQUIRE_GE(r2.gasUsed(), 21000);
-    LocalisedTransaction lt = client->localisedTransaction(txHash);
-    BOOST_REQUIRE_EQUAL(lt.blockNumber(), 2);
+    LocalisedTransactionReceipt r2 = client->localisedTransactionReceipt( txHash );
+    BOOST_REQUIRE_EQUAL( r2.blockNumber(), 2 );
+    BOOST_REQUIRE_GE( r2.gasUsed(), 21000 );
+    LocalisedTransaction lt = client->localisedTransaction( txHash );
+    BOOST_REQUIRE_EQUAL( lt.blockNumber(), 2 );
 }
 
 // Transaction should be IGNORED during execution or absent if skipInvalidTransactionsFlag
 // Proposer should be penalized
 // transaction goes beyond block gas limit
-BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"skipInvalidTransactionsPatchTimestamp", to_string(int(skipInvalidTransactionsFlag))}} ) );
+BOOST_DATA_TEST_CASE(
+    transactionGasBlockLimitExceeded, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "skipInvalidTransactionsPatchTimestamp",
+            to_string( int( skipInvalidTransactionsFlag ) ) } } ) );
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
     auto& stub = fixture.stub;
@@ -809,17 +834,16 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{tx1.toBytes(), tx2.toBytes()}, utcTime(), 1U ) );
+        ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() }, utcTime(), 1U ) );
     BOOST_REQUIRE_EQUAL( client->number(), 1 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
 
-    if(skipInvalidTransactionsFlag){
+    if ( skipInvalidTransactionsFlag ) {
         REQUIRE_BLOCK_SIZE( 1, 1 );
 
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash1 );
-    }
-    else {
+    } else {
         REQUIRE_BLOCK_SIZE( 1, 2 );
 
         REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash1 );
@@ -832,7 +856,6 @@ BOOST_DATA_TEST_CASE( transactionGasBlockLimitExceeded, skipInvalidTransactionsV
 
 // Last transaction should be dropped from block proposal
 BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
-
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -842,11 +865,12 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     auto receiver = KeyPair::create();
 
-    {
-        auto wr_state = client->state().createStateModifyCopy();
-        wr_state.addBalance( fixture.account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
-        wr_state.commit();
-    }
+
+    auto wr_state = client->state().createStateCopyAndClearCaches();
+    wr_state.addBalance(
+        fixture.account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
+    wr_state.commit();
+    wr_state.getOriginalDb()->createBlockSnap(2);
 
     // 1 txn with max gas
     Json::Value json;
@@ -859,7 +883,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     Transaction tx1 = fixture.tx_from_json( json );
 
     // 2 txn
-    json["from"]  = toJS( account2.address() );
+    json["from"] = toJS( account2.address() );
     json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
 
     Transaction tx2 = fixture.tx_from_json( json );
@@ -868,7 +892,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
     skaleHost->receiveTransaction( toJS( tx2.toBytes() ) );
 
-    sleep( 1 );         // allow broadcast thread to move them
+    sleep( 1 );  // allow broadcast thread to move them
 
     ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
 
@@ -878,9 +902,8 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
 // positive test for 4 next ones
 BOOST_AUTO_TEST_CASE( transactionDropReceive
-                      //, *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
+    //, *boost::unit_test::precondition( dev::test::run_not_express )
+) {
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -900,7 +923,8 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas(
+        client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -929,7 +953,7 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     CHECK_NONCE_BEGIN( senderAddress );
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx3}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx3 }, utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -942,9 +966,8 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
     BOOST_REQUIRE_EQUAL( txns.size(), 1 );
 }
 
-BOOST_AUTO_TEST_CASE( transactionDropQueue, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-
+BOOST_AUTO_TEST_CASE(
+    transactionDropQueue, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -964,68 +987,8 @@ BOOST_AUTO_TEST_CASE( transactionDropQueue,
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
-
-    // submit it!
-    tq->import( tx1 );
-
-    sleep( 1 );
-    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
-
-    // 2nd transaction will remove 1
-    u256 value2 = 8000 * dev::eth::szabo;
-    json["value"] = jsToDecimal( toJS( value2 ) );
-    json["nonce"] = 0;
-
-    Transaction tx2 = fixture.tx_from_json( json );
-
-    h256 txHash2 = tx2.sha3();
-
-    // return it from consensus!
-    CHECK_NONCE_BEGIN( senderAddress );
-    CHECK_BALANCE_BEGIN( senderAddress );
-    CHECK_BLOCK_BEGIN;
-
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 1U ) );
-    stub->setPriceForBlockId( 1, 1000 );
-
-    REQUIRE_BLOCK_INCREASE( 1 );
-    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
-
-    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
-    REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
-
-    // should not be accessible from queue
-    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
-    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
-}
-
-// TODO Check exact dropping reason!
-BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
-    SkaleHostFixture fixture;
-    auto& client = fixture.client;
-    auto& coinbase = fixture.coinbase;
-    auto& stub = fixture.stub;
-    auto& tq = fixture.tq;
-
-    auto senderAddress = coinbase.address();
-    auto receiver = KeyPair::create();
-
-    Json::Value json;
-    u256 value1 = 10000 * dev::eth::szabo;
-    json["from"] = toJS( senderAddress );
-    json["to"] = toJS( receiver.address() );
-    json["value"] = jsToDecimal( toJS( value1 ) );
-    json["gasPrice"] = "1000";
-    json["nonce"] = 1;
-
-    // 1st tx
-    Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas(
+        client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // submit it!
     tq->import( tx1 );
@@ -1048,7 +1011,68 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 1U, 1000 ) );
+        ConsensusExtFace::transactions_vector{ tx2.toBytes() }, utcTime(), 1U ) );
+    stub->setPriceForBlockId( 1, 1000 );
+
+    REQUIRE_BLOCK_INCREASE( 1 );
+    REQUIRE_BLOCK_TRANSACTION( 1, 0, txHash2 );
+
+    REQUIRE_NONCE_INCREASE( senderAddress, 1 );
+    REQUIRE_BALANCE_DECREASE( senderAddress, value2 );
+
+    // should not be accessible from queue
+    ConsensusExtFace::transactions_vector txns = stub->pendingTransactions( 1 );
+    BOOST_REQUIRE_EQUAL( txns.size(), 0 );
+}
+
+// TODO Check exact dropping reason!
+BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
+    SkaleHostFixture fixture;
+    auto& client = fixture.client;
+    auto& coinbase = fixture.coinbase;
+    auto& stub = fixture.stub;
+    auto& tq = fixture.tq;
+
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    u256 value1 = 10000 * dev::eth::szabo;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( value1 ) );
+    json["gasPrice"] = "1000";
+    json["nonce"] = 1;
+
+    // 1st tx
+    Transaction tx1 = fixture.tx_from_json( json );
+    tx1.checkOutExternalGas(
+        client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+
+    // submit it!
+    tq->import( tx1 );
+
+    sleep( 1 );
+    BOOST_REQUIRE_EQUAL( tq->knownTransactions().size(), 1 );
+
+    // 2nd transaction will remove 1
+    u256 value2 = 8000 * dev::eth::szabo;
+    json["value"] = jsToDecimal( toJS( value2 ) );
+    json["nonce"] = 0;
+
+    Transaction tx2 = fixture.tx_from_json( json );
+
+    h256 txHash2 = tx2.sha3();
+
+    // return it from consensus!
+    CHECK_NONCE_BEGIN( senderAddress );
+    CHECK_BALANCE_BEGIN( senderAddress );
+    CHECK_BLOCK_BEGIN;
+
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ tx2.toBytes() }, utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1064,9 +1088,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
 // TODO Check exact dropping reason!
 BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -1079,7 +1102,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     auto receiver = KeyPair::create();
 
     {
-        auto wr_state = client->state().createStateModifyCopy();
+        auto wr_state = client->state().createStateCopyAndClearCaches();
         wr_state.addBalance( fixture.account2.address(), 1 * ether );
         wr_state.commit();
     }
@@ -1094,7 +1117,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
-    tx1.checkOutExternalGas( client->chainParams(), client->latestBlock().info().timestamp(), client->number(), false );
+    tx1.checkOutExternalGas(
+        client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
 
     // receive it!
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
@@ -1118,7 +1142,7 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
     CHECK_BLOCK_BEGIN;
 
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
-        ConsensusExtFace::transactions_vector{tx2.toBytes()}, utcTime(), 1U, 1000 ) );
+        ConsensusExtFace::transactions_vector{ tx2.toBytes() }, utcTime(), 1U, 1000 ) );
     stub->setPriceForBlockId( 1, 1100 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1133,9 +1157,8 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 }
 
 BOOST_AUTO_TEST_CASE( transactionRace
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -1166,7 +1189,7 @@ BOOST_AUTO_TEST_CASE( transactionRace
 
     // 2 get it from consensus
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx.toBytes()}, utcTime(), 1U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ tx.toBytes() }, utcTime(), 1U ) );
     stub->setPriceForBlockId( 1, 1000 );
 
     REQUIRE_BLOCK_INCREASE( 1 );
@@ -1189,9 +1212,8 @@ BOOST_AUTO_TEST_CASE( transactionRace
 
 // test two blocks with overlapping transactions :)
 BOOST_AUTO_TEST_CASE( partialCatchUp
-                      // , *boost::unit_test::precondition( dev::test::run_not_express )
-                      ) {
-
+    // , *boost::unit_test::precondition( dev::test::run_not_express )
+) {
     SkaleHostFixture fixture;
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -1213,8 +1235,8 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     Transaction tx1( ts, ar.second );
 
     // create 1 txns in 1 block
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ tx1.toBytes() }, utcTime(), 1U ) );
 
     // now 2 txns
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
@@ -1229,8 +1251,8 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     CHECK_BALANCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes(), tx2.toBytes()}, utcTime(), 2U ) );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ tx1.toBytes(), tx2.toBytes() }, utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 2, 2 );
@@ -1241,7 +1263,6 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
 }
 
 BOOST_AUTO_TEST_CASE( getBlockRandom ) {
-
     SkaleHostFixture fixture;
     auto& skaleHost = fixture.skaleHost;
 
@@ -1253,7 +1274,6 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
 }
 
 BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
-
     SkaleHostFixture fixture;
     auto& skaleHost = fixture.skaleHost;
 
@@ -1261,15 +1281,19 @@ BOOST_AUTO_TEST_CASE( getIMABLSPUblicKey ) {
     auto res = exec( bytesConstRef() );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getIMABLSPublicKey();
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) + toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
+    BOOST_REQUIRE( res.second == toBigEndian( dev::u256( imaBLSPublicKey[0] ) ) +
+                                     toBigEndian( dev::u256( imaBLSPublicKey[1] ) ) +
+                                     toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
+                                     toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
 
-struct dummy{};
+struct dummy {};
 
 // Test behavior of MTM if tx with big nonce was already mined as erroneous
-BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
-                      *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SkaleHostFixture fixture( std::map<std::string, std::string>( {{"multiTransactionMode", "1"}} ) );
+BOOST_FIXTURE_TEST_CASE(
+    mtmAfterBigNonceMined, dummy, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    SkaleHostFixture fixture(
+        std::map< std::string, std::string >( { { "multiTransactionMode", "1" } } ) );
 
     auto& client = fixture.client;
     auto& coinbase = fixture.coinbase;
@@ -1301,14 +1325,14 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
     sleep( 1 );
     ConsensusExtFace::transactions_vector proposal = stub->pendingTransactions( 100 );
     // and not proposed
-    BOOST_REQUIRE_EQUAL(proposal.size(), 0);
+    BOOST_REQUIRE_EQUAL( proposal.size(), 0 );
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BLOCK_BEGIN;
 
     // simulate it coming from another node
-    BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{tx1.toBytes()}, utcTime(), 1U ) );
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ tx1.toBytes() }, utcTime(), 1U ) );
 
     REQUIRE_BLOCK_SIZE( 1, 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
@@ -1327,10 +1351,10 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
     skaleHost->receiveTransaction( toJS( tx2.toBytes() ) );
     sleep( 1 );
     proposal = stub->pendingTransactions( 100 );
-    BOOST_REQUIRE_EQUAL(proposal.size(), 2);
+    BOOST_REQUIRE_EQUAL( proposal.size(), 2 );
 
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 2U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] }, utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 2 );
     REQUIRE_BLOCK_SIZE( 2, 1 );
@@ -1340,17 +1364,15 @@ BOOST_FIXTURE_TEST_CASE( mtmAfterBigNonceMined, dummy,
 
     // 3 submit nonce = 1 again!
     // it should go to proposal
-    BOOST_REQUIRE_THROW(
-        skaleHost->receiveTransaction( toJS( tx1.toBytes() ) ),
-        dev::eth::PendingTransactionAlreadyExists
-    );
+    BOOST_REQUIRE_THROW( skaleHost->receiveTransaction( toJS( tx1.toBytes() ) ),
+        dev::eth::PendingTransactionAlreadyExists );
     sleep( 1 );
     proposal = stub->pendingTransactions( 100 );
-    BOOST_REQUIRE_EQUAL(proposal.size(), 1);
+    BOOST_REQUIRE_EQUAL( proposal.size(), 1 );
 
     // submit it for sure
     BOOST_REQUIRE_NO_THROW(
-        stub->createBlock( ConsensusExtFace::transactions_vector{proposal[0]}, utcTime(), 3U ) );
+        stub->createBlock( ConsensusExtFace::transactions_vector{ proposal[0] }, utcTime(), 3U ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

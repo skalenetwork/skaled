@@ -4,11 +4,6 @@ namespace batched_io {
 
 using namespace dev::db;
 
-batched_db::~batched_db() {
-    // all batches should be either commit()'ted or revert()'ed!
-    assert( !m_batch );
-}
-
 db_operations_face* db_splitter::new_interface() {
     assert( this->m_interfaces.size() < 256 );
 
