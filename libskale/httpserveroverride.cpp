@@ -129,53 +129,52 @@ dev::Verbosity dv_from_ws_msg_type( skutils::ws::e_ws_log_message_type_t eWSLMT 
     return dv;
 }
 
-
-dev::eth::LogFilter toLogFilter( const json& jo ) {
+dev::eth::LogFilter toLogFilter( const nlohmann::json& jo ) {
     dev::eth::LogFilter filter;
     if ( ( !jo.is_object() ) || jo.size() == 0 )
         return filter;
 
     // check only !empty. it should throw exceptions if input params are incorrect
     if ( jo.count( "fromBlock" ) > 0 )
-        filter.withEarliest( dev::eth::jsToBlockNumber( jo["fromBlock"].get< string >() ) );
+        filter.withEarliest( dev::eth::jsToBlockNumber( jo["fromBlock"].get< std::string >() ) );
     if ( jo.count( "toBlock" ) > 0 )
-        filter.withLatest( dev::eth::jsToBlockNumber( jo["toBlock"].get< string >() ) );
+        filter.withLatest( dev::eth::jsToBlockNumber( jo["toBlock"].get< std::string >() ) );
     if ( jo.count( "address" ) > 0 ) {
         if ( jo["address"].is_array() )
             for ( auto i : jo["address"] )
-                filter.address( dev::jsToAddress( i.get< string >() ) );
+                filter.address( dev::jsToAddress( i.get< std::string >() ) );
         else
-            filter.address( dev::jsToAddress( jo["address"].get< string >() ) );
+            filter.address( dev::jsToAddress( jo["address"].get< std::string >() ) );
     }
     if ( jo.count( "topics" ) > 0 )
         for ( unsigned i = 0; i < jo["topics"].size(); i++ ) {
             if ( jo["topics"][i].is_array() ) {
                 for ( auto t : jo["topics"][i] )
                     if ( !t.is_null() )
-                        filter.topic( i, dev::jsToFixed< 32 >( t.get< string >() ) );
+                        filter.topic( i, dev::jsToFixed< 32 >( t.get< std::string >() ) );
             } else if ( !jo["topics"][i].is_null() )  // if it is anything else then string, it
                                                       // should and will fail
-                filter.topic( i, dev::jsToFixed< 32 >( jo["topics"][i].get< string >() ) );
+                filter.topic( i, dev::jsToFixed< 32 >( jo["topics"][i].get< std::string >() ) );
         }
     return filter;
 }
 
-json nljsBlockNumber( dev::eth::BlockNumber uBlockNumber ) {
+nlohmann::json nljsBlockNumber( dev::eth::BlockNumber uBlockNumber ) {
     if ( uBlockNumber == dev::eth::LatestBlock )
-        return json( "latest" );
+        return nlohmann::json( "latest" );
     if ( uBlockNumber == 0 )
-        return json( "earliest" );
+        return nlohmann::json( "earliest" );
     if ( uBlockNumber == dev::eth::PendingBlock )
-        return json( "pending" );
+        return nlohmann::json( "pending" );
     return dev::toJS( uBlockNumber );
 }
 
-json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > const& eb,
+nlohmann::json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > const& eb,
     std::vector< dev::h256 > const& order ) {
-    json res = json::array();
+    nlohmann::json res = nlohmann::json::array();
     for ( auto const& i : order ) {
         auto entries = eb.at( i );
-        json currentBlock = json::object();
+        nlohmann::json currentBlock = nlohmann::json::object();
         dev::eth::LocalisedLogEntry entry = entries[0];
         if ( entry.mined ) {
             currentBlock["blockNumber"] = nljsBlockNumber( entry.blockNumber );
@@ -184,15 +183,15 @@ json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > cons
         } else
             currentBlock["type"] = "pending";
         currentBlock["polarity"] = entry.polarity == dev::eth::BlockPolarity::Live ? true : false;
-        currentBlock["logs"] = json::array();
+        currentBlock["logs"] = nlohmann::json::array();
         for ( dev::eth::LocalisedLogEntry const& e : entries ) {
-            json log = json::object();
+            nlohmann::json log = nlohmann::json::object();
             log["logIndex"] = e.logIndex;
             log["transactionIndex"] = e.transactionIndex;
             log["transactionHash"] = toJS( e.transactionHash );
             log["address"] = dev::toJS( e.address );
             log["data"] = dev::toJS( e.data );
-            log["topics"] = json::array();
+            log["topics"] = nlohmann::json::array();
             for ( auto const& t : e.topics )
                 log["topics"].push_back( dev::toJS( t ) );
             currentBlock["logs"].push_back( log );
@@ -202,7 +201,7 @@ json toJson( std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > cons
     return res;
 }
 
-json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
+nlohmann::json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
     std::vector< dev::h256 > order;
     std::unordered_map< dev::h256, dev::eth::LocalisedLogEntries > entriesByBlock;
     for ( dev::eth::LocalisedLogEntry const& e : le ) {
@@ -217,27 +216,29 @@ json toJsonByBlock( dev::eth::LocalisedLogEntries const& le ) {
     return toJson( entriesByBlock, order );
 }
 
-bool checkParamsPresent( const char* strMethodName, const json& joRequest, json& joResponse ) {
+bool checkParamsPresent(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( joRequest.count( "params" ) > 0 )
         return true;
-    json joError = json::object();
+    nlohmann::json joError = nlohmann::json::object();
     joError["code"] = -32602;
-    joError["message"] =
-        string( "error in \"" ) + strMethodName + "\" rpc method, json entry \"params\" is missing";
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" is missing";
     joResponse["error"] = joError;
     return false;
 }
 
-bool checkParamsIsArray( const char* strMethodName, const json& joRequest, json& joResponse ) {
+bool checkParamsIsArray(
+    const char* strMethodName, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( !checkParamsPresent( strMethodName, joRequest, joResponse ) )
         return false;
-    const json& jarrParams = joRequest["params"];
+    const nlohmann::json& jarrParams = joRequest["params"];
     if ( jarrParams.is_array() )
         return true;
-    json joError = json::object();
+    nlohmann::json joError = nlohmann::json::object();
     joError["code"] = -32602;
-    joError["message"] =
-        string( "error in" ) + strMethodName + " rpc method, json entry \"params\" must be array";
+    joError["message"] = std::string( "error in \"" ) + strMethodName +
+                         "\" rpc method, json entry \"params\" must be array";
     joResponse["error"] = joError;
     return false;
 }
@@ -350,15 +351,15 @@ bool SkaleStatsSubscriptionManager::subscribe(
         subscriptionData.m_pPeer->m_strPeerQueueID,
         [=]() -> void {
             if ( subscriptionData.m_pPeer && subscriptionData.m_pPeer->isConnected() ) {
-                json joParams = json::object();
+                nlohmann::json joParams = nlohmann::json::object();
                 joParams["subscription"] = dev::toJS(
                     subscriptionData.m_idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
                 joParams["stats"] = getSSO().provideSkaleStats();
-                json joNotification = json::object();
+                nlohmann::json joNotification = nlohmann::json::object();
                 joNotification["jsonrpc"] = "2.0";
                 joNotification["method"] = "eth_subscription";
                 joNotification["params"] = joParams;
-                string strNotification = joNotification.dump();
+                std::string strNotification = joNotification.dump();
                 if ( getSSO().opts_.isTraceCalls_ )
                     clog(
                         dev::VerbosityDebug, subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() )
@@ -419,7 +420,6 @@ bool SkaleStatsSubscriptionManager::unsubscribe(
     }
 }
 
-
 void SkaleStatsSubscriptionManager::unsubscribeAll() {
     lock_type lock( mtx_ );
     std::list< subscription_id_t > lst;
@@ -467,9 +467,9 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
             pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
         if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
             m_strUnDdosOrigin.clear();
-            cerror << __FUNCTION__
-                   << " cannot accept connection - UN-DDOS protection reported "
-                      "connection count overflow";
+            clog( dev::VerbosityError, __FUNCTION__)
+                << " cannot accept connection - UN-DDOS protection reported "
+                   "connection count overflow";
             close( "UN-DDOS protection reported connection count overflow" );
             throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
                                       " connection from " + url_unddos_origin.str() +
@@ -488,7 +488,7 @@ void SkaleWsPeer::unregister_ws_conn_for_origin() {
 void SkaleWsPeer::onPeerRegister() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        ctrace << "peer registered";
+        clog( dev::VerbosityDebug, "peer registered" );
     skutils::ws::peer::onPeerRegister();
     register_ws_conn_for_origin();
 }
@@ -497,7 +497,7 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     m_pSSCTH.reset();
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        ctrace << "peer unregistered";
+        clog( dev::VerbosityDebug, "peer unregistered" );
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
     string strQueueIdToRemove = m_strPeerQueueID;
@@ -508,48 +508,51 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     unregister_ws_conn_for_origin();
 }
 
-void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
+void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->isShutdownMode() ) {
-        cwarn << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex()
-              << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                                  std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                     desc() + cc::ws_rx( " >>> " ) + "" );
+        clog(
+            dev::VerbosityWarning, getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex()
+            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
+                   desc() + cc::ws_rx( " >>> " ) + "" );
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
-        cwarn << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex()
-              << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                                  std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                     desc() + cc::ws_rx( " >>> " ) +
-                     " got binary message and will try to interpret it as text: " + msg );
+        clog(
+            dev::VerbosityWarning, getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex()
+            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
+                   desc() + cc::ws_rx( " >>> " ) +
+                   " got binary message and will try to interpret it as text: " + msg );
     }
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
-    json jarrRequest;
-    string strMethod;
-    json joID = "-1";
+    nlohmann::json jarrRequest;
+    std::string strMethod;
+    nlohmann::json joID = "-1";
     bool isBatch = false;
     try {
         // fetch method name and id earlier
-        json joRequestOriginal = json::parse( msg );
+        nlohmann::json joRequestOriginal = nlohmann::json::parse( msg );
         if ( joRequestOriginal.is_array() ) {
             isBatch = true;
             jarrRequest = joRequestOriginal;
         } else {
-            jarrRequest = json::array();
+            jarrRequest = nlohmann::json::array();
             jarrRequest.push_back( joRequestOriginal );
         }
-        for ( const json& joRequest : jarrRequest ) {
-            string strMethodWalk = skutils::tools::getFieldSafe< string >( joRequest, "method" );
+        for ( const nlohmann::json& joRequest : jarrRequest ) {
+            std::string strMethodWalk =
+                skutils::tools::getFieldSafe< std::string >( joRequest, "method" );
             if ( strMethodWalk.empty() )
                 throw std::runtime_error( "Bad JSON RPC request, \"method\" name is missing" );
             strMethod = strMethodWalk;
             if ( joRequest.count( "id" ) == 0 )
                 throw std::runtime_error( "Bad JSON RPC request, \"id\" name is missing" );
             joID = joRequest["id"];
-        }  // for( const json & joRequest : jarrRequest )
+        }  // for( const nlohmann::json & joRequest : jarrRequest )
         if ( isBatch ) {
             size_t cntInBatch = jarrRequest.size();
             if ( cntInBatch > pSO->maxCountInBatchJsonRpcRequest_ )
@@ -562,12 +565,12 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
             else
                 strMethod = "unknown_json_rpc_method";
         }
-        string e = "Bad JSON RPC request: " + msg;
-        cerror << pThis->getRelay().nfoGetSchemeUC() + "/" << pThis->getRelay().serverIndex()
-               << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                   std::to_string( pThis->getRelay().serverIndex() ) +
-                                   "/ERR !!! " ) +
-                      pThis->desc() + cc::ws_tx( " !!! " ) + e );
+        std::string e = "Bad JSON RPC request: " + msg;
+        clog( dev::VerbosityError,
+            pThis->getRelay().nfoGetSchemeUC()) << "/" << pThis->getRelay().serverIndex()
+            << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
+                   pThis->desc() + cc::ws_tx( " !!! " ) + e );
         json joErrorResponse;
         joErrorResponse["jsonrpc"] = "2.0";
         joErrorResponse["id"] = joID;
@@ -579,7 +582,8 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
         return;
     }
-
+    //
+    // unddos
     skutils::unddos::e_high_load_detection_result_t ehldr =
         pSO->unddos_.register_call_from_origin( m_strUnDdosOrigin, strMethod );
     switch ( ehldr ) {
@@ -597,7 +601,6 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
         json joErrorObj;
         joErrorObj["code"] = -32000;
         joErrorObj["message"] = "Too many request for this method from this IP address";
-        ;
         joErrorResponse["error"] = joErrorObj;
         string strResponse = joErrorResponse.dump();
         pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
@@ -612,18 +615,18 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
     // WS-processing-lambda
     auto fnAsyncMessageHandler = [pThis, jarrRequest, pSO,
                                      isBatch]() -> void {  // WS-processing-lambda
-        json jarrBatchAnswer;
+        nlohmann::json jarrBatchAnswer;
         if ( isBatch )
-            jarrBatchAnswer = json::array();
+            jarrBatchAnswer = nlohmann::json::array();
         for ( const json& joRequest : jarrRequest ) {
             string strRequest = joRequest.dump();
             string strMethod = skutils::tools::getFieldSafe< string >( joRequest, "method" );
             json joID = joRequest["id"];
             //
-            string strPerformanceQueueName =
+            std::string strPerformanceQueueName =
                 skutils::tools::format( "rpc/%s/%zu/%s", pThis->getRelay().nfoGetSchemeUC().c_str(),
                     pThis->getRelay().serverIndex(), pThis->desc( false ).c_str() );
-            string strPerformanceActionName =
+            std::string strPerformanceActionName =
                 skutils::tools::format( "%s task %zu", pThis->getRelay().nfoGetSchemeUC().c_str(),
                     pThis.get_unconst()->nTaskNumberInPeer_++ );
             //
@@ -637,7 +640,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                                         "/RX >>> " ) +
                            pThis->desc() + cc::ws_rx( " >>> " ) +
                            pThis->implPreformatTrafficJsonMessage( joRequest, true ) );
-            string strResponse;
+            std::string strResponse;
             try {
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
                          pThis->getRelay().esm_, joRequest, strResponse ) ) {
@@ -647,7 +650,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                     handler->HandleRequest( strRequest, strResponse );
                 }
 
-                json joResponse = json::parse( strResponse );
+                nlohmann::json joResponse = nlohmann::json::parse( strResponse );
             } catch ( const std::exception& ex ) {
                 clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() + "/" +
                                                to_string( pThis->getRelay().serverIndex() ) )
@@ -689,7 +692,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                            pThis->desc() + cc::ws_tx( " <<< " ) +
                            pThis->implPreformatTrafficJsonMessage( strResponse, false ) );
             if ( isBatch ) {
-                json joAnswerPart = json::parse( strResponse );
+                nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                 jarrBatchAnswer.push_back( joAnswerPart );
             } else
                 pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
@@ -700,9 +703,9 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
                 pSO->logPerformanceWarning( lfExecutionDuration, -1,
                     pThis->getRelay().nfoGetSchemeUC().c_str(), pThis->getRelay().serverIndex(),
                     pThis->getRelay().esm_, pThis->getOrigin().c_str(), strMethod.c_str(), joID );
-        }
+        }  // for( const nlohmann::json & joRequest : jarrRequest )
         if ( isBatch ) {
-            string strResponse = jarrBatchAnswer.dump();
+            std::string strResponse = jarrBatchAnswer.dump();
             pThis.get_unconst()->sendMessage( skutils::tools::trim_copy( strResponse ) );
         }
     };  // WS-processing-lambda
@@ -710,7 +713,7 @@ void SkaleWsPeer::onMessage( const string& msg, skutils::ws::opcv eOpCode ) {
 }
 
 void SkaleWsPeer::onClose(
-    const string& reason, int local_close_code, const string& local_close_code_as_str ) {
+    const std::string& reason, int local_close_code, const std::string& local_close_code_as_str ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( dev::VerbosityDebug,
@@ -725,14 +728,15 @@ void SkaleWsPeer::onClose(
 void SkaleWsPeer::onFail() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        cerror << getRelay().nfoGetSchemeUC() << desc() << " peer fail event";
+        clog( dev::VerbosityError,  getRelay().nfoGetSchemeUC()) << desc() << " peer fail event";
     skutils::ws::peer::onFail();
     uninstallAllWatches();
     // unddos
     unregister_ws_conn_for_origin();
 }
 
-void SkaleWsPeer::onLogMessage( skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) {
+void SkaleWsPeer::onLogMessage(
+    skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
         clog( skale::server::helper::dv_from_ws_msg_type( eWSLMT ), getRelay().nfoGetSchemeUC() )
@@ -786,9 +790,9 @@ void SkaleWsPeer::uninstallAllWatches() {
 
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
-    e_server_mode_t esm, const json& joRequest, string& strResponse ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, std::string& strResponse ) {
     strResponse.clear();
-    json joResponse = json::object();
+    nlohmann::json joResponse = nlohmann::json::object();
     joResponse["jsonrpc"] = "2.0";
     if ( joRequest.count( "id" ) > 0 )
         joResponse["id"] = joRequest["id"];
@@ -796,12 +800,12 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
 
     rapidjson::Document joRequestRapidjson;
     joRequestRapidjson.SetObject();
-    string strRequest = joRequest.dump();
+    std::string strRequest = joRequest.dump();
     joRequestRapidjson.Parse( strRequest.data() );
 
     rapidjson::Document joResponseRapidjson;
     joResponseRapidjson.SetObject();
-    string strResponseCopy = joResponse.dump();
+    std::string strResponseCopy = joResponse.dump();
     joResponseRapidjson.Parse( strResponseCopy.data() );
 
     if ( handleWebSocketSpecificRequest( esm, joRequest, joResponse ) ) {
@@ -810,7 +814,7 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
     }
 
     bool isSkipProtocolSpecfic = false;
-    string strMethod = joRequest["method"].get< string >();
+    std::string strMethod = joRequest["method"].get< std::string >();
 
     if ( esm == e_server_mode_t::esm_informational && strMethod == "eth_getBalance" )
         isSkipProtocolSpecfic = true;
@@ -829,12 +833,12 @@ bool SkaleWsPeer::handleWebSocketSpecificRequest(
 }
 
 bool SkaleWsPeer::handleWebSocketSpecificRequest(
-    e_server_mode_t esm, const json& joRequest, json& joResponse ) {
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( esm == e_server_mode_t::esm_informational &&
          pso()->handleInformationalRequest( joRequest, joResponse ) ) {
         return true;
     }
-    string strMethod = joRequest["method"].get< string >();
+    std::string strMethod = joRequest["method"].get< std::string >();
     ws_rpc_map_t::const_iterator itFind = g_ws_rpc_map.find( strMethod );
     if ( itFind == g_ws_rpc_map.end() ) {
         return false;
@@ -848,17 +852,18 @@ const SkaleWsPeer::ws_rpc_map_t SkaleWsPeer::g_ws_rpc_map = {
     { "eth_unsubscribe", &SkaleWsPeer::eth_unsubscribe },
 };
 
-void SkaleWsPeer::eth_subscribe( e_server_mode_t esm, const json& joRequest, json& joResponse ) {
+void SkaleWsPeer::eth_subscribe(
+    e_server_mode_t esm, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     if ( !skale::server::helper::checkParamsIsArray( "eth_subscribe", joRequest, joResponse ) )
         return;
-    const json& jarrParams = joRequest["params"];
-    string strSubscriptionType;
+    const nlohmann::json& jarrParams = joRequest["params"];
+    std::string strSubscriptionType;
     size_t idxParam, cntParams = jarrParams.size();
     for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
-        const json& joParamItem = jarrParams[idxParam];
+        const nlohmann::json& joParamItem = jarrParams[idxParam];
         if ( !joParamItem.is_string() )
             continue;
-        strSubscriptionType = skutils::tools::trim_copy( joParamItem.get< string >() );
+        strSubscriptionType = skutils::tools::trim_copy( joParamItem.get< std::string >() );
         break;
     }
     if ( strSubscriptionType == "logs" ) {
@@ -882,7 +887,7 @@ void SkaleWsPeer::eth_subscribe( e_server_mode_t esm, const json& joRequest, jso
         strSubscriptionType = "<empty>";
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        cerror << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex() << desc() << " "
+        clog( dev::Verbosity::VerbosityError, getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex() << desc() << " "
                << "error in eth_subscribe"
                << " rpc method, missing valid subscription type in parameters, was "
                   "specifiedL " +
@@ -897,15 +902,15 @@ void SkaleWsPeer::eth_subscribe( e_server_mode_t esm, const json& joRequest, jso
 }
 
 void SkaleWsPeer::eth_subscribe_logs(
-    e_server_mode_t /*esm*/, const json& joRequest, json& joResponse ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& joRequest, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
-        const json& jarrParams = joRequest["params"];
+        const nlohmann::json& jarrParams = joRequest["params"];
         dev::eth::LogFilter logFilter;
         bool bHaveLogFilter = false;
         size_t idxParam, cntParams = jarrParams.size();
         for ( idxParam = 0; idxParam < cntParams; ++idxParam ) {
-            const json& joParamItem = jarrParams[idxParam];
+            const nlohmann::json& joParamItem = jarrParams[idxParam];
             if ( joParamItem.is_string() )
                 continue;
             if ( joParamItem.is_object() ) {
@@ -914,42 +919,42 @@ void SkaleWsPeer::eth_subscribe_logs(
                     logFilter = skale::server::helper::toLogFilter( joParamItem );
                 }
             }
-        }
+        }  // for ( idxParam = 0; idxParam < cntParams; ++idxParam )
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         dev::eth::fnClientWatchHandlerMulti_t fnOnSunscriptionEvent;
         fnOnSunscriptionEvent += [pThis]( unsigned iw ) -> void {
             skutils::dispatch::async( "logs-rethread", [=]() -> void {
                 skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, iw]() -> void {
                     dev::eth::LocalisedLogEntries le = pThis->ethereum()->checkWatch( iw );
-                    json joResult = skale::server::helper::toJsonByBlock( le );
+                    nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
 
                     if ( !joResult.is_array() )
                         throw std::runtime_error( "Log entries should be array" );
                     for ( const auto& joRW : joResult ) {
                         if ( joRW.count( "logs" ) > 0 && joRW.count( "blockHash" ) > 0 &&
                              joRW.count( "blockNumber" ) > 0 ) {
-                            const string strBlockHash = joRW["blockHash"].get< string >();
-                            string strBlockNumber = joRW["blockNumber"].get< string >();
-                            const json& joResultLogs = joRW["logs"];
+                            const std::string strBlockHash = joRW["blockHash"].get< std::string >();
+                            std::string strBlockNumber = joRW["blockNumber"].get< std::string >();
+                            const nlohmann::json& joResultLogs = joRW["logs"];
                             if ( !joResultLogs.is_array() )
                                 throw std::runtime_error( "Result logs should be array" );
                             for ( const auto& joWalk : joResultLogs ) {
                                 if ( !joWalk.is_object() )
                                     continue;
-                                json joLog = joWalk;  // copy
+                                nlohmann::json joLog = joWalk;  // copy
                                 joLog["blockHash"] = strBlockHash;
                                 joLog["blockNumber"] = strBlockNumber;
-                                json joParams = json::object();
+                                nlohmann::json joParams = nlohmann::json::object();
                                 joParams["subscription"] = dev::toJS( iw );
                                 joParams["result"] = joLog;
-                                json joNotification = json::object();
+                                nlohmann::json joNotification = nlohmann::json::object();
                                 joNotification["jsonrpc"] = "2.0";
                                 joNotification["method"] = "eth_subscription";
                                 joNotification["params"] = joParams;
-                                string strNotification = joNotification.dump();
+                                std::string strNotification = joNotification.dump();
                                 const SkaleServerOverride* pSO = pThis->pso();
                                 if ( pSO->opts_.isTraceCalls_ )
-                                    cdebug << pThis->getRelay().nfoGetSchemeUC()
+                                    clog( dev::VerbosityDebug, pThis->getRelay().nfoGetSchemeUC())
                                            << cc::ws_tx_inv( " <<< " +
                                                              pThis->getRelay().nfoGetSchemeUC() +
                                                              "/TX <<< " )
@@ -974,7 +979,7 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                "because of exception: " +
                                                ex.what() );
                                 } catch ( ... ) {
-                                    cerror << pThis->getRelay().nfoGetSchemeUC() << "/"
+                                    clog( dev::Verbosity::VerbosityError, pThis->getRelay().nfoGetSchemeUC()) << "/"
                                            << pThis->getRelay().serverIndex() << pThis->desc()
                                            << " error in eth_subscription/logs will uninstall "
                                               "watcher callback"
@@ -994,7 +999,7 @@ void SkaleWsPeer::eth_subscribe_logs(
         setInstalledWatchesLogs_.insert( iw );
         string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
-            ctrace << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex() << desc()
+            clog( dev::Verbosity::VerbosityTrace,  getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex() << desc()
                    << " "
                    << "eth_subscribe/logs rpc method installed watch " << strIW;
         joResponse["result"] = strIW;
@@ -1006,7 +1011,7 @@ void SkaleWsPeer::eth_subscribe_logs(
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
-            string( "error in \"eth_subscribe/logs\" rpc method, exception: " ) + ex.what();
+            std::string( "error in \"eth_subscribe/logs\" rpc method, exception: " ) + ex.what();
         joResponse["error"] = joError;
         return;
     } catch ( ... ) {
@@ -1023,7 +1028,7 @@ void SkaleWsPeer::eth_subscribe_logs(
 }
 
 void SkaleWsPeer::eth_subscribe_newPendingTransactions(
-    e_server_mode_t /*esm*/, const json& /*joRequest*/, json& joResponse ) {
+    e_server_mode_t /*esm*/, const nlohmann::json& /*joRequest*/, nlohmann::json& joResponse ) {
     SkaleServerOverride* pSO = pso();
     try {
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
@@ -1034,17 +1039,17 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 const SkaleServerOverride* pSO = pThis->pso();
                 dev::h256 h = t.sha3();
                 //
-                json joParams = json::object();
+                nlohmann::json joParams = nlohmann::json::object();
                 joParams["subscription"] =
                     dev::toJS( iw | SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION );
                 joParams["result"] = dev::toJS( h );  // h.hex()
-                json joNotification = json::object();
+                nlohmann::json joNotification = nlohmann::json::object();
                 joNotification["jsonrpc"] = "2.0";
                 joNotification["method"] = "eth_subscription";
                 joNotification["params"] = joParams;
-                string strNotification = joNotification.dump();
+                std::string strNotification = joNotification.dump();
                 if ( pSO->opts_.isTraceCalls_ )
-                    cdebug << pThis->getRelay().nfoGetSchemeUC()
+                    clog( dev::VerbosityDebug, pThis->getRelay().nfoGetSchemeUC())
                            << cc::ws_tx_inv(
                                   " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
                                   pThis->desc() + cc::ws_tx( " <<< " ) +
@@ -1082,7 +1087,7 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         unsigned iw = ethereum()->installNewPendingTransactionWatch( fnOnSunscriptionEvent );
         setInstalledWatchesNewPendingTransactions_.insert( iw );
         iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION;
-        string strIW = dev::toJS( iw );
+        std::string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
             ctrace << getRelay().nfoGetSchemeUC() << "/" << to_string( getRelay().serverIndex() )
                    << desc() << " " << cc::info( "eth_subscribe/newPendingTransactions" )
@@ -1233,8 +1238,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
         string strIW = dev::toJS( idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
         if ( pSO->opts_.isTraceCalls_ )
             ctrace << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex()
-                   << desc() + "  eth_subscribe/skaleStats"
-                   << " rpc method did installed watch " << strIW;
+                   << desc() + "  eth_subscribe/skaleStats" << " rpc method did installed watch "
+                   << strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
