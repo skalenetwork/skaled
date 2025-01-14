@@ -300,7 +300,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const state = '${{ steps.testCore.outcome }}' === 'success' ? ('${{ steps.testCore.outcome }}' === 'success' ? 'success' : 'failure') : 'failure';
+            const state = '${{ steps.testCore.outcome }}' === 'success' ? ('${{ steps.testHistoric.outcome }}' === 'success' ? 'success' : 'failure') : 'failure';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
