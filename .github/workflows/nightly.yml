@@ -10,8 +10,53 @@ defaults:
   run:
     shell: bash
 jobs:
+  identify-prs:
+    runs-on: ubuntu-latest
+    outputs:
+      pr-data: ${{ steps.get-prs.outputs.pr-data }}
+    steps:
+      - name: Identify Open Non-Draft PRs with Recent Commits
+        id: get-prs
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const oneDayAgo = new Date();
+            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+
+            const filteredPRs = [];
+            for (const pr of prs.data) {
+              if (pr.draft) continue;
+
+              const commits = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+              });
+
+              const recentCommits = commits.data.filter(commit => {
+                const commitDate = new Date(commit.commit.author.date);
+                return commitDate >= oneDayAgo;
+              });
+
+              if (recentCommits.length > 0) {
+                filteredPRs.push({ branch: pr.head.ref, sha: pr.head.sha, number: pr.number });
+              }
+            }
+
+            console.log("Filtered PRs:", filteredPRs);
+            core.setOutput('pr-data', JSON.stringify(filteredPRs));
+
   build:
     runs-on: self-hosted
+    strategy:
+      matrix:
+        pr: ${{ fromJson(needs.identify-prs.outputs.pr-data) }}
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -20,10 +65,6 @@ jobs:
         ccache_compress: 'true'
         ccache_compresslevel: 9
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -31,6 +72,8 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ matrix.pr.branch }}
       - name: Cache apt packages
         uses: actions/cache@v2
         with:
