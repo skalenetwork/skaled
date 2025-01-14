@@ -65,7 +65,7 @@ private:
     int64_t blockCounter = 0;
     u256 stateRoot = 0;
 
-    dev::Logger m_logger{ dev::createLogger( dev::VerbosityDebug, "ConsensusStub" ) };
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ConsensusStub" ) };
 };
 
 #endif /* LIBETHEREUM_CONSENSUSSTUB_H_ */

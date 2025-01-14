@@ -88,7 +88,7 @@ void ConsensusStub::doWork() {
     if ( txns.size() == 0 )  // check for exit
         return;
 
-    LOG( m_logger ) << "Taken " << txns.size() << " transactions for consensus"
+    LOG( m_loggerDebug ) << "Taken " << txns.size() << " transactions for consensus"
                     << "\n";
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
@@ -109,10 +109,10 @@ void ConsensusStub::doWork() {
         ++blockCounter;
         m_extFace.createBlock( out_vector, time( NULL ), 0, blockCounter,
             getPriceForBlockId( blockCounter ), stateRoot, -1 );
-        LOG( m_logger ) << "createBlock"
+        LOG( m_loggerDebug ) << "createBlock"
                         << "\n";
     } catch ( const dev::Exception& x ) {
-        LOG( m_logger ) << x.what() << "\n";
+        LOG( m_loggerDebug ) << x.what() << "\n";
     }  // catch
 }
 

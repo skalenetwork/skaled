@@ -35,7 +35,9 @@ public:
     void validateSubroutine( uint64_t _PC, uint64_t* _rp, u256* _sp );
 #endif
 
-    bytes const& memory() const { return m_mem; }
+    bytes const& memory() const {
+        return m_mem;
+    }
 
     u256s stack() const {
         u256s stack( m_SP, m_stackEnd );
@@ -43,7 +45,9 @@ public:
         return stack;
     };
 
-    size_t stackSize() const { return m_stackEnd - m_SP; }
+    size_t stackSize() const {
+        return m_stackEnd - m_SP;
+    }
 
 #ifdef HISTORIC_STATE
     // these calls are used by tracing

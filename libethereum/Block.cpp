@@ -256,15 +256,13 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
             } catch ( Exception const& _e ) {
                 // TODO: Slightly nicer handling? :-)
                 LOG( m_loggerError )
-                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
-                    << endl;
-                LOG( m_loggerError ) << diagnostic_information( _e ) << endl;
+                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart.";
+                LOG( m_loggerError ) << diagnostic_information( _e );
             } catch ( std::exception const& _e ) {
                 // TODO: Slightly nicer handling? :-)
                 LOG( m_loggerError )
-                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
-                    << endl;
-                LOG( m_loggerError ) << _e.what() << endl;
+                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart.";
+                LOG( m_loggerError ) << _e.what();
             }
         }
 #endif
@@ -324,8 +322,8 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         } catch ( ... ) {
             // TODO: Slightly nicer handling? :-)
             LOG( m_loggerError )
-                << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-            LOG( m_loggerError ) << boost::current_exception_diagnostic_information() << endl;
+                << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart.";
+            LOG( m_loggerError ) << boost::current_exception_diagnostic_information();
             exit( 1 );
         }
 
@@ -375,7 +373,7 @@ pair< TransactionReceipts, bool > Block::sync(
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
                     } else if ( t.gasPrice() < _gp.ask( *this ) * 9 / 10 ) {
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
                         _tq.drop( t.sha3() );
                     }
@@ -385,11 +383,11 @@ pair< TransactionReceipts, bool > Block::sync(
 
                     if ( req > got ) {
                         // too old
-                        LOG( m_logger ) << t.sha3() << " Dropping old transaction (nonce too low)";
+                        LOG( m_loggerDebug ) << t.sha3() << " Dropping old transaction (nonce too low)";
                         _tq.drop( t.sha3() );
                     } else if ( got > req + _tq.waiting( t.sender() ) ) {
                         // too new
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << t.sha3() << " Dropping new transaction (too many nonces ahead)";
                         _tq.drop( t.sha3() );
                     } else
@@ -397,14 +395,14 @@ pair< TransactionReceipts, bool > Block::sync(
                 } catch ( BlockGasLimitReached const& e ) {
                     bigint const& got = *boost::get_error_info< errinfo_got >( e );
                     if ( got > m_currentBlock.gasLimit() ) {
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << t.sha3()
                             << " Dropping over-gassy transaction (gas > block's gas limit)";
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << "got: " << got << " required: " << m_currentBlock.gasLimit();
                         _tq.drop( t.sha3() );
                     } else {
-                        LOG( m_logger ) << t.sha3()
+                        LOG( m_loggerDebug ) << t.sha3()
                                         << " Temporarily no gas left in current block (txs gas > "
                                            "block's gas limit)";
                         //_tq.drop(t.sha3());
@@ -414,7 +412,7 @@ pair< TransactionReceipts, bool > Block::sync(
                     }
                 } catch ( Exception const& _e ) {
                     // Something else went wrong - drop it.
-                    LOG( m_logger )
+                    LOG( m_loggerDebug )
                         << t.sha3()
                         << " Dropping invalid transaction: " << diagnostic_information( _e );
                     _tq.drop( t.sha3() );
@@ -487,7 +485,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 
             // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
-                LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
+                LOG( m_loggerDebug ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                                 << tr.gasPrice() << " < " << _gasPrice;
 
                 if ( SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ) {
@@ -527,7 +525,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
             // Debug only, related SKALE-2814 partial catchup testing
             //
             // if ( i == 3 ) {
-            // LOG( m_logger ) << "\n\n"
+            // LOG( m_loggerDebug ) << "\n\n"
             //          << "--- EXITING AS CRASH EMULATION AT TX# " << i
             //          << " with hash " << tr.sha3().hex() << "\n\n\n";
             // std::cout.flush();
@@ -598,7 +596,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 #if ETH_TIMED_ENACTMENTS
     enactment = t.elapsed();
     if ( populateVerify + populateGrand + syncReset + enactment > 0.5 )
-        LOG( m_logger ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
+        LOG( m_loggerDebug ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
                         << populateGrand << " / " << syncReset << " / " << enactment;
 #endif
     return ret;
@@ -902,13 +900,13 @@ ExecutionResult Block::execute(
         assert( false );
     } catch ( const std::exception& ex ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
-        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
+        LOG( m_loggerDebug ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
         h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
-        LOG( m_logger ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
+        LOG( m_loggerDebug ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
@@ -1132,7 +1130,7 @@ void Block::cleanup() {
     MICROPROFILE_SCOPEI( "Block", "cleanup", MP_BEIGE );
 
     // Commit the new trie to disk.
-    //    LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << " = "
+    //    LOG(m_loggerDebug) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << " = "
     //                  << rootHash() << " = " << toHex(asBytes(db().lookup(globalRoot())));
 
     //    try
@@ -1148,12 +1146,12 @@ void Block::cleanup() {
 
     m_state.commit();  // TODO: State API for this?
 
-    LOG( m_logger ) << "Committed: stateRoot is not calculated in Skale state";
+    LOG( m_loggerDebug ) << "Committed: stateRoot is not calculated in Skale state";
 
     m_previousBlock = m_currentBlock;
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
-    LOG( m_logger ) << "finalising enactment. current -> previous, hash is "
+    LOG( m_loggerDebug ) << "finalising enactment. current -> previous, hash is "
                     << m_previousBlock.hash();
 
     resetCurrent();

@@ -86,29 +86,29 @@ namespace eth {
 #undef ON_OP
 #if EVM_TRACE > 2
 #define ON_OP() \
-    ( cerr << "### " << ++m_nSteps << ": " << m_PC << " " << instructionInfo( m_OP ).name << endl )
+    ( cerr << "### " << ++m_nSteps << ": " << m_PC << " " << instructionInfo( m_OP ).name )
 #else
 #define ON_OP() onOperation()
 #endif
 
 #define TRACE_STR( level, str )   \
     if ( ( level ) <= EVM_TRACE ) \
-        cerr << "$$$ " << ( str ) << endl;
+        cerr << "$$$ " << ( str ) ;
 
 #define TRACE_VAL( level, name, val ) \
     if ( ( level ) <= EVM_TRACE )     \
-        cerr << "=== " << ( name ) << " " << hex << ( val ) << endl;
+        cerr << "=== " << ( name ) << " " << hex << ( val ) ;
 #define TRACE_OP( level, pc, op ) \
     if ( ( level ) <= EVM_TRACE ) \
-        cerr << "*** " << ( pc ) << " " << instructionInfo( op ).name << endl;
+        cerr << "*** " << ( pc ) << " " << instructionInfo( op ).name ;
 
 #define TRACE_PRE_OPT( level, pc, op ) \
     if ( ( level ) <= EVM_TRACE )      \
-        cerr << "<<< " << ( pc ) << " " << instructionInfo( op ).name << endl;
+        cerr << "<<< " << ( pc ) << " " << instructionInfo( op ).name ;
 
 #define TRACE_POST_OPT( level, pc, op ) \
     if ( ( level ) <= EVM_TRACE )       \
-        cerr << ">>> " << ( pc ) << " " << instructionInfo( op ).name << endl;
+        cerr << ">>> " << ( pc ) << " " << instructionInfo( op ).name ;
 #else
 #define TRACE_STR( level, str )
 #define TRACE_VAL( level, name, val )
@@ -120,11 +120,11 @@ namespace eth {
 
 // Executive swallows exceptions in some circumstances
 #if 0
-#define THROW_EXCEPTION( X ) ( ( cerr << "!!! EVM EXCEPTION " << ( X ).what() << endl ), abort() )
+#define THROW_EXCEPTION( X ) ( ( cerr << "!!! EVM EXCEPTION " << ( X ).what() ), abort() )
 #else
 #if EVM_TRACE > 0
 #define THROW_EXCEPTION( X ) \
-    ( ( cerr << "!!! EVM EXCEPTION " << ( X ).what() << endl ), BOOST_THROW_EXCEPTION( X ) )
+    ( ( cerr << "!!! EVM EXCEPTION " << ( X ).what() ), BOOST_THROW_EXCEPTION( X ) )
 #else
 #define THROW_EXCEPTION( X ) BOOST_THROW_EXCEPTION( X )
 #endif

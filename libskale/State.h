@@ -343,7 +343,9 @@ public:
         dev::eth::OnOpFunc const& _onOp = dev::eth::OnOpFunc() );
 
     /// Get the account start nonce. May be required.
-    dev::u256 const& accountStartNonce() const { return m_accountStartNonce; }
+    dev::u256 const& accountStartNonce() const {
+        return m_accountStartNonce;
+    }
     dev::u256 const& requireAccountStartNonce() const;
     void noteAccountStartNonce( dev::u256 const& _actual );
 
@@ -354,7 +356,9 @@ public:
     /// Revert all recent changes up to the given @p _savepoint savepoint.
     void rollback( size_t _savepoint );
 
-    ChangeLog const& changeLog() const { return m_changeLog; }
+    ChangeLog const& changeLog() const {
+        return m_changeLog;
+    }
 
     /// Create State copy to get access to data.
     /// Different copies can be safely used in different threads
@@ -381,7 +385,9 @@ public:
     /// Check if state is empty
     bool empty() const;
 
-    const dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
+    const dev::db::DBImpl* getOriginalDb() const {
+        return m_orig_db.get();
+    }
 
     void resetStorageChanges() {
         storageUsage.clear();
@@ -511,7 +517,9 @@ private:
 
 public:
     /// Get the backing state object.
-    dev::eth::HistoricState& mutableHistoricState() { return m_historicState; }
+    dev::eth::HistoricState& mutableHistoricState() {
+        return m_historicState;
+    }
 
     dev::eth::AccountMap getBatchOfAccounts(
         std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
@@ -527,7 +535,9 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
-    std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
+    std::shared_ptr< OverlayFS > fs() {
+        return m_fs_ptr;
+    }
 };
 
 std::ostream& operator<<( std::ostream& _out, State const& _s );

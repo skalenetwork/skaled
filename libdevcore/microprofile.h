@@ -491,7 +491,7 @@ typedef uint64_t MicroProfileThreadIdType;
 #define MICROPROFILE_COUNTER_LOCAL_ADD( var, count ) \
     MicroProfileLocalCounterAdd( &g_mp_local_counter##var, ( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SUB( var, count ) \
-    MicroProfileLocalCounterAdd( &g_mp_local_counter##var, -( int64_t )( count ) )
+    MicroProfileLocalCounterAdd( &g_mp_local_counter##var, -( int64_t ) ( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SET( var, count ) \
     MicroProfileLocalCounterSet( &g_mp_local_counter##var, count )
 #define MICROPROFILE_COUNTER_LOCAL_UPDATE_ADD( var ) \
@@ -503,7 +503,7 @@ typedef uint64_t MicroProfileThreadIdType;
 #define MICROPROFILE_COUNTER_LOCAL_ADD_ATOMIC( var, count ) \
     MicroProfileLocalCounterAddAtomic( &g_mp_local_counter##var, ( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SUB_ATOMIC( var, count ) \
-    MicroProfileLocalCounterAddAtomic( &g_mp_local_counter##var, -( int64_t )( count ) )
+    MicroProfileLocalCounterAddAtomic( &g_mp_local_counter##var, -( int64_t ) ( count ) )
 #define MICROPROFILE_COUNTER_LOCAL_SET_ATOMIC( var, count ) \
     MicroProfileLocalCounterSetAtomic( &g_mp_local_counter##var, count )
 #define MICROPROFILE_COUNTER_LOCAL_UPDATE_ADD_ATOMIC( var ) \

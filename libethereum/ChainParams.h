@@ -85,7 +85,7 @@ private:
 
     mutable std::string originalJSON;
 
-    Logger m_logger{ createLogger( VerbosityDebug, "ChainParams" ) };
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
 };
 
 }  // namespace dev::eth

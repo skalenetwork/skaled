@@ -149,13 +149,17 @@ public:
     /// Retrieve pending transactions
     Transactions pending() const override;
 
-    Transactions debugGetFutureTransactions() const { return m_tq.debugGetFutureTransactions(); }
+    Transactions debugGetFutureTransactions() const {
+        return m_tq.debugGetFutureTransactions();
+    }
 
     /// Queues a block for import.
     ImportResult queueBlock( bytes const& _block, bool _isSafe = false );
 
     /// Get the remaining gas limit in this block.
-    u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
+    u256 gasLimitRemaining() const override {
+        return m_postSeal.gasLimitRemaining();
+    }
     /// Get the gas bid price
     u256 gasBidPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const override {
         return m_gp->bid( _blockNumber );
@@ -171,22 +175,36 @@ public:
         return m_postSeal;
     }
     /// Get the object representing the current canonical blockchain.
-    BlockChain const& blockChain() const { return bc(); }
+    BlockChain const& blockChain() const {
+        return bc();
+    }
     /// Get some information on the block queue.
-    BlockQueueStatus blockQueueStatus() const { return m_bq.status(); }
+    BlockQueueStatus blockQueueStatus() const {
+        return m_bq.status();
+    }
     /// Get some information on the block syncing.
     SyncStatus syncStatus() const override;
     /// Populate the uninitialized fields in the supplied transaction with default values
     TransactionSkeleton populateTransactionWithDefaults(
         TransactionSkeleton const& _t ) const override;
     /// Get the block queue.
-    BlockQueue const& blockQueue() const { return m_bq; }
+    BlockQueue const& blockQueue() const {
+        return m_bq;
+    }
     /// Get the state database.
-    skale::State const& state() const { return m_state; }
+    skale::State const& state() const {
+        return m_state;
+    }
     /// Get some information on the transaction queue.
-    TransactionQueue::Status transactionQueueStatus() const { return m_tq.status(); }
-    TransactionQueue::Limits transactionQueueLimits() const { return m_tq.limits(); }
-    TransactionQueue* debugGetTransactionQueue() { return &m_tq; }
+    TransactionQueue::Status transactionQueueStatus() const {
+        return m_tq.status();
+    }
+    TransactionQueue::Limits transactionQueueLimits() const {
+        return m_tq.limits();
+    }
+    TransactionQueue* debugGetTransactionQueue() {
+        return &m_tq;
+    }
 
     /// Freeze worker thread and sync some of the block queue.
     std::tuple< ImportRoute, bool, unsigned > syncQueue( unsigned _max = 1 );
@@ -205,9 +223,13 @@ public:
     }
 
     /// Type of sealers available for this seal engine.
-    strings sealers() const { return sealEngine()->sealers(); }
+    strings sealers() const {
+        return sealEngine()->sealers();
+    }
     /// Current sealer in use.
-    std::string sealer() const { return sealEngine()->sealer(); }
+    std::string sealer() const {
+        return sealEngine()->sealer();
+    }
     /// Change sealer.
     void setSealer( std::string const& _id ) {
         sealEngine()->setSealer( _id );
@@ -215,7 +237,9 @@ public:
             startSealing();
     }
     /// Review option for the sealer.
-    bytes sealOption( std::string const& _name ) const { return sealEngine()->option( _name ); }
+    bytes sealOption( std::string const& _name ) const {
+        return sealEngine()->option( _name );
+    }
     /// Set option for the sealer.
     bool setSealOption( std::string const& _name, bytes const& _value ) {
         auto ret = sealEngine()->setOption( _name, _value );
@@ -227,9 +251,13 @@ public:
     /// Start sealing.
     void startSealing() override;
     /// Stop sealing.
-    void stopSealing() override { m_wouldSeal = false; }
+    void stopSealing() override {
+        m_wouldSeal = false;
+    }
     /// Are we sealing now?
-    bool wouldSeal() const override { return m_wouldSeal; }
+    bool wouldSeal() const override {
+        return m_wouldSeal;
+    }
 
     /// Are we updating the chain (syncing or importing a new block)?
     bool isSyncing() const override;
@@ -242,7 +270,9 @@ public:
     void setNetworkId( u256 const& _n ) override;
 
     /// Get the seal engine.
-    SealEngineFace* sealEngine() const override { return bc().sealEngine(); }
+    SealEngineFace* sealEngine() const override {
+        return bc().sealEngine();
+    }
 
     // Debug stuff:
 
@@ -250,7 +280,9 @@ public:
     /// Clears pending transactions. Just for debug use.
     void clearPending();
     /// Retries all blocks with unknown parents.
-    void retryUnknown() { m_bq.retryAllUnknown(); }
+    void retryUnknown() {
+        m_bq.retryAllUnknown();
+    }
     /// Get a report of activity.
     ActivityReport activityReport() {
         ActivityReport ret;
@@ -258,9 +290,13 @@ public:
         return ret;
     }
     /// Set the extra data that goes into sealed blocks.
-    void setExtraData( bytes const& _extraData ) { m_extraData = _extraData; }
+    void setExtraData( bytes const& _extraData ) {
+        m_extraData = _extraData;
+    }
     /// Rescue the chain.
-    void rescue() { bc().rescue( m_state ); }
+    void rescue() {
+        bc().rescue( m_state );
+    }
 
     std::unique_ptr< StateImporterFace > createStateImporter() {
         throw std::logic_error( "createStateImporter is not implemented" );
@@ -287,7 +323,9 @@ public:
         return m_onBlockSealed.add( _handler );
     }
 
-    std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
+    std::shared_ptr< SkaleHost > skaleHost() const {
+        return m_skaleHost;
+    }
 
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
@@ -342,9 +380,13 @@ public:
         return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _idx ).publicKey;
     }
 
-    void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
+    void doStateDbCompaction() const {
+        m_state.getOriginalDb()->doCompaction();
+    }
 
-    void doBlocksDbCompaction() const { m_bc.doLevelDbCompaction(); }
+    void doBlocksDbCompaction() const {
+        m_bc.doLevelDbCompaction();
+    }
 
     std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
 
@@ -358,11 +400,17 @@ public:
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
 
-    SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
+    SkaleDebugInterface::handler getDebugHandler() const {
+        return m_debugHandler;
+    }
 
 #ifdef HISTORIC_STATE
-    OverlayDB const& historicStateDB() const { return m_historicStateDB; }
-    OverlayDB const& historicBlockToStateRootDB() const { return m_historicBlockToStateRootDB; }
+    OverlayDB const& historicStateDB() const {
+        return m_historicStateDB;
+    }
+    OverlayDB const& historicBlockToStateRootDB() const {
+        return m_historicBlockToStateRootDB;
+    }
 #endif
 
 protected:
@@ -386,8 +434,12 @@ protected:
     void init( WithExisting _forceAction, u256 _networkId );
 
     /// InterfaceStub methods
-    BlockChain& bc() override { return m_bc; }
-    BlockChain const& bc() const override { return m_bc; }
+    BlockChain& bc() override {
+        return m_bc;
+    }
+    BlockChain const& bc() const override {
+        return m_bc;
+    }
 
     /// Returns the state object for the full block (i.e. the terminal state) for index _h.
     /// Works properly with LatestBlock and PendingBlock.
@@ -428,7 +480,9 @@ protected:
 
     /// Do some work. Handles blockchain maintenance and sealing.
     void doWork( bool _doWait );
-    void doWork() override { doWork( true ); }
+    void doWork() override {
+        doWork( true );
+    }
 
     /// Called when Worker is exiting.
     void doneWorking() override;
@@ -559,7 +613,7 @@ protected:
                                                    ///< the DB
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
-    Logger m_logger{ createLogger( VerbosityInfo, "client" ) };
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
     Logger m_loggerDetail{ createLogger( VerbosityTrace, "client" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "client" ) };

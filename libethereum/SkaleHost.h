@@ -205,11 +205,11 @@ private:
     bool m_broadcastEnabled;
 
 
-    dev::Logger m_errorLogger{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
-    dev::Logger m_warningLogger{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };
-    dev::Logger m_infoLogger{ dev::createLogger( dev::VerbosityInfo, "skale-host" ) };
-    dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
-    dev::Logger m_traceLogger{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "skale-host" ) };
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
+    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
     void logState();
 
     std::unique_ptr< ConsensusExtFace > m_extFace;

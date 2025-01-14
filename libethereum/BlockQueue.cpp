@@ -216,7 +216,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
 
     // Check block doesn't already exist first!
     if ( m_bc->isKnown( h ) ) {
-        LOG( m_logger ) << "Already known in chain.";
+        LOG( m_loggerDebug ) << "Already known in chain.";
         return ImportResult::AlreadyInChain;
     }
 
@@ -355,13 +355,13 @@ void BlockQueue::tick() {
         if ( m_future.isEmpty() )
             return;
 
-        LOG( m_logger ) << "Checking past-future blocks...";
+        LOG( m_loggerDebug ) << "Checking past-future blocks...";
 
         time_t t = utcTime();
         if ( t < m_future.firstKey() )
             return;
 
-        LOG( m_logger ) << "Past-future blocks ready.";
+        LOG( m_loggerDebug ) << "Past-future blocks ready.";
 
         {
             UpgradeGuard l2( l );
@@ -371,7 +371,7 @@ void BlockQueue::tick() {
                 m_futureSet.erase( hash.first );
         }
     }
-    LOG( m_logger ) << "Importing " << todo.size() << " past-future blocks.";
+    LOG( m_loggerDebug ) << "Importing " << todo.size() << " past-future blocks.";
 
     for ( auto const& b : todo )
         import( &b.second );

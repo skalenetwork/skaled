@@ -306,7 +306,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     m_lastBlockNumber = number( m_lastBlockHash );
 
-    LOG( m_logger ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
+    LOG( m_loggerDebug ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
                     << m_lastBlockNumber;
 
     //    dump_blocks_and_extras_db( *this, 0 );
@@ -508,7 +508,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     // Work out its number as the parent's number + 1
     if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
     {
-        LOG( m_logger ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
+        LOG( m_loggerDebug ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
         // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
         // about its ancestry later on.
         BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
@@ -629,7 +629,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
 
 void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
     if ( isKnown( _block.info.hash() ) ) {
-        LOG( m_logger ) << _block.info.hash() << " : Not new.";
+        LOG( m_loggerDebug ) << _block.info.hash() << " : Not new.";
         BOOST_THROW_EXCEPTION( AlreadyHaveBlock() << errinfo_block( _block.block.toBytes() ) );
     }
 }
@@ -841,7 +841,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     size_t blocksBatchSize = 0;
     size_t extrasBatchSize = 0;
 
-    LOG( m_logger ) << "Recomputing old blocks sizes...";
+    LOG( m_loggerDebug ) << "Recomputing old blocks sizes...";
 
     // HACK 34 is key size + extra size + db prefix (blocks or extras)
     for ( unsigned i = 1; i <= number; ++i ) {
@@ -907,7 +907,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         pieceUsageBytes = std::stoull( this->m_db->lookup( ( db::Slice ) "pieceUsageBytes" ) );
     }
 
-    LOG( m_logger ) << "pieceUsageBytes from DB = " << pieceUsageBytes
+    LOG( m_loggerDebug ) << "pieceUsageBytes from DB = " << pieceUsageBytes
                     << " computed = " << blocksBatchSize + extrasBatchSize;
 
     if ( pieceUsageBytes == 0 ) {
@@ -1425,7 +1425,9 @@ void BlockChain::doLevelDbCompaction() const {
 }
 
 void BlockChain::checkConsistency() {
-    DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
+    DEV_WRITE_GUARDED( x_details ) {
+        m_details.clear();
+    }
 
     m_blocksDB->forEach( [this]( db::Slice const& _key, db::Slice const& /* _value */ ) {
         if ( _key.size() == 32 ) {

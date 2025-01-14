@@ -45,11 +45,10 @@ void dump_blocks_and_extras_db( const BlockChain& _bc, size_t _startBlock ) {
                 pair< h256, int > loc = _bc.transactionLocation( tx_hash );
                 cdebug << tx_hash << " -> "
                        << ( loc.first == header.hash() ? "block hash ok" : "block hash error!" )
-                       << " " << loc.second << "\n";
+                       << " " << loc.second;
             }  // for t
-            cdebug << "Bloom:"
-                   << "\n";
-            cdebug << bloom.hex() << endl;
+            cdebug << "Bloom:";
+            cdebug << bloom.hex();
         }  // if
 
         prev_ts = header.timestamp();

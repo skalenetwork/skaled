@@ -72,7 +72,7 @@ template < class S >
 bool IpcServerBase< S >::SendResponse( string const& _response, void* _addInfo ) {
     bool fullyWritten = false;
     bool errorOccured = false;
-    S socket = ( S )( reinterpret_cast< intptr_t >( _addInfo ) );
+    S socket = ( S ) ( reinterpret_cast< intptr_t >( _addInfo ) );
     string toSend = _response;
     do {
         size_t bytesWritten = Write( socket, toSend );

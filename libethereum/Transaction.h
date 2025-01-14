@@ -134,7 +134,7 @@ private:
     bool m_externalGasIsChecked = false;
     std::optional< u256 > m_externalGas;
 
-    dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "Transaction" ) };
+    dev::Logger m_loggerInfo{ createLogger( dev::VerbosityInfo, "Transaction" ) };
     dev::Logger m_loggerDetail{ createLogger( dev::VerbosityTrace, "Transaction" ) };
 };
 

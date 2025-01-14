@@ -14,7 +14,7 @@ SnapshotAgent::SnapshotAgent( int64_t _snapshotIntervalSec,
       m_snapshotManager( _snapshotManager ),
       m_debugTracer( _debugTracer ) {
     if ( m_snapshotIntervalSec > 0 ) {
-        LOG( m_logger ) << "Snapshots enabled, snapshotIntervalSec is: " << m_snapshotIntervalSec;
+        LOG( m_loggerInfo ) << "Snapshots enabled, snapshotIntervalSec is: " << m_snapshotIntervalSec;
     }
 }
 
@@ -71,15 +71,15 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
         last_snapshot_creation_time = _timestampOfBlock1;
     }
 
-    LOG( m_logger ) << "Latest snapshots init: " << latest_snapshots.first << " "
+    LOG( m_loggerInfo ) << "Latest snapshots init: " << latest_snapshots.first << " "
                     << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
 
-    LOG( m_logger ) << "Init last snapshot creation time: " << this->last_snapshot_creation_time;
+    LOG( m_loggerInfo ) << "Init last snapshot creation time: " << this->last_snapshot_creation_time;
 }
 
 void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded( int64_t _timestamp ) {
     if ( m_snapshotIntervalSec > 0 && this->isTimeToDoSnapshot( _timestamp ) ) {
-        LOG( m_logger ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
+        LOG( m_loggerInfo ) << "Last snapshot creation time: " << this->last_snapshot_creation_time;
 
         if ( m_snapshotHashComputing != nullptr && m_snapshotHashComputing->joinable() )
             m_snapshotHashComputing->join();
@@ -107,7 +107,7 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
         try {
             boost::chrono::high_resolution_clock::time_point t1;
             boost::chrono::high_resolution_clock::time_point t2;
-            LOG( m_logger ) << "DOING SNAPSHOT: " << _currentBlockNumber;
+            LOG( m_loggerInfo ) << "DOING SNAPSHOT: " << _currentBlockNumber;
             m_debugTracer.tracepoint( "doing_snapshot" );
 
             t1 = boost::chrono::high_resolution_clock::now();
@@ -121,7 +121,7 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
 
         this->last_snapshot_creation_time = _timestamp;
 
-        LOG( m_logger ) << "New snapshot creation time: " << this->last_snapshot_creation_time;
+        LOG( m_loggerInfo ) << "New snapshot creation time: " << this->last_snapshot_creation_time;
     }
 
     // snapshots without hash can appear either from start, from downloading or from just
@@ -193,7 +193,7 @@ void SnapshotAgent::startHashComputingThread() {
             t2 = boost::chrono::high_resolution_clock::now();
             this->snapshot_hash_calculation_time_ms =
                 boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
-            LOG( m_logger ) << "Computed hash for snapshot " << latest_snapshots.second << ": "
+            LOG( m_loggerInfo ) << "Computed hash for snapshot " << latest_snapshots.second << ": "
                             << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
             m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 
@@ -214,18 +214,18 @@ void SnapshotAgent::startHashComputingThread() {
 }
 
 void SnapshotAgent::doSnapshotAndComputeHash( unsigned _blockNumber ) {
-    LOG( m_logger ) << "DOING SNAPSHOT: " << _blockNumber;
+    LOG( m_loggerInfo ) << "DOING SNAPSHOT: " << _blockNumber;
     m_debugTracer.tracepoint( "doing_snapshot" );
 
     try {
         m_snapshotManager->doSnapshot( _blockNumber );
     } catch ( SnapshotManager::SnapshotPresent& ex ) {
-        LOG( m_logger ) << "0 block snapshot is already present. Skipping.";
+        LOG( m_loggerInfo ) << "0 block snapshot is already present. Skipping.";
         return;
     }
 
     m_snapshotManager->computeSnapshotHash( _blockNumber );
-    LOG( m_logger ) << "Computed hash for snapshot " << _blockNumber << ": "
+    LOG( m_loggerInfo ) << "Computed hash for snapshot " << _blockNumber << ": "
                     << m_snapshotManager->getSnapshotHash( _blockNumber );
     m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 }

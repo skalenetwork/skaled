@@ -763,7 +763,7 @@ void ImportTest::traceStateDiff() {
                 log << "trNetID: " << netIdToString( tr.netId ) << "\n";
                 log << "trDataInd: " << tr.dataInd << " tdGasInd: " << tr.gasInd
                     << " trValInd: " << tr.valInd << "\n";
-                LOG( m_logger ) << log.str();
+                LOG( m_loggerInfo ) << log.str();
                 fillJsonWithStateChange( m_statePre, tr.postState, tr.changeLog );  // output std
                                                                                     // log
             }

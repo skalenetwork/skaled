@@ -173,9 +173,8 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-    Logger m_execLogger{ createLogger( VerbosityDebug, "exec" ) };
-    Logger m_detailsLogger{ createLogger( VerbosityTrace, "exec" ) };
-    Logger m_vmTraceLogger{ createLogger( VerbosityTrace, "vmtrace" ) };
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "AlethExecutive" ) };
+    Logger m_loggerTrace{ createLogger( VerbosityTrace, "AlethExecutive" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "AlethExecutive" ) };
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "AlethExecutive" ) };
 };

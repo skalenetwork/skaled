@@ -92,12 +92,12 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         try {
             nonceReq = m_s.getNonce( m_t.sender() );
         } catch ( InvalidSignature const& ) {
-            LOG( m_execLogger ) << "Invalid Signature";
+            LOG( m_loggerDebug ) << "Invalid Signature";
             m_excepted = TransactionException::InvalidSignature;
             throw;
         }
         if ( m_t.nonce() != nonceReq ) {
-            LOG( m_execLogger ) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required "
+            LOG( m_loggerDebug ) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required "
                                 << nonceReq << ", received " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
@@ -108,7 +108,7 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         bigint gasCost = ( bigint ) m_t.gas() * m_t.gasPrice();
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
-            LOG( m_execLogger ) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
+            LOG( m_loggerDebug ) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
                                 << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
                                 << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
@@ -124,7 +124,7 @@ bool AlethExecutive::execute() {
     // Entry point for a user-executed transaction.
 
     // Pay...
-    LOG( m_detailsLogger ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
+    LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
                            << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 
@@ -177,7 +177,7 @@ bool AlethExecutive::call(
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 )( _p.gas - g );
+            m_gas = ( u256 ) ( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) =
@@ -262,7 +262,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
-        LOG( m_detailsLogger ) << "Address already used: " << m_newAddress;
+        LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
         m_gas = 0;
         m_excepted = TransactionException::AddressAlreadyUsed;
         revert();
@@ -294,17 +294,15 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
 }
 
 OnOpFunc AlethExecutive::simpleTrace() {
-    Logger& traceLogger = m_vmTraceLogger;
-
-    return [&traceLogger]( uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize,
+    return [this]( uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize,
                bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
         AlethExtVM const& ext = *static_cast< AlethExtVM const* >( voidExt );
         auto vm = dynamic_cast< LegacyVM const* >( _vm );
 
         if ( vm )
-            LOG( traceLogger ) << dumpStackAndMemory( *vm );
-        LOG( traceLogger ) << dumpStorage( ext );
-        LOG( traceLogger ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
+            LOG( m_loggerTrace ) << dumpStackAndMemory( *vm );
+        LOG( m_loggerTrace ) << dumpStorage( ext );
+        LOG( m_loggerTrace ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
                            << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
                            << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
                            << gasCost << " : " << newMemSize << "x32"
@@ -351,7 +349,7 @@ bool AlethExecutive::go( OnOpFunc const& _onOp ) {
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;
         } catch ( VMException const& _e ) {
-            LOG( m_detailsLogger ) << "Safe VM Exception. " << diagnostic_information( _e );
+            LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
             m_gas = 0;
             m_excepted = toTransactionException( _e );
             revert();

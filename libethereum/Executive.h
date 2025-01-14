@@ -78,7 +78,7 @@ private:
     Json::Value m_trace;
     DebugOptions m_options;
 
-    Logger m_logger{ createLogger( VerbosityDebug, "StandardTrace" ) };
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "StandardTrace" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "StandardTrace" ) };
 };
 
@@ -246,10 +246,9 @@ private:
     Address m_newAddress;
     size_t m_savepoint = 0;
 
-    Logger m_logger{ createLogger( VerbosityDebug, "exec" ) };
-    Logger m_loggerDetail{ createLogger( VerbosityTrace, "exec" ) };
-    Logger m_loggerWarning{ createLogger( VerbosityWarning, "exec" ) };
-    Logger m_vmTraceLogger{ createLogger( VerbosityTrace, "vmtrace" ) };
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "Executive" ) };
+    Logger m_loggerTrace{ createLogger( VerbosityTrace, "Executive" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "Executive" ) };
 };
 
 }  // namespace eth

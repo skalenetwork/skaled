@@ -149,7 +149,9 @@ public:
     client( const char* url_str, long nClientConnectionTimeoutMS = -1 );
     virtual ~client();
 
-    const skutils::url& url() const { return u_; }
+    const skutils::url& url() const {
+        return u_;
+    }
 
     bool open( const skutils::url& u,
         std::chrono::milliseconds wait_step = std::chrono::milliseconds( 20 ),

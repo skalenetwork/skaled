@@ -270,7 +270,7 @@ bool Executive::execute() {
 
     if ( !m_t.hasExternalGas() ) {
         // Pay...
-        LOG( m_loggerDetail ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
+        LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
                               << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
@@ -328,7 +328,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 )( _p.gas - g );
+            m_gas = ( u256 ) ( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) = m_chainParams.executePrecompiled(
@@ -405,7 +405,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
     bool accountAlreadyExist =
         ( m_s.addressHasCode( m_newAddress ) || m_s.getNonce( m_newAddress ) > 0 );
     if ( accountAlreadyExist ) {
-        LOG( m_loggerDetail ) << "Address already used: " << m_newAddress;
+        LOG( m_loggerTrace ) << "Address already used: " << m_newAddress;
         m_gas = 0;
         m_excepted = TransactionException::AddressAlreadyUsed;
         revert();
@@ -437,7 +437,7 @@ bool Executive::executeCreate( Address const& _sender, u256 const& _endowment,
 }
 
 OnOpFunc Executive::simpleTrace() {
-    Logger& traceLogger = m_vmTraceLogger;
+    Logger& traceLogger = m_loggerTrace;
 
     return [&traceLogger]( uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize,
                bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
@@ -514,7 +514,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             m_output = _e.output();
             m_excepted = TransactionException::RevertInstruction;
         } catch ( VMException const& _e ) {
-            LOG( m_loggerDetail ) << "Safe VM Exception. " << diagnostic_information( _e );
+            LOG( m_loggerTrace ) << "Safe VM Exception. " << diagnostic_information( _e );
             m_gas = 0;
             m_excepted = toTransactionException( _e );
             revert();

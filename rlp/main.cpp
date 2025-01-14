@@ -139,7 +139,7 @@ void putOut( bytes _out, Encoding _encoding, bool _encrypt, bool _quiet ) {
     if ( _encrypt )
         crypto::Secp256k1PP::get()->encrypt( toPublic( Secret( h ) ), _out );
     if ( !_quiet )
-        cerr << "Keccak of RLP: " << h.hex() << endl;
+        cerr << "Keccak of RLP: " << h.hex();
 
     switch ( _encoding ) {
     case Encoding::Hex:
