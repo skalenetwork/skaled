@@ -430,7 +430,7 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
         MaxFeePerGasPatch::isEnabledInWorkingBlock() );
-    return toJS( client()->importTransaction( t ) );
+    return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
 
