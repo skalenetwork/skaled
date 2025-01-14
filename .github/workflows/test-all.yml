@@ -1,10 +1,14 @@
-name: Build and test skaled
+name: Build skaled and run all tests
 on:
   workflow_call:
     inputs:
       branch_name:
         type: string
         description: 'Branch name'
+        required: true
+      sha:
+        type: string
+        description: 'SHA'
         required: true
     secrets:
       DOCKER_USERNAME:
@@ -15,7 +19,7 @@ defaults:
   run:
     shell: bash
 jobs:
-  build:
+  testAll:
     runs-on: self-hosted
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -266,7 +270,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ matrix.pr.sha }}',
+              sha: '${{ inputs.sha }}',
               state,
               context: 'Nightly tests',
               description: state === 'success' ? 'Nightly tests passed' : 'Nightly tests failed',
