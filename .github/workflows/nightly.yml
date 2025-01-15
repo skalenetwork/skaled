@@ -1,9 +1,6 @@
-name: skaled nightly tests
+name: skaled nightly tests Oleh
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-  
   workflow_dispatch:
 
 defaults:
@@ -53,10 +50,10 @@ jobs:
             core.setOutput('pr-data', JSON.stringify(filteredPRs));
 
   BuildAndTestAll:
-    runs-on: self-hosted
+    needs: [identify-prs]
     strategy:
       matrix:
-        pr: ${{ fromJson(needs.identify-prs.outputs.pr-data) }}
+        pr: ${{fromJson(needs.identify-prs.outputs.pr-data)}}
     uses: ./.github/workflows/test-all.yml
     with:
         branch_name: ${{ matrix.pr.branch }}
