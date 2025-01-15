@@ -1,0 +1,64 @@
+name: skaled nightly tests Oleh
+
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+jobs:
+  identify-prs:
+    runs-on: ubuntu-latest
+    outputs:
+      pr-data: ${{ steps.get-prs.outputs.pr-data }}
+    steps:
+      - name: Identify Open Non-Draft PRs with Recent Commits
+        id: get-prs
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const oneDayAgo = new Date();
+            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+
+            const filteredPRs = [];
+            for (const pr of prs.data) {
+              if (pr.draft) continue;
+
+              const commits = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+              });
+
+              const recentCommits = commits.data.filter(commit => {
+                const commitDate = new Date(commit.commit.author.date);
+                return commitDate >= oneDayAgo;
+              });
+
+              if (recentCommits.length > 0) {
+                filteredPRs.push({ branch: pr.head.ref, sha: pr.head.sha, number: pr.number });
+              }
+            }
+
+            console.log("Filtered PRs:", filteredPRs);
+            core.setOutput('pr-data', JSON.stringify(filteredPRs));
+
+  BuildAndTestAll:
+    needs: [identify-prs]
+    if: ${{ needs.identify-prs.outputs.pr-data != '[]' && needs.identify-prs.outputs.pr-data != '' }}
+    strategy:
+      matrix:
+        pr: ${{fromJson(needs.identify-prs.outputs.pr-data)}}
+    uses: ./.github/workflows/test-all.yml
+    with:
+        branch_name: ${{ matrix.pr.branch }}
+        sha: ${{ matrix.pr.sha }}
+    secrets:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

@@ -527,7 +527,7 @@ BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_test ) )
+BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_tests ) )
 
 #define WAIT_FOR_THE_NEXT_BLOCK() { \
     auto bn = client->number(); \
