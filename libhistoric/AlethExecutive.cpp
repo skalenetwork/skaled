@@ -98,7 +98,7 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         }
         if ( m_t.nonce() != nonceReq ) {
             LOG( m_loggerDebug ) << "Sender: " << m_t.sender().hex() << " Invalid Nonce: Required "
-                                << nonceReq << ", received " << m_t.nonce();
+                                 << nonceReq << ", received " << m_t.nonce();
             m_excepted = TransactionException::InvalidNonce;
             BOOST_THROW_EXCEPTION(
                 InvalidNonce() << RequirementError( ( bigint ) nonceReq, ( bigint ) m_t.nonce() ) );
@@ -109,8 +109,8 @@ void AlethExecutive::initialize( Transaction const& _transaction ) {
         bigint totalCost = m_t.value() + gasCost;
         if ( m_s.balance( m_t.sender() ) < totalCost ) {
             LOG( m_loggerDebug ) << "Not enough cash: Require > " << totalCost << " = " << m_t.gas()
-                                << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
-                                << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
+                                 << " * " << m_t.gasPrice() << " + " << m_t.value() << " Got"
+                                 << m_s.balance( m_t.sender() ) << " for sender: " << m_t.sender();
             m_excepted = TransactionException::NotEnoughCash;
             BOOST_THROW_EXCEPTION( NotEnoughCash() << RequirementError( totalCost,
                                                           ( bigint ) m_s.balance( m_t.sender() ) )
@@ -125,7 +125,7 @@ bool AlethExecutive::execute() {
 
     // Pay...
     LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                           << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+                         << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
     m_s.subBalance( m_t.sender(), m_gasCost );
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
@@ -177,7 +177,7 @@ bool AlethExecutive::call(
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 ) ( _p.gas - g );
+            m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) =
@@ -294,19 +294,19 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
 }
 
 OnOpFunc AlethExecutive::simpleTrace() {
-    return [this]( uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize,
-               bigint gasCost, bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
+    return [this]( uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost,
+               bigint gas, VMFace const* _vm, ExtVMFace const* voidExt ) {
         AlethExtVM const& ext = *static_cast< AlethExtVM const* >( voidExt );
         auto vm = dynamic_cast< LegacyVM const* >( _vm );
 
         if ( vm )
             LOG( m_loggerTrace ) << dumpStackAndMemory( *vm );
         LOG( m_loggerTrace ) << dumpStorage( ext );
-        LOG( m_loggerTrace ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps
-                           << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
-                           << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
-                           << gasCost << " : " << newMemSize << "x32"
-                           << " >";
+        LOG( m_loggerTrace ) << " < " << dec << ext.depth << " : " << ext.myAddress << " : #"
+                             << steps << " : " << hex << setw( 4 ) << setfill( '0' ) << PC << " : "
+                             << instructionInfo( inst ).name << " : " << dec << gas << " : -" << dec
+                             << gasCost << " : " << newMemSize << "x32"
+                             << " >";
     };
 }
 
