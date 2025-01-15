@@ -1,4 +1,4 @@
-name: skaled nightly tests Oleh
+name: skaled nightly tests
 
 on:
   workflow_dispatch:
