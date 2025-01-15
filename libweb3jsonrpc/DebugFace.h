@@ -88,6 +88,10 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "debug_getFutureTransactions",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_getFutureTransactionsI );
+
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPatchTimestamps", 
+                                    jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
+            &dev::rpc::DebugFace::debug_getPatchTimestampsI );
     }
     inline virtual void debug_accountRangeAtI( const Json::Value& request, Json::Value& response ) {
         response = this->debug_accountRangeAt( request[0u].asString(), request[1u].asInt(),
@@ -159,6 +163,11 @@ public:
         response = this->debug_getFutureTransactions();
     }
 
+    inline virtual void debug_getPatchTimestampsI( 
+        const Json::Value&, Json::Value& response ) {
+        response = this->debug_getPatchTimestamps();
+    }
+
     virtual Json::Value debug_accountRangeAt(
         const std::string& param1, int param2, const std::string& param3, int param4 ) = 0;
     virtual Json::Value debug_storageRangeAt( const std::string& param1, int param2,
@@ -181,6 +190,8 @@ public:
     virtual uint64_t debug_doBlocksDbCompaction() = 0;
 
     virtual Json::Value debug_getFutureTransactions() = 0;
+
+    virtual Json::Value debug_getPatchTimestamps() = 0;
 };
 
 }  // namespace rpc

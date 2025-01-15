@@ -117,3 +117,42 @@ Json::Value Debug::debug_getFutureTransactions() {
         t.removeMember( "data" );
     return res;
 }
+
+Json::Value Debug::debug_getPatchTimestamps() {
+    nlohmann::json joPatchedTimestamps = nlohmann::json::object();
+    ChainParams chainParams = m_eth.chainParams();
+    
+    joPatchedTimestamps["contractStoragePatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::ContractStoragePatch);
+    joPatchedTimestamps["contractStorageZeroValuePatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::ContractStorageZeroValuePatch);
+    joPatchedTimestamps["correctForkInPowPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::CorrectForkInPowPatch);
+    joPatchedTimestamps["EIP1559TransactionsPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::EIP1559TransactionsPatch);
+    joPatchedTimestamps["fastConsensusPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::FastConsensusPatch);
+    joPatchedTimestamps["flexibleDeploymentPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::FlexibleDeploymentPatch);
+    joPatchedTimestamps["powCheckPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::PowCheckPatch);
+    joPatchedTimestamps["precompiledConfigPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::PrecompiledConfigPatch);
+    joPatchedTimestamps["pushZeroPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::PushZeroPatch);
+    joPatchedTimestamps["revertableFSPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::RevertableFSPatch);
+    joPatchedTimestamps["skipInvalidTransactionsPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::SkipInvalidTransactionsPatch);
+    joPatchedTimestamps["storageDestructionPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::StorageDestructionPatch);
+    joPatchedTimestamps["verifyBlsSyncPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::VerifyBlsSyncPatch);
+    joPatchedTimestamps["verifyDaSigsPatchTimestamp"] = chainParams.getPatchTimestamp(
+        SchainPatchEnum::VerifyDaSigsPatch);
+
+    std::string strResponse = joPatchedTimestamps.dump();
+    Json::Value response;
+    Json::Reader().parse( strResponse, response );
+    return response;
+}

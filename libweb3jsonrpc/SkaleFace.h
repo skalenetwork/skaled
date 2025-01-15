@@ -133,6 +133,7 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getLatestBlockNumber",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getLatestBlockNumberI );
+
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getDBUsage", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getDBUsageI );

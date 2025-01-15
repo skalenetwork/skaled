@@ -53,6 +53,8 @@ public:
 
     virtual Json::Value debug_getFutureTransactions() override;
 
+    virtual Json::Value debug_getPatchTimestamps() override;
+
 private:
     eth::Client& m_eth;
     SkaleDebugInterface* m_debugInterface = nullptr;
