@@ -51,6 +51,7 @@ jobs:
 
   BuildAndTestAll:
     needs: [identify-prs]
+    if: ${{ needs.identify-prs.outputs.pr-data != '[]' && needs.identify-prs.outputs.pr-data != '' }}
     strategy:
       matrix:
         pr: ${{fromJson(needs.identify-prs.outputs.pr-data)}}

@@ -168,7 +168,6 @@ jobs:
       - name: Testeth all verbosity 4
         id: TestCore
         run : |
-          # Since a tests failed, we are running the failed test with higher verbosity          
           cd build/test      
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1          
