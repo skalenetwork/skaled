@@ -1402,3 +1402,13 @@ Json::Value WebThreeStubClient::debug_getFutureTransactions() {
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
+
+Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
+    Json::Value p;
+    Json::Value result = this->CallMethod( "debug_getPatchTimestamps", p );
+    if ( result.isObject() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}

@@ -2790,6 +2790,29 @@ BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
     fixture.rpcClient->debug_doBlocksDbCompaction();
 }
 
+BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
+    JsonRpcFixture fixture(c_genesisConfigString, false, false, false, false);
+    Json::Value patchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
+
+    BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(
+        SchainPatchEnum::RevertableFSPatch)], 0);
+    BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(
+        SchainPatchEnum::ContractStorageZeroValuePatch)], 0);
+    BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::PowCheckPatch)], 1);
+
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::ContractStoragePatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::VerifyBlsSyncPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::VerifyDaSigsPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::StorageDestructionPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::SkipInvalidTransactionsPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::PushZeroPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::PrecompiledConfigPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::CorrectForkInPowPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::EIP1559TransactionsPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::FastConsensusPatch)]);
+    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::FlexibleDeploymentPatch)]);
+}
+
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     JsonRpcFixture fixture(c_genesisConfigString, false, false, true, false);
 
