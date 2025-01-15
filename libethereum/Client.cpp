@@ -193,15 +193,15 @@ void Client::stopWorking() {
     if ( !isForcefulExit ) {
         delete_lock_file( m_dbPath );
         LOG( m_loggerInfo ) << "Deleted lock file "
-                        << boost::filesystem::canonical( m_dbPath ).string() +
-                               std::string( "/skaled.lock" );
+                            << boost::filesystem::canonical( m_dbPath ).string() +
+                                   std::string( "/skaled.lock" );
     } else {
         LOG( m_loggerInfo ) << "ATTENTION:"
-                        << " "
-                        << "Deleted lock file "
-                        << boost::filesystem::canonical( m_dbPath ).string() +
-                               std::string( "/skaled.lock" )
-                        << " after forceful exit";
+                            << " "
+                            << "Deleted lock file "
+                            << boost::filesystem::canonical( m_dbPath ).string() +
+                                   std::string( "/skaled.lock" )
+                            << " after forceful exit";
     }
     LOG( m_loggerInfo ).flush();
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
@@ -306,7 +306,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
         initHistoricGroupIndex();
     } else {
         LOG( m_loggerInfo ) << "Empty node groups in config. "
-                           "This is OK in tests but not OK in production";
+                               "This is OK in tests but not OK in production";
     }
 
     // init snapshots for not newly created chains
@@ -494,8 +494,8 @@ void Client::syncBlockQueue() {
     double elapsed = t.elapsed();
 
     if ( count ) {
-        LOG( m_loggerInfo ) << count << " blocks imported in " << unsigned( elapsed * 1000 ) << " ms ("
-                        << ( count / elapsed ) << " blocks/s) in #" << bc().number();
+        LOG( m_loggerInfo ) << count << " blocks imported in " << unsigned( elapsed * 1000 )
+                            << " ms (" << ( count / elapsed ) << " blocks/s) in #" << bc().number();
     }
 
     if ( elapsed > c_targetDuration * 1.1 && count > c_syncMin )
@@ -563,14 +563,17 @@ size_t Client::importTransactionsAsBlock(
     size_t cntExpected = cntMissing;
     if ( bIsPartial ) {
         LOG( m_loggerInfo ) << "PARTIAL CATCHUP DETECTED:"
-                        << " found partially executed block, have " << cntAll << " transaction(s), "
-                        << cntPassed << " passed, " << cntMissing << " missing";
+                            << " found partially executed block, have " << cntAll
+                            << " transaction(s), " << cntPassed << " passed, " << cntMissing
+                            << " missing";
         LOG( m_loggerInfo ).flush();
-        LOG( m_loggerInfo ) << "PARTIAL CATCHUP:" << stat_transactions2str( _transactions, " All " );
+        LOG( m_loggerInfo ) << "PARTIAL CATCHUP:"
+                            << stat_transactions2str( _transactions, " All " );
         LOG( m_loggerInfo ).flush();
         LOG( m_loggerInfo ) << "PARTIAL CATCHUP:" << stat_transactions2str( vecPassed, " Passed " );
         LOG( m_loggerInfo ).flush();
-        LOG( m_loggerInfo ) << "PARTIAL CATCHUP:" << stat_transactions2str( vecMissing, " Missing " );
+        LOG( m_loggerInfo ) << "PARTIAL CATCHUP:"
+                            << stat_transactions2str( vecMissing, " Missing " );
         //        LOG( m_loggerInfo ) << "PARTIAL CATCHUP:" << " Found "
         //                        << partialTransactionReceipts.size()
         //                        << " partial transaction receipt(s) inside "
@@ -600,14 +603,14 @@ size_t Client::importTransactionsAsBlock(
         cntSucceeded += cntPassed;
     if ( cntSucceeded != cntAll ) {
         LOG( m_loggerInfo ) << "TX EXECUTION WARNING:"
-                        << " expected " << cntAll << " transaction(s) to pass, when "
-                        << cntSucceeded << " passed with success," << cntExpected
-                        << " expected to run and pass";
+                            << " expected " << cntAll << " transaction(s) to pass, when "
+                            << cntSucceeded << " passed with success," << cntExpected
+                            << " expected to run and pass";
         LOG( m_loggerInfo ).flush();
     }
     if ( bIsPartial ) {
         LOG( m_loggerInfo ) << "PARTIAL CATCHUP SUCCESS: with " << cntAll << " transaction(s), "
-                        << cntPassed << " passed, " << cntMissing << " missing";
+                            << cntPassed << " passed, " << cntMissing << " missing";
         LOG( m_loggerInfo ).flush();
     }
 
@@ -674,8 +677,8 @@ size_t Client::syncTransactions(
                           << ")";
 
 #ifdef HISTORIC_STATE
-    LOG( m_loggerInfo ) << "HSCT: "
-                    << m_working.mutableState().mutableHistoricState().getAndResetBlockCommitTime();
+    LOG( m_loggerInfo )
+        << "HSCT: " << m_working.mutableState().mutableHistoricState().getAndResetBlockCommitTime();
 #endif
     return goodReceipts;
 }
@@ -844,7 +847,7 @@ void Client::rejigSealing() {
             if ( wouldSeal() ) {
                 sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
                     LOG( m_loggerInfo ) << "Block sealed"
-                                    << " #" << BlockHeader( _header, HeaderData ).number();
+                                        << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )
                         m_onBlockSealed( _header );
                     else
@@ -907,7 +910,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
     const bytes& header = headerRlp.out();
     BlockHeader header_struct( header, HeaderData );
     LOG( m_loggerInfo ) << "Block sealed"
-                    << " #" << header_struct.number() << " (" << header_struct.hash() << ")";
+                        << " #" << header_struct.number() << " (" << header_struct.hash() << ")";
     std::stringstream ssBlockStats;
     ssBlockStats << "Block stats:"
                  << "BN:" << number() << ":BTS:" << bc().info().timestamp()
@@ -1233,7 +1236,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
                 historicBlock.mutableState().mutableHistoricState().addBalance(
-                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1257,16 +1260,15 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance(
-                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_loggerInfo ) << "exception in client call(1):"
-                        << boost::current_exception_diagnostic_information();
+                            << boost::current_exception_diagnostic_information();
         throw std::runtime_error( "call with invalid nonce" );
     } catch ( ... ) {
         LOG( m_loggerInfo ) << "exception in client call(2):"
-                        << boost::current_exception_diagnostic_information();
+                            << boost::current_exception_diagnostic_information();
         throw;
     }
     return ret;
@@ -1291,7 +1293,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         // lots of gas to it
         auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer =
             make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );

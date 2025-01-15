@@ -14,7 +14,8 @@ SnapshotAgent::SnapshotAgent( int64_t _snapshotIntervalSec,
       m_snapshotManager( _snapshotManager ),
       m_debugTracer( _debugTracer ) {
     if ( m_snapshotIntervalSec > 0 ) {
-        LOG( m_loggerInfo ) << "Snapshots enabled, snapshotIntervalSec is: " << m_snapshotIntervalSec;
+        LOG( m_loggerInfo ) << "Snapshots enabled, snapshotIntervalSec is: "
+                            << m_snapshotIntervalSec;
     }
 }
 
@@ -72,9 +73,11 @@ void SnapshotAgent::init( unsigned _currentBlockNumber, int64_t _timestampOfBloc
     }
 
     LOG( m_loggerInfo ) << "Latest snapshots init: " << latest_snapshots.first << " "
-                    << latest_snapshots.second << " -> " << this->last_snapshoted_block_with_hash;
+                        << latest_snapshots.second << " -> "
+                        << this->last_snapshoted_block_with_hash;
 
-    LOG( m_loggerInfo ) << "Init last snapshot creation time: " << this->last_snapshot_creation_time;
+    LOG( m_loggerInfo ) << "Init last snapshot creation time: "
+                        << this->last_snapshot_creation_time;
 }
 
 void SnapshotAgent::finishHashComputingAndUpdateHashesIfNeeded( int64_t _timestamp ) {
@@ -194,7 +197,7 @@ void SnapshotAgent::startHashComputingThread() {
             this->snapshot_hash_calculation_time_ms =
                 boost::chrono::duration_cast< boost::chrono::milliseconds >( t2 - t1 ).count();
             LOG( m_loggerInfo ) << "Computed hash for snapshot " << latest_snapshots.second << ": "
-                            << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
+                                << m_snapshotManager->getSnapshotHash( latest_snapshots.second );
             m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 
         } catch ( const std::exception& ex ) {
@@ -226,6 +229,6 @@ void SnapshotAgent::doSnapshotAndComputeHash( unsigned _blockNumber ) {
 
     m_snapshotManager->computeSnapshotHash( _blockNumber );
     LOG( m_loggerInfo ) << "Computed hash for snapshot " << _blockNumber << ": "
-                    << m_snapshotManager->getSnapshotHash( _blockNumber );
+                        << m_snapshotManager->getSnapshotHash( _blockNumber );
     m_debugTracer.tracepoint( "computeSnapshotHash_end" );
 }

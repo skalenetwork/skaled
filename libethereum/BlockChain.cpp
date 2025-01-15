@@ -307,7 +307,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     m_lastBlockNumber = number( m_lastBlockHash );
 
     LOG( m_loggerDebug ) << "Opened blockchain DB. Latest: " << currentHash() << ' '
-                    << m_lastBlockNumber;
+                         << m_lastBlockNumber;
 
     //    dump_blocks_and_extras_db( *this, 0 );
 
@@ -508,7 +508,8 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     // Work out its number as the parent's number + 1
     if ( !isKnown( _block.info.parentHash(), false ) )  // doesn't have to be current.
     {
-        LOG( m_loggerDebug ) << _block.info.hash() << " : Unknown parent " << _block.info.parentHash();
+        LOG( m_loggerDebug ) << _block.info.hash() << " : Unknown parent "
+                             << _block.info.parentHash();
         // We don't know the parent (yet) - discard for now. It'll get resent to us if we find out
         // about its ancestry later on.
         BOOST_THROW_EXCEPTION( UnknownParent() << errinfo_hash256( _block.info.parentHash() ) );
@@ -908,7 +909,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
     }
 
     LOG( m_loggerDebug ) << "pieceUsageBytes from DB = " << pieceUsageBytes
-                    << " computed = " << blocksBatchSize + extrasBatchSize;
+                         << " computed = " << blocksBatchSize + extrasBatchSize;
 
     if ( pieceUsageBytes == 0 ) {
         pieceUsageBytes = blocksBatchSize + extrasBatchSize;
@@ -1425,9 +1426,7 @@ void BlockChain::doLevelDbCompaction() const {
 }
 
 void BlockChain::checkConsistency() {
-    DEV_WRITE_GUARDED( x_details ) {
-        m_details.clear();
-    }
+    DEV_WRITE_GUARDED( x_details ) { m_details.clear(); }
 
     m_blocksDB->forEach( [this]( db::Slice const& _key, db::Slice const& /* _value */ ) {
         if ( _key.size() == 32 ) {

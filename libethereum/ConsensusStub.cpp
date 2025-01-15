@@ -89,7 +89,7 @@ void ConsensusStub::doWork() {
         return;
 
     LOG( m_loggerDebug ) << "Taken " << txns.size() << " transactions for consensus"
-                    << "\n";
+                         << "\n";
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
                                          // any subset but not zero
@@ -110,7 +110,7 @@ void ConsensusStub::doWork() {
         m_extFace.createBlock( out_vector, time( NULL ), 0, blockCounter,
             getPriceForBlockId( blockCounter ), stateRoot, -1 );
         LOG( m_loggerDebug ) << "createBlock"
-                        << "\n";
+                             << "\n";
     } catch ( const dev::Exception& x ) {
         LOG( m_loggerDebug ) << x.what() << "\n";
     }  // catch

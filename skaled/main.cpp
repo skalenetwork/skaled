@@ -1738,7 +1738,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t ) ( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
@@ -2712,7 +2712,7 @@ int main( int argc, char** argv ) try {
         g_client.reset( nullptr );
     }
 
-    LOG( loggerError ) << localeconv()->decimal_point ;
+    LOG( loggerError ) << localeconv()->decimal_point;
 
     std::string basename = "profile" + chainParams.nodeInfo.id.str();
     MicroProfileDumpFileImmediately(
@@ -2745,8 +2745,7 @@ int main( int argc, char** argv ) try {
     return int( ExitHandler::ec_failure );
 } catch ( ... ) {
     clog( VerbosityError, "main" ) << "CRITICAL unknown error";
-    clog( VerbosityError, "main" ) << "\n"
-                                   << skutils::signal::generate_stack_trace();
+    clog( VerbosityError, "main" ) << "\n" << skutils::signal::generate_stack_trace();
     g_client.reset( nullptr );
     return int( ExitHandler::ec_failure );
 }

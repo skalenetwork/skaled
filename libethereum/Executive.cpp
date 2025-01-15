@@ -271,7 +271,7 @@ bool Executive::execute() {
     if ( !m_t.hasExternalGas() ) {
         // Pay...
         LOG( m_loggerTrace ) << "Paying " << formatBalance( m_gasCost ) << " from sender for gas ("
-                              << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
+                             << m_t.gas() << " gas at " << formatBalance( m_t.gasPrice() ) << ")";
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 
@@ -328,7 +328,7 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             return true;  // true actually means "all finished - nothing more to be done regarding
                           // go().
         } else {
-            m_gas = ( u256 ) ( _p.gas - g );
+            m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
             tie( success, output ) = m_chainParams.executePrecompiled(

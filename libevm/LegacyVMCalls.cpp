@@ -69,7 +69,7 @@ void LegacyVM::throwBadStack( unsigned _removed, unsigned _added ) {
         if ( m_onFail )
             ( this->*m_onFail )();
         BOOST_THROW_EXCEPTION(
-            OutOfStack() << RequirementError( ( bigint ) ( _added - _removed ), size ) );
+            OutOfStack() << RequirementError( ( bigint )( _added - _removed ), size ) );
     }
 }
 

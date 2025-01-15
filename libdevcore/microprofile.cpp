@@ -755,10 +755,10 @@ inline uint16_t MicroProfileGetTimerIndex( MicroProfileToken t ) {
     return ( t & 0xffff );
 }
 inline uint32_t MicroProfileGetGroupMask( MicroProfileToken t ) {
-    return ( uint32_t ) ( ( t >> 16 ) & MICROPROFILE_GROUP_MASK_ALL );
+    return ( uint32_t )( ( t >> 16 ) & MICROPROFILE_GROUP_MASK_ALL );
 }
 inline uint32_t MicroProfileGetGroupMaskIndex( MicroProfileToken t ) {
-    return ( uint32_t ) ( t >> 48 );
+    return ( uint32_t )( t >> 48 );
 }
 
 
@@ -782,7 +782,7 @@ T MicroProfileClamp( T a, T min_, T max_ ) {
 }
 
 inline int64_t MicroProfileMsToTick( float fMs, int64_t nTicksPerSecond ) {
-    return ( int64_t ) ( fMs * 0.001f * nTicksPerSecond );
+    return ( int64_t )( fMs * 0.001f * nTicksPerSecond );
 }
 
 inline float MicroProfileTickToMsMultiplier( int64_t nTicksPerSecond ) {
@@ -846,7 +846,7 @@ void MicroProfileThreadJoin( MicroProfileThread* pThread ) {
 typedef HANDLE MicroProfileThread;
 DWORD _stdcall ThreadTrampoline( void* pFunc ) {
     MicroProfileThreadFunc F = ( MicroProfileThreadFunc ) pFunc;
-    return ( uint32_t ) ( uintptr_t ) F( 0 );
+    return ( uint32_t )( uintptr_t ) F( 0 );
 }
 
 void MicroProfileThreadStart( MicroProfileThread* pThread, MicroProfileThreadFunc Func ) {
@@ -1367,7 +1367,7 @@ MicroProfileToken MicroProfileGetToken(
     if ( ret != MICROPROFILE_INVALID_TOKEN )
         return ret;
     uint16_t nGroupIndex = MicroProfileGetGroup( pGroup, Type );
-    uint16_t nTimerIndex = ( uint16_t ) ( S.nTotalTimers++ );
+    uint16_t nTimerIndex = ( uint16_t )( S.nTotalTimers++ );
     MP_ASSERT( nTimerIndex < MICROPROFILE_MAX_TIMERS );
 
     uint32_t nBitIndex = nGroupIndex / 32;
@@ -1452,7 +1452,7 @@ const char* MicroProfileCounterFullName( int nCounter ) {
     int nOffset = 0;
     while ( nIndex >= 0 && nOffset < ( int ) sizeof( Buffer ) - 2 ) {
         uint32_t nLen = S.CounterInfo[nNodes[nIndex]].nNameLen + nOffset;  // < sizeof(Buffer)-1
-        nLen = MicroProfileMin( ( uint32_t ) ( sizeof( Buffer ) - 2 - nOffset ), nLen );
+        nLen = MicroProfileMin( ( uint32_t )( sizeof( Buffer ) - 2 - nOffset ), nLen );
         memcpy( &Buffer[nOffset], S.CounterInfo[nNodes[nIndex]].pName, nLen );
 
         nOffset += S.CounterInfo[nNodes[nIndex]].nNameLen + 1;
@@ -5663,7 +5663,7 @@ const char* MicroProfileWin32ThreadInfoAddString( const char* pString ) {
         if ( 0 == g_ThreadInfo.pStrings[idx] ) {
             g_ThreadInfo.pStrings[idx] = &g_ThreadInfo.StringData[g_ThreadInfo.nStringOffset];
             memcpy( &g_ThreadInfo.StringData[g_ThreadInfo.nStringOffset], pString, nLen + 1 );
-            g_ThreadInfo.nStringOffset += ( uint32_t ) ( nLen + 1 );
+            g_ThreadInfo.nStringOffset += ( uint32_t )( nLen + 1 );
             return g_ThreadInfo.pStrings[idx];
         }
         if ( 0 == strcmp( g_ThreadInfo.pStrings[idx], pString ) ) {
@@ -5996,7 +5996,7 @@ void* MicroProfileTraceThread( void* unused ) {
     gettimeofday( &tv, NULL );
 
     uint64_t nsSinceEpoch =
-        ( ( uint64_t ) ( tv.tv_sec ) * 1000000 + ( uint64_t ) ( tv.tv_usec ) ) * 1000;
+        ( ( uint64_t )( tv.tv_sec ) * 1000000 + ( uint64_t )( tv.tv_usec ) ) * 1000;
     uint64_t nTickEpoch = MP_TICK();
     uint32_t nLastThread[MICROPROFILE_MAX_CONTEXT_SWITCH_THREADS] = { 0 };
     mach_timebase_info_data_t sTimebaseInfo;
@@ -6306,7 +6306,7 @@ void MicroProfileGpuWaitFence( uint32_t nNode, uint64_t nFence ) {
     uint64_t nCompletedFrame = S.pGPU->NodeState[nNode].pFence->GetCompletedValue();
     // while(nCompletedFrame < nPending)
     // while(0 < nPending - nCompletedFrame)
-    while ( 0 < ( int64_t ) ( nFence - nCompletedFrame ) ) {
+    while ( 0 < ( int64_t )( nFence - nCompletedFrame ) ) {
         MICROPROFILE_SCOPEI( "Microprofile", "gpu-wait", MP_GREEN4 );
         Sleep( 20 );  // todo: use event.
         nCompletedFrame = S.pGPU->NodeState[nNode].pFence->GetCompletedValue();
@@ -6317,7 +6317,7 @@ void MicroProfileGpuFetchResults( uint64_t nFrame ) {
     uint64_t nPending = S.pGPU->nPendingFrame;
     // while(nPending <= nFrame)
     // while(0 <= nFrame - nPending)
-    while ( 0 <= ( int64_t ) ( nFrame - nPending ) ) {
+    while ( 0 <= ( int64_t )( nFrame - nPending ) ) {
         uint32_t nInternal = nPending % MICROPROFILE_D3D_INTERNAL_DELAY;
         uint32_t nNode = S.pGPU->Frames[nInternal].nNode;
         MicroProfileGpuWaitFence( nNode, nPending );
@@ -6610,7 +6610,7 @@ void MicroProfileGpuFetchResults( VkCommandBuffer Buffer, uint64_t nFrame ) {
     uint64_t nPending = S.pGPU->nPendingFrame;
     // while(nPending <= nFrame)
     // while(0 <= nFrame - nPending)
-    while ( 0 <= ( int64_t ) ( nFrame - nPending ) ) {
+    while ( 0 <= ( int64_t )( nFrame - nPending ) ) {
         uint32_t nInternal = nPending % MICROPROFILE_VULKAN_INTERNAL_DELAY;
         uint32_t nNode = S.pGPU->Frames[nInternal].nNode;
         MicroProfileGpuWaitFence( nNode, nInternal );

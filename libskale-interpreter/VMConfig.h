@@ -82,22 +82,22 @@ namespace eth {
 
 #define TRACE_STR( level, str )   \
     if ( ( level ) <= EVM_TRACE ) \
-        cerr << "$$$ " << ( str ) ;
+        cerr << "$$$ " << ( str );
 
 #define TRACE_VAL( level, name, val ) \
     if ( ( level ) <= EVM_TRACE )     \
-        cerr << "=== " << ( name ) << " " << hex << ( val ) ;
+        cerr << "=== " << ( name ) << " " << hex << ( val );
 #define TRACE_OP( level, pc, op ) \
     if ( ( level ) <= EVM_TRACE ) \
-        cerr << "*** " << ( pc ) << " " << instructionInfo( op ).name ;
+        cerr << "*** " << ( pc ) << " " << instructionInfo( op ).name;
 
 #define TRACE_PRE_OPT( level, pc, op ) \
     if ( ( level ) <= EVM_TRACE )      \
-        cerr << "<<< " << ( pc ) << " " << instructionInfo( op ).name ;
+        cerr << "<<< " << ( pc ) << " " << instructionInfo( op ).name;
 
 #define TRACE_POST_OPT( level, pc, op ) \
     if ( ( level ) <= EVM_TRACE )       \
-        cerr << ">>> " << ( pc ) << " " << instructionInfo( op ).name ;
+        cerr << ">>> " << ( pc ) << " " << instructionInfo( op ).name;
 #else
 #define TRACE_STR( level, str )
 #define TRACE_VAL( level, name, val )

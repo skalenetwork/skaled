@@ -383,7 +383,8 @@ pair< TransactionReceipts, bool > Block::sync(
 
                     if ( req > got ) {
                         // too old
-                        LOG( m_loggerDebug ) << t.sha3() << " Dropping old transaction (nonce too low)";
+                        LOG( m_loggerDebug )
+                            << t.sha3() << " Dropping old transaction (nonce too low)";
                         _tq.drop( t.sha3() );
                     } else if ( got > req + _tq.waiting( t.sender() ) ) {
                         // too new
@@ -402,9 +403,10 @@ pair< TransactionReceipts, bool > Block::sync(
                             << "got: " << got << " required: " << m_currentBlock.gasLimit();
                         _tq.drop( t.sha3() );
                     } else {
-                        LOG( m_loggerDebug ) << t.sha3()
-                                        << " Temporarily no gas left in current block (txs gas > "
-                                           "block's gas limit)";
+                        LOG( m_loggerDebug )
+                            << t.sha3()
+                            << " Temporarily no gas left in current block (txs gas > "
+                               "block's gas limit)";
                         //_tq.drop(t.sha3());
                         // Temporarily no gas left in current block.
                         // OPTIMISE: could note this and then we don't evaluate until a block that
@@ -485,8 +487,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
 
             // TODO Move this checking logic into some single place - not in execute, of course
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
-                LOG( m_loggerDebug ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
-                                << tr.gasPrice() << " < " << _gasPrice;
+                LOG( m_loggerDebug )
+                    << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
+                    << tr.gasPrice() << " < " << _gasPrice;
 
                 if ( SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ) {
                     // Add to the user-originated transactions that we've executed.
@@ -597,7 +600,7 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     enactment = t.elapsed();
     if ( populateVerify + populateGrand + syncReset + enactment > 0.5 )
         LOG( m_loggerDebug ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
-                        << populateGrand << " / " << syncReset << " / " << enactment;
+                             << populateGrand << " / " << syncReset << " / " << enactment;
 #endif
     return ret;
 }
@@ -1130,7 +1133,8 @@ void Block::cleanup() {
     MICROPROFILE_SCOPEI( "Block", "cleanup", MP_BEIGE );
 
     // Commit the new trie to disk.
-    //    LOG(m_loggerDebug) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << " = "
+    //    LOG(m_loggerDebug) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << "
+    //    = "
     //                  << rootHash() << " = " << toHex(asBytes(db().lookup(globalRoot())));
 
     //    try
@@ -1152,7 +1156,7 @@ void Block::cleanup() {
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
     LOG( m_loggerDebug ) << "finalising enactment. current -> previous, hash is "
-                    << m_previousBlock.hash();
+                         << m_previousBlock.hash();
 
     resetCurrent();
 }
