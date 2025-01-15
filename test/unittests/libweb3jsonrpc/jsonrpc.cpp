@@ -3671,6 +3671,9 @@ BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
     Json::Value tx = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( dev::jsToU256( tx["maxFeePerGas"].asString() ) < dev::jsToU256( tx["maxPriorityFeePerGas"].asString() ) );
 
+    dev::eth::Transaction t = fixture.client->transaction( dev::h256( txHash ) );
+    BOOST_REQUIRE( t.maxFeePerGas() < t.maxPriorityFeePerGas() );
+
     sleep( 10 );
 
     // force 1 block to update timestamp
