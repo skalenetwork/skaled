@@ -82,8 +82,7 @@ ZmqBroadcaster::ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost
 
 std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const {
     std::string url = "tcp://" + node.ip + ":" + ( node.port + 5 ).str();  // HACK +5
-    // cannot use LOG - inside const function
-    clog( dev::VerbosityInfo, "broadcaster" ) << url;  // todo
+    LOG( m_loggerInfo ) << url;
     return url;
 }
 

@@ -501,10 +501,10 @@ private:
     dev::s256 currentStorageUsed_ = 0;
 
     /// Loggers
-    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "State" ) };
-    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "State" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "State" ) };
+    mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "State" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "State" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "State" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "State" ) };
 
 #ifdef HISTORIC_STATE
     dev::eth::HistoricState m_historicState;

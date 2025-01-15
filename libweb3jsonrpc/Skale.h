@@ -117,26 +117,11 @@ private:
     mutable std::mutex m_snapshot_mutex;
 
     /// Loggers
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "Skale" ) };
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "Skale" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "Skale" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "Skale" ) };
-    // downloadSnapshotFragmentMonitor
-    Logger m_loggerInfoSnapshotThread{ createLogger(
-        VerbosityInfo, "Skale_downloadSnapshotFragmentMonitorThread" ) };
-    // downloadSnapshotFragment
-    Logger m_loggerInfoDownloadSnapshotFragment{ createLogger(
-        VerbosityInfo, "Skale_downloadSnapshotFragment" ) };
-    // getSnapshotSignature
-    Logger m_loggerInfoGetSnapshotSignature{ createLogger(
-        VerbosityInfo, "Skale_getSnapshotSignature" ) };
-    Logger m_loggerErrorGetSnapshotSignature{ createLogger(
-        VerbosityInfo, "Skale_getSnapshotSignature" ) };
-    // oracle_submitRequest
-    Logger m_loggerDebugOracleSubmitRequest{ createLogger(
-        VerbosityDebug, "Skale_oracle_submitRequest" ) };
-    // oracle_checkResult
-    Logger m_loggerDebugOracleCheckResult{ createLogger(
-        VerbosityDebug, "Skale_oracle_checkResult" ) };
+
 };
 
 namespace snapshot {

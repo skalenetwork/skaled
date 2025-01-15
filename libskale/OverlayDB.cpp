@@ -73,9 +73,6 @@ dev::db::Slice toSlice( std::string const& _s ) {
 
 OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
     : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
-          // clog(dev::VerbosityDebug, "overlaydb") << "Closing state DB";
-          //        std::cerr << "!!! Closing state DB !!!" << "\n";
-          //        std::cerr.flush();
           delete db;
       } ) {}
 
@@ -266,8 +263,7 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
     std::string const loadedValue =
         m_db_face->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
-        // cannot use LOG - function is const
-        cwarn << "Aux not found: " << _address;
+        LOG( m_loggerWarning ) << "Aux not found: " << _address;
 
     return loadedValue;
 }
@@ -315,8 +311,8 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
-    // cannot use LOG - function is const
-    cnote << "Iterating over all accounts in state";
+    
+    LOG( m_loggerInfo ) << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
         m_db_face->forEach( [&accounts]( Slice key, Slice value ) {
@@ -339,7 +335,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     if ( m_db_face ) {
         // iterate of a keys that start with the given substring
         string prefix( ( const char* ) _address.data(), _address.size );
-        m_db_face->forEachWithPrefix( prefix, [&storage, &_address]( Slice key, Slice value ) {
+        m_db_face->forEachWithPrefix( prefix, [this, &storage, &_address]( Slice key, Slice value ) {
             if ( key.size() == h160::size + h256::size ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
@@ -352,8 +348,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
                         h256::ConstructFromStringType::FromBinary );
                     storage[memoryAddress] = memoryValue;
                 } else {
-                    // cannot use LOG - function is const
-                    cerror << "Address mismatch in:" << __FUNCTION__;
+                    LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
                 }
             }
             return true;
@@ -368,7 +363,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
     static uint64_t counter = 0;
 
     if ( m_db_face ) {
-        m_db_face->forEach( [&_map]( Slice key, Slice value ) {
+        m_db_face->forEach( [this, &_map]( Slice key, Slice value ) {
             if ( key.size() == h160::size + h256::size ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
@@ -383,13 +378,12 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
                 [[maybe_unused]] u256 memoryValue = h256( string( value.begin(), value.end() ),
                     h256::ConstructFromStringType::FromBinary );
 
-
                 _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
                 if ( counter % 1000000 == 0 ) {
-                    // cannot use LOG - function is const
-                    cdebug << ".";
-                    cdebug.flush();
+                    
+                    LOG( m_loggerDebug ) << ".";
+                    LOG( m_loggerDebug ).flush();
                 }
             }
             return true;

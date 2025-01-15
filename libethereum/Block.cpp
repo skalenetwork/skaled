@@ -280,16 +280,6 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         // Find most recent state dump and replay what's left.
         // (Most recent state dump might end up being genesis.)
 
-        //        if (m_state.db().lookup(bi.stateRoot()).empty())  // TODO: API in State for this?
-        //        {
-        //            LOG( m_loggerWarning ) << "Unable to sync to" << bi.hash() << "; state root"
-        //            << bi.stateRoot()
-        //                  << "not found in database.";
-        //            LOG( m_loggerWarning ) << "Database corrupt: contains block without
-        //            stateRoot:" << bi; LOG( m_loggerWarning ) << "Try rescuing the database by
-        //            running: eth --rescue"; BOOST_THROW_EXCEPTION(InvalidStateRoot() <<
-        //            errinfo_target(bi.stateRoot()));
-        //        }
         m_previousBlock = bi;
         resetCurrent();
         ret = true;
@@ -523,17 +513,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone(
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++count_bad;
             }
-
-            //
-            // Debug only, related SKALE-2814 partial catchup testing
-            //
-            // if ( i == 3 ) {
-            // LOG( m_loggerDebug ) << "\n\n"
-            //          << "--- EXITING AS CRASH EMULATION AT TX# " << i
-            //          << " with hash " << tr.sha3().hex() << "\n\n\n";
-            // std::cout.flush();
-            //_exit( 200 );
-            //}
 
 
         } catch ( Exception& ex ) {
@@ -1131,22 +1110,6 @@ LogBloom Block::logBloom() const {
 
 void Block::cleanup() {
     MICROPROFILE_SCOPEI( "Block", "cleanup", MP_BEIGE );
-
-    // Commit the new trie to disk.
-    //    LOG(m_loggerDebug) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << "
-    //    = "
-    //                  << rootHash() << " = " << toHex(asBytes(db().lookup(globalRoot())));
-
-    //    try
-    //    {
-    //        EnforceRefs er(db(), true);
-    //        globalRoot();
-    //    }
-    //    catch (BadRoot const&)
-    //    {
-    //        cwarn << "Trie corrupt! :-(";
-    //        throw;
-    //    }
 
     m_state.commit();  // TODO: State API for this?
 

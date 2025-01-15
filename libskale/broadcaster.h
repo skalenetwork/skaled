@@ -104,10 +104,10 @@ private:
     std::thread m_thread;
 
     /// Logger
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "ZmqBroadcaster" ) };
-    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "ZmqBroadcaster" ) };
-    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ZmqBroadcaster" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "ZmqBroadcaster" ) };
 };
 
 #endif  // BROADCASTER_H

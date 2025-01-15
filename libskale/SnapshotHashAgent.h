@@ -98,9 +98,9 @@ private:
     size_t verifyAllData() const;
 
     /// Loggers
-    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SnapshotHashAgent" ) };
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SnapshotHashAgent" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SnapshotHashAgent" ) };
+    mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SnapshotHashAgent" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SnapshotHashAgent" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SnapshotHashAgent" ) };
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

@@ -490,8 +490,7 @@ ImportRoute BlockChain::import( bytes const& _block, State& _state, bool _mustBe
     // VERIFY: populates from the block and checks the block is internally coherent.
     VerifiedBlockRef const block =
         verifyBlock( &_block, m_onBad, ImportRequirements::OutOfOrderChecks );
-    //    cerr << "Import block #" << block.info.number() << " with hash = " << block.info.hash() <<
-    //    endl;
+
     return import( block, _state, _mustBeNew );
 }
 

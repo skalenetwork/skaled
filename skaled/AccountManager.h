@@ -52,7 +52,7 @@ private:
     std::unique_ptr< dev::eth::KeyManager > m_keyManager;
 
     /// Loggers
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "AccountManager" ) };
-    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "AccountManager" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "AccountManager" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "AccountManager" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "AccountManager" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "AccountManager" ) };
 };

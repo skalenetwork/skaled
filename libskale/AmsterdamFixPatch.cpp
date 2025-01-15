@@ -199,8 +199,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         if ( bn == start_block + 1 || old_hash == best_hash || transactions.size() ||
              bn % 1000 == 0 )
-            LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> " << new_hash
-                                << "\n";
+            LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> " << new_hash;
 
         TransactionAddress ta;
         ta.blockHash = new_hash;
@@ -210,7 +209,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
             h256 hash = sha3( transactions[i].data() );
             ta.index = i;
             LOG( m_loggerInfo ) << "Updating transaction " << hash << " location " << old_hash
-                                << " -> " << new_hash << " " << ta.index << "\n";
+                                << " -> " << new_hash << " " << ta.index;
             _extrasDB.insert(
                 toSlice( hash, ExtraTransactionAddress ), ( db::Slice ) dev::ref( ta.rlp() ) );
         }  // for

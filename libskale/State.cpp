@@ -369,8 +369,7 @@ void State::populateFrom( eth::AccountMap const& _map ) {
 std::unordered_map< Address, u256 > State::addresses() const {
     boost::shared_lock< boost::shared_mutex > lock( *x_db_ptr );
     if ( !checkVersion() ) {
-        // cannot use LOG - function is const
-        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+        LOG( m_loggerError ) << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }
@@ -680,8 +679,7 @@ std::map< h256, std::pair< u256, u256 > > State::storage( const Address& _contra
 std::map< h256, std::pair< u256, u256 > > State::storage_WITHOUT_LOCK(
     const Address& _contract ) const {
     if ( !checkVersion() ) {
-        // cannot use LOG - function is const
-        cerror << "Current state version is " << m_currentVersion << " but stored version is "
+        LOG( m_loggerError ) << "Current state version is " << m_currentVersion << " but stored version is "
                << *m_storedVersion;
         BOOST_THROW_EXCEPTION( AttemptToReadFromStateInThePast() );
     }

@@ -89,8 +89,7 @@ size_t SnapshotHashAgent::verifyAllData() const {
                                                   this->hashes_.at( i ).asArray() ),
                         this->signatures_.at( i ), this->public_keys_.at( i ) );
             } catch ( std::exception& ex ) {
-                // cannot use LOG - function is constant
-                cerror << ex.what();
+                LOG( m_loggerError ) << ex.what();
             }
 
             verified += is_verified;

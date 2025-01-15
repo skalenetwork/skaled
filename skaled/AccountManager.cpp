@@ -170,9 +170,7 @@ string AccountManager::createPassword( string const& _prompt ) const {
         string confirm = getPassword( "Please confirm the passphrase by entering it again: " );
         if ( ret == confirm )
             break;
-        // cannot use LOG - function is const
-        cnote << "Passwords were different. Try again."
-              << "\n";
+        LOG( m_loggerInfo ) << "Passwords were different. Try again.\n";
     }
     return ret;
 }

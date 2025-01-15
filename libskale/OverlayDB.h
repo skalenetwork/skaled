@@ -121,10 +121,11 @@ private:
     mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
 
     /// Loggers
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "OverlayDB" ) };
-    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "OverlayDB" ) };
-    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "OverlayDB" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "OverlayDB" ) };
+    mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "OverlayDB" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "OverlayDB" ) };
+    mutable dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "OverlayDB" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "OverlayDB" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "OverlayDB" ) };
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }

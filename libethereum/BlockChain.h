@@ -281,9 +281,6 @@ public:
     BlocksBlooms blocksBlooms( h256 const& _chunkId ) const {
         auto res = queryExtras< BlocksBlooms, ExtraBlocksBlooms >(
             _chunkId, m_blocksBlooms, x_blocksBlooms, NullBlocksBlooms );
-        // std::cerr << "Queried " << _chunkId.hex() << "->";
-        // for ( size_t i = 0; i < 16; ++i )
-        //    std::cerr << "\t" << i << " = " << res.blooms[i].hex();
         return res;
     }
     LogBloom blockBloom( unsigned _number ) const {

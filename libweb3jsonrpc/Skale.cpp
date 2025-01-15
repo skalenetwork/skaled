@@ -215,13 +215,13 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                 sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
             }
 
-            LOG( m_loggerInfoSnapshotThread ) << "Unlocking shared space.";
+            LOG( m_loggerInfo ) << "Unlocking shared space.";
 
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
                 try {
                     fs::remove( currentSnapshotPath );
-                    LOG( m_loggerInfoSnapshotThread ) << "Deleted snapshot file.";
+                    LOG( m_loggerInfo ) << "Deleted snapshot file.";
                 } catch ( ... ) {
                 }
                 currentSnapshotBlockNumber = -1;
@@ -322,7 +322,7 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
 
     if ( sizeOfChunk + idxFrom == sizeOfFile )
-        LOG( m_loggerInfoDownloadSnapshotFragment )
+        LOG( m_loggerInfo )
             << "Sent all chunks for " << currentSnapshotPath.string();
 
     joResponse["size"] = sizeOfChunk;
@@ -422,7 +422,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             cli.optsSSL_ = ssl_options;
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
-                LOG( m_loggerErrorGetSnapshotSignature )
+                LOG( m_loggerInfo )
                     << "FATAL:"
                     << " Exception while trying to connect to sgx server: "
                     << "connection refused";
@@ -430,7 +430,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             skutils::rest::data_t d;
             while ( true ) {
-                LOG( m_loggerInfoGetSnapshotSignature ) << ">>> SGX call >>>"
+                LOG( m_loggerInfo ) << ">>> SGX call >>>"
                                                         << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
@@ -439,13 +439,13 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                              skutils::http::common_network_exception::error_type::et_unknown ||
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
-                        LOG( m_loggerErrorGetSnapshotSignature )
+                        LOG( m_loggerError )
                             << "ERROR:"
                             << " Exception while trying to connect to sgx server: "
                             << " error with connection: "
                             << " retrying... ";
                     } else {
-                        LOG( m_loggerErrorGetSnapshotSignature )
+                        LOG( m_loggerError )
                             << "ERROR:"
                             << " Exception while trying to connect to sgx server: "
                             << " error with ssl certificates " << d.ei_.strError_;
@@ -457,7 +457,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-                LOG( m_loggerErrorGetSnapshotSignature ) << "!!! SGX call error !!!"
+                LOG( m_loggerError ) << "!!! SGX call error !!!"
                                                          << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
@@ -539,7 +539,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         std::string receipt;
         std::string errorMessage;
 
-        LOG( m_loggerDebugOracleSubmitRequest ) << request;
+        LOG( m_loggerDebug ) << request;
 
         uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
         if ( status != ORACLE_SUCCESS ) {
@@ -569,7 +569,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
-        LOG( m_loggerDebugOracleCheckResult ) << result;
+        LOG( m_loggerDebug ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;

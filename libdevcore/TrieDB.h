@@ -894,7 +894,7 @@ void GenericTrieDB< DB >::mergeAtAux(
     bool isRemovable = false;
     if ( !r.isList() && !r.isEmpty() ) {
         h256 h = _orig.toHash< h256 >();
-        //        std::cerr << "going down non-inline node " << h << "\n";
+
         s = node( h );
         r = RLP( s );
         assert( !r.isNull() );

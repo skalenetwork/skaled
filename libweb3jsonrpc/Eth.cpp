@@ -843,8 +843,6 @@ Json::Value Eth::eth_getFilterChanges( string const& _filterId ) {
     try {
         unsigned int id = static_cast< unsigned int >( jsToInt( _filterId ) );
         auto entries = client()->checkWatch( id );
-        //		if (entries.size())
-        //			LOG( m_loggerDebug ) << "FIRING WATCH" << id << entries.size();
         return toJson( entries );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -855,8 +853,6 @@ Json::Value Eth::eth_getFilterChangesEx( string const& _filterId ) {
     try {
         unsigned int id = static_cast< unsigned int >( jsToInt( _filterId ) );
         auto entries = client()->checkWatch( id );
-        //		if (entries.size())
-        //			LOG( m_loggerDebug ) << "FIRING WATCH" << id << entries.size();
         return toJsonByBlock( entries );
     } catch ( ... ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
@@ -874,15 +870,6 @@ Json::Value Eth::eth_getFilterLogs( string const& _filterId ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
-
-// Json::Value Eth::eth_getFilterLogsEx( string const& _filterId ) {
-//    try {
-//        return toJsonByBlock(
-//            client()->logs( static_cast< unsigned int >( jsToInt( _filterId ) ) ) );
-//    } catch ( ... ) {
-//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-//    }
-//}
 
 Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
     try {
@@ -913,14 +900,6 @@ Json::Value Eth::eth_getLogs( Json::Value const& _json ) {
         BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
     }
 }
-
-// Json::Value Eth::eth_getLogsEx( Json::Value const& _json ) {
-//    try {
-//        return toJsonByBlock( client()->logs( toLogFilter( _json ) ) );
-//    } catch ( ... ) {
-//        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-//    }
-//}
 
 Json::Value Eth::eth_getWork() {
     try {
