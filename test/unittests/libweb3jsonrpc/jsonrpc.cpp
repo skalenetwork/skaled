@@ -111,9 +111,22 @@ static std::string const c_genesisConfigString =
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )"+std::to_string( rand_port ) + R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ],
-            "revertableFSPatchTimestamp": 0,
-            "contractStorageZeroValuePatchTimestamp": 0,
-            "powCheckPatchTimestamp": 1
+            "revertableFSPatchTimestamp": 1,
+            "precompiledConfigPatchTimestamp": 1,
+            "powCheckPatchTimestamp": 1,
+            "correctForkInPowPatchTimestamp": 1,
+            "contractStorageZeroValuePatchTimestamp": 1,
+            "pushZeroPatchTimestamp": 1,
+            "contractStoragePatchTimestamp": 1,
+            "storageDestructionPatchTimestamp": 1,
+            "skipInvalidTransactionsPatchTimestamp": 1,
+            "selfdestructStorageLimitPatchTimestamp": 1,
+            "verifyDaSigsPatchTimestamp": 1,
+            "fastConsensusPatchTimestamp": 1,
+            "EIP1559TransactionsPatchTimestamp": 1,
+            "verifyBlsSyncPatchTimestamp": 1,
+            "flexibleDeploymentPatchTimestamp": 1,
+            "externalGasPatchTimestamp": 1
         }
     },
     "accounts": {
@@ -2794,23 +2807,11 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     JsonRpcFixture fixture(c_genesisConfigString, false, false, false, false);
     Json::Value patchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
 
-    BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(
-        SchainPatchEnum::RevertableFSPatch)], 0);
-    BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(
-        SchainPatchEnum::ContractStorageZeroValuePatch)], 0);
-    BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::PowCheckPatch)], 1);
-
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::ContractStoragePatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::VerifyBlsSyncPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::VerifyDaSigsPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::StorageDestructionPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::SkipInvalidTransactionsPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::PushZeroPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::PrecompiledConfigPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::CorrectForkInPowPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::EIP1559TransactionsPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::FastConsensusPatch)]);
-    BOOST_REQUIRE(patchTimestamps[getPatchNameForEnum(SchainPatchEnum::FlexibleDeploymentPatch)]);
+    size_t numPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
+    for( size_t patch = 0; patch <  numPatches; patch++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
+        BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(patchEnum)], 1);
+    }
 }
 
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
