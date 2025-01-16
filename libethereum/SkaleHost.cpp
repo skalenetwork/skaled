@@ -577,7 +577,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             LOG( m_traceLogger ) << "Arrived txn: " << sha;
 
             Transaction t( data, CheckTransaction::Everything, true,
-                EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                MaxFeePerGasPatch::isEnabledInWorkingBlock() );
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
