@@ -119,53 +119,15 @@ Json::Value Debug::debug_getFutureTransactions() {
 }
 
 Json::Value Debug::debug_getPatchTimestamps() {
-    nlohmann::json joPatchedTimestamps = nlohmann::json::object();
+    Json::Value jsonResponse;
     ChainParams chainParams = m_eth.chainParams();
-    
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::ContractStoragePatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::ContractStoragePatch );
 
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::ContractStorageZeroValuePatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::ContractStorageZeroValuePatch );
+    int numberOfPatches = static_cast< int >( SchainPatchEnum::PatchesCount );
+    for ( int patch = 0; patch < numberOfPatches; patch++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
+        jsonResponse[getPatchNameForEnum( patchEnum )] =
+            chainParams.getPatchTimestamp( patchEnum );
+    }
 
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::CorrectForkInPowPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::CorrectForkInPowPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::EIP1559TransactionsPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::EIP1559TransactionsPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::FastConsensusPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::FlexibleDeploymentPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::FlexibleDeploymentPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::PowCheckPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::PowCheckPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::PrecompiledConfigPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::PrecompiledConfigPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::PushZeroPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::PushZeroPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::RevertableFSPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::RevertableFSPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::SkipInvalidTransactionsPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::SkipInvalidTransactionsPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::StorageDestructionPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::StorageDestructionPatch );
-
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::VerifyBlsSyncPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
-        
-    joPatchedTimestamps[getPatchNameForEnum(SchainPatchEnum::VerifyDaSigsPatch)] = 
-        chainParams.getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
-
-    std::string strResponse = joPatchedTimestamps.dump();
-    Json::Value response;
-    Json::Reader().parse( strResponse, response );
-    return response;
+    return jsonResponse;
 }
