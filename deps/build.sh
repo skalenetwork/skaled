@@ -673,7 +673,7 @@ then
         fi
         echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
         cd liblzma
-        eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
+        eval "$MAKE"
         eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
         cd ..
         cd "$SOURCES_ROOT"
