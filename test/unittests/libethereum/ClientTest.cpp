@@ -201,16 +201,13 @@ public:
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     "SUCCESS: Got positive transaction status";
             else
-                clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    "ERROR: Got negative transaction status";
+            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << receipt["status"] << '\n';
             return bStatusFlag;
         } catch ( std::exception & ex ) {
-            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    "ERROR: exception:" + std::string(ex.what());
+            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << ex.what() << '\n';
             return false;
         } catch (...) {
-            clog( VerbosityError, "TestClientFixture::getTransactionStatus()" ) <<
-                    "ERROR: unknown exception";
+            cerr << "TestClientFixture::getTransactionStatus() Unknown exception" << '\n';
             return false;
         }
     }
@@ -635,10 +632,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     //            function setA(uint x) public {
     //                a[x] = true;
     //                a[x] = false;
-    //            }
     //    }
 
     Address from = fixture.coinbase.address();
+    //            }
     Address contractAddress( "0xD2001300000000000000000000000000000000D3" );
 
     // data to call method setA(0)
@@ -646,10 +643,16 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
             jsToBytes( "0xee919d500000000000000000000000000000000000000000000000000000000000000000" );
 
     int64_t maxGas = 100000;
+
+    u256 balance = testClient->balanceAt( from );
+    BOOST_CHECK( balance > 0 );
+
     u256 estimate = testClient
             ->estimateGas( from, 0, contractAddress, data, maxGas, 1000000,
                            GasEstimationCallback() )
             .first;
+
+
 
     Json::Value estimateTransaction;
     estimateTransaction["from"] = toJS(from );
@@ -658,6 +661,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
 
     estimateTransaction["gas"] = toJS(estimate - 1);
     BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+    fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
     estimateTransaction["gas"] = toJS(estimate);
     BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
@@ -691,6 +695,10 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     //    }
 
     Address from = fixture.coinbase.address();
+
+    u256 balance = testClient->balanceAt( from );
+    BOOST_CHECK( balance > 0 );
+
     Address contractAddress( "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b" );
 
     // setA(3) already "called" (see "storage" in c_genesisInfoSkaleTest)
@@ -711,6 +719,7 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
 
     estimateTransaction["gas"] = toJS(estimate - 1);
     BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+    fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
     estimateTransaction["gas"] = toJS(estimate);
     BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
@@ -948,7 +957,15 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
 
 BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     TestClientFixture fixture( c_genesisInfoSkaleIMABLSPublicKeyTest );
+
+
+    sleep(3);
+
     ClientTest* testClient = asClientTest( fixture.ethereum() );
+
+
+    BOOST_REQUIRE(testClient);
+
 
     std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
 
@@ -957,9 +974,9 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
     BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
 
-    BOOST_REQUIRE( testClient->mineBlocks( 1 ) );
-
     testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
+
+    sleep(3);
 
     std::array< std::string, 4 > imaBLSPublicKeyAfterBlock = { "10860211539819517237363395256510340030868592687836950245163587507107792195621", "2419969454136313127863904023626922181546178935031521540751337209075607503568", "3399776985251727272800732947224655319335094876742988846345707000254666193993", "16982202412630419037827505223148517434545454619191931299977913428346639096984" };
 

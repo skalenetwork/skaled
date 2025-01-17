@@ -288,11 +288,11 @@ int main( int argc, char** argv ) {
 
     ChainParams chainParams( genesisInfo( networkName ) );
     LastBlockHashes lastBlockHashes;
+
     EnvInfo const envInfo( blockHeader, lastBlockHashes, 0 /*_committedBlockTimestamp*/,
         0 /* gasUsed */, chainParams.chainID );
     EVMSchedule evmSchedule = chainParams.makeEvmSchedule( 0, envInfo.number() );
 
-    state = state.createStateModifyCopy();
 
     Transaction t;
     Address contractDestination( "1122334455667788991011121314151617181920" );
@@ -314,8 +314,9 @@ int main( int argc, char** argv ) {
 
     state.addBalance( sender, value );
 
-    // HACK 1st 0 here is for gasPrice
+    // First 0 here is for gasPrice
     Executive executive( state, envInfo, chainParams, 0, 0 );
+
     ExecutionResult res;
     executive.setResultRecipient( res );
     t.forceSender( sender );
@@ -390,7 +391,6 @@ int main( int argc, char** argv ) {
         cnote << "exec time: " << fixed << setprecision( 6 ) << execTime << '\n';
     }
 
-    state.releaseWriteLock();
 
     return 0;
 }

@@ -97,7 +97,7 @@ void* ZmqBroadcaster::server_socket() const {
         val = 60000;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_HEARTBEAT_TTL, &val, sizeof( val ) );
 
-        val = 16;
+        val = 1024;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_SNDHWM, &val, sizeof( val ) );
 
 
@@ -240,12 +240,13 @@ void ZmqBroadcaster::stopService() {
     m_thread.join();
 }
 
-void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
-    if ( _rlp.empty() ) {
-        server_socket();
-        return;
-    }
 
+void ZmqBroadcaster::initSocket() {
+    server_socket();
+}
+
+
+void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
         LOG( m_loggerWarning ) << "Got error " << res << " in zmq_send: " << zmq_strerror( res );

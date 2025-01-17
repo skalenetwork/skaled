@@ -52,6 +52,7 @@ public:
     Broadcaster() {}
     virtual ~Broadcaster();
 
+    virtual void initSocket(){};
     virtual void broadcast( const std::string& _rlp ) = 0;
 
     virtual void startService() = 0;
@@ -83,6 +84,7 @@ public:
     virtual ~ZmqBroadcaster();
 
     virtual void broadcast( const std::string& _rlp );
+    virtual void initSocket();
 
     virtual void startService();
     virtual void stopService();

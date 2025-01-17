@@ -119,7 +119,9 @@ public:
     h256 submitTransaction( TransactionSkeleton const& _t, Secret const& _secret ) override;
 
     /// Imports the given transaction into the transaction queue
-    h256 importTransaction( Transaction const& _t ) override;
+    h256 importTransaction( Transaction const& _t,
+        TransactionBroadcast _txOrigin = TransactionBroadcast::DontBroadcast ) override;
+
 
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
@@ -370,9 +372,7 @@ protected:
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime(),
-        Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
-    );
+        uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!
@@ -395,6 +395,10 @@ protected:
         ReadGuard l( x_preSeal );
         return m_preSeal;
     }
+
+    // get read only latest block copy
+    Block getReadOnlyLatestBlockCopy() const { return m_postSeal.getReadOnlyCopy(); }
+
     Block postSeal() const override {
         ReadGuard l( x_postSeal );
         return m_postSeal;

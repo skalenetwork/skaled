@@ -553,7 +553,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
         s.cleanup();
 
-        _state = _state.createNewCopyWithLocks();
+        _state = _state.createStateCopyAndClearCaches();
 
         totalDifficulty = pd.totalDifficulty + tdIncrease;
 

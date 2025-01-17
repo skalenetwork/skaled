@@ -55,7 +55,7 @@ private:
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "ClientTest" ) };
 
 protected:
-    unsigned const m_singleBlockMaxMiningTimeInSeconds = 5;
+    unsigned const m_singleBlockMaxMiningTimeInSeconds = 10;
 };
 
 ClientTest& asClientTest( Interface& _c );

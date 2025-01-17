@@ -2360,6 +2360,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
                 nServerIndex, esm, strOrigin.c_str(), ex.what() );
             nlohmann::json joErrorResponce;
+            joErrorResponce["jsonrpc"] = "2.0";
             joErrorResponce["id"] = joID;
             nlohmann::json joErrorObj;
             joErrorObj["code"] = -32000;
@@ -2382,6 +2383,7 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest(
             logTraceServerTraffic( false, dev::VerbosityError, ipVer, strProtocol.c_str(),
                 nServerIndex, esm, strOrigin.c_str(), e );
             nlohmann::json joErrorResponce;
+            joErrorResponce["jsonrpc"] = "2.0";
             joErrorResponce["id"] = joID;
             nlohmann::json joErrorObj;
             joErrorObj["code"] = -32000;
