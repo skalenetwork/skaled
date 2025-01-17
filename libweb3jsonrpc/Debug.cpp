@@ -125,8 +125,9 @@ Json::Value Debug::debug_getPatchTimestamps() {
     int numberOfPatches = static_cast< int >( SchainPatchEnum::PatchesCount );
     for ( int patch = 0; patch < numberOfPatches; patch++ ) {
         SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
-        jsonResponse[getPatchNameForEnum( patchEnum )] =
-            chainParams.getPatchTimestamp( patchEnum );
+        std::string patchName = getPatchNameForEnum( patchEnum ) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        jsonResponse[patchName] = chainParams.getPatchTimestamp( patchEnum );
     }
 
     return jsonResponse;

@@ -111,22 +111,9 @@ static std::string const c_genesisConfigString =
             "nodes": [
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )"+std::to_string( rand_port ) + R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ],
-            "revertableFSPatchTimestamp": 1,
-            "precompiledConfigPatchTimestamp": 1,
-            "powCheckPatchTimestamp": 1,
-            "correctForkInPowPatchTimestamp": 1,
-            "contractStorageZeroValuePatchTimestamp": 1,
-            "pushZeroPatchTimestamp": 1,
-            "contractStoragePatchTimestamp": 1,
-            "storageDestructionPatchTimestamp": 1,
-            "skipInvalidTransactionsPatchTimestamp": 1,
-            "selfdestructStorageLimitPatchTimestamp": 1,
-            "verifyDaSigsPatchTimestamp": 1,
-            "fastConsensusPatchTimestamp": 1,
-            "EIP1559TransactionsPatchTimestamp": 1,
-            "verifyBlsSyncPatchTimestamp": 1,
-            "flexibleDeploymentPatchTimestamp": 1,
-            "externalGasPatchTimestamp": 1
+            "revertableFSPatchTimestamp": 0,
+            "precompiledConfigPatchTimestamp": 0,
+            "powCheckPatchTimestamp": 1
         }
     },
     "accounts": {
@@ -2804,13 +2791,39 @@ BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
 }
 
 BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
-    JsonRpcFixture fixture(c_genesisConfigString, false, false, false, false);
-    Json::Value patchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
-
+    Json::Value configJson;
+    Json::Reader().parse(c_genesisConfigString, configJson);
+    
+    // indexed by enum int value
+    std::vector< int > patchTimestamps;
+    
+    // Set custom config file & create timestamps for each patch
     size_t numPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
-    for( size_t patch = 0; patch <  numPatches; patch++ ) {
+    for (size_t patch = 0; patch < numPatches ; patch++ ) {
         SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
-        BOOST_REQUIRE_EQUAL(patchTimestamps[getPatchNameForEnum(patchEnum)], 1);
+        int ts = patch + 1000; // just to offset from the default values (0, 1)
+        patchTimestamps.push_back(ts);
+
+        std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        configJson["skaleConfig"]["sChain"][patchName] = ts; 
+    }
+
+    Json::FastWriter fastWriter;
+    std::string customConfigFile = fastWriter.write( configJson ); 
+
+    JsonRpcFixture fixture(customConfigFile, false, false, false, false);
+    Json::Value returnedPatchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
+
+    // compare returned timestamps to actual timestamps
+    for( size_t patchIdx = 0; patchIdx <  numPatches; patchIdx++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patchIdx );
+        
+        std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+
+        BOOST_REQUIRE_EQUAL(returnedPatchTimestamps[patchName], 
+            patchTimestamps[patchIdx]);
     }
 }
 
