@@ -1987,9 +1987,11 @@ int main( int argc, char** argv ) try {
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
+
         auto pDebugFace = bEnabledAPIs_debug ?
                               new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                               nullptr;
+        SkaleDebugInterface::g_isEnabled = bEnabledAPIs_debug;
 
 #ifdef HISTORIC_STATE
         // tracing interface is always enabled for the historic state nodes
@@ -2770,8 +2772,6 @@ int main( int argc, char** argv ) try {
             sessionManager->addSession(
                 strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        clog( VerbosityInfo, "main" )
-            << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );
     }  // if ( is_ipc || nExplicitPort...
 
     if ( bEnabledShutdownViaWeb3 ) {

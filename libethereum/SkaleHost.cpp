@@ -613,22 +613,29 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
-    boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
-        boost::chrono::high_resolution_clock::now();
+
+    auto skaledTimeFinish = boost::chrono::high_resolution_clock::now();
+
+
+    auto swt = boost::chrono::duration_cast< boost::chrono::milliseconds >(
+        skaledTimeFinish - skaledTimeStart )
+                   .count();
+
+
     if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
-        LOG( m_infoLogger ) << "SWT:"
-                            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                   skaledTimeFinish - skaledTimeStart )
-                                   .count()
-                            << ':' << "BFT:"
+        LOG( m_infoLogger ) << "SWT:" << swt << ':' << "BFT:"
                             << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                                    skaledTimeFinish - latestBlockTime )
-                                   .count();
+                                   .count()
+                            << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+                            << ":FTQ:" << m_tq.status().futureBytes
+                            << ":TQSIZE:CTQ:" << m_tq.status().current
+                            << ":FTQ:" << m_tq.status().future;
     } else {
-        LOG( m_infoLogger ) << "SWT:"
-                            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                   skaledTimeFinish - skaledTimeStart )
-                                   .count();
+        LOG( m_infoLogger ) << "SWT:" << swt << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+                            << ":FTQ:" << m_tq.status().futureBytes
+                            << ":TQSIZE:CTQ:" << m_tq.status().current
+                            << ":FTQ:" << m_tq.status().future;
     }
 
     latestBlockTime = skaledTimeFinish;
@@ -637,10 +644,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     logState();
 
-    LOG( m_infoLogger ) << "TQBYTES:CTQ:" << m_tq.status().currentBytes
-                        << ":FTQ:" << m_tq.status().futureBytes
-                        << ":TQSIZE:CTQ:" << m_tq.status().current
-                        << ":FTQ:" << m_tq.status().future;
 
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
