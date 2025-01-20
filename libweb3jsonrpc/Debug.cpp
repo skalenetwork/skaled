@@ -123,7 +123,7 @@ Json::Value Debug::debug_getPatchTimestamps() {
     ChainParams chainParams = m_eth.chainParams();
 
     int numberOfPatches = static_cast< int >( SchainPatchEnum::PatchesCount );
-    for ( int patch = 0; patch < numberOfPatches; patch++ ) {
+    for ( size_t patch = 0; patch < numberOfPatches; patch++ ) {
         SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
         std::string patchName = getPatchNameForEnum( patchEnum ) + "Timestamp";
         patchName[0] = tolower( patchName[0] );
