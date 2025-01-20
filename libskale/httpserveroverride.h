@@ -117,6 +117,13 @@ public:
     bool unsubscribe( const subscription_id_t& idSubscription );
     void unsubscribeAll();
     virtual SkaleServerOverride& getSSO() = 0;
+
+
+private:
+    /// Loggers
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleStatsSubscriptionManager" ) };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleStatsSubscriptionManager" ) };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleStatsSubscriptionManager" ) };
 };  // class SkaleStatsSubscriptionManager
 
 
@@ -196,6 +203,14 @@ private:
     /// Loggers
     std::string getLoggerName() const;
 
+    dev::Logger getLoggerFromWsMsgType( skutils::ws::e_ws_log_message_type_t eWSLMT );
+
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleWsPeer") };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleWsPeer") };
+    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "SkaleWsPeer") };
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "SkaleWsPeer") };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleWsPeer") };
+
 public:
     std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
     std::string implPreformatTrafficJsonMessage( const nlohmann::json& jo, bool isRequest ) const;
@@ -256,6 +271,15 @@ public:
     std::string nfoGetSchemeUC() const { return m_strSchemeUC; }
 
     friend class SkaleWsPeer;
+
+private:
+    /// Loggers
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleRelayWS" ) };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleRelayWS" ) };
+    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "SkaleRelayWS" ) };
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "SkaleRelayWS" ) };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleRelayWS" ) };
+
 };  /// class SkaleRelayWS
 
 
@@ -419,7 +443,7 @@ public:
     dev::eth::Interface* ethereum() const;
     dev::eth::ChainParams& chainParams();
     const dev::eth::ChainParams& chainParams() const;
-    dev::Verbosity methodTraceVerbosity( const std::string& strMethod ) const;
+    std::unique_ptr<dev::Logger> getLoggerFromMethodTraceVerbosity( const std::string& strMethod ) const;
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
 protected:
@@ -461,7 +485,7 @@ public:
         nlohmann::json joID );
     void logTraceServerEvent( bool isError, int ipVer, const char* strProtocol, int nServerIndex,
         e_server_mode_t esm, const std::string& strMessage );
-    void logTraceServerTraffic( bool isRX, dev::Verbosity verbosity, int ipVer,
+    void logTraceServerTraffic( bool isRX, dev::Logger verbosity, int ipVer,
         const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
         const std::string& strPayload );
 
@@ -483,6 +507,12 @@ private:
     e_server_mode_t implGuessProxygenRequestESM( const std::string& strDstAddress, int nDstPort );
     bool implGuessProxygenRequestESM( std::list< std::shared_ptr< SkaleRelayProxygenHTTP > >& lst,
         const std::string& strDstAddress, int nDstPort, e_server_mode_t& esm );
+
+    /// Loggers
+    dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride") };
+    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SkaleServerOverride") };
+    dev::Logger m_loggerWarning{ createLogger( dev::VerbosityWarning, "SkaleServerOverride") };
+    dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SkaleServerOverride") };
 
 public:
     int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;

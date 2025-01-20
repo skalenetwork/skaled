@@ -1055,36 +1055,6 @@ void basic_api::locked_execute( fn_lock_callback_t fn ) {
     lock_type lock( mtx_api() );
     fn();
 }
-//			bool basic_api::try_locked_execute( fn_lock_callback_t fn, size_t cntAttempts, uint64_t
-// nMillisecondsWaitBetweenAttempts ) { 				if( cntAttempts < 1 ) return false; if( ! fn
-// ) return false;
-//				//++ cntTryLockExecutes_;
-//				bool bWasLocked = false;
-//				for( size_t i = 0; i < cntAttempts; ++ i ) {
-//					if( ! initialized_ )
-//						break;
-//					bWasLocked = mtx_api().try_lock();
-//					if( bWasLocked )
-//						break;
-//					if( ! initialized_ )
-//						break;
-//					if( nMillisecondsWaitBetweenAttempts > 0 && i < (cntAttempts-1) )
-//						std::this_thread::sleep_for(
-// std::chrono::milliseconds(nMillisecondsWaitBetweenAttempts) ); 				} // for( size_t i =
-// 0; i < cntAttempts; ++ i ) 				if( bWasLocked ) { 					try { fn();
-// } catch( ... ) {
-//						//-- cntTryLockExecutes_;
-//						mtx_api().unlock();
-//						throw;
-//					}
-//					//-- cntTryLockExecutes_;
-//					mtx_api().unlock();
-//				} // if( bWasLocked )
-//				else {
-//					//-- cntTryLockExecutes_;
-//				}
-//				return bWasLocked;
-//			}
 
 void basic_api::clear_fields() {
     interface_name_.clear();
@@ -1112,8 +1082,7 @@ void basic_api::clear_fields() {
     };
     //
     initialized_ = false;
-    // while( cntTryLockExecutes_ > 0 )
-    //	std::this_thread::sleep_for( std::chrono::milliseconds(10) );
+
     ctx_ = nullptr;
     ::memset( &ctx_info_, 0, sizeof( struct lws_context_creation_info ) );
     ctx_info_.port = CONTEXT_PORT_NO_LISTEN;
@@ -1137,17 +1106,7 @@ void basic_api::clear_fields() {
     //
     unsigned int walk_protocol_id = 0;
     vec_lws_protocols_.clear();
-    //
-    //				vec_lws_protocols_.push_back( { // the first protocol must always be the HTTP
-    // handler 						"http-only",            // name
-    // stat_callback_http,
-    // // callback 0, // per_session_data_size, no per session data. g_nDefaultBufferSizeRX, //
-    // rx_buffer_size, max frame size / rx buffer walk_protocol_id,       // id, ignored by lws
-    // nullptr, // user
-    //						g_nDefaultBufferSizeTX  // tx_packet_size
-    //					} );
-    //				++ walk_protocol_id;
-    //
+
     default_protocol_index_ = vec_lws_protocols_.size();
     vec_lws_protocols_.push_back( {
         g_strDefaultProtocolName.c_str(), stat_callback_server,
@@ -1249,13 +1208,11 @@ int basic_api::stat_callback_http( struct lws* wsi, enum lws_callback_reasons re
     bool isClose = false;
     switch ( reason ) {
     case LWS_CALLBACK_ESTABLISHED:
-        // ctx = ::lws_get_context( wsi );
-        // self = server_api::stat_get( ctx );
-        //::lws_callback_on_writable( wsi );
+
         isClose = true;
         break;
     case LWS_CALLBACK_HTTP:
-        //::lws_serve_http_file( wsi, "example.html", "text/html", nullptr, 0 );
+
         isClose = true;
         break;
     default:
@@ -1277,16 +1234,11 @@ int basic_api::stat_callback_client(
     struct lws* wsi, enum lws_callback_reasons reason, void* /*user*/, void* in, size_t len ) {
     client_api* self = nullptr;
     switch ( reason ) {
-        // case LWS_CALLBACK_CONFIRM_EXTENSION_OKAY:
-        //	return 1; // disallow compression
-        //				case LWS_CALLBACK_PROTOCOL_INIT: // per vhost
-        //					lws_protocol_vh_priv_zalloc( lws_get_vhost(wsi), lws_get_protocol(wsi),
-        // sizeof(struct per_vhost_data__lws_mirror) ); 				break;
+
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
         self = client_api::stat_get( wsi );
         if ( self ) {
-            // self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS:
-            // LWS_CALLBACK_CLIENT_ESTABLISHED: connect with server success" );
+
             int fd = ::lws_get_socket_fd( wsi );
             self->cid_ = fd;
             self->connection_flag_ = true;
@@ -1297,8 +1249,7 @@ int basic_api::stat_callback_client(
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
         self = client_api::stat_get( wsi );
         if ( self ) {
-            // self->onLogMessage( e_ws_log_message_type_t::eWSLMT_error, "NLWS:
-            // LWS_CALLBACK_CLIENT_CONNECTION_ERROR: connect with server error" );
+
             self->destroy_flag_ = true;
             self->connection_flag_ = false;
             self->clientThreadStopFlag_ = true;
@@ -1308,8 +1259,7 @@ int basic_api::stat_callback_client(
     case LWS_CALLBACK_CLOSED:
         self = client_api::stat_get( wsi );
         if ( self ) {
-            // self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug, "NLWS:
-            // LWS_CALLBACK_CLOSED" );
+
             self->destroy_flag_ = true;
             self->connection_flag_ = true;
             self->clientThreadStopFlag_ = true;
@@ -1320,21 +1270,12 @@ int basic_api::stat_callback_client(
     case LWS_CALLBACK_CLIENT_RECEIVE:
         self = client_api::stat_get( wsi );
         if ( self ) {
-            //						if( self->writeable_flag_ ) {
-            //							//self->onLogMessage( e_ws_log_message_type_t::eWSLMT_debug,
-            //"NLWS: LWS_CALLBACK_CLIENT_RECEIVE: client received data" );
-            // self->destroy_flag_ = true; 							self->onDisconnect( "read
-            // attempt when writable"
-            // ); 							return
-            // 0;
-            //						}
             message_payload_data data;
             if ( impl_frame_is_binary( wsi, ( uint8_t* ) in, len ) )
                 data.set_binary( ( uint8_t* ) in, len );
             else
                 data.set_text( ( char* ) in, len );
-            ////size_t nRemain = ::lws_remaining_packet_payload( wsi ); bool isFinalFragment = (
-            /// nRemain == 0 ) ? true : false;
+
             bool isFinalFragment = ::lws_is_final_fragment( wsi );
             self->onMessage( data, isFinalFragment );
         }
@@ -1415,11 +1356,7 @@ int basic_api::stat_callback_client(
                             // https://libwebsockets.org/lws-api-doc-master/html/md_README_8coding.html
         }  // if( self )
         break;
-        /*
-                        case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
-                            lwsl_err( "LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS\n" );
-                        break;
-        */
+
     default:
         break;
     }  // switch( reason )
@@ -1431,17 +1368,10 @@ int basic_api::stat_callback_server(
     lws_context* ctx = nullptr;
     server_api* self = nullptr;
 
-    //				const size_t nPre = LWS_SEND_BUFFER_PRE_PADDING, nPost =
-    // LWS_SEND_BUFFER_POST_PADDING; 				unsigned char buf[ nPre + 512 + nPost ];
-    // unsigned char
-    // * p = &buf[nPre];
+
 
     switch ( reason ) {
-        // case LWS_CALLBACK_CONFIRM_EXTENSION_OKAY:
-        //	return 1; // disallow compression
-        //				case LWS_CALLBACK_PROTOCOL_INIT: // per vhost
-        //					lws_protocol_vh_priv_zalloc( lws_get_vhost(wsi), lws_get_protocol(wsi),
-        // sizeof(struct per_vhost_data__lws_mirror) ); 				break;
+
     case LWS_CALLBACK_ESTABLISHED:
         ctx = ::lws_get_context( wsi );
         self = server_api::stat_get( ctx );
@@ -1704,11 +1634,6 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
 #endif  /// if( defined __skutils_WS_OFFER_DETAILED_NLWS_CONFIGURATION_OPTIONS__ )
         ctx_info_.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
 
-    //				ctx_info_.ssl_options_set = // compatibility with old implementation based on
-    // wspp 						SSL_OP_NO_SSLv2 //| SSL_OP_NO_SSLv3 						|
-    // SSL_OP_SINGLE_DH_USE
-    //						//| SSL_OP_ALL
-    //						;
 
     vec_lws_protocols_[default_protocol_index_].per_session_data_size =
         0;  // sizeof(struct client_session_data);
@@ -1822,11 +1747,6 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
 
     ctx_info_.iface =
         ( !interface_name_.empty() ) ? ( const_cast< char* >( interface_name_.c_str() ) ) : nullptr;
-    //
-    //
-    //
-    //
-    //
 
     ctx_ = ::lws_create_context( &ctx_info_ );
     if ( ctx_ == nullptr ) {
@@ -1848,18 +1768,6 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
             SSL_load_error_strings();
             SSL_library_init();
         }
-        //				wsi_ =
-        //					::lws_client_connect(
-        //						ctx_,
-        //						strHost.c_str(),
-        //						nPort,
-        //						ssl_flags_,
-        //						sp.c_str(),
-        //						strOrigin.c_str(), // "origin"
-        //						nullptr,
-        //						g_strDefaultProtocolName.c_str(), // protocols_[cpi].name
-        //						-1
-        //						);
         struct lws_client_connect_info cci;
         ::memset( &cci, 0, sizeof( struct lws_client_connect_info ) );
         cci.context = ctx_;
@@ -1903,9 +1811,7 @@ bool client_api::init( bool isSSL, const std::string& strHost, int nPort,
         std::this_thread::sleep_for( std::chrono::milliseconds( 20 ) );
     if ( !threadInitSuccess )
         return false;
-    // do_writable_callbacks_all_protocol();
-    // while( ! ( connection_flag_ || destroy_flag_ ) )
-    //	std::this_thread::sleep_for( std::chrono::milliseconds(20) );
+
     initialized_ = true;
     return true;
 }
@@ -1933,14 +1839,10 @@ void client_api::close( int nCloseStatus, const std::string& msg ) {
         return;
     if ( wsi_ == nullptr )
         return;
-    ///::lws_close_reason( wsi_, (lws_close_status)nCloseStatus, (unsigned char *)msg.c_str(),
-    /// msg.length() ); deinit();
+
     delayed_close_reason_ = msg;
     delayed_close_status_ = nCloseStatus;
-    //
-    // clientThreadStopFlag_ = true;
-    // while( ! clientThreadWasStopped_ )
-    //    std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+
 }
 void client_api::delay_deinit() {
     if ( delayed_de_init_ )
@@ -2013,9 +1915,7 @@ client_api* client_api::stat_get( void* ctx ) {
         return nullptr;
     }
     client_api* api = itFind->second;
-    //				assert( api );
-    //				assert( api->wsi_ );
-    //				assert( api->wsi_ == ctx );
+
     return api;
 }
 
@@ -2087,21 +1987,8 @@ std::string list_srvmodes_as_str() {
 int g_lws_service_timeout_ms = 1000;
 
 srvmode_t g_default_srvmode = srvmode_t::
-    // #if ( defined LWS_WITH_LIBUV )
-    //     srvmode_uv;
-    // #else
-    // #if ( defined LWS_WITH_LIBEV )
-    //     srvmode_ev;
-    // #else
-    // #if ( defined LWS_WITH_LIBEVENT )
-    //     srvmode_event;
-    // #else
-
     srvmode_simple;
 
-// #endif
-// #endif
-// #endif
 
 bool g_default_explicit_vhost_enable = true;  // srvmode_simple and srvmode_external_poll only
 bool g_default_dynamic_vhost_enable = false;
@@ -2626,35 +2513,7 @@ struct my_uv_counter_struct {
     volatile bool stop_loop_ = false;
     my_uv_counter_struct( server_api& api ) : api_( api ) {}
 };  /// struct my_uv_counter_struct
-    //			static void my_uv_signal_cb( uv_signal_t * watcher, int signum ) {
-    //				//struct my_uv_counter_struct * c = (struct my_uv_counter_struct *)t->data;
-    //				//server_api & self = c->api_;
-    //				//self.serverInterruptFlag_ = true;
-    //				::lwsl_err( "Signal %d caught, exiting...\n", watcher->signum );
-    //				switch( watcher->signum ) {
-    //				case SIGTERM:
-    //				case SIGINT:
-    //					break;
-    //				default:
-    //					::signal( SIGABRT, SIG_DFL );
-    //					::abort();
-    //					break;
-    //				}
-    //				if( self.ctx_ ) {
-    //					lwsl_debug( "my_uv_signal_cb() will cancel lws service\n" );
-    //					::lws_cancel_service( self.ctx_ );
-    //				}
-    //			}
-// static void my_uv_stopping_timer_cb( uv_timer_t* t ) {
-//    struct my_uv_counter_struct* c = ( struct my_uv_counter_struct* ) t->data;
-//    server_api& self = c->api_;
-//    if ( self.serverInterruptFlag_ ) {
-//        if ( self.ctx_ )
-//            ::lws_libuv_stop( self.ctx_ );
-//        ::uv_stop( t->loop );
-//        return;
-//    }
-//}
+
 static void my_uv_timer_cb( uv_timer_t* t ) {
     struct my_uv_counter_struct* c = ( struct my_uv_counter_struct* ) t->data;
     server_api& self = c->api_;
@@ -2688,26 +2547,14 @@ static void my_uv_timer_test_cancel_cb( uv_timer_t* t ) {
 static void my_uv_timer_close_cb( uv_handle_t* h ) {
     ::lwsl_notice( "timer close cb %p, loop has %d handles\n", h, h->loop->active_handles );
 }
-//			static void my_uv_outer_signal_cb( uv_signal_t * s, int signum ) {
-//				::lwsl_notice( "Foreign loop got signal %d\n", signum );
-//				::uv_signal_stop( s );
-//				::uv_stop( s->loop );
-//			}
+
 static void my_uv_lws_uv_close_cb( uv_handle_t* /*handle*/ ) {
     //::lwsl_err( "%s\n", __func__ );
 }
 static void my_uv_lws_uv_walk_cb( uv_handle_t* handle, void* /*arg*/ ) {
     ::uv_close( handle, my_uv_lws_uv_close_cb );
 }
-// static void my_uv_idle_cb( uv_idle_t* uvi ) {
-//    server_api* self = ( server_api* ) uvi->data;
-//    if ( self->serverInterruptFlag_ ) {
-//        if ( self->ctx_ )
-//            ::lws_libuv_stop( self->ctx_ );
-//        else
-//            return;
-//    }
-//}
+
 #endif  // (defined LWS_WITH_LIBUV)
 
 
@@ -2775,12 +2622,6 @@ void server_api::service( fn_continue_status_flag_t fnContinueStatusFlag ) {
         };
         ev_timer timeout_watcher;
 
-        //						for( n = 0; n < (int)ARRAY_SIZE(sigs); n++ ) {
-        //							ev_init(&signals[n], signal_cb);
-        //							ev_signal_set(&signals[n], sigs[n]);
-        //							ev_signal_start(loop, &signals[n]);
-        //						}
-
         server_api::stat_ptr_reg( &timeout_watcher, this );
         ::lws_ev_initloop( ctx_, loop, 0 );
         ev_timer_init( &timeout_watcher, my_ev_timeout_cb, 0.05, 0.05 );
@@ -2847,11 +2688,6 @@ void server_api::service( fn_continue_status_flag_t fnContinueStatusFlag ) {
 
         ::uv_timer_init( pUvLoop_.get(), &timer_outer );
         timer_outer.data = &ctr;
-        //        ctr.cur_ = 0;
-        //        ctr.lim_ = ctr.cur_ + 5;  // TO-CHECK: wth is this?
-        //        ctr.stop_loop_ = true;
-        //        ::uv_timer_start( &timer_outer, my_uv_timer_cb, 0, 1000 );
-        //        ::lwsl_notice( "running loop without libwebsockets for %d s\n", int( ctr.lim_ ) );
 
         ::uv_run( pUvLoop_.get(), UV_RUN_DEFAULT );
         fn_internal_interrupt_action_ = nullptr;

@@ -145,7 +145,7 @@ Client::Client( ChainParams const& _params, int _networkID,
 #endif  /// (defined __HAVE_SKALED_LOCK_FILE_INDICATING_CRITICAL_STOP__)
 
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
-        LOG( m_loggerDetail ) << "TRACEPOINT " << name << " "
+        LOG( m_loggerTrace ) << "TRACEPOINT " << name << " "
                               << m_debugTracer.get_tracepoint_count( name );
     } );
 
@@ -397,7 +397,7 @@ bool Client::isMajorSyncing() const {
 void Client::startedWorking() {
     // Synchronise the state according to the head of the block chain.
     // TODO: currently it contains keys for *all* blocks. Make it remove old ones.
-    LOG( m_loggerDetail ) << "startedWorking()";
+    LOG( m_loggerTrace ) << "startedWorking()";
 
     DEV_GUARDED( m_blockImportMutex ) {
         DEV_WRITE_GUARDED( x_preSeal )
@@ -535,7 +535,7 @@ size_t Client::importTransactionsAsBlock(
     SchainPatch::useLatestBlockTimestamp( blockChain().info().timestamp() );
 
     if ( !UnsafeRegion::isActive() ) {
-        LOG( m_loggerDetail ) << "Total unsafe time so far = "
+        LOG( m_loggerTrace ) << "Total unsafe time so far = "
                               << std::chrono::duration_cast< std::chrono::seconds >(
                                      UnsafeRegion::getTotalTime() )
                                      .count()
@@ -591,7 +591,7 @@ size_t Client::syncTransactions(
     // Tell network about the new transactions.
     m_skaleHost->noteNewTransactions();
 
-    LOG( m_loggerDetail ) << "Processed " << newPendingReceipts.size() << " transactions in "
+    LOG( m_loggerTrace ) << "Processed " << newPendingReceipts.size() << " transactions in "
                           << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue
                           << ")";
 
@@ -605,11 +605,11 @@ size_t Client::syncTransactions(
 void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
     // insert transactions that we are declaring the dead part of the chain
     for ( auto const& h : _blocks ) {
-        LOG( m_loggerDetail ) << "Dead block: " << h;
+        LOG( m_loggerTrace ) << "Dead block: " << h;
         for ( auto const& t : bc().transactions( h ) ) {
-            LOG( m_loggerDetail ) << "Resubmitting dead-block transaction "
+            LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
                                   << Transaction( t, CheckTransaction::None );
-            LOG( m_loggerDetail ) << "Resubmitting dead-block transaction "
+            LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
                                   << Transaction( t, CheckTransaction::None );
             m_tq.import( t, IfDropped::Retry );
         }
@@ -653,7 +653,7 @@ void Client::restartMining() {
         DEV_READ_GUARDED( x_postSeal )
         if ( !m_postSeal.isSealed() || m_postSeal.info().hash() != newPreMine.info().parentHash() )
             for ( auto const& t : m_postSeal.pending() ) {
-                LOG( m_loggerDetail ) << "Resubmitting post-seal transaction " << t;
+                LOG( m_loggerTrace ) << "Resubmitting post-seal transaction " << t;
                 //                      ctrace << "Resubmitting post-seal transaction " << t;
                 auto ir = m_tq.import( t, IfDropped::Retry );
                 if ( ir != ImportResult::Success )
@@ -701,7 +701,7 @@ bool Client::remoteActive() const {
 }
 
 void Client::onPostStateChanged() {
-    LOG( m_loggerDetail ) << "Post state changed.";
+    LOG( m_loggerTrace ) << "Post state changed.";
     m_signalled.notify_all();
     m_remoteWorking = false;
 }
@@ -722,14 +722,14 @@ void Client::rejigSealing() {
         if ( sealEngine()->shouldSeal( this ) ) {
             m_wouldButShouldnot = false;
 
-            LOG( m_loggerDetail ) << "Rejigging seal engine...";
+            LOG( m_loggerTrace ) << "Rejigging seal engine...";
             DEV_WRITE_GUARDED( x_working ) {
                 if ( m_working.isSealed() ) {
                     LOG( m_loggerInfo ) << "Tried to seal sealed block...";
                     return;
                 }
                 // TODO is that needed? we have "Generating seal on" below
-                LOG( m_loggerDetail ) << "Starting to seal block"
+                LOG( m_loggerTrace ) << "Starting to seal block"
                                       << " #" << m_working.info().number();
 
                 // TODO Deduplicate code
@@ -764,7 +764,7 @@ void Client::rejigSealing() {
                     else
                         LOG( m_loggerInfo ) << "Submitting block failed...";
                 } );
-                LOG( m_loggerDetail ) << "Generating seal on " << m_sealingInfo.hash( WithoutSeal )
+                LOG( m_loggerTrace ) << "Generating seal on " << m_sealingInfo.hash( WithoutSeal )
                                       << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal( m_sealingInfo );
             }
@@ -778,14 +778,14 @@ void Client::rejigSealing() {
 void Client::sealUnconditionally( bool submitToBlockChain ) {
     m_wouldButShouldnot = false;
 
-    LOG( m_loggerDetail ) << "Rejigging seal engine...";
+    LOG( m_loggerTrace ) << "Rejigging seal engine...";
     DEV_WRITE_GUARDED( x_working ) {
         if ( m_working.isSealed() ) {
             LOG( m_loggerInfo ) << "Tried to seal sealed block...";
             return;
         }
         // TODO is that needed? we have "Generating seal on" below
-        LOG( m_loggerDetail ) << "Starting to seal block"
+        LOG( m_loggerTrace ) << "Starting to seal block"
                               << " #" << m_working.info().number();
         // latest hash is really updated after NEXT snapshot already started hash computation
         // TODO Deduplicate code
@@ -939,7 +939,7 @@ void Client::tick() {
         m_bq.tick();
         m_lastTick = chrono::system_clock::now();
         if ( m_report.ticks == 15 )
-            LOG( m_loggerDetail ) << activityReport();
+            LOG( m_loggerTrace ) << activityReport();
     }
 }
 
@@ -955,7 +955,7 @@ void Client::checkWatchGarbage() {
                      chrono::seconds( 20 ) )  // NB Was 200 for debugging. Normal value is 20!
             {
                 toUninstall.push_back( key );
-                LOG( m_loggerDetail ) << "GC: Uninstall " << key << " ("
+                LOG( m_loggerTrace ) << "GC: Uninstall " << key << " ("
                                       << chrono::duration_cast< chrono::seconds >(
                                              chrono::system_clock::now() - m_watches[key].lastPoll )
                                              .count()

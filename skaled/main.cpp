@@ -906,7 +906,7 @@ int main( int argc, char** argv ) try {
     }
     for ( size_t i = 0; i < unrecognisedOptions.size(); ++i )
         if ( !m.interpretOption( i, unrecognisedOptions ) ) {
-            cerr << "Invalid argument: " << unrecognisedOptions[i] << "\n";
+            LOG( loggerError ) << "Invalid argument: " << unrecognisedOptions[i];
             return EX_USAGE;
         }
 
@@ -922,7 +922,7 @@ int main( int argc, char** argv ) try {
         LOG( loggerInfo ) << "NAME:\n"
                           << "   skaled " << Version << '\n'
                           << "USAGE:\n"
-                          << "   skaled [options]\n\n";
+                          << "   skaled [options]";
         LOG( loggerInfo ) << clientDefaultMode << clientTransacting << clientNetworking;
         LOG( loggerInfo ) << vmOptions << loggingProgramOptions << generalOptions;
         return 0;
@@ -963,42 +963,41 @@ int main( int argc, char** argv ) try {
         skutils::url u;
         try {
             u = skutils::url( strURL );
-            LOG( loggerDebug ) << "Using URL ................" + u.str() + "\n";
+            LOG( loggerDebug ) << "Using URL ................" + u.str();
         } catch ( const std::exception& ex ) {
-            LOG( loggerError ) << "ERROR: Failed to parse test URL: " + std::string( ex.what() ) +
-                                      "\n";
+            LOG( loggerError ) << "ERROR: Failed to parse test URL: " + std::string( ex.what() );
             return EX_TEMPFAIL;
         } catch ( ... ) {
-            LOG( loggerError ) << "ERROR: Failed to parse test URL: unknown exception\n";
+            LOG( loggerError ) << "ERROR: Failed to parse test URL: unknown exception";
             return EX_TEMPFAIL;
         }
         nlohmann::json joIn, joOut;
         try {
             if ( !strJSON.empty() ) {
                 joIn = nlohmann::json::parse( strJSON );
-                LOG( loggerDebug ) << "Input JSON is ............" + joIn.dump() + "\n";
+                LOG( loggerDebug ) << "Input JSON is ............" + joIn.dump();
             } else
-                LOG( loggerWarning ) << "NOTICE: No valid JSON specified for test call\n";
+                LOG( loggerWarning ) << "NOTICE: No valid JSON specified for test call";
         } catch ( const std::exception& ex ) {
             LOG( loggerError ) << "ERROR: Failed to parse specified test JSON: " +
-                                      std::string( ex.what() ) + "\n";
+                                      std::string( ex.what() );
             return EX_TEMPFAIL;
         } catch ( ... ) {
-            LOG( loggerError ) << "ERROR: Failed to parse specified test JSON: unknown exception\n";
+            LOG( loggerError ) << "ERROR: Failed to parse specified test JSON: unknown exception";
             return EX_TEMPFAIL;
         }
         skutils::http::SSL_client_options optsSSL;
         if ( !strPathCA.empty() ) {
             optsSSL.ca_file = skutils::tools::trim_copy( strPathCA );
-            LOG( loggerDebug ) << "Using CA file ..........." + strPathCA + "\n";
+            LOG( loggerDebug ) << "Using CA file ..........." + strPathCA;
         }
         if ( !strPathCert.empty() ) {
             optsSSL.client_cert = skutils::tools::trim_copy( strPathCert );
-            LOG( loggerDebug ) << "Using CERT file ........." + strPathCert + "\n";
+            LOG( loggerDebug ) << "Using CERT file ........." + strPathCert;
         }
         if ( !strPathKey.empty() ) {
             optsSSL.client_key = skutils::tools::trim_copy( strPathKey );
-            LOG( loggerDebug ) << "Using KEY file .........." + strPathKey + "\n";
+            LOG( loggerDebug ) << "Using KEY file .........." + strPathKey;
         }
         try {
             skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
@@ -1016,26 +1015,26 @@ int main( int argc, char** argv ) try {
                 throw std::runtime_error( "REST call error: " + d.err_s_ );
             if ( d.empty() )
                 throw std::runtime_error( "EMPTY answer received" );
-            LOG( loggerDebug ) << "Raw received data is ....." + d.s_ + "\n";
+            LOG( loggerDebug ) << "Raw received data is ....." + d.s_;
             joOut = nlohmann::json::parse( d.s_ );
-            LOG( loggerDebug ) << "Output JSON is ..........." + joOut.dump() + "\n";
+            LOG( loggerDebug ) << "Output JSON is ..........." + joOut.dump();
         } catch ( const std::exception& ex ) {
-            LOG( loggerError ) << "ERROR: JSON RPC call failed: " + std::string( ex.what() ) + "\n";
+            LOG( loggerError ) << "ERROR: JSON RPC call failed: " + std::string( ex.what() );
             return EX_TEMPFAIL;
         } catch ( ... ) {
-            LOG( loggerError ) << "ERROR: JSON RPC call failed: unknown exception\n";
+            LOG( loggerError ) << "ERROR: JSON RPC call failed: unknown exception";
             return EX_TEMPFAIL;
         }
         return 0;
     }
 
     LOG( loggerInfo ) << "skaled " << Version << "\n"
-                      << "client " << clientVersionColorized() << "\n";
+                      << "client " << clientVersionColorized();
     LOG( loggerInfo ).flush();
     version();
 
     pid_t this_process_pid = getpid();
-    LOG( loggerDebug ) << "This process PID = " << size_t( this_process_pid ) << "\n";
+    LOG( loggerDebug ) << "This process PID = " << size_t( this_process_pid );
     LOG( loggerDebug ).flush();
 
     setupLogging( loggingOptions );
@@ -1111,14 +1110,14 @@ int main( int argc, char** argv ) try {
 
     if ( vm.count( "main-net-url" ) ) {
         if ( !g_configAccesssor ) {
-            LOG( loggerError ) << "config=<path> should be specified before --main-net-url=<url>\n";
+            LOG( loggerError ) << "config=<path> should be specified before --main-net-url=<url>";
             return EX_SOFTWARE;
         }
         skutils::json_config_file_accessor::g_strImaMainNetURL =
             skutils::tools::trim_copy( vm["main-net-url"].as< string >() );
         if ( !g_configAccesssor->validateImaMainNetURL() ) {
             LOG( loggerError ) << "bad --main-net-url=<url> parameter value: "
-                               << skutils::json_config_file_accessor::g_strImaMainNetURL << "\n";
+                               << skutils::json_config_file_accessor::g_strImaMainNetURL;
             return EX_SOFTWARE;
         }
         LOG( loggerDebug ) << "Main Net URL is: "
@@ -1512,9 +1511,9 @@ int main( int argc, char** argv ) try {
         try {
             networkID = vm["network-id"].as< unsigned >();
         } catch ( ... ) {
-            cerr << "Bad "
+            LOG( loggerError ) << "Bad "
                  << "--network-id"
-                 << " option: " << vm["network-id"].as< string >() << "\n";
+                 << " option: " << vm["network-id"].as< string >();
             return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
@@ -1652,7 +1651,7 @@ int main( int argc, char** argv ) try {
 
     if ( time( NULL ) < startTimestamp ) {
         statusAndControl->setSubsystemRunning( StatusAndControl::WaitingForTimestamp, true );
-        LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp ) << "\n";
+        LOG( loggerInfo ) << "\nWill start at localtime " << ctime( &startTimestamp );
         do
             sleep( 1 );
         while ( time( NULL ) < startTimestamp );
@@ -1660,7 +1659,7 @@ int main( int argc, char** argv ) try {
     }
 
     if ( loggingOptions.verbosity > 0 )
-        LOG( loggerInfo ) << "skaled, a C++ Skale client\n";
+        LOG( loggerInfo ) << "skaled, a C++ Skale client";
 
     m.execute();
 
@@ -1802,8 +1801,8 @@ int main( int argc, char** argv ) try {
                 keyManager.create( std::string() );
         }
     } catch ( ... ) {
-        cerr << "Error initializing key manager: "
-             << boost::current_exception_diagnostic_information() << "\n";
+        LOG( loggerError ) << "Error initializing key manager: "
+             << boost::current_exception_diagnostic_information();
         return 1;
     }
 
@@ -1848,7 +1847,7 @@ int main( int argc, char** argv ) try {
         else {
             LOG( loggerError ) << "Bad "
                                << "--aa"
-                               << " option: " << strAA << "\n";
+                               << " option: " << strAA;
             return EX_USAGE;
         }
         LOG( loggerDebug ) << "Auto-answer mode is set to: " << strAA;

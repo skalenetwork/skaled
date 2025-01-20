@@ -254,10 +254,8 @@ int get_address_info46( int ipVersion, const char* ads, sockaddr46** result ) {
     ::memset( &hints, 0, sizeof( hints ) );
     ( *result ) = nullptr;
     if ( ipVersion == 6 ) {
-        // #if !defined(__ANDROID__)
         hints.ai_family = AF_INET6;
         hints.ai_flags = AI_V4MAPPED;
-        // #endif
     } else {
         hints.ai_family = PF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;

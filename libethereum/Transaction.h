@@ -135,7 +135,7 @@ private:
     std::optional< u256 > m_externalGas;
 
     dev::Logger m_loggerInfo{ createLogger( dev::VerbosityInfo, "Transaction" ) };
-    dev::Logger m_loggerDetail{ createLogger( dev::VerbosityTrace, "Transaction" ) };
+    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "Transaction" ) };
 };
 
 /// Nice name for vector of Transaction.

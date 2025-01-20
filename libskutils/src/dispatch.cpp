@@ -9,29 +9,15 @@
 #include <iostream>
 #include <stdexcept>
 
-// #define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_ASYNC_JOB_STATES__ 1
-// #define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ 1
-// #define __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ 1
-
-#define LOCAL_DEBUG_TRACE( x )
-// static inline void LOCAL_DEBUG_TRACE( const std::string & x ) { if( x.empty()
-// ) return; std::cout.flush(); std::cerr.flush(); std::cout << x << "\n";
-// std::cout.flush(); }
 
 namespace skutils {
 namespace dispatch {
 
 skutils::multithreading::recursive_mutex_type& get_dispatch_mtx() {
-    // static skutils::multithreading::recursive_mutex_type g_dispatch_mtx(
-    //    "skutils::dispatch::g_dispatch_mtx" );
-    // return g_dispatch_mtx;
     return skutils::get_ref_mtx();
 }
 
 static void stat_sleep( duration_t how_much ) {
-    // auto nNanoSeconds = how_much.count();
-    // struct timespec ts{ time_t(nNanoSeconds/1000000000),
-    // long(nNanoSeconds%1000000000) }; nanosleep( &ts,nullptr );
     std::this_thread::sleep_for( how_much );
 }
 bool sleep_while_true(  // returns false if timeout is reached and fn() never
@@ -286,18 +272,12 @@ void loop::run() {
     //
     bool bHaveLoop = false;
     uv_loop_t uvLoop;
-    //
-    // bool bHaveIdler = false;
-    // uv_idle_t uvIdler;
-    //
+
     bool bHaveTimerStateCheck = false;
     uv_timer_t uvTimerStateCheck;
     auto fnCleanupHere = [&]() -> void {
         lock_type lock( loop_mtx() );
-        // if( bHaveIdler ) {
-        //     bHaveIdler = false;
-        //     uv_idle_stop( &uvIdler );
-        // }
+
         if ( bHaveTimerStateCheck ) {
             bHaveTimerStateCheck = false;
             uv_timer_stop( &uvTimerStateCheck );
@@ -316,22 +296,13 @@ void loop::run() {
         try {
             uv_loop_init( &uvLoop );
             uvLoop.data = ( void* ) this;
-            //
-            // uv_idle_init( &uvLoop, &uvIdler );
-            // uvIdler.data = ( void* ) this;
-            // bHaveIdler = true;
-            //
+
             uv_timer_init( &uvLoop, &uvTimerStateCheck );
             uvTimerStateCheck.data = ( void* ) this;
             //
             p_uvLoop_ = ( &uvLoop );
             cancelMode_ = false;
-            //
-            // uv_idle_start( &uvIdler, []( uv_idle_t* p_uvIdler ) {
-            //     loop* pLoop = ( loop* ) ( p_uvIdler->data );
-            //     pLoop->on_idle();
-            // } );
-            //
+
             uv_timer_start(
                 &uvTimerStateCheck,
                 []( uv_timer_t* p_uvTimer ) {
@@ -475,23 +446,10 @@ void loop::pending_timer_init() {
     pending_timer_list_.clear();
 }
 
-// void loop::on_idle() {
-//    //#if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-//    //    std::cout << skutils::tools::format( "dispatch loop idle %p\n", this );
-//    //    std::cout.flush();
-//    //#endif
-//    isAlive_ = true;
-//    if ( on_check_cancel_mode() )
-//        return;
-//    pending_timer_init();
-//    on_check_jobs();
-//}
+
 
 void loop::on_state_check() {
-    // #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //     std::cout << skutils::tools::format( "dispatch loop state check %p\n",
-    //     this ); std::cout.flush();
-    // #endif
+
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
@@ -500,10 +458,7 @@ void loop::on_state_check() {
 }
 
 bool loop::on_check_cancel_mode() {
-    // #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //     std::cout << skutils::tools::format( "dispatch loop check cancel mode
-    //     %p\n", this ); std::cout.flush();
-    // #endif
+
     if ( cancelMode_ ) {
         // cancelMode_ = false;
         uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) p_uvLoop_;
@@ -517,10 +472,7 @@ bool loop::on_check_cancel_mode() {
 void loop::on_check_jobs() {
     if ( cancelMode_ )
         return;
-    // #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_LOOP_STATES__ )
-    //     std::cout << skutils::tools::format( "dispatch loop check jobs %p\n",
-    //     this ); std::cout.flush();
-    // #endif
+
     if ( on_check_jobs_ )
         on_check_jobs_();
 }
@@ -1163,12 +1115,6 @@ domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
     )
     : async_job_count_( 0 ),
       accumulator_base_( 0 )
-      //	, domain_mtx_(
-      // skutils::tools::format("skutils::dispatch::domain-%p/mutex/main", this
-      // )
-      //) 	, mtx_with_jobs_(
-      // skutils::tools::format("skutils::dispatch::domain-%p/mutex/with_jobs",
-      // this ) )
       ,
       shutdown_flag_( true ),
       thread_pool_(
@@ -1272,9 +1218,6 @@ bool domain::impl_queue_remove( const queue_id_t& id ) {
             } );
         if ( itFound != itTo ) {
             with_jobs_.erase( itFound );
-            LOCAL_DEBUG_TRACE( "domain::impl_queue_remove()" + " did " + "erased" +
-                               " already-removed queue " + id + ", " +
-                               "with_jobs_.size() = " + std::to_string( with_jobs_.size() ) );
         }
     }  // block
     return true;
@@ -1516,26 +1459,16 @@ queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accum
     for ( ; itWalk != itEnd; ) {
         queue_ptr_t& pQueue = const_cast< queue_ptr_t& >( *itWalk );
         if ( pQueue->is_removed() ) {
-            LOCAL_DEBUG_TRACE( "domain::impl_find_queue_to_run() will erase pre-removed queue " +
-                               pQueue->get_id() ) +
-                ", with_jobs_.size() = " + std::to_string( with_jobs_.size() );
             itWalk = with_jobs_.erase( itWalk );
             itEnd = with_jobs_.end();
             continue;
         }
         if ( pQueue->async_job_count() == 0 ) {
-            LOCAL_DEBUG_TRACE( "domain::impl_find_queue_to_run() will erase no-jobs queue " +
-                               pQueue->get_id() +
-                               ", with_jobs_.size() = " + std::to_string( with_jobs_.size() ) );
             itWalk = with_jobs_.erase( itWalk );
             itEnd = with_jobs_.end();
             continue;
         }
         if ( pQueue->awaiting_sync_run_ > 0 ) {
-            //++ itWalk;
-            LOCAL_DEBUG_TRACE(
-                "domain::impl_find_queue_to_run() will erase awaiting sync-run queue " +
-                pQueue->get_id() + ", with_jobs_.size() = " + with_jobs_.size() );
             itWalk = with_jobs_.erase( itWalk );
             itEnd = with_jobs_.end();
             continue;
@@ -1543,8 +1476,6 @@ queue_ptr_t domain::impl_find_queue_to_run() {  // find queue with minimal accum
         pQueue->is_running_ = true;  // mark it as running
         pQueueFound = pQueue;
         with_jobs_.erase( itWalk );  // remove it from with_jobs_
-        LOCAL_DEBUG_TRACE( "domain::impl_find_queue_to_run() did successfully fetched queue " +
-                           pQueueFound->get_id() + ", with_jobs_.size() = " + with_jobs_.size() );
         break;
     }  // for( ; itWalk != itEnd; )
     return pQueueFound;
@@ -1627,8 +1558,7 @@ loop_ptr_t domain::get_loop() {
     pLoop_ = pLoop;
     domain_ptr_t pThisDomain = this;
     pLoop->on_check_jobs_ = [pThisDomain]() -> void {
-        // if ( pLoop->cancelMode_ )
-        //    return;
+
         if ( pThisDomain->shutdown_flag_ )
             return;
         bool bJobsEmpty = true;
@@ -1641,40 +1571,8 @@ loop_ptr_t domain::get_loop() {
             // pThisDomain.get_unconst()->fetch_lock_.notify_one();
         }
     };
-    // init loop
-    //			pLoop->on_job_will_add_ = [&] ( const
-    // skutils::dispatch::job_id_t & id ) -> bool {
-    // return true;
-    //				};
-    //			pLoop->on_job_was_added_ = [&] ( const
-    // skutils::dispatch::job_id_t & id ) -> void {
-    //				};
-    //			pLoop->on_job_will_remove_ = [&] ( const
-    // skutils::dispatch::job_id_t & id ) -> bool
-    //{ 					return true;
-    //				};
-    //			pLoop->on_job_did_removed_ = [&] ( const
-    // skutils::dispatch::job_id_t & id ) -> void
-    //{
-    //				};
-    //			pLoop->on_job_will_execute_ = [&] ( const
-    // skutils::dispatch::job_id_t & id ) -> bool
-    //{ 					return true;
-    //				};
-    //			pLoop->on_job_did_executed_ = [&] ( const
-    // skutils::dispatch::job_id_t & id ) -> void
-    //{
-    //				};
-    //			pLoop->on_job_exception_ = [&] ( const
-    // skutils::dispatch::job_id_t & id,
-    // std::exception
-    //* pe ) -> void {
-    //				};
+
     loop_thread_ = std::thread( [pLoop]() -> void { pLoop->run(); } );
-    //			skutils::dispatch::sleep_while_true(
-    //				[ pLoop ] () -> bool {
-    //					return (!pLoop->isAlive_);
-    //				} );
     pLoop->wait_until_startup();
     return pLoop_;
 }
@@ -1694,11 +1592,10 @@ void domain::on_queue_job_added( queue& q ) {
         size_t cntJobs = q.async_job_count();
         if ( cntJobs > 0 && ( !q.is_running() ) ) {
             with_jobs_.insert( &q );
-            LOCAL_DEBUG_TRACE( "domain::on_queue_job_added() did added work-able queue " +
-                               q.get_id() + ", with_jobs_.size() = " + with_jobs_.size() );
+
         }
     }  // block
-    // fetch_lock_.notify_all();
+
     fetch_lock_.notify_one();
 }
 void domain::on_queue_job_complete( queue& q ) {
@@ -1707,11 +1604,10 @@ void domain::on_queue_job_complete( queue& q ) {
         size_t cntJobs = q.async_job_count();
         if ( cntJobs > 0 && ( !q.is_running() ) ) {
             with_jobs_.insert( &q );
-            LOCAL_DEBUG_TRACE( "domain::on_queue_job_complete() did added work-able queue " +
-                               q.get_id() + ", with_jobs_.size() =" + with_jobs_.size() );
+
         }
     }  // block
-    // fetch_lock_.notify_all();
+
     fetch_lock_.notify_one();
 }
 

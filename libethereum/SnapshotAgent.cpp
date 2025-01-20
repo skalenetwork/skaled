@@ -104,7 +104,7 @@ void SnapshotAgent::doSnapshotIfNeeded( unsigned _currentBlockNumber, int64_t _t
     if ( m_snapshotIntervalSec <= 0 )
         return;
 
-    LOG( m_loggerDetail ) << "Block timestamp: " << _timestamp;
+    LOG( m_loggerTrace ) << "Block timestamp: " << _timestamp;
 
     if ( this->isTimeToDoSnapshot( _timestamp ) ) {
         try {

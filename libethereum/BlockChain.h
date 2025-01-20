@@ -614,11 +614,11 @@ private:
 
     boost::filesystem::path m_dbPath;
 
-    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "chain" ) };
-    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "chain" ) };
-    mutable Logger m_loggerDetail{ createLogger( VerbosityTrace, "chain" ) };
-    mutable Logger m_loggerError{ createLogger( VerbosityError, "chain" ) };
-    mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "chain" ) };
+    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "Blockchain" ) };
+    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "Blockchain" ) };
+    mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "Blockchain" ) };
+    mutable Logger m_loggerError{ createLogger( VerbosityError, "Blockchain" ) };
+    mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "Blockchain" ) };
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };

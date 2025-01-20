@@ -187,7 +187,7 @@ bool SnapshotHashAgent::voteForHash() {
             commonPublicKey_from_config.Y.c1 =
                 libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
             commonPublicKey_from_config.Z = libff::alt_bn128_Fq2::one();
-            LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:\n";
+            LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
             commonPublicKey_from_config.print_coordinates();
             try {
                 is_verified = this->bls_->Verification(
@@ -247,7 +247,7 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
         return {};
     } else {
         std::string strHash = joSignatureResponse["hash"].asString();
-        LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash << '\n';
+        LOG( m_loggerInfo ) << "Received snapshot hash from " << url << " : " << strHash;
 
         libff::alt_bn128_G1 signature =
             libff::alt_bn128_G1( libff::alt_bn128_Fq( joSignatureResponse["X"].asCString() ),

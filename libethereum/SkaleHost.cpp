@@ -71,8 +71,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     //
-    clog( VerbosityInfo, "skale-host" )
-        << "NOTE: Block number at startup is " << nfo.number() << "\n";
+    LOG( m_loggerInfo ) << "NOTE: Block number at startup is " << nfo.number();
     //
     auto ts = nfo.timestamp();
 
@@ -481,7 +480,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 #ifdef DEBUG_TX_BALANCE
             if ( sent.count( sha ) != 0 ) {
                 int prev = sent[sha];
-                LOG( m_loggerError ) << "Prev no = " << prev << "\n";
+                LOG( m_loggerError ) << "Prev no = " << prev;
 
                 if ( sent.count( sha ) != 0 ) {
                     // TODO fix this!!?
@@ -568,7 +567,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
             const bytes& data = *it;
             h256 sha = sha3( data );
-            LOG( m_traceLogger ) << "Arrived txn: " << sha;
+            LOG( m_loggerTrace ) << "Arrived txn: " << sha;
 
 
             Transaction t( data, CheckTransaction::Everything, true,
@@ -595,7 +594,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         total_arrived += out_txns.size();
 
         if ( _blockID != m_client.number() + 1 ) {
-            LOG( m_errorLogger ) << "Mismatch in block number:SKALED_NUMBER:" << m_client.number()
+            LOG( m_loggerError ) << "Mismatch in block number:SKALED_NUMBER:" << m_client.number()
                                  << ":CONSENSUS_NUMBER:" << _blockID;
             assert( false );
         }
@@ -650,10 +649,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
 } catch ( const std::exception& ex ) {
     LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (in createBlock)";
-    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 } catch ( ... ) {
     LOG( m_loggerError ) << "CRITICAL unknown exception (in createBlock)";
-    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 }
 
 void SkaleHost::startWorking() {
@@ -696,19 +695,19 @@ void SkaleHost::startWorking() {
             try {
                 static const char g_strThreadName[] = "bootStrapAll";
                 dev::setThreadName( g_strThreadName );
-                LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " started\n";
+                LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " started";
                 m_consensus->bootStrapAll();
-                LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " will exit\n";
+                LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " will exit";
             } catch ( std::exception& ex ) {
                 std::string s = ex.what();
                 if ( s.empty() )
                     s = "no description";
                 LOG( m_loggerError )
-                    << "Consensus thread in skale host will exit with exception: " << s << "\n";
+                    << "Consensus thread in skale host will exit with exception: " << s;
             } catch ( ... ) {
                 LOG( m_loggerError )
                     << "Consensus thread in skale host will exit with unknown exception\n"
-                    << skutils::signal::generate_stack_trace() << "\n";
+                    << skutils::signal::generate_stack_trace();
             }
 
             // comment out as this hack is in consensus now
@@ -813,11 +812,11 @@ void SkaleHost::broadcastFunc() {
             logState();
         } catch ( const std::exception& ex ) {
             LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
-            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
             sleep( 2 );
         } catch ( ... ) {
             LOG( m_loggerError ) << "CRITICAL unknown exception (restarting broadcastFunc)";
-            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
             sleep( 2 );
         }
     }  // while

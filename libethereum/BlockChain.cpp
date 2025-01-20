@@ -322,7 +322,7 @@ void BlockChain::reopen( ChainParams const& _p, bool _applyPatches, WithExisting
 }
 
 void BlockChain::close() {
-    LOG( m_loggerDetail ) << "Closing blockchain DB";
+    LOG( m_loggerTrace ) << "Closing blockchain DB";
     // Not thread safe...
     m_extrasDB = nullptr;
     m_blocksDB = nullptr;
@@ -534,7 +534,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
     // Verify parent-critical parts
     verifyBlock( _block.block, m_onBad, ImportRequirements::InOrderChecks );
 
-    LOG( m_loggerDetail ) << "Attempting import of " << _block.info.hash() << " ...";
+    LOG( m_loggerTrace ) << "Attempting import of " << _block.info.hash() << " ...";
 
     performanceLogger.onStageFinished( "preliminaryChecks" );
 
@@ -637,7 +637,7 @@ void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
 void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     // Check it's not crazy
     if ( _header.timestamp() > utcTime() && !m_params.allowFutureBlocks ) {
-        LOG( m_loggerDetail ) << _header.hash() << " : Future time " << _header.timestamp()
+        LOG( m_loggerTrace ) << _header.hash() << " : Future time " << _header.timestamp()
                               << " (now at " << utcTime() << ")";
         // Block has a timestamp in the future. This is no good.
         BOOST_THROW_EXCEPTION( FutureTime() );
@@ -653,7 +653,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
                 true :
                 false;
         if ( isRotate ) {
-            clog( VerbosityTrace, "BlockChain" ) << "Will perform storage-based block rotation";
+            LOG( m_loggerTrace ) << "Will perform storage-based block rotation";
         }
     }
     if ( clockLastDbRotation_ == 0 )
@@ -663,7 +663,7 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
         clock_t clockNow = clock();
         if ( ( clockNow - clockLastDbRotation_ ) >= clockDbRotationPeriod_ ) {
             isRotate = true;
-            LOG( m_loggerDetail ) << "Will perform timer-based block rotation";
+            LOG( m_loggerTrace ) << "Will perform timer-based block rotation";
         }
     }
     if ( !isRotate )
@@ -898,7 +898,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         // HACK Since blooms are often re-used, let's adjust size for them
         extrasBatchSize +=
             ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
-        LOG( m_loggerDetail ) << "Computed block " << i
+        LOG( m_loggerTrace ) << "Computed block " << i
                               << " DB usage = " << blocksBatchSize + extrasBatchSize;
     }  // for block
 
@@ -969,7 +969,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     newLastBlockHash = _block.info.hash();
     newLastBlockNumber = ( unsigned ) _block.info.number();
 
-    LOG( m_loggerDetail ) << "   Imported and best " << _totalDifficulty << " ("
+    LOG( m_loggerTrace ) << "   Imported and best " << _totalDifficulty << " ("
                           << "#" << _block.info.number() << "). Has "
                           << ( details( _block.info.parentHash() ).children.size() - 1 )
                           << " siblings.";
@@ -1044,7 +1044,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     h256s fresh;
     fresh.push_back( tbi.hash() );
 
-    LOG( m_loggerDetail ) << "Insterted block with " << _block.transactions.size()
+    LOG( m_loggerTrace ) << "Insterted block with " << _block.transactions.size()
                           << " transactions";
 
     return ImportRoute{ dead, fresh, _block.transactions };
@@ -1090,7 +1090,7 @@ void BlockChain::clearBlockBlooms( unsigned _begin, unsigned _end ) {
 }
 
 void BlockChain::rescue( State const& /*_state*/ ) {
-    LOG( m_loggerDetail ) << "Rescuing database...";
+    LOG( m_loggerInfo ) << "Rescuing database...";
     throw std::logic_error( "Rescueing is not implemented" );
 
     unsigned u = 1;
@@ -1105,32 +1105,32 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    LOG( m_loggerDetail ) << "Finding last likely block number...";
+    LOG( m_loggerTrace ) << "Finding last likely block number...";
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
-        LOG( m_loggerDetail ) << " " << m << flush;
+        LOG( m_loggerTrace ) << " " << m << flush;
         if ( isKnown( numberHash( m ) ) )
             l = m;
         else
             u = m;
     }
-    LOG( m_loggerDetail ) << "  lowest is " << l;
+    LOG( m_loggerTrace ) << "  lowest is " << l;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        LOG( m_loggerDetail ) << "Checking validity of " << l << " (" << h << ")..." << flush;
+        LOG( m_loggerTrace ) << "Checking validity of " << l << " (" << h << ")..." << flush;
         try {
-            LOG( m_loggerDetail ) << "block..." << flush;
+            LOG( m_loggerTrace ) << "block..." << flush;
             BlockHeader bi( block( h ) );
-            LOG( m_loggerDetail ) << "extras..." << flush;
+            LOG( m_loggerTrace ) << "extras..." << flush;
             details( h );
-            LOG( m_loggerDetail ) << "state..." << flush;
-            LOG( m_loggerDetail ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
+            LOG( m_loggerTrace ) << "state..." << flush;
+            LOG( m_loggerTrace ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {
         }
     }
-    LOG( m_loggerDetail ) << "OK.";
+    LOG( m_loggerTrace ) << "OK.";
     rewind( l );
 }
 

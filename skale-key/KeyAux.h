@@ -53,7 +53,7 @@ string createPassword( std::string const& _prompt ) {
         string confirm = getPassword( "Please confirm the passphrase by entering it again: " );
         if ( ret == confirm )
             break;
-        cwarn << "Passwords were different. Try again.\n";
+        cwarn << "Passwords were different. Try again.";
     }
     return ret;
     //	cdebug << "Enter a hint to help you remember this passphrase: " << flush;
@@ -70,7 +70,7 @@ pair< string, string > createPassword( KeyManager& _keyManager, std::string cons
             string confirm = getPassword( "Please confirm the passphrase by entering it again: " );
             if ( pass == confirm )
                 break;
-            cwarn << "Passwords were different. Try again.\n";
+            cwarn << "Passwords were different. Try again.";
         }
     string hint = _hint;
     if ( hint.empty() && !pass.empty() && !_keyManager.haveHint( pass ) ) {
@@ -141,21 +141,21 @@ public:
             try {
                 m_toSign.data = fromHex( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( arg == "--tx-nonce" && i + 1 < argc )
             try {
                 m_toSign.nonce = u256( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( arg == "--force-nonce" && i + 1 < argc )
             try {
                 m_forceNonce = u256( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( ( arg == "--tx-dest" || arg == "--tx-to" || arg == "--tx-destination" ) &&
@@ -164,28 +164,28 @@ public:
                 m_toSign.creation = false;
                 m_toSign.to = toAddress( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( arg == "--tx-gas" && i + 1 < argc )
             try {
                 m_toSign.gas = u256( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( arg == "--tx-gasprice" && i + 1 < argc )
             try {
                 m_toSign.gasPrice = u256( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( arg == "--tx-value" && i + 1 < argc )
             try {
                 m_toSign.value = u256( argv[++i] );
             } catch ( ... ) {
-                cerror << "Invalid argument to " << arg << "\n";
+                cerror << "Invalid argument to " << arg;
                 exit( -1 );
             }
         else if ( arg == "--decode-tx" || arg == "decode" )
@@ -274,7 +274,7 @@ public:
                     return getPassword( "Enter passphrase for key (hint:" +
                                         keyManager().passwordHint( a ) + "): " );
                 } );
-            cerror << "Bad file, UUID or address: " << _signKey << "\n";
+            cerror << "Bad file, UUID or address: " << _signKey;
             exit( -1 );
         }
     }
@@ -301,42 +301,36 @@ public:
                 TransactionBase t = m_inputs.empty() ? TransactionBase( m_toSign ) :
                                                        TransactionBase( inputData( m_inputs[0] ),
                                                            CheckTransaction::None );
-                cdebug << "Transaction " << t.sha3().hex() << "\n";
+                cdebug << "Transaction " << t.sha3().hex();
                 if ( t.isCreation() ) {
-                    cdebug << "  type: creation"
-                           << "\n";
-                    cdebug << "  code: " << toHex( t.data() ) << "\n";
+                    cdebug << "  type: creation";
+                    cdebug << "  code: " << toHex( t.data() );
                 } else {
-                    cdebug << "  type: message"
-                           << "\n";
-                    cdebug << "  to: " << t.to() << "\n";
-                    cdebug << "  data: " << ( t.data().empty() ? "none" : toHex( t.data() ) )
-                           << "\n";
+                    cdebug << "  type: message";
+                    cdebug << "  to: " << t.to();
+                    cdebug << "  data: " << ( t.data().empty() ? "none" : toHex( t.data() ) );
                 }
                 try {
                     auto s = t.sender();
                     if ( t.isCreation() )
-                        cdebug << "  creates: " << toAddress( s, t.nonce() ) << "\n";
-                    cdebug << "  from: " << s << "\n";
+                        cdebug << "  creates: " << toAddress( s, t.nonce() );
+                    cdebug << "  from: " << s;
                 } catch ( ... ) {
-                    cdebug << "  from: <unsigned>"
-                           << "\n";
+                    cdebug << "  from: <unsigned>";
                 }
-                cdebug << "  value: " << formatBalance( t.value() ) << " (" << t.value() << " wei)"
-                       << "\n";
-                cdebug << "  nonce: " << t.nonce() << "\n";
-                cdebug << "  gas: " << t.gas() << "\n";
+                cdebug << "  value: " << formatBalance( t.value() ) << " (" << t.value() << " wei)";
+                cdebug << "  nonce: " << t.nonce();
+                cdebug << "  gas: " << t.gas();
                 cdebug << "  gas price: " << formatBalance( t.gasPrice() ) << " (" << t.gasPrice()
-                       << " wei)"
-                       << "\n";
-                cdebug << "  signing hash: " << t.sha3( WithoutSignature ).hex() << "\n";
+                       << " wei)";
+                cdebug << "  signing hash: " << t.sha3( WithoutSignature ).hex();
                 if ( t.safeSender() ) {
-                    cdebug << "  v: " << ( int ) t.signature().v << "\n";
-                    cdebug << "  r: " << t.signature().r << "\n";
-                    cdebug << "  s: " << t.signature().s << "\n";
+                    cdebug << "  v: " << ( int ) t.signature().v;
+                    cdebug << "  r: " << t.signature().r;
+                    cdebug << "  s: " << t.signature().s;
                 }
             } catch ( Exception& ex ) {
-                cerror << "Invalid transaction: " << ex.what() << "\n";
+                cerror << "Invalid transaction: " << ex.what();
             }
             break;
         }
@@ -356,12 +350,11 @@ public:
                     cdebug << t.sha3() << ": ";
                     if ( isFile ) {
                         writeFile( i + ".signed", toHex( t.toBytes() ) );
-                        cdebug << i + ".signed"
-                               << "\n";
+                        cdebug << i + ".signed";
                     } else
-                        cdebug << toHex( t.toBytes() ) << "\n";
+                        cdebug << toHex( t.toBytes() );
                 } catch ( Exception& ex ) {
-                    cerror << "Invalid transaction: " << ex.what() << "\n";
+                    cerror << "Invalid transaction: " << ex.what();
                 }
             }
             break;
@@ -371,36 +364,33 @@ public:
             for ( auto i : m_inputs ) {
                 Address a = userToAddress( i );
                 if ( !keyManager().accountName( a ).empty() )
-                    cdebug << keyManager().accountName( a ) << " (" << a.abridged() << ")"
-                           << "\n";
+                    cdebug << keyManager().accountName( a ) << " (" << a.abridged() << ")";
                 else
-                    cdebug << a.abridged() << "\n";
-                cdebug << "  Address: " << a.hex() << "\n";
+                    cdebug << a.abridged();
+                cdebug << "  Address: " << a.hex();
                 if ( m_showSecret ) {
                     Secret s = keyManager( true ).secret( a );
                     cdebug << "  Secret: "
                            << ( m_showSecret ? toHex( s.ref() ) :
-                                               ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) )
-                           << "\n";
+                                               ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) );
                 }
             }
             break;
         }
         case OperationMode::ListBare:
             if ( secretStore().keys().empty() )
-                cdebug << "No keys found."
-                       << "\n";
+                cdebug << "No keys found.";
             else
                 for ( h128 const& u : std::set< h128 >() + secretStore().keys() )
-                    cdebug << toUUID( u ) << "\n";
+                    cdebug << toUUID( u );
             break;
         case OperationMode::NewBare: {
             if ( m_lock.empty() )
                 m_lock = createPassword( "Enter a passphrase with which to secure this account: " );
             auto k = makeKey();
             h128 u = secretStore().importSecret( k.secret().ref(), m_lock );
-            cdebug << "Created key " << toUUID( u ) << "\n";
-            cdebug << "  Address: " << k.address().hex() << "\n";
+            cdebug << "Created key " << toUUID( u );
+            cdebug << "  Address: " << k.address().hex();
             break;
         }
         case OperationMode::ImportBare:
@@ -431,33 +421,26 @@ public:
                     h128 u = secretStore().readKey( i, false );
                     bytesSec s = secretStore().secret( u,
                         [&]() { return getPassword( "Enter passphrase for key " + i + ": " ); } );
-                    cdebug << "Key " << i << ":"
-                           << "\n";
-                    cdebug << "  UUID: " << toUUID( u ) << ":"
-                           << "\n";
-                    cdebug << "  Address: " << toAddress( Secret( s ) ).hex() << "\n";
+                    cdebug << "Key " << i << ":";
+                    cdebug << "  UUID: " << toUUID( u ) << ":";
+                    cdebug << "  Address: " << toAddress( Secret( s ) ).hex();
                     cdebug << "  Secret: "
                            << ( m_showSecret ? toHex( s.ref() ) :
-                                               ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) )
-                           << "\n";
+                                               ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) );
                 } else if ( h128 u = fromUUID( i ) ) {
                     bytesSec s = secretStore().secret( u, [&]() {
                         return getPassword( "Enter passphrase for key " + toUUID( u ) + ": " );
                     } );
-                    cdebug << "Key " << i << ":"
-                           << "\n";
-                    cdebug << "  Address: " << toAddress( Secret( s ) ).hex() << "\n";
+                    cdebug << "Key " << i << ":";
+                    cdebug << "  Address: " << toAddress( Secret( s ) ).hex();
                     cdebug << "  Secret: "
                            << ( m_showSecret ? toHex( s.ref() ) :
-                                               ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) )
-                           << "\n";
+                                               ( toHex( s.ref().cropped( 0, 8 ) ) + "..." ) );
                 } else if ( Address a = toAddress( i ) ) {
-                    cdebug << "Key " << a.abridged() << ":"
-                           << "\n";
-                    cdebug << "  Address: " << a.hex() << "\n";
+                    cdebug << "Key " << a.abridged() << ":";
+                    cdebug << "  Address: " << a.hex();
                 } else
-                    cerror << "Couldn't inspect " << i << "; not found."
-                           << "\n";
+                    cerror << "Couldn't inspect " << i << "; not found.";
             break;
         case OperationMode::ExportBare:
             break;
@@ -471,22 +454,19 @@ public:
                                      "Enter passphrase for key " + toUUID( u ) + ": " );
                              },
                              kdf() ) )
-                        cerror << "Re-encoded " << toUUID( u ) << "\n";
+                        cerror << "Re-encoded " << toUUID( u );
                     else
                         cerror << "Couldn't re-encode " << toUUID( u )
-                               << "; key corrupt or incorrect passphrase supplied."
-                               << "\n";
+                               << "; key corrupt or incorrect passphrase supplied.";
                 else
-                    cerror << "Couldn't re-encode " << i << "; not found."
-                           << "\n";
+                    cerror << "Couldn't re-encode " << i << "; not found.";
             break;
         case OperationMode::KillBare:
             for ( auto const& i : m_inputs )
                 if ( h128 u = fromUUID( i ) )
                     secretStore().kill( u );
                 else
-                    cerror << "Couldn't kill " << i << "; not found."
-                           << "\n";
+                    cerror << "Couldn't kill " << i << "; not found.";
             break;
         case OperationMode::New: {
             keyManager();
@@ -498,20 +478,18 @@ public:
             bool usesMaster = m_lock.empty();
             h128 u = usesMaster ? keyManager().import( k.secret(), m_name ) :
                                   keyManager().import( k.secret(), m_name, m_lock, m_lockHint );
-            cdebug << "Created key " << toUUID( u ) << "\n";
-            cdebug << "  Name: " << m_name << "\n";
+            cdebug << "Created key " << toUUID( u );
+            cdebug << "  Name: " << m_name;
             if ( usesMaster )
-                cdebug << "  Uses master passphrase."
-                       << "\n";
+                cdebug << "  Uses master passphrase.";
             else
-                cdebug << "  Password hint: " << m_lockHint << "\n";
-            cdebug << "  Address: " << k.address().hex() << "\n";
+                cdebug << "  Password hint: " << m_lockHint;
+            cdebug << "  Address: " << k.address().hex();
             break;
         }
         case OperationMode::Import: {
             if ( m_inputs.size() != 1 ) {
-                cerror << "Error: exactly one key must be given to import."
-                       << "\n";
+                cerror << "Error: exactly one key must be given to import.";
                 break;
             }
 
@@ -520,34 +498,32 @@ public:
             bytesSec s = keyManager().store().secret(
                 u, [&]() { return ( pw = getPassword( "Enter the passphrase for the key: " ) ); } );
             if ( s.size() != 32 ) {
-                cerror << "Error: couldn't decode key or invalid secret size."
-                       << "\n";
+                cerror << "Error: couldn't decode key or invalid secret size.";
                 break;
             }
 
             bool usesMaster = true;
             if ( pw != m_masterPassword && m_lockHint.empty() ) {
-                cdebug << "Enter a hint to help you remember the key's passphrase: " << flush;
+                cdebug << "Enter a hint to help you remember the key's passphrase: ";
+                cdebug.flush();
                 getline( cin, m_lockHint );
                 usesMaster = false;
             }
             keyManager().importExisting( u, m_name, pw, m_lockHint );
             auto a = keyManager().address( u );
 
-            cdebug << "Imported key " << toUUID( u ) << "\n";
-            cdebug << "  Name: " << m_name << "\n";
+            cdebug << "Imported key " << toUUID( u );
+            cdebug << "  Name: " << m_name;
             if ( usesMaster )
-                cdebug << "  Uses master passphrase."
-                       << "\n";
+                cdebug << "  Uses master passphrase.";
             else
-                cdebug << "  Password hint: " << m_lockHint << "\n";
-            cdebug << "  Address: " << a.hex() << "\n";
+                cdebug << "  Password hint: " << m_lockHint;
+            cdebug << "  Address: " << a.hex();
             break;
         }
         case OperationMode::ImportWithAddress: {
             if ( m_inputs.size() != 1 ) {
-                cerror << "Error: exactly one key must be given to import."
-                       << "\n";
+                cerror << "Error: exactly one key must be given to import.";
                 break;
             }
             keyManager();
@@ -565,14 +541,14 @@ public:
                 u = keyManager().store().importSecret(
                     b, lockPassword( toAddress( Secret( b ) ).abridged() ) );
             if ( !u ) {
-                cerror << "Cannot import " << i << " not a file or secret.\n";
+                cerror << "Cannot import " << i << " not a file or secret.";
                 break;
             }
             keyManager().importExisting( u, m_name, m_address );
-            cdebug << "Successfully imported " << i << ":\n";
-            cdebug << "  Name: " << m_name << "\n";
-            cdebug << "  UUID: " << toUUID( u ) << "\n";
-            cdebug << "  Address: " << m_address << "\n";
+            cdebug << "Successfully imported " << i << ":";
+            cdebug << "  Name: " << m_name;
+            cdebug << "  UUID: " << toUUID( u );
+            cdebug << "  Address: " << m_address;
             break;
         }
         case OperationMode::ImportPresale: {
@@ -595,22 +571,19 @@ public:
                                                  "): " );
                     } );
                     if ( !s ) {
-                        cerror << "Invalid password for address " << a << "\n";
+                        cerror << "Invalid password for address " << a;
                         continue;
                     }
                     pair< string, string > np = createPassword(
                         keyManager(), "Enter new passphrase for key '" + i + "': " );
                     if ( keyManager().recode(
                              a, np.first, np.second, [&]() { return pw; }, kdf() ) )
-                        cdebug << "Re-encoded key '" << i << "' successfully."
-                               << "\n";
+                        cdebug << "Re-encoded key '" << i << "' successfully.";
                     else
                         cerror << "Couldn't re-encode '" << i
-                               << "''; key corrupt or incorrect passphrase supplied."
-                               << "\n";
+                               << "''; key corrupt or incorrect passphrase supplied.";
                 } else
-                    cerror << "Couldn't re-encode " << i << "; not found."
-                           << "\n";
+                    cerror << "Couldn't re-encode " << i << "; not found.";
             break;
         case OperationMode::Kill: {
             unsigned count = 0;
@@ -618,18 +591,15 @@ public:
                 if ( Address a = userToAddress( i ) )
                     keyManager().kill( a );
                 else
-                    cerror << "Couldn't kill " << i << "; not found."
-                           << "\n";
+                    cerror << "Couldn't kill " << i << "; not found.";
                 ++count;
             }
-            cdebug << count << " key(s) deleted."
-                   << "\n";
+            cdebug << count << " key(s) deleted.";
             break;
         }
         case OperationMode::List: {
             if ( keyManager().store().keys().empty() ) {
-                cdebug << "No keys found."
-                       << "\n";
+                cdebug << "No keys found.";
                 break;
             }
 
@@ -640,12 +610,11 @@ public:
                     got.insert( a );
                     cdebug << toUUID( u ) << " " << a.abridged();
                     cdebug << " " << a << " ";
-                    cdebug << " " << keyManager().accountName( a ) << "\n";
+                    cdebug << " " << keyManager().accountName( a );
                 } else
                     bare.push_back( u );
             for ( auto const& u : bare )
-                cdebug << toUUID( u ) << " (Bare)"
-                       << "\n";
+                cdebug << toUUID( u ) << " (Bare)";
             break;
         }
         default:
@@ -789,8 +758,7 @@ private:
             if ( _w.load( m_masterPassword ) )
                 break;
             if ( !m_masterPassword.empty() ) {
-                cdebug << "Password invalid. Try again."
-                       << "\n";
+                cdebug << "Password invalid. Try again.";
                 m_masterPassword.clear();
             }
             m_masterPassword = getPassword( "Please enter your MASTER passphrase: " );
@@ -815,8 +783,7 @@ private:
             if ( m_keyManager->exists() )
                 openWallet( *m_keyManager );
             else if ( !walletLess ) {
-                cerror << "Couldn't open wallet. Does it exist?"
-                       << "\n";
+                cerror << "Couldn't open wallet. Does it exist?";
                 exit( -1 );
             }
         }

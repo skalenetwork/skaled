@@ -1082,9 +1082,9 @@ void Block::commitToSeal(
     //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
     //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
-    LOG( m_loggerDetailed ) << "Post-reward stateRoot: "
+    LOG( m_loggerTrace ) << "Post-reward stateRoot: "
                             << "is not calculated in Skale state";
-    LOG( m_loggerDetailed ) << m_state;
+    LOG( m_loggerTrace ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );
     m_currentBlock.setGasUsed( gasUsed() );

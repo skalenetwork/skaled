@@ -411,7 +411,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
             return true;
         } );
 
-        std::cout << "\n";
+        LOG( m_loggerInfo ) << "\n";
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }

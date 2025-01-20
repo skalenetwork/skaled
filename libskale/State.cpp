@@ -156,11 +156,9 @@ const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 void State::populateHistoricStateFromSkaleState() {
     auto allAccountAddresses = this->addresses();
 
-    LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size() << "\n";
-    LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ..."
-                        << "\n";
-    LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state"
-                        << "\n";
+    LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
+    LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
+    LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state";
 
 
     // this is done to save memory, otherwise OverlayDB will frow
@@ -168,8 +166,7 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
-    LOG( m_loggerInfo ) << "Completed state import"
-                        << "\n";
+    LOG( m_loggerInfo ) << "Completed state import";
 }
 
 
@@ -204,7 +201,7 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
-                        << STATE_IMPORT_BATCH_COUNT << "\n";
+                        << STATE_IMPORT_BATCH_COUNT;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
@@ -237,7 +234,7 @@ skale::OverlayDB State::openDB(
         LOG( m_loggerDebug ) << "Opened state DB.";
         return OverlayDB( std::move( bdb ) );
     } catch ( boost::exception const& ex ) {
-        LOG( m_loggerWarning ) << boost::diagnostic_information( ex ) << '\n';
+        LOG( m_loggerWarning ) << boost::diagnostic_information( ex );
         if ( fs::space( path / fs::path( "state" ) ).available < 1024 ) {
             LOG( m_loggerWarning )
                 << "Not enough available space found on hard drive. Please free some up and "
@@ -1038,8 +1035,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
                                      // dev::eth::WithoutSignature );
         this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
-        // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
-        // shaLastTx.hex() << "\n";
+
 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
