@@ -6,7 +6,7 @@
 #include <sstream>
 
 
-std::atomic< bool > SkaleDebugInterface::g_isEnabled = true;
+std::atomic< bool > SkaleDebugInterface:: g_isEnabled = false;
 
 #define CHECK_ENABLED                          \
     if ( !SkaleDebugInterface::g_isEnabled ) { \
