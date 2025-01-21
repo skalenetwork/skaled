@@ -183,8 +183,7 @@ BOOST_AUTO_TEST_CASE( domain_functionality_alive ) {
             skutils::test::test_log_e(
                 thread_prefix_str() + "creating domain instance..." );
             skutils::dispatch::domain_ptr_t pDomain( new skutils::dispatch::domain );
-            // skutils::dispatch::domain_ptr_t pDomain( skutils::dispatch::default_domain() );
-            //
+
             size_t i;
             std::atomic_bool bInsideCall( false );
             skutils::test::test_log_e(
@@ -290,9 +289,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                         skutils::dispatch::priority_t pri =
                             g_arrTestDataByPriority[idxPriority].priority_;
                         skutils::dispatch::queue_id_t strQueueID =
-                            g_arrTestDataByPriority[idxPriority].id_;  // skutils::tools::format(
-                                                                       // "queue_id_%zu",
-                                                                       // size_t(pri) );
+                            g_arrTestDataByPriority[idxPriority].id_;  
                         skutils::dispatch::queue_ptr_t pQueue(
                             pDomain->queue_get( strQueueID, true ) );
                         pQueue->priority( pri );
@@ -307,9 +304,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                             //    g_arrTestDataByPriority[idxPriority].priority_;
                             skutils::dispatch::queue_id_t strQueueID =
                                 g_arrTestDataByPriority[idxPriority]
-                                    .id_;  // skutils::tools::format(
-                                           // "queue_id_%zu",
-                                           // size_t(pri) );
+                                    .id_;  
                             size_t push_count_at_step =
                                 g_arrTestDataByPriority[idxPriority].push_count_at_step_;
                             for ( size_t j = 0; j < push_count_at_step; ++j ) {
@@ -324,8 +319,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                                                      strQueueID]() {
                                     std::atomic_bool& bInsideCall =
                                         g_arrTestDataByPriority[idxPriority].bInsideCall_;
-                                    // std::atomic_size_t & nSubmitCounter =
-                                    // g_arrTestDataByPriority[idxPriority].submit_counter_;
+
                                     std::atomic_size_t& nCallCounter =
                                         g_arrTestDataByPriority[idxPriority].call_counter_;
                                     BOOST_REQUIRE( !bool( bInsideCall ) );
@@ -388,13 +382,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
                 skutils::test::test_log_e(
                     thread_prefix_str() +
                     "test thread was stopped, end of domain life time...");
-                //
-                // static const size_t nExtraSleepMilliSeconds = 1000;
-                // skutils::test::test_log_e( thread_prefix_str() + "will additionally
-                // sleep " + nExtraSleepMilliSeconds + " millisecond(s) to
-                // lett all the work (probably done)..."); std::this_thread::sleep_for(
-                // std::chrono::milliseconds(nExtraSleepMilliSeconds) );
-                //
+
                 skutils::test::test_log_e(
                     thread_prefix_str() + "shutting down domain...");
                 pDomain->shutdown();
@@ -402,8 +390,7 @@ BOOST_AUTO_TEST_CASE( job_priorities_alive ) {
             skutils::test::test_log_e( thread_prefix_str() + "analyzing results..." );
             //
             for ( idxPriority = 0; idxPriority < cntPriorities; ++idxPriority ) {
-                // skutils::dispatch::priority_t pri =
-                // g_arrTestDataByPriority[idxPriority].priority_;
+
                 skutils::dispatch::queue_id_t strQueueID =
                     g_arrTestDataByPriority[idxPriority].id_;  // skutils::tools::format(
                                                                // "queue_id_%zu", size_t(pri) );
@@ -1324,11 +1311,7 @@ BOOST_AUTO_TEST_CASE( balance_equality ) {
                     size_t nCalls = 0;
                     fnLogCall( id_my_queue, nCalls );
                     BOOST_REQUIRE( nCalls > 0 );
-                    //							if( g_bShowDetailedJobLogs )
-                    //								skutils::test::test_log_e( thread_prefix_str() +
-                    // "--- async job in queue ") + id_my_queue + ",
-                    // invocation ") +
-                    // std::to_string(size_t(nCalls)-1) );
+
                     std::this_thread::sleep_for(
                         std::chrono::milliseconds( nSleepMillisecondsInJob ) );
                 } );
@@ -1347,9 +1330,7 @@ BOOST_AUTO_TEST_CASE( balance_equality ) {
         for ( const auto& entry : mapCallCounts ) {
             skutils::dispatch::queue_ptr_t pQueue = skutils::dispatch::get( entry.first, false );
             size_t jobCountInQueue = pQueue->async_job_count();
-            // if( jobCountInQueue > 0 ) {
-            //	int xxx = 0;
-            //}
+
             mapJobsLeft[entry.first] = jobCountInQueue;
         }
         //

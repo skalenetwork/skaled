@@ -563,10 +563,10 @@ protected:
                                                    ///< the DB
     Signal< bytes const& > m_onBlockSealed;        ///< Called if we have sealed a new block
 
-    Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
-    Logger m_loggerTrace{ createLogger( VerbosityTrace, "client" ) };
-    Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
-    Logger m_loggerError{ createLogger( VerbosityError, "client" ) };
+    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
+    mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "client" ) };
+    mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
+    mutable Logger m_loggerError{ createLogger( VerbosityError, "client" ) };
 
     SkaleDebugTracer m_debugTracer;
     SkaleDebugInterface::handler m_debugHandler;

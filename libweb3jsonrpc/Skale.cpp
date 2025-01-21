@@ -457,7 +457,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-                LOG( m_loggerError ) << "!!! SGX call error !!!"
+                LOG( m_loggerError ) << "SGX call error"
                                                          << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }

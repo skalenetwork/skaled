@@ -198,7 +198,7 @@ void TestBlock::mine( TestBlockChain const& _bc ) {
 
         size_t transactionsOnImport = m_transactionQueue.topTransactions( 100 ).size();
         block.sync( blockchain, m_transactionQueue,
-            gp );  //!!! Invalid transactions could be dropped from queue here!!!
+            gp );  //Invalid transactions could be dropped from queue here
         // if (transactionsOnImport >  m_transactionQueue.topTransactions(1000).size())
         // BOOST_ERROR(TestOutputHelper::get().testName() + " Dropped invalid Transactions before
         // mining!");

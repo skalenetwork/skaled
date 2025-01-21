@@ -709,9 +709,6 @@ void SkaleHost::startWorking() {
                     << "Consensus thread in skale host will exit with unknown exception\n"
                     << skutils::signal::generate_stack_trace();
             }
-
-            // comment out as this hack is in consensus now
-            //        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
         };  // func
 
     m_consensusThread = std::thread( consensusFunction );

@@ -79,7 +79,6 @@ void helper_ssl_cert_and_key_holder::auto_init() {
     if ( ( !strFilePathKey_.empty() ) && ( !strFilePathCert_.empty() ) &&
          skutils::tools::file_exists( strFilePathKey_ ) &&
          skutils::tools::file_exists( strFilePathCert_ ) ) {
-        // TODO - use cdebug
         std::cout << "Using externally specified " + strFilePathKey_ +
                        " and " + strFilePathCert_ + ".\n" ;
         need_remove_files_ = false;

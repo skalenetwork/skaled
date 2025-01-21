@@ -117,7 +117,7 @@ void StandardTrace::operator()( uint64_t _steps, uint64_t PC, Instruction inst, 
         m_lastInst.back() = inst;
     } else {
         LOG( m_loggerWarning )
-            << "GAA!!! Tracing VM and more than one new/deleted stack frame between steps!";
+            << "Tracing VM and more than one new/deleted stack frame between steps!";
         LOG( m_loggerWarning ) << "Attmepting naive recovery...";
         m_lastInst.resize( ext.depth + 1 );
     }

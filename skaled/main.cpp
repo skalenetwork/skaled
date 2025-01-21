@@ -2721,9 +2721,6 @@ int main( int argc, char** argv ) try {
         ( basename + ".html" ).c_str(), ( basename + ".csv" ).c_str(), nullptr );
     MicroProfileShutdown();
 
-    //    LOG( loggerDebug ) << cc::debug( "Stopping task dispatcher..." );
-    //    skutils::dispatch::shutdown();
-    //    LOG( loggerDebug ) << cc::debug( "Done, task dispatcher stopped" );
     ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
     if ( ec != ExitHandler::ec_success ) {
         LOG( loggerError ) << "Exiting main with code " << int( ec ) << "...";

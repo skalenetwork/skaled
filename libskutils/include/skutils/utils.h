@@ -23,7 +23,6 @@
 #include <type_traits>
 #include <vector>
 
-// #include <nlohmann/json.hpp>
 #include <json.hpp>
 
 #include <skutils/url.h>
@@ -39,11 +38,6 @@ typedef std::list< string_type_t > string_list_t;
 typedef std::vector< string_type_t > string_vector_t;
 
 namespace tools {
-
-//        std::string format         ( const char * format, ... );
-//        std::string format_no_throw( const char * format, ... );
-//        std::string format         ( const char * format, va_list args );
-//        std::string format_no_throw( const char * format, va_list args );
 
 template < class T >
 bool equal( T d1, T d2, typename std::enable_if< std::is_floating_point< T >::value >::type* = 0 ) {

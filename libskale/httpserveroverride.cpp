@@ -776,9 +776,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
         }
         std::string e = "Bad JSON RPC request: " + msg;
         LOG( m_loggerError ) 
-            << " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                   std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " +
-                   pThis->desc() + " !!! " + e;
+            << pThis->getRelay().nfoGetSchemeUC() + "/" +
+                   std::to_string( pThis->getRelay().serverIndex() ) + "/ERR " +
+                   pThis->desc() + " " + e;
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
         nlohmann::json joErrorObj;
@@ -814,9 +814,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 "high load";
         std::string e = "Banned due to " + reason_part + " JSON RPC request: " + msg;
         LOG( m_loggerError ) 
-            << " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                   std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " +
-                   pThis->desc() + " !!! " + e;
+            << pThis->getRelay().nfoGetSchemeUC() + "/" +
+                   std::to_string( pThis->getRelay().serverIndex() ) + "/ERR " +
+                   pThis->desc() + " " + e;
         nlohmann::json joErrorResponce;
         joErrorResponce["id"] = joID;
         nlohmann::json joErrorObj;
@@ -902,9 +902,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             } catch ( const std::exception& ex ) {
                 rttElement->setError();
                 LOG( m_loggerError )
-                    << ( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                           std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " +
-                           pThis->desc() + " !!! " + ex.what() );
+                    << pThis->getRelay().nfoGetSchemeUC() + "/" +
+                           std::to_string( pThis->getRelay().serverIndex() ) + "/ERR " +
+                           pThis->desc() + " " + ex.what();
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 nlohmann::json joErrorObj;
@@ -924,9 +924,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 rttElement->setError();
                 const char* e = "unknown exception in SkaleServerOverride";
                 LOG( m_loggerError )
-                    << " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                           std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " +
-                           pThis->desc() + " !!! " + e;
+                    << pThis->getRelay().nfoGetSchemeUC() + "/" +
+                           std::to_string( pThis->getRelay().serverIndex() ) + "/ERR " +
+                           pThis->desc() + " " + e;
                 nlohmann::json joErrorResponce;
                 joErrorResponce["id"] = joID;
                 nlohmann::json joErrorObj;
@@ -1457,8 +1457,6 @@ void SkaleWsPeer::eth_subscribe_newHeads( e_server_mode_t /*esm*/,
                         << " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " +
                                pThis->desc() + " <<< " +
                                pThis->implPreformatTrafficJsonMessage( strNotification, false );
-                // skutils::dispatch::async( pThis->m_strPeerQueueID, [pThis, strNotification]() ->
-                // void {
                 bool bMessageSentOK = false;
                 try {
                     bMessageSentOK =

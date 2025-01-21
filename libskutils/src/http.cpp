@@ -18,8 +18,6 @@
 
 #endif  // (!defined _WIN32)
 
-// #define __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ 1
-
 namespace skutils {
 namespace http {
 

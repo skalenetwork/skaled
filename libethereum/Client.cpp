@@ -348,11 +348,11 @@ tuple< ImportRoute, bool, unsigned > Client::syncQueue( unsigned _max ) {
 }
 
 void Client::onBadBlock( Exception& _ex ) const {
-    // BAD BLOCK!!!
+    // BAD BLOCK
     bytes const* block = boost::get_error_info< errinfo_block >( _ex );
     if ( !block ) {
-        cwarn << "ODD: onBadBlock called but exception (" << _ex.what() << ") has no block in it.";
-        cwarn << boost::diagnostic_information( _ex );
+        LOG( m_loggerWarning ) << "ODD: onBadBlock called but exception (" << _ex.what() << ") has no block in it.";
+        LOG( m_loggerWarning ) << boost::diagnostic_information( _ex );
         return;
     }
 
@@ -876,11 +876,11 @@ void Client::noteChanged( h256Hash const& _filters ) {
     for ( auto& w : m_watches )
         if ( _filters.count( w.second.id ) ) {
             if ( m_filters.count( w.second.id ) ) {
-                LOG( m_loggerWatch ) << "!!! " << w.first << " " << w.second.id.abridged();
+                LOG( m_loggerWatch ) << w.first << " " << w.second.id.abridged();
                 w.second.append_changes( m_filters.at( w.second.id ).changes_ );
             } else if ( m_specialFilters.count( w.second.id ) )
                 for ( h256 const& hash : m_specialFilters.at( w.second.id ) ) {
-                    LOG( m_loggerWatch ) << "!!! " << w.first << " "
+                    LOG( m_loggerWatch ) << w.first << " "
                                          << ( w.second.id == PendingChangedFilter ? "pending" :
                                                 w.second.id == ChainChangedFilter ? "chain" :
                                                                                     "???" );

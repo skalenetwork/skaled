@@ -52,8 +52,6 @@
 #include <stdio.h>
 #include <time.h>
 
-// #include "../libconsensus/libBLS/bls/bls.h"
-
 #include <bls/bls.h>
 
 #include <skutils/console_colors.h>
