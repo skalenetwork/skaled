@@ -144,7 +144,7 @@ public:
     void onLogMessage( skutils::ws::e_ws_log_message_type_t eWSLMT, const string& msg ) override;
 
     string desc( bool isColored = true ) const {
-        return getShortPeerDescription( isColored, false);
+        return getShortPeerDescription( isColored, false );
     }
     SkaleRelayWS& getRelay();
     const SkaleRelayWS& getRelay() const { return const_cast< SkaleWsPeer* >( this )->getRelay(); }

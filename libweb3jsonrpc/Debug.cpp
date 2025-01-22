@@ -69,7 +69,7 @@ void Debug::debug_forceBroadcast( const string& _transactionHash ) {
 
 string Debug::debug_interfaceCall( const string& _arg ) {
     if ( !m_debugInterface ) {
-        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Debug interface disabled" ));
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Debug interface disabled" ) );
     }
     return m_debugInterface->call( _arg );
 }

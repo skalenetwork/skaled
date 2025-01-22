@@ -589,7 +589,7 @@ public:
     basic_participant();
     virtual ~basic_participant();
     static std::string stat_backend_name();
-    virtual nlohmann::json toJSON( ) const;
+    virtual nlohmann::json toJSON() const;
 };  /// class basic_participant
 
 class basic_sender : public basic_participant, public generic_sender {
@@ -606,7 +606,7 @@ public:
     bool sendMessageBinary( const std::string& msg ) override {
         return sendMessage( msg, opcv::binary );
     }
-    nlohmann::json toJSON( ) const override;
+    nlohmann::json toJSON() const override;
 };  /// class basic_socket
 
 class basic_socket : public basic_participant, public basic_network_settings {

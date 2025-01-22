@@ -467,7 +467,7 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
             pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
         if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
             m_strUnDdosOrigin.clear();
-            clog( dev::VerbosityError, __FUNCTION__)
+            clog( dev::VerbosityError, __FUNCTION__ )
                 << " cannot accept connection - UN-DDOS protection reported "
                    "connection count overflow";
             close( "UN-DDOS protection reported connection count overflow" );
@@ -511,8 +511,8 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->isShutdownMode() ) {
-        clog(
-            dev::VerbosityWarning, getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex()
+        clog( dev::VerbosityWarning, getRelay().nfoGetSchemeUC() )
+            << "/" << getRelay().serverIndex()
             << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
                    desc() + cc::ws_rx( " >>> " ) + "" );
@@ -521,8 +521,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
     }
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
-        clog(
-            dev::VerbosityWarning, getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex()
+        clog( dev::VerbosityWarning, getRelay().nfoGetSchemeUC() )
+            << "/" << getRelay().serverIndex()
             << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
                    desc() + cc::ws_rx( " >>> " ) +
@@ -566,8 +566,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 strMethod = "unknown_json_rpc_method";
         }
         std::string e = "Bad JSON RPC request: " + msg;
-        clog( dev::VerbosityError,
-            pThis->getRelay().nfoGetSchemeUC()) << "/" << pThis->getRelay().serverIndex()
+        clog( dev::VerbosityError, pThis->getRelay().nfoGetSchemeUC() )
+            << "/" << pThis->getRelay().serverIndex()
             << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
                                 std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
                    pThis->desc() + cc::ws_tx( " !!! " ) + e );
@@ -728,7 +728,7 @@ void SkaleWsPeer::onClose(
 void SkaleWsPeer::onFail() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::VerbosityError,  getRelay().nfoGetSchemeUC()) << desc() << " peer fail event";
+        clog( dev::VerbosityError, getRelay().nfoGetSchemeUC() ) << desc() << " peer fail event";
     skutils::ws::peer::onFail();
     uninstallAllWatches();
     // unddos
@@ -887,11 +887,12 @@ void SkaleWsPeer::eth_subscribe(
         strSubscriptionType = "<empty>";
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        clog( dev::Verbosity::VerbosityError, getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex() << desc() << " "
-               << "error in eth_subscribe"
-               << " rpc method, missing valid subscription type in parameters, was "
-                  "specifiedL " +
-                      strSubscriptionType;
+        clog( dev::Verbosity::VerbosityError, getRelay().nfoGetSchemeUC() )
+            << "/" << getRelay().serverIndex() << desc() << " "
+            << "error in eth_subscribe"
+            << " rpc method, missing valid subscription type in parameters, was "
+               "specifiedL " +
+                   strSubscriptionType;
     json joError = json::object();
     joError["code"] = -32603;
     joError["message"] =
@@ -954,13 +955,13 @@ void SkaleWsPeer::eth_subscribe_logs(
                                 std::string strNotification = joNotification.dump();
                                 const SkaleServerOverride* pSO = pThis->pso();
                                 if ( pSO->opts_.isTraceCalls_ )
-                                    clog( dev::VerbosityDebug, pThis->getRelay().nfoGetSchemeUC())
-                                           << cc::ws_tx_inv( " <<< " +
-                                                             pThis->getRelay().nfoGetSchemeUC() +
-                                                             "/TX <<< " )
-                                           << ( pThis->desc() + cc::ws_tx( " <<< " ) +
-                                                  pThis->implPreformatTrafficJsonMessage(
-                                                      strNotification, false ) );
+                                    clog( dev::VerbosityDebug, pThis->getRelay().nfoGetSchemeUC() )
+                                        << cc::ws_tx_inv( " <<< " +
+                                                          pThis->getRelay().nfoGetSchemeUC() +
+                                                          "/TX <<< " )
+                                        << ( pThis->desc() + cc::ws_tx( " <<< " ) +
+                                               pThis->implPreformatTrafficJsonMessage(
+                                                   strNotification, false ) );
                                 bool bMessageSentOK = false;
                                 try {
                                     bMessageSentOK = const_cast< SkaleWsPeer* >( pThis.get() )
@@ -979,11 +980,12 @@ void SkaleWsPeer::eth_subscribe_logs(
                                                "because of exception: " +
                                                ex.what() );
                                 } catch ( ... ) {
-                                    clog( dev::Verbosity::VerbosityError, pThis->getRelay().nfoGetSchemeUC()) << "/"
-                                           << pThis->getRelay().serverIndex() << pThis->desc()
-                                           << " error in eth_subscription/logs will uninstall "
-                                              "watcher callback"
-                                           << "because of unknown exception";
+                                    clog( dev::Verbosity::VerbosityError,
+                                        pThis->getRelay().nfoGetSchemeUC() )
+                                        << "/" << pThis->getRelay().serverIndex() << pThis->desc()
+                                        << " error in eth_subscription/logs will uninstall "
+                                           "watcher callback"
+                                        << "because of unknown exception";
                                 }
                                 if ( !bMessageSentOK ) {
                                     pThis->ethereum()->uninstallWatch( iw );
@@ -999,9 +1001,9 @@ void SkaleWsPeer::eth_subscribe_logs(
         setInstalledWatchesLogs_.insert( iw );
         string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
-            clog( dev::Verbosity::VerbosityTrace,  getRelay().nfoGetSchemeUC()) << "/" << getRelay().serverIndex() << desc()
-                   << " "
-                   << "eth_subscribe/logs rpc method installed watch " << strIW;
+            clog( dev::Verbosity::VerbosityTrace, getRelay().nfoGetSchemeUC() )
+                << "/" << getRelay().serverIndex() << desc() << " "
+                << "eth_subscribe/logs rpc method installed watch " << strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
@@ -1049,11 +1051,11 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 joNotification["params"] = joParams;
                 std::string strNotification = joNotification.dump();
                 if ( pSO->opts_.isTraceCalls_ )
-                    clog( dev::VerbosityDebug, pThis->getRelay().nfoGetSchemeUC())
-                           << cc::ws_tx_inv(
-                                  " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                                  pThis->desc() + cc::ws_tx( " <<< " ) +
-                                  pThis->implPreformatTrafficJsonMessage( strNotification, false );
+                    clog( dev::VerbosityDebug, pThis->getRelay().nfoGetSchemeUC() )
+                        << cc::ws_tx_inv(
+                               " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
+                               pThis->desc() + cc::ws_tx( " <<< " ) +
+                               pThis->implPreformatTrafficJsonMessage( strNotification, false );
                 bool bMessageSentOK = false;
                 try {
                     bMessageSentOK =
@@ -1238,8 +1240,8 @@ void SkaleWsPeer::eth_subscribe_skaleStats(
         string strIW = dev::toJS( idSubscription | SKALED_WS_SUBSCRIPTION_TYPE_SKALE_STATS );
         if ( pSO->opts_.isTraceCalls_ )
             ctrace << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex()
-                   << desc() + "  eth_subscribe/skaleStats" << " rpc method did installed watch "
-                   << strIW;
+                   << desc() + "  eth_subscribe/skaleStats"
+                   << " rpc method did installed watch " << strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
