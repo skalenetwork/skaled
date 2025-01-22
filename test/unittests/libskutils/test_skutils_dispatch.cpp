@@ -65,7 +65,7 @@ static std::string thread_prefix_str() {
 
 
 BOOST_AUTO_TEST_SUITE( SkUtils )
-BOOST_AUTO_TEST_SUITE( dispatch, *boost::unit_test::disabled() )
+BOOST_AUTO_TEST_SUITE( dispatch, *boost::unit_test::precondition( dev::test::option_all_tests ) )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1346,137 +1346,139 @@ BOOST_AUTO_TEST_CASE( enqueue_while_busy ) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE( balance_equality ) {
-    skutils::test::test_print_header_name( "SkUtils/dispatch/balance_equality" );
-    skutils::test::with_test_environment( [&]() {
-        typedef std::map< skutils::dispatch::queue_id_t, size_t > map_call_counts_t;
-        map_call_counts_t mapCallCounts, mapJobsLeft;
-        typedef std::mutex mutex_type;
-        typedef std::lock_guard< mutex_type > lock_type;
-        mutex_type mtx;
-        auto fnLogCall = [&]( const skutils::dispatch::queue_id_t& id, size_t& nCallsOut ) -> void {
-            lock_type lock( mtx );
-            map_call_counts_t::iterator itFind = mapCallCounts.find( id ), itEnd =
-                                                                               mapCallCounts.end();
-            if ( itFind != itEnd ) {
-                size_t cntCalls = itFind->second;
-                ++cntCalls;
-                itFind->second = cntCalls;
-                nCallsOut = cntCalls;
-            } else {
-                mapCallCounts[id] = 1;
-                nCallsOut = 1;
-            }
-        };
-        //
-        static const size_t cntThreads = 16;
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "will use " ) +
-                                   cc::size10( cntThreads ) + cc::debug( " threads(s)..." ) );
-        skutils::dispatch::default_domain( cntThreads );  // use 16 threads in default domain
-        static const size_t cntQueues = 500, cntJobs = 200, nSleepMillisecondsInJob = 0;
-        const size_t cntExpectedCalls = cntQueues * cntJobs;
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "will run " ) +
-                                   cc::size10( cntQueues ) + cc::debug( " queue(s) with " ) +
-                                   cc::size10( cntJobs ) + cc::debug( " job(s) in each..." ) );
-        skutils::test::test_log_e( thread_prefix_str() +
-                                   cc::debug( "... so max expected call count is " ) +
-                                   cc::size10( cntExpectedCalls ) );
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "overloading queues... " ) );
-        size_t i, j;
-        for ( j = 0; j < cntJobs; ++j ) {
-            for ( i = 0; i < cntQueues; ++i ) {
-                skutils::dispatch::queue_id_t id_my_queue =
-                    skutils::tools::format( "queue_%zu", i );
-                skutils::dispatch::async( id_my_queue, [id_my_queue, &fnLogCall]() {
-                    size_t nCalls = 0;
-                    fnLogCall( id_my_queue, nCalls );
-                    BOOST_REQUIRE( nCalls > 0 );
-                    //							if( g_bShowDetailedJobLogs )
-                    //								skutils::test::test_log_e( thread_prefix_str() +
-                    // cc::debug("--- async job in queue ") + cc::info(id_my_queue) + cc::debug(",
-                    // invocation ") +
-                    // cc::size10(size_t(nCalls)-1) );
-                    std::this_thread::sleep_for(
-                        std::chrono::milliseconds( nSleepMillisecondsInJob ) );
-                } );
-            }  // for...
-        }      // for...
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "done overloading queues, " ) +
-                                   cc::size10( cntExpectedCalls ) + cc::debug( " jobs(s) added" ) );
-        static const size_t nSleepSeconds = 5;
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep " ) +
-                                   cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
-        sleep( nSleepSeconds );
-        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
-                                   cc::size10( nSleepSeconds ) +
-                                   cc::warn( " second(s), end of domain life time..." ) );
-        //
-        for ( const auto& entry : mapCallCounts ) {
-            skutils::dispatch::queue_ptr_t pQueue = skutils::dispatch::get( entry.first, false );
-            size_t jobCountInQueue = pQueue->async_job_count();
-            // if( jobCountInQueue > 0 ) {
-            //	int xxx = 0;
-            //}
-            mapJobsLeft[entry.first] = jobCountInQueue;
-        }
-        //
-        skutils::test::test_log_e(
-            thread_prefix_str() + cc::warn( "shutting down default domain..." ) );
-        skutils::dispatch::shutdown();
-        //
-        skutils::test::test_log_e(
-            thread_prefix_str() + cc::warn( "analyzing expected results..." ) );
-        if ( g_bShowDetailedJobLogs ) {
-            for ( const auto& entry : mapCallCounts ) {
-                std::string s = thread_prefix_str() + cc::debug( "queue " ) +
-                                cc::info( entry.first ) + cc::debug( " did performed " ) +
-                                cc::size10( entry.second ) + cc::debug( " call(s)" );
-                size_t jobCountInQueue = mapJobsLeft[entry.first];
-                if ( jobCountInQueue > 0 )
-                    s += cc::debug( ", " ) + cc::size10( jobCountInQueue ) +
-                         cc::debug( " job(s) left" );
-                skutils::test::test_log_e( s );
-            }
-        }
-        i = 0;
-        size_t nMin = 0, nMax = 0, nCallsSummary = 0;
-        for ( const auto& entry : mapCallCounts ) {
-            nCallsSummary += entry.second;
-            if ( i == 0 )
-                nMin = nMax = entry.second;
-            else {
-                if ( nMin > entry.second )
-                    nMin = entry.second;
-                if ( nMax < entry.second )
-                    nMax = entry.second;
-            }
-            ++i;
-        }
-        BOOST_REQUIRE( nMax > 0 );
-        double lfMin = ( double( nMin ) / double( nMax ) ) * 100.0;
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "got " ) + cc::size10( nMin ) +
-                                   cc::debug( " min call(s) and " ) + cc::size10( nMax ) +
-                                   cc::debug( " max calls" ) );
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "got min as " ) +
-                                   cc::note( skutils::tools::format( "%.1lf", lfMin ) ) +
-                                   cc::debug( "%, if assuming max as " ) + cc::size10( 100 ) +
-                                   cc::debug( "%" ) );
-        BOOST_REQUIRE( lfMin >= 80.0 );
-        //
-        skutils::test::test_log_e(
-            thread_prefix_str() + cc::debug( "got " ) + cc::size10( nCallsSummary ) +
-            cc::debug( " call(s) done, max expected calls is " ) + cc::size10( cntExpectedCalls ) );
-        double lfCallsPercent = ( double( nCallsSummary ) / double( cntExpectedCalls ) ) * 100.0;
-        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "got real calls as " ) +
-                                   cc::note( skutils::tools::format( "%.1lf", lfCallsPercent ) ) +
-                                   cc::debug( "%, if assuming max calls as " ) + cc::size10( 100 ) +
-                                   cc::debug( "%" ) );
-        //
-        //
-        skutils::test::test_log_e(
-            thread_prefix_str() + cc::info( "end of balance_equality test" ) );
-    } );
-}
+// temporary disable the test
+// the functionality it tests is not used
+//BOOST_AUTO_TEST_CASE( balance_equality ) {
+//    skutils::test::test_print_header_name( "SkUtils/dispatch/balance_equality" );
+//    skutils::test::with_test_environment( [&]() {
+//        typedef std::map< skutils::dispatch::queue_id_t, size_t > map_call_counts_t;
+//        map_call_counts_t mapCallCounts, mapJobsLeft;
+//        typedef std::mutex mutex_type;
+//        typedef std::lock_guard< mutex_type > lock_type;
+//        mutex_type mtx;
+//        auto fnLogCall = [&]( const skutils::dispatch::queue_id_t& id, size_t& nCallsOut ) -> void {
+//            lock_type lock( mtx );
+//            map_call_counts_t::iterator itFind = mapCallCounts.find( id ), itEnd =
+//                                                                               mapCallCounts.end();
+//            if ( itFind != itEnd ) {
+//                size_t cntCalls = itFind->second;
+//                ++cntCalls;
+//                itFind->second = cntCalls;
+//                nCallsOut = cntCalls;
+//            } else {
+//                mapCallCounts[id] = 1;
+//                nCallsOut = 1;
+//            }
+//        };
+//        //
+//        static const size_t cntThreads = 16;
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "will use " ) +
+//                                   cc::size10( cntThreads ) + cc::debug( " threads(s)..." ) );
+//        skutils::dispatch::default_domain( cntThreads );  // use 16 threads in default domain
+//        static const size_t cntQueues = 500, cntJobs = 200, nSleepMillisecondsInJob = 0;
+//        const size_t cntExpectedCalls = cntQueues * cntJobs;
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "will run " ) +
+//                                   cc::size10( cntQueues ) + cc::debug( " queue(s) with " ) +
+//                                   cc::size10( cntJobs ) + cc::debug( " job(s) in each..." ) );
+//        skutils::test::test_log_e( thread_prefix_str() +
+//                                   cc::debug( "... so max expected call count is " ) +
+//                                   cc::size10( cntExpectedCalls ) );
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "overloading queues... " ) );
+//        size_t i, j;
+//        for ( j = 0; j < cntJobs; ++j ) {
+//            for ( i = 0; i < cntQueues; ++i ) {
+//                skutils::dispatch::queue_id_t id_my_queue =
+//                    skutils::tools::format( "queue_%zu", i );
+//                skutils::dispatch::async( id_my_queue, [id_my_queue, &fnLogCall]() {
+//                    size_t nCalls = 0;
+//                    fnLogCall( id_my_queue, nCalls );
+//                    BOOST_REQUIRE( nCalls > 0 );
+//                    //							if( g_bShowDetailedJobLogs )
+//                    //								skutils::test::test_log_e( thread_prefix_str() +
+//                    // cc::debug("--- async job in queue ") + cc::info(id_my_queue) + cc::debug(",
+//                    // invocation ") +
+//                    // cc::size10(size_t(nCalls)-1) );
+//                    std::this_thread::sleep_for(
+//                        std::chrono::milliseconds( nSleepMillisecondsInJob ) );
+//                } );
+//            }  // for...
+//        }      // for...
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "done overloading queues, " ) +
+//                                   cc::size10( cntExpectedCalls ) + cc::debug( " jobs(s) added" ) );
+//        static const size_t nSleepSeconds = 5;
+//        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "will sleep " ) +
+//                                   cc::size10( nSleepSeconds ) + cc::warn( " second(s)..." ) );
+//        sleep( nSleepSeconds );
+//        skutils::test::test_log_e( thread_prefix_str() + cc::warn( "done sleeping " ) +
+//                                   cc::size10( nSleepSeconds ) +
+//                                   cc::warn( " second(s), end of domain life time..." ) );
+//        //
+//        for ( const auto& entry : mapCallCounts ) {
+//            skutils::dispatch::queue_ptr_t pQueue = skutils::dispatch::get( entry.first, false );
+//            size_t jobCountInQueue = pQueue->async_job_count();
+//            // if( jobCountInQueue > 0 ) {
+//            //	int xxx = 0;
+//            //}
+//            mapJobsLeft[entry.first] = jobCountInQueue;
+//        }
+//        //
+//        skutils::test::test_log_e(
+//            thread_prefix_str() + cc::warn( "shutting down default domain..." ) );
+//        skutils::dispatch::shutdown();
+//        //
+//        skutils::test::test_log_e(
+//            thread_prefix_str() + cc::warn( "analyzing expected results..." ) );
+//        if ( g_bShowDetailedJobLogs ) {
+//            for ( const auto& entry : mapCallCounts ) {
+//                std::string s = thread_prefix_str() + cc::debug( "queue " ) +
+//                                cc::info( entry.first ) + cc::debug( " did performed " ) +
+//                                cc::size10( entry.second ) + cc::debug( " call(s)" );
+//                size_t jobCountInQueue = mapJobsLeft[entry.first];
+//                if ( jobCountInQueue > 0 )
+//                    s += cc::debug( ", " ) + cc::size10( jobCountInQueue ) +
+//                         cc::debug( " job(s) left" );
+//                skutils::test::test_log_e( s );
+//            }
+//        }
+//        i = 0;
+//        size_t nMin = 0, nMax = 0, nCallsSummary = 0;
+//        for ( const auto& entry : mapCallCounts ) {
+//            nCallsSummary += entry.second;
+//            if ( i == 0 )
+//                nMin = nMax = entry.second;
+//            else {
+//                if ( nMin > entry.second )
+//                    nMin = entry.second;
+//                if ( nMax < entry.second )
+//                    nMax = entry.second;
+//            }
+//            ++i;
+//        }
+//        BOOST_REQUIRE( nMax > 0 );
+//        double lfMin = ( double( nMin ) / double( nMax ) ) * 100.0;
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "got " ) + cc::size10( nMin ) +
+//                                   cc::debug( " min call(s) and " ) + cc::size10( nMax ) +
+//                                   cc::debug( " max calls" ) );
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "got min as " ) +
+//                                   cc::note( skutils::tools::format( "%.1lf", lfMin ) ) +
+//                                   cc::debug( "%, if assuming max as " ) + cc::size10( 100 ) +
+//                                   cc::debug( "%" ) );
+//        BOOST_REQUIRE( lfMin >= 80.0 );
+//        //
+//        skutils::test::test_log_e(
+//            thread_prefix_str() + cc::debug( "got " ) + cc::size10( nCallsSummary ) +
+//            cc::debug( " call(s) done, max expected calls is " ) + cc::size10( cntExpectedCalls ) );
+//        double lfCallsPercent = ( double( nCallsSummary ) / double( cntExpectedCalls ) ) * 100.0;
+//        skutils::test::test_log_e( thread_prefix_str() + cc::debug( "got real calls as " ) +
+//                                   cc::note( skutils::tools::format( "%.1lf", lfCallsPercent ) ) +
+//                                   cc::debug( "%, if assuming max calls as " ) + cc::size10( 100 ) +
+//                                   cc::debug( "%" ) );
+//        //
+//        //
+//        skutils::test::test_log_e(
+//            thread_prefix_str() + cc::info( "end of balance_equality test" ) );
+//    } );
+//}
 
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
