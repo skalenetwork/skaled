@@ -3728,6 +3728,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
 
     // mine block without transactions
     dev::eth::simulateMining( *( fixture.client ), 1 );
+    sleep(3);
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
     BOOST_REQUIRE_GT( etherbaseBalance, 0 );
 
@@ -3767,6 +3768,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     txHash = fixture.rpcClient->eth_sendTransaction( partiallyRetrieveTx );
     BOOST_REQUIRE( !txHash.empty() );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+    sleep(3);
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
