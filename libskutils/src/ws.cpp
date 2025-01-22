@@ -2727,7 +2727,7 @@ basic_participant::~basic_participant() {}
 std::string basic_participant::stat_backend_name() {
     return "nlws";
 }
-nlohmann::json basic_participant::toJSON( ) const {
+nlohmann::json basic_participant::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "participant";
     return jo;
@@ -2735,7 +2735,7 @@ nlohmann::json basic_participant::toJSON( ) const {
 
 basic_sender::basic_sender() {}
 basic_sender::~basic_sender() {}
-nlohmann::json basic_sender::toJSON( ) const {
+nlohmann::json basic_sender::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "sender";
     return jo;
@@ -2745,7 +2745,7 @@ basic_socket::basic_socket() {
     bns_assign_from_default_instance();
 }
 basic_socket::~basic_socket() {}
-nlohmann::json basic_socket::toJSON( ) const {
+nlohmann::json basic_socket::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "socket";
     return jo;
@@ -2822,8 +2822,7 @@ std::string peer::getShortTypeDescrition( bool isColored /*= false*/ ) const {
     }
     return s;
 }
-std::string peer::getShortPeerDescription(
-    bool isColored /*= false*/, bool /*= true*/ ) const {
+std::string peer::getShortPeerDescription( bool isColored /*= false*/, bool /*= true*/ ) const {
     std::stringstream ss;
     std::string strSpace( " " ), strCommaSpace( ", " ), strIP( getRemoteIp() );
     if ( isColored ) {
@@ -3045,7 +3044,7 @@ server::server( basic_network_settings* pBNS )
 server::~server() {
     close();
 }
-nlohmann::json server::toJSON( ) const {
+nlohmann::json server::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "server";
     jo["server_type"] = cc::strip( type() );
@@ -3289,7 +3288,7 @@ client::~client() {
     enableRestartTimer( false );
     close();
 }
-nlohmann::json client::toJSON( ) const {
+nlohmann::json client::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "client";
     jo["url"] = uri();
