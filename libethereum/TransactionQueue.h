@@ -297,7 +297,7 @@ public:
             // new - if the height and the gas price are the same, the earlier received  transactions
             // go first
 
-            return _first.creationTimeMs > _second.creationTimeMs;
+            return _first.creationTimeMs < _second.creationTimeMs;
 
         }
     };
