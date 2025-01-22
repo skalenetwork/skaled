@@ -89,7 +89,7 @@ public:
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::DebugFace::debug_getFutureTransactionsI );
 
-        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPatchTimestamps", 
+        this->bindAndAddMethod( jsonrpc::Procedure( "debug_getPatchTimestamps",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, NULL ),
             &dev::rpc::DebugFace::debug_getPatchTimestampsI );
     }
@@ -163,8 +163,7 @@ public:
         response = this->debug_getFutureTransactions();
     }
 
-    inline virtual void debug_getPatchTimestampsI( 
-        const Json::Value&, Json::Value& response ) {
+    inline virtual void debug_getPatchTimestampsI( const Json::Value&, Json::Value& response ) {
         response = this->debug_getPatchTimestamps();
     }
 
