@@ -296,7 +296,7 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::ContractStoragePatch)] = 1;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::StorageDestructionPatch)] = 1;
-            powPatchActivationTimestamp = time(nullptr) + 10;
+            powPatchActivationTimestamp = time(nullptr) + 60;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::CorrectForkInPowPatch)] = powPatchActivationTimestamp;
             push0PatchActivationTimestamp = time(nullptr) + 10;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = push0PatchActivationTimestamp;
