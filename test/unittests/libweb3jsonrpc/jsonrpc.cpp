@@ -296,7 +296,7 @@ JsonRpcFixture( const std::string& _config = "", bool _owner = true,
             chainParams.sChain.dbStorageLimit = 320.5*( 615 + 1430 );
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::ContractStoragePatch)] = 1;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::StorageDestructionPatch)] = 1;
-            powPatchActivationTimestamp = time(nullptr) + 60;
+            powPatchActivationTimestamp = time(nullptr) + 10;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::CorrectForkInPowPatch)] = powPatchActivationTimestamp;
             push0PatchActivationTimestamp = time(nullptr) + 10;
             chainParams.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = push0PatchActivationTimestamp;
@@ -1660,7 +1660,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
-        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        u256 externalGas = ~u256( 0 ) / u256( hash ) / GAS_PER_HASH;
         if ( externalGas >= correctEstimate && externalGas < correctEstimate + correctEstimate/10 ) {
             powGasPrice = candidate;
         }
@@ -1668,8 +1668,12 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     // Account balance is too low will mean that PoW didn't work out
     transact["gasPrice"] = toJS( powGasPrice );
 
+    // we may've been calculating pow for too long and patch is active already
+    // need to know the block number at this point
+    auto latestBlockNumber = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock)).number();
+
     // wait for patch turning on and see how it happens
-    string txHash;
+    string txHash;    
     BlockHeader badInfo, goodInfo;
     for(;;) {
         string gasEstimateStr = fixture.rpcClient->eth_estimateGas(transact);
@@ -1696,7 +1700,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 
     BOOST_REQUIRE_LT(badInfo.timestamp(), fixture.powPatchActivationTimestamp);
     BOOST_REQUIRE_GE(goodInfo.timestamp(), fixture.powPatchActivationTimestamp);
-    BOOST_REQUIRE_EQUAL(badInfo.number()+1, goodInfo.number());
+    BOOST_REQUIRE_EQUAL(std::max( badInfo.number() + 1, latestBlockNumber ), goodInfo.number());
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
