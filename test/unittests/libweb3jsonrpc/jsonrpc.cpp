@@ -2795,13 +2795,13 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     Json::Reader().parse(c_genesisConfigString, configJson);
     
     // indexed by enum int value
-    std::vector< int > patchTimestamps;
+    std::vector< size_t > patchTimestamps;
     
     // Set custom config file & create timestamps for each patch
     size_t numPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
     for (size_t patch = 0; patch < numPatches ; patch++ ) {
         SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
-        int ts = patch + 1000; // just to offset from the default values (0, 1)
+        size_t ts = patch + 1000; // just to offset from the default values (0, 1)
         patchTimestamps.push_back(ts);
 
         std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
