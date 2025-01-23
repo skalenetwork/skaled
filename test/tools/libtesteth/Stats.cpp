@@ -41,7 +41,7 @@ void Stats::testStarted( std::string const& _name ) {
 }
 
 void Stats::testFinished( int64_t _gasUsed ) {
-    m_stats.push_back( {clock::now() - m_tp, _gasUsed, m_currentSuite + "/" + m_currentTest} );
+    m_stats.push_back( { clock::now() - m_tp, _gasUsed, m_currentSuite + "/" + m_currentTest } );
 }
 
 std::ostream& operator<<( std::ostream& out, Stats::clock::duration const& d ) {
@@ -81,7 +81,7 @@ Stats::~Stats() {
         out << "\n";
     } else if ( !Options::get().statsOutFile.empty() ) {
         // Output stats to file
-        std::ofstream file{Options::get().statsOutFile};
+        std::ofstream file{ Options::get().statsOutFile };
         for ( auto&& s : m_stats ) {
             auto usecs =
                 std::chrono::duration_cast< std::chrono::microseconds >( s.duration ).count();

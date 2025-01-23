@@ -10,13 +10,13 @@
 #include <skutils/multifunction.h>
 #include <skutils/multithreading.h>
 #include <skutils/network.h>
+#include <skutils/rest_call.h>
 #include <skutils/stats.h>
 #include <skutils/thread_pool.h>
+#include <skutils/unddos.h>
 #include <skutils/url.h>
 #include <skutils/utils.h>
 #include <skutils/ws.h>
-#include <skutils/rest_call.h>
-#include <skutils/unddos.h>
 
 #include <atomic>
 #include <chrono>
@@ -233,25 +233,21 @@ public:
 
 class test_server_proxygen : public test_server {
     skutils::http_pg::wrapped_proxygen_server_handle hProxygenServer_ = nullptr;
+
 public:
-    test_server_proxygen( const char* strBindAddr4, const char* strBindAddr6,
-                          int nListenPortHTTP4, int nListenPortHTTPS4, int nListenPortHTTP6, int nListenPortHTTPS6,
-                          int32_t threads, int32_t threads_limit
-                          );
+    test_server_proxygen( const char* strBindAddr4, const char* strBindAddr6, int nListenPortHTTP4,
+        int nListenPortHTTPS4, int nListenPortHTTP6, int nListenPortHTTPS6, int32_t threads,
+        int32_t threads_limit );
     virtual ~test_server_proxygen();
     void stop() override;
     void run() override;
     void run_parallel() override;
     void check_can_listen() override;
     virtual bool isSSL() const override;
+
 protected:
-    skutils::result_of_http_request implHandleHttpRequest(
-            const nlohmann::json & joIn,
-            const std::string& strOrigin,
-            int ipVer,
-            const std::string& strDstAddress,
-            int nDstPort
-            );
+    skutils::result_of_http_request implHandleHttpRequest( const nlohmann::json& joIn,
+        const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort );
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

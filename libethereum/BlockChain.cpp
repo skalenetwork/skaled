@@ -638,7 +638,7 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     // Check it's not crazy
     if ( _header.timestamp() > utcTime() && !m_params.allowFutureBlocks ) {
         LOG( m_loggerTrace ) << _header.hash() << " : Future time " << _header.timestamp()
-                              << " (now at " << utcTime() << ")";
+                             << " (now at " << utcTime() << ")";
         // Block has a timestamp in the future. This is no good.
         BOOST_THROW_EXCEPTION( FutureTime() );
     }
@@ -899,7 +899,7 @@ void BlockChain::recomputeExistingOccupiedSpaceForBlockRotation() try {
         extrasBatchSize +=
             ( 4147 + 34 ) / 16 + ( 4147 + 34 ) / 256 + 2;  // 1+1/16th big bloom per block
         LOG( m_loggerTrace ) << "Computed block " << i
-                              << " DB usage = " << blocksBatchSize + extrasBatchSize;
+                             << " DB usage = " << blocksBatchSize + extrasBatchSize;
     }  // for block
 
     uint64_t pieceUsageBytes = 0;
@@ -970,9 +970,9 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     newLastBlockNumber = ( unsigned ) _block.info.number();
 
     LOG( m_loggerTrace ) << "   Imported and best " << _totalDifficulty << " ("
-                          << "#" << _block.info.number() << "). Has "
-                          << ( details( _block.info.parentHash() ).children.size() - 1 )
-                          << " siblings.";
+                         << "#" << _block.info.number() << "). Has "
+                         << ( details( _block.info.parentHash() ).children.size() - 1 )
+                         << " siblings.";
 
 #if ETH_PARANOIA
     if ( isKnown( _block.info.hash() ) && !details( _block.info.hash() ) ) {
@@ -1045,7 +1045,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     fresh.push_back( tbi.hash() );
 
     LOG( m_loggerTrace ) << "Insterted block with " << _block.transactions.size()
-                          << " transactions";
+                         << " transactions";
 
     return ImportRoute{ dead, fresh, _block.transactions };
 }

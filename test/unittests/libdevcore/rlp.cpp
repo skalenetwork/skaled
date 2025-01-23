@@ -221,8 +221,8 @@ BOOST_AUTO_TEST_CASE( EmptyArrayList ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE( invalidRLPtest, 
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE(
+    invalidRLPtest, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     runRlpTest( "invalidRLPTest", "/RLPTests" );
 }
 
@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE( rlpRandom ) {
     fs::path testPath = dev::test::getTestPath();
     testPath /= fs::path( "RLPTests/RandomRLPTests" );
 
-    vector< boost::filesystem::path > testFiles = test::getFiles( testPath, {".json"} );
+    vector< boost::filesystem::path > testFiles = test::getFiles( testPath, { ".json" } );
     for ( auto& path : testFiles ) {
         try {
             cnote << "Testing ..." << path.filename();

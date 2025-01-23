@@ -133,7 +133,7 @@ Options::Options( int argc, const char** argv ) {
         // For some reason boost is confused by -- separator. This extra parser "skips" the --.
         auto skipDoubleDash = []( const std::string& s ) -> std::pair< std::string, std::string > {
             if ( s == "--" )
-                return {"--", {}};
+                return { "--", {} };
             return {};
         };
 
@@ -155,7 +155,7 @@ Options::Options( int argc, const char** argv ) {
     setDatabaseKind( DatabaseKind::LevelDB );  // default to LevelDB in the interest of reduced
                                                // test execution time
     for ( auto i = 0; i < argc; ++i ) {
-        auto arg = std::string{argv[i]};
+        auto arg = std::string{ argv[i] };
         auto throwIfNoArgumentFollows = [&i, &argc, &arg]() {
             if ( i + 1 >= argc )
                 BOOST_THROW_EXCEPTION(
@@ -202,7 +202,7 @@ Options::Options( int argc, const char** argv ) {
         } else if ( arg == "--jsontrace" ) {
             throwIfNoArgumentFollows();
             jsontrace = true;
-            auto arg = std::string{argv[++i]};
+            auto arg = std::string{ argv[++i] };
             Json::Value value;
             Json::Reader().parse( arg, value );
             StandardTrace::DebugOptions op;
@@ -226,10 +226,10 @@ Options::Options( int argc, const char** argv ) {
         else if ( arg == "--singletest" ) {
             throwIfNoArgumentFollows();
             singleTest = true;
-            auto name1 = std::string{argv[++i]};
+            auto name1 = std::string{ argv[++i] };
             if ( i + 1 < argc )  // two params
             {
-                auto name2 = std::string{argv[++i]};
+                auto name2 = std::string{ argv[++i] };
                 if ( name2[0] == '-' )  // not param, another option
                 {
                     singleTestName = std::move( name1 );
@@ -242,7 +242,7 @@ Options::Options( int argc, const char** argv ) {
                 singleTestName = std::move( name1 );
         } else if ( arg == "--singlenet" ) {
             throwIfNoArgumentFollows();
-            singleTestNet = std::string{argv[++i]};
+            singleTestNet = std::string{ argv[++i] };
             ImportTest::checkAllowedNetwork( singleTestNet );
         } else if ( arg == "--fulloutput" )
             fulloutput = true;
@@ -251,7 +251,7 @@ Options::Options( int argc, const char** argv ) {
             verbosity = std::max( verbosity, atoi( argv[++i] ) );
         } else if ( arg == "--options" ) {
             throwIfNoArgumentFollows();
-            boost::filesystem::path file( std::string{argv[++i]} );
+            boost::filesystem::path file( std::string{ argv[++i] } );
             if ( boost::filesystem::exists( file ) )
                 randomCodeOptionsPath = file;
             else {
@@ -264,7 +264,7 @@ Options::Options( int argc, const char** argv ) {
         } else if ( arg == "-t" ) {
             throwIfAfterSeparator();
             throwIfNoArgumentFollows();
-            rCurrentTestSuite = std::string{argv[++i]};
+            rCurrentTestSuite = std::string{ argv[++i] };
         } else if ( arg == "-d" ) {
             throwIfNoArgumentFollows();
             trDataIndex = atoi( argv[++i] );
@@ -276,7 +276,7 @@ Options::Options( int argc, const char** argv ) {
             trValueIndex = atoi( argv[++i] );
         } else if ( arg == "--testpath" ) {
             throwIfNoArgumentFollows();
-            testpath = std::string{argv[++i]};
+            testpath = std::string{ argv[++i] };
         } else if ( arg == "--statediff" ) {
             statediff = true;
             verbosity = VerbosityTrace;
@@ -294,7 +294,7 @@ Options::Options( int argc, const char** argv ) {
             createRandomTest = true;
             if ( i + 1 < argc )  // two params
             {
-                auto options = std::string{argv[++i]};
+                auto options = std::string{ argv[++i] };
                 if ( options[0] == '-' )  // not param, another option
                     i--;
                 else {

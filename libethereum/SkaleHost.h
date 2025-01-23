@@ -82,7 +82,8 @@ private:
     const dev::eth::Client& m_client;
 
     /// Loggers
-    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "DefaultConsensusFactory" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger(
+        dev::VerbosityInfo, "DefaultConsensusFactory" ) };
 #if CONSENSUS
     void fillSgxInfo( ConsensusEngine& consensus ) const;
     void fillPublicKeyInfo( ConsensusEngine& consensus ) const;

@@ -870,7 +870,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
     wr_state.addBalance(
         fixture.account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
     wr_state.commit();
-    wr_state.getOriginalDb()->createBlockSnap(2);
+    wr_state.getOriginalDb()->createBlockSnap( 2 );
 
     // 1 txn with max gas
     Json::Value json;

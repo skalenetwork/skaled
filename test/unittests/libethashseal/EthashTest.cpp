@@ -117,12 +117,12 @@ BOOST_AUTO_TEST_CASE( epochSeed, *boost::unit_test::precondition( dev::test::run
     header.setNumber( 30000 );
     seed = Ethash::seedHash( header );
     BOOST_CHECK_EQUAL(
-        seed, h256{"290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563"} );
+        seed, h256{ "290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563" } );
 
     header.setNumber( 2048 * 30000 );
     seed = Ethash::seedHash( header );
     BOOST_CHECK_EQUAL(
-        seed, h256{"20a7678ca7b50829183baac2e1e3c43fa3c4bcbc171b11cf5a9f30bebd172920"} );
+        seed, h256{ "20a7678ca7b50829183baac2e1e3c43fa3c4bcbc171b11cf5a9f30bebd172920" } );
 }
 
 namespace {
@@ -190,9 +190,9 @@ BOOST_AUTO_TEST_CASE( ethashEvalHeader ) {
     // FIXME: Drop this test as ethash library has this test cases in its test suite.
 
     for ( auto& t : ethashTestCases ) {
-        BlockHeader header{fromHex( t.header ), HeaderData};
-        h256 headerHash{t.headerHash};
-        eth::Nonce nonce{t.nonce};
+        BlockHeader header{ fromHex( t.header ), HeaderData };
+        h256 headerHash{ t.headerHash };
+        eth::Nonce nonce{ t.nonce };
         BOOST_REQUIRE_EQUAL( headerHash, header.hash( WithoutSeal ) );
         BOOST_REQUIRE_EQUAL( nonce, Ethash::nonce( header ) );
 
@@ -201,10 +201,10 @@ BOOST_AUTO_TEST_CASE( ethashEvalHeader ) {
             ethash::hash256_from_bytes( header.hash( WithoutSeal ).data() ),
             ( uint64_t )( u64 ) nonce );
 
-        h256 mix{result.mix_hash.bytes, h256::ConstructFromPointer};
-        h256 final{result.final_hash.bytes, h256::ConstructFromPointer};
+        h256 mix{ result.mix_hash.bytes, h256::ConstructFromPointer };
+        h256 final{ result.final_hash.bytes, h256::ConstructFromPointer };
 
-        BOOST_REQUIRE_EQUAL( final, h256{t.result} );
+        BOOST_REQUIRE_EQUAL( final, h256{ t.result } );
         BOOST_REQUIRE_EQUAL( mix, Ethash::mixHash( header ) );
     }
 }

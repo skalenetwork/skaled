@@ -27,8 +27,7 @@
 using namespace dev;
 using namespace dev::eth;
 using namespace dev::test;
-using skale::
-State;
+using skale::State;
 
 class ExtVMConstantinopleFixTestFixture : public TestOutputHelperFixture {
 public:
@@ -49,7 +48,7 @@ public:
     }
 
     EnvInfo createEnvInfo( BlockHeader const& _header ) const {
-        return {_header, lastBlockHashes, 1, 0, blockchain.chainID()};
+        return { _header, lastBlockHashes, 1, 0, blockchain.chainID() };
     }
 
     NetworkSelector networkSelector;
@@ -59,7 +58,7 @@ public:
     BlockChain const& blockchain;
     h256 preExperimentalBlockHash;
     h256 experimentalBlockHash;
-    TestLastBlockHashes lastBlockHashes{{}};
+    TestLastBlockHashes lastBlockHashes{ {} };
 };
 
 BOOST_FIXTURE_TEST_SUITE( ExtVmSuite, ExtVMConstantinopleFixTestFixture )
@@ -72,8 +71,8 @@ BOOST_AUTO_TEST_CASE( BlockhashOutOfBoundsRetunsZero,
     TestLastBlockHashes lastBlockHashes( {} );
     EnvInfo envInfo( createEnvInfo( block.info() ) );
     Address addr( "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" );
-    ExtVM extVM( block.mutableState(), envInfo, blockchain.sealEngine()->chainParams(), addr, addr, addr, 0, 0,
-        {}, {}, {}, 0, 0, false, false );
+    ExtVM extVM( block.mutableState(), envInfo, blockchain.sealEngine()->chainParams(), addr, addr,
+        addr, 0, 0, {}, {}, {}, 0, 0, false, false );
 
     BOOST_CHECK_EQUAL( extVM.blockHash( 100 ), h256() );
 }
@@ -83,12 +82,13 @@ BOOST_AUTO_TEST_CASE( BlockhashBeforeConstantinopleReliesOnLastHashes,
     Block block = blockchain.genesisBlock( genesisState );
     block.sync( blockchain );
 
-    h256s lastHashes{h256( "0xaaabbbccc" ), h256( "0xdddeeefff" )};
+    h256s lastHashes{ h256( "0xaaabbbccc" ), h256( "0xdddeeefff" ) };
     TestLastBlockHashes lastBlockHashes( lastHashes );
-    EnvInfo envInfo( block.info(), lastBlockHashes, block.info().timestamp(), 0, blockchain.chainID() );
+    EnvInfo envInfo(
+        block.info(), lastBlockHashes, block.info().timestamp(), 0, blockchain.chainID() );
     Address addr( "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" );
-    ExtVM extVM( block.mutableState(), envInfo, blockchain.sealEngine()->chainParams(), addr, addr, addr, 0, 0,
-        {}, {}, {}, 0, 0, false, false );
+    ExtVM extVM( block.mutableState(), envInfo, blockchain.sealEngine()->chainParams(), addr, addr,
+        addr, 0, 0, {}, {}, {}, 0, 0, false, false );
     h256 hash = extVM.blockHash( 1 );
     BOOST_REQUIRE_EQUAL( hash, lastHashes[0] );
 }

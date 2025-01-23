@@ -60,8 +60,8 @@ ImportTest::ImportTest( json_spirit::mObject const& _input, json_spirit::mObject
       m_statePost( 0 ),
       m_testInputObject( _input ),
       m_testOutputObject( _output ) {
-    m_statePre.setStorageLimit(1000000000);
-    m_statePost.setStorageLimit(1000000000);
+    m_statePre.setStorageLimit( 1000000000 );
+    m_statePost.setStorageLimit( 1000000000 );
     importEnv( _input.at( "env" ).get_obj() );
     importTransaction( _input.at( "transaction" ).get_obj() );
     importState( _input.at( "pre" ).get_obj(), m_statePre );
@@ -93,7 +93,7 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
 
         State s = State( 0 );
         AccountMaskMap m;
-        StateAndMap smap{s, m};
+        StateAndMap smap{ s, m };
         vector< size_t > stateIndexesToPrint;
         json_spirit::mArray expetSectionArray;
 
@@ -102,18 +102,18 @@ void ImportTest::makeBlockchainTestFromStateTest( set< eth::Network > const& _ne
             trDup.netId = net;
 
             // Calculate the block reward
-            ChainParams const chainParams{genesisInfo( net )};
+            ChainParams const chainParams{ genesisInfo( net ) };
             EVMSchedule const schedule = chainParams.makeEvmSchedule( 0, 1 );
             // u256 const blockReward = chainParams.blockReward(schedule);
 
-            TrExpectSection search{trDup, smap};
+            TrExpectSection search{ trDup, smap };
             for ( auto const& exp : m_testInputObject.at( "expect" ).get_array() ) {
                 TrExpectSection* search2 = &search;
                 checkGeneralTestSectionSearch( exp.get_obj(), stateIndexesToPrint, "", search2 );
                 throw std::logic_error( "Skale state does not support addresses list" );
 
             }  // for exp
-        } // for net
+        }      // for net
 
         testObj["expect"] = expetSectionArray;
 
@@ -157,14 +157,14 @@ set< eth::Network > ImportTest::getAllNetworksFromExpectSections(
             BOOST_REQUIRE( exp.get_obj().count( "network" ) > 0 );
             if ( exp.get_obj().at( "network" ).type() == json_spirit::str_type )
                 requireJsonFields( exp.get_obj(), "expect",
-                    {{"network", jsonVType::str_type}, {"result", jsonVType::obj_type}} );
+                    { { "network", jsonVType::str_type }, { "result", jsonVType::obj_type } } );
             else
                 requireJsonFields( exp.get_obj(), "expect",
-                    {{"network", jsonVType::array_type}, {"result", jsonVType::obj_type}} );
+                    { { "network", jsonVType::array_type }, { "result", jsonVType::obj_type } } );
         } else if ( _testType == testType::StateTest )
             requireJsonFields( exp.get_obj(), "expect",
-                {{"indexes", jsonVType::obj_type}, {"network", jsonVType::array_type},
-                    {"result", jsonVType::obj_type}} );
+                { { "indexes", jsonVType::obj_type }, { "network", jsonVType::array_type },
+                    { "result", jsonVType::obj_type } } );
         ImportTest::parseJsonStrValueIntoSet( exp.get_obj().at( "network" ), allNetworks );
     }
 
@@ -209,7 +209,7 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
                 m_statePre = State( 0 );
-                m_statePre.setStorageLimit(1000000000);
+                m_statePre.setStorageLimit( 1000000000 );
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
             }
 
@@ -261,7 +261,8 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
             StandardTrace st;
             st.setShowMnemonics();
             st.setOptions( Options::get().jsontraceOptions );
-            out = initialState.execute( _env, se->chainParams(), _tr, Permanence::Committed, st.onOp() );
+            out = initialState.execute(
+                _env, se->chainParams(), _tr, Permanence::Committed, st.onOp() );
             cout << st.json();
             cout << "{\"stateRoot\": \"Is not supported\"}";
         } else
@@ -295,9 +296,9 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
 
 json_spirit::mObject ImportTest::makeAllFieldsHex(
     json_spirit::mObject const& _input, bool _isHeader ) {
-    static const set< string > hashes{"bloom", "coinbase", "hash", "mixHash", "parentHash",
+    static const set< string > hashes{ "bloom", "coinbase", "hash", "mixHash", "parentHash",
         "receiptTrie", "stateRoot", "transactionsTrie", "uncleHash", "currentCoinbase",
-        "previousHash", "to", "address", "caller", "origin", "secretKey", "data", "extraData"};
+        "previousHash", "to", "address", "caller", "origin", "secretKey", "data", "extraData" };
 
     json_spirit::mObject output = _input;
 
@@ -343,9 +344,10 @@ json_spirit::mObject ImportTest::makeAllFieldsHex(
 
 void ImportTest::importEnv( json_spirit::mObject const& _o ) {
     requireJsonFields( _o, "env",
-        {{"currentCoinbase", jsonVType::str_type}, {"currentDifficulty", jsonVType::str_type},
-            {"currentGasLimit", jsonVType::str_type}, {"currentNumber", jsonVType::str_type},
-            {"currentTimestamp", jsonVType::str_type}, {"previousHash", jsonVType::str_type}} );
+        { { "currentCoinbase", jsonVType::str_type }, { "currentDifficulty", jsonVType::str_type },
+            { "currentGasLimit", jsonVType::str_type }, { "currentNumber", jsonVType::str_type },
+            { "currentTimestamp", jsonVType::str_type },
+            { "previousHash", jsonVType::str_type } } );
     auto gasLimit = toInt( _o.at( "currentGasLimit" ) );
     BOOST_REQUIRE( gasLimit <= std::numeric_limits< int64_t >::max() );
     BlockHeader header;
@@ -372,7 +374,7 @@ void ImportTest::importState(
         validation::validateAccountMaskObj( accountMaskJson );
     }
     std::string jsondata = json_spirit::write_string( ( json_spirit::mValue ) o, false );
-    _state.populateFrom(jsonToAccountMap(jsondata, 0, &o_mask ) );
+    _state.populateFrom( jsonToAccountMap( jsondata, 0, &o_mask ) );
 }
 
 void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
@@ -380,8 +382,8 @@ void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
         BOOST_REQUIRE_MESSAGE( account.second.type() == jsonVType::obj_type,
             "State account is required to be json Object!" );
         requireJsonFields( account.second.get_obj(), account.first,
-            {{"balance", jsonVType::str_type}, {"code", jsonVType::str_type},
-                {"nonce", jsonVType::str_type}, {"storage", jsonVType::obj_type}} );
+            { { "balance", jsonVType::str_type }, { "code", jsonVType::str_type },
+                { "nonce", jsonVType::str_type }, { "storage", jsonVType::obj_type } } );
     }
 
     AccountMaskMap mask;
@@ -391,10 +393,10 @@ void ImportTest::importState( json_spirit::mObject const& _o, State& _state ) {
 void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transaction& o_tr ) {
     if ( _o.count( "secretKey" ) > 0 ) {
         requireJsonFields( _o, "transaction",
-            {{"data", jsonVType::str_type}, {"gasLimit", jsonVType::str_type},
-                {"gasPrice", jsonVType::str_type}, {"nonce", jsonVType::str_type},
-                {"secretKey", jsonVType::str_type}, {"to", jsonVType::str_type},
-                {"value", jsonVType::str_type}} );
+            { { "data", jsonVType::str_type }, { "gasLimit", jsonVType::str_type },
+                { "gasPrice", jsonVType::str_type }, { "nonce", jsonVType::str_type },
+                { "secretKey", jsonVType::str_type }, { "to", jsonVType::str_type },
+                { "value", jsonVType::str_type } } );
 
         if ( bigint( _o.at( "nonce" ).get_str() ) >= c_max256plus1 )
             BOOST_THROW_EXCEPTION( ValueTooLarge() << errinfo_comment(
@@ -420,10 +422,11 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
         o_tr.ignoreExternalGas();
     } else {
         requireJsonFields( _o, "transaction",
-            {{"data", jsonVType::str_type}, {"gasLimit", jsonVType::str_type},
-                {"gasPrice", jsonVType::str_type}, {"nonce", jsonVType::str_type},
-                {"v", jsonVType::str_type}, {"r", jsonVType::str_type}, {"s", jsonVType::str_type},
-                {"to", jsonVType::str_type}, {"value", jsonVType::str_type}} );
+            { { "data", jsonVType::str_type }, { "gasLimit", jsonVType::str_type },
+                { "gasPrice", jsonVType::str_type }, { "nonce", jsonVType::str_type },
+                { "v", jsonVType::str_type }, { "r", jsonVType::str_type },
+                { "s", jsonVType::str_type }, { "to", jsonVType::str_type },
+                { "value", jsonVType::str_type } } );
 
         RLPStream transactionRLPStream = createRLPStreamFromTransactionFields( _o );
         RLP transactionRLP( transactionRLPStream.out() );
@@ -449,16 +452,17 @@ void ImportTest::importTransaction( json_spirit::mObject const& _o, eth::Transac
 void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
     if ( o_tr.count( "secretKey" ) )
         requireJsonFields( o_tr, "transaction",
-            {{"data", jsonVType::array_type}, {"gasLimit", jsonVType::array_type},
-                {"gasPrice", jsonVType::str_type}, {"nonce", jsonVType::str_type},
-                {"secretKey", jsonVType::str_type}, {"to", jsonVType::str_type},
-                {"value", jsonVType::array_type}} );
+            { { "data", jsonVType::array_type }, { "gasLimit", jsonVType::array_type },
+                { "gasPrice", jsonVType::str_type }, { "nonce", jsonVType::str_type },
+                { "secretKey", jsonVType::str_type }, { "to", jsonVType::str_type },
+                { "value", jsonVType::array_type } } );
     else
         requireJsonFields( o_tr, "transaction",
-            {{"data", jsonVType::array_type}, {"gasLimit", jsonVType::array_type},
-                {"gasPrice", jsonVType::str_type}, {"nonce", jsonVType::str_type},
-                {"v", jsonVType::str_type}, {"r", jsonVType::str_type}, {"s", jsonVType::str_type},
-                {"to", jsonVType::str_type}, {"value", jsonVType::array_type}} );
+            { { "data", jsonVType::array_type }, { "gasLimit", jsonVType::array_type },
+                { "gasPrice", jsonVType::str_type }, { "nonce", jsonVType::str_type },
+                { "v", jsonVType::str_type }, { "r", jsonVType::str_type },
+                { "s", jsonVType::str_type }, { "to", jsonVType::str_type },
+                { "value", jsonVType::array_type } } );
 
     // Parse extended transaction
     size_t dataVectorSize = o_tr.at( "data" ).get_array().size();
@@ -530,16 +534,20 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
 
         if ( _statePost.addressInUse( accountAddress ) ) {
             if ( addressOptions.hasBalance() )
-                CHECK( ( _stateExpect.balance( accountAddress ) == _statePost.balance( accountAddress ) ),
+                CHECK( ( _stateExpect.balance( accountAddress ) ==
+                           _statePost.balance( accountAddress ) ),
                     TestOutputHelper::get().testName() + " Check State: "
-                        << accountAddress << ": incorrect balance " << _statePost.balance( accountAddress )
-                        << ", expected " << _stateExpect.balance( accountAddress ) );
+                        << accountAddress << ": incorrect balance "
+                        << _statePost.balance( accountAddress ) << ", expected "
+                        << _stateExpect.balance( accountAddress ) );
 
             if ( addressOptions.hasNonce() )
-                CHECK( ( _stateExpect.getNonce( accountAddress ) == _statePost.getNonce( accountAddress ) ),
+                CHECK( ( _stateExpect.getNonce( accountAddress ) ==
+                           _statePost.getNonce( accountAddress ) ),
                     TestOutputHelper::get().testName() + " Check State: "
-                        << accountAddress << ": incorrect nonce " << _statePost.getNonce( accountAddress )
-                        << ", expected " << _stateExpect.getNonce( accountAddress ) );
+                        << accountAddress << ": incorrect nonce "
+                        << _statePost.getNonce( accountAddress ) << ", expected "
+                        << _stateExpect.getNonce( accountAddress ) );
 
             if ( addressOptions.hasStorage() ) {
                 map< h256, pair< u256, u256 > > stateStorage = _statePost.storage( accountAddress );
@@ -553,9 +561,10 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
                             << "] = " << toCompactHexPrefixed( s.second.second ) );
 
                 // Check for unexpected storage values
-                map< h256, pair< u256, u256 > > expectedStorage = _stateExpect.storage( accountAddress );
+                map< h256, pair< u256, u256 > > expectedStorage =
+                    _stateExpect.storage( accountAddress );
                 for ( auto const& s : _statePost.storage( accountAddress ) ) {
-                    if (s.second.second == 0 && expectedStorage.count( s.first ) == 0 ) {
+                    if ( s.second.second == 0 && expectedStorage.count( s.first ) == 0 ) {
                         // take into account fact that storage() in skaled historically
                         // can return zero values of storage, which could just be omitted
                         // since Ethereum default value for storage is zero anyway
@@ -572,7 +581,7 @@ int ImportTest::compareStates( State const& _stateExpect, State const& _statePos
             }
 
             if ( addressOptions.hasCode() )
-                CHECK( ( _stateExpect.code( accountAddress ) == _statePost.code( accountAddress) ),
+                CHECK( ( _stateExpect.code( accountAddress ) == _statePost.code( accountAddress ) ),
                     TestOutputHelper::get().testName() + " Check State: "
                         << accountAddress << ": incorrect code '"
                         << toHexPrefixed( _statePost.code( accountAddress ) ) << "', expected '"
@@ -633,13 +642,13 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
     vector< size_t >& _errorTransactions, string const& _network, TrExpectSection* _search ) const {
     if ( _expects.count( "result" ) ) {
         requireJsonFields( _expects, "expect",
-            {{"indexes", jsonVType::obj_type}, {"network", jsonVType::array_type},
-                {"result", jsonVType::obj_type}} );
+            { { "indexes", jsonVType::obj_type }, { "network", jsonVType::array_type },
+                { "result", jsonVType::obj_type } } );
     } else {
         // Expect section in filled test
         requireJsonFields( _expects, "expect",
-            {{"indexes", jsonVType::obj_type}, {"hash", jsonVType::str_type},
-                {"logs", jsonVType::str_type}} );
+            { { "indexes", jsonVType::obj_type }, { "hash", jsonVType::str_type },
+                { "logs", jsonVType::str_type } } );
     }
 
     vector< int > d;
@@ -658,7 +667,7 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
 
     if ( !Options::get().singleTestNet.empty() ) {
         // skip this check if we execute transactions only on another specified network
-        if ( !network.count( Options::get().singleTestNet ) && !network.count( string{"ALL"} ) )
+        if ( !network.count( Options::get().singleTestNet ) && !network.count( string{ "ALL" } ) )
             return false;
     }
 
