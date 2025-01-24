@@ -199,7 +199,8 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
 
         if ( bn == start_block + 1 || old_hash == best_hash || transactions.size() ||
              bn % 1000 == 0 )
-            LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> " << new_hash;
+            LOG( m_loggerInfo ) << "Repairing block " << bn << " " << old_hash << " -> "
+                                << new_hash;
 
         TransactionAddress ta;
         ta.blockHash = new_hash;

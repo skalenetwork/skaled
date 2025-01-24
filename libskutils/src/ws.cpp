@@ -1234,11 +1234,9 @@ int basic_api::stat_callback_client(
     struct lws* wsi, enum lws_callback_reasons reason, void* /*user*/, void* in, size_t len ) {
     client_api* self = nullptr;
     switch ( reason ) {
-
     case LWS_CALLBACK_CLIENT_ESTABLISHED:
         self = client_api::stat_get( wsi );
         if ( self ) {
-
             int fd = ::lws_get_socket_fd( wsi );
             self->cid_ = fd;
             self->connection_flag_ = true;
@@ -1249,7 +1247,6 @@ int basic_api::stat_callback_client(
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
         self = client_api::stat_get( wsi );
         if ( self ) {
-
             self->destroy_flag_ = true;
             self->connection_flag_ = false;
             self->clientThreadStopFlag_ = true;
@@ -1259,7 +1256,6 @@ int basic_api::stat_callback_client(
     case LWS_CALLBACK_CLOSED:
         self = client_api::stat_get( wsi );
         if ( self ) {
-
             self->destroy_flag_ = true;
             self->connection_flag_ = true;
             self->clientThreadStopFlag_ = true;
@@ -1369,9 +1365,7 @@ int basic_api::stat_callback_server(
     server_api* self = nullptr;
 
 
-
     switch ( reason ) {
-
     case LWS_CALLBACK_ESTABLISHED:
         ctx = ::lws_get_context( wsi );
         self = server_api::stat_get( ctx );
@@ -1842,7 +1836,6 @@ void client_api::close( int nCloseStatus, const std::string& msg ) {
 
     delayed_close_reason_ = msg;
     delayed_close_status_ = nCloseStatus;
-
 }
 void client_api::delay_deinit() {
     if ( delayed_de_init_ )
@@ -1986,8 +1979,7 @@ std::string list_srvmodes_as_str() {
 
 int g_lws_service_timeout_ms = 1000;
 
-srvmode_t g_default_srvmode = srvmode_t::
-    srvmode_simple;
+srvmode_t g_default_srvmode = srvmode_t::srvmode_simple;
 
 
 bool g_default_explicit_vhost_enable = true;  // srvmode_simple and srvmode_external_poll only

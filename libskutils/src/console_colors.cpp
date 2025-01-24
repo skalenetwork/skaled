@@ -1248,7 +1248,7 @@ inline time_t clock_2_time_t( const typename clock_type_t::time_point& ptTime ) 
     time_t tt =
         std::chrono::duration_cast< std::chrono::seconds >( ptTime.time_since_epoch() ).count();
     return tt;
-#else   // (defined __BUILDING_4_MAC_OS_X__)
+#else  // (defined __BUILDING_4_MAC_OS_X__)
     time_t tt = clock_type_t::to_time_t( ptTime );
     return tt;
 #endif  // (defined __BUILDING_4_MAC_OS_X__)

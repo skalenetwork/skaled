@@ -233,7 +233,7 @@ int main( int argc, char** argv ) {
     }
     if ( vm.count( "help" ) ) {
         cout << "Usage rlp <mode> [OPTIONS]\nModes:\n"
-             << "    create   <json>  Given a simplified JSON string, output the RLP.\n" 
+             << "    create   <json>  Given a simplified JSON string, output the RLP.\n"
              << "    render   [ <file> | -- ]  Render the given RLP.\n"
              << "    list     [ <file> | -- ]  List the items in the RLP list by hash and size.\n"
              << "    extract  [ <file> | -- ]  Extract all items in the RLP list, named by hash.\n"
