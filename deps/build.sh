@@ -562,8 +562,6 @@ echo -e "${COLOR_VAR_NAME}AWK${COLOR_DOTS}......................................
 echo -e "${COLOR_VAR_NAME}YASM${COLOR_DOTS}..........................................................${COLOR_VAR_VAL}$YASM${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}NASM${COLOR_DOTS}..........................................................${COLOR_VAR_VAL}$NASM${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}AS${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$AS${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}CC${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$CC${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}CXX${COLOR_DOTS}...........................................................${COLOR_VAR_VAL}$CXX${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}AR${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$AR${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}LD${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$LD${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}STRIP${COLOR_DOTS}.........................................................${COLOR_VAR_VAL}$STRIP${COLOR_RESET}"
@@ -1197,7 +1195,6 @@ then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
                                 eval git clone https://github.com/warmcat/libwebsockets.git
 				eval cd libwebsockets
-                                # eval git checkout v4.1-stable
                                 eval git checkout v4.3-stable
                                 eval git pull
 				cd ..
@@ -1248,7 +1245,7 @@ then
 				-DLWS_WITH_THREADPOOL=1 \
 				-DLWS_WITH_HTTP2=1 \
 				-DLWS_WITH_SSL=ON \
-				-DZLIB_INCLUDE_DIR="$INSTALL_ROOT/include" \
+                                -DLWS_ZLIB_INCLUDE_DIR="$INSTALL_ROOT/include" \
 				..
 			# -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include/openssl"
 			# -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a"
