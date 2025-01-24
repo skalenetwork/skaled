@@ -263,7 +263,7 @@ setup_variable WITH_LWS "yes"
 setup_variable WITH_V8 "no"
 setup_variable WITH_SOURCEY "no"
 
-setup_variable WITH_BOOST "yes"
+setup_variable WITH_BOOST "no"
 setup_variable WITH_PUPNP "no"
 setup_variable WITH_ARGTABLE2 "no"
 
@@ -1207,15 +1207,7 @@ then
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -xzf libwebsockets-from-git.tar.gz
-			fi
-			#
-			# l_sergiy: ... if moved into $PREDOWNLOADED_ROOT ...
-			#
-			#echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			#eval tar -xzf $PREDOWNLOADED_ROOT/libwebsockets-modified.tar.gz
-			#eval tar -xzf $PREDOWNLOADED_ROOT/libwebsockets-from-git.tar.gz
-			#
-			#
+                        fi
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libwebsockets
 			eval mkdir -p build
@@ -1223,50 +1215,16 @@ then
 			LWS_WITH_LIBEV=OFF
 			LWS_WITH_LIBEVENT=OFF
 			LWS_WITH_LIBUV=OFF
-			#if [ "$WITH_EV" = "yes" ];
-			#then
-			#	if [ ! -f "$INSTALL_ROOT/lib/libev.a" ];
-			#	then
-			#		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=OFF"
-			#		echo " "
-			#	else
-			#		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=ON"
-			#		LWS_WITH_LIBEV=ON
-			#	fi
-		#else
-			##	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=OFF"
-			#	echo " "
-			#fi
-            #if [ "$WITH_EVENT" = "yes" ];
-            #then
-            #	if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
-            #	then
-            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-            #		echo " "
-            #	else
-            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=ON"
-            #		LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=ON -DLWS_LIBEVENT_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBEVENT_LIBRARIES=\"$INSTALL_ROOT/lib/libevent.a\""
-            #	fi
-            #else
-            #	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-            #	echo " "
-            #	LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=OFF"
-            #fi
 			if [ "$WITH_UV" = "yes" ];
 			then
 				if [ ! -f "$INSTALL_ROOT/lib/libuv.a" ];
 				then
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=OFF"
-					echo " "
+                                        echo " "
 				else
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=ON"
-					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib/libuv.a\""
-					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib\""
-					LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=$INSTALL_ROOT/include -DLWS_LIBUV_LIBRARIES=$INSTALL_ROOT/lib"
+                                        LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=$INSTALL_ROOT/include -DLWS_LIBUV_LIBRARIES=$INSTALL_ROOT/lib/libuv.a"
 				fi
 			else
-				#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=OFF"
-				echo " "
+                                echo " "
 				LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=OFF"
 			fi
 			#
@@ -1280,7 +1238,6 @@ then
 			#
 			#
 			echo "$LWS_WITH_LIBEV$LWS_WITH_LIBEVENT$LWS_WITH_LIBUV" &>/dev/null
-			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" $CMAKE_ARGS_FOR_LIB_WEB_SOCKETS ..
 			export SAVED_CFLAGS=$CFLAGS
 			export CFLAGS="$CFLAGS -Wno-deprecated-declarations"
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
