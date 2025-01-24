@@ -1236,7 +1236,6 @@ then
 			echo "$LWS_WITH_LIBEV$LWS_WITH_LIBEVENT$LWS_WITH_LIBUV" &>/dev/null
 			export SAVED_CFLAGS=$CFLAGS
 			export CFLAGS="$CFLAGS -Wno-deprecated-declarations"
-                        printenv
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
 				-DLWS_WITH_STATIC=ON -DLWS_WITH_SHARED=OFF -DLWS_STATIC_PIC=ON \
 				-DLWS_IPV6=ON -DLWS_UNIX_SOCK=ON -DLWS_WITH_HTTP2=OFF -DLWS_WITHOUT_TESTAPPS=ON \
@@ -1247,6 +1246,7 @@ then
 				-DLWS_WITH_HTTP2=1 \
 				-DLWS_WITH_SSL=ON \
                                 -DLWS_ZLIB_INCLUDE_DIRS="$INSTALL_ROOT/include" \
+                                -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" \
 				..
 			# -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include/openssl"
 			# -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a"
