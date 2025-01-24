@@ -136,7 +136,7 @@ void setCLocale() {
 // Custom Boost Unit Test Main
 int main( int argc, const char* argv[] ) {
     MicroProfileSetEnableAllGroups( true );
-    UnsafeRegion::init( "." );
+    UnsafeRegion::init(".");
 
     std::string const dynamicTestSuiteName = "customTestSuite";
     setCLocale();
@@ -154,7 +154,7 @@ int main( int argc, const char* argv[] ) {
         bool testSuiteFound = false;
         for ( int i = 0; i < argc; i++ ) {
             // replace test suite to custom tests
-            std::string arg = std::string{ argv[i] };
+            std::string arg = std::string{argv[i]};
             if ( arg == "-t" && i + 1 < argc ) {
                 testSuiteFound = true;
                 argv[i + 1] = ( char* ) dynamicTestSuiteName.c_str();
@@ -193,7 +193,7 @@ int main( int argc, const char* argv[] ) {
 
     std::cout << "Running tests using path: " << test::getTestPath() << std::endl;
     int result = 0;
-    auto fakeInit = []( int, char*[] ) -> boost::unit_test::test_suite* { return nullptr; };
+    auto fakeInit = []( int, char* [] ) -> boost::unit_test::test_suite* { return nullptr; };
     if ( opt.jsontrace || opt.vmtrace || opt.statediff ) {
         // Do not use travis '.' output thread if debug is defined
         result = unit_test_main( fakeInit, argc, const_cast< char** >( argv ) );
@@ -205,7 +205,7 @@ int main( int argc, const char* argv[] ) {
         return result;
     } else {
         // Initialize travis '.' output thread for log activity
-        std::atomic_bool stopTravisOut{ false };
+        std::atomic_bool stopTravisOut{false};
         std::thread outputThread( travisOut, &stopTravisOut );
         result = unit_test_main( fakeInit, argc, const_cast< char** >( argv ) );
         stopTravisOut = true;

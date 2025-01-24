@@ -121,12 +121,9 @@ public:
 
 private:
     /// Loggers
-    dev::Logger m_loggerDebug{ dev::createLogger(
-        dev::VerbosityDebug, "SkaleStatsSubscriptionManager" ) };
-    dev::Logger m_loggerInfo{ dev::createLogger(
-        dev::VerbosityInfo, "SkaleStatsSubscriptionManager" ) };
-    dev::Logger m_loggerError{ dev::createLogger(
-        dev::VerbosityError, "SkaleStatsSubscriptionManager" ) };
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleStatsSubscriptionManager" ) };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleStatsSubscriptionManager" ) };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleStatsSubscriptionManager" ) };
 };  // class SkaleStatsSubscriptionManager
 
 
@@ -208,11 +205,11 @@ private:
 
     dev::Logger getLoggerFromWsMsgType( skutils::ws::e_ws_log_message_type_t eWSLMT );
 
-    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleWsPeer" ) };
-    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleWsPeer" ) };
-    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "SkaleWsPeer" ) };
-    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "SkaleWsPeer" ) };
-    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleWsPeer" ) };
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "SkaleWsPeer") };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SkaleWsPeer") };
+    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "SkaleWsPeer") };
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "SkaleWsPeer") };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "SkaleWsPeer") };
 
 public:
     std::string implPreformatTrafficJsonMessage( const std::string& strJSON, bool isRequest ) const;
@@ -446,8 +443,7 @@ public:
     dev::eth::Interface* ethereum() const;
     dev::eth::ChainParams& chainParams();
     const dev::eth::ChainParams& chainParams() const;
-    std::unique_ptr< dev::Logger > getLoggerFromMethodTraceVerbosity(
-        const std::string& strMethod ) const;
+    std::unique_ptr<dev::Logger> getLoggerFromMethodTraceVerbosity( const std::string& strMethod ) const;
     bool checkAdminOriginAllowed( const std::string& origin ) const;
 
 protected:
@@ -513,10 +509,10 @@ private:
         const std::string& strDstAddress, int nDstPort, e_server_mode_t& esm );
 
     /// Loggers
-    dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride" ) };
-    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SkaleServerOverride" ) };
-    dev::Logger m_loggerWarning{ createLogger( dev::VerbosityWarning, "SkaleServerOverride" ) };
-    dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SkaleServerOverride" ) };
+    dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "SkaleServerOverride") };
+    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SkaleServerOverride") };
+    dev::Logger m_loggerWarning{ createLogger( dev::VerbosityWarning, "SkaleServerOverride") };
+    dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SkaleServerOverride") };
 
 public:
     int getServerPortStatusWS( int ipVer, e_server_mode_t esm ) const;

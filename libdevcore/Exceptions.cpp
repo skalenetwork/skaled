@@ -56,6 +56,7 @@ std::string innermost_exception_what( const std::exception& ex ) {
 }
 
 void rethrow_most_nested( const std::exception& ex ) {
+
     const std::nested_exception* nested_ptr = dynamic_cast< const std::nested_exception* >( &ex );
     if ( nested_ptr == nullptr ) {
         throw;  // TODO can we make this func to be called without arguments? what does it really

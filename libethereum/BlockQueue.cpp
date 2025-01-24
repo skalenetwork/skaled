@@ -212,7 +212,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
     }
 
     LOG( m_loggerTrace ) << "Block " << h << " is " << bi.number() << " parent is "
-                         << bi.parentHash();
+                          << bi.parentHash();
 
     // Check block doesn't already exist first!
     if ( m_bc->isKnown( h ) ) {
@@ -232,7 +232,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
         if ( strftime( buf, 24, "%X", localtime( &bit ) ) == 0 )
             buf[0] = '\0';  // empty if case strftime fails
         LOG( m_loggerTrace ) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTime()
-                             << "] - will wait until " << buf;
+                              << "] - will wait until " << buf;
         m_difficulty += bi.difficulty();
         h256 const parentHash = bi.parentHash();
         bool const unknown = !contains( m_readySet, parentHash ) &&

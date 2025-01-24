@@ -322,7 +322,8 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
 
     if ( sizeOfChunk + idxFrom == sizeOfFile )
-        LOG( m_loggerInfo ) << "Sent all chunks for " << currentSnapshotPath.string();
+        LOG( m_loggerInfo )
+            << "Sent all chunks for " << currentSnapshotPath.string();
 
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -421,15 +422,16 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             cli.optsSSL_ = ssl_options;
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
-                LOG( m_loggerInfo ) << "FATAL:"
-                                    << " Exception while trying to connect to sgx server: "
-                                    << "connection refused";
+                LOG( m_loggerInfo )
+                    << "FATAL:"
+                    << " Exception while trying to connect to sgx server: "
+                    << "connection refused";
             }
 
             skutils::rest::data_t d;
             while ( true ) {
                 LOG( m_loggerInfo ) << ">>> SGX call >>>"
-                                    << " " << joCall;
+                                                        << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
                      skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -437,14 +439,16 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                              skutils::http::common_network_exception::error_type::et_unknown ||
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
-                        LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with connection: "
-                                             << " retrying... ";
+                        LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with connection: "
+                            << " retrying... ";
                     } else {
-                        LOG( m_loggerError ) << "ERROR:"
-                                             << " Exception while trying to connect to sgx server: "
-                                             << " error with ssl certificates " << d.ei_.strError_;
+                        LOG( m_loggerError )
+                            << "ERROR:"
+                            << " Exception while trying to connect to sgx server: "
+                            << " error with ssl certificates " << d.ei_.strError_;
                     }
                 } else {
                     break;
@@ -454,7 +458,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
                 LOG( m_loggerError ) << "SGX call error"
-                                     << " " << g_strErrMsg;
+                                                         << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
 

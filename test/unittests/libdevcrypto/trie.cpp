@@ -23,6 +23,7 @@
 #include <libdevcore/MemoryDB.h>
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
+#include <libdevcore/MemoryDB.h>
 #include <test/tools/libtesteth/Options.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/filesystem/path.hpp>
@@ -66,8 +67,7 @@ BOOST_AUTO_TEST_CASE( fat_trie ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(
-    hex_encoded_securetrie_test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( hex_encoded_securetrie_test, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testPath = test::getTestPath() / fs::path( "TrieTests" );
 
     cnote << "Testing Secure Trie...";
@@ -128,8 +128,7 @@ BOOST_AUTO_TEST_CASE(
     }
 }
 
-BOOST_AUTO_TEST_CASE(
-    trie_test_anyorder, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( trie_test_anyorder, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testPath = test::getTestPath() / fs::path( "TrieTests" );
 
     cnote << "Testing Trie...";
@@ -190,8 +189,7 @@ BOOST_AUTO_TEST_CASE(
     }
 }
 
-BOOST_AUTO_TEST_CASE(
-    trie_tests_ordered, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( trie_tests_ordered, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     fs::path const testPath = test::getTestPath() / fs::path( "TrieTests" );
 
     cnote << "Testing Trie...";
@@ -287,8 +285,7 @@ bytes stringMapRlp256( StringMap const& _s ) {
     return rlp256( bytesMap );
 }
 
-BOOST_AUTO_TEST_CASE(
-    moreTrieTests, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( moreTrieTests, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "Testing Trie more...";
     // More tests...
     {
@@ -304,13 +301,13 @@ BOOST_AUTO_TEST_CASE(
         cnote << t;
         cnote << m;
         cnote << t.root();
-        cnote << stringMapHash256( { { "test", "test" } } );
+        cnote << stringMapHash256( {{"test", "test"}} );
 
         t.insert( string( "tesa" ), string( "testy" ) );
         cnote << t;
         cnote << m;
         cnote << t.root();
-        cnote << stringMapHash256( { { "test", "test" }, { "te", "testy" } } );
+        cnote << stringMapHash256( {{"test", "test"}, {"te", "testy"}} );
         cnote << t.at( string( "test" ) );
         cnote << t.at( string( "te" ) );
         cnote << t.at( string( "t" ) );
@@ -318,7 +315,7 @@ BOOST_AUTO_TEST_CASE(
         t.remove( string( "te" ) );
         cnote << m;
         cnote << t.root();
-        cnote << stringMapHash256( { { "test", "test" } } );
+        cnote << stringMapHash256( {{"test", "test"}} );
 
         t.remove( string( "test" ) );
         cnote << m;
@@ -334,8 +331,8 @@ BOOST_AUTO_TEST_CASE(
         cnote << t;
         cnote << m;
         cnote << t.root();
-        cnote << stringMapHash256( { { "b", "B" }, { "a", "A" } } );
-        bytes r( stringMapRlp256( { { "b", "B" }, { "a", "A" } } ) );
+        cnote << stringMapHash256( {{"b", "B"}, {"a", "A"}} );
+        bytes r( stringMapRlp256( {{"b", "B"}, {"a", "A"}} ) );
         cnote << RLP( r );
     }
     {
@@ -354,7 +351,7 @@ BOOST_AUTO_TEST_CASE(
         cnote << RLP( r );
     }
     {
-        cnote << hex << stringMapHash256( { { "dog", "puppy" }, { "doe", "reindeer" } } );
+        cnote << hex << stringMapHash256( {{"dog", "puppy"}, {"doe", "reindeer"}} );
         MemTrie t;
         t.insert( "dog", "puppy" );
         t.insert( "doe", "reindeer" );
@@ -443,8 +440,7 @@ std::string randomWord() {
 }
 }  // namespace
 
-BOOST_AUTO_TEST_CASE(
-    trieLowerBound, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( trieLowerBound, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     cnote << "Stress-testing Trie.lower_bound...";
     if ( 0 ) {
         MemoryDB dm;

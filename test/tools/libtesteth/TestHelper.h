@@ -66,7 +66,7 @@ void mine( Client& c, int numBlocks );
  * @brief simulateMining gives money to miner but do not create block. Use it only for testing
  * instead of mine( Client& c, int numBlocks )
  */
-void simulateMining( Client& client, size_t numBlocks, const dev::Address& address );
+void simulateMining( Client& client, size_t numBlocks, const dev::Address &address );
 void simulateMining( Client& client, size_t numBlocks );
 void mineMoney( Client& c, int numBlocks );
 void mineTransaction( Client& c, int numBlocks );
@@ -84,8 +84,7 @@ typedef json_spirit::Value_type jsonVType;
 class ZeroGasPricer : public eth::GasPricer {
 protected:
     u256 ask( eth::Block const& ) const override { return 0; }
-    u256 bid( unsigned = dev::eth::LatestBlock,
-        eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
+    u256 bid( unsigned = dev::eth::LatestBlock, eth::TransactionPriority = eth::TransactionPriority::Medium ) const override {
         return 0;
     }
 };
@@ -142,8 +141,8 @@ dev::eth::BlockHeader constructHeader( h256 const& _parentHash, h256 const& _sha
 void updateEthashSeal(
     dev::eth::BlockHeader& _header, h256 const& _mixHash, dev::eth::Nonce const& _nonce );
 RLPStream createRLPStreamFromTransactionFields( json_spirit::mObject const& _tObj );
-json_spirit::mObject fillJsonWithStateChange(
-    State const& _stateOrig, skale::State const& _statePost, skale::ChangeLog const& _changeLog );
+json_spirit::mObject fillJsonWithStateChange( State const& _stateOrig,
+    skale::State const& _statePost, skale::ChangeLog const& _changeLog );
 json_spirit::mObject fillJsonWithState( State const& _state );
 json_spirit::mObject fillJsonWithState(
     skale::State const& _state, eth::AccountMaskMap const& _map );

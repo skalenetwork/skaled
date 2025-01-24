@@ -107,8 +107,7 @@ private:
 
     /// Logger
     mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "ZmqBroadcaster" ) };
-    mutable dev::Logger m_loggerWarning{ dev::createLogger(
-        dev::VerbosityWarning, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "ZmqBroadcaster" ) };
     mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ZmqBroadcaster" ) };
     mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "ZmqBroadcaster" ) };
 };

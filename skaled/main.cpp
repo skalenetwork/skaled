@@ -1512,8 +1512,8 @@ int main( int argc, char** argv ) try {
             networkID = vm["network-id"].as< unsigned >();
         } catch ( ... ) {
             LOG( loggerError ) << "Bad "
-                               << "--network-id"
-                               << " option: " << vm["network-id"].as< string >();
+                 << "--network-id"
+                 << " option: " << vm["network-id"].as< string >();
             return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
@@ -1802,7 +1802,7 @@ int main( int argc, char** argv ) try {
         }
     } catch ( ... ) {
         LOG( loggerError ) << "Error initializing key manager: "
-                           << boost::current_exception_diagnostic_information();
+             << boost::current_exception_diagnostic_information();
         return 1;
     }
 

@@ -38,7 +38,8 @@ namespace test {}
 
 BOOST_FIXTURE_TEST_SUITE( memDB, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( kill, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( kill, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     BOOST_CHECK( myDB.get().empty() );
     bytes value = fromHex( "43" );
@@ -49,8 +50,8 @@ BOOST_AUTO_TEST_CASE( kill, *boost::unit_test::precondition( dev::test::run_not_
     BOOST_CHECK( myDB.kill( h256( 42 ) ) );
 }
 
-BOOST_AUTO_TEST_CASE(
-    purgeMainMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( purgeMainMem, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     BOOST_CHECK( myDB.get().empty() );
     string const value = "\x43";
@@ -76,8 +77,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK_EQUAL( myDB.get().size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    purgeMainMem_Refs, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( purgeMainMem_Refs, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     {
         EnforceRefs enforceRefs( myDB, true );
@@ -132,7 +133,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK_EQUAL( myDB.get().size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( purgeAuxMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( purgeAuxMem, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     class AuxMemDB : public MemoryDB {
     public:
         std::unordered_map< h256, std::pair< bytes, bool > > getAux() { return m_aux; }
@@ -157,7 +159,8 @@ BOOST_AUTO_TEST_CASE( purgeAuxMem, *boost::unit_test::precondition( dev::test::r
     BOOST_CHECK_EQUAL( myDB.getAux().size(), 0 );
 }
 
-BOOST_AUTO_TEST_CASE( copy, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( copy, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     BOOST_CHECK( myDB.get().empty() );
     bytes value = fromHex( "43" );
@@ -175,7 +178,8 @@ BOOST_AUTO_TEST_CASE( copy, *boost::unit_test::precondition( dev::test::run_not_
     BOOST_CHECK( myDB.keys() != copyToDB.keys() );
 }
 
-BOOST_AUTO_TEST_CASE( lookUp, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( lookUp, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     MemoryDB myDB;
     BOOST_CHECK( myDB.get().empty() );
     string const value = "\x43";

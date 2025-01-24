@@ -447,7 +447,9 @@ void loop::pending_timer_init() {
 }
 
 
+
 void loop::on_state_check() {
+
     isAlive_ = true;
     if ( on_check_cancel_mode() )
         return;
@@ -456,6 +458,7 @@ void loop::on_state_check() {
 }
 
 bool loop::on_check_cancel_mode() {
+
     if ( cancelMode_ ) {
         // cancelMode_ = false;
         uv_loop_t* p_uvLoop = ( uv_loop_t* ) ( void* ) p_uvLoop_;
@@ -1111,7 +1114,8 @@ domain::domain( const size_t nNumberOfThreads,  // = 0 // 0 means use CPU count
     const size_t nQueueLimit                    // = 0
     )
     : async_job_count_( 0 ),
-      accumulator_base_( 0 ),
+      accumulator_base_( 0 )
+      ,
       shutdown_flag_( true ),
       thread_pool_(
           ( nNumberOfThreads > 0 ) ? nNumberOfThreads : skutils::tools::cpu_count(), nQueueLimit ),
@@ -1554,6 +1558,7 @@ loop_ptr_t domain::get_loop() {
     pLoop_ = pLoop;
     domain_ptr_t pThisDomain = this;
     pLoop->on_check_jobs_ = [pThisDomain]() -> void {
+
         if ( pThisDomain->shutdown_flag_ )
             return;
         bool bJobsEmpty = true;
@@ -1587,6 +1592,7 @@ void domain::on_queue_job_added( queue& q ) {
         size_t cntJobs = q.async_job_count();
         if ( cntJobs > 0 && ( !q.is_running() ) ) {
             with_jobs_.insert( &q );
+
         }
     }  // block
 
@@ -1598,6 +1604,7 @@ void domain::on_queue_job_complete( queue& q ) {
         size_t cntJobs = q.async_job_count();
         if ( cntJobs > 0 && ( !q.is_running() ) ) {
             with_jobs_.insert( &q );
+
         }
     }  // block
 

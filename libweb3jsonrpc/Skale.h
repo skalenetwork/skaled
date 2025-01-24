@@ -121,6 +121,7 @@ private:
     Logger m_loggerInfo{ createLogger( VerbosityInfo, "Skale" ) };
     Logger m_loggerWarning{ createLogger( VerbosityWarning, "Skale" ) };
     Logger m_loggerError{ createLogger( VerbosityError, "Skale" ) };
+
 };
 
 namespace snapshot {
