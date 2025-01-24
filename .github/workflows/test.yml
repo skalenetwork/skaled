@@ -120,11 +120,8 @@ jobs:
       - name: Build dependencies
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-11
-          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
           cd deps
           #######################################./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
@@ -134,11 +131,8 @@ jobs:
       - name: Configure all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-11
-          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
           mkdir -p build
           cd build
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
@@ -150,11 +144,8 @@ jobs:
       - name: Build all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-11
-          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
           cd build
           make testeth -j$(nproc)
           cd ..
@@ -270,11 +261,8 @@ jobs:
       - name: Configure all as historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-11
-          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
           mkdir -p build_historic
           cd build_historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
@@ -283,11 +271,8 @@ jobs:
       - name: Build all historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
-          export CC=gcc-11
-          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          export CODE_COVERAGE=ON
           cd build_historic
           make testeth -j$(nproc)          
           cd ..
