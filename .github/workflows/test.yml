@@ -163,13 +163,6 @@ jobs:
           ccache --show-stats
       # first run with verbosity 1. If test fails, rerun with verbosity 4
       # we specifically run each test for easier log review
-      - name: run BlockchainTests
-        run : |
-          cd build/test
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
-          ./testeth --list-tests
-          ./testeth --report_level=detailed -t BlockchainTests -- --all --verbosity 4
       - name: Testeth verbosity 1
         run : |
           mkdir -p /tmp/tests/
