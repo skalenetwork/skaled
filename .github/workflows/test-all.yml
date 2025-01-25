@@ -53,7 +53,6 @@ jobs:
         run: |
           sudo apt-get -y remove libzmq* || true
           sudo apt-get -y install software-properties-common gcc-11 g++-11 || true
-
       - name: Use g++-11 and gcov-11 by default
         run: |
           echo "Updating all needed alternatives"
@@ -165,6 +164,9 @@ jobs:
       - name: Print ccache stats after full build
         run : |
           ccache --show-stats
+      - name: run BlockchainTests
+        run : |
+          ./testeth --report_level=detailed -t BlockchainTests -- --all --verbosity 4
       - name: Testeth all verbosity 4
         id: TestCore
         run : |
