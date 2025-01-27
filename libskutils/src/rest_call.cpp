@@ -412,7 +412,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             ch_.reset( new skutils::http_curl::client(
                 u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
-#else // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             int nPort = std::atoi( strPort.c_str() );
             ch_.reset( new skutils::http::client(
                 -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, nullptr ) );
@@ -423,7 +423,7 @@ bool client::open( const skutils::url& u, std::chrono::milliseconds wait_step, s
             ch_.reset( new skutils::http_curl::client(
                 u, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
             ch_->isVerboseInsideCURL_ = isVerboseInsideNetworkLayer_;
-#else // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             int nPort = std::atoi( strPort.c_str() );
             ch_.reset( new skutils::http::SSL_client(
                 -1, strHost.c_str(), nPort, nEffectiveClientConnectionTimeoutMS, &optsSSL_ ) );
@@ -673,7 +673,7 @@ data_t client::call( const nlohmann::json& joIn, bool isAutoGenJsonID, e_data_fe
             if ( !strOutContentType.empty() )
                 h = stat_extract_short_content_type_string( strOutContentType );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
-#else // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp = ch_->Post(
                 strHttpQueryPath.c_str(), strJsonIn, "application/json", isReturnErrorResponse );
@@ -833,7 +833,7 @@ void client::async_call( const nlohmann::json& joIn, fn_async_call_data_handler_
             if ( !strOutContentType.empty() )
                 h = stat_extract_short_content_type_string( strOutContentType );
             d.content_type_ = ( !h.empty() ) ? h : g_str_default_content_type;
-#else // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
+#else   // (defined __SKUTIS_REST_USE_CURL_FOR_HTTP)
             const std::string strHttpQueryPath = u_path_and_args();
             std::shared_ptr< skutils::http::response > resp =
                 ch_->Post( strHttpQueryPath.c_str(), strJsonIn, "application/json" );

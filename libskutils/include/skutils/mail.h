@@ -34,7 +34,7 @@ namespace mail {
 // based on https://www.codeproject.com/Articles/98355/SMTP-Client-with-SSL-TLS
 
 #if ( defined WIN32 )
-#else /// (defined WIN32)
+#else   /// (defined WIN32)
 typedef uint16_t WORD;
 typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;

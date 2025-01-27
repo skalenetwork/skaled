@@ -415,8 +415,8 @@ const std::set< std::string >& get_all_ssl_method_names() {
             "tlsv11", "tlsv11_client", "tlsv11_server",
 #elif ( defined SSL_TXT_TLSV1_1 )
             "tlsv11", "tlsv11_client", "tlsv11_server",
-#else // defined(SSL_TXT_TLSV1_1)
-      // no support for this
+#else   // defined(SSL_TXT_TLSV1_1)
+        // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // TLS v1.2
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L ) && ( !defined LIBRESSL_VERSION_NUMBER )
@@ -425,8 +425,8 @@ const std::set< std::string >& get_all_ssl_method_names() {
             "tlsv12_server",
 #elif defined( SSL_TXT_TLSV1_1 )
             "tlsv12", "tlsv12_client", "tlsv12_server",
-#else // defined(SSL_TXT_TLSV1_1)
-      // no support for this
+#else   // defined(SSL_TXT_TLSV1_1)
+        // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // any supported SSL/TLS version
             "sslv23", "sslv23_client", "sslv23_server",
@@ -473,7 +473,7 @@ const SSL_METHOD* SSL_METHOD_ptr_from_name( const char* strSslMethodName ) {
         return ::TLS_client_method();
     if ( strcasecmp( strSslMethodName, "tlsv1_server" ) == 0 )
         return ::TLS_server_method();
-#else // (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#else   // (OPENSSL_VERSION_NUMBER >= 0x10100000L)
     if ( strcasecmp( strSslMethodName, "tlsv1" ) == 0 )
         return ::TLSv1_method();
     if ( strcasecmp( strSslMethodName, "tlsv1_client" ) == 0 )
@@ -496,8 +496,8 @@ const SSL_METHOD* SSL_METHOD_ptr_from_name( const char* strSslMethodName ) {
         return ::TLSv1_1_client_method();
     if ( strcasecmp( strSslMethodName, "tlsv11_server" ) == 0 )
         return ::TLSv1_1_server_method();
-#else // defined(SSL_TXT_TLSV1_1)
-      // no support for this
+#else   // defined(SSL_TXT_TLSV1_1)
+        // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // TLS v1.2
 #if ( OPENSSL_VERSION_NUMBER >= 0x10100000L ) && ( !defined LIBRESSL_VERSION_NUMBER )
@@ -514,8 +514,8 @@ const SSL_METHOD* SSL_METHOD_ptr_from_name( const char* strSslMethodName ) {
         return ::TLSv1_2_client_method();
     if ( strcasecmp( strSslMethodName, "tlsv12_server" ) == 0 )
         return ::TLSv1_2_server_method();
-#else  // defined(SSL_TXT_TLSV1_1)
-       // no support for this
+#else   // defined(SSL_TXT_TLSV1_1)
+        // no support for this
 #endif  // defined(SSL_TXT_TLSV1_1)
         // any supported SSL/TLS version
     if ( strcasecmp( strSslMethodName, "sslv23" ) == 0 )
