@@ -546,7 +546,7 @@ enum class srvmode_t {
 #if ( defined LWS_WITH_LIBUV )
     srvmode_uv
 #endif  // (defined LWS_WITH_LIBUV)
-};  // enum class srvmode_t
+}; // enum class srvmode_t
 extern int g_lws_service_timeout_ms;
 extern srvmode_t g_default_srvmode;
 extern bool g_default_explicit_vhost_enable;  // srvmode_simple and srvmode_external_poll only
