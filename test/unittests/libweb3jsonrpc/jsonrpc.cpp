@@ -2821,9 +2821,9 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
         
         std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
         patchName[0] = tolower( patchName[0] );
+        size_t returnedTimestamp = static_cast< size_t > (returnedPatchTimestamps[patchName].asInt()); 
 
-        BOOST_REQUIRE_EQUAL(returnedPatchTimestamps[patchName], 
-            patchTimestamps[patchIdx]);
+        BOOST_REQUIRE_EQUAL( returnedTimestamp, patchTimestamps[patchIdx]);
     }
 }
 
