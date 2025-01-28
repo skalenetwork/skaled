@@ -812,39 +812,39 @@ BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case5, *boost::unit_test::preconditio
     testEip1283Case5();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case6, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case6, *boost::unit_test::disabled() ) {
     testEip1283Case6();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case7, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case7, *boost::unit_test::disabled() ) {
     testEip1283Case7();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case8, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case8, *boost::unit_test::disabled() ) {
     testEip1283Case8();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case9, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case9, *boost::unit_test::disabled() ) {
     testEip1283Case9();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case10, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case10, *boost::unit_test::disabled() ) {
     testEip1283Case10();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case11, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case11, *boost::unit_test::disabled() ) {
     testEip1283Case11();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case12, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case12, *boost::unit_test::disabled() ) {
     testEip1283Case12();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case13, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case13, *boost::unit_test::disabled() ) {
     testEip1283Case13();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case14, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case14, *boost::unit_test::disabled() ) {
     testEip1283Case14();
 }
 
@@ -856,7 +856,7 @@ BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case16, *boost::unit_test::preconditi
     testEip1283Case16();
 }
 
-BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case17, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( LegacyVMSstoreEip1283Case17, *boost::unit_test::disabled() ) {
     testEip1283Case17();
 }
 
