@@ -611,8 +611,8 @@ echo -e "${COLOR_VAR_NAME}WITH_FIZZ${COLOR_DOTS}..............${COLOR_VAR_DESC}L
 echo -e "${COLOR_VAR_NAME}WITH_PROXYGEN${COLOR_DOTS}..........${COLOR_VAR_DESC}LibProxygen${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_PROXYGEN${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_SNAPPY${COLOR_DOTS}............${COLOR_VAR_DESC}LibSnappy${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_SNAPPY${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_LIBSCRYPT${COLOR_DOTS}.........${COLOR_VAR_DESC}LibSCRYPT${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_LIBSCRYPT${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}WITH_ETHASH${COLOR_DOTS}.........${COLOR_VAR_DESC}LibEthash${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_ETHASH${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}WITH_YAML${COLOR_DOTS}.........${COLOR_VAR_DESC}LibYAMLCPP${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_YAML${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_ETHASH${COLOR_DOTS}............${COLOR_VAR_DESC}LibEthash${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_ETHASH${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_YAML${COLOR_DOTS}..............${COLOR_VAR_DESC}LibYAMLCPP${COLOR_DOTS}.............................${COLOR_VAR_VAL}$WITH_YAML${COLOR_RESET}"
 
 #
 #
