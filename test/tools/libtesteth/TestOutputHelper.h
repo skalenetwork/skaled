@@ -71,5 +71,6 @@ public:
     virtual ~TestOutputHelperFixture();
 };
 
+
 }  // namespace test
 }  // namespace dev

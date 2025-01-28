@@ -428,7 +428,7 @@ string Eth::eth_sendRawTransaction( std::string const& _rlp ) {
     // will be checked as a part of transaction import
     Transaction t( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
         EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
-    return toJS( client()->importTransaction( t ) );
+    return toJS( client()->importTransaction( t, TransactionBroadcast::BroadcastToAll ) );
 }
 
 
