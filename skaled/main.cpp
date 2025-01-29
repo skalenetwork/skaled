@@ -1063,6 +1063,14 @@ int main( int argc, char** argv ) try {
     bool chainConfigIsSet = false, chainConfigParsed = false;
     static nlohmann::json joConfig;
 
+    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
+        boost::filesystem::path( configPath ).remove_filename() );
+
+    // Reset subsystem running status before initialization procedure started
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
+
     if ( vm.count( "import-presale" ) )
         presaleImports.push_back( vm["import-presale"].as< string >() );
     if ( vm.count( "admin" ) )
@@ -1109,11 +1117,6 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
-        boost::filesystem::path( configPath ).remove_filename() );
-    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
-    statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
-    statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
     // for now, leave previous values in file (for case of crash)
 
     if ( vm.count( "main-net-url" ) ) {
@@ -1390,8 +1393,8 @@ int main( int argc, char** argv ) try {
 
     UnsafeRegion::init( getDataDir() );
     if ( UnsafeRegion::isActive() ) {
-        clog( VerbosityError, "main" )
-            << "FATAL " << "Previous skaled shutdown was too hard, need to repair!";
+        clog( VerbosityError, "main" ) << "FATAL "
+                                       << "Previous skaled shutdown was too hard, need to repair!";
         return int( ExitHandler::ec_state_root_mismatch );
     }  // if bad exit
 
@@ -1532,7 +1535,9 @@ int main( int argc, char** argv ) try {
         else if ( isFalse( m ) )
             upnp = false;
         else {
-            cerr << "Bad " << "--upnp" << " option: " << m << "\n";
+            cerr << "Bad "
+                 << "--upnp"
+                 << " option: " << m << "\n";
             return EX_USAGE;
         }
     }
@@ -1541,8 +1546,9 @@ int main( int argc, char** argv ) try {
         try {
             networkID = vm["network-id"].as< unsigned >();
         } catch ( ... ) {
-            cerr << "Bad " << "--network-id" << " option: " << vm["network-id"].as< string >()
-                 << "\n";
+            cerr << "Bad "
+                 << "--network-id"
+                 << " option: " << vm["network-id"].as< string >() << "\n";
             return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
@@ -1769,7 +1775,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t ) ( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
@@ -1874,7 +1880,9 @@ int main( int argc, char** argv ) try {
         if ( strAA == "yes" || strAA == "no" || strAA == "always" )
             autoAuthAnswer = strAA;
         else {
-            clog( VerbosityError, "main" ) << "Bad " << "--aa" << " option: " << strAA << "\n";
+            clog( VerbosityError, "main" ) << "Bad "
+                                           << "--aa"
+                                           << " option: " << strAA << "\n";
             return EX_USAGE;
         }
         clog( VerbosityDebug, "main" )
@@ -2015,7 +2023,7 @@ int main( int argc, char** argv ) try {
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
                 return EX_IOERR;
             }  // catch
-        }  // if ( is_ipc )
+        }      // if ( is_ipc )
 
         auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
             if ( nPort <= 0 || nPort >= 65536 ) {
