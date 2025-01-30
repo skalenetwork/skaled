@@ -441,7 +441,7 @@ public:
     LastBlockHashes lastBlockHashes;
     Address from{KeyPair::create().address()};
     Address to{KeyPair::create().address()};
-    State state = State(0).createStateCopyAndClearCaches();
+    State state = State( 0, dev::TransientDirectory().path(), dev::h256() ).createStateCopyAndClearCaches();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
     EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
