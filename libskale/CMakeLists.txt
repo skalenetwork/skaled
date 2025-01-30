@@ -50,7 +50,7 @@ target_include_directories( skale PUBLIC
 		${CMAKE_SOURCE_DIR}/libconsensus/libzmq/include
 		${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include
 		)
-#target_link_libraries(skale PUBLIC evm ethcore p2p devcrypto devcore ethereum PRIVATE jsoncpp Snappy::snappy Boost::fiber Boost::context)
+
 target_link_libraries(skale PRIVATE ethereum web3jsonrpc historic skutils
 		"${DEPS_INSTALL_ROOT}/lib/libzmq.a"
         "${DEPS_INSTALL_ROOT}/lib/libsodium.a"
@@ -58,7 +58,8 @@ target_link_libraries(skale PRIVATE ethereum web3jsonrpc historic skutils
         pthread
         )
 target_compile_options( skale PRIVATE
-    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=maybe-uninitialized
+    -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-unused-variable -Wno-error=maybe-uninitialized
+    -Wno-nonnull
     )
 
 #target_compile_options( skale PRIVATE -Weffc++ )

@@ -1,6 +1,7 @@
 #include "SplitDB.h"
 
 #include <memory>
+#include <mutex>
 
 namespace dev {
 namespace db {

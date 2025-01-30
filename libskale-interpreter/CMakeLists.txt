@@ -17,7 +17,7 @@ set(
 set(
     dependencies
     skale-buildinfo
-    ethash::ethash
+    ethash
     evmc::evmc
     evmc::instructions
     Boost::boost

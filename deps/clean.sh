@@ -114,6 +114,7 @@ rm -rf ./deps_inst
 rm -rf ./build
 echo "Cleaning archive files..."
 rm -f ./*.tar.gz
+rm -f ./*.tar.bz2
 rm -f ./*.zip
 echo "Cleaning upacked library folders..."
 rm -rf ./double-conversion
@@ -148,6 +149,10 @@ rm -rf ./libunwind
 rm -rf ./gmp-6.1.2
 rm -rf ./libff
 rm -rf ./pbc
+rm -rf ./libscrypt
+rm -rf ./snappy
+rm -rf ./yaml-cpp
+rm -rf ./ethash
 echo "Done (all clean)."
 
 #finish
