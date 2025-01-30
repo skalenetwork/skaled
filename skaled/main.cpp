@@ -1393,8 +1393,8 @@ int main( int argc, char** argv ) try {
 
     UnsafeRegion::init( getDataDir() );
     if ( UnsafeRegion::isActive() ) {
-        clog( VerbosityError, "main" ) << "FATAL "
-                                       << "Previous skaled shutdown was too hard, need to repair!";
+        clog( VerbosityError, "main" )
+            << "FATAL " << "Previous skaled shutdown was too hard, need to repair!";
         return int( ExitHandler::ec_state_root_mismatch );
     }  // if bad exit
 
@@ -1535,9 +1535,7 @@ int main( int argc, char** argv ) try {
         else if ( isFalse( m ) )
             upnp = false;
         else {
-            cerr << "Bad "
-                 << "--upnp"
-                 << " option: " << m << "\n";
+            cerr << "Bad " << "--upnp" << " option: " << m << "\n";
             return EX_USAGE;
         }
     }
@@ -1546,9 +1544,8 @@ int main( int argc, char** argv ) try {
         try {
             networkID = vm["network-id"].as< unsigned >();
         } catch ( ... ) {
-            cerr << "Bad "
-                 << "--network-id"
-                 << " option: " << vm["network-id"].as< string >() << "\n";
+            cerr << "Bad " << "--network-id" << " option: " << vm["network-id"].as< string >()
+                 << "\n";
             return EX_USAGE;
         }
     if ( vm.count( "kill" ) )
@@ -1775,7 +1772,7 @@ int main( int argc, char** argv ) try {
                                        "Unknown seal engine: " + chainParams.sealEngineName ) );
 
         g_client->dbRotationPeriod(
-            ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
+            ( ( clock_t ) ( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
 
         // XXX nested lambdas and strlen hacks..
         auto client_debug_handler = g_client->getDebugHandler();
@@ -1812,9 +1809,9 @@ int main( int argc, char** argv ) try {
         skale_get_buildinfo();
         g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
-        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
     }
 
     try {
@@ -1880,9 +1877,7 @@ int main( int argc, char** argv ) try {
         if ( strAA == "yes" || strAA == "no" || strAA == "always" )
             autoAuthAnswer = strAA;
         else {
-            clog( VerbosityError, "main" ) << "Bad "
-                                           << "--aa"
-                                           << " option: " << strAA << "\n";
+            clog( VerbosityError, "main" ) << "Bad " << "--aa" << " option: " << strAA << "\n";
             return EX_USAGE;
         }
         clog( VerbosityDebug, "main" )
@@ -2023,7 +2018,7 @@ int main( int argc, char** argv ) try {
                     << "Cannot start listening for RPC requests on ipc port: " << ex.what();
                 return EX_IOERR;
             }  // catch
-        }      // if ( is_ipc )
+        }  // if ( is_ipc )
 
         auto fnCheckPort = [&]( int& nPort, const char* strCommandLineKey ) -> bool {
             if ( nPort <= 0 || nPort >= 65536 ) {
