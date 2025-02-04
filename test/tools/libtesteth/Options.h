@@ -64,7 +64,9 @@ public:
     int trDataIndex;       ///< GeneralState data
     int trGasIndex;        ///< GeneralState gas
     int trValueIndex;      ///< GeneralState value
-    bool all = false;      ///< Running every test, including time consuming ones.
+    bool manual = false;   ///< Running tests that require external infrastructure.
+    bool all = false;      ///< Running every test, including time consuming ones,
+                           ///< but without "manuallyRunningTests".
     bool express = false;  ///< run only carefullty selected "express" test
     /// @}
 
