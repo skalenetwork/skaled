@@ -50,6 +50,7 @@ boost::filesystem::path getRandomPath();
 
 boost::unit_test::assertion_result option_all_tests( boost::unit_test::test_unit_id );
 boost::unit_test::assertion_result run_not_express( boost::unit_test::test_unit_id );
+boost::unit_test::assertion_result manuallyRunningTest( boost::unit_test::test_unit_id );
 
 }  // namespace test
 
