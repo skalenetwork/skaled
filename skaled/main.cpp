@@ -1818,9 +1818,10 @@ int main( int argc, char** argv ) try {
         skale_get_buildinfo();
         g_client->setExtraData( dev::bytes{ 's', 'k', 'a', 'l', 'e' } );
 
-        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+
+        statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
     }
 
     try {
