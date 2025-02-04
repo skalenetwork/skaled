@@ -1,15 +1,25 @@
-name: Build and test skaled
+name: Build skaled and run all tests
 on:
-  push:
-    branches-ignore:
-      - 'master'
-      - 'beta'
-      - 'stable'
+  workflow_call:
+    inputs:
+      branch_name:
+        type: string
+        description: 'Branch name'
+        required: true
+      sha:
+        type: string
+        description: 'SHA'
+        required: true
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
 defaults:
   run:
     shell: bash
 jobs:
-  build:
+  testAll:
     runs-on: self-hosted
     env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
@@ -19,10 +29,6 @@ jobs:
         ccache_compress: 'true'
         ccache_compresslevel: 9
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Extract repo name
         run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}')
         shell: bash
@@ -30,6 +36,8 @@ jobs:
           ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.branch_name }}
       - name: Cache apt packages
         uses: actions/cache@v2
         with:
@@ -45,7 +53,6 @@ jobs:
         run: |
           sudo apt-get -y remove libzmq* || true
           sudo apt-get -y install software-properties-common gcc-11 g++-11 || true
-
       - name: Use g++-11 and gcov-11 by default
         run: |
           echo "Updating all needed alternatives"
@@ -102,7 +109,7 @@ jobs:
           string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
           message("::set-output name=timestamp::${current_date}")
       - name: Ccache cache files
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v1.1.0
         with:
           path: .ccache
           key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
@@ -120,6 +127,8 @@ jobs:
       - name: Build dependencies
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd deps
@@ -131,12 +140,13 @@ jobs:
       - name: Configure all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           mkdir -p build
           cd build
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE ..
           cd ..
       - name: Print ccache stats for deps
         run: |
@@ -144,6 +154,8 @@ jobs:
       - name: Build all
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd build
@@ -152,16 +164,21 @@ jobs:
       - name: Print ccache stats after full build
         run : |
           ccache --show-stats
-      # first run with verbosity 1. If test fails, rerun with verbosity 4
-      # we specifically run each test for easier log review
-      - name: Testeth verbosity 1
+      - name: Testeth all verbosity 4
+        id: TestCore
         run : |
-          mkdir -p /tmp/tests/
-          sudo rm -rf /tmp/tests/*
-          cd build/test
+          cd build/test      
           export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1
-          function run_test() { ./testeth --report_level=detailed -t "$1" -- --express && touch "/tmp/tests/${1}Passed"; }                    
+          export NO_ULIMIT_CHECK=1          
+          function run_test() { ./testeth --report_level=detailed -t "$1" -- --all --verbosity 4; }                      
+          run_test boostTests
+          run_test CommonJSTests
+          run_test FixedHashTests
+          run_test RangeMaskTest
+          run_test Crypto
+          run_test LibSnark
+          run_test commonjs
+          run_test KeyManagerTests
           run_test TransitionTests 
           run_test TransactionTests 
           run_test VMTests 
@@ -191,8 +208,11 @@ jobs:
           run_test LegacyVMSuite 
           run_test SkaleInterpreterSuite 
           run_test SnapshotSigningTestSuite 
-          run_test SkUtils 
+          run_test SkUtils
+          run_test BCGeneralStateTests
+          run_test BlockchainTests
           run_test BlockChainTestSuite 
+          run_test GeneralStateTests
           run_test TestHelperSuite 
           run_test LevelDBHashBase 
           run_test memDB 
@@ -202,75 +222,28 @@ jobs:
           run_test JsonRpcSuite   
           run_test SingleConsensusTests  
           run_test ConsensusTests
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
-          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
+          sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
           cd ..
-      - name: Testeth verbosity 4
-        run : |
-          # Since a tests failed, we are rerunning the failed test with higher verbosity          
-          cd build/test      
-          export NO_NTP_CHECK=1
-          export NO_ULIMIT_CHECK=1          
-          function rerun_test() { ls "/tmp/tests/${1}Passed" 2>/dev/null || ./testeth --report_level=detailed -t "$1" -- --express --verbosity 4; }                      
-          rerun_test TransitionTests 
-          rerun_test TransactionTests 
-          rerun_test VMTests 
-          rerun_test LevelDBTests 
-          rerun_test CoreLibTests 
-          rerun_test RlpTests 
-          rerun_test SharedSpaceTests 
-          rerun_test EthashTests 
-          rerun_test SealEngineTests 
-          rerun_test DifficultyTests 
-          rerun_test BlockSuite
-          rerun_test BlockChainMainNetworkSuite
-          rerun_test BlockChainFrontierSuite
-          rerun_test BlockQueueSuite 
-          rerun_test ClientBase
-          rerun_test EstimateGas 
-          rerun_test getHistoricNodesData
-          rerun_test ExtVmSuite
-          rerun_test GasPricer
-          rerun_test BasicTests
-          rerun_test InstanceMonitorSuite
-          rerun_test PrecompiledTests 
-          rerun_test SkaleHostSuite 
-          rerun_test StateUnitTests 
-          rerun_test libethereum 
-          rerun_test TransactionQueueSuite 
-          rerun_test LegacyVMSuite 
-          rerun_test SkaleInterpreterSuite 
-          rerun_test SnapshotSigningTestSuite 
-          rerun_test SkUtils 
-          rerun_test BlockChainTestSuite 
-          rerun_test TestHelperSuite 
-          rerun_test LevelDBHashBase 
-          rerun_test memDB 
-          rerun_test OverlayDBTests 
-          rerun_test AccountHolderTest 
-          rerun_test ClientTests 
-          rerun_test JsonRpcSuite   
-          rerun_test SingleConsensusTests  
-          rerun_test ConsensusTests
-          ls /tmp/tests/BtrfsTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all --verbosity 4
-          ls /tmp/tests/HashSnapshotTestSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all --verbosity 4
-          ls /tmp/tests/ClientSnapshotsSuitePassed || sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all --verbosity 4
-          cd ..
+        continue-on-error: true
 
       - name: Configure all as historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           mkdir -p build_historic
           cd build_historic
-          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DHISTORIC_STATE=1 ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DHISTORIC_STATE=1 ..
           cd ..
       - name: Build all historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export CC=gcc-11
+          export CXX=g++-11
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd build_historic
@@ -280,8 +253,24 @@ jobs:
         run : |
           ccache --show-stats
       - name: Testeth historic
+        id: TestHistoric
         run : |
           cd build_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
-          ./testeth -t JsonRpcSuite -- --express --verbosity 4
+          ./testeth -t JsonRpcSuite -- --all --verbosity 4
+        continue-on-error: true
+      - name: Update PR Status
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const state = '${{ steps.testCore.outcome }}' === 'success' ? ('${{ steps.testHistoric.outcome }}' === 'success' ? 'success' : 'failure') : 'failure';
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ inputs.sha }}',
+              state,
+              context: 'Nightly tests',
+              description: state === 'success' ? 'Nightly tests passed' : 'Nightly tests failed',
+              target_url: `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });

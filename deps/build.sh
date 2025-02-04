@@ -263,7 +263,7 @@ setup_variable WITH_LWS "yes"
 setup_variable WITH_V8 "no"
 setup_variable WITH_SOURCEY "no"
 
-setup_variable WITH_BOOST "yes"
+setup_variable WITH_BOOST "no"
 setup_variable WITH_PUPNP "no"
 setup_variable WITH_ARGTABLE2 "no"
 
@@ -562,8 +562,6 @@ echo -e "${COLOR_VAR_NAME}AWK${COLOR_DOTS}......................................
 echo -e "${COLOR_VAR_NAME}YASM${COLOR_DOTS}..........................................................${COLOR_VAR_VAL}$YASM${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}NASM${COLOR_DOTS}..........................................................${COLOR_VAR_VAL}$NASM${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}AS${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$AS${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}CC${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$CC${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}CXX${COLOR_DOTS}...........................................................${COLOR_VAR_VAL}$CXX${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}AR${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$AR${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}LD${COLOR_DOTS}............................................................${COLOR_VAR_VAL}$LD${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}STRIP${COLOR_DOTS}.........................................................${COLOR_VAR_VAL}$STRIP${COLOR_RESET}"
@@ -613,8 +611,8 @@ echo -e "${COLOR_VAR_NAME}WITH_FIZZ${COLOR_DOTS}..............${COLOR_VAR_DESC}L
 echo -e "${COLOR_VAR_NAME}WITH_PROXYGEN${COLOR_DOTS}..........${COLOR_VAR_DESC}LibProxygen${COLOR_DOTS}............................${COLOR_VAR_VAL}$WITH_PROXYGEN${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_SNAPPY${COLOR_DOTS}............${COLOR_VAR_DESC}LibSnappy${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_SNAPPY${COLOR_RESET}"
 echo -e "${COLOR_VAR_NAME}WITH_LIBSCRYPT${COLOR_DOTS}.........${COLOR_VAR_DESC}LibSCRYPT${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_LIBSCRYPT${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}WITH_ETHASH${COLOR_DOTS}.........${COLOR_VAR_DESC}LibEthash${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_ETHASH${COLOR_RESET}"
-echo -e "${COLOR_VAR_NAME}WITH_YAML${COLOR_DOTS}.........${COLOR_VAR_DESC}LibYAMLCPP${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_YAML${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_ETHASH${COLOR_DOTS}............${COLOR_VAR_DESC}LibEthash${COLOR_DOTS}..............................${COLOR_VAR_VAL}$WITH_ETHASH${COLOR_RESET}"
+echo -e "${COLOR_VAR_NAME}WITH_YAML${COLOR_DOTS}..............${COLOR_VAR_DESC}LibYAMLCPP${COLOR_DOTS}.............................${COLOR_VAR_VAL}$WITH_YAML${COLOR_RESET}"
 
 #
 #
@@ -1197,7 +1195,6 @@ then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
                                 eval git clone https://github.com/warmcat/libwebsockets.git
 				eval cd libwebsockets
-                                # eval git checkout v4.1-stable
                                 eval git checkout v4.3-stable
                                 eval git pull
 				cd ..
@@ -1206,15 +1203,7 @@ then
 			else
 				echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
 				eval tar -xzf libwebsockets-from-git.tar.gz
-			fi
-			#
-			# l_sergiy: ... if moved into $PREDOWNLOADED_ROOT ...
-			#
-			#echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
-			#eval tar -xzf $PREDOWNLOADED_ROOT/libwebsockets-modified.tar.gz
-			#eval tar -xzf $PREDOWNLOADED_ROOT/libwebsockets-from-git.tar.gz
-			#
-			#
+                        fi
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd libwebsockets
 			eval mkdir -p build
@@ -1222,50 +1211,16 @@ then
 			LWS_WITH_LIBEV=OFF
 			LWS_WITH_LIBEVENT=OFF
 			LWS_WITH_LIBUV=OFF
-			#if [ "$WITH_EV" = "yes" ];
-			#then
-			#	if [ ! -f "$INSTALL_ROOT/lib/libev.a" ];
-			#	then
-			#		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=OFF"
-			#		echo " "
-			#	else
-			#		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=ON"
-			#		LWS_WITH_LIBEV=ON
-			#	fi
-		#else
-			##	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEV=OFF"
-			#	echo " "
-			#fi
-            #if [ "$WITH_EVENT" = "yes" ];
-            #then
-            #	if [ ! -f "$INSTALL_ROOT/lib/libevent.a" ];
-            #	then
-            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-            #		echo " "
-            #	else
-            #		#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=ON"
-            #		LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=ON -DLWS_LIBEVENT_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBEVENT_LIBRARIES=\"$INSTALL_ROOT/lib/libevent.a\""
-            #	fi
-            #else
-            #	#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBEVENT=OFF"
-            #	echo " "
-            #	LWS_LIBEVENT_OPTIONS="-DLWS_WITH_LIBEVENT=OFF"
-            #fi
 			if [ "$WITH_UV" = "yes" ];
 			then
 				if [ ! -f "$INSTALL_ROOT/lib/libuv.a" ];
 				then
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=OFF"
-					echo " "
+                                        echo " "
 				else
-					#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=ON"
-					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib/libuv.a\""
-					#LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=\"$INSTALL_ROOT/include\" -DLWS_LIBUV_LIBRARIES=\"$INSTALL_ROOT/lib\""
-					LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=$INSTALL_ROOT/include -DLWS_LIBUV_LIBRARIES=$INSTALL_ROOT/lib"
+                                        LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=ON -DLWS_LIBUV_INCLUDE_DIRS=$INSTALL_ROOT/include -DLWS_LIBUV_LIBRARIES=$INSTALL_ROOT/lib/libuv.a"
 				fi
 			else
-				#CMAKE_ARGS_FOR_LIB_WEB_SOCKETS="$CMAKE_ARGS_FOR_LIB_WEB_SOCKETS -DLWS_WITH_LIBUV=OFF"
-				echo " "
+                                echo " "
 				LWS_LIBUV_OPTIONS="-DLWS_WITH_LIBUV=OFF"
 			fi
 			#
@@ -1279,20 +1234,20 @@ then
 			#
 			#
 			echo "$LWS_WITH_LIBEV$LWS_WITH_LIBEVENT$LWS_WITH_LIBUV" &>/dev/null
-			#$CMAKE "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" $CMAKE_ARGS_FOR_LIB_WEB_SOCKETS ..
 			export SAVED_CFLAGS=$CFLAGS
 			export CFLAGS="$CFLAGS -Wno-deprecated-declarations"
 			eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
 				-DLWS_WITH_STATIC=ON -DLWS_WITH_SHARED=OFF -DLWS_STATIC_PIC=ON \
 				-DLWS_IPV6=ON -DLWS_UNIX_SOCK=ON -DLWS_WITH_HTTP2=OFF -DLWS_WITHOUT_TESTAPPS=ON \
 				-DLWS_WITH_ACCESS_LOG=ON -DLWS_WITH_SERVER_STATUS=ON \
-				-DLWS_WITH_LIBEV=$LWS_WITH_LIBEV $LWS_LIBEVENT_OPTIONS ${LWS_LIBUV_OPTIONS} \
+                                -DLWS_WITH_LIBEV=$LWS_WITH_LIBEV $LWS_LIBEVENT_OPTIONS ${LWS_LIBUV_OPTIONS} \
 				-DLWS_HAVE_LIBCAP=OFF -DLWS_MAX_SMP=1024 \
 				-DLWS_WITH_THREADPOOL=1 \
 				-DLWS_WITH_HTTP2=1 \
 				-DLWS_WITH_SSL=ON \
-				-DLWS_ZLIB_INCLUDE_DIRS="$INSTALL_ROOT/include" \
-				-DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" \
+        -DLWS_ZLIB_INCLUDE_DIRS="$INSTALL_ROOT/include" \
+        -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" \
+
 				..
 			# -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include/openssl"
 			# -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a"
