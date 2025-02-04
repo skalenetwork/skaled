@@ -1245,9 +1245,8 @@ then
 				-DLWS_WITH_THREADPOOL=1 \
 				-DLWS_WITH_HTTP2=1 \
 				-DLWS_WITH_SSL=ON \
-        -DLWS_ZLIB_INCLUDE_DIRS="$INSTALL_ROOT/include" \
-        -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" \
-
+        		-DLWS_ZLIB_INCLUDE_DIRS="$INSTALL_ROOT/include" \
+        		-DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include" \
 				..
 			# -DOPENSSL_INCLUDE_DIR="$INSTALL_ROOT/include/openssl"
 			# -DOPENSSL_CRYPTO_LIBRARY="$INSTALL_ROOT/lib/libcrypto.a"
