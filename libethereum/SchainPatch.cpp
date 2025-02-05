@@ -26,6 +26,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::StorageDestructionPatch;
     else if ( _patchName == "SkipInvalidTransactionsPatch" )
         return SchainPatchEnum::SkipInvalidTransactionsPatch;
+    else if ( _patchName == "SelfdestructStorageLimitPatch" )
+        return SchainPatchEnum::SelfdestructStorageLimitPatch;
     else if ( _patchName == "VerifyDaSigsPatch" )
         return SchainPatchEnum::VerifyDaSigsPatch;
     else if ( _patchName == "FastConsensusPatch" )
