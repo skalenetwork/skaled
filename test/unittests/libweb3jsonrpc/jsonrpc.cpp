@@ -396,13 +396,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         sleep( 1 );
 
-        auto httpClient = new jsonrpc::HttpClient(
+        httpClient = new jsonrpc::HttpClient(
             "http://" + chainParams.nodeInfo.ip + ":" +
             std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
         httpClient->SetTimeout( 1000000000 );
 
         rpcClient = unique_ptr< WebThreeStubClient >( new WebThreeStubClient( *httpClient ) );
-
 
         BOOST_TEST_MESSAGE( "Constructed JsonRpcFixture" );
     }
@@ -410,6 +409,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     ~JsonRpcFixture() {
         if ( skale_server_connector )
             skale_server_connector->StopListening();
+
+        if ( httpClient )
+            delete httpClient;
         BOOST_TEST_MESSAGE( "Destructed JsonRpcFixture" );
     }
 
@@ -447,6 +449,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
     SkaleServerOverride* skale_server_connector;
+    jsonrpc::HttpClient* httpClient;
     time_t powPatchActivationTimestamp;
     time_t push0PatchActivationTimestamp;
 };
