@@ -72,9 +72,7 @@ dev::db::Slice toSlice( std::string const& _s ) {
 };  // namespace slicing
 
 OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
-    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
-          delete db;
-      } ) {}
+    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) { delete db; } ) {}
 
 dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
     if ( lastExecutedTransactionHash.has_value() )
@@ -333,7 +331,6 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
-    
     LOG( m_loggerInfo ) << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
@@ -357,24 +354,25 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     if ( m_db_face ) {
         // iterate of a keys that start with the given substring
         string prefix( ( const char* ) _address.data(), _address.size );
-        m_db_face->forEachWithPrefix( prefix, [this, &storage, &_address]( Slice key, Slice value ) {
-            if ( key.size() == h160::size + h256::size ) {
-                // key is storage address
-                string keyString( key.begin(), key.end() );
-                h160 address = h160(
-                    keyString.substr( 0, h160::size ), h160::ConstructFromStringType::FromBinary );
-                if ( address == _address ) {
-                    h256 memoryAddress = h256(
-                        keyString.substr( h160::size ), h256::ConstructFromStringType::FromBinary );
-                    u256 memoryValue = h256( string( value.begin(), value.end() ),
-                        h256::ConstructFromStringType::FromBinary );
-                    storage[memoryAddress] = memoryValue;
-                } else {
-                    LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
+        m_db_face->forEachWithPrefix(
+            prefix, [this, &storage, &_address]( Slice key, Slice value ) {
+                if ( key.size() == h160::size + h256::size ) {
+                    // key is storage address
+                    string keyString( key.begin(), key.end() );
+                    h160 address = h160( keyString.substr( 0, h160::size ),
+                        h160::ConstructFromStringType::FromBinary );
+                    if ( address == _address ) {
+                        h256 memoryAddress = h256( keyString.substr( h160::size ),
+                            h256::ConstructFromStringType::FromBinary );
+                        u256 memoryValue = h256( string( value.begin(), value.end() ),
+                            h256::ConstructFromStringType::FromBinary );
+                        storage[memoryAddress] = memoryValue;
+                    } else {
+                        LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
+                    }
                 }
-            }
-            return true;
-        } );
+                return true;
+            } );
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }
@@ -403,7 +401,6 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
                 _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
                 if ( counter % 1000000 == 0 ) {
-                    
                     LOG( m_loggerDebug ) << ".";
                     LOG( m_loggerDebug ).flush();
                 }

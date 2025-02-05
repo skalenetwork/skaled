@@ -544,7 +544,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     }
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
-    
+
     LOG( m_loggerInfo ) << "Latest price hash is: " << last_price_hash;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }

@@ -53,6 +53,7 @@ private:
 
     /// Loggers
     mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "AccountManager" ) };
-    mutable dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "AccountManager" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger(
+        dev::VerbosityWarning, "AccountManager" ) };
     mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "AccountManager" ) };
 };
