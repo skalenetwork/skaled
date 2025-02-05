@@ -146,7 +146,7 @@ Client::Client( ChainParams const& _params, int _networkID,
 
     m_debugTracer.call_on_tracepoint( [this]( const std::string& name ) {
         LOG( m_loggerTrace ) << "TRACEPOINT " << name << " "
-                             << m_debugTracer.get_tracepoint_count( name );
+                              << m_debugTracer.get_tracepoint_count( name );
     } );
 
     m_debugHandler = [this]( const std::string& arg ) -> std::string {
@@ -351,8 +351,7 @@ void Client::onBadBlock( Exception& _ex ) const {
     // BAD BLOCK
     bytes const* block = boost::get_error_info< errinfo_block >( _ex );
     if ( !block ) {
-        LOG( m_loggerWarning ) << "ODD: onBadBlock called but exception (" << _ex.what()
-                               << ") has no block in it.";
+        LOG( m_loggerWarning ) << "ODD: onBadBlock called but exception (" << _ex.what() << ") has no block in it.";
         LOG( m_loggerWarning ) << boost::diagnostic_information( _ex );
         return;
     }
@@ -537,10 +536,10 @@ size_t Client::importTransactionsAsBlock(
 
     if ( !UnsafeRegion::isActive() ) {
         LOG( m_loggerTrace ) << "Total unsafe time so far = "
-                             << std::chrono::duration_cast< std::chrono::seconds >(
-                                    UnsafeRegion::getTotalTime() )
-                                    .count()
-                             << " seconds";
+                              << std::chrono::duration_cast< std::chrono::seconds >(
+                                     UnsafeRegion::getTotalTime() )
+                                     .count()
+                              << " seconds";
     } else
         LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
@@ -593,7 +592,8 @@ size_t Client::syncTransactions(
     m_skaleHost->noteNewTransactions();
 
     LOG( m_loggerTrace ) << "Processed " << newPendingReceipts.size() << " transactions in "
-                         << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue << ")";
+                          << timer.elapsed() * 1000 << "(" << ( bool ) m_syncTransactionQueue
+                          << ")";
 
 #ifdef HISTORIC_STATE
     LOG( m_loggerInfo )
@@ -608,9 +608,9 @@ void Client::onDeadBlocks( h256s const& _blocks, h256Hash& io_changed ) {
         LOG( m_loggerTrace ) << "Dead block: " << h;
         for ( auto const& t : bc().transactions( h ) ) {
             LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
-                                 << Transaction( t, CheckTransaction::None );
+                                  << Transaction( t, CheckTransaction::None );
             LOG( m_loggerTrace ) << "Resubmitting dead-block transaction "
-                                 << Transaction( t, CheckTransaction::None );
+                                  << Transaction( t, CheckTransaction::None );
             m_tq.import( t, IfDropped::Retry );
         }
     }
@@ -730,7 +730,7 @@ void Client::rejigSealing() {
                 }
                 // TODO is that needed? we have "Generating seal on" below
                 LOG( m_loggerTrace ) << "Starting to seal block"
-                                     << " #" << m_working.info().number();
+                                      << " #" << m_working.info().number();
 
                 // TODO Deduplicate code
                 dev::h256 stateRootToSet;
@@ -765,7 +765,7 @@ void Client::rejigSealing() {
                         LOG( m_loggerInfo ) << "Submitting block failed...";
                 } );
                 LOG( m_loggerTrace ) << "Generating seal on " << m_sealingInfo.hash( WithoutSeal )
-                                     << " #" << m_sealingInfo.number();
+                                      << " #" << m_sealingInfo.number();
                 sealEngine()->generateSeal( m_sealingInfo );
             }
         } else
@@ -786,7 +786,7 @@ void Client::sealUnconditionally( bool submitToBlockChain ) {
         }
         // TODO is that needed? we have "Generating seal on" below
         LOG( m_loggerTrace ) << "Starting to seal block"
-                             << " #" << m_working.info().number();
+                              << " #" << m_working.info().number();
         // latest hash is really updated after NEXT snapshot already started hash computation
         // TODO Deduplicate code
         dev::h256 stateRootToSet;
@@ -956,10 +956,10 @@ void Client::checkWatchGarbage() {
             {
                 toUninstall.push_back( key );
                 LOG( m_loggerTrace ) << "GC: Uninstall " << key << " ("
-                                     << chrono::duration_cast< chrono::seconds >(
-                                            chrono::system_clock::now() - m_watches[key].lastPoll )
-                                            .count()
-                                     << " s old)";
+                                      << chrono::duration_cast< chrono::seconds >(
+                                             chrono::system_clock::now() - m_watches[key].lastPoll )
+                                             .count()
+                                      << " s old)";
             }
         for ( auto i : toUninstall )
             uninstallWatch( i );

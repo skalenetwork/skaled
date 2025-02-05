@@ -120,7 +120,7 @@ namespace eth {
 
 // Executive swallows exceptions in some circumstances
 #if 0
-#define THROW_EXCEPTION( X ) ( ( cerr << "EVM EXCEPTION " << ( X ).what() << "\n" ), abort() )
+#define THROW_EXCEPTION( X ) ( ( cerr << "EVM EXCEPTION " << ( X ).what()  << "\n" ), abort() )
 #else
 #if EVM_TRACE > 0
 #define THROW_EXCEPTION( X ) \

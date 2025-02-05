@@ -1083,7 +1083,7 @@ void Block::commitToSeal(
     //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
     LOG( m_loggerTrace ) << "Post-reward stateRoot: "
-                         << "is not calculated in Skale state";
+                            << "is not calculated in Skale state";
     LOG( m_loggerTrace ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );

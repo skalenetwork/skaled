@@ -34,10 +34,11 @@ namespace test {
 
 BOOST_FIXTURE_TEST_SUITE( RangeMaskTest, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( constructor, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( constructor, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
-    for ( RM r : { RM(), RM( 1, 10 ), RM( Range( 2, 10 ) ) } ) {
+    for ( RM r : {RM(), RM( 1, 10 ), RM( Range( 2, 10 ) )} ) {
         BOOST_CHECK( r.empty() );
         BOOST_CHECK( !r.contains( 0 ) );
         BOOST_CHECK( !r.contains( 1 ) );
@@ -48,8 +49,8 @@ BOOST_AUTO_TEST_CASE( constructor, *boost::unit_test::precondition( dev::test::r
     BOOST_CHECK( !RM( Range( 2, 10 ) ).full() );
 }
 
-BOOST_AUTO_TEST_CASE(
-    simple_unions, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( simple_unions, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
     RM m( Range( 0, 2000 ) );
@@ -69,7 +70,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK( !m.contains( 258 ) );
 }
 
-BOOST_AUTO_TEST_CASE( empty_union, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( empty_union, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
     RM m( Range( 0, 2000 ) );
@@ -87,8 +89,8 @@ BOOST_AUTO_TEST_CASE( empty_union, *boost::unit_test::precondition( dev::test::r
     BOOST_CHECK_EQUAL( m.size(), 3 );
 }
 
-BOOST_AUTO_TEST_CASE(
-    overlapping_unions, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( overlapping_unions, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
     RM m( Range( 0, 2000 ) );
@@ -110,7 +112,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_CHECK_EQUAL( 70 - 5, m.size() );
 }
 
-BOOST_AUTO_TEST_CASE( complement, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( complement, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
     RM m( Range( 0, 2000 ) );
@@ -126,7 +129,8 @@ BOOST_AUTO_TEST_CASE( complement, *boost::unit_test::precondition( dev::test::ru
     BOOST_CHECK_EQUAL( m.size(), 1000 - 10 );
 }
 
-BOOST_AUTO_TEST_CASE( iterator, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+BOOST_AUTO_TEST_CASE( iterator, 
+    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     using RM = RangeMask;
     using Range = pair< unsigned, unsigned >;
     RM m( Range( 0, 2000 ) );
@@ -136,7 +140,7 @@ BOOST_AUTO_TEST_CASE( iterator, *boost::unit_test::precondition( dev::test::run_
 
     vector< unsigned > elements;
     copy( m.begin(), m.end(), back_inserter( elements ) );
-    BOOST_CHECK( elements == ( vector< unsigned >{ 7, 8, 11, 200, 201, 202, 203, 204 } ) );
+    BOOST_CHECK( elements == ( vector< unsigned >{7, 8, 11, 200, 201, 202, 203, 204} ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
