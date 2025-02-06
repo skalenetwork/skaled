@@ -573,7 +573,7 @@ size_t Client::syncTransactions(
         assert( !m_working.isSealed() );
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
-        m_state = m_state.createStateCopyAndClearCaches();
+        m_state.clearAllCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
         m_state.mutableHistoricState().setRoot(
@@ -641,7 +641,7 @@ void Client::restartMining() {
     DEV_READ_GUARDED( x_preSeal )
     newPreMine = m_preSeal;
 
-    m_state = m_state.createStateCopyAndClearCaches();
+    m_state.clearAllCaches();
     preChanged = newPreMine.sync( bc(), m_state );
 
     if ( preChanged || m_postSeal.author() != m_preSeal.author() ) {
