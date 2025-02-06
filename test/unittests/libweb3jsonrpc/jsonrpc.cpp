@@ -1718,7 +1718,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
         const u256 GAS_PER_HASH = 1;
         u256 candidate = h256::random();
         h256 hash = dev::sha3( senderAddress ) ^ dev::sha3( u256( 0 ) ) ^ dev::sha3( candidate );
-        u256 externalGas = ~u256( 0 ) / u256( hash ) * GAS_PER_HASH;
+        u256 externalGas = ~u256( 0 ) / u256( hash ) / GAS_PER_HASH;
         if ( externalGas >= ESTIMATE_AFTER_PATCH &&
              externalGas < ESTIMATE_AFTER_PATCH + ESTIMATE_AFTER_PATCH / 10 ) {
             powGasPrice = candidate;
@@ -1727,8 +1727,12 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     // Account balance is too low will mean that PoW didn't work out
     transact["gasPrice"] = toJS( powGasPrice );
 
+    // we may've been calculating pow for too long and patch is active already
+    // need to know the block number at this point
+    auto latestBlockNumber = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock)).number();
+
     // wait for patch turning on and see how it happens
-    string txHash;
+    string txHash;    
     BlockHeader badInfo, goodInfo;
     uint64_t blockCounter = 2;
     for ( ;; ) {
@@ -1758,7 +1762,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 
     BOOST_REQUIRE_LT( badInfo.timestamp(), fixture.powPatchActivationTimestamp );
     BOOST_REQUIRE_GE( goodInfo.timestamp(), fixture.powPatchActivationTimestamp );
-    BOOST_REQUIRE_EQUAL( badInfo.number() + 1, goodInfo.number() );
+    BOOST_REQUIRE_EQUAL( std::max( badInfo.number() + 1, latestBlockNumber ), goodInfo.number() );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     fixture.client->state().getOriginalDb()->createBlockSnap( blockCounter );
@@ -4541,7 +4545,7 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
 
 
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     fixture.setupFirstKey();
     auto firstAccount = fixture.testAccounts.begin()->second;
@@ -4554,7 +4558,7 @@ BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction,
 }
 
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4572,7 +4576,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,
 }
 
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers,
-    *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4587,11 +4591,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers,
 
 }
 
-
-
-
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers,
-    *boost::unit_test::precondition( dev::test::run_not_express )) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4608,9 +4609,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType1Transfers,
 
 }
 
-
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers,
-    *boost::unit_test::precondition( dev::test::run_not_express )) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4627,9 +4627,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers,
 
 }
 
-
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
-    *boost::unit_test::precondition( dev::test::run_not_express )) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 
@@ -4646,9 +4645,8 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
 
 }
 
-
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
-    *boost::unit_test::precondition( dev::test::run_not_express )) {
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest )) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
 

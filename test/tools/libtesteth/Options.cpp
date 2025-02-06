@@ -80,8 +80,9 @@ void printHelp() {
     cout << setw( 30 ) << "--list-tests" << setw( 25 ) << "List all test suites/cases and exit\n";
 
     cout << "\nAdditional Tests\n";
-    cout << setw( 30 ) << "--all" << setw( 25 ) << "Enable all tests\n";
+    cout << setw( 30 ) << "--all" << setw( 25 ) << "Enable all tests other than manual\n";
     cout << setw( 30 ) << "--express" << setw( 25 ) << "Only 'express' tests\n";
+    cout << setw( 30 ) << "--manual" << setw( 25 ) << "Only 'manual' tests\n";
 
     cout << "\nTest Generation\n";
     cout << setw( 30 ) << "--filltests" << setw( 25 ) << "Run test fillers\n";
@@ -223,6 +224,8 @@ Options::Options( int argc, const char** argv ) {
             all = true;
         else if ( arg == "--express" )
             this->express = true;
+        else if ( arg == "--manual" )
+            this->manual = true;
         else if ( arg == "--singletest" ) {
             throwIfNoArgumentFollows();
             singleTest = true;
