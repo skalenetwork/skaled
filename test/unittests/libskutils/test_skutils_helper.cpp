@@ -1380,9 +1380,9 @@ void test_print_header_name( const char* s ) {
     cc::_on_ = bPrev;
 }
 
-
-int g_nDefaultPort = 9696;
-int g_nDefaultPortProxygen = 8686;
+int randomOffset = std::rand() % 50000;
+int g_nDefaultPort = 9696 + randomOffset;
+int g_nDefaultPortProxygen = 8686 + randomOffset;
 
 std::vector< std::string > g_vecTestClientNamesA = {"Frodo", "Bilbo", "Sam", "Elrond", "Galadriel",
     "Celeborn", "Balrog", "Anduin", "Samwise", "Gandalf", "Legolas", "Aragorn", "Gimli", "Faramir",
