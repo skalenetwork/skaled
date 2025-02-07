@@ -339,7 +339,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
-        client->setAuthor( coinbase.address() );
+        if ( !_generation2 )
+            client->setAuthor( coinbase.address() );
+        else
+            client->setAuthor( chainParams.sChain.blockAuthor );
 
         // wait for 1st block - because it's always empty
         std::promise< void > blockPromise;
@@ -351,11 +354,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 
         if ( !_isSyncNode )
             blockPromise.get_future().wait();
-
-        if ( !_generation2 )
-            client->setAuthor( coinbase.address() );
-        else
-            client->setAuthor( chainParams.sChain.blockAuthor );
 
         using FullServer = ModularServer< rpc::EthFace, rpc::NetFace, rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
