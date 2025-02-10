@@ -875,7 +875,6 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "logLevel": "info",
             "logLevelConfig": "info",
             "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
-            "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",
             "rotateAfterBlock": 10240,
             "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68",
             "wallets": {
@@ -913,9 +912,6 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "snapshotIntervalSec": 0,
             "emptyBlockIntervalMs": 1000,
             "maxConsensusStorageBytes": 178124851,
-            "maxSkaledLeveldbStorageBytes": 178124851,
-            "maxFileStorageBytes": 178124851,
-            "maxReservedStorageBytes": 59374950,
             "contractStoragePatchTimestamp": 1000,
             "nodes": [
                 {
