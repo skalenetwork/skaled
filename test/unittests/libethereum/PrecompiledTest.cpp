@@ -1618,7 +1618,6 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
       "bindIP": "127.0.0.1",
       "basePort": 1234,
       "logLevel": "trace",
-      "logLevelProposal": "trace",
       "testSignatures": true,
       "wallets": {
         "ima": {

@@ -407,7 +407,6 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "bindIP": "127.0.0.1",
       "basePort": )E"+std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
-      "logLevelProposal": "trace",
       "testSignatures": true
     },
     "sChain": {
@@ -895,7 +894,6 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
       "bindIP": "127.0.0.1",
       "basePort": )E"+std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
-      "logLevelProposal": "trace",
       "testSignatures": true
     },
     "sChain": {
