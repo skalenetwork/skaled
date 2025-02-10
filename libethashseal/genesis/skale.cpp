@@ -67,7 +67,6 @@ static std::string const c_genesisInfoSkale = std::string() +
 	  "bindIP6": "::1",
 	  "basePort6": 1231,
       "logLevel": "trace",
-      "logLevelProposal": "trace",
       "adminOrigins": [ "*" ],
 	  "ipc": false,
 	  "ipcpath": "./ipcx",

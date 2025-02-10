@@ -321,7 +321,6 @@
 	      "bindIP": "0.0.0.0",
 	      "basePort": 1231,
 	      "logLevel": "info",
-	      "logLevelProposal": "info",
 	      "rotateAfterBlock": 0,
 	      "ecdsaKeyName": "",
 	      "minCacheSize": 1000,

@@ -177,7 +177,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxOpenLeveldbFiles", { { js::int_type }, JsonFieldPresence::Optional } },
             { "logLevel", { { js::str_type }, JsonFieldPresence::Optional } },
             { "logLevelConfig", { { js::str_type }, JsonFieldPresence::Optional } },
-            { "logLevelProposal", { { js::str_type }, JsonFieldPresence::Optional } },
             { "aa", { { js::str_type }, JsonFieldPresence::Optional } },
             { "acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
             { "info-acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
