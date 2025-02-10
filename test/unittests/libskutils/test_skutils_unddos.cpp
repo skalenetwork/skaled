@@ -20,6 +20,10 @@ static skutils::unddos::settings compose_test_unddos_settings() {
     skutils::unddos::origin_entry_setting oe2;
     oe2.load_unlim_for_localhost_only();
     settings.origins_.push_back( oe2 );
+    //
+    settings.global_limit_.max_ws_conn_ = 2;
+    settings.global_limit_.max_calls_per_second_ = 3;
+    settings.global_limit_.max_calls_per_minute_ = 10;
     return settings;
 }
 
