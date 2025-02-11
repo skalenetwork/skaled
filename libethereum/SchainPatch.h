@@ -128,11 +128,6 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 /*
  * Enable restriction on contract storage size, when it's doing selfdestruct
  */
-DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
-
-/*
- * Enable restriction on contract storage size, when it's doing selfdestruct
- */
 DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
 
 /*

@@ -2990,6 +2990,43 @@ BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
     fixture.rpcClient->debug_doBlocksDbCompaction();
 }
 
+BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
+    Json::Value configJson;
+    Json::Reader().parse(c_genesisConfigString, configJson);
+
+    // indexed by enum int value
+    std::vector< size_t > patchTimestamps;
+
+    // Set custom config file & create timestamps for each patch
+    size_t numPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
+    for (size_t patch = 0; patch < numPatches ; patch++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
+        size_t ts = patch + 1000; // just to offset from the default values (0, 1)
+        patchTimestamps.push_back(ts);
+
+        std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        configJson["skaleConfig"]["sChain"][patchName] = ts; 
+    }
+
+    Json::FastWriter fastWriter;
+    std::string customConfigFile = fastWriter.write( configJson ); 
+
+    JsonRpcFixture fixture(customConfigFile, false, false, false, false);
+    Json::Value returnedPatchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
+
+    // compare returned timestamps to actual timestamps
+    for( size_t patchIdx = 0; patchIdx <  numPatches; patchIdx++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patchIdx );
+
+        std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        size_t returnedTimestamp = static_cast< size_t > (returnedPatchTimestamps[patchName].asInt()); 
+
+        BOOST_REQUIRE_EQUAL( returnedTimestamp, patchTimestamps[patchIdx]);
+    }
+}
+
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     JsonRpcFixture fixture( c_genesisConfigString, false, false, true, false );
 

@@ -117,3 +117,18 @@ Json::Value Debug::debug_getFutureTransactions() {
         t.removeMember( "data" );
     return res;
 }
+
+Json::Value Debug::debug_getPatchTimestamps() {
+    Json::Value jsonResponse;
+    ChainParams chainParams = m_eth.chainParams();
+
+    size_t numberOfPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
+    for ( size_t patch = 0; patch < numberOfPatches; patch++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
+        std::string patchName = getPatchNameForEnum( patchEnum ) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        jsonResponse[patchName] = chainParams.getPatchTimestamp( patchEnum );
+    }
+
+    return jsonResponse;
+}
