@@ -309,7 +309,6 @@
       "wsRpcPort": 1233,
       "wssRpcPort": 1238,
       "logLevel": "info",
-      "logLevelProposal": "info",
       "rotateAfterBlock": 0,
       "ecdsaKeyName": "",
       "minCacheSize": 1000,

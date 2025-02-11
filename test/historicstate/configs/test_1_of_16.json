@@ -743,7 +743,6 @@
             "httpRpcPort": 1234,
             "httpsRpcPort": 1239,
             "logLevel": "info",
-            "logLevelProposal": "info",
             "maxCacheSize": 2000,
             "maxOpenLeveldbFiles": 25,
             "minCacheSize": 1000,
