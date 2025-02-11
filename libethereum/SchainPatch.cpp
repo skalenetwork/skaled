@@ -62,8 +62,6 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "StorageDestructionPatch";
     case SchainPatchEnum::SkipInvalidTransactionsPatch:
         return "SkipInvalidTransactionsPatch";
-    case SchainPatchEnum::SelfdestructStorageLimitPatch:
-        return "SelfdestructStorageLimitPatch";
     case SchainPatchEnum::VerifyDaSigsPatch:
         return "VerifyDaSigsPatch";
     case SchainPatchEnum::FastConsensusPatch:
