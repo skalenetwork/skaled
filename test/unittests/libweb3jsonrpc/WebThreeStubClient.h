@@ -168,6 +168,7 @@ public:
     Json::Value debug_doStateDbCompaction() noexcept( false );
     Json::Value debug_doBlocksDbCompaction() noexcept( false );
     Json::Value debug_getFutureTransactions() noexcept( false );
+    Json::Value debug_getPatchTimestamps() noexcept( false );
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

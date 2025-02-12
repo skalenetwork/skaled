@@ -1115,8 +1115,6 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
-        boost::filesystem::path( configPath ).remove_filename() );
     // for now, leave previous values in file (for case of crash)
 
     if ( vm.count( "main-net-url" ) ) {
@@ -1579,6 +1577,14 @@ int main( int argc, char** argv ) try {
         chainParams.nodeInfo.sgxServerUrl = strURL;
     }
 
+    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
+        boost::filesystem::path( configPath ).remove_filename() );
+
+    // Reset subsystem running status before initialization procedure started
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
+
     std::shared_ptr< SharedSpace > sharedSpace;
     if ( vm.count( "shared-space-path" ) ) {
         try {
@@ -1814,6 +1820,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+
         statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
     }
 
