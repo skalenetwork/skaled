@@ -1705,10 +1705,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
         shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
+    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
+
     client->injectSkaleHost();
     client->startWorking();
-
-    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
 
     ClientTest* testClient = asClientTest( client.get() );
 
