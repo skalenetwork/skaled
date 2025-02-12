@@ -29,6 +29,8 @@ jobs:
               state: 'open',
             });
 
+            console.log("All PRs:", prs.data);
+
             const filteredPRs = [];
             for (const pr of prs.data) {
               if (pr.draft) continue;
