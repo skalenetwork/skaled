@@ -35,11 +35,10 @@ jobs:
             for (const pr of prs.data) {
               if (pr.draft) continue;
 
-              const commits = await github.rest.pulls.listCommits({
+              const commits = await github.rest.repos.listCommits({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 sha: pr.head.ref,
-                rel: 'all',
               });
 
               const recentCommits = commits.data.filter(commit => {
