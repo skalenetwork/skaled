@@ -69,15 +69,9 @@ public:
         leveldb::ReadOptions _readOptions = defaultReadOptions(),
         leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
         leveldb::Options _dbOptions = defaultDBOptions() ) {
-        
-        LevelDB::LevelDBOptions options = {
-            _readOptions,
-            _writeOptions,
-            _dbOptions
-        };
+        LevelDB::LevelDBOptions options = { _readOptions, _writeOptions, _dbOptions };
 
-        auto leveldb =
-            std::make_shared< LevelDB >( _path, options );
+        auto leveldb = std::make_shared< LevelDB >( _path, options );
         split_db = std::make_unique< SplitDB >( leveldb );
         backend = split_db->newInterface();
     }

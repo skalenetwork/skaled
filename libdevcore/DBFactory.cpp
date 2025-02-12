@@ -138,7 +138,6 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
 
 std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
     DatabaseKind _kind, fs::path const& _path ) {
-
     LevelDB::LevelDBOptions options;
     LevelDB::WrapperOptions wrapperOptions;
 

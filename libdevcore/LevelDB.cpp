@@ -128,7 +128,7 @@ LevelDB::WrapperOptions LevelDB::defaultWrapperOptions() {
     return options;
 }
 
-LevelDB::LevelDB( boost::filesystem::path const& _path, LevelDBOptions _levelDBOptions, 
+LevelDB::LevelDB( boost::filesystem::path const& _path, LevelDBOptions _levelDBOptions,
     WrapperOptions _wrapperOptions )
     : m_db( nullptr ),
       m_readOptions( std::move( _levelDBOptions.readOptions ) ),
@@ -141,8 +141,8 @@ LevelDB::LevelDB( boost::filesystem::path const& _path, LevelDBOptions _levelDBO
 
 // this does not hold any locks so it needs to be called
 // either from a constructor or from a function that holds a lock on m_db
-void LevelDB::openDBInstanceUnsafe(bool _enableLogger) {
-    if (_enableLogger) {
+void LevelDB::openDBInstanceUnsafe( bool _enableLogger ) {
+    if ( _enableLogger ) {
         cnote << "Time to (re)open LevelDB at " + m_path.string();
     }
 
@@ -158,7 +158,8 @@ void LevelDB::openDBInstanceUnsafe(bool _enableLogger) {
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
     m_dbReopenId++;
-    cnote << "LEVELDB_OPENED:" <<  m_path.string() << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    cnote << "LEVELDB_OPENED:" << m_path.string()
+          << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();

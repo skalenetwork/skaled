@@ -63,7 +63,8 @@ public:
     };
 
     explicit LevelDB( boost::filesystem::path const& _path,
-        LevelDBOptions _levelDBOptions = defaultLevelDBOptions(), WrapperOptions _wrapperOptions = defaultWrapperOptions() );
+        LevelDBOptions _levelDBOptions = defaultLevelDBOptions(),
+        WrapperOptions _wrapperOptions = defaultWrapperOptions() );
 
     ~LevelDB();
 
@@ -165,7 +166,7 @@ private:
             m_levedlDB.m_dbMutex.unlock();
         }
     };
-    void openDBInstanceUnsafe(bool _enableLogger = true);
+    void openDBInstanceUnsafe( bool _enableLogger = true );
     void reopenDataBaseIfNeeded();
     leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
         std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
