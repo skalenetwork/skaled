@@ -49,10 +49,21 @@ public:
     static leveldb::ReadOptions defaultSnapshotReadOptions();
     static leveldb::Options defaultSnapshotDBOptions();
 
+    /// Options regarding levelDB database
+    struct LevelDBOptions {
+        leveldb::ReadOptions readOptions = defaultReadOptions();
+        leveldb::WriteOptions writeOptions = defaultWriteOptions();
+        leveldb::Options dbOptions = defaultDBOptions();
+    };
+
+    /// Options regarding the wrapper of levelDB
+    struct WrapperOptions {
+        int64_t reopenPeriodMs = -1;
+        bool enableLogger = false;
+    };
+
     explicit LevelDB( boost::filesystem::path const& _path,
-        leveldb::ReadOptions _readOptions = defaultReadOptions(),
-        leveldb::WriteOptions _writeOptions = defaultWriteOptions(),
-        leveldb::Options _dbOptions = defaultDBOptions(), int64_t _reopenPeriodMs = -1 );
+        LevelDBOptions _levelDBOptions = defaultLevelDBOptions(), WrapperOptions _wrapperOptions = defaultWrapperOptions() );
 
     ~LevelDB();
 
@@ -154,11 +165,14 @@ private:
             m_levedlDB.m_dbMutex.unlock();
         }
     };
-    void openDBInstanceUnsafe();
+    void openDBInstanceUnsafe(bool _enableLogger = true);
     void reopenDataBaseIfNeeded();
     leveldb::Status getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
         std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const;
     void reopen();
+
+    static LevelDBOptions defaultLevelDBOptions();
+    static WrapperOptions defaultWrapperOptions();
 };
 
 }  // namespace dev::db

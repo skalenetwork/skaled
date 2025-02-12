@@ -496,9 +496,16 @@ void SnapshotManager::computeDatabaseHash(
     bool isContinue = true;
 
     while ( isContinue ) {
-        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
-            dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-            dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+        dev::db::LevelDB::LevelDBOptions options = {
+            dev::db::LevelDB::defaultSnapshotReadOptions(), 
+            dev::db::LevelDB::defaultWriteOptions(),
+            dev::db::LevelDB::defaultSnapshotDBOptions()
+        };
+        dev::db::LevelDB::WrapperOptions wrapperOptions;
+        wrapperOptions.enableLogger = false;
+
+        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(), options, 
+        wrapperOptions) );
 
         isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
     }
@@ -522,9 +529,12 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
         std::string last_price_str;
         std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
         while ( it != end ) {
+            dev::db::LevelDB::LevelDBOptions options;
+            options.dbOptions = dev::db::LevelDB::defaultSnapshotDBOptions();
+
             std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string(),
-                dev::db::LevelDB::defaultReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-                dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+                options ) );
+
             if ( m_db->exists( last_price_key ) ) {
                 last_price_str = m_db->lookup( last_price_key );
                 break;

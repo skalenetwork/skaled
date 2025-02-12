@@ -138,10 +138,14 @@ std::unique_ptr< DatabaseFace > DBFactory::create( DatabaseKind _kind, fs::path 
 
 std::unique_ptr< DatabaseFace > DBFactory::createHistoric(
     DatabaseKind _kind, fs::path const& _path ) {
+
+    LevelDB::LevelDBOptions options;
+    LevelDB::WrapperOptions wrapperOptions;
+
     switch ( _kind ) {
     case DatabaseKind::LevelDB:
-        return std::unique_ptr< DatabaseFace >( new LevelDB( _path, LevelDB::defaultReadOptions(),
-            LevelDB::defaultWriteOptions(), LevelDB::defaultDBOptions(), s_reopenPeriodMs ) );
+        wrapperOptions.reopenPeriodMs = s_reopenPeriodMs;
+        return std::unique_ptr< DatabaseFace >( new LevelDB( _path, options, wrapperOptions ) );
         break;
     default:
         assert( false );
