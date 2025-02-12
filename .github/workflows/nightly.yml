@@ -33,10 +33,31 @@ jobs:
             for (const pr of prs.data) {
               if (pr.draft) continue;
 
-              const commits = await github.rest.repos.listCommits({
+              # const commits = await github.rest.pulls.listCommits({
+              #   owner: context.repo.owner,
+              #   repo: context.repo.repo,
+              #   pull_number: pr.number,
+              #   page: 1,
+              # });
+              // Get the first page of commits to determine the total number of pages
+              const firstPageCommits = await github.rest.pulls.listCommits({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                sha: pr.head.ref,
+                pull_number: pr.number,
+                per_page: 100,
+                page: 1,
+              });
+
+              const totalCommits = firstPageCommits.headers['x-total-count'];
+              const totalPages = Math.ceil(totalCommits / 100);
+
+              // Get the last page of commits
+              const lastPageCommits = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100,
+                page: totalPages,
               });
 
               const recentCommits = commits.data.filter(commit => {
