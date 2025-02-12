@@ -60,7 +60,7 @@ jobs:
                 page: totalPages,
               });
 
-              const recentCommits = commits.data.filter(commit => {
+              const recentCommits = lastPageCommits.data.filter(commit => {
                 const commitDate = new Date(commit.commit.author.date);
                 return commitDate >= oneDayAgo;
               });
