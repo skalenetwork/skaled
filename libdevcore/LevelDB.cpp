@@ -158,7 +158,7 @@ void LevelDB::openDBInstanceUnsafe(bool _enableLogger) {
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
     m_dbReopenId++;
-    cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    cnote << "LEVELDB_OPENED:" <<  m_path.string() << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
 }
 uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
