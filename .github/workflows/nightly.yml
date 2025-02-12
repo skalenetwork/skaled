@@ -38,7 +38,7 @@ jobs:
               const commits = await github.rest.pulls.listCommits({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: pr.number,
+                sha: pr.head.ref,
                 rel: 'all',
               });
 
