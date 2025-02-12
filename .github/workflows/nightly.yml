@@ -39,6 +39,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
+                rel: 'all',
               });
 
               const recentCommits = commits.data.filter(commit => {
