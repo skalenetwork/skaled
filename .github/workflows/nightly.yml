@@ -5,61 +5,71 @@ on:
     - cron: '0 0 * * *'
 
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Specify a PR number to run tests on (optional)'
+        required: false
+        type: string
 
 defaults:
   run:
     shell: bash
+
 jobs:
   identify-prs:
     runs-on: ubuntu-latest
     outputs:
       pr-data: ${{ steps.get-prs.outputs.pr-data }}
     steps:
-      - name: Identify Open Non-Draft PRs with Recent Commits
+      - name: Identify Open Non-Draft PRs with Recent Commits (or Specific PR)
         id: get-prs
         uses: actions/github-script@v6
         with:
           script: |
             const oneDayAgo = new Date();
             oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+            const prNumber = '${{ github.event.inputs.pr_number }}';
 
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-            });
+            let prs = [];
+
+            if (prNumber) {
+              // Fetch the specified PR
+              const pr = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: parseInt(prNumber),
+              });
+
+              if (!pr.data.draft) {
+                prs = [pr.data];
+              }
+            } else {
+              // Fetch all PRs
+              const allPRs = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+              });
+
+              prs = allPRs.data.filter(pr => !pr.draft);
+            }
 
             const filteredPRs = [];
-            for (const pr of prs.data) {
-              if (pr.draft) continue;
-
-              // Get the first page of commits to determine the total number of pages
-              const firstPageCommits = await github.rest.pulls.listCommits({
+            for (const pr of prs) {
+              // Get commits to check for recent activity
+              const commits = await github.rest.pulls.listCommits({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
                 per_page: 100,
-                page: 1,
               });
 
-              const totalCommits = firstPageCommits.headers['x-total-count'];
-              const totalPages = Math.ceil(totalCommits / 100);
-
-              // Get the last page of commits
-              const lastPageCommits = await github.rest.pulls.listCommits({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-                per_page: 100,
-                page: totalPages,
-              });
-
-              const recentCommits = lastPageCommits.data.filter(commit => {
+              const recentCommits = commits.data.filter(commit => {
                 const commitDate = new Date(commit.commit.author.date);
                 return commitDate >= oneDayAgo;
               });
 
-              if (recentCommits.length > 0) {
+              if (recentCommits.length > 0 || prNumber) {
                 filteredPRs.push({ branch: pr.head.ref, sha: pr.head.sha, number: pr.number });
               }
             }
@@ -72,11 +82,11 @@ jobs:
     if: ${{ needs.identify-prs.outputs.pr-data != '[]' && needs.identify-prs.outputs.pr-data != '' }}
     strategy:
       matrix:
-        pr: ${{fromJson(needs.identify-prs.outputs.pr-data)}}
+        pr: ${{ fromJson(needs.identify-prs.outputs.pr-data) }}
     uses: ./.github/workflows/test-all.yml
     with:
-        branch_name: ${{ matrix.pr.branch }}
-        sha: ${{ matrix.pr.sha }}
+      branch_name: ${{ matrix.pr.branch }}
+      sha: ${{ matrix.pr.sha }}
     secrets:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
