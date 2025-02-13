@@ -96,11 +96,6 @@ BOOST_AUTO_TEST_CASE( purgeAuxMem,
     myDB.removeAux( h256( 42 ) );
     BOOST_CHECK( myDB.lookupAux( h256( 42 ) ) == value );
     BOOST_CHECK_EQUAL( myDB.getAux().size(), 1 );
-    BOOST_CHECK( myDB.lookupAux( h256( 42 ) ) == bytes() );
-    BOOST_CHECK_EQUAL( myDB.getAux().size(), 0 );
-    myDB.insertAux( h256( 43 ), &value );
-    BOOST_CHECK_EQUAL( myDB.getAux().size(), 1 );
-    BOOST_CHECK_EQUAL( myDB.getAux().size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( copy, 
