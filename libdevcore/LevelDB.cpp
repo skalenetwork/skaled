@@ -161,7 +161,7 @@ void LevelDB::openDBInstanceUnsafe( bool _enableLogger ) {
 
     if ( _enableLogger ) {
         cnote << "LEVELDB_OPENED:" << m_path.string()
-            << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+              << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
     }
 }
 uint64_t LevelDB::getCurrentTimeMs() {
