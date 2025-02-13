@@ -39,10 +39,7 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: parseInt(prNumber),
               });
-
-              if (!pr.data.draft) {
-                prs = [pr.data];
-              }
+              prs = [pr.data];
             } else {
               // Fetch all PRs
               const allPRs = await github.rest.pulls.list({
