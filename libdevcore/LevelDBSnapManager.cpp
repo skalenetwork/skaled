@@ -73,6 +73,17 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
     return mapSizeAfterCleanup;
 }
 
+void LevelDBSnapManager::closeAllOpenSnaps(
+    std::unique_ptr< leveldb::DB >& _db, uint64_t _dbInstanceId ) {
+    std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
+    for ( auto&& snap : oldSnaps ) {
+        LDB_CHECK( snap.second );
+        snap.second->close( _db, _dbInstanceId );
+    }
+    if ( m_lastBlockSnap )
+        m_lastBlockSnap->close( _db, _dbInstanceId );
+}
+
 
 // this will be called from EVM processing thread just after the block is processed
 void LevelDBSnapManager::addSnapForBlock(

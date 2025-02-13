@@ -170,6 +170,7 @@ uint64_t LevelDB::getCurrentTimeMs() {
 }
 
 LevelDB::~LevelDB() {
+    m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
     if ( m_db )
         m_db.reset();
     if ( m_options.filter_policy )
