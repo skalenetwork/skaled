@@ -2458,7 +2458,7 @@ int main( int argc, char** argv ) try {
                 nlohmann::json joUnDdosSettings = joConfig["unddos"];
                 skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
             } else
-                skale_server_connector->unddos_.get_settings();  // auto-init
+                skale_server_connector->unddos_.disable_ddos();  // auto-init
             //
             clog( VerbosityDebug, "main" )
                 << cc::attention( "UN-DDOS" ) + cc::debug( " is using configuration" )
