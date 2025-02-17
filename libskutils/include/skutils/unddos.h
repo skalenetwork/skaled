@@ -72,18 +72,9 @@ public:
 
     origin_dos_limits& operator=( const origin_dos_limits& other );
 
-    void load_defaults_for_any_origin();
-
-    void load_friendly_for_any_origin();
-
     void load_unlim_for_any_origin();
 
     void load_unlim_for_localhost_only();
-
-    void load_custom_method_as_multiplier_of_default(
-        const char* strMethod, double lfMultiplier = 10.0 );
-
-    void load_recommended_custom_methods_as_multiplier_of_default( double lfMultiplier = 10.0 );
 
     bool empty() const;
 

@@ -25,22 +25,6 @@ origin_dos_limits& origin_dos_limits::operator=( const origin_dos_limits& other 
     return ( *this );
 }
 
-void origin_dos_limits::load_defaults_for_any_origin() {
-    load_friendly_for_any_origin();
-    // load_reasonable_for_any_origin();
-}
-
-void origin_dos_limits::load_friendly_for_any_origin() {
-    clear();
-    m_originWildcards.push_back( "*" );
-    m_defaultMaxCallsPerSec = 500;
-    m_defaultMaxCallsPerMin = 15000;
-    m_banPerSecDuration = duration( 15 );
-    m_banPerMinDuration = duration( 120 );
-    m_maxWSConn = 50;
-    load_recommended_custom_methods_as_multiplier_of_default();
-}
-
 
 void origin_dos_limits::load_unlim_for_any_origin() {
     clear();
@@ -50,7 +34,6 @@ void origin_dos_limits::load_unlim_for_any_origin() {
     m_banPerSecDuration = duration( 0 );
     m_banPerMinDuration = duration( 0 );
     m_maxWSConn = std::numeric_limits< size_t >::max();
-    load_recommended_custom_methods_as_multiplier_of_default();
 }
 
 void origin_dos_limits::load_unlim_for_localhost_only() {
@@ -62,30 +45,7 @@ void origin_dos_limits::load_unlim_for_localhost_only() {
     m_banPerSecDuration = duration( 0 );
     m_banPerMinDuration = duration( 0 );
     m_maxWSConn = std::numeric_limits< size_t >::max();
-    load_recommended_custom_methods_as_multiplier_of_default();
 }
-
-void origin_dos_limits::load_custom_method_as_multiplier_of_default(
-    const char* strMethod, double lfMultiplier ) {
-    if ( strMethod == nullptr || strMethod[0] == '\0' || lfMultiplier <= 0.0 )
-        return;
-    custom_method_limits cme;
-    cme.m_maxCallsPerSecond = size_t( m_defaultMaxCallsPerSec * lfMultiplier );
-    cme.m_maxCallsPerMinute = size_t( m_defaultMaxCallsPerMin * lfMultiplier );
-    m_mapCustomMethodLimits[strMethod] = cme;
-}
-
-void origin_dos_limits::load_recommended_custom_methods_as_multiplier_of_default(
-    double lfMultiplier ) {
-    static const char* g_arr[] = { "web3_clientVersion", "web3_sha3", "net_version", "eth_syncing",
-        "eth_protocolVersion", "eth_gasPrice", "eth_blockNumber", "eth_getBalance",
-        "eth_getBlockByHash", "eth_getBlockByNumber", "eth_getTransactionCount",
-        "eth_getTransactionReceipt", "eth_getTransactionByHash",
-        "eth_getTransactionByBlockHashAndIndex", "eth_getTransactionByBlockNumberAndIndex" };
-    for ( size_t i = 0; i < sizeof( g_arr ) / sizeof( g_arr[0] ); ++i )
-        load_custom_method_as_multiplier_of_default( g_arr[i], lfMultiplier );
-}
-
 
 bool origin_dos_limits::empty() const {
     if ( !m_originWildcards.empty() )
@@ -409,7 +369,6 @@ origin_dos_limits& settings::auto_append_any_origin_rule() {
             return m_originDosLimits[i];
     }
     origin_dos_limits oe;
-    oe.load_defaults_for_any_origin();
     m_originDosLimits.push_back( oe );
     return m_originDosLimits[m_originDosLimits.size() - 1];
 }
