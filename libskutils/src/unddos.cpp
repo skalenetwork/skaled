@@ -357,20 +357,11 @@ size_t settings::findOriginLimitsMatch( const char* origin, size_t idxStart ) co
 
 origin_dos_limits& settings::findOriginDosLimits( const char* _origin ) {
     size_t i = findOriginLimitsMatch( _origin );
-    if ( i != std::string::npos )
+    if ( i != std::string::npos ) {
         return m_originDosLimits[i];
-    return auto_append_any_origin_rule();
-}
-
-origin_dos_limits& settings::auto_append_any_origin_rule() {
-    if ( !m_originDosLimits.empty() ) {
-        size_t i = findOriginLimitsMatch( "*" );
-        if ( i != std::string::npos )
-            return m_originDosLimits[i];
+    } else {
+        return m_globalLimitSetting;
     }
-    origin_dos_limits oe;
-    m_originDosLimits.push_back( oe );
-    return m_originDosLimits[m_originDosLimits.size() - 1];
 }
 
 
@@ -594,29 +585,24 @@ bool algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings 
         settings new_settings;
         new_settings.fromJSON( joUnDdosSettings );
         m_settings = new_settings;
-        m_settings.auto_append_any_origin_rule();
         return true;
     } catch ( ... ) {
         return false;
     }
 }
 
-settings algorithm::get_settings() const {
+void algorithm::disable_ddos() const {
     std::shared_lock< std::shared_mutex > lock( x_mtx );
-    m_settings.auto_append_any_origin_rule();
-    settings copied = m_settings;
-    return copied;
+    m_settings.m_enabled = false;
 }
 
 void algorithm::set_settings( const settings& new_settings ) const {
     std::unique_lock< std::shared_mutex > lock( x_mtx );
     m_settings = new_settings;
-    m_settings.auto_append_any_origin_rule();
 }
 
 nlohmann::json algorithm::get_settings_json() const {
     std::shared_lock< std::shared_mutex > lock( x_mtx );
-    m_settings.auto_append_any_origin_rule();
     nlohmann::json joUnDdosSettings = nlohmann::json::object();
     m_settings.toJSON( joUnDdosSettings );
     return joUnDdosSettings;

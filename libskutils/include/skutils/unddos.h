@@ -145,7 +145,6 @@ public:
 
     origin_dos_limits& findOriginDosLimits( const char* _origin );
 
-    origin_dos_limits& auto_append_any_origin_rule();
 };
 
 
@@ -273,7 +272,7 @@ public:
 
     bool load_settings_from_json( const nlohmann::json& joUnDdosSettings );
 
-    settings get_settings() const;
+    void disable_ddos() const;
 
     void set_settings( const settings& new_settings ) const;
 
