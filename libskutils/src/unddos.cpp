@@ -555,7 +555,7 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     // write lock
 
     if ( !trackedOrigin ) {
-        addNewOriginToMap( _origin );
+        addNewOriginToMap( _origin, _callTime );
         return e_high_load_detection_result_t::ehldr_no_error;
     } else {
         // since we now have trackedOrigin the rest can be done without holding any lock on the map
@@ -563,7 +563,7 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     }
 }
 
-void algorithm::addNewOriginToMap( const char* _origin ) {
+void algorithm::addNewOriginToMap( const char* _origin, time_tick_mark _callTime ) {
     const origin_dos_limits& oe = m_settings.findOriginDosLimits( _origin );
     {
         std::unique_lock< std::shared_mutex > writeLock( x_mtx );
@@ -577,6 +577,8 @@ void algorithm::addNewOriginToMap( const char* _origin ) {
         if ( m_trackedOriginsMap.count( _origin ) == 0 ) {
             m_trackedOriginsMap.emplace( _origin, std::make_shared< tracked_origin >( _origin ) );
             m_trackedOriginsMap.at( _origin )->setDosLimits( oe );
+            m_trackedOriginsMap.at( _origin )->m_currentSec = _callTime;
+            m_trackedOriginsMap.at( _origin )->m_currentMin = _callTime / 60;
         }
     }
 }

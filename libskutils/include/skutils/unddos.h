@@ -288,7 +288,7 @@ public:
 
     nlohmann::json get_settings_json() const;
 
-    void addNewOriginToMap( const char* _origin );
+    void addNewOriginToMap( const char* _origin, time_tick_mark _callTime );
 };
 
 };  // namespace skutils::unddos
