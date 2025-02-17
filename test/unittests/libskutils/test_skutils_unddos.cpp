@@ -27,6 +27,9 @@ BOOST_AUTO_TEST_CASE( basic_counting ) {
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
+    BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
+    BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
+    BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
     ++ ttmNow;
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
