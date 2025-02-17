@@ -43,17 +43,6 @@ BOOST_AUTO_TEST_CASE( basic_counting ) {
     BOOST_REQUIRE( unddos.register_call_from_origin( "11.11.11.11", ttmNow ) != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
 }
 
-BOOST_AUTO_TEST_CASE( ws_conn_counting ) {
-    skutils::unddos::algorithm unddos;
-    unddos.set_settings( compose_test_unddos_settings() );
-    BOOST_REQUIRE( ! unddos.unregister_ws_conn_for_origin( "11.11.11.11" ) );
-    BOOST_REQUIRE( unddos.register_ws_conn_for_origin( "11.11.11.11" ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
-    BOOST_REQUIRE( unddos.register_ws_conn_for_origin( "11.11.11.11" ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
-    BOOST_REQUIRE( unddos.register_ws_conn_for_origin( "11.11.11.11" ) != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
-    BOOST_REQUIRE( unddos.unregister_ws_conn_for_origin( "11.11.11.11" ) );
-    BOOST_REQUIRE( unddos.unregister_ws_conn_for_origin( "11.11.11.11" ) );
-    BOOST_REQUIRE( unddos.register_ws_conn_for_origin( "11.11.11.11" ) == skutils::unddos::e_high_load_detection_result_t::ehldr_no_error );
-}
 
 BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()

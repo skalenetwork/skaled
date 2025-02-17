@@ -540,50 +540,6 @@ void algorithm::addNewOriginToMap( const char* _origin, time_tick_mark _callTime
 }
 
 
-e_high_load_detection_result_t algorithm::register_ws_conn_for_origin( const char* origin ) {
-    if ( !m_settings.m_enabled )
-        return e_high_load_detection_result_t::ehldr_no_error;
-    if ( origin == nullptr || origin[0] == '\0' )
-        return e_high_load_detection_result_t::ehldr_bad_origin;
-    std::unique_lock< std::shared_mutex > lock( x_mtx );
-    ++m_WsConnCountGlobal;
-    if ( m_WsConnCountGlobal > m_settings.m_globalLimitSetting.m_maxWSConn )
-        return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
-    map_ws_conn_counts_t::iterator itFind = m_mapWsConnCounts.find( origin ),
-                                   itEnd = m_mapWsConnCounts.end();
-    if ( itFind == itEnd ) {
-        m_mapWsConnCounts[origin] = 1;
-        itFind = m_mapWsConnCounts.find( origin );
-    } else
-        ++itFind->second;
-    const origin_dos_limits& oe = m_settings.findOriginDosLimits( origin );
-    if ( itFind->second > oe.m_maxWSConn )
-        return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
-    return e_high_load_detection_result_t::ehldr_no_error;
-}
-
-bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
-    if ( origin == nullptr || origin[0] == '\0' ) {
-        if ( !m_settings.m_enabled )
-            return true;
-        return false;
-    }
-    std::unique_lock< std::shared_mutex > lock( x_mtx );
-    if ( m_WsConnCountGlobal > 0 )
-        --m_WsConnCountGlobal;
-    map_ws_conn_counts_t::iterator itFind = m_mapWsConnCounts.find( origin ),
-                                   itEnd = m_mapWsConnCounts.end();
-    if ( itFind == itEnd ) {
-        if ( !m_settings.m_enabled )
-            return true;
-        return false;
-    }
-    if ( itFind->second >= 1 )
-        --itFind->second;
-    if ( itFind->second == 0 )
-        m_mapWsConnCounts.erase( itFind );
-    return true;
-}
 
 void algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings ) {
     std::unique_lock< std::shared_mutex > lock( x_mtx );

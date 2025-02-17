@@ -256,20 +256,6 @@ public:
         return register_call_from_origin( origin, nullptr, ttmNow, durationToPast );
     }
 
-    bool is_ban_ws_conn_for_origin( const char* origin ) const;
-
-    e_high_load_detection_result_t register_ws_conn_for_origin( const char* origin );
-
-    e_high_load_detection_result_t register_ws_conn_for_origin( const std::string& origin ) {
-        return register_ws_conn_for_origin( origin.c_str() );
-    }
-
-    bool unregister_ws_conn_for_origin( const char* origin );
-
-    bool unregister_ws_conn_for_origin( const std::string& origin ) {
-        return unregister_ws_conn_for_origin( origin.c_str() );
-    }
-
     void load_settings_from_json( const nlohmann::json& joUnDdosSettings );
 
     void disable_ddos() const;

@@ -463,25 +463,6 @@ void SkaleWsPeer::register_ws_conn_for_origin() {
         }
         if ( m_strUnDdosOrigin.empty() )
             m_strUnDdosOrigin = "N/A";
-        skutils::unddos::e_high_load_detection_result_t ehldr =
-            pSO->unddos_.register_ws_conn_for_origin( m_strUnDdosOrigin );
-        if ( ehldr != skutils::unddos::e_high_load_detection_result_t::ehldr_no_error ) {
-            m_strUnDdosOrigin.clear();
-            clog( dev::VerbosityError, __FUNCTION__ )
-                << " cannot accept connection - UN-DDOS protection reported "
-                   "connection count overflow";
-            close( "UN-DDOS protection reported connection count overflow" );
-            throw std::runtime_error( "Cannot accept " + getRelay().nfoGetSchemeUC() +
-                                      " connection from " + url_unddos_origin.str() +
-                                      " - UN-DDOS protection reported connection count overflow" );
-        }
-    }
-}
-void SkaleWsPeer::unregister_ws_conn_for_origin() {
-    if ( !m_strUnDdosOrigin.empty() ) {
-        SkaleServerOverride* pSO = pso();
-        pSO->unddos_.unregister_ws_conn_for_origin( m_strUnDdosOrigin );
-        m_strUnDdosOrigin.clear();
     }
 }
 
@@ -504,8 +485,6 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     skutils::dispatch::async( "ws-queue-remover", [strQueueIdToRemove]() -> void {
         skutils::dispatch::remove( strQueueIdToRemove );  // remove queue earlier
     } );
-    // unddos
-    unregister_ws_conn_for_origin();
 }
 
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
@@ -722,7 +701,6 @@ void SkaleWsPeer::onClose(
                    ", reason=" + reason );
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
     uninstallAllWatches();
-    unregister_ws_conn_for_origin();
 }
 
 void SkaleWsPeer::onFail() {
@@ -731,8 +709,6 @@ void SkaleWsPeer::onFail() {
         clog( dev::VerbosityError, getRelay().nfoGetSchemeUC() ) << desc() << " peer fail event";
     skutils::ws::peer::onFail();
     uninstallAllWatches();
-    // unddos
-    unregister_ws_conn_for_origin();
 }
 
 void SkaleWsPeer::onLogMessage(
