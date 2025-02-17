@@ -1,51 +1,92 @@
-name: Custom Docker and Binary
-
+name: Custom
 on:
+  pull_request:
+    types: [closed]
+    branches:
+      - 'v*.*.*'
+      - master
+      - develop
+      - beta
+      - stable
   workflow_dispatch:
-    inputs:
-      branch_name:
-        description: 'Branch name'
-        default: ''
-        required: true
-      image_version:
-        description: 'Image version for docker hub'
-        default: ''
-        required: true
-      cmake_options:
-        description: 'Additional cmake options'
-        default: ''
-        required: false
-      build_type:
-        description: 'Build type of skaled binary'
-        type: choice
-        required: true
-        options: 
-        - Debug
-        - RelWithDebInfo
-        - Release
-        default: RelWithDebInfo
 
+  
 jobs:
-  core_build:
-    uses: ./.github/workflows/setup-build-publish.yml
-    with:
-      image_version: ${{ github.event.inputs.image_version }}
-      branch_name: ${{ github.event.inputs.branch_name }}
-      cmake_options: ${{ github.event.inputs.cmake_options }}
-      build_type: ${{ github.event.inputs.build_type }}
-      node_type: core
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  calculate-version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version_orig: ${{ steps.set-version.outputs.version_orig }}
+      version_historic: ${{ steps.set-version.outputs.version_historic }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-  historic_build:
-    uses: ./.github/workflows/setup-build-publish.yml
+      - name: Extract branch name
+        id: extract_branch
+        run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      - name: Read and calculate version
+        id: set-version
+        run: |
+          VERSION=$(cat VERSION)
+          VERSION=$(bash ./scripts/calculate_version.sh $BRANCH_NAME $VERSION)
+          echo "Calculated version: $VERSION"
+
+          echo "VERSION_ORIG=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_HISTORIC=$VERSION-historic" >> $GITHUB_ENV
+
+          echo "::set-output name=version_orig::$VERSION"
+          echo "::set-output name=version_historic::$VERSION-historic"
+
+  build:
+    needs: calculate-version
+    runs-on: self-host
+    steps:
+      - name: Test
+        uses: ./.github/workflows/setup-build-publish.yml
+        with:
+          branch_name: ${{ github.ref_name }}
+          image_version: ${{ needs.calculate-version.outputs.version_orig }}
+          cmake_options: ""
+          build_type: "RelWithDebInfo"
+          node_type: core
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.calculate-version.outputs.version_orig }}
+          release_name: ${{ needs.calculate-version.outputs.version_orig }}
+          draft: false
+          prerelease: true
+
+      - name: Upload skaled binary to Release
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled
+          asset_name: skaled
+          asset_content_type: application/octet-stream
+
+      - name: Upload debug binary to Release
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/skaled/skaled-debug
+          asset_name: skaled-debug
+          asset_content_type: application/octet-stream
+
+  functional-tests:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for orig build
+    needs: [build]
     with:
-      image_version: ${{ github.event.inputs.image_version }}
-      branch_name: ${{ github.event.inputs.branch_name }}
-      cmake_options: ${{ github.event.inputs.cmake_options }}
-      build_type: ${{ github.event.inputs.build_type }}
-      node_type: historic
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      version: ${{ needs.build.outputs.version_orig }}
+    secrets: inherit
