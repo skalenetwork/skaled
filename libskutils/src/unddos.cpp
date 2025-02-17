@@ -33,19 +33,9 @@ void origin_dos_limits::load_unlim_for_any_origin() {
     m_defaultMaxCallsPerMin = std::numeric_limits< size_t >::max();
     m_banPerSecDuration = duration( 0 );
     m_banPerMinDuration = duration( 0 );
-    m_maxWSConn = std::numeric_limits< size_t >::max();
 }
 
-void origin_dos_limits::load_unlim_for_localhost_only() {
-    clear();
-    m_originWildcards.push_back( "127.0.0.*" );
-    m_originWildcards.push_back( "::1" );
-    m_defaultMaxCallsPerSec = std::numeric_limits< size_t >::max();
-    m_defaultMaxCallsPerMin = std::numeric_limits< size_t >::max();
-    m_banPerSecDuration = duration( 0 );
-    m_banPerMinDuration = duration( 0 );
-    m_maxWSConn = std::numeric_limits< size_t >::max();
-}
+
 
 bool origin_dos_limits::empty() const {
     if ( !m_originWildcards.empty() )
@@ -59,7 +49,6 @@ void origin_dos_limits::clear() {
     m_defaultMaxCallsPerMin = 0;
     m_banPerSecDuration = duration( 0 );
     m_banPerMinDuration = duration( 0 );
-    m_maxWSConn = 0;
     m_mapCustomMethodLimits.clear();
 }
 
@@ -72,7 +61,6 @@ origin_dos_limits& origin_dos_limits::assign( const origin_dos_limits& other ) {
     m_defaultMaxCallsPerMin = other.m_defaultMaxCallsPerMin;
     m_banPerSecDuration = other.m_banPerSecDuration;
     m_banPerMinDuration = other.m_banPerMinDuration;
-    m_maxWSConn = other.m_maxWSConn;
     m_mapCustomMethodLimits = other.m_mapCustomMethodLimits;
     return ( *this );
 }
@@ -86,7 +74,6 @@ origin_dos_limits& origin_dos_limits::merge( const origin_dos_limits& other ) {
     m_defaultMaxCallsPerMin = std::min( m_defaultMaxCallsPerMin, other.m_defaultMaxCallsPerMin );
     m_banPerSecDuration = std::max( m_banPerSecDuration, other.m_banPerSecDuration );
     m_banPerMinDuration = std::max( m_banPerMinDuration, other.m_banPerMinDuration );
-    m_maxWSConn = std::min( m_maxWSConn, other.m_maxWSConn );
     if ( !other.m_mapCustomMethodLimits.empty() ) {
         nlohmann::json joCMS = nlohmann::json::object();
         map_custom_method_limits_t::const_iterator itWalk = other.m_mapCustomMethodLimits.cbegin(),
@@ -126,8 +113,6 @@ void origin_dos_limits::fromJSON( const nlohmann::json& jo ) {
         m_banPerSecDuration = jo["ban_peak"].get< size_t >();
     if ( jo.find( "ban_lengthy" ) != jo.end() )
         m_banPerMinDuration = jo["ban_lengthy"].get< size_t >();
-    if ( jo.find( "max_ws_conn" ) != jo.end() )
-        m_maxWSConn = jo["max_ws_conn"].get< size_t >();
     if ( jo.find( "custom_method_settings" ) != jo.end() ) {
         const nlohmann::json& joCMS = jo["custom_method_settings"];
         for ( auto it = joCMS.cbegin(); it != joCMS.cend(); ++it ) {
@@ -152,7 +137,6 @@ void origin_dos_limits::toJSON( nlohmann::json& jo ) const {
     jo["max_calls_per_minute"] = m_defaultMaxCallsPerMin;
     jo["ban_peak"] = m_banPerSecDuration;
     jo["ban_lengthy"] = m_banPerMinDuration;
-    jo["max_ws_conn"] = m_maxWSConn;
     if ( !m_mapCustomMethodLimits.empty() ) {
         nlohmann::json joCMS = nlohmann::json::object();
         map_custom_method_limits_t::const_iterator itWalk = m_mapCustomMethodLimits.cbegin(),
@@ -251,23 +235,6 @@ settings& settings::assign( const settings& other ) {
     return ( *this );
 }
 
-settings& settings::merge( const settings& other ) {
-    if ( ( ( void* ) ( this ) ) == ( ( void* ) ( &other ) ) )
-        return ( *this );
-    for ( const origin_dos_limits& oe : other.m_originDosLimits )
-        merge( oe );
-    m_globalLimitSetting.merge( other.m_globalLimitSetting );
-    return ( *this );
-}
-
-settings& settings::merge( const origin_dos_limits& oe ) {
-    size_t i = indexOfOrigin( oe );
-    if ( i == std::string::npos )
-        m_originDosLimits.push_back( oe );
-    else
-        m_originDosLimits[i].merge( oe );
-    return ( *this );
-}
 
 size_t settings::indexOfOrigin( const origin_dos_limits& oe, size_t idxStart ) {
     for ( const std::string& wildcard : oe.m_originWildcards ) {
@@ -333,20 +300,7 @@ void settings::fromJSON( const nlohmann::json& jo ) {
         m_globalLimitSetting.load_unlim_for_any_origin();
 }
 
-void settings::toJSON( nlohmann::json& jo ) const {
-    jo = nlohmann::json::object();
-    nlohmann::json joOrigins = nlohmann::json::array();
-    for ( const origin_dos_limits& oe : m_originDosLimits ) {
-        nlohmann::json joOrigin = nlohmann::json::object();
-        oe.toJSON( joOrigin );
-        joOrigins.push_back( joOrigin );
-    }
-    nlohmann::json joGlobalLimit = nlohmann::json::object();
-    m_globalLimitSetting.toJSON( joGlobalLimit );
-    jo["enabled"] = m_enabled;
-    jo["origins"] = joOrigins;
-    jo["global"] = joGlobalLimit;
-}
+
 
 size_t settings::findOriginLimitsMatch( const char* origin, size_t idxStart ) const {
     if ( origin == nullptr || ( *origin ) == '\0' )
@@ -553,10 +507,7 @@ void algorithm::disable_ddos() const {
     m_settings.m_enabled = false;
 }
 
-void algorithm::set_settings( const settings& new_settings ) const {
-    std::unique_lock< std::shared_mutex > lock( x_mtx );
-    m_settings = new_settings;
-}
+
 
 
 };  // namespace skutils::unddos

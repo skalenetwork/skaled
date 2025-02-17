@@ -59,7 +59,6 @@ public:
     size_t m_defaultMaxCallsPerMin = 0;
     duration m_banPerSecDuration = duration( 0 );
     duration m_banPerMinDuration = duration( 0 );
-    size_t m_maxWSConn = 0;
     map_custom_method_limits_t m_mapCustomMethodLimits;
 
     origin_dos_limits();
@@ -73,8 +72,6 @@ public:
     origin_dos_limits& operator=( const origin_dos_limits& other );
 
     void load_unlim_for_any_origin();
-
-    void load_unlim_for_localhost_only();
 
     bool empty() const;
 
@@ -127,9 +124,7 @@ public:
 
     settings& assign( const settings& other );
 
-    settings& merge( const origin_dos_limits& oe );
 
-    settings& merge( const settings& other );
 
     size_t indexOfOrigin( const origin_dos_limits& oe, size_t idxStart = std::string::npos );
 
@@ -138,8 +133,6 @@ public:
     size_t indexOfOrigin( const std::string& origin_wildcard, size_t idxStart = std::string::npos );
 
     void fromJSON( const nlohmann::json& jo );
-
-    void toJSON( nlohmann::json& jo ) const;
 
     size_t findOriginLimitsMatch( const char* origin, size_t idxStart = std::string::npos ) const;
 
@@ -259,8 +252,6 @@ public:
     void load_settings_from_json( const nlohmann::json& joUnDdosSettings );
 
     void disable_ddos() const;
-
-    void set_settings( const settings& new_settings ) const;
 
 
     void addNewOriginToMap( const char* _origin, time_tick_mark _callTime );
