@@ -301,6 +301,19 @@ size_t settings::indexOfOrigin( const std::string& origin_wildcard, size_t idxSt
 
 void settings::fromJSON( const nlohmann::json& jo ) {
     clear();
+
+    bool isEnabled = true;
+    if ( jo.find( "enabled" ) != jo.end() ) {
+        const nlohmann::json& joEnabled = jo["enabled"];
+        if ( joEnabled.is_boolean() )
+            isEnabled = joEnabled.get< bool >();
+    }
+    m_enabled = isEnabled;
+
+    if ( !m_enabled ) {
+        return;
+    }
+
     if ( jo.find( "origins" ) != jo.end() ) {
         const nlohmann::json& joOrigins = jo["origins"];
         if ( joOrigins.is_array() ) {
@@ -318,13 +331,6 @@ void settings::fromJSON( const nlohmann::json& jo ) {
         m_globalLimitSetting = oe;
     } else
         m_globalLimitSetting.load_unlim_for_any_origin();
-    bool isEnabled = true;
-    if ( jo.find( "enabled" ) != jo.end() ) {
-        const nlohmann::json& joEnabled = jo["enabled"];
-        if ( joEnabled.is_boolean() )
-            isEnabled = joEnabled.get< bool >();
-    }
-    m_enabled = isEnabled;
 }
 
 void settings::toJSON( nlohmann::json& jo ) const {
@@ -579,16 +585,11 @@ bool algorithm::unregister_ws_conn_for_origin( const char* origin ) {
     return true;
 }
 
-bool algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings ) {
+void algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings ) {
     std::unique_lock< std::shared_mutex > lock( x_mtx );
-    try {
-        settings new_settings;
-        new_settings.fromJSON( joUnDdosSettings );
-        m_settings = new_settings;
-        return true;
-    } catch ( ... ) {
-        return false;
-    }
+    settings new_settings;
+    new_settings.fromJSON( joUnDdosSettings );
+    m_settings = new_settings;
 }
 
 void algorithm::disable_ddos() const {
@@ -601,11 +602,5 @@ void algorithm::set_settings( const settings& new_settings ) const {
     m_settings = new_settings;
 }
 
-nlohmann::json algorithm::get_settings_json() const {
-    std::shared_lock< std::shared_mutex > lock( x_mtx );
-    nlohmann::json joUnDdosSettings = nlohmann::json::object();
-    m_settings.toJSON( joUnDdosSettings );
-    return joUnDdosSettings;
-}
 
 };  // namespace skutils::unddos

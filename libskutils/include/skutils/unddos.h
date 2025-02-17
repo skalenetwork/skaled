@@ -270,13 +270,12 @@ public:
         return unregister_ws_conn_for_origin( origin.c_str() );
     }
 
-    bool load_settings_from_json( const nlohmann::json& joUnDdosSettings );
+    void load_settings_from_json( const nlohmann::json& joUnDdosSettings );
 
     void disable_ddos() const;
 
     void set_settings( const settings& new_settings ) const;
 
-    nlohmann::json get_settings_json() const;
 
     void addNewOriginToMap( const char* _origin, time_tick_mark _callTime );
 };
