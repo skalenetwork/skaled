@@ -8,6 +8,8 @@ This doc does NOT describe all possible erroneous situations.
 
 Parameters marked as `OPTIONAL` are optional, otherwise they are required!
 
+---
+
 ## `web3_*` Methods
 
 ### `web3_clientVersion`
@@ -37,6 +39,9 @@ Get `sha3` (`keccak256`) hash of input data
 1. Input data represented as a "0x"-prefixed hex `String`
 #### Return format
 Output data represented as a "0x"-prefixed hex `String` (32 bytes)
+
+
+---
 
 ## `net_*` Methods
 
@@ -78,6 +83,8 @@ Returns 0
 None
 #### Return format
 `String` value "0x0"
+
+---
 
 ## `eth_*` Methods
 
@@ -1007,36 +1014,56 @@ WS(S): unsubscribe from events/transactions/blocks/stats (see `eth_subscribe`)
 #### Return format
 None
 
+
+---
+
 ## `personal_*` Methods
 Not supported
+
+---
 
 ## `db_*` Methods
 Not supported
 
+---
+
 ## `shh_*` Methods
 Not supported
 
+---
+
 ## `debug_*` Methods
-### debug_accountRangeAt
+### `debug_accountRangeAt`
 #### Description
 Not supported, always throws exception
 
-### debug_traceTransaction
-### debug_storageRangeAt
+### `debug_traceTransaction`
+### `debug_storageRangeAt`
 #### Description
 Not supported, always throws exception
 
-### debug_preimage
+### `debug_preimage`
 #### Description
 Not supported, always throws exception
 
-### debug_traceBlockByNumber
-### debug_traceBlockByHash
-### debug_traceCall
+### `debug_traceBlockByNumber`
+### `debug_traceBlockByHash`
+### `debug_traceCall`
+
+### `debug_getPatchTimestamps`
+
+#### Description
+Gets timestamps for all patches defined.
+
+#### Parameters
+None
+
+#### Return format
+Returns the timestamp of each defined patch. Returns `0` for any undefined patch timestamp.
 
 
 ## Non-standard Methods
-### oracle_submitRequest
-### oracle_checkResult
+### `oracle_submitRequest`
+### `oracle_checkResult`
 
 
