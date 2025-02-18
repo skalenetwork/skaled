@@ -62,6 +62,7 @@ jobs:
       build_type: "RelWithDebInfo"
       node_type: core
       release_url: ${{ needs.calculate-version.outputs.release_url }}
+      use_plain_version: true
     secrets: inherit
 
   build-historic:
@@ -73,6 +74,7 @@ jobs:
       build_type: "RelWithDebInfo"
       node_type: historic
       release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
     secrets: inherit
 
   functional-tests:
