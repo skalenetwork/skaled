@@ -21,7 +21,7 @@ private:
 
 public:
     RotatingHistoricState( std::shared_ptr< batched_io::BatchedRotatingHistoricDbIO > ioBackend );
-    void rotate( uint64_t timestamp );
+    void rotate( uint64_t blockNumber );
     std::shared_ptr< dev::db::DatabaseFace > currentPiece() const {
         return ioBackend->currentPiece();
     }

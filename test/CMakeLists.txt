@@ -59,8 +59,8 @@ endforeach(file)
 
 find_library( YAML_CPP_LIBRARIES NAMES yaml-cpp HINTS "${DEPS_INSTALL_ROOT}/lib")
 
-add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp
-)
+add_executable(testeth ${sources} unittests/libethereum/InstanceMonitorTest.cpp)
+
 target_compile_options( testeth PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-unused-parameter -Wno-error=unused-variable -Wno-maybe-uninitialized
     -Wno-error=pessimizing-move
