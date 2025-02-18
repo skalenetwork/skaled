@@ -2456,10 +2456,10 @@ int main( int argc, char** argv ) try {
             // unddos
             if ( joConfig.count( "unddos" ) > 0 ) {
                 nlohmann::json joUnDdosSettings = joConfig["unddos"];
-                clog( VerbosityInfo, "main" ) << "Found DDOS config :" << joConfig.dump();
+                clog( VerbosityInfo, "main" ) << "DDOS config :" << joConfig["unddos"].dump();
                 skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
             } else {
-                clog( VerbosityInfo, "main" ) << "No DDOS config found. DDOS Disabled";
+                clog( VerbosityWarning, "main" ) << "No DDOS config found. DDOS Disabled";
                 skale_server_connector->unddos_.disable_ddos();  // auto-init
             }
 
@@ -2468,6 +2468,16 @@ int main( int argc, char** argv ) try {
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
             skale_server_connector->pg_threads_ = pg_threads;
             skale_server_connector->pg_threads_limit_ = pg_threads_limit;
+
+            if (pg_threads > 0) {
+                clog( VerbosityInfo, "main") << "Count of threads in proxygen server: " << pg_threads;
+            } else {
+                clog( VerbosityWarning, "main") << "Count of threads in proxygen server is not defined in config. "
+                                                "Using default value of 10 from the mainnet" ;
+                pg_threads = 10;
+                pg_threads_limit = 10;
+            }
+
             //
             pSkaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( pSkaleStatsFace );
