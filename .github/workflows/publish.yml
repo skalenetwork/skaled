@@ -12,7 +12,7 @@ on:
   
 jobs:
   configure:
-    if: github.event.pull_request.merged == true
+    # if: github.event.pull_request.merged == true
     name: Configure release
     runs-on: ubuntu-latest
     outputs:
