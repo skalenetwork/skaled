@@ -61,7 +61,7 @@ jobs:
       image_version: ${{ needs.configure.outputs.version_orig }}
       build_type: "RelWithDebInfo"
       node_type: core
-      release_url: ${{ needs.calculate-version.outputs.release_url }}
+      release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
 
@@ -80,15 +80,15 @@ jobs:
   functional-tests:
     uses: ./.github/workflows/functional-tests.yml
     name: Functional testing for orig build
-    needs: [configure, build]
+    needs: build
     with:
-      version: ${{ needs.configure.outputs.version_orig }}
+      version: ${{ needs.build.outputs.image_version }}
     secrets: inherit
 
   functional-tests-historic:
     uses: ./.github/workflows/functional-tests.yml
     name: Functional testing for historic build
-    needs: [configure, build-historic]
+    needs: build-historic
     with:
-      version: ${{ needs.configure.outputs.version_historic }}
+      version: ${{ needs.build-historic.outputs.image_version }}
     secrets: inherit
