@@ -2456,10 +2456,10 @@ int main( int argc, char** argv ) try {
             // unddos
             if ( joConfig.count( "unddos" ) > 0 ) {
                 nlohmann::json joUnDdosSettings = joConfig["unddos"];
-                clog (VerbosityInfo, "main") << "Found DDOS config :" << joConfig.dump(  );
+                clog( VerbosityInfo, "main" ) << "Found DDOS config :" << joConfig.dump();
                 skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
             } else {
-                clog (VerbosityInfo, "main") << "No DDOS config found. DDOS Disabled";
+                clog( VerbosityInfo, "main" ) << "No DDOS config found. DDOS Disabled";
                 skale_server_connector->unddos_.disable_ddos();  // auto-init
             }
 

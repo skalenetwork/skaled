@@ -127,10 +127,9 @@ public:
 
     void fromJSON( const nlohmann::json& jo );
 
-    size_t  findOriginLimitsMatch( const std::string& origin ) const;
+    size_t findOriginLimitsMatch( const std::string& origin ) const;
 
     origin_dos_limits& findOriginDosLimits( const std::string& _origin );
-
 };
 
 
@@ -191,7 +190,8 @@ public:
 
     void setDosLimits( const origin_dos_limits& _dosLimits );
 
-    e_high_load_detection_result_t detectBan( uint64_t _callTimeSec, const std::string& _strMethod );
+    e_high_load_detection_result_t detectBan(
+        uint64_t _callTimeSec, const std::string& _strMethod );
 
     e_high_load_detection_result_t recordMethodUseAndDetectBan(
         uint64_t _callTimeSec, const std::string& _strMethod );
@@ -227,12 +227,13 @@ public:
     algorithm& operator=( const settings& st );
 
     e_high_load_detection_result_t register_call_from_origin( const std::string& _origin,
-        const std::string& _strMethod, time_tick_mark _callTime = time_tick_mark( 0 ));
+        const std::string& _strMethod, time_tick_mark _callTime = time_tick_mark( 0 ) );
 
 
-    e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
-        time_tick_mark ttmNow = time_tick_mark( 0 )) {
-        return register_call_from_origin( origin, "" , ttmNow);    }
+    e_high_load_detection_result_t register_call_from_origin(
+        const std::string& origin, time_tick_mark ttmNow = time_tick_mark( 0 ) ) {
+        return register_call_from_origin( origin, "", ttmNow );
+    }
 
     void load_settings_from_json( const nlohmann::json& joUnDdosSettings );
 

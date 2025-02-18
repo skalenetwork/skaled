@@ -292,7 +292,7 @@ origin_dos_limits& settings::findOriginDosLimits( const std::string& _origin ) {
 }
 
 
-tracked_origin::tracked_origin( const std::string& _origin ) : m_origin( _origin ) {};
+tracked_origin::tracked_origin( const std::string& _origin ) : m_origin( _origin ){};
 
 void tracked_origin::setDosLimits( const origin_dos_limits& _dosLimits ) {
     m_dosLimits = _dosLimits;
@@ -438,9 +438,9 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
         result = trackedOrigin->recordMethodUseAndDetectBan( _callTime, _strMethod );
         if ( result != e_high_load_detection_result_t::ehldr_no_error ) {
             if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_sec ) {
-                cwarn  << "Ban per second for:"  << _origin;
+                cwarn << "Ban per second for:" << _origin;
             } else if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_min ) {
-                cwarn  << "Ban per min for:" << _origin;
+                cwarn << "Ban per min for:" << _origin;
             }
         }
         return result;
