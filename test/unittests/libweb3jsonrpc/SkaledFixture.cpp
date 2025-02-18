@@ -469,6 +469,52 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
     }
 }
 
+void SkaledFixture::doOneReadCallIteration(CallType _transferType ) {
+    CHECK( threadsCountForTestTransactions <= testAccounts.size() );
+    auto transactionsPerThread = testAccounts.size() / threadsCountForTestTransactions;
+
+    auto begin = getCurrentTimeMs();
+
+    auto gasPrice = getCurrentGasPrice();
+
+    vector< shared_ptr< thread > > threads;
+
+    CHECK( testAccountsVector.size() == testAccounts.size() );
+
+
+    for ( uint64_t accountNum = 0; accountNum < testAccountsVector.size(); accountNum++ ) {
+        if ( threadsCountForTestTransactions > 1 ) {
+            if ( accountNum % transactionsPerThread == 0 ) {
+                uint64_t threadNumber = accountNum / transactionsPerThread;
+                auto t = make_shared< thread >(
+                    [transactionsPerThread, threadNumber, gasPrice, _transferType, this]() {
+                        for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
+                            auto account =
+                                testAccountsVector.at( threadNumber * transactionsPerThread + j );
+                            sendCall( account, gasPrice, _transferType);
+                        }
+                    } );
+                threads.push_back( t );
+            }
+        } else {
+            auto oldAccount = testAccountsVector.at( accountNum );
+            sendCall(oldAccount, gasPrice, _transferType);
+        }
+    }
+
+
+    if ( threadsCountForTestTransactions > 1 ) {
+        CHECK( threads.size() == threadsCountForTestTransactions );
+        for ( auto&& t : threads ) {
+            t->join();
+        }
+    }
+
+
+    cout << 1000.0 * testAccounts.size()  / ( getCurrentTimeMs() - begin ) <<
+        " call tps" << endl;
+}
+
 
 void SkaledFixture::mintAllKeysWithERC20() {
     CHECK( threadsCountForTestTransactions <= testAccounts.size() );
@@ -540,6 +586,15 @@ void SkaledFixture::sendTinyTransfersForAllAccounts(
 
     for ( uint64_t iteration = 0; iteration < _iterations; iteration++ ) {
         doOneTinyTransfersIteration( _transferType );
+    }
+}
+
+void SkaledFixture::sendCallsForAllAccounts(
+    uint64_t _iterations, CallType _callType ) {
+    cout << "Running calls for accounts :" << testAccounts.size() << endl;
+
+    for ( uint64_t iteration = 0; iteration < _iterations; iteration++ ) {
+        doOneReadCallIteration( _callType );
     }
 }
 
@@ -898,6 +953,20 @@ void SkaledFixture::sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, co
 }
 
 
+
+void SkaledFixture::sendCall( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
+    CallType _transferType ) {
+    auto c = getThreadLocalCurlClient();
+    auto address = _from->getAddressAsString();
+    if (_transferType == CallType::TRANSACTION_COUNT) {
+        c->eth_getTransactionCount( address);
+    } else if (_transferType == CallType::BALANCE) {
+        c->eth_getBalance( _from->getAddressAsString());
+    }
+}
+
+
+
 unique_ptr< WebThreeStubClient > SkaledFixture::rpcClient() const {
     auto httpClient = new jsonrpc::HttpClient( skaledEndpoint );
     httpClient->SetTimeout( 10000 );
@@ -922,7 +991,9 @@ void SkaledFixture::calculateAndSetPowGas( Transaction& _t ) const {
 }
 
 SkaledAccount::SkaledAccount( const Secret _key, const u256 _currentTransactionCountOnChain )
-    : key( _key ), currentTransactionCountOnChain( _currentTransactionCountOnChain ) {}
+    : key( _key ), currentTransactionCountOnChain( _currentTransactionCountOnChain ) {
+    addressAsString = "0x" + KeyPair( key ).address().hex();
+}
 
 const Secret& SkaledAccount::getKey() const {
     return key;

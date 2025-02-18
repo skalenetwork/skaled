@@ -6,7 +6,7 @@ from pathlib import Path
 import time
 
 # Set these
-TOTAL_NODES: int = 16
+TOTAL_NODES: int = 1
 BUILD_DIR: str = "cmake-build-debug"
 skaled_executable: str = "../../../" + BUILD_DIR + '/skaled/skaled'
 
