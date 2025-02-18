@@ -24,7 +24,7 @@ on:
         required: true
       release_url:
         type: string
-        description: 'URL of the github release'
+        description: 'URL of the GitHub release associated with this build (if applicable)'
         required: false
       use_plain_version:
         type: boolean
