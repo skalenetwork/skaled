@@ -4616,6 +4616,27 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,
 
 }
 
+
+BOOST_AUTO_TEST_CASE( perf_getTransactionCount,
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.threadsCountForTestTransactions = 8;
+
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+
+    fixture.sendCallsForAllAccounts( 1, CallType::TRANSACTION_COUNT );
+    fixture.sendCallsForAllAccounts( 1, CallType::BALANCE );
+
+}
+
+
+
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers,
     *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
     SkaledFixture fixture( skaledConfigFileName );
