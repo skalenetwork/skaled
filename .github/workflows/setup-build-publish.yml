@@ -108,10 +108,8 @@ jobs:
         id: extract_branch
       - name: checkout
         uses: actions/checkout@v2
-        env: 
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          ref: ${{ inputs.branch_name }}
+          ref: "enhancement/update-publish-workflow-test"
       - name: Submodule update
         run: |
           rm -rf ./libconsensus || true
