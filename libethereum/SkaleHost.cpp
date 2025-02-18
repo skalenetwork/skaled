@@ -505,8 +505,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
     }
 
-    logState();
-
     m_debugTracer.tracepoint( "send_to_consensus" );
 
     return out_vector;
@@ -643,9 +641,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_debugLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
 
-    logState();
-
-
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
@@ -777,8 +772,6 @@ void SkaleHost::broadcastFunc() {
     while ( !m_exitNeeded ) {
         try {
             m_broadcaster->initSocket();
-
-            this->logState();
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 
