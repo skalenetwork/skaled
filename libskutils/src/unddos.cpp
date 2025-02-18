@@ -431,7 +431,7 @@ algorithm& algorithm::operator=( const settings& st ) {
 constexpr uint64_t MAX_UNDDOS_MAP_ENTRIES = 256 * 1024;
 
 e_high_load_detection_result_t algorithm::register_call_from_origin(
-    const char* _origin, const char* _strMethod, time_tick_mark _callTime, duration ) {
+    const char* _origin, const char* _strMethod, time_tick_mark _callTime) {
     if ( !m_settings.m_enabled ) {
         // DOS protection disabled
         return e_high_load_detection_result_t::ehldr_no_error;

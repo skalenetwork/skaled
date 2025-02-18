@@ -234,19 +234,17 @@ public:
     algorithm& operator=( const settings& st );
 
     e_high_load_detection_result_t register_call_from_origin( const char* _origin,
-        const char* _strMethod, time_tick_mark _callTime = time_tick_mark( 0 ),
-        duration _durationToPast = duration( 60 ) );
+        const char* _strMethod, time_tick_mark _callTime = time_tick_mark( 0 ));
 
     e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
-        const std::string& strMethod, time_tick_mark ttmNow = time_tick_mark( 0 ),
-        duration durationToPast = duration( 60 ) ) {
+        const std::string& strMethod, time_tick_mark ttmNow = time_tick_mark( 0 )) {
         return register_call_from_origin(
-            origin.c_str(), strMethod.c_str(), ttmNow, durationToPast );
+            origin.c_str(), strMethod.c_str(), ttmNow);
     }
 
     e_high_load_detection_result_t register_call_from_origin( const char* origin,
-        time_tick_mark ttmNow = time_tick_mark( 0 ), duration durationToPast = duration( 60 ) ) {
-        return register_call_from_origin( origin, nullptr, ttmNow, durationToPast );
+        time_tick_mark ttmNow = time_tick_mark( 0 )) {
+        return register_call_from_origin( origin, nullptr, ttmNow);
     }
 
     void load_settings_from_json( const nlohmann::json& joUnDdosSettings );
