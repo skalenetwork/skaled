@@ -4640,6 +4640,7 @@ BOOST_AUTO_TEST_CASE( perf_calls,
     fixture.sendCallsForAllAccounts( 1, CallType::HASH_RATE, "eth_hashrate" );
     fixture.sendCallsForAllAccounts( 1, CallType::MINING, "eth_mining" );
     fixture.sendCallsForAllAccounts( 1, CallType::SYNCING, "eth_syncing" );
+    fixture.sendCallsForAllAccounts( 1, CallType::WEB3_CLIENT_VERSION, "web3_clientVersion" );
 }
 
 

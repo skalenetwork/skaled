@@ -47,7 +47,7 @@ enum class TransferType { NATIVE, ERC20 };
 
 enum class CallType {
     TRANSACTION_COUNT, BALANCE, BLOCK_BY_NUMBER, BLOCK_NUMBER, CHAIN_ID, NET_VERSION, GAS_PRICE,
-    HASH_RATE, MINING, SYNCING
+    HASH_RATE, MINING, SYNCING, WEB3_CLIENT_VERSION
 };
 
 class SkaledAccount {
@@ -211,6 +211,8 @@ public:
     string eth_mining();
 
     string eth_syncing();
+
+    string web3_clientVersion();
 
     u256 eth_getBalance( const std::string& _addressString );
 

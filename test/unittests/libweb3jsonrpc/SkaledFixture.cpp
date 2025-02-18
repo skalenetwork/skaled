@@ -260,6 +260,16 @@ string CurlClient::eth_syncing() {
     return response["result"].toStyledString();
 }
 
+
+string CurlClient::web3_clientVersion() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
 u256 CurlClient::eth_getBalance( const std::string& _addressString ) {
     std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_getBalance","params":[")" +
                               _addressString + R"(","latest"],"id":1})";
@@ -1057,6 +1067,8 @@ void SkaledFixture::doCall( std::shared_ptr< SkaledAccount > _from, const u256& 
         c->eth_mining();
     } else if (_transferType == CallType::SYNCING) {
         c->eth_syncing();
+    } else if (_transferType == CallType::WEB3_CLIENT_VERSION) {
+        c->web3_clientVersion();
     }
 }
 
