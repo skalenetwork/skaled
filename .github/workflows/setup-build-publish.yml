@@ -203,7 +203,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload debug binary to Release
-          if: inputs.release_url != '' && inputs.build_type == 'RelWithDebInfo'
+        if: inputs.release_url != '' && inputs.build_type == 'RelWithDebInfo'
         uses: actions/upload-release-asset@latest
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
