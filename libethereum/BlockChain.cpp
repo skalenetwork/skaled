@@ -1736,13 +1736,13 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
         for ( RLP const& tr : r[1] ) {
             bytesConstRef d = bytesRefFromTransactionRlp( tr );
             try {
+                auto blockTimestamp = this->info( numberHash( h.number() - 1 ) ).timestamp();
                 Transaction t( d,
                     ( _ir & ImportRequirements::TransactionSignatures ) ?
                         CheckTransaction::Everything :
                         CheckTransaction::None,
-                    false,
-                    EIP1559TransactionsPatch::isEnabledWhen(
-                        this->info( numberHash( h.number() - 1 ) ).timestamp() ) );
+                    false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+                    MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs

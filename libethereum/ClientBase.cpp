@@ -360,9 +360,10 @@ BlockDetails ClientBase::blockDetails( h256 _hash ) const {
 Transaction ClientBase::transaction( h256 _transactionHash ) const {
     // allow invalid!
     auto tl = bc().transactionLocation( _transactionHash );
+    auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
-        EIP1559TransactionsPatch::isEnabledWhen(
-            blockInfo( numberFromHash( tl.first ) - 1 ).timestamp() ) );
+        EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+        MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionHash ) const {
@@ -373,20 +374,22 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionH
 Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
+    auto blockTimestamp = blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp();
     if ( _i < b[1].itemCount() )
         // allow invalid
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
-            EIP1559TransactionsPatch::isEnabledWhen(
-                blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp() ) );
+            EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+            MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
     else
         return Transaction();
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, unsigned _i ) const {
+    auto blockTimestamp = blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp();
     // allow invalid
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
-        EIP1559TransactionsPatch::isEnabledWhen(
-            blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp() ) );
+        EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+        MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
@@ -397,11 +400,11 @@ TransactionReceipt ClientBase::transactionReceipt( h256 const& _transactionHash 
 LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
     std::pair< h256, unsigned > tl = bc().transactionLocation( _transactionHash );
+    auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
     // allow invalid
-    Transaction t =
-        Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap, true,
-            EIP1559TransactionsPatch::isEnabledWhen(
-                blockInfo( numberFromHash( tl.first ) - 1 ).timestamp() ) );
+    Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap,
+        true, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+        MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
     TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
     u256 gasUsed = tr.cumulativeGasUsed();
     if ( tl.second > 0 )
@@ -432,11 +435,12 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );
     Transactions res;
+    auto blockTimestamp = blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp();
     for ( unsigned i = 0; i < b[1].itemCount(); i++ ) {
         auto txRlp = b[1][i];
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
-            EIP1559TransactionsPatch::isEnabledWhen(
-                blockInfo( numberFromHash( _blockHash ) - 1 ).timestamp() ) );
+            EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+            MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
     }
     return res;
 }
