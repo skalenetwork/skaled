@@ -1,4 +1,4 @@
-name: New publish
+name: Publish
 on:
   pull_request:
     types: [closed]
@@ -8,12 +8,11 @@ on:
       - develop
       - beta
       - stable
-  workflow_dispatch:
 
   
 jobs:
   configure:
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     name: Configure release
     runs-on: ubuntu-latest
     outputs:
