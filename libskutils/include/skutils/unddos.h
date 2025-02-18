@@ -89,11 +89,11 @@ public:
 
     void toJSON( nlohmann::json& jo ) const;
 
-    bool match_origin( const char* origin ) const;
+    bool match_origin( const std::string& origin ) const;
 
-    size_t max_calls_per_second( const char* strMethod ) const;
+    size_t max_calls_per_second( const std::string& strMethod ) const;
 
-    size_t max_calls_per_minute( const char* strMethod ) const;
+    size_t max_calls_per_minute( const std::string& strMethod ) const;
 };
 
 typedef std::vector< origin_dos_limits > origin_entry_settings_t;
@@ -125,18 +125,11 @@ public:
     settings& assign( const settings& other );
 
 
-
-    size_t indexOfOrigin( const origin_dos_limits& oe, size_t idxStart = std::string::npos );
-
-    size_t indexOfOrigin( const char* origin_wildcard, size_t idxStart = std::string::npos );
-
-    size_t indexOfOrigin( const std::string& origin_wildcard, size_t idxStart = std::string::npos );
-
     void fromJSON( const nlohmann::json& jo );
 
-    size_t findOriginLimitsMatch( const char* origin, size_t idxStart = std::string::npos ) const;
+    size_t  findOriginLimitsMatch( const std::string& origin ) const;
 
-    origin_dos_limits& findOriginDosLimits( const char* _origin );
+    origin_dos_limits& findOriginDosLimits( const std::string& _origin );
 
 };
 
@@ -161,7 +154,7 @@ public:
     std::atomic< uint64_t > m_banUntilSec = 0;
     origin_dos_limits m_dosLimits;
 
-    tracked_origin( const char* origin );
+    tracked_origin( const std::string& origin );
 
 
     tracked_origin( const tracked_origin& other )
@@ -194,14 +187,14 @@ public:
 
     bool isBanned( uint64_t _timeSec );
 
-    void recordUse( uint64_t _useTimeSec, const char* _strMethod );
+    void recordUse( uint64_t _useTimeSec, const std::string& _method );
 
     void setDosLimits( const origin_dos_limits& _dosLimits );
 
-    e_high_load_detection_result_t detectBan( uint64_t _callTimeSec, const char* _strMethod );
+    e_high_load_detection_result_t detectBan( uint64_t _callTimeSec, const std::string& _strMethod );
 
     e_high_load_detection_result_t recordMethodUseAndDetectBan(
-        uint64_t _callTimeSec, const char* _strMethod );
+        uint64_t _callTimeSec, const std::string& _strMethod );
 };
 
 
@@ -233,26 +226,20 @@ public:
 
     algorithm& operator=( const settings& st );
 
-    e_high_load_detection_result_t register_call_from_origin( const char* _origin,
-        const char* _strMethod, time_tick_mark _callTime = time_tick_mark( 0 ));
+    e_high_load_detection_result_t register_call_from_origin( const std::string& _origin,
+        const std::string& _strMethod, time_tick_mark _callTime = time_tick_mark( 0 ));
+
 
     e_high_load_detection_result_t register_call_from_origin( const std::string& origin,
-        const std::string& strMethod, time_tick_mark ttmNow = time_tick_mark( 0 )) {
-        return register_call_from_origin(
-            origin.c_str(), strMethod.c_str(), ttmNow);
-    }
-
-    e_high_load_detection_result_t register_call_from_origin( const char* origin,
         time_tick_mark ttmNow = time_tick_mark( 0 )) {
-        return register_call_from_origin( origin, nullptr, ttmNow);
-    }
+        return register_call_from_origin( origin, "" , ttmNow);    }
 
     void load_settings_from_json( const nlohmann::json& joUnDdosSettings );
 
     void disable_ddos() const;
 
 
-    void addNewOriginToMap( const char* _origin, time_tick_mark _callTime );
+    void addNewOriginToMap( const std::string& _origin, time_tick_mark _callTime );
 };
 
 };  // namespace skutils::unddos

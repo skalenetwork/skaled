@@ -1,3 +1,4 @@
+#include <libdevcore/Log.h>
 #include <skutils/unddos.h>
 #include <shared_mutex>
 
@@ -34,7 +35,6 @@ void origin_dos_limits::load_unlim_for_any_origin() {
     m_banPerSecDuration = duration( 0 );
     m_banPerMinDuration = duration( 0 );
 }
-
 
 
 bool origin_dos_limits::empty() const {
@@ -152,18 +152,18 @@ void origin_dos_limits::toJSON( nlohmann::json& jo ) const {
     }
 }
 
-bool origin_dos_limits::match_origin( const char* origin ) const {
-    if ( origin == nullptr || ( *origin ) == '\0' )
+bool origin_dos_limits::match_origin( const std::string& origin ) const {
+    if ( origin.empty() )
         return false;
     for ( const std::string& wildcard : m_originWildcards ) {
-        if ( skutils::tools::wildcmp( wildcard.c_str(), origin ) )
+        if ( skutils::tools::wildcmp( wildcard.c_str(), origin.c_str() ) )
             return true;
     }
     return false;
 }
 
-size_t origin_dos_limits::max_calls_per_second( const char* strMethod ) const {
-    if ( strMethod == nullptr || strMethod[0] == '\0' )
+size_t origin_dos_limits::max_calls_per_second( const std::string& strMethod ) const {
+    if ( strMethod.empty() )
         return m_defaultMaxCallsPerSec;
     map_custom_method_limits_t::const_iterator itFind = m_mapCustomMethodLimits.find( strMethod ),
                                                itEnd = m_mapCustomMethodLimits.cend();
@@ -174,8 +174,8 @@ size_t origin_dos_limits::max_calls_per_second( const char* strMethod ) const {
     return cnt;
 }
 
-size_t origin_dos_limits::max_calls_per_minute( const char* strMethod ) const {
-    if ( strMethod == nullptr || strMethod[0] == '\0' )
+size_t origin_dos_limits::max_calls_per_minute( const std::string& strMethod ) const {
+    if ( strMethod.empty() )
         return m_defaultMaxCallsPerMin;
     map_custom_method_limits_t::const_iterator itFind = m_mapCustomMethodLimits.find( strMethod ),
                                                itEnd = m_mapCustomMethodLimits.cend();
@@ -236,36 +236,6 @@ settings& settings::assign( const settings& other ) {
 }
 
 
-size_t settings::indexOfOrigin( const origin_dos_limits& oe, size_t idxStart ) {
-    for ( const std::string& wildcard : oe.m_originWildcards ) {
-        size_t i = indexOfOrigin( wildcard, idxStart );
-        if ( i != std::string::npos )
-            return i;
-    }
-    return std::string::npos;
-}
-
-size_t settings::indexOfOrigin( const char* origin_wildcard, size_t idxStart ) {
-    if ( origin_wildcard == nullptr || ( *origin_wildcard ) == '\0' )
-        return std::string::npos;
-    size_t cnt = m_originDosLimits.size();
-    size_t i = ( idxStart == std::string::npos ) ? 0 : ( idxStart + 1 );
-    for ( ; i < cnt; ++i ) {
-        const origin_dos_limits& oe = m_originDosLimits[i];
-        for ( const std::string& wildcard : oe.m_originWildcards ) {
-            if ( wildcard == origin_wildcard )
-                return i;
-        }
-    }
-    return std::string::npos;
-}
-
-size_t settings::indexOfOrigin( const std::string& origin_wildcard, size_t idxStart ) {
-    if ( origin_wildcard.empty() )
-        return std::string::npos;
-    return indexOfOrigin( origin_wildcard.c_str(), idxStart );
-}
-
 void settings::fromJSON( const nlohmann::json& jo ) {
     clear();
 
@@ -301,21 +271,18 @@ void settings::fromJSON( const nlohmann::json& jo ) {
 }
 
 
-
-size_t settings::findOriginLimitsMatch( const char* origin, size_t idxStart ) const {
-    if ( origin == nullptr || ( *origin ) == '\0' )
+size_t settings::findOriginLimitsMatch( const std::string& _origin ) const {
+    if ( _origin.empty() )
         return std::string::npos;
-    size_t cnt = m_originDosLimits.size();
-    size_t i = ( idxStart == std::string::npos ) ? 0 : ( idxStart + 1 );
-    for ( ; i < cnt; ++i ) {
-        const origin_dos_limits& oe = m_originDosLimits[i];
-        if ( oe.match_origin( origin ) )
+
+    for ( size_t i = 0; i < m_originDosLimits.size(); ++i ) {
+        if ( m_originDosLimits[i].match_origin( _origin ) )
             return i;
     }
     return std::string::npos;
 }
 
-origin_dos_limits& settings::findOriginDosLimits( const char* _origin ) {
+origin_dos_limits& settings::findOriginDosLimits( const std::string& _origin ) {
     size_t i = findOriginLimitsMatch( _origin );
     if ( i != std::string::npos ) {
         return m_originDosLimits[i];
@@ -325,16 +292,14 @@ origin_dos_limits& settings::findOriginDosLimits( const char* _origin ) {
 }
 
 
-tracked_origin::tracked_origin( const char* origin )
-    : m_origin( ( origin != nullptr && origin[0] != '\0' ) ? origin : "" ) {}
-
+tracked_origin::tracked_origin( const std::string& _origin ) : m_origin( _origin ) {};
 
 void tracked_origin::setDosLimits( const origin_dos_limits& _dosLimits ) {
     m_dosLimits = _dosLimits;
 }
 
 e_high_load_detection_result_t tracked_origin::recordMethodUseAndDetectBan(
-    uint64_t _callTimeSec, const char* _strMethod ) {
+    uint64_t _callTimeSec, const std::string& _strMethod ) {
     recordUse( _callTimeSec, _strMethod );
 
     if ( isBanned( _callTimeSec ) ) {
@@ -345,22 +310,20 @@ e_high_load_detection_result_t tracked_origin::recordMethodUseAndDetectBan(
 }
 
 e_high_load_detection_result_t tracked_origin::detectBan(
-    uint64_t _callTimeSec, const char* _strMethod ) {
+    uint64_t _callTimeSec, const std::string& _strMethod ) {
     auto maxCallsPerMinute = m_dosLimits.max_calls_per_minute( _strMethod );
 
-    std::string method = ( _strMethod ? _strMethod : "" );
-
     if ( maxCallsPerMinute > 0 ) {
-        if ( m_currentMinUseCounterPerMethod[method] > maxCallsPerMinute ) {
+        if ( m_currentMinUseCounterPerMethod[_strMethod] > maxCallsPerMinute ) {
             m_banUntilSec = _callTimeSec + m_dosLimits.m_banPerMinDuration;
             return e_high_load_detection_result_t::ehldr_detected_ban_per_min;  // ban by too high
                                                                                 // load per min
         }
     }
 
-    auto maxCallsPerSecond = m_dosLimits.max_calls_per_second( method.c_str() );
+    auto maxCallsPerSecond = m_dosLimits.max_calls_per_second( _strMethod );
     if ( maxCallsPerSecond > 0 ) {
-        if ( m_currentSecUseCounterPerMethod[method] > maxCallsPerSecond ) {
+        if ( m_currentSecUseCounterPerMethod[_strMethod] > maxCallsPerSecond ) {
             m_banUntilSec = _callTimeSec + m_dosLimits.m_banPerSecDuration;
             return e_high_load_detection_result_t::ehldr_detected_ban_per_sec;
         }
@@ -377,10 +340,7 @@ bool tracked_origin::isBanned( uint64_t _timeSec ) {
     return ( _timeSec <= m_banUntilSec );
 }
 
-void tracked_origin::recordUse( uint64_t _useTimeSec, const char* _strMethod ) {
-    std::string method = ( _strMethod ? _strMethod : "" );
-
-
+void tracked_origin::recordUse( uint64_t _useTimeSec, const std::string& _method ) {
     static constexpr uint64_t SECONDS_IN_MINUTE = 60;
     auto minute = _useTimeSec / SECONDS_IN_MINUTE;
 
@@ -401,22 +361,22 @@ void tracked_origin::recordUse( uint64_t _useTimeSec, const char* _strMethod ) {
 
     // increment counters
 
-    if ( m_currentSecUseCounterPerMethod.count( method ) > 0 ) {
-        m_currentSecUseCounterPerMethod[method]++;
+    if ( m_currentSecUseCounterPerMethod.count( _method ) > 0 ) {
+        m_currentSecUseCounterPerMethod[_method]++;
     } else {
-        m_currentSecUseCounterPerMethod[method] = 1;
+        m_currentSecUseCounterPerMethod[_method] = 1;
     }
 
-    if ( m_currentMinUseCounterPerMethod.count( method ) > 0 ) {
-        m_currentMinUseCounterPerMethod[method]++;
+    if ( m_currentMinUseCounterPerMethod.count( _method ) > 0 ) {
+        m_currentMinUseCounterPerMethod[_method]++;
     } else {
-        m_currentMinUseCounterPerMethod[method] = 1;
+        m_currentMinUseCounterPerMethod[_method] = 1;
     }
 }
 
-algorithm::algorithm() : m_globalOrigin( nullptr ) {}
+algorithm::algorithm() : m_globalOrigin( "" ) {}
 
-algorithm::algorithm( const settings& st ) : m_globalOrigin( nullptr ) {
+algorithm::algorithm( const settings& st ) : m_globalOrigin( "" ) {
     m_settings = st;
     m_globalOrigin.setDosLimits( m_settings.m_globalLimitSetting );
 }
@@ -431,13 +391,13 @@ algorithm& algorithm::operator=( const settings& st ) {
 constexpr uint64_t MAX_UNDDOS_MAP_ENTRIES = 256 * 1024;
 
 e_high_load_detection_result_t algorithm::register_call_from_origin(
-    const char* _origin, const char* _strMethod, time_tick_mark _callTime) {
+    const std::string& _origin, const std::string& _strMethod, time_tick_mark _callTime ) {
     if ( !m_settings.m_enabled ) {
         // DOS protection disabled
         return e_high_load_detection_result_t::ehldr_no_error;
     }
 
-    if ( _origin == nullptr || _origin[0] == '\0' )
+    if ( _origin.empty() )
         return e_high_load_detection_result_t::ehldr_bad_origin;
 
     // set the call time to current time if it was not provided
@@ -447,8 +407,14 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
 
     auto result = m_globalOrigin.recordMethodUseAndDetectBan( _callTime, _strMethod );
 
-    if ( result != e_high_load_detection_result_t::ehldr_no_error )
+    if ( result != e_high_load_detection_result_t::ehldr_no_error ) {
+        if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_sec ) {
+            clog( dev::VerbosityDebug, "Global ban per second for" ) << _origin << std::endl;
+        } else if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_min ) {
+            clog( dev::VerbosityDebug, "Global ban per min for" ) << _origin << std::endl;
+        }
         return result;
+    }
 
     // now we checked for global ban, check for a ban based on origin
     // we need to read lock to do it
@@ -473,7 +439,7 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     }
 }
 
-void algorithm::addNewOriginToMap( const char* _origin, time_tick_mark _callTime ) {
+void algorithm::addNewOriginToMap( const std::string& _origin, time_tick_mark _callTime ) {
     const origin_dos_limits& oe = m_settings.findOriginDosLimits( _origin );
     {
         std::unique_lock< std::shared_mutex > writeLock( x_mtx );
@@ -494,7 +460,6 @@ void algorithm::addNewOriginToMap( const char* _origin, time_tick_mark _callTime
 }
 
 
-
 void algorithm::load_settings_from_json( const nlohmann::json& joUnDdosSettings ) {
     std::unique_lock< std::shared_mutex > lock( x_mtx );
     settings new_settings;
@@ -506,8 +471,6 @@ void algorithm::disable_ddos() const {
     std::shared_lock< std::shared_mutex > lock( x_mtx );
     m_settings.m_enabled = false;
 }
-
-
 
 
 };  // namespace skutils::unddos
