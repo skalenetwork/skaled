@@ -109,7 +109,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
         with:
-          ref: ${{ inputs.branch_name }}
+          ref: enhancement/update-publish-workflow-test
       - name: Submodule update
         run: |
           rm -rf ./libconsensus || true
