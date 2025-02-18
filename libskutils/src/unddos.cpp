@@ -409,9 +409,9 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
 
     if ( result != e_high_load_detection_result_t::ehldr_no_error ) {
         if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_sec ) {
-            clog( dev::VerbosityDebug, "Global ban per second for" ) << _origin << std::endl;
+            cwarn << "Global ban per second for:" << _origin;
         } else if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_min ) {
-            clog( dev::VerbosityDebug, "Global ban per min for" ) << _origin << std::endl;
+            cwarn << "Global ban per min for:" << _origin;
         }
         return result;
     }
@@ -435,7 +435,15 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
         return e_high_load_detection_result_t::ehldr_no_error;
     } else {
         // since we now have trackedOrigin the rest can be done without holding any lock on the map
-        return trackedOrigin->recordMethodUseAndDetectBan( _callTime, _strMethod );
+        result = trackedOrigin->recordMethodUseAndDetectBan( _callTime, _strMethod );
+        if ( result != e_high_load_detection_result_t::ehldr_no_error ) {
+            if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_sec ) {
+                cwarn  << "Ban per second for:"  << _origin;
+            } else if ( result == e_high_load_detection_result_t::ehldr_detected_ban_per_min ) {
+                cwarn  << "Ban per min for:" << _origin;
+            }
+        }
+        return result;
     }
 }
 

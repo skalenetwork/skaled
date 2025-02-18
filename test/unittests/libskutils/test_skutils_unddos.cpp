@@ -15,8 +15,8 @@ static std::string get_test_unddos_settings() {
 				],
 				"ban_lengthy": 10 ,
 				"ban_peak": 5,
-				"max_calls_per_minute": 3,
-				"max_calls_per_second": 10,
+				"max_calls_per_minute": 10,
+				"max_calls_per_second": 3,
 				"max_ws_conn": 20000
 			},
 			{
