@@ -4630,8 +4630,8 @@ BOOST_AUTO_TEST_CASE( perf_getTransactionCount,
 
     fixture.setupTwoToTheNKeys(12);
 
-    fixture.sendCallsForAllAccounts( 1, CallType::TRANSACTION_COUNT );
-    fixture.sendCallsForAllAccounts( 1, CallType::BALANCE );
+    fixture.sendCallsForAllAccounts( 1, CallType::TRANSACTION_COUNT, "eth_transactionCount" );
+    fixture.sendCallsForAllAccounts( 1, CallType::BALANCE, "eth_getBalance" );
 
 }
 

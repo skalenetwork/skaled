@@ -469,7 +469,7 @@ void SkaledFixture::doOneTinyTransfersIteration( TransferType _transferType ) {
     }
 }
 
-void SkaledFixture::doOneReadCallIteration(CallType _transferType ) {
+void SkaledFixture::doOneReadCallIteration(CallType _transferType, string _callName ) {
     CHECK( threadsCountForTestTransactions <= testAccounts.size() );
     auto transactionsPerThread = testAccounts.size() / threadsCountForTestTransactions;
 
@@ -511,8 +511,7 @@ void SkaledFixture::doOneReadCallIteration(CallType _transferType ) {
     }
 
 
-    cout << 1000.0 * testAccounts.size()  / ( getCurrentTimeMs() - begin ) <<
-        " call tps" << endl;
+    cout << _callName << " call tps:" << 1000.0 * testAccounts.size()  / ( getCurrentTimeMs() - begin ) << endl;
 }
 
 
@@ -590,11 +589,11 @@ void SkaledFixture::sendTinyTransfersForAllAccounts(
 }
 
 void SkaledFixture::sendCallsForAllAccounts(
-    uint64_t _iterations, CallType _callType ) {
+    uint64_t _iterations, CallType _callType, string _callName ) {
     cout << "Running calls for accounts :" << testAccounts.size() << endl;
 
     for ( uint64_t iteration = 0; iteration < _iterations; iteration++ ) {
-        doOneReadCallIteration( _callType );
+        doOneReadCallIteration( _callType, _callName );
     }
 }
 
@@ -961,7 +960,7 @@ void SkaledFixture::sendCall( std::shared_ptr< SkaledAccount > _from, const u256
     if (_transferType == CallType::TRANSACTION_COUNT) {
         c->eth_getTransactionCount( address);
     } else if (_transferType == CallType::BALANCE) {
-        c->eth_getBalance( _from->getAddressAsString());
+        c->eth_getBalance( address);
     }
 }
 

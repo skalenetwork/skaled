@@ -222,13 +222,13 @@ public:
 
     void doOneTinyTransfersIteration( TransferType _transferType );
 
-    void doOneReadCallIteration( CallType _transferType );
+    void doOneReadCallIteration( CallType _transferType,  string _callName );
 
     void mintAllKeysWithERC20();
 
     void sendTinyTransfersForAllAccounts( uint64_t _iterations, TransferType _transferType );
 
-    void sendCallsForAllAccounts( uint64_t _iterations, CallType _callType );
+    void sendCallsForAllAccounts( uint64_t _iterations, CallType _callType, string _callName );
 
     void readInsecurePrivateKeyFromHardhatConfig();
 
