@@ -35,12 +35,16 @@ on:
         required: true
       DOCKER_PASSWORD:
         required: true
+    outputs:
+      version:
+        description: "The image version published to DockerHub"
+        value: ${{ jobs.main.outputs.version }}
       
 jobs:
   main:
     runs-on: self-hosted
     outputs:
-      image_version: ${{ env.VERSION }}
+      version: ${{ env.VERSION }}
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}

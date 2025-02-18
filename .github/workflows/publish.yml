@@ -82,7 +82,7 @@ jobs:
     name: Functional testing for orig build
     needs: build
     with:
-      version: ${{ needs.build.outputs.image_version }}
+      version: ${{ needs.build.outputs.version }}
     secrets: inherit
 
   functional-tests-historic:
@@ -90,5 +90,5 @@ jobs:
     name: Functional testing for historic build
     needs: build-historic
     with:
-      version: ${{ needs.build-historic.outputs.image_version }}
+      version: ${{ needs.build-historic.outputs.version }}
     secrets: inherit
