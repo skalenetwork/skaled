@@ -138,19 +138,11 @@ string Eth::eth_coinbase() {
 }
 
 string Eth::eth_hashrate() {
-    try {
-        return toJS( asEthashClient( client() )->hashrate() );
-    } catch ( InvalidSealEngine& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
+    return toJS( 0 );
 }
 
 bool Eth::eth_mining() {
-    try {
-        return asEthashClient( client() )->isMining();
-    } catch ( InvalidSealEngine& ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
+    return false;
 }
 
 string Eth::eth_gasPrice() {

@@ -4617,7 +4617,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,
 }
 
 
-BOOST_AUTO_TEST_CASE( perf_getTransactionCount,
+BOOST_AUTO_TEST_CASE( perf_calls,
     *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
     SkaledFixture fixture( skaledConfigFileName );
     vector< Secret > accountPieces;
@@ -4630,9 +4630,16 @@ BOOST_AUTO_TEST_CASE( perf_getTransactionCount,
 
     fixture.setupTwoToTheNKeys(12);
 
+    fixture.sendCallsForAllAccounts( 1, CallType::BLOCK_BY_NUMBER, "eth_getBlockByNumber" );
     fixture.sendCallsForAllAccounts( 1, CallType::TRANSACTION_COUNT, "eth_transactionCount" );
     fixture.sendCallsForAllAccounts( 1, CallType::BALANCE, "eth_getBalance" );
-
+    fixture.sendCallsForAllAccounts( 1, CallType::BLOCK_NUMBER, "eth_blockNumber" );
+    fixture.sendCallsForAllAccounts( 1, CallType::CHAIN_ID, "eth_chainId" );
+    fixture.sendCallsForAllAccounts( 1, CallType::NET_VERSION, "net_version" );
+    fixture.sendCallsForAllAccounts( 1, CallType::GAS_PRICE, "eth_gasPrice" );
+    fixture.sendCallsForAllAccounts( 1, CallType::HASH_RATE, "eth_hashrate" );
+    fixture.sendCallsForAllAccounts( 1, CallType::MINING, "eth_mining" );
+    fixture.sendCallsForAllAccounts( 1, CallType::SYNCING, "eth_syncing" );
 }
 
 

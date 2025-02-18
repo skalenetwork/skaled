@@ -45,7 +45,10 @@ enum class TransactionWait { WAIT_FOR_COMPLETION, DONT_WAIT_FOR_COMPLETION };
 
 enum class TransferType { NATIVE, ERC20 };
 
-enum class CallType { TRANSACTION_COUNT, BALANCE };
+enum class CallType {
+    TRANSACTION_COUNT, BALANCE, BLOCK_BY_NUMBER, BLOCK_NUMBER, CHAIN_ID, NET_VERSION, GAS_PRICE,
+    HASH_RATE, MINING, SYNCING
+};
 
 class SkaledAccount {
     Secret key;
@@ -192,6 +195,23 @@ public:
     void doRequestResponseAndCheckForError( std::string jsonPayload, Json::Value& response );
 
 
+
+    string eth_getLatestBlock();
+
+    string eth_blockNumber();
+
+    string eth_chainId();
+
+    string net_version();
+
+    string eth_gasPrice();
+
+    string eth_hashrate();
+
+    string eth_mining();
+
+    string eth_syncing();
+
     u256 eth_getBalance( const std::string& _addressString );
 
     u256 eth_getTransactionCount( const std::string& _addressString );
@@ -273,7 +293,7 @@ public:
         TransferType _transferType, TransactionWait _wait );
 
 
-    void sendCall(
+    void doCall(
         std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice, CallType _callType );
 
 

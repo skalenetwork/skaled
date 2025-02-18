@@ -179,6 +179,87 @@ void CurlClient::doRequestResponseAndCheckForError(
         throw runtime_error( errorMessage );
     }
 }
+
+
+
+
+string CurlClient::eth_getLatestBlock() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
+
+string CurlClient::eth_blockNumber() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
+
+string CurlClient::eth_chainId() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
+string CurlClient::net_version() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"net_version","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
+
+string CurlClient::eth_gasPrice() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
+string CurlClient::eth_hashrate() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_hashrate","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    CHECK(response["result"].asString() == "0x0");
+    return response["result"].toStyledString();
+}
+
+string CurlClient::eth_mining() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_mining","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    CHECK(response["result"].asBool() == false);
+    return response["result"].toStyledString();
+}
+
+string CurlClient::eth_syncing() {
+    std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1})";
+    Json::Value response;
+    doRequestResponseAndCheckForError( jsonPayload, response );
+
+    CHECK( response.isMember( "result" ) );
+    return response["result"].toStyledString();
+}
+
 u256 CurlClient::eth_getBalance( const std::string& _addressString ) {
     std::string jsonPayload = R"({"jsonrpc":"2.0","method":"eth_getBalance","params":[")" +
                               _addressString + R"(","latest"],"id":1})";
@@ -491,14 +572,14 @@ void SkaledFixture::doOneReadCallIteration(CallType _transferType, string _callN
                         for ( uint64_t j = 0; j < transactionsPerThread; j++ ) {
                             auto account =
                                 testAccountsVector.at( threadNumber * transactionsPerThread + j );
-                            sendCall( account, gasPrice, _transferType);
+                            doCall( account, gasPrice, _transferType);
                         }
                     } );
                 threads.push_back( t );
             }
         } else {
             auto oldAccount = testAccountsVector.at( accountNum );
-            sendCall(oldAccount, gasPrice, _transferType);
+            doCall(oldAccount, gasPrice, _transferType);
         }
     }
 
@@ -590,7 +671,6 @@ void SkaledFixture::sendTinyTransfersForAllAccounts(
 
 void SkaledFixture::sendCallsForAllAccounts(
     uint64_t _iterations, CallType _callType, string _callName ) {
-    cout << "Running calls for accounts :" << testAccounts.size() << endl;
 
     for ( uint64_t iteration = 0; iteration < _iterations; iteration++ ) {
         doOneReadCallIteration( _callType, _callName );
@@ -953,7 +1033,7 @@ void SkaledFixture::sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, co
 
 
 
-void SkaledFixture::sendCall( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
+void SkaledFixture::doCall( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
     CallType _transferType ) {
     auto c = getThreadLocalCurlClient();
     auto address = _from->getAddressAsString();
@@ -961,6 +1041,22 @@ void SkaledFixture::sendCall( std::shared_ptr< SkaledAccount > _from, const u256
         c->eth_getTransactionCount( address);
     } else if (_transferType == CallType::BALANCE) {
         c->eth_getBalance( address);
+    } else if (_transferType == CallType::BLOCK_BY_NUMBER) {
+        c->eth_getLatestBlock();
+    } else if (_transferType == CallType::BLOCK_NUMBER) {
+        c->eth_blockNumber();
+    } else if (_transferType == CallType::CHAIN_ID) {
+        c->eth_chainId();
+    } else if (_transferType == CallType::NET_VERSION) {
+        c-> net_version();
+    } else if (_transferType == CallType::GAS_PRICE) {
+        c->eth_gasPrice();
+    } else if (_transferType == CallType::HASH_RATE) {
+        c->eth_hashrate();
+    } else if (_transferType == CallType::MINING) {
+        c->eth_mining();
+    } else if (_transferType == CallType::SYNCING) {
+        c->eth_syncing();
     }
 }
 
