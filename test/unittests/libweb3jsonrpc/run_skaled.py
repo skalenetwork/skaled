@@ -10,7 +10,8 @@ import time
 from libconsensus.sgxwallet.rapidjson.thirdparty.gtest.googlemock.test.gmock_test_utils import Subprocess
 
 # Set these
-TOTAL_NODES: int = 4
+TOTAL_NODES: int = 1
+NUM_REQUIRED_PORTS = 6 if TOTAL_NODES > 1 else 5
 BUILD_DIR: str = "cmake-build-debug"
 skaled_executable: str = "../../../" + BUILD_DIR + '/skaled/skaled'
 
@@ -28,7 +29,7 @@ class Skaled:
         self.index = _index
 
     def check_if_online(self) -> bool:
-        return len(get_listening_ports_by_pid(self.process.pid)) == 6
+        return len(get_listening_ports_by_pid(self.process.pid)) == NUM_REQUIRED_PORTS
 
     def wait_until_online(self, _timeoutSec: int):
         """
@@ -46,12 +47,13 @@ class Skaled:
         test_print(f"Timeout reached. Node {self.index} did not get online.")
         assert False
 
-    def wait_until_exit(self, _timeoutSec: int):
+    def terminated_if_not_exited(self, _timeoutSec: int):
         for i in range(_timeoutSec):
             if not self.is_running():
                 return
             time.sleep(1)
-        test_print(f"Timeout reached. Node {self.index} did not exit.")
+        test_print(f"Timeout reached. Node {self.index} did not exit. Terminating")
+        self.process.kill()
 
     def graceful_exit(self):
         if self.is_running():
@@ -123,31 +125,36 @@ def test_print(_s: str):
 def main():
     print("TEST SCRIPT: Starting all nodes ")
 
+    start_chain()
+
+    exit_chain()
+
+
+def exit_chain():
+    test_print("Sending graceful signal to all nodes")
+    for i in range(TOTAL_NODES):
+        skaled: Skaled = skaleds[i]
+        skaled.graceful_exit()
+    test_print("Waiting all nodes to exit")
+    for i in range(TOTAL_NODES):
+        skaled: Skaled = skaleds[i]
+        skaled.terminated_if_not_exited(50)
+    test_print("Exited. Waiting for processes to stop.")
+    for i in range(TOTAL_NODES):
+        skaled: Skaled = skaleds[i]
+        skaled.process.wait()
+
+
+def start_chain():
     for i in range(TOTAL_NODES):
         skaled = Skaled(i + 1, TOTAL_NODES)
         skaleds.append(skaled)
         skaled.run()
-
     test_print("Waiting nodes are online ")
     for i in range(TOTAL_NODES):
         skaled: Skaled = skaleds[i]
         skaled.wait_until_online(100)
     test_print("All nodes online")
-
-    test_print("Sending graceful signal to all nodes")
-    for i in range(TOTAL_NODES):
-        skaled: Skaled = skaleds[i]
-        skaled.graceful_exit()
-
-    test_print("Sending graceful signal to all nodes")
-    for i in range(TOTAL_NODES):
-        skaled: Skaled = skaleds[i]
-        skaled.wait_until_exit(50)
-
-    test_print("Exited. Waiting for processes to stop.")
-    for i in range(TOTAL_NODES):
-        skaled: Skaled = skaleds[i]
-        skaled.process.wait()
 
 
 if __name__ == "__main__":
