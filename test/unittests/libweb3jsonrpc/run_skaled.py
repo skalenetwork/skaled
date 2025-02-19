@@ -43,22 +43,29 @@ class Skaled:
         for i in range(_timeoutSec):
             if self.check_if_online():
                 return
-            print("Waiting for instance to be online Instance is not online.", flush= True)
             time.sleep(1)
-        print(f"Timeout reached. Node {self.index} did not get online.", flush= True)
+        test_print(f"Timeout reached. Node {self.index} did not get online.")
         assert False
 
+    def wait_until_exit(self, _timeoutSec: int) :
+        for i in range(_timeoutSec):
+            if not self.is_running():
+                return
+            time.sleep(1)
+        test_print(f"Timeout reached. Node {self.index} did not exit.")
 
 
 
-    def wait_for_exit(self) :
-            self.process.wait()
 
     def graceful_exit(self):
-        if self.process.poll() is None:
+        if self.is_running():
             self.process.terminate()
+
+
+    def is_running(self) -> bool:
+        return self.process.poll() is None
     def kill(self):
-        if self.process.poll() is None:
+        if self.is_running():
             self.process.terminate()
 
 
@@ -80,7 +87,6 @@ def get_listening_ports_by_pid(pid: int):
         for conn in psutil.net_connections(kind='inet')
         if conn.status == psutil.CONN_LISTEN and conn.pid == pid
     )
-    print(listening_ports, flush = True)
     return listening_ports
 
 def read_stdout(pipe):
@@ -92,7 +98,6 @@ def read_stdout(pipe):
 
 def run_skaled(_schain_index: int, _total_nodes: int):
     try:
-        print("Starting skaled...")
         skaled_dir : str = f"/tmp/skaled_{_schain_index}_of_{_total_nodes}"
         skaled_path = Path(skaled_dir)
 
@@ -116,25 +121,41 @@ def run_skaled(_schain_index: int, _total_nodes: int):
         Skaled.stdout_thread.start()
 
     except Exception as e:
-        print(f"Exception occurred: {e}")
+        print(f"Node {self.index} Exception occurred: {e}")
 
 
+def test_print(_s: str):
+    print(f"TEST_SCRIPT:{_s}", flush = True)
 
 def main():
+
+
+
+    print("TEST SCRIPT: Starting all nodes ")
+
     for i in range(TOTAL_NODES):
         run_skaled(i + 1, TOTAL_NODES)
 
 
-    print("TEST SCRIPT: Waiting until all nodes in the chain are online ")
+    test_print("Waiting nodes are online ")
     for i in range(TOTAL_NODES):
         skaled : Skaled = skaleds[i]
         skaled.wait_until_online(20)
-    print("TEST SCRIPT: All nodes are online ...")
+    test_print("All nodes online")
 
+
+    test_print("Sending graceful signal to all nodes")
     for i in range(TOTAL_NODES):
         skaled : Skaled = skaleds[i]
         skaled.graceful_exit()
 
+    test_print("Sending graceful signal to all nodes")
+    for i in range(TOTAL_NODES):
+        skaled : Skaled = skaleds[i]
+        skaled.wait_until_exit(50)
+
+
+    test_print("Exited. Waiting for processes to stop.")
     for i in range(TOTAL_NODES):
         skaled : Skaled = skaleds[i]
         skaled.process.wait()

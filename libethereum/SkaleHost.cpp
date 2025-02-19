@@ -729,7 +729,6 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    cnote << "1 before exitGracefully()";
 
     if ( ExitHandler::shouldExit() ) {
         // requested exit
@@ -745,16 +744,19 @@ void SkaleHost::stopWorking() {
         clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
     }
 
+
+    cnote << "Skaled initiating consensus graceful exit";
+
     m_consensus->exitGracefully();
 
-    cnote << "2 after exitGracefully()";
+    cnote << "Exit initiated. Skaled waiting for consensus exit.";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    cnote << "3 after wait loop";
+    cnote << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -764,7 +766,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    cnote << "4 before dtor";
+    cnote << "Consensus and broadcat threads finished.";
 }
 
 void SkaleHost::broadcastFunc() {
