@@ -1,7 +1,10 @@
 #include "StatusAndControl.h"
+
+#include "Exceptions.h"
 #include "Log.h"
 
 #include <fstream>
+#include <thread>
 
 using namespace dev;
 
@@ -65,37 +68,49 @@ void StatusAndControlFile::on_change() {
      * }
      */
 
-    boost::filesystem::path tmpPath = this->statusFilePath;
-    tmpPath += ".tmp";
+    try {
 
-    {
-        std::ofstream ofs( tmpPath.string() );
-        ofs << "\
+        boost::filesystem::path tmpPath = this->statusFilePath;
+        // make sure this can be donne from parallel threads
+        tmpPath += ".tmp." + std::to_string(pthread_self());
+
+        {
+            std::ofstream ofs( tmpPath.string() );
+            ofs.exceptions( std::ofstream::failbit | std::ofstream::badbit );
+            ofs << "\
     {\n\
        \"subsystemRunning\":{\n\
            \"SnapshotDownloader\": "
-            << ( isSubsystemRunning( SnapshotDownloader ) ? "true" : "false" ) << ",\n\
+                << ( isSubsystemRunning( SnapshotDownloader ) ? "true" : "false" ) << ",\n\
            \"WaitingForTimestamp\": "
-            << ( isSubsystemRunning( WaitingForTimestamp ) ? "true" : "false" ) << ",\n\
+                << ( isSubsystemRunning( WaitingForTimestamp ) ? "true" : "false" ) << ",\n\
            \"Blockchain\": "
-            << ( isSubsystemRunning( Blockchain ) ? "true" : "false" ) << ",\n\
+                << ( isSubsystemRunning( Blockchain ) ? "true" : "false" ) << ",\n\
            \"Rpc\": "
-            << ( isSubsystemRunning( Rpc ) ? "true" : "false" ) << "\n\
+                << ( isSubsystemRunning( Rpc ) ? "true" : "false" ) << "\n\
        },\n\
        \"exitState\":{\n\
            \"ClearDataDir\": "
-            << ( getExitState( ClearDataDir ) ? "true" : "false" ) << ",\n\
+                << ( getExitState( ClearDataDir ) ? "true" : "false" ) << ",\n\
            \"StartAgain\": "
-            << ( getExitState( StartAgain ) ? "true" : "false" ) << ",\n\
+                << ( getExitState( StartAgain ) ? "true" : "false" ) << ",\n\
            \"StartFromSnapshot\": "
-            << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << ",\n\
+                << ( getExitState( StartFromSnapshot ) ? "true" : "false" ) << ",\n\
            \"ExitTimeReached\": "
-            << ( getExitState( ExitTimeReached ) ? "true" : "false" ) << "\n\
+                << ( getExitState( ExitTimeReached ) ? "true" : "false" ) << "\n\
        }\n\
     }\n";
-    }
+            ofs.close();
+        }
 
-    boost::filesystem::rename( tmpPath, statusFilePath );
+        boost::filesystem::rename( tmpPath, statusFilePath );
+    } catch ( Exception& _e ) {
+        // sometimes there is an exception here during skaled exit. Will investigate more later
+        // for now catching exception so skaled can exit nicely
+        // standard logging may not be available at this time
+        std::cerr << "CRITICAL: Exception in StatusAndControlFile::on_change()" << _e.what()
+                  << std::endl;
+    }
 }
 
 StatusAndControlFile::~StatusAndControlFile() {

@@ -1514,10 +1514,8 @@ bool SkaleRelayWS::start( SkaleServerOverride* pSO ) {
 void SkaleRelayWS::stop() {
     if ( !isRunning() )
         return;
-    cdebug << m_strSchemeUC << "Will stop on port " << m_nPort;
     m_isRunning = false;
     waitWhileInLoop();
-    cnote << m_strSchemeUC << "Server stopped on port " << m_nPort;
 }
 
 dev::eth::Interface* SkaleRelayWS::ethereum() const {
@@ -1591,15 +1589,6 @@ SkaleServerOverride::SkaleServerOverride(
 }
 
 SkaleServerOverride::~SkaleServerOverride() {
-    if ( iwBlockStats_ != unsigned( -1 ) ) {
-        ethereum()->uninstallNewBlockWatch( iwBlockStats_ );
-        iwBlockStats_ = unsigned( -1 );
-    }
-    if ( iwPendingTransactionStats_ != unsigned( -1 ) ) {
-        ethereum()->uninstallNewPendingTransactionWatch( iwPendingTransactionStats_ );
-        iwPendingTransactionStats_ = unsigned( -1 );
-    }
-    StopListening();
 }
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
@@ -2058,12 +2047,9 @@ bool SkaleServerOverride::implStopListening(  // web socket
         int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortWSS4_ : bo.nBasePortWS4_ ) :
                                        ( bIsSSL ? bo.nBasePortWSS6_ : bo.nBasePortWS6_ ) ) +
                     nServerIndex;
-        ctrace << "Will stop " << ( bIsSSL ? "WSS" : "WS" ) << " server on address "
-               << strAddr + " and port " << nPort << "/" << esm2str( esm );
         if ( pSrv->isRunning() )
             pSrv->stop();
         pSrv.reset();
-        ctrace << "Stopped server";
 
     } catch ( ... ) {
     }
