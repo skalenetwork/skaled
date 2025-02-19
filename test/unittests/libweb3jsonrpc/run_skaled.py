@@ -10,28 +10,27 @@ import time
 from libconsensus.sgxwallet.rapidjson.thirdparty.gtest.googlemock.test.gmock_test_utils import Subprocess
 
 # Set these
-TOTAL_NODES: int = 1
+TOTAL_NODES: int = 4
 BUILD_DIR: str = "cmake-build-debug"
 skaled_executable: str = "../../../" + BUILD_DIR + '/skaled/skaled'
 
+
 class Skaled:
-    index : int
-    total_nodes : int
-    process : subprocess.Popen
-    stdout_thread : threading.Thread
-    def __init__(self,  _index: int, _total_nodes: int, _process : subprocess.Popen ):
+    index: int
+    total_nodes: int
+    process: subprocess.Popen = None
+    stdout_thread: threading.Thread
+
+    def __init__(self, _index: int, _total_nodes: int):
         assert _total_nodes > 0
         assert _index > 0
-        assert _process != None
         self.total_nodes = _total_nodes
         self.index = _index
-        self.process = _process
 
     def check_if_online(self) -> bool:
-        return len(get_listening_ports_by_pid(self.process.pid)) == 5
+        return len(get_listening_ports_by_pid(self.process.pid)) == 6
 
-
-    def wait_until_online(self, _timeoutSec: int) :
+    def wait_until_online(self, _timeoutSec: int):
         """
             Waits until the instance is online or until the timeout expires.
 
@@ -47,27 +46,54 @@ class Skaled:
         test_print(f"Timeout reached. Node {self.index} did not get online.")
         assert False
 
-    def wait_until_exit(self, _timeoutSec: int) :
+    def wait_until_exit(self, _timeoutSec: int):
         for i in range(_timeoutSec):
             if not self.is_running():
                 return
             time.sleep(1)
         test_print(f"Timeout reached. Node {self.index} did not exit.")
 
-
-
-
     def graceful_exit(self):
         if self.is_running():
             self.process.terminate()
 
-
     def is_running(self) -> bool:
         return self.process.poll() is None
+
     def kill(self):
         if self.is_running():
             self.process.terminate()
 
+    def print_line(self, _line: str):
+        print(f"                 SKALED {self.index}: {_line.strip()}", flush=True)
+
+
+    def read_stdout(self, pipe):
+        """Reads lines from the subprocess's stdout and prints them."""
+        for line in iter(pipe.readline, ''):
+            if line:
+               self.print_line(line)
+        pipe.close()
+
+    def run(self):
+        skaled_dir: str = f"/tmp/skaled_{self.index}_of_{self.total_nodes}"
+        skaled_path = Path(skaled_dir)
+
+        # Create directory if it doesn't exist
+        if not skaled_path.exists():
+            skaled_path.mkdir(parents=True, exist_ok=True)
+            print("Directory created successfully.")
+
+        shutil.copy2(skaled_executable, skaled_dir + "/skaled")
+
+        configFile: str = f"../../historicstate/configs/test_{self.index}_of_{self.total_nodes}.json"
+        self.process = subprocess.Popen([skaled_dir + "/skaled",
+                                         '--config', configFile], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        text=True)
+
+        Skaled.stdout_thread = threading.Thread(target=Skaled.read_stdout, args=(self, self.process.stdout))
+        Skaled.stdout_thread.daemon = True  # Daemonize thread so it exits when main thread exits
+        Skaled.stdout_thread.start()
 
     @staticmethod
     def exit_all(_graceful_timeout_before_kill):
@@ -77,11 +103,10 @@ class Skaled:
             skaled.wait_for_exit()
 
 
-skaleds : list[Skaled]  = []
+skaleds: list[Skaled] = []
 
 
 def get_listening_ports_by_pid(pid: int):
-
     listening_ports = set(
         conn.laddr.port
         for conn in psutil.net_connections(kind='inet')
@@ -89,75 +114,38 @@ def get_listening_ports_by_pid(pid: int):
     )
     return listening_ports
 
-def read_stdout(pipe):
-    """Reads lines from the subprocess's stdout and prints them."""
-    for line in iter(pipe.readline, ''):
-        if line:
-            print(f"                 SKALED: {line.strip()}", flush=True)
-    pipe.close()
-
-def run_skaled(_schain_index: int, _total_nodes: int):
-    try:
-        skaled_dir : str = f"/tmp/skaled_{_schain_index}_of_{_total_nodes}"
-        skaled_path = Path(skaled_dir)
-
-
-        # Create directory if it doesn't exist
-        if not skaled_path.exists():
-            skaled_path.mkdir(parents=True, exist_ok=True)
-            print("Directory created successfully.")
-
-        shutil.copy2(skaled_executable, skaled_dir + "/skaled")
-
-
-        configFile: str = f"../../historicstate/configs/test_{_schain_index}_of_{_total_nodes}.json"
-        process = subprocess.Popen([skaled_dir + "/skaled",
-                                    '--config', configFile], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text = True)
-        skaled = Skaled( _schain_index, _total_nodes, process);
-        skaleds.append(skaled)
-
-        Skaled.stdout_thread = threading.Thread(target=read_stdout, args=(process.stdout,))
-        Skaled.stdout_thread.daemon = True  # Daemonize thread so it exits when main thread exits
-        Skaled.stdout_thread.start()
-
-    except Exception as e:
-        print(f"Node {self.index} Exception occurred: {e}")
-
 
 def test_print(_s: str):
-    print(f"TEST_SCRIPT:{_s}", flush = True)
+    print(f"TEST_SCRIPT:{_s}", flush=True)
+
 
 def main():
-
-
-
     print("TEST SCRIPT: Starting all nodes ")
 
     for i in range(TOTAL_NODES):
-        run_skaled(i + 1, TOTAL_NODES)
-
+        skaled = Skaled(i + 1, TOTAL_NODES)
+        skaleds.append(skaled)
+        skaled.run()
 
     test_print("Waiting nodes are online ")
     for i in range(TOTAL_NODES):
-        skaled : Skaled = skaleds[i]
-        skaled.wait_until_online(20)
+        skaled: Skaled = skaleds[i]
+        skaled.wait_until_online(100)
     test_print("All nodes online")
-
 
     test_print("Sending graceful signal to all nodes")
     for i in range(TOTAL_NODES):
-        skaled : Skaled = skaleds[i]
+        skaled: Skaled = skaleds[i]
         skaled.graceful_exit()
 
     test_print("Sending graceful signal to all nodes")
     for i in range(TOTAL_NODES):
-        skaled : Skaled = skaleds[i]
+        skaled: Skaled = skaleds[i]
         skaled.wait_until_exit(50)
-
 
     test_print("Exited. Waiting for processes to stop.")
     for i in range(TOTAL_NODES):
-        skaled : Skaled = skaleds[i]
+        skaled: Skaled = skaleds[i]
         skaled.process.wait()
 
 
