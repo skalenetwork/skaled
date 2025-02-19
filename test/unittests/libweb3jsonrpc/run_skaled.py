@@ -68,12 +68,13 @@ class Skaled:
         print(f"                 SKALED {self.index}: {_line.strip()}", flush=True)
 
 
-    def read_stdout(self, pipe):
+    def read_stdout(self):
         """Reads lines from the subprocess's stdout and prints them."""
-        for line in iter(pipe.readline, ''):
+        for line in iter(self.process.stdout.readline, ''):
             if line:
                self.print_line(line)
-        pipe.close()
+        self.process.stdout.close()
+
 
     def run(self):
         skaled_dir: str = f"/tmp/skaled_{self.index}_of_{self.total_nodes}"
@@ -91,7 +92,7 @@ class Skaled:
                                          '--config', configFile], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                         text=True)
 
-        Skaled.stdout_thread = threading.Thread(target=Skaled.read_stdout, args=(self, self.process.stdout))
+        Skaled.stdout_thread = threading.Thread(target=Skaled.read_stdout, args=([self]))
         Skaled.stdout_thread.daemon = True  # Daemonize thread so it exits when main thread exits
         Skaled.stdout_thread.start()
 
