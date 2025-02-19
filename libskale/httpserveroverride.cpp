@@ -1455,7 +1455,6 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
 }
 
 SkaleRelayWS::~SkaleRelayWS() {
-    stop();
 }
 
 void SkaleRelayWS::run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag ) {
@@ -1518,7 +1517,6 @@ void SkaleRelayWS::stop() {
     cdebug << m_strSchemeUC << "Will stop on port " << m_nPort;
     m_isRunning = false;
     waitWhileInLoop();
-    close();
     cnote << m_strSchemeUC << "Server stopped on port " << m_nPort;
 }
 

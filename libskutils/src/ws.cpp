@@ -1666,10 +1666,6 @@ server_api::server_api( basic_network_settings* pBNS ) : basic_api( pBNS ) {
     }
 }
 server_api::~server_api() {
-    deinit();
-    if ( ssl_perform_local_init_ ) {
-        ERR_free_strings();
-    }
 }
 
 void server_api::clear_fields() {
@@ -3042,7 +3038,6 @@ server::server( basic_network_settings* pBNS )
     };
 }
 server::~server() {
-    close();
 }
 nlohmann::json server::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
