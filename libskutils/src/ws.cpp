@@ -1665,8 +1665,7 @@ server_api::server_api( basic_network_settings* pBNS ) : basic_api( pBNS ) {
         SSL_library_init();
     }
 }
-server_api::~server_api() {
-}
+server_api::~server_api() {}
 
 void server_api::clear_fields() {
     basic_api::clear_fields();
@@ -3037,8 +3036,7 @@ server::server( basic_network_settings* pBNS )
         onLogMessage( eWSLMT, strMessage );
     };
 }
-server::~server() {
-}
+server::~server() {}
 nlohmann::json server::toJSON() const {
     nlohmann::json jo = nlohmann::json::object();
     jo["type"] = "server";

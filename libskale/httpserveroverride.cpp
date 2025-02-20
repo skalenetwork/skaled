@@ -1454,8 +1454,7 @@ SkaleRelayWS::SkaleRelayWS( int ipVer, const char* strBindAddr,
     };
 }
 
-SkaleRelayWS::~SkaleRelayWS() {
-}
+SkaleRelayWS::~SkaleRelayWS() {}
 
 void SkaleRelayWS::run( skutils::ws::fn_continue_status_flag_t fnContinueStatusFlag ) {
     m_isInLoop = true;
@@ -1588,8 +1587,7 @@ SkaleServerOverride::SkaleServerOverride(
     }
 }
 
-SkaleServerOverride::~SkaleServerOverride() {
-}
+SkaleServerOverride::~SkaleServerOverride() {}
 
 dev::eth::Interface* SkaleServerOverride::ethereum() const {
     if ( !pEth_ ) {

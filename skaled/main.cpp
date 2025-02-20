@@ -2469,11 +2469,13 @@ int main( int argc, char** argv ) try {
             skale_server_connector->pg_threads_ = pg_threads;
             skale_server_connector->pg_threads_limit_ = pg_threads_limit;
 
-            if (pg_threads > 0) {
-                clog( VerbosityInfo, "main") << "Count of threads in proxygen server: " << pg_threads;
+            if ( pg_threads > 0 ) {
+                clog( VerbosityInfo, "main" )
+                    << "Count of threads in proxygen server: " << pg_threads;
             } else {
-                clog( VerbosityWarning, "main") << "Count of threads in proxygen server is not defined in config. "
-                                                "Using default value of 10 from the mainnet" ;
+                clog( VerbosityWarning, "main" )
+                    << "Count of threads in proxygen server is not defined in config. "
+                       "Using default value of 10 from the mainnet";
                 pg_threads = 10;
                 pg_threads_limit = 10;
             }

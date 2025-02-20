@@ -69,10 +69,9 @@ void StatusAndControlFile::on_change() {
      */
 
     try {
-
         boost::filesystem::path tmpPath = this->statusFilePath;
         // make sure this can be donne from parallel threads
-        tmpPath += ".tmp." + std::to_string(pthread_self());
+        tmpPath += ".tmp." + std::to_string( pthread_self() );
 
         {
             std::ofstream ofs( tmpPath.string() );
