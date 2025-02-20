@@ -2,6 +2,7 @@ import subprocess
 import sys
 import shutil
 import psutil
+import re
 from pathlib import Path
 
 import threading
@@ -9,16 +10,12 @@ import time
 
 from libconsensus.sgxwallet.rapidjson.thirdparty.gtest.googlemock.test.gmock_test_utils import Subprocess
 
-
-
-
-
 BUILD_DIR: str = "cmake-build-debug"
 skaled_executable: str = "../../../" + BUILD_DIR + '/skaled/skaled'
 
+
 # Set these
 class Chain:
-
     TOTAL_NODES: int
 
     def __init__(self, _total_nodes: int):
@@ -26,7 +23,6 @@ class Chain:
 
     def __str__(self):
         return f"Chain(TOTAL_NODES={self.TOTAL_NODES})"
-
 
     def start(self):
         print("TEST SCRIPT: Starting all nodes ")
@@ -40,7 +36,6 @@ class Chain:
             skaled.wait_until_online(100)
         test_print("All nodes online")
 
-
     def stop(self):
         test_print("Sending graceful signal to all nodes")
 
@@ -50,7 +45,7 @@ class Chain:
         test_print("Waiting all nodes to exit")
         for i in range(self.TOTAL_NODES):
             skaled: Skaled = skaleds[i]
-            skaled.terminated_if_not_exited(50)
+            skaled.terminated_if_not_exited(10)
         test_print("Exited. Waiting for processes to stop.")
         for i in range(self.TOTAL_NODES):
             skaled: Skaled = skaleds[i]
@@ -61,14 +56,16 @@ class Chain:
             skaled: Skaled = skaleds[i]
             skaled.cleanup()
 
+
 class Skaled:
     index: int
     TOTAL_NODES: int
     NUM_REQUIRED_PORTS: int
     process: subprocess.Popen = None
     stdout_thread: threading.Thread
-    skaled_dir : str
-    skaled_path : Path = None
+    skaled_dir: str
+    skaled_path: Path = None
+    committedBlockCount = 0
 
     def __init__(self, _index: int, _total_nodes: int):
         assert _total_nodes > 0
@@ -79,10 +76,9 @@ class Skaled:
         self.skaled_dir: str = f"/tmp/skaled_{self.index}_of_{self.TOTAL_NODES}"
         self.skaled_path = Path(self.skaled_dir)
 
-
-
     def check_if_online(self) -> bool:
-        return len(get_listening_ports_by_pid(self.process.pid)) == self.NUM_REQUIRED_PORTS
+        return len(
+            get_listening_ports_by_pid(self.process.pid)) == self.NUM_REQUIRED_PORTS and self.committedBlockCount > 1
 
     def wait_until_online(self, _timeoutSec: int):
         """
@@ -127,6 +123,12 @@ class Skaled:
         for line in iter(self.process.stdout.readline, ''):
             if line:
                 self.print_line(line)
+                if self.committedBlockCount < 4:
+                    pattern = r'BLOCK_COMMITED'
+                    matches = re.findall(pattern, line)
+                    if matches:
+                        self.committedBlockCount += 1
+
         self.process.stdout.close()
 
     def run(self):
@@ -135,10 +137,10 @@ class Skaled:
             self.skaled_path.mkdir(parents=True, exist_ok=True)
             print("Directory created successfully.")
 
-        shutil.copy2(skaled_executable, self.skaled_dir + "/skaled")
+        shutil.copy2(skaled_executable, self.skaled_dir + "/test_skaled")
 
         configFile: str = f"../../historicstate/configs/test_{self.index}_of_{self.TOTAL_NODES}.json"
-        self.process = subprocess.Popen([self.skaled_dir + "/skaled",
+        self.process = subprocess.Popen([self.skaled_dir + "/test_skaled",
                                          '--config', configFile], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                         text=True)
 
@@ -158,7 +160,6 @@ class Skaled:
             shutil.rmtree(self.skaled_path)
 
 
-
 skaleds: list[Skaled] = []
 
 
@@ -176,8 +177,6 @@ def test_print(_s: str):
 
 
 def main():
-
-
     chain = Chain(16)
     chain.start()
     chain.stop()
