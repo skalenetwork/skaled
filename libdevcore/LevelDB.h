@@ -59,7 +59,7 @@ public:
     /// Options regarding the wrapper of levelDB
     struct WrapperOptions {
         int64_t reopenPeriodMs = -1;
-        bool enableLogger = false;
+        bool enableLogger = true;
     };
 
     explicit LevelDB( boost::filesystem::path const& _path,
