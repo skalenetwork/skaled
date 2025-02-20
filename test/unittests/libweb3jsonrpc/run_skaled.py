@@ -1,4 +1,6 @@
+import argparse
 import subprocess
+import os
 import sys
 import shutil
 import psutil
@@ -12,11 +14,15 @@ from libconsensus.sgxwallet.rapidjson.thirdparty.gtest.googlemock.test.gmock_tes
 
 BUILD_DIR: str = "cmake-build-debug"
 skaled_executable: str = "../../../" + BUILD_DIR + '/skaled/skaled'
+testeth_executable: str = "../../../" + BUILD_DIR + '/test/testeth'
+testeth_dir: str = "../../../" + BUILD_DIR + '/test'
 
 
 # Set these
 class Chain:
     TOTAL_NODES: int
+
+    stdout_thread: threading.Thread
 
     def __init__(self, _total_nodes: int):
         self.TOTAL_NODES = _total_nodes
@@ -26,6 +32,9 @@ class Chain:
 
     def start(self):
         print("TEST SCRIPT: Starting all nodes ")
+
+        self.remove_old_run_data()
+
         for i in range(self.TOTAL_NODES):
             skaled = Skaled(i + 1, self.TOTAL_NODES)
             skaleds.append(skaled)
@@ -36,30 +45,33 @@ class Chain:
             skaled.wait_until_online(100)
         test_print("All nodes online")
 
-    def stop(self):
+    def remove_old_run_data(self):
+        base_dir = "/tmp"
+        for item in os.listdir(base_dir):
+            item_path = os.path.join(base_dir, item)
+            if os.path.isdir(item_path) and item.startswith("skaled_"):
+                shutil.rmtree(item_path)
+
+    def stop(self, _timeout: int):
         test_print("Sending graceful signal to all nodes")
 
-        self.sendAllNodesGracefulExit()
-
+        self.sendAllNodesGracefulExit(_timeout)
 
         test_print("Waiting all nodes to exit")
 
-        numberOfAliveNodes : int = self.TOTAL_NODES
-        for i in range(10):
+        numberOfAliveNodes: int = self.TOTAL_NODES
+
+        for i in range(_timeout):
             numberOfAliveNodes = self.getAliveNodesCount()
             if numberOfAliveNodes == 0:
                 break
             time.sleep(1)
 
         # hard kill
-        if numberOfAliveNodes > 0 :
+        if numberOfAliveNodes > 0:
             for i in range(self.TOTAL_NODES):
                 skaled: Skaled = skaleds[i]
                 skaled.terminated_if_not_exited(0)
-
-        for i in range(self.TOTAL_NODES):
-            skaled: Skaled = skaleds[i]
-            skaled.terminated_if_not_exited(10)
         test_print("Exited. Waiting for processes to stop.")
 
         for i in range(self.TOTAL_NODES):
@@ -67,21 +79,46 @@ class Chain:
             skaled.process.wait()
 
     def getAliveNodesCount(self) -> int:
-        numberOfAliveNodes : int = 0
+        numberOfAliveNodes: int = 0
         for i in range(self.TOTAL_NODES):
             if skaleds[i].is_running():
                 numberOfAliveNodes += 1
         return numberOfAliveNodes
 
-    def sendAllNodesGracefulExit(self):
-        for i in range(self.TOTAL_NODES):
-            skaled: Skaled = skaleds[i]
-            skaled.graceful_exit()
+    def sendAllNodesGracefulExit(self, _timeout: int):
+        for j in range(_timeout):
+            for i in range(self.TOTAL_NODES):
+                skaled: Skaled = skaleds[i]
+                skaled.graceful_exit()
+            time.sleep(1)
 
     def remove_created_files(self):
         for i in range(self.TOTAL_NODES):
             skaled: Skaled = skaleds[i]
             skaled.cleanup()
+
+    def run_test(self, _test_name: str):
+
+        self.process = subprocess.Popen(["./testeth",
+                                         '-t', f"JsonRpcSuite/{_test_name}", "--", "--manual"], stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        text=True, cwd=testeth_dir)
+
+        Chain.stdout_thread = threading.Thread(target=Chain.read_stdout, args=([self]))
+        Chain.stdout_thread.daemon = True  # Daemonize thread so it exits when main thread exits
+        Chain.stdout_thread.start()
+        self.process.wait(600)
+
+    def read_stdout(self):
+        """Reads lines from the subprocess's stdout and prints them."""
+        for line in iter(self.process.stdout.readline, ''):
+            if line:
+                self.print_line(line)
+
+        self.process.stdout.close()
+
+    def print_line(self, _line: str):
+        print(f"TESTETH: {_line.strip()}", flush=True)
 
 
 class Skaled:
@@ -140,7 +177,7 @@ class Skaled:
 
     def kill(self):
         if self.is_running():
-            self.process.terminate()
+            self.process.kill()
 
     def print_line(self, _line: str):
         print(f"                 SKALED {self.index}: {_line.strip()}", flush=True)
@@ -149,11 +186,12 @@ class Skaled:
         """Reads lines from the subprocess's stdout and prints them."""
         for line in iter(self.process.stdout.readline, ''):
             if line:
-                self.print_line(line)
                 pattern = r'BLOCK_COMMITED'
                 matches = re.findall(pattern, line)
                 if matches:
                     self.committedBlockCount += 1
+                    if self.index == 1:
+                        self.print_line(line)
 
         self.process.stdout.close()
 
@@ -161,7 +199,6 @@ class Skaled:
         # Create directory if it doesn't exist
         if not self.skaled_path.exists():
             self.skaled_path.mkdir(parents=True, exist_ok=True)
-            print("Directory created successfully.")
 
         shutil.copy2(skaled_executable, self.skaled_dir + "/test_skaled")
 
@@ -203,9 +240,27 @@ def test_print(_s: str):
 
 
 def main():
-    chain = Chain(16)
+    parser = argparse.ArgumentParser(description="Run chain tests with specified parameters.")
+    parser.add_argument(
+        "-nodes", type=int, default=16, help="Number of nodes in the chain (default: 16)"
+    )
+    parser.add_argument(
+        "-test", type=str,
+        help="Test: just_run, perf_calls, perf_sendManyParalelEthTransfers, perf_sendManyParalelEthMTMTransfers,"
+             "perf_sendManyParalelEthType1Transfers, perf_sendManyParalelEthMTMTransfers, perf_sendManyParalelEthType1Transfers"
+             "perf_sendManyParalelEthType2Transfers, perf_sendManyParalelEthPowTransfers, perf_sendManyParalelERC20Transfers",
+        default="just_run"
+    )
+
+    args = parser.parse_args()
+
+    chain = Chain(args.nodes)
     chain.start()
-    chain.stop()
+    if args.test == "just_run":
+        time.sleep(100000)
+    else:
+        chain.run_test(args.test)
+    chain.stop(20)
     chain.remove_created_files()
 
 
