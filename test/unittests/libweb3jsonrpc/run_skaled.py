@@ -39,17 +39,44 @@ class Chain:
     def stop(self):
         test_print("Sending graceful signal to all nodes")
 
-        for i in range(self.TOTAL_NODES):
-            skaled: Skaled = skaleds[i]
-            skaled.graceful_exit()
+        self.sendAllNodesGracefulExit()
+
+
         test_print("Waiting all nodes to exit")
+
+        numberOfAliveNodes : int = self.TOTAL_NODES
+        for i in range(10):
+            numberOfAliveNodes = self.getAliveNodesCount()
+            if numberOfAliveNodes == 0:
+                break
+            time.sleep(1)
+
+        # hard kill
+        if numberOfAliveNodes > 0 :
+            for i in range(self.TOTAL_NODES):
+                skaled: Skaled = skaleds[i]
+                skaled.terminated_if_not_exited(0)
+
         for i in range(self.TOTAL_NODES):
             skaled: Skaled = skaleds[i]
             skaled.terminated_if_not_exited(10)
         test_print("Exited. Waiting for processes to stop.")
+
         for i in range(self.TOTAL_NODES):
             skaled: Skaled = skaleds[i]
             skaled.process.wait()
+
+    def getAliveNodesCount(self) -> int:
+        numberOfAliveNodes : int = 0
+        for i in range(self.TOTAL_NODES):
+            if skaleds[i].is_running():
+                numberOfAliveNodes += 1
+        return numberOfAliveNodes
+
+    def sendAllNodesGracefulExit(self):
+        for i in range(self.TOTAL_NODES):
+            skaled: Skaled = skaleds[i]
+            skaled.graceful_exit()
 
     def remove_created_files(self):
         for i in range(self.TOTAL_NODES):
@@ -123,11 +150,10 @@ class Skaled:
         for line in iter(self.process.stdout.readline, ''):
             if line:
                 self.print_line(line)
-                if self.committedBlockCount < 4:
-                    pattern = r'BLOCK_COMMITED'
-                    matches = re.findall(pattern, line)
-                    if matches:
-                        self.committedBlockCount += 1
+                pattern = r'BLOCK_COMMITED'
+                matches = re.findall(pattern, line)
+                if matches:
+                    self.committedBlockCount += 1
 
         self.process.stdout.close()
 
