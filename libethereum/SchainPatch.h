@@ -146,4 +146,10 @@ DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
  */
 DEFINE_SIMPLE_PATCH( ExternalGasPatch );
 
+/*
+ * Purpose: do not save partial receipts after block is executed
+ * Version introduced: 4.0.0
+ */
+DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
+
 #endif  // SCHAINPATCH_H
