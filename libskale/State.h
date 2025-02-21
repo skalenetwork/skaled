@@ -230,7 +230,8 @@ public:
     dev::eth::TransactionReceipts safePartialTransactionReceipts(
         dev::eth::BlockNumber _blockNumber );
 
-    void safeCommitLegacyPartialTransactionReceipts(const dev::eth::TransactionReceipts& _receipts);
+    void safeCommitLegacyPartialTransactionReceipts(
+        const dev::eth::TransactionReceipts& _receipts );
     dev::eth::TransactionReceipts safeLegacyPartialTransactionReceipts();
 
     void safeRemoveAllPartialTransactionReceipts();

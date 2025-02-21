@@ -38,7 +38,7 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::FlexibleDeploymentPatch;
     else if ( _patchName == "ExternalGasPatch" )
         return SchainPatchEnum::ExternalGasPatch;
-    else if ( _patchName == "ClearPartialReceiptsPatch")
+    else if ( _patchName == "ClearPartialReceiptsPatch" )
         return SchainPatchEnum::ClearPartialReceiptsPatch;
     else
         throw std::out_of_range( _patchName );

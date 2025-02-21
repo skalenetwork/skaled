@@ -336,9 +336,11 @@ dev::eth::TransactionReceipts State::safeLegacyPartialTransactionReceipts() {
     return legacyPartialTransactionReceipts;
 }
 
-void State::safeCommitLegacyPartialTransactionReceipts( const dev::eth::TransactionReceipts& _receipts ) {
+void State::safeCommitLegacyPartialTransactionReceipts(
+    const dev::eth::TransactionReceipts& _receipts ) {
     dev::eth::BlockReceipts blockReceipts;
-    blockReceipts.receipts.insert(blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end());
+    blockReceipts.receipts.insert(
+        blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end() );
     m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
     m_db_ptr->commit();
 }
