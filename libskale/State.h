@@ -229,6 +229,10 @@ public:
     dev::h256 safeLastExecutedTransactionHash();
     dev::eth::TransactionReceipts safePartialTransactionReceipts(
         dev::eth::BlockNumber _blockNumber );
+
+    void safeCommitLegacyPartialTransactionReceipts(const dev::eth::TransactionReceipts& _receipts);
+    dev::eth::TransactionReceipts safeLegacyPartialTransactionReceipts();
+
     void safeRemoveAllPartialTransactionReceipts();
 
 

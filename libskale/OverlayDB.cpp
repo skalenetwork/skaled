@@ -115,6 +115,25 @@ std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
     return partialTransactionReceipts;
 }
 
+void OverlayDB::setLegacyPartialTransactionReceipts( const dev::bytes& _rawReceipt ) {
+    string legacyPrefix( "safeLastTransactionReceipts" );
+    m_db_face->insert( legacyPrefix, skale::slicing::toSlice( _rawReceipt ) );
+}
+
+dev::bytes OverlayDB::getLegacyPartialTransactionReceipts() const {
+    dev::bytes legacyPartialTransactionReceipts;
+
+    string legacyPrefix( "safeLastTransactionReceipts" );
+
+    if ( m_db_face ) {
+        const std::string lookupResult =
+            m_db_face->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
+        if ( !lookupResult.empty() )
+            legacyPartialTransactionReceipts.insert(
+                legacyPartialTransactionReceipts.end(), lookupResult.begin(), lookupResult.end() );
+    }
+    return legacyPartialTransactionReceipts;
+}
 
 void OverlayDB::removeAllPartialTransactionReceipts() {
     // first we get all keys
@@ -136,7 +155,6 @@ void OverlayDB::removeAllPartialTransactionReceipts() {
 
     m_db_face->commit( "Clean partial keys" );
 }
-
 
 void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
     this->lastExecutedTransactionHash = _newHash;

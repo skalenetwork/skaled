@@ -73,6 +73,9 @@ public:
     void setPartialTransactionReceipt( const dev::bytes& _newReceipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
+    dev::bytes getLegacyPartialTransactionReceipts() const;
+    void setLegacyPartialTransactionReceipts( const dev::bytes& _newReceipt );
+
     // commit key-value pairs in storage
     void commitStorageValues();
     void commit();

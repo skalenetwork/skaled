@@ -321,6 +321,29 @@ void State::safeRemoveAllPartialTransactionReceipts() {
 }
 
 
+dev::eth::TransactionReceipts State::safeLegacyPartialTransactionReceipts() {
+    dev::eth::TransactionReceipts legacyPartialTransactionReceipts;
+    if ( m_db_ptr ) {
+        auto rawTransactionReceipts = m_db_ptr->getLegacyPartialTransactionReceipts();
+        if ( !rawTransactionReceipts.empty() ) {
+            dev::RLP rlp( rawTransactionReceipts );
+            dev::eth::BlockReceipts blockReceipts( rlp );
+            legacyPartialTransactionReceipts.insert( legacyPartialTransactionReceipts.end(),
+                blockReceipts.receipts.begin(), blockReceipts.receipts.end() );
+        }
+    }
+
+    return legacyPartialTransactionReceipts;
+}
+
+void State::safeCommitLegacyPartialTransactionReceipts( const dev::eth::TransactionReceipts& _receipts ) {
+    dev::eth::BlockReceipts blockReceipts;
+    blockReceipts.receipts.insert(blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end());
+    m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
+    m_db_ptr->commit();
+}
+
+
 void State::safeSetAndCommitPartialTransactionReceipt(
     const dev::bytes& _receipt, dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
     if ( m_db_ptr ) {
