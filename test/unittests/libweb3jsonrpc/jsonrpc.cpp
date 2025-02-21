@@ -2991,6 +2991,43 @@ BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
     fixture.rpcClient->debug_doBlocksDbCompaction();
 }
 
+BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
+    Json::Value configJson;
+    Json::Reader().parse(c_genesisConfigString, configJson);
+
+    // indexed by enum int value
+    std::vector< size_t > patchTimestamps;
+
+    // Set custom config file & create timestamps for each patch
+    size_t numPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
+    for (size_t patch = 0; patch < numPatches ; patch++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
+        size_t ts = patch + 1000; // just to offset from the default values (0, 1)
+        patchTimestamps.push_back(ts);
+
+        std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        configJson["skaleConfig"]["sChain"][patchName] = ts; 
+    }
+
+    Json::FastWriter fastWriter;
+    std::string customConfigFile = fastWriter.write( configJson ); 
+
+    JsonRpcFixture fixture(customConfigFile, false, false, false, false);
+    Json::Value returnedPatchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
+
+    // compare returned timestamps to actual timestamps
+    for( size_t patchIdx = 0; patchIdx <  numPatches; patchIdx++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patchIdx );
+
+        std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        size_t returnedTimestamp = static_cast< size_t > (returnedPatchTimestamps[patchName].asInt()); 
+
+        BOOST_REQUIRE_EQUAL( returnedTimestamp, patchTimestamps[patchIdx]);
+    }
+}
+
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     JsonRpcFixture fixture( c_genesisConfigString, false, false, true, false );
 
@@ -3633,6 +3670,66 @@ BOOST_AUTO_TEST_CASE( vInTxnSignature ) {
     txn = fixture.rpcClient->eth_getTransactionByHash( txHash );
     v = dev::jsToU256( txn["v"].asString() );
     BOOST_REQUIRE( v < 2 && v >= 0 );
+}
+
+BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    // Set chainID = 151
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
+    time_t eip1559PatchActivationTimestamp = time(nullptr) - 1;
+    time_t maxFeePerGasPatchActivationTimestamp = time(nullptr) + 10;
+    ret["skaleConfig"]["sChain"]["MaxFeePerGasPatchTimestamp"] = maxFeePerGasPatchActivationTimestamp;
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = eip1559PatchActivationTimestamp;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS(fixture.coinbase.address());
+
+    Json::Value txRefill;
+    txRefill["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txRefill["from"] = senderAddress;
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 1000000000000000000;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+
+    // send a txn with maxPriorityFeePerGas > maxFeePerGas before MaxFeePerGasPatchTimestamp
+    txHash = fixture.rpcClient->eth_sendRawTransaction( "0x02f86d8197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080c001a0db2fe04a66fa54bfe9c6e0166d85a31b34cbff10dbde0e0584081aec6bb33c30a06b956a49c52f1460da9f93fc495eaa863ae5a8c91ee9230c2f3976f5e74d4f47" );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+
+    Json::Value tx = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    BOOST_REQUIRE( dev::jsToU256( tx["maxFeePerGas"].asString() ) < dev::jsToU256( tx["maxPriorityFeePerGas"].asString() ) );
+
+    dev::eth::Transaction t = fixture.client->transaction( dev::h256( txHash ) );
+    BOOST_REQUIRE( t.maxFeePerGas() < t.maxPriorityFeePerGas() );
+
+    sleep( 10 );
+
+    // force 1 block to update timestamp
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = senderAddress;
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 0;
+    txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    // send a txn with maxPriorityFeePerGas > maxFeePerGas after MaxFeePerGasPatchTimestamp, it should fail
+    BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( "0x02f86d8197018504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080c080a0aea5ff86373cbbbb33c9f3e9a25ceb9a694ee71beff452a4d29903d73fd30ca9a00458d4f7d54be178b42d230cc5a4740540d55b8ca0f9c74c79c1d49f6686b1e6" ), jsonrpc::JsonRpcException ); // INVALID_PARAMS
 }
 
 BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
