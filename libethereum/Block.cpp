@@ -483,6 +483,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     TransactionReceipts receipts = m_receipts;
 
+    TransactionReceipts receiptsOfCommited;
+
     unsigned countBad = 0;
 
     if ( m_receipts.size() > 0 ) {
@@ -548,6 +550,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
+            receiptsOfCommited.push_back( m_receipts.back() );
+
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
@@ -556,7 +560,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++countBad;
             }
-
 
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -573,7 +576,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
 
-
     // since we committed changes corresponding to a particular block
     // we need to create a new readonly snap
     LDB_CHECK( m_state.getOriginalDb() );
@@ -586,6 +588,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
     LDB_CHECK( receipts.size() >= countBad );
+
+    if (!ClearPartialReceiptsPatch::isEnabledWhen( _timestamp ) && receiptsOfCommited.size() > 0) {
+        // Saving partial receipts old way to be compatible with < 4.0 version
+        m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommited );
+    }
 
     return make_tuple( receipts, receipts.size() - countBad );
 }
