@@ -1,14 +1,18 @@
 /*
     Modifications Copyright (C) 2018 SKALE Labs
+
     This file is part of cpp-ethereum.
+
     cpp-ethereum is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
     cpp-ethereum is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License
     along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -19,52 +23,58 @@
  */
 
 #include <libdevcore/DBImpl.h>
-#include <libskale/OverlayDB.h>
+#include <libdevcore/OverlayDB.h>
 #include <libdevcore/TransientDirectory.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
 using namespace dev;
-using namespace skale;
 using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE( OverlayDBTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( basicUsage ) {
+BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
+    std::shared_ptr< db::DBImpl > dbImpl( new db::DBImpl( td.path() ) );
+    BOOST_REQUIRE( dbImpl );
+    auto db = std::make_unique< batched_io::batched_db >();
+    db->open( dbImpl );
 
-    auto db = make_unique< batched_io::batched_db >();
-    db->open( make_shared<db::DBImpl>( td.path() ) );
-    
-    ClassicOverlayDB odb( std::move( db ) );
+    OverlayDB odb( std::move( db ) );
+    BOOST_CHECK( !odb.get().size() );
 
     // commit nothing
-    odb.commit("dummy");
+    odb.commit();
 
     string const value = "\x43";
+    BOOST_CHECK( !odb.get().size() );
 
     odb.insert( h256( 42 ), &value );
+    BOOST_CHECK( odb.get().size() );
     BOOST_CHECK( odb.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 42 ) ), value );
 
-    odb.commit("dummy");
+    odb.commit();
+    BOOST_CHECK( !odb.get().size() );
     BOOST_CHECK( odb.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 42 ) ), value );
 
     odb.insert( h256( 41 ), &value );
-    odb.commit("dummy");
+    odb.commit();
+    BOOST_CHECK( !odb.get().size() );
     BOOST_CHECK( odb.exists( h256( 41 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 41 ) ), value );
 }
 
-BOOST_AUTO_TEST_CASE( auxMem ) {
+BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
+    std::shared_ptr< db::DBImpl > dbImpl( new db::DBImpl( td.path() ) );
+    BOOST_REQUIRE( dbImpl );
+    auto db = std::make_unique< batched_io::batched_db >();
+    db->open( dbImpl );
 
-    auto db = make_unique< batched_io::batched_db >();
-    db->open( make_shared<db::DBImpl>( td.path() ) );
-    
-    ClassicOverlayDB odb( std::move( db ) );
+    OverlayDB odb( std::move( db ) );
 
     string const value = "\x43";
     bytes valueAux = fromHex( "44" );
@@ -77,7 +87,9 @@ BOOST_AUTO_TEST_CASE( auxMem ) {
     odb.insertAux( h256( 0 ), &valueAux );
     odb.insertAux( h256( numeric_limits< u256 >::max() ), &valueAux );
 
-    odb.commit("dummy");
+    odb.commit();
+
+    BOOST_CHECK( !odb.get().size() );
 
     BOOST_CHECK( odb.exists( h256( 42 ) ) );
     BOOST_CHECK_EQUAL( odb.lookup( h256( 42 ) ), value );
@@ -95,15 +107,18 @@ BOOST_AUTO_TEST_CASE( auxMem ) {
 
 BOOST_AUTO_TEST_CASE( rollback ) {
     TransientDirectory td;
+    std::shared_ptr< db::DBImpl > dbImpl( new db::DBImpl( td.path() ) );
+    BOOST_REQUIRE( dbImpl );
+    auto db = std::make_unique< batched_io::batched_db >();
+    db->open( dbImpl );
 
-    auto db = make_unique< batched_io::batched_db >();
-    db->open( make_shared<db::DBImpl>( td.path() ) );
-    
-    ClassicOverlayDB odb( std::move( db ) );
+    OverlayDB odb( std::move( db ) );
     bytes value = fromHex( "42" );
 
     odb.insert( h256( 43 ), &value );
+    BOOST_CHECK( odb.get().size() );
     odb.rollback();
+    BOOST_CHECK( !odb.get().size() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

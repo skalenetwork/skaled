@@ -122,9 +122,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-    std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+    std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicDb,
-    std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+    std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
     skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit
@@ -166,7 +166,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 // we do state import in 16 passes to minimize memory consumption
 const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 
-void State::populateHistoricStateFromSkaleState( uint64_t _blockNumber ) {
+void State::populateHistoricStateFromSkaleState() {
     auto allAccountAddresses = this->addresses();
 
     cout << "Number of addresses in statedb:" << allAccountAddresses.size() << endl;
@@ -176,7 +176,7 @@ void State::populateHistoricStateFromSkaleState( uint64_t _blockNumber ) {
 
     // this is done to save memory, otherwise OverlayDB will frow
     for ( uint64_t i = 0; i < STATE_IMPORT_BATCH_COUNT; i++ ) {
-        populateHistoricStateBatchFromSkaleState( allAccountAddresses, i, _blockNumber );
+        populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
     cout << "Completed state import" << endl;
@@ -212,15 +212,14 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 }
 
 void State::populateHistoricStateBatchFromSkaleState(
-    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber,
-    uint64_t _blockNumber ) {
+    std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
     cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
     m_db_ptr->copyStorageIntoAccountMap( accountMap );
 
-    m_historicState.commitExternalChanges( accountMap, _blockNumber );
+    m_historicState.commitExternalChanges( accountMap );
 }
 #endif
 
@@ -494,12 +493,7 @@ void State::clearCacheIfTooLarge() const {
     }
 }
 
-void State::commit( dev::eth::CommitBehaviour _commitBehaviour
-#ifdef HISTORIC_STATE
-    ,
-    uint64_t _blockNumber
-#endif
-) {
+void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
     if ( _commitBehaviour == dev::eth::CommitBehaviour::RemoveEmptyAccounts )
         removeEmptyAccounts();
 
@@ -550,7 +544,7 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour
 
 
 #ifdef HISTORIC_STATE
-    m_historicState.commitExternalChanges( m_cache, _blockNumber );
+    m_historicState.commitExternalChanges( m_cache );
 #endif
 
     m_changeLog.clear();
@@ -1082,12 +1076,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                      dev::eth::CommitBehaviour::KeepEmptyAccounts
-#ifdef HISTORIC_STATE
-            ,
-            _envInfo.number()
-#endif
-        );
+                                      dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
 
         // do a simple sanity check each millions transactions that we correctly

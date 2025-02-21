@@ -7,6 +7,7 @@
 #include "HistoricAccount.h"
 #include "SecureTrieDB.h"
 #include <libdevcore/Common.h>
+#include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/RotatingHistoricState.h>
 #include <libethcore/BlockHeader.h>
@@ -17,7 +18,6 @@
 #include <libethereum/TransactionReceipt.h>
 #include <libevm/ExtVMFace.h>
 #include <libskale/BaseState.h>
-#include <libskale/OverlayDB.h>
 #include <libskale/Permanence.h>
 #include <array>
 #include <unordered_map>
@@ -128,8 +128,8 @@ public:
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
     explicit HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricStateDbSize,
-        std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
-        std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
             _blockToStateRootDB,
         skale::BaseState _bs = skale::BaseState::PreExisting );
 
@@ -141,11 +141,11 @@ public:
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
-    static std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
-    openDB( boost::filesystem::path const& _path, h256 const& _genesisHash,
+    static std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > openDB(
+        boost::filesystem::path const& _path, h256 const& _genesisHash,
         WithExisting _we = WithExisting::Trust );
-    skale::ClassicOverlayDB const& db() const { return m_db; }
-    skale::ClassicOverlayDB& db() { return m_db; }
+    dev::OverlayDB const& db() const { return m_db; }
+    dev::OverlayDB& db() { return m_db; }
 
     /// @returns the set containing all addresses currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
@@ -268,7 +268,7 @@ public:
 
     uint64_t globalRootBlockNumber() const { return m_state.rootBlockNumber(); }
 
-    void commitExternalChanges( AccountMap const& _cache, uint64_t _blockNumber = -1 );
+    void commitExternalChanges( AccountMap const& _cache );
 
     /// Resets any uncommitted changes to the cache.
     void setRoot( GlobalRoot const& _root, uint64_t _rootBlockNumber );
@@ -324,16 +324,16 @@ private:
     bool executeTransaction( AlethExecutive& _e, Transaction const& _t, OnOpFunc const& _onOp );
 
     /// Our overlay for the state tree.
-    skale::ClassicOverlayDB m_db;
+    dev::OverlayDB m_db;
     /// Interface for rotating db for the state tree
     std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingTreeDb;
     /// ClassicOverlayDB for the block id state root mapping
-    skale::ClassicOverlayDB m_blockToStateRootDB;
+    dev::OverlayDB m_blockToStateRootDB;
     /// Interface for rotating db for the state root mapping
     std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingRootsDb;
 
     /// Our state tree, as an ClassicOverlayDB DB.
-    SecureTrieDB< Address, skale::ClassicOverlayDB > m_state;
+    SecureTrieDB< Address, OverlayDB > m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
     /// been changed.
     mutable std::unordered_map< Address, HistoricAccount > m_cache;
@@ -353,7 +353,7 @@ private:
     uint64_t readLatestBlock();
 
     AddressHash commitExternalChangesIntoTrieDB(
-        AccountMap const& _cache, SecureTrieDB< Address, skale::ClassicOverlayDB >& _state );
+        AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
 
     dev::s256 storageUsedTotal() const { return m_db.storageUsed(); }
 

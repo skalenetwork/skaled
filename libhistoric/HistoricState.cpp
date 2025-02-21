@@ -25,9 +25,8 @@ using namespace dev::eth;
 namespace fs = boost::filesystem;
 
 HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricStateDbSize,
-    std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
-    std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
-        _blockToStateRootDB,
+    std::pair< OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
+    std::pair< OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _blockToStateRootDB,
     skale::BaseState _bs )
     : m_db( _db.first ),
       m_rotatingTreeDb( _db.second ),
@@ -56,7 +55,7 @@ HistoricState::HistoricState( HistoricState const& _s )
       m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
       m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
 
-std::pair< skale::ClassicOverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
+std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
 HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
@@ -87,7 +86,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
         auto bdb = std::make_unique< batched_io::batched_db >();
         bdb->open( rotatingDB );
-        return { skale::ClassicOverlayDB( std::move( bdb ) ), rotatingDB };
+        return { dev::OverlayDB( std::move( bdb ) ), rotatingDB };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
             clog( VerbosityError, "statedb" )
@@ -216,10 +215,10 @@ void HistoricState::clearCacheIfTooLarge() const {
     }
 }
 
-void HistoricState::commitExternalChanges( AccountMap const& _accountMap, uint64_t _blockNumber ) {
+void HistoricState::commitExternalChanges( AccountMap const& _accountMap ) {
     auto historicStateStart = dev::db::LevelDB::getCurrentTimeMs();
     commitExternalChangesIntoTrieDB( _accountMap, m_state );
-    m_state.db()->commit( std::to_string( _blockNumber ) );
+    m_state.db()->commit();
     m_changeLog.clear();
     m_cache.clear();
     m_unchangedCacheEntries.clear();
@@ -323,7 +322,7 @@ void HistoricState::saveRootForBlockNumber( uint64_t _blockNumber ) {
     // record the latest block number
     auto bnk = sha3( "latest" );
     m_blockToStateRootDB.insert( bnk, &str );
-    m_blockToStateRootDB.commit( std::to_string( _blockNumber ) );
+    m_blockToStateRootDB.commit();
 }
 
 void HistoricState::setRootFromDB() {
@@ -480,8 +479,7 @@ map< h256, pair< u256, u256 > > HistoricState::storage( Address const& _id ) con
     if ( HistoricAccount const* a = account( _id ) ) {
         // Pull out all values from trie storage.
         if ( h256 root = a->originalStorageRoot() ) {
-            SecureTrieDB< h256, skale::ClassicOverlayDB > memdb(
-                const_cast< skale::ClassicOverlayDB* >( &m_db ),
+            SecureTrieDB< h256, OverlayDB > memdb( const_cast< OverlayDB* >( &m_db ),
                 root );  // promise we won't alter the overlay! :)
 
             for ( auto it = memdb.hashedBegin(); it != memdb.hashedEnd(); ++it ) {
@@ -676,8 +674,8 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
     _out << "--- " << _s.globalRoot() << std::endl;
     std::set< Address > d;
     std::set< Address > dtr;
-    auto trie = SecureTrieDB< Address, skale::ClassicOverlayDB >(
-        const_cast< skale::ClassicOverlayDB* >( &_s.m_db ), _s.globalRoot() );
+    auto trie =
+        SecureTrieDB< Address, OverlayDB >( const_cast< OverlayDB* >( &_s.m_db ), _s.globalRoot() );
     for ( auto i : trie )
         d.insert( i.first ), dtr.insert( i.first );
     for ( auto i : _s.m_cache )
@@ -707,8 +705,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
                 std::set< u256 > delta;
                 std::set< u256 > cached;
                 if ( r ) {
-                    SecureTrieDB< h256, skale::ClassicOverlayDB > memdb(
-                        const_cast< skale::ClassicOverlayDB* >( &_s.m_db ),
+                    SecureTrieDB< h256, OverlayDB > memdb( const_cast< OverlayDB* >( &_s.m_db ),
                         r[2].toHash< h256 >() );  // promise we won't alter the overlay! :)
                     for ( auto const& j : memdb )
                         mem[j.first] = RLP( j.second ).toInt< u256 >(), back.insert( j.first );
@@ -773,7 +770,7 @@ _txIndex, BlockChain const &_bc) {
  */
 
 AddressHash HistoricState::commitExternalChangesIntoTrieDB(
-    const AccountMap& _cache, SecureTrieDB< Address, skale::ClassicOverlayDB >& _state ) {
+    const AccountMap& _cache, SecureTrieDB< Address, OverlayDB >& _state ) {
     AddressHash ret;
     for ( auto const& i : _cache )
         if ( i.second.isDirty() ) {
@@ -796,7 +793,7 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
                     storageRoot = existingAccount->originalStorageRoot();
                 }
 
-                SecureTrieDB< h256, skale::ClassicOverlayDB > storageDB( _state.db(), storageRoot );
+                SecureTrieDB< h256, OverlayDB > storageDB( _state.db(), storageRoot );
 
                 for ( auto const& j : i.second.storageOverlay() ) {
                     if ( j.second ) {

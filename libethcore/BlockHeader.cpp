@@ -25,11 +25,12 @@
 #include "Exceptions.h"
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
+#include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
 #include <libdevcore/TrieDB.h>
 #include <libdevcore/TrieHash.h>
 #include <libethcore/Common.h>
-#include <libskale/OverlayDB.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -231,8 +232,8 @@ void BlockHeader::verify( Strictness _s, BlockHeader const& _parent, bytesConstR
 
         LOG( m_logger ) << "Expected trie root: " << toString( expectedRoot );
         if ( m_transactionsRoot != expectedRoot ) {
-            skale::ClassicOverlayDB tm;
-            GenericTrieDB< skale::ClassicOverlayDB > transactionsTrie( &tm );
+            OverlayDB tm;
+            GenericTrieDB< OverlayDB > transactionsTrie( &tm );
             transactionsTrie.init();
 
             vector< bytesConstRef > txs;

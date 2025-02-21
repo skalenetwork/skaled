@@ -230,7 +230,7 @@ void Client::populateNewChainStateFromGenesis() {
     m_state.populateFrom( bc().chainParams().genesisState );
     m_state.mutableHistoricState().saveRootForBlockNumber( 0 );  // TODO is it safe to assume
                                                                  // it's 0?
-    m_state.mutableHistoricState().db().commit( "0" );
+    m_state.mutableHistoricState().db().commit();
 
 #else
     m_state.populateFrom( bc().chainParams().genesisState );
@@ -266,11 +266,9 @@ void Client::initStateFromDiskOrGenesis() {
         // if SKALE state exists but historic state does not, we need to populate the historic state
         // from SKALE state
         if ( !historicStateExists ) {
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert(
-                true, bc().info().number() );
-            m_state.populateHistoricStateFromSkaleState( bc().info().number() );
-            m_state.mutableHistoricState().db().setCommitOnEveryInsert(
-                false, bc().info().number() );
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert( true );
+            m_state.populateHistoricStateFromSkaleState();
+            m_state.mutableHistoricState().db().setCommitOnEveryInsert( false );
         }
 #endif
     }

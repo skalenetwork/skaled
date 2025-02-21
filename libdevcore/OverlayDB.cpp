@@ -39,48 +39,110 @@ inline db::Slice toSlice( bytes const& _b ) {
 OverlayDB::~OverlayDB() = default;
 
 void OverlayDB::commit() {
+    //    if ( m_db ) {
+    //        auto writeBatch = m_db->createWriteBatch();
+    ////      cnote << "Committing nodes to disk DB:";
+    //#if DEV_GUARDED_DB
+    //        DEV_READ_GUARDED( x_this )
+    //#endif
+    //        {
+    //            for ( auto const& i : m_main ) {
+    //                if ( i.second.second )
+    //                    writeBatch->insert( toSlice( i.first ), toSlice( i.second.first ) );
+    //                //              cnote << i.first << "#" << m_main[i.first].second;
+    //            }
+    //            for ( auto const& i : m_aux )
+    //                if ( i.second.second ) {
+    //                    bytes b = i.first.asBytes();
+    //                    b.push_back( 255 );  // for aux
+    //                    writeBatch->insert( toSlice( b ), toSlice( i.second.first ) );
+    //                }
+    //        }
+
+    //        for ( unsigned i = 0; i < 10; ++i ) {
+    //            try {
+    //                m_db->commit( std::move( writeBatch ) );
+    //                break;
+    //            } catch ( boost::exception const& ex ) {
+    //                if ( i == 9 ) {
+    //                    cwarn << "Fail writing to state database. Bombing out.";
+    //                    cwarn << DETAILED_ERROR;
+    //                    exit( -1 );
+    //                }
+    //                cwarn << "Error writing to state database: " << boost::diagnostic_information(
+    //                ex ); cwarn << "Sleeping for" << ( i + 1 ) << "seconds, then retrying.";
+    //                std::this_thread::sleep_for( std::chrono::seconds( i + 1 ) );
+    //            }
+    //        }
+    //#if DEV_GUARDED_DB
+    //        DEV_WRITE_GUARDED( x_this )
+    //#endif
+    //        {
+    //            m_aux.clear();
+    //            m_main.clear();
+    //        }
+    //    }
     if ( m_db ) {
-        auto writeBatch = m_db->createWriteBatch();
+        for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
 #if DEV_GUARDED_DB
-        DEV_READ_GUARDED( x_this )
+            DEV_READ_GUARDED( x_this )
 #endif
-        {
+
             for ( auto const& i : m_main ) {
-                if ( i.second.second )
-                    writeBatch->insert( toSlice( i.first ), toSlice( i.second.first ) );
-                //              cnote << i.first << "#" << m_main[i.first].second;
+                if ( i.second.second ) {
+                    m_db->insert( toSlice( i.first ), toSlice( i.second.first ) );
+                    //              cnote << i.first << "#" << m_main[i.first].second;
+                    storageUsed_ += toSlice( i.first ).size() + toSlice( i.second.first ).size();
+                }
             }
             for ( auto const& i : m_aux )
                 if ( i.second.second ) {
                     bytes b = i.first.asBytes();
                     b.push_back( 255 );  // for aux
-                    writeBatch->insert( toSlice( b ), toSlice( i.second.first ) );
+                    m_db->insert( toSlice( b ), toSlice( i.second.first ) );
+                    storageUsed_ += toSlice( b ).size() + toSlice( i.second.first ).size();
                 }
-        }
 
-        for ( unsigned i = 0; i < 10; ++i ) {
+            m_db->insert( toSlice( "storageUsed" ), toSlice( storageUsed_.str() ) );
+            clog( dev::VerbosityDebug, "overlaydb" ) << "storageUsed = " << storageUsed_.str();
+
             try {
-                m_db->commit( std::move( writeBatch ) );
+                m_db->commit( "OverlayDB_commit_" );
                 break;
             } catch ( boost::exception const& ex ) {
-                if ( i == 9 ) {
-                    cwarn << "Fail writing to state database. Bombing out.";
+                if ( commitTry == 9 ) {
+                    cwarn << "Fail(1) writing to state database. Bombing out. ";
                     cwarn << DETAILED_ERROR;
                     exit( -1 );
                 }
+                cerror << "Error(2) writing to state database (during DB commit): "
+                       << boost::diagnostic_information( ex );
                 cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
-                cwarn << "Sleeping for" << ( i + 1 ) << "seconds, then retrying.";
-                std::this_thread::sleep_for( std::chrono::seconds( i + 1 ) );
+                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
+            } catch ( std::exception const& ex ) {
+                if ( commitTry == 9 ) {
+                    cwarn << "Fail(2) writing to state database. Bombing out. ";
+                    cwarn << DETAILED_ERROR;
+                    exit( -1 );
+                }
+                cerror << "Error(2) writing to state database (during DB commit): " << ex.what();
+                cwarn << "Error(2) writing to state database: " << ex.what();
+                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
         }
 #if DEV_GUARDED_DB
         DEV_WRITE_GUARDED( x_this )
 #endif
         {
-            m_aux.clear();
             m_main.clear();
+            m_aux.clear();
+            m_db->revert();
         }
+    } else {
+        cnote << "Try to commit into closed or not initialized DB";
     }
 }
 
@@ -106,17 +168,12 @@ void OverlayDB::rollback() {
 }
 
 #ifdef HISTORIC_STATE
-std::string ClassicOverlayDB::lookup( h256 const& _h, uint64_t _rootBlockNumber ) const {
-#if DEV_GUARDED_DB
-    ReadGuard l( x_this );
-#endif
-    auto it = m_cacheMain.find( _h );
-    if ( it != m_cacheMain.end() )
-        return it->second.first;
+std::string OverlayDB::lookup( h256 const& _h, uint64_t _rootBlockNumber ) const {
+    std::string ret = MemoryDB::lookup( _h );
+    if ( !ret.empty() || !m_db )
+        return ret;
 
-    if ( !m_db_face )
-        return "";
-    return m_db_face->lookup( skale::slicing::toSlice( _h ), _rootBlockNumber );
+    return m_db->lookup( toSlice( _h ), _rootBlockNumber );
 }
 #else
 std::string OverlayDB::lookup( h256 const& _h ) const {

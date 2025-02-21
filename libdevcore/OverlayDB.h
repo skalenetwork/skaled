@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <libbatched-io/batched_db.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/MemoryDB.h>
@@ -29,8 +30,8 @@ namespace dev {
 
 class OverlayDB : public MemoryDB {
 public:
-    explicit OverlayDB( std::unique_ptr< db::DatabaseFace > _db = nullptr )
-        : m_db( _db.release(), []( db::DatabaseFace* db ) { delete db; } ) {}
+    explicit OverlayDB( std::unique_ptr< batched_io::db_face > _db = nullptr )
+        : m_db( _db.release(), []( batched_io::db_face* db ) { delete db; } ) {}
 
     ~OverlayDB();
 
@@ -65,9 +66,11 @@ public:
         m_commitOnEveryInsert = _value;
     }
 
+    std::shared_ptr< batched_io::db_face > db() { return m_db; }
+
 private:
     using MemoryDB::clear;
-    std::shared_ptr< db::DatabaseFace > m_db;
+    std::shared_ptr< batched_io::db_face > m_db;
 
     dev::s256 storageUsed_ = 0;
 

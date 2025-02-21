@@ -29,10 +29,9 @@
 #include <libdevcore/SHA3.h>
 #include <libdevcore/TrieDB.h>
 #include <libethcore/Common.h>
-#include <libskale/OverlayDB.h>
 
 namespace dev {
-
+class OverlayDB;
 namespace eth {
 
 // introduce new classes StorageRoot and GlobalRoot to better separate storage and
@@ -244,11 +243,11 @@ public:
 
     /// @returns account's original storage value corresponding to the @_key
     /// not taking into account overlayed modifications
-    u256 originalStorageValue( u256 const& _key, skale::ClassicOverlayDB const& _db ) const;
+    u256 originalStorageValue( u256 const& _key, OverlayDB const& _db ) const;
 
     /// @returns account's storage value corresponding to the @_key
     /// taking into account overlayed modifications
-    u256 storageValue( u256 const& _key, skale::ClassicOverlayDB const& _db ) const {
+    u256 storageValue( u256 const& _key, OverlayDB const& _db ) const {
         auto mit = m_storageOverlay.find( _key );
         if ( mit != m_storageOverlay.end() )
             return mit->second;

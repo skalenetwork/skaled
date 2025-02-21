@@ -191,12 +191,10 @@ public:
     explicit State( dev::u256 const& _accountStartNonce )
         : State( _accountStartNonce, OverlayDB(),
 #ifdef HISTORIC_STATE
-              std::pair< skale::ClassicOverlayDB,
-                  std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
-              std::pair< skale::ClassicOverlayDB,
-                  std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
 #endif
               BaseState::Empty ) {
     }
@@ -221,12 +219,10 @@ public:
     State()
         : State( dev::Invalid256, skale::OverlayDB(),
 #ifdef HISTORIC_STATE
-              std::pair< skale::ClassicOverlayDB,
-                  std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
-              std::pair< skale::ClassicOverlayDB,
-                  std::shared_ptr< dev::db::RotatingHistoricState > >(
-                  skale::ClassicOverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
 #endif
               BaseState::Empty ) {
     }
@@ -379,13 +375,8 @@ public:
     /// Commit all changes waiting in the address cache to the DB.
     /// @param _commitBehaviour whether or not to remove empty accounts during commit.
 
-    void commit(
-        dev::eth::CommitBehaviour _commitBehaviour = dev::eth::CommitBehaviour::RemoveEmptyAccounts
-#ifdef HISTORIC_STATE
-        ,
-        uint64_t blockNumber = -1
-#endif
-    );
+    void commit( dev::eth::CommitBehaviour _commitBehaviour =
+                     dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
     /// Execute a given transaction.
     /// This will change the state accordingly.
@@ -448,10 +439,10 @@ private:
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-        std::pair< skale::ClassicOverlayDB,
-            std::shared_ptr< dev::db::RotatingHistoricState > > const& _historicDb,
-        std::pair< skale::ClassicOverlayDB,
-            std::shared_ptr< dev::db::RotatingHistoricState > > const& _historicBlockToStateRootDb,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+            _historicDb,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+            _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
         dev::s256 _contractStorageLimit = 32
@@ -507,10 +498,10 @@ private:
 
 public:
 #ifdef HISTORIC_STATE
-    void populateHistoricStateFromSkaleState( uint64_t _blockNumber );
+    void populateHistoricStateFromSkaleState();
     void populateHistoricStateBatchFromSkaleState(
-        std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses, uint64_t _batchNumber,
-        uint64_t _blockNumber );
+        std::unordered_map< dev::Address, dev::u256 >& _allAccountAddresses,
+        uint64_t _batchNumber );
 #endif
 
 private:

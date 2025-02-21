@@ -141,74 +141,74 @@ public:
 // This is (mostly) plain old Aleth's OverlayDB.
 // It doesn't know anything about accounts and storage, it just operates with key-value pairs.
 // Used in HistoricState
-class ClassicOverlayDB {
-public:
-    explicit ClassicOverlayDB( std::unique_ptr< batched_io::db_face > _db_face = nullptr );
+// class ClassicOverlayDB {
+// public:
+//    explicit ClassicOverlayDB( std::unique_ptr< batched_io::db_face > _db_face = nullptr );
 
-    virtual ~ClassicOverlayDB() = default;
+//    virtual ~ClassicOverlayDB() = default;
 
-    // Copyable
-    ClassicOverlayDB( ClassicOverlayDB const& ) = default;
-    ClassicOverlayDB& operator=( ClassicOverlayDB const& ) = default;
-    // Movable
-    ClassicOverlayDB( ClassicOverlayDB&& ) = default;
-    ClassicOverlayDB& operator=( ClassicOverlayDB&& ) = default;
+//    // Copyable
+//    ClassicOverlayDB( ClassicOverlayDB const& ) = default;
+//    ClassicOverlayDB& operator=( ClassicOverlayDB const& ) = default;
+//    // Movable
+//    ClassicOverlayDB( ClassicOverlayDB&& ) = default;
+//    ClassicOverlayDB& operator=( ClassicOverlayDB&& ) = default;
 
-    void commit( const std::string& _debugCommitId );
-    void rollback();
-    void clearDB();
-    bool connected() const;
-    bool empty() const;
+//    void commit( const std::string& _debugCommitId );
+//    void rollback();
+//    void clearDB();
+//    bool connected() const;
+//    bool empty() const;
 
-    // block for HistoricState
-    void insert( dev::h256 const& _h, dev::bytesConstRef _v );
+//    // block for HistoricState
+//    void insert( dev::h256 const& _h, dev::bytesConstRef _v );
 
-#ifdef HISTORIC_STATE
-    std::string lookup( dev::h256 const& _h ) const { return lookup( _h, UINT64_MAX ); }
-    std::string lookup( dev::h256 const& _h, uint64_t _rootBlockNumber ) const;
-#else
-    std::string lookup( dev::h256 const& _h ) const;
-#endif
+//#ifdef HISTORIC_STATE
+//    std::string lookup( dev::h256 const& _h ) const { return lookup( _h, UINT64_MAX ); }
+//    std::string lookup( dev::h256 const& _h, uint64_t _rootBlockNumber ) const;
+//#else
+//    std::string lookup( dev::h256 const& _h ) const;
+//#endif
 
-    bool exists( dev::h256 const& _h ) const;
+//    bool exists( dev::h256 const& _h ) const;
 
-    void kill( dev::h256 const& _h );
+//    void kill( dev::h256 const& _h );
 
-    dev::bytes lookupAux( dev::h256 const& _h ) const;
-    void removeAux( dev::h256 const& _h );
-    void insertAux( dev::h256 const& _h, dev::bytesConstRef _v );
+//    dev::bytes lookupAux( dev::h256 const& _h ) const;
+//    void removeAux( dev::h256 const& _h );
+//    void insertAux( dev::h256 const& _h, dev::bytesConstRef _v );
 
-    dev::s256 storageUsed() const;
-    void updateStorageUsage( dev::s256 const& _storageUsed );
+//    dev::s256 storageUsed() const;
+//    void updateStorageUsage( dev::s256 const& _storageUsed );
 
-    void setCommitOnEveryInsert( bool _value, uint64_t _blockNumber ) {
-        commit( std::to_string( _blockNumber ) );
-        m_commitOnEveryInsert = _value;
-    }
+//    void setCommitOnEveryInsert( bool _value, uint64_t _blockNumber ) {
+//        commit( std::to_string( _blockNumber ) );
+//        m_commitOnEveryInsert = _value;
+//    }
 
-protected:
-    std::unordered_map< dev::h256, std::pair< std::string, unsigned > > m_cacheMain;
-    std::unordered_map< dev::h256, std::pair< dev::bytes, bool > > m_cacheAux;
-    dev::s256 storageUsed_ = 0;
+// protected:
+//    std::unordered_map< dev::h256, std::pair< std::string, unsigned > > m_cacheMain;
+//    std::unordered_map< dev::h256, std::pair< dev::bytes, bool > > m_cacheAux;
+//    dev::s256 storageUsed_ = 0;
 
-    std::shared_ptr< batched_io::db_face > m_db_face;
+//    std::shared_ptr< batched_io::db_face > m_db_face;
 
-    // a flag to commit to disk on every insert to save memory
-    // this is currently only used for historic state conversion
-    bool m_commitOnEveryInsert = false;
+//    // a flag to commit to disk on every insert to save memory
+//    // this is currently only used for historic state conversion
+//    bool m_commitOnEveryInsert = false;
 
-public:
-    std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
-    void copyStorageIntoAccountMap(
-        std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
-    // for debugging
-    dev::h256Hash keys() const {
-        dev::h256Hash ret;
-        for ( auto const& i : m_cacheMain )
-            if ( i.second.second )
-                ret.insert( i.first );
-        return ret;
-    }
-};
+// public:
+//    std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
+//    void copyStorageIntoAccountMap(
+//        std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
+//    // for debugging
+//    dev::h256Hash keys() const {
+//        dev::h256Hash ret;
+//        for ( auto const& i : m_cacheMain )
+//            if ( i.second.second )
+//                ret.insert( i.first );
+//        return ret;
+//    }
+//};
 
 }  // namespace skale
