@@ -1734,7 +1734,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     auto latestBlockNumber = fixture.client->blockInfo(fixture.client->hashFromNumber(LatestBlock)).number();
 
     // wait for patch turning on and see how it happens
-    string txHash;    
+    string txHash;
     BlockHeader badInfo, goodInfo;
     uint64_t blockCounter = 2;
     for ( ;; ) {
@@ -1771,6 +1771,50 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], "0x1" );
+}
+
+BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
+    JsonRpcFixture fixture;
+    auto senderAddress = fixture.coinbase.address();
+    fixture.client->setAuthor( senderAddress );
+    dev::eth::simulateMining( *( fixture.client ), 1000 );
+
+    Json::Value transactionCallObject;
+    transactionCallObject["from"] = toJS( senderAddress );
+    transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
+    transactionCallObject["data"] = "0x28b5e32b";
+
+    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    dev::eth::BlockNumber blockNumber = jsToInt(receipt["blockNumber"].asString());
+    State state( fixture.client->state() );
+    BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumber).size(), 0 );
+    BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 1 );
+
+    std::string _config = c_genesisConfigString;
+    Json::Value config;
+    Json::Reader().parse( _config, config );
+    time_t clearPartialReceiptsActivationTs = time(nullptr) + 1;
+    config["skaleConfig"]["sChain"]["ClearPartialReceiptsPatch"] = clearPartialReceiptsActivationTs;
+    sleep(2);
+
+    ts = toTransactionSkeleton( transactionCallObject );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    ar = fixture.accountHolder->authenticate( ts );
+    Transaction txAfter( ts, ar.second );
+
+    auto txHashAfter = fixture.rpcClient->eth_sendRawTransaction( toJS( txAfter.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto receiptAfter = fixture.rpcClient->eth_getTransactionReceipt( txHashAfter );
+    dev::eth::BlockNumber blockNumberAfter = jsToInt(receiptAfter["blockNumber"].asString());
+    BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumberAfter).size(), 0 );
+    BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
@@ -3007,11 +3051,11 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
 
         std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
         patchName[0] = tolower( patchName[0] );
-        configJson["skaleConfig"]["sChain"][patchName] = ts; 
+        configJson["skaleConfig"]["sChain"][patchName] = ts;
     }
 
     Json::FastWriter fastWriter;
-    std::string customConfigFile = fastWriter.write( configJson ); 
+    std::string customConfigFile = fastWriter.write( configJson );
 
     JsonRpcFixture fixture(customConfigFile, false, false, false, false);
     Json::Value returnedPatchTimestamps = fixture.rpcClient->debug_getPatchTimestamps();
@@ -3022,7 +3066,7 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
 
         std::string patchName = getPatchNameForEnum(patchEnum) + "Timestamp";
         patchName[0] = tolower( patchName[0] );
-        size_t returnedTimestamp = static_cast< size_t > (returnedPatchTimestamps[patchName].asInt()); 
+        size_t returnedTimestamp = static_cast< size_t > (returnedPatchTimestamps[patchName].asInt());
 
         BOOST_REQUIRE_EQUAL( returnedTimestamp, patchTimestamps[patchIdx]);
     }
@@ -4339,6 +4383,7 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
     BOOST_REQUIRE_EQUAL( tq->status().current, 5 );
 
     call = fixture.rpcClient->debug_getFutureTransactions();
+    BOOST_REQUIRE_EQUAL( call.size(), 0 );
     BOOST_REQUIRE_EQUAL( call.size(), 0 );
 
     fixture.client->skaleHost()->pauseConsensus( false );
