@@ -163,8 +163,12 @@ public:
     // block for HistoricState
     void insert( dev::h256 const& _h, dev::bytesConstRef _v );
 
+#ifdef HISTORIC_STATE
     std::string lookup( dev::h256 const& _h ) const { return lookup( _h, UINT64_MAX ); }
     std::string lookup( dev::h256 const& _h, uint64_t _rootBlockNumber ) const;
+#else
+    std::string lookup( dev::h256 const& _h ) const;
+#endif
 
     bool exists( dev::h256 const& _h ) const;
 

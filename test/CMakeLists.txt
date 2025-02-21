@@ -73,7 +73,7 @@ if( APPLE )
 endif()
 target_include_directories(testeth PRIVATE ${UTILS_INCLUDE_DIR} ../libconsensus/spdlog/include)
 target_link_libraries(testeth PRIVATE
-    ethereum historic ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp binaryen::binaryen
+    ethereum ethashseal web3jsonrpc devcrypto devcore skale-buildinfo ${LIB_NAME_cryptopp} yaml-cpp binaryen::binaryen
     skutils
     Boost::system Boost::program_options
     jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a
@@ -91,6 +91,9 @@ target_link_libraries(testeth PRIVATE
     ${DEPS_INSTALL_ROOT}/lib/liblzma.a
     batched-io
     )
+if (HISTORIC_STATE)
+    target_link_libraries(testeth PRIVATE historic)
+endif()
 if (CONSENSUS)
     target_link_libraries(testeth PRIVATE consensus)
 endif()

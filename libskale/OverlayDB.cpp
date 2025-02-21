@@ -652,6 +652,7 @@ void ClassicOverlayDB::insert( h256 const& _h, bytesConstRef _v ) {
     }
 }
 
+#ifdef HISTORIC_STATE
 std::string ClassicOverlayDB::lookup( h256 const& _h, uint64_t _rootBlockNumber ) const {
 #if DEV_GUARDED_DB
     ReadGuard l( x_this );
@@ -664,6 +665,20 @@ std::string ClassicOverlayDB::lookup( h256 const& _h, uint64_t _rootBlockNumber 
         return "";
     return m_db_face->lookup( skale::slicing::toSlice( _h ), _rootBlockNumber );
 }
+#else
+std::string ClassicOverlayDB::lookup( h256 const& _h ) const {
+#if DEV_GUARDED_DB
+    ReadGuard l( x_this );
+#endif
+    auto it = m_cacheMain.find( _h );
+    if ( it != m_cacheMain.end() )
+        return it->second.first;
+
+    if ( !m_db_face )
+        return "";
+    return m_db_face->lookup( skale::slicing::toSlice( _h ) );
+}
+#endif
 
 bool ClassicOverlayDB::exists( h256 const& _h ) const {
 #if DEV_GUARDED_DB

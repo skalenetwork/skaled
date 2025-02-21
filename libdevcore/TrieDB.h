@@ -62,10 +62,19 @@ public:
     ~GenericTrieDB() {}
 
     void open( DB* _db ) { m_db = _db; }
-    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal,
-        uint64_t _rootBlockNumber = UINT64_MAX ) {
+    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal
+#ifdef HISTORIC_STATE
+        ,
+        uint64_t _rootBlockNumber = UINT64_MAX
+#endif
+    ) {
         m_db = _db;
-        setRoot( _root, _v, _rootBlockNumber );
+        setRoot( _root, _v
+#ifdef HISTORIC_STATE
+            ,
+            _rootBlockNumber
+#endif
+        );
     }
 
     void init() {
@@ -73,10 +82,16 @@ public:
         assert( node( m_root ).size() );
     }
 
-    void setRoot( h256 const& _root, Verification _v = Verification::Normal,
-        uint64_t _rootBlockNumber = UINT64_MAX ) {
+    void setRoot( h256 const& _root, Verification _v = Verification::Normal
+#ifdef HISTORIC_STATE
+        ,
+        uint64_t _rootBlockNumber = UINT64_MAX
+#endif
+    ) {
         m_root = _root;
+#ifdef HISTORIC_STATE
         m_rootBlockNumber = _rootBlockNumber;
+#endif
         if ( _v == Verification::Normal ) {
             if ( m_root == EmptyTrie && !m_db->exists( m_root ) )
                 init();
@@ -287,7 +302,11 @@ private:
     bool isTwoItemNode( RLP const& _n ) const;
     std::string deref( RLP const& _n ) const;
 
+#ifdef HISTORIC_STATE
     std::string node( h256 const& _h ) const { return m_db->lookup( _h, m_rootBlockNumber ); }
+#else
+    std::string node( h256 const& _h ) const { return m_db->lookup( _h ); }
+#endif
 
     // These are low-level node insertion functions that just go straight through into the DB.
     h256 forceInsertNode( bytesConstRef _v ) {
