@@ -26,6 +26,8 @@ Modifications Copyright (C) 2024 SKALE Labs
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
+#include <curl/curl.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
