@@ -179,7 +179,9 @@ public:
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     int64_t levelDBReopenIntervalMs = -1;
+#ifdef HISTORIC_STATE
     int64_t maxHistoricStateDbSize = -1;
+#endif
     size_t t = 1;
 
     // key is patch name
