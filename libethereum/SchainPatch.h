@@ -153,4 +153,10 @@ DEFINE_SIMPLE_PATCH( ExternalGasPatch );
  */
 DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
 
+/*
+ * Context: fix the check in transaction constructor
+ * maxFeePerGas cannot be less than maxPriorityFeePerGas
+ */
+DEFINE_SIMPLE_PATCH( MaxFeePerGasPatch );
+
 #endif  // SCHAINPATCH_H
