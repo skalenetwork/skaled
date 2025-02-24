@@ -29,8 +29,8 @@
 #include <libethcore/Common.h>
 #include <libethereum/LogFilter.h>
 
-#include <stdexcept>
 #include <rapidjson/document.h>
+#include <stdexcept>
 
 namespace dev {
 
