@@ -5,6 +5,8 @@
 
 #include <libbatched-io/BatchedRotatingHistoricDbIO.h>
 
+#include <libconsensus/thirdparty/lrucache.hpp>
+
 #include <mutex>
 #include <set>
 #include <shared_mutex>
@@ -15,6 +17,7 @@ namespace db {
 class RotatingHistoricState : public DatabaseFace {
 private:
     std::shared_ptr< batched_io::BatchedRotatingHistoricDbIO > ioBackend;
+    mutable cache::lru_cache< std::string, std::string > m_lruCache;
 
     mutable std::set< WriteBatchFace* > batch_cache;
     mutable std::shared_mutex m_mutex;

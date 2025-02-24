@@ -4,9 +4,9 @@
 #include <libethcore/KeyManager.h>
 #include <libp2p/Network.h>
 
-#define private public          // TODO refactor SnapshotManager
-    #include <libskale/SnapshotManager.h>
-#undef private
+//#define private public          // TODO refactor SnapshotManager
+#include <libskale/SnapshotManager.h>
+//#undef private
 
 #include <libethereum/ClientTest.h>
 #include <libskale/SnapshotHashAgent.h>
@@ -40,7 +40,8 @@ namespace dev {
 namespace test {
 class SnapshotHashAgentTest {
 public:
-    SnapshotHashAgentTest( ChainParams& _chainParams, const std::string& urlToDownloadSnapshotFrom ) {
+    SnapshotHashAgentTest(
+        ChainParams& _chainParams, const std::string& urlToDownloadSnapshotFrom ) {
         std::vector< libff::alt_bn128_Fr > coeffs( _chainParams.sChain.t );
 
         for ( auto& elem : coeffs ) {
@@ -64,8 +65,7 @@ public:
             }
         }
 
-        libBLS::Bls obj =
-            libBLS::Bls( _chainParams.sChain.t, _chainParams.sChain.nodes.size() );
+        libBLS::Bls obj = libBLS::Bls( _chainParams.sChain.t, _chainParams.sChain.nodes.size() );
         std::vector< size_t > idx( _chainParams.sChain.t );
         for ( size_t i = 0; i < _chainParams.sChain.t; ++i ) {
             idx[i] = i + 1;
@@ -86,7 +86,8 @@ public:
 
         isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
-        this->hashAgent_.reset( new SnapshotHashAgent( _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
+        this->hashAgent_.reset( new SnapshotHashAgent(
+            _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
@@ -103,9 +104,7 @@ public:
         }
     }
 
-    size_t verifyAllData() const {
-        return this->hashAgent_->verifyAllData();
-    }
+    size_t verifyAllData() const { return this->hashAgent_->verifyAllData(); }
 
     std::vector< size_t > getNodesToDownloadSnapshotFrom() {
         bool res = this->voteForHash();
@@ -166,7 +165,7 @@ public:
 
 class TestIpcClient : public jsonrpc::IClientConnector {
 public:
-    explicit TestIpcClient( TestIpcServer& _server ) : m_server{_server} {}
+    explicit TestIpcClient( TestIpcServer& _server ) : m_server{ _server } {}
 
     void SendRPCMessage( const std::string& _message, std::string& _result ) override {
         m_server.ProcessRequest( _message, _result );
@@ -246,15 +245,17 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         dropRoot();
 
-        int rv = system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string(200) ).c_str() );
+        int rv =
+            system( ( "dd if=/dev/zero of=" + BTRFS_FILE_PATH + " bs=1M count=" + to_string( 200 ) )
+                        .c_str() );
         rv = system( ( "mkfs.btrfs " + BTRFS_FILE_PATH ).c_str() );
         rv = system( ( "mkdir " + BTRFS_DIR_PATH ).c_str() );
 
         gainRoot();
         rv = system( ( "mount -o user_subvol_rm_allowed " + BTRFS_FILE_PATH + " " + BTRFS_DIR_PATH )
-                    .c_str() );
+                         .c_str() );
         rv = chown( BTRFS_DIR_PATH.c_str(), sudo_uid, sudo_gid );
-        ( void )rv;
+        ( void ) rv;
         dropRoot();
 
         //        btrfs.subvolume.create( ( BTRFS_DIR_PATH + "/vol1" ).c_str() );
@@ -322,9 +323,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         newFileHash << fileHash;
 
         // TODO creation order with dependencies, gasPricer etc..
-        auto monitor = make_shared< InstanceMonitor >("test");
+        auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv("DATA_DIR", BTRFS_DIR_PATH.c_str(), 1);
+        setenv( "DATA_DIR", BTRFS_DIR_PATH.c_str(), 1 );
         client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
             shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
@@ -338,9 +339,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         // wait for 1st block to prevent race conditions in UnsafeRegion
         std::promise< void > block_promise;
         auto importHandler = client->setOnBlockImport(
-            [&block_promise]( BlockHeader const& ) {
-                    block_promise.set_value();
-        } );
+            [&block_promise]( BlockHeader const& ) { block_promise.set_value(); } );
 
         client->injectSkaleHost();
         client->startWorking();
@@ -353,16 +352,16 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
-        accountHolder->setAccounts( {coinbase, account2} );
+        accountHolder->setAccounts( { coinbase, account2 } );
 
         sessionManager.reset( new rpc::SessionManager() );
         adminSession =
-            sessionManager->newSession( rpc::SessionPermissions{{rpc::Privilege::Admin}} );
+            sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        auto ethFace = new rpc::Eth( std::string(""), *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( std::string( "" ), *client, *accountHolder.get() );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 1000, 1000 );
-        client->setGasPricer(gasPricer);
+        client->setGasPricer( gasPricer );
 
         rpcServer.reset( new FullServer( ethFace /*, new rpc::Net(*web3)*/,
             new rpc::Web3( /*web3->clientVersion()*/ ),  // TODO Add real version?
@@ -384,11 +383,11 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
             return;
         gainRoot();
         [[maybe_unused]] int rv = system( ( "umount " + BTRFS_DIR_PATH ).c_str() );
-        assert(rv == 0);
+        assert( rv == 0 );
         rv = system( ( "rmdir " + BTRFS_DIR_PATH ).c_str() );
-        assert(rv == 0);
+        assert( rv == 0 );
         rv = system( ( "rm " + BTRFS_FILE_PATH ).c_str() );
-        assert(rv == 0);
+        assert( rv == 0 );
     }
 
     string sendingRawShouldFail( string const& _t ) {
@@ -401,21 +400,21 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         return string();
     }
 
-    TransientDirectory tempDir; // ! should exist before client!
+    TransientDirectory tempDir;  // ! should exist before client!
     unique_ptr< Client > client;
 
-    dev::KeyPair coinbase{KeyPair::create()};
-    dev::KeyPair account2{KeyPair::create()};
+    dev::KeyPair coinbase{ KeyPair::create() };
+    dev::KeyPair account2{ KeyPair::create() };
     unique_ptr< FixedAccountHolder > accountHolder;
     unique_ptr< rpc::SessionManager > sessionManager;
     std::shared_ptr< eth::TrivialGasPricer > gasPricer;
-    KeyManager keyManager{KeyManager::defaultPath(), SecretStore::defaultPath()};
+    KeyManager keyManager{ KeyManager::defaultPath(), SecretStore::defaultPath() };
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
     std::string adminSession;
     unique_ptr< SnapshotManager > mgr;
 };
-} //namespace
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
@@ -434,14 +433,14 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
-    std::vector< size_t > excpected = {0, 1, 2};
+    std::vector< size_t > excpected = { 0, 1, 2 };
     BOOST_REQUIRE( res == excpected );
     BOOST_REQUIRE( test_agent.getVotedHash().first == hash );
-    BOOST_REQUIRE( test_agent.getVotedHash().second ==
-                   libBLS::Bls::Signing(
-                       libBLS::ThresholdUtils::HashtoG1(
-                           std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
-                       test_agent.secret_as_is ) );
+    BOOST_REQUIRE(
+        test_agent.getVotedHash().second ==
+        libBLS::Bls::Signing( libBLS::ThresholdUtils::HashtoG1(
+                                  std::make_shared< std::array< uint8_t, 32 > >( hash.asArray() ) ),
+            test_agent.secret_as_is ) );
 }
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {
@@ -460,7 +459,7 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 6 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
-    std::vector< size_t > excpected = {0, 1, 2, 3, 5};
+    std::vector< size_t > excpected = { 0, 1, 2, 3, 5 };
     BOOST_REQUIRE( res == excpected );
 }
 
@@ -478,7 +477,7 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
-    BOOST_REQUIRE( test_agent.verifyAllData() == 3);
+    BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
     BOOST_REQUIRE_THROW( test_agent.voteForHash(), NotEnoughVotesException );
 }
 
@@ -529,12 +528,13 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( HashSnapshotTestSuite, *boost::unit_test::precondition( option_all_tests ) )
 
-#define WAIT_FOR_THE_NEXT_BLOCK() { \
-    auto bn = client->number(); \
-    while ( client->number() == bn ) { \
-        usleep( 100 ); \
-    } \
-}
+#define WAIT_FOR_THE_NEXT_BLOCK()          \
+    {                                      \
+        auto bn = client->number();        \
+        while ( client->number() == bn ) { \
+            usleep( 100 );                 \
+        }                                  \
+    }
 
 BOOST_FIXTURE_TEST_CASE( SnapshotHashingTest, SnapshotHashingFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
@@ -607,29 +607,29 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE( SnapshotPerformanceSuite, *boost::unit_test::disabled() )
 
 BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture ) {
-//    *boost::unit_test::disabled() ) {
+    //    *boost::unit_test::disabled() ) {
     // 21s
     // dev::db::LevelDB db("/home/dimalit/skaled/big_states/1GR_1.4GB/a77d61c4/12041/state");
     // 150s
-    dev::db::LevelDB db("/home/dimalit/skale-node-tests/big_states/1/da3e7c49/12041/state");
+    dev::db::LevelDB db( "/home/dimalit/skale-node-tests/big_states/1/da3e7c49/12041/state" );
     auto t1 = std::chrono::high_resolution_clock::now();
     auto hash = db.hashBase();
     auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Hash = " << hash << " Time = " << std::chrono::duration<double>(t2-t1).count() << std::endl;
+    std::cout << "Hash = " << hash
+              << " Time = " << std::chrono::duration< double >( t2 - t1 ).count() << std::endl;
 }
 
-BOOST_FIXTURE_TEST_CASE( hashing_speed_fs, SnapshotHashingFixture) {
-    secp256k1_sha256_t ctx;
-    secp256k1_sha256_initialize( &ctx );
+// BOOST_FIXTURE_TEST_CASE( hashing_speed_fs, SnapshotHashingFixture) {
+//    secp256k1_sha256_t ctx;
+//    secp256k1_sha256_initialize( &ctx );
 
-    auto t1 = std::chrono::high_resolution_clock::now();
-    // 140s - with 4k and 1b files both
-    mgr->proceedFileStorageDirectory("/home/dimalit/skale-node-tests/big_states/10GBF", &ctx, false);
-    dev::h256 hash;
-    secp256k1_sha256_finalize( &ctx, hash.data() );
-    auto t2 = std::chrono::high_resolution_clock::now();
-    std::cout << "Hash = " << hash << " Time = " << std::chrono::duration<double>(t2-t1).count() << std::endl;
-}
+//    auto t1 = std::chrono::high_resolution_clock::now();
+//    // 140s - with 4k and 1b files both
+//    mgr->proceedFileStorageDirectory("/home/dimalit/skale-node-tests/big_states/10GBF", &ctx,
+//    false); dev::h256 hash; secp256k1_sha256_finalize( &ctx, hash.data() ); auto t2 =
+//    std::chrono::high_resolution_clock::now(); std::cout << "Hash = " << hash << " Time = " <<
+//    std::chrono::duration<double>(t2-t1).count() << std::endl;
+//}
 
 
 BOOST_AUTO_TEST_SUITE_END()
