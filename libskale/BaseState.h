@@ -79,8 +79,8 @@ using ChangeLog = std::vector< Change >;
 
 enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
 
-} // namespace eth
+}  // namespace eth
 
-} // namespace dev
+}  // namespace dev
 
 #endif  // SKALED_BASESTATE_H

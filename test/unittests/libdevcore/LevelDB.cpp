@@ -51,7 +51,7 @@ void test_leveldb( db::DatabaseFace* db ) {
     int cnt = 0;
     db->forEach( [&cnt, r]( db::Slice _key, db::Slice ) -> bool {
         BOOST_REQUIRE( _key.contentsEqual( db::Slice( r + "other key" ).toVector() ) ||
-                      _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
+                       _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
         ++cnt;
         return true;
     } );
@@ -71,9 +71,9 @@ void test_leveldb( db::DatabaseFace* db ) {
     cnt = 0;
     db->forEach( [&cnt, str_with_0, r]( db::Slice _key, db::Slice ) -> bool {
         BOOST_REQUIRE( _key.contentsEqual( db::Slice( r + "b-other key" ).toVector() ) ||
-                      _key.contentsEqual( db::Slice( str_with_0 ).toVector() ) ||
-                      _key.contentsEqual( db::Slice( r + "b-key for 0" ).toVector() ) ||
-                      _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
+                       _key.contentsEqual( db::Slice( str_with_0 ).toVector() ) ||
+                       _key.contentsEqual( db::Slice( r + "b-key for 0" ).toVector() ) ||
+                       _key.contentsEqual( db::Slice( r + "key for 0" ).toVector() ) );
         ++cnt;
         return true;
     } );
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE( rotation_test ) {
     const int rotateInterval = 10;
     const int nPreserved = ( nPieces - 1 ) * rotateInterval;
 
-    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
+    auto batcher = make_shared< batched_io::rotating_db_io >( td.path(), nPieces, false );
     db::ManuallyRotatingLevelDB rdb( batcher );
 
     for ( int i = 0; i < nPreserved * 3; ++i ) {
@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     TransientDirectory td;
     const int nPieces = 3;
 
-    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
+    auto batcher = make_shared< batched_io::rotating_db_io >( td.path(), nPieces, false );
     db::ManuallyRotatingLevelDB rdb( batcher );
 
     rdb.insert( string( "a" ), string( "va" ) );
@@ -176,11 +176,11 @@ BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new_new" ) );
 }
 
-BOOST_AUTO_TEST_CASE( rotation_circle_test ){
+BOOST_AUTO_TEST_CASE( rotation_circle_test ) {
     TransientDirectory td;
     const int nPieces = 3;
 
-    auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
+    auto batcher = make_shared< batched_io::rotating_db_io >( td.path(), nPieces, false );
     db::ManuallyRotatingLevelDB rdb( batcher );
 
     rdb.insert( string( "a" ), string( "va1" ) );
@@ -188,46 +188,46 @@ BOOST_AUTO_TEST_CASE( rotation_circle_test ){
     rdb.insert( string( "a" ), string( "va2" ) );
 
     int cnt = 0;
-    for(int i=0; i<nPieces; ++i){
-        if(rdb.exists(string("a"))){
+    for ( int i = 0; i < nPieces; ++i ) {
+        if ( rdb.exists( string( "a" ) ) ) {
             BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va2" ) );
             cnt++;
         }
         rdb.rotate();
-    }// for
+    }  // for
 
-    BOOST_REQUIRE(!rdb.exists(string("a")));
-    BOOST_REQUIRE_EQUAL(cnt, nPieces);
+    BOOST_REQUIRE( !rdb.exists( string( "a" ) ) );
+    BOOST_REQUIRE_EQUAL( cnt, nPieces );
 }
 
-BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
+BOOST_AUTO_TEST_CASE( rotation_reopen_test ) {
     TransientDirectory td;
     const int nPieces = 5;
 
     // pre_rotate = how many rotations do before reopen
-    for(int pre_rotate = 0; pre_rotate < nPieces; pre_rotate++){
+    for ( int pre_rotate = 0; pre_rotate < nPieces; pre_rotate++ ) {
         // scope 1
         {
-            auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
+            auto batcher = make_shared< batched_io::rotating_db_io >( td.path(), nPieces, false );
             db::ManuallyRotatingLevelDB rdb( batcher );
 
-            rdb.insert( string( "a" ), to_string(0) );
-            for(int i=1; i<=pre_rotate; ++i){
+            rdb.insert( string( "a" ), to_string( 0 ) );
+            for ( int i = 1; i <= pre_rotate; ++i ) {
                 rdb.rotate();
-                rdb.insert( string( "a" ), to_string(i) );
+                rdb.insert( string( "a" ), to_string( i ) );
             }
 
-            BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(pre_rotate));
+            BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), to_string( pre_rotate ) );
         }
 
         // scope 2
         {
-            auto batcher = make_shared<batched_io::rotating_db_io>( td.path(), nPieces, false );
+            auto batcher = make_shared< batched_io::rotating_db_io >( td.path(), nPieces, false );
             db::ManuallyRotatingLevelDB rdb( batcher );
-            BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(pre_rotate));
+            BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), to_string( pre_rotate ) );
         }
 
-    }// for pre_rotate
+    }  // for pre_rotate
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -236,11 +236,11 @@ BOOST_FIXTURE_TEST_SUITE( HistoricDBTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( simple_whole_test ) {
     TransientDirectory td;
-    auto bio = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+    auto bio = make_shared< batched_io::BatchedRotatingHistoricDbIO >( td.path() );
     db::RotatingHistoricState rhs( bio );
 
-    rhs.rotate(1001);
-    rhs.rotate(1002);
+    rhs.rotate( 1001 );
+    rhs.rotate( 1002 );
 
     test_leveldb( &rhs );
 }
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE( simple_whole_test ) {
 BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     TransientDirectory td;
 
-    auto batcher = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+    auto batcher = make_shared< batched_io::BatchedRotatingHistoricDbIO >( td.path() );
     db::RotatingHistoricState rdb( batcher );
 
     rdb.insert( string( "a" ), string( "va" ) );
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     rdb.insert( string( "a" ), string( "va_new" ) );
     BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new" ) );
 
-    rdb.rotate(1001);  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    rdb.rotate( 1001 );  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new" ) );
     BOOST_REQUIRE_EQUAL( rdb.lookup( string( "b" ) ), string( "vb" ) );
@@ -271,32 +271,31 @@ BOOST_AUTO_TEST_CASE( rotation_rewrite_test ) {
     BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), string( "va_new_new" ) );
 }
 
-BOOST_AUTO_TEST_CASE( rotation_reopen_test ){
+BOOST_AUTO_TEST_CASE( rotation_reopen_test ) {
     TransientDirectory td;
 
     // make 2 rotations, then reopen
 
     // scope 1
     {
-        auto batcher = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+        auto batcher = make_shared< batched_io::BatchedRotatingHistoricDbIO >( td.path() );
         db::RotatingHistoricState rdb( batcher );
 
-        rdb.insert( string( "a" ), to_string(0) );
-        for(int i=1; i<=2; ++i){
-            rdb.rotate(i*1000);
-            rdb.insert( string( "a" ), to_string(i) );
+        rdb.insert( string( "a" ), to_string( 0 ) );
+        for ( int i = 1; i <= 2; ++i ) {
+            rdb.rotate( i * 1000 );
+            rdb.insert( string( "a" ), to_string( i ) );
         }
 
-        BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(2));
+        BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), to_string( 2 ) );
     }
 
     // scope 2
     {
-        auto batcher = make_shared<batched_io::BatchedRotatingHistoricDbIO>( td.path() );
+        auto batcher = make_shared< batched_io::BatchedRotatingHistoricDbIO >( td.path() );
         db::RotatingHistoricState rdb( batcher );
-        BOOST_REQUIRE_EQUAL( rdb.lookup(string("a")), to_string(2));
+        BOOST_REQUIRE_EQUAL( rdb.lookup( string( "a" ) ), to_string( 2 ) );
     }
-
 }
 
 BOOST_AUTO_TEST_CASE( basic_io_test ) {
@@ -305,24 +304,24 @@ BOOST_AUTO_TEST_CASE( basic_io_test ) {
 
     // check initial state
     auto bn = io.getBlockNumbers();
-    BOOST_REQUIRE_EQUAL(bn.size(), 1);
-    BOOST_REQUIRE_EQUAL(bn[0], 0);
+    BOOST_REQUIRE_EQUAL( bn.size(), 1 );
+    BOOST_REQUIRE_EQUAL( bn[0], 0 );
 
     // try to get pieces
-    BOOST_REQUIRE_EQUAL(io.getPieceByBlockNumber(0), io.getPieceByBlockNumber(1));
+    BOOST_REQUIRE_EQUAL( io.getPieceByBlockNumber( 0 ), io.getPieceByBlockNumber( 1 ) );
 
     // insert 1
     auto db = io.currentPiece();
-    db->insert(db::Slice( "1" ), db::Slice( "foobar" ));
+    db->insert( db::Slice( "1" ), db::Slice( "foobar" ) );
 
     // rotate
-    io.rotate(10);
+    io.rotate( 10 );
 
     // check rotation
     bn = io.getBlockNumbers();
-    BOOST_REQUIRE_EQUAL(bn.size(), 2);
-    BOOST_REQUIRE_EQUAL(bn[0], 0);
-    BOOST_REQUIRE_EQUAL(bn[1], 10);
+    BOOST_REQUIRE_EQUAL( bn.size(), 2 );
+    BOOST_REQUIRE_EQUAL( bn[0], 0 );
+    BOOST_REQUIRE_EQUAL( bn[1], 10 );
 
     // check pieces
     auto piece0 = io.getPieceByBlockNumber( 0 );
@@ -342,69 +341,69 @@ BOOST_AUTO_TEST_CASE( basic_io_test ) {
     BOOST_REQUIRE( !piece_max->exists( db::Slice( "1" ) ) );
 }
 
-BOOST_AUTO_TEST_CASE( range_test ){
+BOOST_AUTO_TEST_CASE( range_test ) {
     TransientDirectory td;
     batched_io::BatchedRotatingHistoricDbIO io( td.path() );
 
-    vector<uint64_t> bn{0};
+    vector< uint64_t > bn{ 0 };
     // create 11 DBs and fill bn
-    for(size_t i=0; i<10; ++i){
+    for ( size_t i = 0; i < 10; ++i ) {
         // insert i
-        bn.push_back((i+1)*10);
-        io.rotate((i+1)*10);
+        bn.push_back( ( i + 1 ) * 10 );
+        io.rotate( ( i + 1 ) * 10 );
     }
 
     // bn: 0 10 20 30 40 50 .. 100
 
-    auto range = io.getRangeForBlockNumber(0);
-    std::equal( range.first, range.second, bn.rend()-1 );
+    auto range = io.getRangeForBlockNumber( 0 );
+    std::equal( range.first, range.second, bn.rend() - 1 );
 
-    range = io.getRangeForBlockNumber(9);
-    std::equal( range.first, range.second, bn.rend()-1 );
+    range = io.getRangeForBlockNumber( 9 );
+    std::equal( range.first, range.second, bn.rend() - 1 );
 
-    range = io.getRangeForBlockNumber(10);
-    std::equal( range.first, range.second, bn.rend()-1-1 );
+    range = io.getRangeForBlockNumber( 10 );
+    std::equal( range.first, range.second, bn.rend() - 1 - 1 );
 
-    range = io.getRangeForBlockNumber(20);
-    std::equal( range.first, range.second, bn.rend()-1-2 );
+    range = io.getRangeForBlockNumber( 20 );
+    std::equal( range.first, range.second, bn.rend() - 1 - 2 );
 
-    range = io.getRangeForBlockNumber(21);
-    std::equal( range.first, range.second, bn.rend()-1-2 );
+    range = io.getRangeForBlockNumber( 21 );
+    std::equal( range.first, range.second, bn.rend() - 1 - 2 );
 
-    range = io.getRangeForBlockNumber(29);
-    std::equal( range.first, range.second, bn.rend()-1-2 );
+    range = io.getRangeForBlockNumber( 29 );
+    std::equal( range.first, range.second, bn.rend() - 1 - 2 );
 
-    range = io.getRangeForBlockNumber(30);
-    std::equal( range.first, range.second, bn.rend()-1-3 );
+    range = io.getRangeForBlockNumber( 30 );
+    std::equal( range.first, range.second, bn.rend() - 1 - 3 );
 
-    range = io.getRangeForBlockNumber(999);
+    range = io.getRangeForBlockNumber( 999 );
     std::equal( range.first, range.second, bn.rbegin() );
 
-    range = io.getRangeForBlockNumber(UINT64_MAX);
+    range = io.getRangeForBlockNumber( UINT64_MAX );
     std::equal( range.first, range.second, bn.rbegin() );
 }
 
-BOOST_AUTO_TEST_CASE( many_pieces ){
+BOOST_AUTO_TEST_CASE( many_pieces ) {
     TransientDirectory td;
     batched_io::BatchedRotatingHistoricDbIO io( td.path() );
 
     // create 100 pieces
-    for(size_t i=0; i<100; ++i){
+    for ( size_t i = 0; i < 100; ++i ) {
         auto db = io.currentPiece();
-        db->insert( db::Slice( to_string(i) ), db::Slice( "val" ) );
-        io.rotate(i+1);
+        db->insert( db::Slice( to_string( i ) ), db::Slice( "val" ) );
+        io.rotate( i + 1 );
     }
 
     // check them on disk
-    auto di = directory_iterator(td.path());
-    size_t pieces = std::distance(begin(di), end(di));
-    BOOST_CHECK_EQUAL(pieces, 101);
+    auto di = directory_iterator( td.path() );
+    size_t pieces = std::distance( begin( di ), end( di ) );
+    BOOST_CHECK_EQUAL( pieces, 101 );
 
     // check they are accessible
-    for(size_t i=0; i<100; ++i){
-        auto db = io.getPieceByBlockNumber(i);
-        BOOST_CHECK( db->exists( db::Slice( to_string(i) )) );
-        BOOST_CHECK( !db->exists( db::Slice( to_string(i+1) )) );
+    for ( size_t i = 0; i < 100; ++i ) {
+        auto db = io.getPieceByBlockNumber( i );
+        BOOST_CHECK( db->exists( db::Slice( to_string( i ) ) ) );
+        BOOST_CHECK( !db->exists( db::Slice( to_string( i + 1 ) ) ) );
     }
 }
 

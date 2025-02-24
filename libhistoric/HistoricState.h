@@ -46,7 +46,7 @@ class SealEngineFace;
 class AlethExecutive;
 
 ///// An atomic state changelog entry.
-//struct Change {
+// struct Change {
 //    enum Kind : int {
 //        /// Account balance changed. Change::value contains the amount the
 //        /// balance was increased by.
@@ -91,7 +91,7 @@ class AlethExecutive;
 //        : kind( Nonce ), address( _addr ), value( _value ) {}
 //};
 
-//using ChangeLog = std::vector< Change >;
+// using ChangeLog = std::vector< Change >;
 
 ///**
 // * Model of an Ethereum state, essentially a facade for the trie.
@@ -107,7 +107,7 @@ class AlethExecutive;
 // * The changelog is managed by savepoint(), rollback() and commit() methods.
 // */
 
-//enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
+// enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
 
 constexpr auto HISTORIC_STATE_DIR = "historic_state";
 constexpr auto HISTORIC_ROOTS_DIR = "historic_roots";
