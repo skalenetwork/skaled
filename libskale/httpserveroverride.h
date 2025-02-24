@@ -40,9 +40,9 @@ typedef intptr_t ssize_t;
 #include <unistd.h>
 #endif
 
-#include <stdexcept>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
+#include <stdexcept>
 
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server/abstractserverconnector.h>
