@@ -619,6 +619,8 @@ BOOST_FIXTURE_TEST_CASE( hashing_speed_db, SnapshotHashingFixture ) {
               << " Time = " << std::chrono::duration< double >( t2 - t1 ).count() << std::endl;
 }
 
+// comment out this code cause it breaks build and is not used for testing
+// refactor it later
 // BOOST_FIXTURE_TEST_CASE( hashing_speed_fs, SnapshotHashingFixture) {
 //    secp256k1_sha256_t ctx;
 //    secp256k1_sha256_initialize( &ctx );
