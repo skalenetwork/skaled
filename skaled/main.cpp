@@ -76,9 +76,7 @@
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
-#ifdef HISTORIC_STATE
-#include <libweb3jsonrpc/Tracing.h>
-#endif
+#include <libweb3jsonrpc/TracingFace.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
 

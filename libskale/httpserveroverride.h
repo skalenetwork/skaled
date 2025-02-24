@@ -40,9 +40,15 @@ typedef intptr_t ssize_t;
 #include <unistd.h>
 #endif
 
+
+#include <stdexcept>
+#define RAPIDJSON_ASSERT( x )                                       \
+    if ( !( x ) ) {                                                 \
+        throw std::out_of_range( #x " failed with provided JSON" ); \
+    }
+#define RAPIDJSON_ASSERT_THROWS
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
-#include <stdexcept>
 
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server/abstractserverconnector.h>

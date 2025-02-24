@@ -22,13 +22,10 @@
 #include "WebThreeStubClient.h"
 
 
-#include "SkaledFixture.h"
 #include "genesisGeneration2Config.h"
 #include "libweb3jsonrpc/SkaleFace.h"
 #include <jsonrpccpp/client/connectors/httpclient.h>
 #include <jsonrpccpp/server/abstractserverconnector.h>
-#include <libconsensus/SkaleCommon.h>
-#include <libconsensus/oracle/OracleRequestSpec.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/CommonJS.h>
@@ -40,9 +37,13 @@
 #include <libskutils/include/skutils/rest_call.h>
 #include <libweb3jsonrpc/AccountHolder.h>
 #include <libweb3jsonrpc/AdminEth.h>
+#include <libweb3jsonrpc/JsonHelper.h>
+#include "SkaledFixture.h"
+#include <libconsensus/SkaleCommon.h>
+#include <libconsensus/oracle/OracleRequestSpec.h>
+#include "genesisGeneration2Config.h"
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
-#include <libweb3jsonrpc/JsonHelper.h>
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
 #include <libweb3jsonrpc/Test.h>

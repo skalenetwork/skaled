@@ -29,8 +29,13 @@
 #include <libethcore/Common.h>
 #include <libethereum/LogFilter.h>
 
-#include <rapidjson/document.h>
 #include <stdexcept>
+#define RAPIDJSON_ASSERT( x )                                       \
+    if ( !( x ) ) {                                                 \
+        throw std::out_of_range( #x " failed with provided JSON" ); \
+    }
+#define RAPIDJSON_ASSERT_THROWS
+#include <rapidjson/document.h>
 
 namespace dev {
 
