@@ -550,7 +550,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
-            receiptsOfCommited.push_back( m_receipts.back() );
+            if ( m_receipts.size() > 0 ) {
+                receiptsOfCommited.push_back( m_receipts.back() );
+            }
 
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
