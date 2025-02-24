@@ -1,7 +1,9 @@
+#include <libbatched-io/BatchedRotatingHistoricDbIO.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/Log.h>
 #include <libdevcore/ManuallyRotatingLevelDB.h>
+#include <libdevcore/RotatingHistoricState.h>
 #include <libdevcore/SplitDB.h>
 #include <libdevcore/TransientDirectory.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>

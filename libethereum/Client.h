@@ -55,7 +55,9 @@
 #include "SnapshotAgent.h"
 #include "ThreadSafeQueue.h"
 
+#ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
+#endif
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
 

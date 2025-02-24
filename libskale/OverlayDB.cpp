@@ -23,7 +23,6 @@
  */
 
 #include "OverlayDB.h"
-#include "libhistoric/HistoricState.h"
 #include <libethereum/SchainPatch.h>
 
 #include <boost/range/adaptor/map.hpp>

@@ -113,7 +113,9 @@ public:
         return m_root;
     }  // patch the root in the case of the empty trie. TODO: handle this properly.
 
+#ifdef HISTORIC_STATE
     uint64_t rootBlockNumber() const { return m_rootBlockNumber; }
+#endif
 
     std::string at( bytes const& _key ) const { return at( &_key ); }
     std::string at( bytesConstRef _key ) const;
@@ -332,9 +334,11 @@ private:
 
     h256 m_root;
     DB* m_db = nullptr;
+#ifdef HISTORIC_STATE
     uint64_t m_rootBlockNumber =
         UINT64_MAX;  // timestamp of block with this root, used for optimized
                      // scan of DBs in BatchedRotatingHistoricDbIO
+#endif
 };
 
 template < class DB >
@@ -481,7 +485,9 @@ public:
     using Super::leftOvers;
     using Super::open;
     using Super::root;
+#ifdef HISTORIC_STATE
     using Super::rootBlockNumber;
+#endif
     using Super::setRoot;
 
     std::string at( bytesConstRef _key ) const { return Super::at( sha3( _key ) ); }

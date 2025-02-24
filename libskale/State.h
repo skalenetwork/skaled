@@ -36,11 +36,14 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
+#ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>
+#endif
 
 #include "BaseState.h"
 #include "OverlayDB.h"
 #include "OverlayFS.h"
+#include "Permanence.h"
 #include <libdevcore/DBImpl.h>
 
 #include <openssl/rand.h>

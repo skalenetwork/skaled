@@ -4,7 +4,9 @@
 #include "test/tools/libtestutils/FixedClient.h"
 
 #include <libethereum/Executive.h>
+#ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
+#endif
 #include <boost/program_options.hpp>
 #include <libconsensus/thirdparty/lru_ordered_memory_constrained_cache.hpp>
 
