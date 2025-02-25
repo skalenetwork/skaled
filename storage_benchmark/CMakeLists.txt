@@ -26,7 +26,7 @@ target_link_libraries(
     )
 
 if(HISTORIC_STATE)
-    target_link_libraries(${executable_name} PREIVATE historic)
+    target_link_libraries(${executable_name} PRIVATE historic)
 endif()
 
 target_include_directories(${executable_name} PRIVATE ../utils ${SKUTILS_INCLUDE_DIRS})
