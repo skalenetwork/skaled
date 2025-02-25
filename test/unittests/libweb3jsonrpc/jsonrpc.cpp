@@ -1774,10 +1774,24 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
-    JsonRpcFixture fixture;
-    auto senderAddress = fixture.coinbase.address();
-    fixture.client->setAuthor( senderAddress );
-    dev::eth::simulateMining( *( fixture.client ), 1000 );
+    // Prepare fixture
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+
+    std::string chainID = "0x97";  // 151
+    ret["params"]["chainID"] = chainID;
+    time_t clearPartialReceiptsActivationTs = time(nullptr) + 10;
+    ret["skaleConfig"]["sChain"]["ClearPartialReceiptsPatchTimestamp"] = clearPartialReceiptsActivationTs;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
+
+    // To fill coinbase wallet
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+
+    string senderAddress = toJS(fixture.coinbase.address());
 
     Json::Value transactionCallObject;
     transactionCallObject["from"] = toJS( senderAddress );
@@ -1797,12 +1811,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumber).size(), 0 );
     BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 1 );
 
-    std::string _config = c_genesisConfigString;
-    Json::Value config;
-    Json::Reader().parse( _config, config );
-    time_t clearPartialReceiptsActivationTs = time(nullptr) + 1;
-    config["skaleConfig"]["sChain"]["ClearPartialReceiptsPatch"] = clearPartialReceiptsActivationTs;
-    sleep(2);
+    sleep(10);
 
     ts = toTransactionSkeleton( transactionCallObject );
     ts = fixture.client->populateTransactionWithDefaults( ts );

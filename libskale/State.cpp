@@ -321,6 +321,13 @@ void State::safeRemoveAllPartialTransactionReceipts() {
 }
 
 
+void State::safeRemoveLegacyPartialTransactionReceipts() {
+    if ( m_db_ptr ) {
+        m_db_ptr->cleanupLegacyTransactionReceipts();
+    }
+}
+
+
 dev::eth::TransactionReceipts State::safeLegacyPartialTransactionReceipts() {
     dev::eth::TransactionReceipts legacyPartialTransactionReceipts;
     if ( m_db_ptr ) {

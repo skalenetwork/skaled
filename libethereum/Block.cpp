@@ -595,6 +595,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
          receiptsOfCommited.size() > 0 ) {
         // Saving partial receipts old way to be compatible with < 4.0 version
         m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommited );
+    } else {
+        // Making sure the old record was removed from the state db
+        m_state.safeRemoveLegacyPartialTransactionReceipts();
     }
 
     return make_tuple( receipts, receipts.size() - countBad );

@@ -75,6 +75,7 @@ public:
 
     dev::bytes getLegacyPartialTransactionReceipts() const;
     void setLegacyPartialTransactionReceipts( const dev::bytes& _newReceipt );
+    void cleanupLegacyTransactionReceipts();
 
     // commit key-value pairs in storage
     void commitStorageValues();

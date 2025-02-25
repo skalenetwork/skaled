@@ -116,23 +116,35 @@ std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
 }
 
 void OverlayDB::setLegacyPartialTransactionReceipts( const dev::bytes& _rawReceipt ) {
-    string legacyPrefix( "safeLastTransactionReceipts" );
-    m_db_face->insert( legacyPrefix, skale::slicing::toSlice( _rawReceipt ) );
+    string legacyKey( "safeLastTransactionReceipts" );
+    m_db_face->insert( legacyKey, skale::slicing::toSlice( _rawReceipt ) );
 }
 
 dev::bytes OverlayDB::getLegacyPartialTransactionReceipts() const {
     dev::bytes legacyPartialTransactionReceipts;
 
-    string legacyPrefix( "safeLastTransactionReceipts" );
+    string legacyKey( "safeLastTransactionReceipts" );
 
     if ( m_db_face ) {
         const std::string lookupResult =
-            m_db_face->lookup( skale::slicing::toSlice( "safeLastTransactionReceipts" ) );
+            m_db_face->lookup( skale::slicing::toSlice( legacyKey ) );
         if ( !lookupResult.empty() )
             legacyPartialTransactionReceipts.insert(
                 legacyPartialTransactionReceipts.end(), lookupResult.begin(), lookupResult.end() );
     }
     return legacyPartialTransactionReceipts;
+}
+
+void OverlayDB::cleanupLegacyTransactionReceipts() {
+    string legacyKey( "safeLastTransactionReceipts" );
+    if ( m_db_face ) {
+        const std::string lookupResult =
+            m_db_face->lookup( skale::slicing::toSlice( legacyKey ) );
+        if ( !lookupResult.empty() ) {
+            m_db_face->kill( legacyKey );
+            m_db_face->commit( "Cleanup legacy receipts" );
+        }
+    }
 }
 
 void OverlayDB::removeAllPartialTransactionReceipts() {
