@@ -1782,7 +1782,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     std::string chainID = "0x97";  // 151
     ret["params"]["chainID"] = chainID;
     time_t clearPartialReceiptsActivationTs = time(nullptr) + 10;
-    ret["skaleConfig"]["sChain"]["ClearPartialReceiptsPatchTimestamp"] = clearPartialReceiptsActivationTs;
+    ret["skaleConfig"]["sChain"]["clearPartialReceiptsPatchTimestamp"] = clearPartialReceiptsActivationTs;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
