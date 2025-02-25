@@ -24,7 +24,7 @@ target_link_libraries(
     )
 
 if(HISTORIC_STATE)
-    target_link_libraries(skale-vm PREIVATE historic)
+    target_link_libraries(skale-vm PRIVATE historic)
 endif()
 
 target_include_directories(skale-vm PRIVATE ../utils)
