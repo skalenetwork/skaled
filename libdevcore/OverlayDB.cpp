@@ -39,49 +39,6 @@ inline db::Slice toSlice( bytes const& _b ) {
 OverlayDB::~OverlayDB() = default;
 
 void OverlayDB::commit() {
-    //    if ( m_db ) {
-    //        auto writeBatch = m_db->createWriteBatch();
-    ////      cnote << "Committing nodes to disk DB:";
-    //#if DEV_GUARDED_DB
-    //        DEV_READ_GUARDED( x_this )
-    //#endif
-    //        {
-    //            for ( auto const& i : m_main ) {
-    //                if ( i.second.second )
-    //                    writeBatch->insert( toSlice( i.first ), toSlice( i.second.first ) );
-    //                //              cnote << i.first << "#" << m_main[i.first].second;
-    //            }
-    //            for ( auto const& i : m_aux )
-    //                if ( i.second.second ) {
-    //                    bytes b = i.first.asBytes();
-    //                    b.push_back( 255 );  // for aux
-    //                    writeBatch->insert( toSlice( b ), toSlice( i.second.first ) );
-    //                }
-    //        }
-
-    //        for ( unsigned i = 0; i < 10; ++i ) {
-    //            try {
-    //                m_db->commit( std::move( writeBatch ) );
-    //                break;
-    //            } catch ( boost::exception const& ex ) {
-    //                if ( i == 9 ) {
-    //                    cwarn << "Fail writing to state database. Bombing out.";
-    //                    cwarn << DETAILED_ERROR;
-    //                    exit( -1 );
-    //                }
-    //                cwarn << "Error writing to state database: " << boost::diagnostic_information(
-    //                ex ); cwarn << "Sleeping for" << ( i + 1 ) << "seconds, then retrying.";
-    //                std::this_thread::sleep_for( std::chrono::seconds( i + 1 ) );
-    //            }
-    //        }
-    //#if DEV_GUARDED_DB
-    //        DEV_WRITE_GUARDED( x_this )
-    //#endif
-    //        {
-    //            m_aux.clear();
-    //            m_main.clear();
-    //        }
-    //    }
     if ( m_db ) {
         for ( unsigned commitTry = 0; commitTry < 10; ++commitTry ) {
 //      cnote << "Committing nodes to disk DB:";
