@@ -550,7 +550,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
-            if ( m_receipts.size() > 0 ) {
+            if ( !m_receipts.empty() ) {
                 receiptsOfCommited.push_back( m_receipts.back() );
             }
 
@@ -592,7 +592,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     LDB_CHECK( receipts.size() >= countBad );
 
     if ( !ClearPartialReceiptsPatch::isEnabledWhen( _timestamp ) &&
-         receiptsOfCommited.size() > 0 ) {
+         !receiptsOfCommited.empty() ) {
         // Saving partial receipts old way to be compatible with < 4.0 version
         m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommited );
     } else {
