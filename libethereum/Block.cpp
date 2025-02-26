@@ -591,13 +591,14 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     LDB_CHECK( receipts.size() >= countBad );
 
-    if ( !ClearPartialReceiptsPatch::isEnabledWhen( _timestamp ) &&
-         !receiptsOfCommited.empty() ) {
-        // Saving partial receipts old way to be compatible with < 4.0 version
-        m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommited );
-    } else {
+    if ( ClearPartialReceiptsPatch::isEnabledWhen( _timestamp ) ) {
         // Making sure the old record was removed from the state db
         m_state.safeRemoveLegacyPartialTransactionReceipts();
+    } else {
+        if ( !receiptsOfCommited.empty() ) {
+            // Saving partial receipts old way to be compatible with < 4.0 version
+            m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommited );
+        }
     }
 
     return make_tuple( receipts, receipts.size() - countBad );
