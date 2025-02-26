@@ -348,8 +348,9 @@ void State::safeCommitLegacyPartialTransactionReceipts(
     dev::eth::BlockReceipts blockReceipts;
     blockReceipts.receipts.insert(
         blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end() );
-    m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
-    m_db_ptr->commit();
+    if ( m_db_ptr ) {
+        m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
+    }
 }
 
 

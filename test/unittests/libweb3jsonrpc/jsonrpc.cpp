@@ -4453,7 +4453,6 @@ BOOST_AUTO_TEST_CASE( mtm_import_future_txs ) {
 
     call = fixture.rpcClient->debug_getFutureTransactions();
     BOOST_REQUIRE_EQUAL( call.size(), 0 );
-    BOOST_REQUIRE_EQUAL( call.size(), 0 );
 
     fixture.client->skaleHost()->pauseConsensus( false );
 }

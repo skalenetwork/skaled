@@ -116,8 +116,11 @@ std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
 }
 
 void OverlayDB::setLegacyPartialTransactionReceipts( const dev::bytes& _rawReceipt ) {
-    string legacyKey( "safeLastTransactionReceipts" );
-    m_db_face->insert( legacyKey, skale::slicing::toSlice( _rawReceipt ) );
+    if ( m_db_face ) {
+        string legacyKey( "safeLastTransactionReceipts" );
+        m_db_face->insert( legacyKey, skale::slicing::toSlice( _rawReceipt ) );
+        m_db_face->commit( "Set legacy receipts" );
+    }
 }
 
 dev::bytes OverlayDB::getLegacyPartialTransactionReceipts() const {
