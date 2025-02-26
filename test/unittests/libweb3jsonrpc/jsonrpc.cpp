@@ -3784,6 +3784,8 @@ BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
     txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
+    sleep( 1 );
+
     // send a txn with maxPriorityFeePerGas > maxFeePerGas after MaxFeePerGasPatchTimestamp, it should fail
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( "0x02f86d8197018504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080c080a0aea5ff86373cbbbb33c9f3e9a25ceb9a694ee71beff452a4d29903d73fd30ca9a00458d4f7d54be178b42d230cc5a4740540d55b8ca0f9c74c79c1d49f6686b1e6" ), jsonrpc::JsonRpcException ); // INVALID_PARAMS
 }
