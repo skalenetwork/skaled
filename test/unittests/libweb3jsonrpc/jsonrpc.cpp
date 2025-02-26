@@ -456,6 +456,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 struct RestrictedAddressFixture : public JsonRpcFixture {
     RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
         : JsonRpcFixture( _config ) {
+        setenv( "HOME", tempDir.path().c_str(), 1 ); // getDataDir() now points to the different
+                                                     // directories for different tests
         ownerAddress = Address( "00000000000000000000000000000000000000AA" );
         std::string fileName = "test";
         path = dev::getDataDir() / "filestorage" / Address( ownerAddress ).hex() / fileName;
