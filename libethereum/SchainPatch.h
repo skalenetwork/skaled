@@ -36,6 +36,7 @@ protected:
     static std::atomic< time_t > committedBlockTimestamp;
 };
 
+
 #define DEFINE_AMNESIC_PATCH( CustomPatch )                                       \
     class CustomPatch : public SchainPatch {                                      \
     public:                                                                       \
@@ -145,6 +146,12 @@ DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
  * Context: fix externalGas calculation
  */
 DEFINE_SIMPLE_PATCH( ExternalGasPatch );
+
+/*
+ * Purpose: do not save partial receipts after block is executed
+ * Version introduced: 4.0.0
+ */
+DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
 
 /*
  * Context: fix the check in transaction constructor
