@@ -338,7 +338,6 @@ dev::eth::TransactionReceipts State::safeLegacyPartialTransactionReceipts() {
         }
     }
     return dev::eth::TransactionReceipts();
-
 }
 
 void State::safeCommitLegacyPartialTransactionReceipts(
