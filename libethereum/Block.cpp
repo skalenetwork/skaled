@@ -593,7 +593,12 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     if ( ClearPartialReceiptsPatch::isEnabledWhen( _timestamp ) ) {
         // Making sure the old record was removed from the state db
-        m_state.safeRemoveLegacyPartialTransactionReceipts();
+        auto patchEnum = ClearPartialReceiptsPatch::getEnum();
+        auto activationTimestamp = sealEngine()->chainParams().getPatchTimestamp( patchEnum );
+        // If it is the first block after patch timestamp
+        if ( m_previousBlock.timestamp() < activationTimestamp ) {
+            m_state.safeRemoveLegacyPartialTransactionReceipts();
+        }
     } else {
         if ( !receiptsOfCommited.empty() ) {
             // Saving partial receipts old way to be compatible with < 4.0 version

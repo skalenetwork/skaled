@@ -1827,6 +1827,19 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     dev::eth::BlockNumber blockNumberAfter = jsToInt(receiptAfter["blockNumber"].asString());
     BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumberAfter).size(), 0 );
     BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 0 );
+
+
+    ts = toTransactionSkeleton( transactionCallObject );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    ar = fixture.accountHolder->authenticate( ts );
+    Transaction txAfterAgain( ts, ar.second );
+
+    auto txHashAfterAgain = fixture.rpcClient->eth_sendRawTransaction( toJS( txAfterAgain.toBytes() ) );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    auto receiptAfterAgain = fixture.rpcClient->eth_getTransactionReceipt( txHashAfterAgain );
+    dev::eth::BlockNumber blockNumberAfterAgain = jsToInt(receiptAfterAgain["blockNumber"].asString());
+    BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumberAfterAgain).size(), 0 );
+    BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 0 );
 }
 
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
