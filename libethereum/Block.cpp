@@ -550,7 +550,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
-            if ( !m_receipts.empty() ) {
+            if ( !m_receipts.empty() && !ClearPartialReceiptsPatch::isEnabledWhen( _timestamp )  ) {
                 receiptsOfCommited.push_back( m_receipts.back() );
             }
 
