@@ -1164,11 +1164,10 @@ then
 			# eval ./autogen.sh
 			# eval ./configure "${CONF_CROSSCOMPILING_OPTS_GENERIC}" --enable-static --disable-shared --with-pic --prefix="$INSTALL_ROOT" "${CONF_DEBUG_OPTIONS}"
 			#--with-sysroot=="$INSTALL_ROOT"
-            mkdir build && cd build
-            eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
-                -DBUILD_SHARED_LIBS=OFF -DLIBUV_BUILD_SHARED=OFF\
-                ..
-            cd ../..
+                        mkdir -p build && cd build
+                        eval "$CMAKE" "${CMAKE_CROSSCOMPILING_OPTS}" -DCMAKE_INSTALL_PREFIX="$INSTALL_ROOT" -DCMAKE_BUILD_TYPE="$TOP_CMAKE_BUILD_TYPE" \
+                            -DBUILD_SHARED_LIBS=OFF -DLIBUV_BUILD_SHARED=OFF ..
+                        cd ../..
 		fi
 		echo -e "${COLOR_INFO}building it${COLOR_DOTS}...${COLOR_RESET}"
 		cd libuv/build
@@ -1356,11 +1355,11 @@ then
 		echo -e "${COLOR_INFO}configuring and building it${COLOR_DOTS}...${COLOR_RESET}"
 		eval ./bootstrap.sh --prefix="$INSTALL_ROOT" --with-libraries=atomic,context,filesystem,program_options,regex,system,thread,date_time,iostreams
 
-        if [ "$DEBUG" = "1" ]; then
-            variant=debug
-        else
-            variant=release
-        fi
+                if [ "$DEBUG" = "1" ]; then
+                    variant=debug
+                else
+                    variant=release
+                fi
 
 		if [ ${ARCH} = "arm" ]
 		then
@@ -2054,7 +2053,7 @@ then
 				eval tar -xzf folly-from-git.tar.gz
 			fi
 			echo -e "${COLOR_INFO}fixing it${COLOR_DOTS}...${COLOR_RESET}"
-            sed -i 's/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES})/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES} lzma)/' ./folly/CMake/folly-deps.cmake
+                        sed -i 's/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES})/list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES} lzma)/' ./folly/CMake/folly-deps.cmake
 			sed -i 's/google::InstallFailureFunction(abort);/google::InstallFailureFunction( reinterpret_cast < google::logging_fail_func_t > ( abort ) );/g' ./folly/folly/init/Init.cpp
 			echo -e "${COLOR_INFO}configuring it${COLOR_DOTS}...${COLOR_RESET}"
 			cd folly
@@ -2078,8 +2077,8 @@ then
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}"
 		eval "$MAKE" "${PARALLEL_MAKE_OPTIONS}" install
 		if [ "$DEBUG" = "0" ]; then
-            eval strip --strip-debug "${INSTALL_ROOT}"/lib/libfolly*.a
-        fi
+                    eval strip --strip-debug "${INSTALL_ROOT}"/lib/libfolly*.a
+                fi
 		cd "$SOURCES_ROOT"
 	else
 		echo -e "${COLOR_SUCCESS}SKIPPED${COLOR_RESET}"
