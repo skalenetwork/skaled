@@ -20,6 +20,7 @@ enum class SchainPatchEnum {
     VerifyBlsSyncPatch,
     FlexibleDeploymentPatch,
     ExternalGasPatch,
+    ClearPartialReceiptsPatch,
     MaxFeePerGasPatch,
     PatchesCount
 };
