@@ -22,34 +22,51 @@ on:
         type: string
         description: 'Node type of skaled build'
         required: true
+      release_url:
+        type: string
+        description: 'URL of the GitHub release associated with this build (if applicable)'
+        required: false
+      use_plain_version:
+        type: boolean
+        description: 'Use only the image version without appending the build type suffix'
+        default: false
     secrets:
       DOCKER_USERNAME:
         required: true
       DOCKER_PASSWORD:
         required: true
+    outputs:
+      version:
+        description: "The image version published to DockerHub"
+        value: ${{ jobs.main.outputs.version }}
       
 jobs:
   main:
     runs-on: self-hosted
+    outputs:
+      version: ${{ env.VERSION }}
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       BUILD_TYPE: ${{ inputs.build_type }}
+      PLAIN_VERSION: ${{ inputs.use_plain_version }}
     steps:
       - name: Prepare workflow variables
         if: inputs.node_type != 'historic'
         run: |
-          [[ $BUILD_TYPE = "Debug" ]] && export VERSION_SUFFIX=debug || export VERSION_SUFFIX=release
-          export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
       - name: Prepare workflow variables (historic)
         if: inputs.node_type == 'historic'
         run: |
-          [[ $BUILD_TYPE = "Debug" ]] && export VERSION_SUFFIX=debug || export VERSION_SUFFIX=release
-          export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX-historic
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX-historic
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="-DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
@@ -150,6 +167,17 @@ jobs:
           export CMAKE_BUILD_TYPE=$BUILD_TYPE
           cd build
           make skaled -j$(nproc)
+          if [[ "$BUILD_TYPE" = "Release" ]]; then
+              debug_wc=$(objdump -h skaled/skaled | grep -i debug | wc -l)
+              sym_wc=$(readelf -s skaled/skaled | wc -l)
+              if (( debug_wc != 0 || sym_wc > 10000 )); then
+                  exit 1
+              fi
+          fi
+          if [[ "$BUILD_TYPE" = "RelWithDebInfo" ]]; then
+              cp skaled/skaled skaled/skaled-debug
+              strip --strip-all skaled/skaled
+          fi
           cd ..
       - name: Build and publish container
         env:
@@ -162,7 +190,29 @@ jobs:
   
       - name: Upload skaled binary as artifact
         uses: actions/upload-artifact@v4
-        if: ${{ always() }}
+        if: inputs.release_url == ''
         with:
           name: skaled-${{ inputs.node_type }}
           path: ./build/skaled/skaled
+
+      - name: Upload skaled binary to Release
+        if: inputs.release_url != ''
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ inputs.release_url }}
+          asset_path: ./build/skaled/skaled
+          asset_name: skaled-${{ inputs.node_type }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload debug binary to Release
+        if: inputs.release_url != '' && inputs.build_type == 'RelWithDebInfo'
+        uses: actions/upload-release-asset@latest
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ inputs.release_url }}
+          asset_path: ./build/skaled/skaled-debug
+          asset_name: skaled-debug-${{ inputs.node_type }}
+          asset_content_type: application/octet-stream
