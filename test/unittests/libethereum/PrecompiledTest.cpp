@@ -1801,7 +1801,10 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         ownerAddress = Address( "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" );
         fileName = "test_file";
         fileSize = 100;
+        setenv( "HOME", tmpDir.path().c_str(), 1 );
         pathToFile = dev::getDataDir() / "filestorage" / ownerAddress.hex() / fileName;
+        if ( !boost::filesystem::exists( pathToFile.parent_path() ) )
+            boost::filesystem::create_directories( pathToFile.parent_path() );
         boost::filesystem::path pathToTestFile = dev::getDataDir() / "test";
         boost::filesystem::ofstream of( pathToTestFile );
 
@@ -1824,6 +1827,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         remove( pathToHashFile.c_str() );
     }
 
+    TransientDirectory tmpDir;
     Address ownerAddress;
     std::string hexAddress;
     std::string fileName;
