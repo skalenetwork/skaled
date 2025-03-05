@@ -130,9 +130,10 @@ dev::bytes OverlayDB::getLegacyPartialTransactionReceipts() const {
 
     if ( m_db_face ) {
         const std::string lookupResult = m_db_face->lookup( skale::slicing::toSlice( legacyKey ) );
-        if ( !lookupResult.empty() )
+        if ( !lookupResult.empty() ) {
             legacyPartialTransactionReceipts.insert(
                 legacyPartialTransactionReceipts.end(), lookupResult.begin(), lookupResult.end() );
+        }
     }
     return legacyPartialTransactionReceipts;
 }

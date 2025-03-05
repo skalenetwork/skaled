@@ -342,11 +342,15 @@ dev::eth::TransactionReceipts State::safeLegacyPartialTransactionReceipts() {
 
 void State::safeCommitLegacyPartialTransactionReceipts(
     const dev::eth::TransactionReceipts& _receipts ) {
-    dev::eth::BlockReceipts blockReceipts;
-    blockReceipts.receipts.insert(
-        blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end() );
     if ( m_db_ptr ) {
-        m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
+        if ( !_receipts.empty() ) {
+            dev::eth::BlockReceipts blockReceipts;
+            blockReceipts.receipts.insert(
+                blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end() );
+            m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
+        } else {
+            m_db_ptr->setLegacyPartialTransactionReceipts( dev::bytes() );
+        }
     }
 }
 
@@ -384,6 +388,10 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 updateStorageUsage();
             }
         }
+    }
+
+    if ( empty() ) {
+        safeCommitLegacyPartialTransactionReceipts( dev::eth::TransactionReceipts() );
     }
     commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 }
