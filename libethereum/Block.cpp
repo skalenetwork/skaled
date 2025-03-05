@@ -550,7 +550,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
-            if ( !m_receipts.empty() && !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
+            if ( !m_receipts.empty() &&
+                 !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
                 receiptsOfCommitted.push_back( m_receipts.back() );
             }
 
@@ -598,7 +599,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             auto beforeLatestCommittedBlock = _bc.info( latestCommittedBlock.parentHash() );
 
             // If it is the latestCommittedBlock block after patch timestamp
-            if ( !ClearPartialReceiptsPatch::isEnabledWhen( beforeLatestCommittedBlock.timestamp() ) ) {
+            if ( !ClearPartialReceiptsPatch::isEnabledWhen(
+                     beforeLatestCommittedBlock.timestamp() ) ) {
                 m_state.safeRemoveLegacyPartialTransactionReceipts();
             }
         }
