@@ -389,10 +389,6 @@ void State::populateFrom( eth::AccountMap const& _map ) {
             }
         }
     }
-
-    if ( empty() ) {
-        safeCommitLegacyPartialTransactionReceipts( dev::eth::TransactionReceipts() );
-    }
     commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
 }
 

@@ -253,6 +253,7 @@ void Client::initStateFromDiskOrGenesis() {
 
 
     if ( m_state.empty() ) {
+        m_state.safeCommitLegacyPartialTransactionReceipts( dev::eth::TransactionReceipts() );
         populateNewChainStateFromGenesis();
     } else {
 #ifdef HISTORIC_STATE
