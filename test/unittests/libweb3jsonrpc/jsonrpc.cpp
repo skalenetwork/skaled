@@ -1805,7 +1805,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
 
     for ( int64_t i = 0; i < blocksToCheck; ++i ) {
         if ( i == timestampTransitionBlock ) {
-            sleep( 1 );
+            sleep( 7 );
         }
 
         TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
