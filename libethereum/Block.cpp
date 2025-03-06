@@ -597,10 +597,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         if ( latestCommittedBlock.number() > 0 ) {
             // Making sure the old record was removed from the state db
             auto beforeLatestCommittedBlock = _bc.info( latestCommittedBlock.parentHash() );
-
+            LOG( m_logger ) << "HERE timestamp enabled";
             // If it is the latestCommittedBlock block after patch timestamp
             if ( !ClearPartialReceiptsPatch::isEnabledWhen(
                      beforeLatestCommittedBlock.timestamp() ) ) {
+                LOG( m_logger ) << "HERE removing legacy partial receipts";
                 m_state.safeRemoveLegacyPartialTransactionReceipts();
             }
         }

@@ -253,6 +253,7 @@ void Client::initStateFromDiskOrGenesis() {
 
 
     if ( m_state.empty() ) {
+        LOG( m_logger ) << "HERE commiting dummy receipts";
         m_state.safeCommitLegacyPartialTransactionReceipts( dev::eth::TransactionReceipts() );
         populateNewChainStateFromGenesis();
     } else {
