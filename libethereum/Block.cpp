@@ -607,8 +607,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     } else {
         // Saving partial receipts old way to be compatible with < 4.0 version
         if ( !receiptsOfCommitted.empty() ) {
-            LOG( m_loggerDetailed ) << "Saving partial transaction receipts. Size: " <<
-                                    receiptsOfCommitted.size();
+            LOG( m_loggerDetailed )
+                << "Saving partial transaction receipts. Size: " << receiptsOfCommitted.size();
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }
