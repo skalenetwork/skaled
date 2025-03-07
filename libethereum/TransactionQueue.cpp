@@ -476,10 +476,9 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
 }
 
 void TransactionQueue::dropMany( h256Hash const& _txHashes ) {
-
     WriteGuard l( m_lock );
 
-    for (auto&& _txHash : _txHashes ) {
+    for ( auto&& _txHash : _txHashes ) {
         if ( !m_known.count( _txHash ) )
             continue;
         m_dropped.insert( _txHash, true );
