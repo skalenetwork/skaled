@@ -505,8 +505,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
         clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
     }
 
-    logState();
-
     m_debugTracer.tracepoint( "send_to_consensus" );
 
     return out_vector;
@@ -614,34 +612,34 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
-    boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
-        boost::chrono::high_resolution_clock::now();
+
+    auto skaledTimeFinish = boost::chrono::high_resolution_clock::now();
+
+
+    auto swt = boost::chrono::duration_cast< boost::chrono::milliseconds >(
+        skaledTimeFinish - skaledTimeStart )
+                   .count();
+
+
     if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
-        LOG( m_infoLogger ) << "SWT:"
-                            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                   skaledTimeFinish - skaledTimeStart )
-                                   .count()
-                            << ':' << "BFT:"
+        LOG( m_infoLogger ) << "SWT:" << swt << ':' << "BFT:"
                             << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                                    skaledTimeFinish - latestBlockTime )
-                                   .count();
+                                   .count()
+                            << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+                            << ":FTQ:" << m_tq.status().futureBytes
+                            << ":TQSIZE:CTQ:" << m_tq.status().current
+                            << ":FTQ:" << m_tq.status().future;
     } else {
-        LOG( m_infoLogger ) << "SWT:"
-                            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                   skaledTimeFinish - skaledTimeStart )
-                                   .count();
+        LOG( m_infoLogger ) << "SWT:" << swt << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+                            << ":FTQ:" << m_tq.status().futureBytes
+                            << ":TQSIZE:CTQ:" << m_tq.status().current
+                            << ":FTQ:" << m_tq.status().future;
     }
 
     latestBlockTime = skaledTimeFinish;
     LOG( m_debugLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
-
-    logState();
-
-    LOG( m_infoLogger ) << "TQBYTES:CTQ:" << m_tq.status().currentBytes
-                        << ":FTQ:" << m_tq.status().futureBytes
-                        << ":TQSIZE:CTQ:" << m_tq.status().current
-                        << ":FTQ:" << m_tq.status().future;
 
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
@@ -731,7 +729,6 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    cnote << "1 before exitGracefully()";
 
     if ( ExitHandler::shouldExit() ) {
         // requested exit
@@ -747,16 +744,19 @@ void SkaleHost::stopWorking() {
         clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
     }
 
+
+    cnote << "Skaled initiating consensus graceful exit";
+
     m_consensus->exitGracefully();
 
-    cnote << "2 after exitGracefully()";
+    cnote << "Exit initiated. Skaled waiting for consensus exit.";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    cnote << "3 after wait loop";
+    cnote << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -766,7 +766,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    cnote << "4 before dtor";
+    cnote << "Consensus and broadcat threads finished.";
 }
 
 void SkaleHost::broadcastFunc() {
@@ -774,8 +774,6 @@ void SkaleHost::broadcastFunc() {
     while ( !m_exitNeeded ) {
         try {
             m_broadcaster->initSocket();
-
-            this->logState();
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 

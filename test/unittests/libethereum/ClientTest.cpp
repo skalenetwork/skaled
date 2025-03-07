@@ -172,7 +172,7 @@ public:
     dev::eth::Client* ethereum() { return m_ethereum.get(); }
     dev::KeyPair coinbase{KeyPair::create()};
 
-    bool getTransactionStatus(const Json::Value& json) {
+    bool importTransactionAndGetStatus(const Json::Value& json) {
         try {
             { // block
                 Json::FastWriter fastWriter;
@@ -186,6 +186,7 @@ public:
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::debug( "Mining transaction..." ) );
             dev::eth::mineTransaction(*(m_ethereum), 1);
+            sleep(1);
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
                     ( cc::debug( "Getting transaction receipt..." ) );
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
@@ -660,11 +661,11 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds ) {
     estimateTransaction["data"] = toJS (data);
 
     estimateTransaction["gas"] = toJS(estimate - 1);
-    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+    BOOST_CHECK( !fixture.importTransactionAndGetStatus(estimateTransaction) );
     fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
     estimateTransaction["gas"] = toJS(estimate);
-    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
+    BOOST_CHECK( fixture.importTransactionAndGetStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
@@ -718,11 +719,11 @@ BOOST_AUTO_TEST_CASE( consumptionWithRefunds2 ) {
     estimateTransaction["data"] = toJS (data);
 
     estimateTransaction["gas"] = toJS(estimate - 1);
-    BOOST_CHECK( !fixture.getTransactionStatus(estimateTransaction) );
+    BOOST_CHECK( !fixture.importTransactionAndGetStatus(estimateTransaction) );
     fixture.ethereum()->state().getOriginalDb()->createBlockSnap( 2 );
 
     estimateTransaction["gas"] = toJS(estimate);
-    BOOST_CHECK( fixture.getTransactionStatus(estimateTransaction) );
+    BOOST_CHECK( fixture.importTransactionAndGetStatus(estimateTransaction) );
 }
 
 BOOST_AUTO_TEST_CASE( nonLinearConsumption ) {
