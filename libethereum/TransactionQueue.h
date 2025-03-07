@@ -424,7 +424,6 @@ template < class Pred >
 Transactions TransactionQueue::topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const {
     MICROPROFILE_SCOPEI( "TransactionQueue", "topTransactions_WITH_LOCK", MP_AZURE );
     Transactions ret;
-
     for ( auto t = m_current.begin(); ret.size() < _limit && t != m_current.end(); ++t )
         if ( _pred( t->transaction ) )
             ret.push_back( t->transaction );

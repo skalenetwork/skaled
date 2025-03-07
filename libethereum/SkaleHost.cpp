@@ -610,7 +610,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         m_debugTracer.tracepoint( "import_block" );
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
-
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )

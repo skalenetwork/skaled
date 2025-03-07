@@ -460,10 +460,6 @@ void TransactionQueue::drop( h256 const& _txHash ) {
     remove_WITH_LOCK( _txHash );
 }
 
-
-
-
-
 void TransactionQueue::dropGood( Transaction const& _t ) {
     MICROPROFILE_SCOPEI( "TransactionQueue", "dropGood", MP_CORNSILK );
     MICROPROFILE_ENTERI( "TransactionQueue", "lock", MP_OLDLACE );
