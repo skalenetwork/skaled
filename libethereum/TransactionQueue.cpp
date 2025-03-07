@@ -460,6 +460,10 @@ void TransactionQueue::drop( h256 const& _txHash ) {
     remove_WITH_LOCK( _txHash );
 }
 
+
+
+
+
 void TransactionQueue::dropGood( Transaction const& _t ) {
     MICROPROFILE_SCOPEI( "TransactionQueue", "dropGood", MP_CORNSILK );
     MICROPROFILE_ENTERI( "TransactionQueue", "lock", MP_OLDLACE );
@@ -473,6 +477,18 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
         return;
 
     remove_WITH_LOCK( _t.sha3() );
+}
+
+void TransactionQueue::dropMany( h256Hash const& _txHashes ) {
+
+    WriteGuard l( m_lock );
+
+    for (auto&& _txHash : _txHashes ) {
+        if ( !m_known.count( _txHash ) )
+            continue;
+        m_dropped.insert( _txHash, true );
+        remove_WITH_LOCK( _txHash );
+    }
 }
 
 void TransactionQueue::clear() {

@@ -97,6 +97,10 @@ public:
     /// @param _txHash Transaction hash
     void drop( h256 const& _txHash );
 
+    /// Remove many transactions from the queue at once
+    /// @param _txHash Transaction hash
+    void dropMany( h256Hash const& _txHashes );
+
     /// Get number of pending transactions for account.
     /// @returns Pending transaction count.
     unsigned waiting( Address const& _a ) const;
@@ -420,6 +424,7 @@ template < class Pred >
 Transactions TransactionQueue::topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const {
     MICROPROFILE_SCOPEI( "TransactionQueue", "topTransactions_WITH_LOCK", MP_AZURE );
     Transactions ret;
+
     for ( auto t = m_current.begin(); ret.size() < _limit && t != m_current.end(); ++t )
         if ( _pred( t->transaction ) )
             ret.push_back( t->transaction );

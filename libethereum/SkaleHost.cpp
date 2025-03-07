@@ -450,6 +450,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             return true;
         } );
 
+    // now we need to delete old transactions from the queue
+    m_tq.dropMany(to_delete);
+
     if ( counter++ == 0 )
         m_pending_createMutex.lock();
 
@@ -607,6 +610,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         m_debugTracer.tracepoint( "import_block" );
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
+
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )

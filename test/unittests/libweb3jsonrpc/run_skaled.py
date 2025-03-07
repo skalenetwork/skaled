@@ -10,12 +10,31 @@ from pathlib import Path
 import threading
 import time
 
-from libconsensus.sgxwallet.rapidjson.thirdparty.gtest.googlemock.test.gmock_test_utils import Subprocess
+import os
 
-BUILD_DIR: str = "cmake-build-debug"
-skaled_executable: str = "../../../" + BUILD_DIR + '/skaled/skaled'
-testeth_executable: str = "../../../" + BUILD_DIR + '/test/testeth'
-testeth_dir: str = "../../../" + BUILD_DIR + '/test'
+def get_latest_updated_build_dir(dirs):
+    file_path = "skaled/skaled"
+    latest_dir = None
+    latest_time = 0
+
+    for dir in dirs:
+        full_path = os.path.join(dir, file_path)
+        if os.path.exists(full_path):
+            file_time = os.path.getmtime(full_path)
+            if file_time > latest_time:
+                latest_time = file_time
+                latest_dir = dir
+
+    return latest_dir
+
+
+dirs_to_search = ["../../../cmake-build-debug", "../../../cmake-build-release", "../../../build"]
+
+BUILD_DIR = get_latest_updated_build_dir(dirs_to_search)
+
+skaled_executable: str = BUILD_DIR + '/skaled/skaled'
+testeth_executable: str = BUILD_DIR + '/test/testeth'
+testeth_dir: str =  BUILD_DIR + '/test'
 
 
 # Set these
