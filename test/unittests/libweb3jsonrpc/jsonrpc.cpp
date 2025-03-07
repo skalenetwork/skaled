@@ -1784,7 +1784,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
 
     std::string chainID = "0x97";  // 151
     ret["params"]["chainID"] = chainID;
-    time_t clearPartialReceiptsActivationTs = time(nullptr) + 5;
+    time_t clearPartialReceiptsActivationTs = time(nullptr) + 10;
     ret["skaleConfig"]["sChain"]["clearPartialReceiptsPatchTimestamp"] = clearPartialReceiptsActivationTs;
 
     Json::FastWriter fastWriter;
@@ -1801,26 +1801,25 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
     transactionCallObject["data"] = "0x28b5e32b";
 
-    int64_t blocksToCheck = 4, timestampTransitionBlock = 2, expectedNoLegacyReceiptsBlock = 3;
+    int64_t blocksToCheck = 6, timestampTransitionBlock = 4, expectedNoLegacyReceiptsBlock = 5;
 
-    for ( int64_t i = 0; i < blocksToCheck; ++i ) {
-        if ( i == timestampTransitionBlock ) {
-            sleep( 7 );
+    for ( int64_t block = 2; block < blocksToCheck; ++block ) {
+        if ( block == timestampTransitionBlock ) {
+            sleep( 12 );
         }
 
         TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
         ts = fixture.client->populateTransactionWithDefaults( ts );
         pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
         Transaction tx( ts, ar.second );
-
         auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
         dev::eth::mineTransaction( *( fixture.client ), 1 );
         auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
         dev::eth::BlockNumber blockNumber = jsToInt(receipt["blockNumber"].asString());
         State state( fixture.client->state() );
-        BOOST_REQUIRE_EQUAL( blockNumber, i + 2 );
+        BOOST_REQUIRE_EQUAL( blockNumber, block );
         BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumber).size(), 0 );
-        int64_t expectedSize = i == expectedNoLegacyReceiptsBlock ? 0: 1;
+        int64_t expectedSize = block == expectedNoLegacyReceiptsBlock ? 0: 1;
         BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), expectedSize );
     }
 }

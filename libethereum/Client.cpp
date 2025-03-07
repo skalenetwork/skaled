@@ -253,8 +253,10 @@ void Client::initStateFromDiskOrGenesis() {
 
 
     if ( m_state.empty() ) {
-        LOG( m_logger ) << "HERE commiting dummy receipts";
-        m_state.safeCommitLegacyPartialTransactionReceipts( dev::eth::TransactionReceipts() );
+        // Saving legacy transaction receipts empty value
+        // to be compatible with < 4.0.0 zero block versions
+        LOG( m_logger ) << "Saving legacy transaction receipts for empty state";
+        m_state.safeCommitZeroBlockLegacyPartialTransactionReceipts();
         populateNewChainStateFromGenesis();
     } else {
 #ifdef HISTORIC_STATE

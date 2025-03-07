@@ -597,17 +597,18 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         if ( latestCommittedBlock.number() > 0 ) {
             // Making sure the old record was removed from the state db
             auto beforeLatestCommittedBlock = _bc.info( latestCommittedBlock.parentHash() );
-            LOG( m_logger ) << "HERE timestamp enabled";
             // If it is the latestCommittedBlock block after patch timestamp
             if ( !ClearPartialReceiptsPatch::isEnabledWhen(
                      beforeLatestCommittedBlock.timestamp() ) ) {
-                LOG( m_logger ) << "HERE removing legacy partial receipts";
+                LOG( m_logger ) << "Removing legacy partial receipts";
                 m_state.safeRemoveLegacyPartialTransactionReceipts();
             }
         }
     } else {
         // Saving partial receipts old way to be compatible with < 4.0 version
         if ( !receiptsOfCommitted.empty() ) {
+            LOG( m_loggerDetailed ) << "Saving partial transaction receipts. Size: " <<
+                                    receiptsOfCommitted.size();
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }

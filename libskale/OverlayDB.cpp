@@ -141,8 +141,7 @@ dev::bytes OverlayDB::getLegacyPartialTransactionReceipts() const {
 void OverlayDB::cleanupLegacyTransactionReceipts() {
     string legacyKey( "safeLastTransactionReceipts" );
     if ( m_db_face ) {
-        const std::string lookupResult = m_db_face->lookup( skale::slicing::toSlice( legacyKey ) );
-        if ( !lookupResult.empty() ) {
+        if ( m_db_face->exists( legacyKey ) ) {
             m_db_face->kill( legacyKey );
             m_db_face->commit( "Cleanup legacy receipts" );
         }
