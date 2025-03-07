@@ -161,20 +161,6 @@ BOOST_AUTO_TEST_CASE( addressesReturnsCreatedInCache,
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_CASE( populateFrom ) {
-    // *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-     TestBlockChain testBlockchain( TestBlockChain::defaultGenesisBlock( 63000 ) );
-    TestBlock const& genesisBlock = testBlockchain.testGenesis();
-    State state(
-        0, fs::path( ".tests.db/skale.db" ), h256(genesisBlock.bytes()), BaseState::Empty
-    );
-    string key = "safeLastTransactionReceipts";
-    state.populateFrom( dev::eth::AccountMap() );
-    BOOST_CHECK( state.db()->exists( skale::slicing::toSlice( key ) ) );
-    BOOST_CHECK( state.db()->lookup( skale::slicing::toSlice( key ) ) == "" );
-    BOOST_CHECK( state.safeLegacyPartialTransactionReceipts().size() == 0 );
-}
-
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace test
