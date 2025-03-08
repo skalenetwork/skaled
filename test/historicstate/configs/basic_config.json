@@ -314,10 +314,10 @@
       "ecdsaKeyName": "",
       "minCacheSize": 1000,
       "maxCacheSize": 2000,
-      "collectionQueueSize": 2,
-      "collectionDuration": 10,
+      "collectionQueueSize": 20,
+      "collectionDuration": 60,
       "transactionQueueSize": 100,
-      "maxOpenLeveldbFiles": 25,
+      "maxOpenLeveldbFiles": 1000,
       "testSignatures": true
     },
     "sChain":

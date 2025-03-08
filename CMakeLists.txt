@@ -4,6 +4,9 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+# Make sure we explicitely allow spaces in test names, so cmake does not issue warning
+cmake_policy(SET CMP0110 NEW)
+
 option( SKALE_SKIP_INSTALLING_DIRECTIVES "Do not use CMAKE install() directives " ON )
 
 ############################################################################################################

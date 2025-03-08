@@ -3975,6 +3975,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
 
     // mine block without transactions
     dev::eth::simulateMining( *( fixture.client ), 1 );
+    sleep(3);
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
     BOOST_REQUIRE_GT( etherbaseBalance, 0 );
 
@@ -3987,7 +3988,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     sampleTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
     BOOST_REQUIRE( !txHash.empty() );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    dev::eth::mineTransaction( *( fixture.client ), 2 );
     fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
 
@@ -4013,7 +4014,8 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     partiallyRetrieveTx["gas"] = toJS( "1000000" );
     txHash = fixture.rpcClient->eth_sendTransaction( partiallyRetrieveTx );
     BOOST_REQUIRE( !txHash.empty() );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
+    dev::eth::mineTransaction( *( fixture.client ), 2 );
+
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
@@ -4758,6 +4760,35 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthTransfers,
 
     fixture.sendTinyTransfersForAllAccounts( 10, TransferType::NATIVE );
 }
+
+
+BOOST_AUTO_TEST_CASE( perf_calls,
+    *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
+    SkaledFixture fixture( skaledConfigFileName );
+    vector< Secret > accountPieces;
+
+    fixture.threadsCountForTestTransactions = 8;
+
+
+    fixture.setupFirstKey();
+    fixture.deployERC20();
+
+    fixture.setupTwoToTheNKeys(12);
+
+    fixture.sendCallsForAllAccounts( 1, CallType::BLOCK_BY_NUMBER, "eth_getBlockByNumber" );
+    fixture.sendCallsForAllAccounts( 1, CallType::TRANSACTION_COUNT, "eth_transactionCount" );
+    fixture.sendCallsForAllAccounts( 1, CallType::BALANCE, "eth_getBalance" );
+    fixture.sendCallsForAllAccounts( 1, CallType::BLOCK_NUMBER, "eth_blockNumber" );
+    fixture.sendCallsForAllAccounts( 1, CallType::CHAIN_ID, "eth_chainId" );
+    fixture.sendCallsForAllAccounts( 1, CallType::NET_VERSION, "net_version" );
+    fixture.sendCallsForAllAccounts( 1, CallType::GAS_PRICE, "eth_gasPrice" );
+    fixture.sendCallsForAllAccounts( 1, CallType::HASH_RATE, "eth_hashrate" );
+    fixture.sendCallsForAllAccounts( 1, CallType::MINING, "eth_mining" );
+    fixture.sendCallsForAllAccounts( 1, CallType::SYNCING, "eth_syncing" );
+    fixture.sendCallsForAllAccounts( 1, CallType::WEB3_CLIENT_VERSION, "web3_clientVersion" );
+}
+
+
 
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthMTMTransfers,
     *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {

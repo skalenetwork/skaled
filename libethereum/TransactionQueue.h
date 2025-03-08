@@ -204,9 +204,20 @@ public:
 public:
     /// Verified and imported transaction
     struct VerifiedTransaction {
-        VerifiedTransaction( Transaction const& _t ) : transaction( _t ) {}
+        // record object creation time. This is to make sure that
+        // transaction queue gives priority to transastions received earliest
+        // when everything else like gas price and height are the same
+        uint64_t creationTimeMs;
+
+        VerifiedTransaction( Transaction const& _t ) : transaction( _t ) {
+            creationTimeMs = std::chrono::duration_cast< std::chrono::milliseconds >(
+                std::chrono::system_clock::now().time_since_epoch() )
+                                 .count();
+        }
         VerifiedTransaction( VerifiedTransaction&& _t )
-            : transaction( std::move( _t.transaction ) ) {}
+            : transaction( std::move( _t.transaction ) ) {
+            creationTimeMs = _t.creationTimeMs;
+        }
 
         VerifiedTransaction( VerifiedTransaction const& ) = default;  // XXX removed "delete" for
                                                                       // tricks with queue
@@ -272,9 +283,21 @@ public:
                 _second.transaction.nonce() -
                 queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
 
-            return ( height1 < height2 ||
-                     ( height1 == height2 &&
-                         _first.transaction.gasPrice() > _second.transaction.gasPrice() ) );
+
+            if ( height1 != height2 ) {
+                // transactions with smaller nonce difference vs the current account nonce go first
+                return height1 < height2;
+            }
+
+            // for the same height, transactions vs larger gas price go first
+            if ( _first.transaction.gasPrice() != _second.transaction.gasPrice() ) {
+                return _first.transaction.gasPrice() > _second.transaction.gasPrice();
+            }
+
+            // new - if the height and the gas price are the same, the earlier received transactions
+            // go first
+
+            return _first.creationTimeMs < _second.creationTimeMs;
         }
     };
 

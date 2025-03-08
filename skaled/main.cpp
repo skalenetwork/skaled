@@ -1998,9 +1998,11 @@ int main( int argc, char** argv ) try {
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
+
         auto pDebugFace = bEnabledAPIs_debug ?
                               new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                               nullptr;
+        SkaleDebugInterface::g_isEnabled = bEnabledAPIs_debug;
 
 #ifdef HISTORIC_STATE
         // tracing interface is always enabled for the historic state nodes
@@ -2459,17 +2461,28 @@ int main( int argc, char** argv ) try {
             if ( joConfig.count( "unddos" ) > 0 ) {
                 nlohmann::json joUnDdosSettings = joConfig["unddos"];
                 skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
-            } else
-                skale_server_connector->unddos_.get_settings();  // auto-init
-            //
-            clog( VerbosityDebug, "main" )
-                << cc::attention( "UN-DDOS" ) + cc::debug( " is using configuration" )
-                << cc::j( skale_server_connector->unddos_.get_settings_json() );
+            } else {
+                clog( VerbosityWarning, "main" ) << "No DDOS config found. DDOS Disabled";
+                skale_server_connector->unddos_.disable_ddos();  // auto-init
+            }
+
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
             skale_server_connector->pg_threads_ = pg_threads;
             skale_server_connector->pg_threads_limit_ = pg_threads_limit;
+
+            if ( pg_threads > 0 ) {
+                clog( VerbosityInfo, "main" )
+                    << "Count of threads in proxygen server: " << pg_threads;
+            } else {
+                clog( VerbosityWarning, "main" )
+                    << "Count of threads in proxygen server is not defined in config. "
+                       "Using default value of 10 from the mainnet";
+                pg_threads = 10;
+                pg_threads_limit = 10;
+            }
+
             //
             pSkaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( pSkaleStatsFace );
@@ -2781,8 +2794,6 @@ int main( int argc, char** argv ) try {
             sessionManager->addSession(
                 strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        clog( VerbosityInfo, "main" )
-            << cc::bright( "JSONRPC Admin Session Key: " ) << cc::sunny( strJsonAdminSessionKey );
     }  // if ( is_ipc || nExplicitPort...
 
     if ( bEnabledShutdownViaWeb3 ) {
