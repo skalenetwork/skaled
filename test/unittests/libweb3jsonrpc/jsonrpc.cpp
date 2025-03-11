@@ -1769,7 +1769,6 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     BOOST_REQUIRE_EQUAL( std::max( badInfo.number() + 1, latestBlockNumber ), goodInfo.number() );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
     fixture.client->state().getOriginalDb()->createBlockSnap( blockCounter );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
