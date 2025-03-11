@@ -592,22 +592,24 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     LDB_CHECK( receipts.size() >= countBad );
 
-    bool areWeAtTheTimeStampBoundary = false;
-    auto latestCommittedBlockTimeStamp = latestCommittedBlock.timestamp() ;
+    bool weAreAtTheTimeStampBoundary = false;
+    auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
 
-    if (latestCommittedBlock.number() > 0) {
-	    auto beforeLatestCommittedBlockTimeStamp = latestCommittedBlock.parentHash().info().timestamp();
-		weAreAtTheTimeStampBoundary = ClearPartialReceiptsPatch::isEnabledWhen(latestCommittedBlockTimeStamp) &&
-            !ClearPartialReceiptsPatch::isEnabledWhen(beforeLatestCommittedBlockTimeStamp);
-	}
+    if ( m_previousBlock.number() > 0 ) {
+        auto beforeLatestCommittedBlockTimeStamp =
+            _bc.info( m_previousBlock.parentHash() ).timestamp();
+        weAreAtTheTimeStampBoundary =
+            ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) &&
+            !ClearPartialReceiptsPatch::isEnabledWhen( beforeLatestCommittedBlockTimeStamp );
+    }
 
-	// we need to specially handle the boundary case 
-    if (weAreAtTheTimeStampBoundary) {
+    // we need to specially handle the boundary case
+    if ( weAreAtTheTimeStampBoundary ) {
         LOG( m_logger ) << "Removing legacy partial receipts";
         m_state.safeRemoveLegacyPartialTransactionReceipts();
-	} 
-	
-	if ( !ClearPartialReceiptsPatch::isEnabledWhen(latestCommittedBlockTimeStamp ) ) {    
+    }
+
+    if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
         // Saving partial receipts old way to be compatible with < 4.0 version
         if ( !receiptsOfCommitted.empty() ) {
             LOG( m_loggerDetailed )
