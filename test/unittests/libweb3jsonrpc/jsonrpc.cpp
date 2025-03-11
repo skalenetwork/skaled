@@ -1800,45 +1800,27 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     transactionCallObject["to"] = "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a";
     transactionCallObject["data"] = "0x28b5e32b";
 
-    TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
-    ts = fixture.client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
-    Transaction tx( ts, ar.second );
+    int64_t blocksToCheck = 6, timestampTransitionBlock = 4, expectedNoLegacyReceiptsBlock = 5;
 
-    auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    dev::eth::BlockNumber blockNumber = jsToInt(receipt["blockNumber"].asString());
-    State state( fixture.client->state() );
-    BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumber).size(), 0 );
-    BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 1 );
+    for ( int64_t block = 2; block < blocksToCheck; ++block ) {
+        if ( block == timestampTransitionBlock ) {
+            sleep( 12 );
+        }
 
-    sleep(10);
-
-    ts = toTransactionSkeleton( transactionCallObject );
-    ts = fixture.client->populateTransactionWithDefaults( ts );
-    ar = fixture.accountHolder->authenticate( ts );
-    Transaction txAfter( ts, ar.second );
-
-    auto txHashAfter = fixture.rpcClient->eth_sendRawTransaction( toJS( txAfter.toBytes() ) );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    auto receiptAfter = fixture.rpcClient->eth_getTransactionReceipt( txHashAfter );
-    dev::eth::BlockNumber blockNumberAfter = jsToInt(receiptAfter["blockNumber"].asString());
-    BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumberAfter).size(), 0 );
-    BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 0 );
-
-
-    ts = toTransactionSkeleton( transactionCallObject );
-    ts = fixture.client->populateTransactionWithDefaults( ts );
-    ar = fixture.accountHolder->authenticate( ts );
-    Transaction txAfterAgain( ts, ar.second );
-
-    auto txHashAfterAgain = fixture.rpcClient->eth_sendRawTransaction( toJS( txAfterAgain.toBytes() ) );
-    dev::eth::mineTransaction( *( fixture.client ), 1 );
-    auto receiptAfterAgain = fixture.rpcClient->eth_getTransactionReceipt( txHashAfterAgain );
-    dev::eth::BlockNumber blockNumberAfterAgain = jsToInt(receiptAfterAgain["blockNumber"].asString());
-    BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumberAfterAgain).size(), 0 );
-    BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), 0 );
+        TransactionSkeleton ts = toTransactionSkeleton( transactionCallObject );
+        ts = fixture.client->populateTransactionWithDefaults( ts );
+        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+        Transaction tx( ts, ar.second );
+        auto txHash = fixture.rpcClient->eth_sendRawTransaction( toJS( tx.toBytes() ) );
+        dev::eth::mineTransaction( *( fixture.client ), 1 );
+        auto receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+        dev::eth::BlockNumber blockNumber = jsToInt(receipt["blockNumber"].asString());
+        State state( fixture.client->state() );
+        BOOST_REQUIRE_EQUAL( blockNumber, block );
+        BOOST_REQUIRE_EQUAL( state.safePartialTransactionReceipts(blockNumber).size(), 0 );
+        int64_t expectedSize = block == expectedNoLegacyReceiptsBlock ? 0: 1;
+        BOOST_REQUIRE_EQUAL( state.safeLegacyPartialTransactionReceipts().size(), expectedSize );
+    }
 }
 
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
