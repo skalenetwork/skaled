@@ -109,7 +109,7 @@ jobs:
           string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
           message("::set-output name=timestamp::${current_date}")
       - name: Ccache cache files
-        uses: actions/cache@v1.1.0
+        uses: actions/cache@v4.2.0
         with:
           path: .ccache
           key: ${ { matrix.config.name } }-ccache-${ { steps.ccache_cache_timestamp.outputs.timestamp } }
