@@ -355,11 +355,18 @@ dev::eth::TransactionReceipts State::safeLegacyPartialTransactionReceipts() {
 
 void State::safeCommitLegacyPartialTransactionReceipts(
     const dev::eth::TransactionReceipts& _receipts ) {
-    dev::eth::BlockReceipts blockReceipts;
-    blockReceipts.receipts.insert(
-        blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end() );
     if ( m_db_ptr ) {
+        dev::eth::BlockReceipts blockReceipts;
+        blockReceipts.receipts.insert(
+            blockReceipts.receipts.begin(), _receipts.begin(), _receipts.end() );
         m_db_ptr->setLegacyPartialTransactionReceipts( blockReceipts.rlp() );
+    }
+}
+
+void State::safeCommitZeroBlockLegacyPartialTransactionReceipts() {
+    if ( m_db_ptr ) {
+        // As it was for zero block before 4.0.0 version
+        m_db_ptr->setLegacyPartialTransactionReceipts( dev::bytes() );
     }
 }
 
