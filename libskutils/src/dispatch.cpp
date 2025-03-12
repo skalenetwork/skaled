@@ -1049,14 +1049,7 @@ bool queue::impl_job_run( job_t /*&*/ fn ) {  // run explicitly specified job sy
                 "dispatch queue %s before run job fn %p\n", id_.c_str(), this );
             std::cout.flush();
 #endif
-            //
-            std::string strPerformanceQueueName =
-                skutils::tools::format( "dispatch/queue/%s", id_.c_str() );
-            std::string strPerformanceActionName =
-                skutils::tools::format( "task %zu", nTaskNumberInQueue_++ );
-            skutils::task::performance::action a(
-                strPerformanceQueueName, strPerformanceActionName );
-            //
+
             fn();
 #if ( defined __SKUTILS_DISPATCH_DEBUG_CONSOLE_TRACE_QUEUE_STATES__ )
             std::cout << skutils::tools::format(
@@ -1337,7 +1330,6 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                                     std::cout << strThreadStartupMessage;
                                     std::cout.flush();
                                 }
-                                size_t nTaskNumberInThisThread = 0;
                                 for ( ; true; ) {
                                     if ( shutdown_flag_ )
                                         break;
@@ -1348,12 +1340,6 @@ void domain::impl_startup( size_t nWaitMilliSeconds /*= size_t(-1)*/ ) {
                                     if ( shutdown_flag_ )
                                         break;
                                     for ( ; true; ) {
-                                        //
-                                        std::string strPerformanceActionName =
-                                            skutils::tools::format(
-                                                "task %zu", nTaskNumberInThisThread++ );
-                                        skutils::task::performance::action a(
-                                            strPerformanceQueueName, strPerformanceActionName );
                                         //
                                         if ( !run_one() )
                                             break;

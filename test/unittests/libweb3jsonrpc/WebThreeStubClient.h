@@ -27,6 +27,7 @@ public:
     bool net_listening() noexcept( false );
     std::string skale_receiveTransaction( const Json::Value& param1 ) noexcept( false );
     std::string skale_protocolVersion() noexcept( false );
+    std::string skale_stats();
     std::string eth_protocolVersion() noexcept( false );
     std::string skale_shutdownInstance() noexcept( false );
     std::string eth_hashrate() noexcept( false );
@@ -167,6 +168,7 @@ public:
     Json::Value debug_doStateDbCompaction() noexcept( false );
     Json::Value debug_doBlocksDbCompaction() noexcept( false );
     Json::Value debug_getFutureTransactions() noexcept( false );
+    Json::Value debug_getPatchTimestamps() noexcept( false );
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

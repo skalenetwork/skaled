@@ -28,14 +28,17 @@
 #include <memory>
 
 #include <libbatched-io/batched_db.h>
+#include <libdevcore/Address.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libethereum/Account.h>
+#include <libethcore/Common.h>
+//#include <libethereum/Account.h>
 
 namespace dev {
 namespace eth {
+class Account;
 class TransactionReceipt;
-}
+}  // namespace eth
 }  // namespace dev
 
 namespace skale {
@@ -63,16 +66,24 @@ public:
     OverlayDB& operator=( OverlayDB&& ) = default;
 
     dev::h256 getLastExecutedTransactionHash() const;
-    dev::bytes getPartialTransactionReceipts() const;
-    void setLastExecutedTransactionHash( const dev::h256& );
-    void setPartialTransactionReceipts( const dev::bytes& );
+    std::vector< dev::bytes > getPartialTransactionReceipts(
+        dev::eth::BlockNumber _blockNumber ) const;
 
-    void addReceiptToPartials( const dev::eth::TransactionReceipt& );
-    void clearPartialTransactionReceipts();
+    void removeAllPartialTransactionReceipts();
+
+    void setLastExecutedTransactionHash( const dev::h256& );
+
+    void setPartialTransactionReceipt( const dev::bytes& _newReceipt,
+        dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
+
+    dev::bytes getLegacyPartialTransactionReceipts() const;
+    void setLegacyPartialTransactionReceipts( const dev::bytes& _newReceipt );
+    void cleanupLegacyTransactionReceipts();
 
     // commit key-value pairs in storage
     void commitStorageValues();
-    void commit( const std::string& _debugCommitId );
+    void commit();
+
     void rollback();
     void clearDB();
     bool connected() const;
@@ -105,6 +116,8 @@ public:
 
     std::unordered_map< dev::u256, dev::u256 > storage( dev::h160 const& address ) const;
 
+    static std::string uint64ToFixedLengthHex( uint64_t value );
+
 private:
     std::unordered_map< dev::h160, dev::bytes > m_cache;
     std::unordered_map< dev::h160, std::unordered_map< _byte_, dev::bytes > > m_auxiliaryCache;
@@ -116,13 +129,17 @@ private:
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
+    // a flag to commit to disk on every insert to save memory
+    // this is currently only used for historic state conversion
+    bool m_commitOnEveryInsert = false;
 
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
-    mutable std::optional< dev::bytes > lastExecutedTransactionReceipts;
+
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
-    void copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const;
+    void copyStorageIntoAccountMap(
+        std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
 
 }  // namespace skale

@@ -53,10 +53,11 @@
 #include "InstanceMonitor.h"
 #include "SkaleHost.h"
 #include "SnapshotAgent.h"
-#include "StateImporter.h"
 #include "ThreadSafeQueue.h"
 
+#ifdef HISTORIC_STATE
 #include <libhistoric/AlethStandardTrace.h>
+#endif
 #include <skutils/atomic_shared_ptr.h>
 #include <skutils/multithreading.h>
 
@@ -119,7 +120,9 @@ public:
     h256 submitTransaction( TransactionSkeleton const& _t, Secret const& _secret ) override;
 
     /// Imports the given transaction into the transaction queue
-    h256 importTransaction( Transaction const& _t ) override;
+    h256 importTransaction( Transaction const& _t,
+        TransactionBroadcast _txOrigin = TransactionBroadcast::DontBroadcast ) override;
+
 
     /// Makes the given call. Nothing is recorded into the state.
     ExecutionResult call( Address const& _secret, u256 _value, Address _dest, bytes const& _data,
@@ -262,11 +265,6 @@ public:
     /// Rescue the chain.
     void rescue() { bc().rescue( m_state ); }
 
-    std::unique_ptr< StateImporterFace > createStateImporter() {
-        throw std::logic_error( "createStateImporter is not implemented" );
-        //        return dev::eth::createStateImporter(m_state);
-    }
-
     /// Queues a function to be executed in the main thread (that owns the blockchain, etc).
     void executeInMainThread( std::function< void() > const& _function );
 
@@ -360,19 +358,12 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
-#ifdef HISTORIC_STATE
-    OverlayDB const& historicStateDB() const { return m_historicStateDB; }
-    OverlayDB const& historicBlockToStateRootDB() const { return m_historicBlockToStateRootDB; }
-#endif
-
 protected:
     /// As syncTransactionQueue - but get list of transactions explicitly
     /// returns number of successfullty executed transactions
     /// thread unsafe!!
     size_t syncTransactions( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime(),
-        Transactions* vecMissing = nullptr  // it's non-null only for PARTIAL CATCHUP
-    );
+        uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     /// As rejigSealing - but stub
     /// thread unsafe!!
@@ -395,6 +386,10 @@ protected:
         ReadGuard l( x_preSeal );
         return m_preSeal;
     }
+
+    // get read only latest block copy
+    Block getReadOnlyLatestBlockCopy() const { return m_postSeal.getReadOnlyCopy(); }
+
     Block postSeal() const override {
         ReadGuard l( x_postSeal );
         return m_postSeal;
@@ -492,13 +487,6 @@ protected:
                       ///< imported).
     TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet in a block on the
                             ///< blockchain.
-
-
-#ifdef HISTORIC_STATE
-    OverlayDB m_historicStateDB;  ///< Acts as the central point for the state database, so multiple
-                                  ///< States can share it.
-    OverlayDB m_historicBlockToStateRootDB;  /// Maps hashes of block IDs to state roots
-#endif
 
     std::shared_ptr< GasPricer > m_gp;  ///< The gas pricer.
 

@@ -227,7 +227,17 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     array< string, 4 > BLSPublicKeys;
     array< string, 4 > commonBLSPublicKeys;
     if ( !testSignatures ) {
+        if ( infoObj.count( "ecdsaKeyName" ) == 0 ) {
+            throw std::runtime_error(
+                "No ecdsaKeyName in config, and testSignatures is not set to true" );
+        }
+
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+
+        if ( infoObj.count( "wallets" ) == 0 ) {
+            throw std::runtime_error(
+                "No wallets section in test config, and testSignatures is not set to true" );
+        }
 
         js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
@@ -287,6 +297,13 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     s.levelDBReopenIntervalMs = sChainObj.count( "levelDBReopenIntervalMs" ) ?
                                     sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
                                     c_defaultLevelDBReopenIntervalMs;
+
+#ifdef HISTORIC_STATE
+    // negative maxHistoricStateDbSize means rotations are disabled
+    s.maxHistoricStateDbSize = sChainObj.count( "maxHistoricStateDbSize" ) ?
+                                   sChainObj.at( "maxHistoricStateDbSize" ).get_int64() :
+                                   -1;
+#endif
 
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :

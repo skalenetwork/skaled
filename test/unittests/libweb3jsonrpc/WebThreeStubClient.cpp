@@ -158,6 +158,17 @@ std::string WebThreeStubClient::skale_protocolVersion() {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
 
+
+std::string WebThreeStubClient::skale_stats() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result = this->CallMethod( "skale_stats", p );
+    return result.toStyledString();
+}
+
+
+
+
 std::string WebThreeStubClient::eth_protocolVersion() {
     Json::Value p;
     p = Json::nullValue;
@@ -1397,6 +1408,16 @@ Json::Value WebThreeStubClient::debug_getFutureTransactions() {
     Json::Value p;
     Json::Value result = this->CallMethod( "debug_getFutureTransactions", p );
     if ( result.isArray() )
+        return result;
+    else
+        throw jsonrpc::JsonRpcException(
+            jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
+}
+
+Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
+    Json::Value p;
+    Json::Value result = this->CallMethod( "debug_getPatchTimestamps", p );
+    if ( result.isObject() )
         return result;
     else
         throw jsonrpc::JsonRpcException(

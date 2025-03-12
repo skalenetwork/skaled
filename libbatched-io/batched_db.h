@@ -3,6 +3,7 @@
 
 #include "batched_io.h"
 
+#include <libdevcore/DBImpl.h>
 #include <libdevcore/LevelDB.h>
 
 #include <shared_mutex>
@@ -15,7 +16,16 @@ public:
     virtual void kill( dev::db::Slice _key ) = 0;
 
     // readonly
+#ifdef HISTORIC_STATE
+    virtual std::string lookup( dev::db::Slice _key ) const { return lookup( _key, UINT64_MAX ); }
+    virtual std::string lookup( dev::db::Slice _key, uint64_t _rootBlockNumber ) const {
+        assert( _rootBlockNumber == UINT64_MAX );
+        ( void ) _rootBlockNumber;
+        return lookup( _key );
+    }
+#else
     virtual std::string lookup( dev::db::Slice _key ) const = 0;
+#endif
     virtual bool exists( dev::db::Slice _key ) const = 0;
     virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const = 0;
     virtual void forEachWithPrefix(
@@ -63,7 +73,13 @@ public:
     }
 
     // readonly
+#ifdef HISTORIC_STATE
+    virtual std::string lookup( dev::db::Slice _key, uint64_t _rootBlockTimestamp ) const {
+        return m_db->lookup( _key, _rootBlockTimestamp );
+    }
+#else
     virtual std::string lookup( dev::db::Slice _key ) const { return m_db->lookup( _key ); }
+#endif
     virtual bool exists( dev::db::Slice _key ) const { return m_db->exists( _key ); }
     virtual void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > f ) const {
         std::lock_guard< std::mutex > foreach_lock( m_batch_mutex );
@@ -76,7 +92,64 @@ public:
         m_db->forEachWithPrefix( _prefix, f );
     }
 
-    virtual ~batched_db();
+    virtual ~batched_db() = default;
+
+protected:
+    void recover() { /*nothing*/
+    }
+};
+
+
+class read_only_snap_based_batched_db : public db_face {
+private:
+    std::shared_ptr< dev::db::DBImpl > m_db;
+    std::shared_ptr< dev::db::LevelDBSnap > m_snap;
+
+public:
+    read_only_snap_based_batched_db(
+        std::shared_ptr< dev::db::DBImpl > _db, std::shared_ptr< dev::db::LevelDBSnap > _snap ) {
+        LDB_CHECK( _db );
+        LDB_CHECK( _snap );
+        m_db = _db;
+        m_snap = _snap;
+    }
+
+    bool is_open() const { return !!m_db; };
+
+    void insert( dev::db::Slice, dev::db::Slice ) override {
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
+    }
+
+    void kill( dev::db::Slice ) override {
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
+    }
+
+    void revert() override {
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
+    }
+
+    void commit( const std::string& ) override {
+        throw std::runtime_error( "Function not implemented:" + std::string( __FUNCTION__ ) );
+    }
+
+    // readonly
+    std::string lookup( dev::db::Slice _key ) const override {
+        return m_db->lookup( _key, m_snap );
+    }
+
+    bool exists( dev::db::Slice _key ) const override { return m_db->exists( _key, m_snap ); }
+
+    void forEach( std::function< bool( dev::db::Slice, dev::db::Slice ) > _f ) const override {
+        static std::string emptyString;
+        return forEachWithPrefix( emptyString, _f );
+    }
+
+    void forEachWithPrefix( std::string& _prefix,
+        std::function< bool( dev::db::Slice, dev::db::Slice ) > _f ) const override {
+        m_db->forEachWithPrefix( _prefix, _f, m_snap );
+    }
+
+    virtual ~read_only_snap_based_batched_db() = default;
 
 protected:
     void recover() { /*nothing*/

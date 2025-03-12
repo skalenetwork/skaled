@@ -50,7 +50,6 @@ struct VMKindTableEntry {
 /// We don't use a map to avoid complex dynamic initialization. This list will never be long,
 /// so linear search only to parse command line arguments is not a problem.
 VMKindTableEntry vmKindsTable[] = {
-    { VMKind::Interpreter, "interpreter" },
     { VMKind::Legacy, "legacy" },
 };
 
@@ -170,8 +169,6 @@ VMPtr VMFactory::create( VMKind _kind ) {
     static const auto null_delete = []( VMFace* ) noexcept {};
 
     switch ( _kind ) {
-    case VMKind::Interpreter:
-        return { new EVMC{ evmc_create_interpreter() }, default_delete };
     case VMKind::DLL:
         assert( g_evmcDll != nullptr );
         // Return "fake" owning pointer to global EVMC DLL VM.

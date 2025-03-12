@@ -18,13 +18,16 @@ target_link_libraries(
     PRIVATE
         ethereum
         skale
-        historic
         skutils
         devcore
         skale
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
         "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
     )
+
+if(HISTORIC_STATE)
+    target_link_libraries(${executable_name} PRIVATE historic)
+endif()
 
 target_include_directories(${executable_name} PRIVATE ../utils ${SKUTILS_INCLUDE_DIRS})
 

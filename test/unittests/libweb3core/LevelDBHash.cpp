@@ -76,9 +76,13 @@ BOOST_AUTO_TEST_CASE( hash ) {
         std::string lastHashedKey = "start";
         bool isContinue = true;
         while ( isContinue ) {
-            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path(),
-                dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-                dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+            dev::db::LevelDB::LevelDBOptions options = {
+                dev::db::LevelDB::defaultSnapshotReadOptions(),
+                dev::db::LevelDB::defaultWriteOptions(),
+                dev::db::LevelDB::defaultSnapshotDBOptions()
+            };
+
+            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( td.path(), options) );
 
             isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
         }
