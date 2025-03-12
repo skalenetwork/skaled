@@ -1577,8 +1577,9 @@ BOOST_AUTO_TEST_CASE( ecpairingCost ) {
     BOOST_CHECK_EQUAL( static_cast< int >( costIstanbul ), in.size() / 192 * 34000 + 45000 );
 }
 
-static std::string const genesisInfoSkaleConfigTest = std::string() +
-                                                  R"E(
+static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
+
+static std::string const genesisInfoSkaleConfigTest = R"(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -1616,7 +1617,8 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": 1234,
+      "basePort": )" +
+    std::to_string( rand_port ) + R"(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true,
@@ -1667,7 +1669,9 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
             }
         },
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": 1234, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
+        std::to_string( rand_port ) +
+        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc"}
         ]
     }
   },
@@ -1688,7 +1692,7 @@ static std::string const genesisInfoSkaleConfigTest = std::string() +
         "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b": { "balance": "0", "nonce": "0", "storage": {"0x101e368776582e57ab3d116ffe2517c0a585cd5b23174b01e275c2d8329c3d83": "0x0000000000000000000000000000000000000000000000000000000000000001"}, "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80634df7e3d014610051578063d82cf7901461006f578063ee919d501461009d578063f0fdf834146100cb575b600080fd5b610059610111565b6040518082815260200191505060405180910390f35b61009b6004803603602081101561008557600080fd5b8101908080359060200190929190505050610117565b005b6100c9600480360360208110156100b357600080fd5b810190808035906020019092919050505061017d565b005b6100f7600480360360208110156100e157600080fd5b81019080803590602001909291905050506101ab565b604051808215151515815260200191505060405180910390f35b60015481565b60008082815260200190815260200160002060009054906101000a900460ff16151560011515141561017a57600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555060018054016001819055505b50565b600160008083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea264697066735822122000af6f9a0d5c9b8b642648557291c9eb0f9732d60094cf75e14bb192abd97bcc64736f6c63430006000033"}
     }
 }
-)E";
+)";
 
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ChainParams chainParams;
@@ -1705,10 +1709,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
         shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
+    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
+
     client->injectSkaleHost();
     client->startWorking();
-
-    client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
 
     ClientTest* testClient = asClientTest( client.get() );
 

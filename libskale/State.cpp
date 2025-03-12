@@ -34,7 +34,6 @@
 #include <libethcore/SealEngine.h>
 #include <libethereum/CodeSizeCache.h>
 #include <libethereum/Defaults.h>
-#include <libethereum/StateImporter.h>
 
 #include "libweb3jsonrpc/Eth.h"
 #include "libweb3jsonrpc/JsonHelper.h"
@@ -74,14 +73,19 @@ const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkip
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
     dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
-    dev::s256 _contractStorageLimit )
+    dev::s256 _contractStorageLimit
+#ifdef HISTORIC_STATE
+    ,
+    dev::s256 _maxHistoricStateDbSize
+#endif
+    )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_accountStartNonce( _accountStartNonce ),
       m_initial_funds( _initialFunds ),
       contractStorageLimit_( _contractStorageLimit )
 #ifdef HISTORIC_STATE
       ,
-      m_historicState( _accountStartNonce,
+      m_historicState( _accountStartNonce, _maxHistoricStateDbSize,
           dev::eth::HistoricState::openDB(
               boost::filesystem::path( std::string( _dbPath.string() )
                                            .append( "/" )
@@ -118,9 +122,17 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 
 State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-    dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
+    std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+        _historicDb,
+    std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+        _historicBlockToStateRootDb,
 #endif
-    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit )
+    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit
+#ifdef HISTORIC_STATE
+    ,
+    s256 _maxHistoricStateDbSize
+#endif
+    )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_accountStartNonce( _accountStartNonce ),
@@ -128,7 +140,8 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
       contractStorageLimit_( _contractStorageLimit )
 #ifdef HISTORIC_STATE
       ,
-      m_historicState( _accountStartNonce, _historicDb, _historicBlockToStateRootDb, _bs )
+      m_historicState( _accountStartNonce, _maxHistoricStateDbSize, _historicDb,
+          _historicBlockToStateRootDb, _bs )
 #endif
 {
     auto state = createStateCopyAndClearCaches();
@@ -784,7 +797,6 @@ void State::clearStorageValue(
     currentStorageUsed_ += count * 32;
 }
 
-
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
     if ( Account const* acc = account( _contract ) ) {
         auto memoryPtr = acc->originalStorageCache().find( _key );
@@ -800,7 +812,6 @@ u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) c
         return 0;
     }
 }
-
 
 void State::clearStorage( Address const& _contract ) {
     // only clear storage if the storage used is not 0
@@ -955,6 +966,10 @@ void State::clearAllCaches() {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
+
+#ifdef HISTORIC_STATE
+    m_historicState.db().updateStorageUsage( m_historicState.db().storageUsed() );
+#endif
 }
 
 

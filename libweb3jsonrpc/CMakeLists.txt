@@ -36,10 +36,6 @@ set(sources
     Web3Face.h
     WhisperFace.h
 
-    Tracing.h
-    Tracing.cpp
-    TracingFace.h
-
     SkalePerformanceTracker.h
     SkalePerformanceTracker.cpp
     SkalePerformanceTrackerFace.h
@@ -60,6 +56,10 @@ if(WIN32)
     list(APPEND sources WinPipeServer.cpp WinPipeServer.web3jsonrpch)
 else()
     list(APPEND sources UnixSocketServer.cpp UnixSocketServer.h)
+endif()
+
+if(HISTORIC_STATE)
+    list(APPEND sources Tracing.h Tracing.cpp TracingFace.h)
 endif()
 
 add_library(web3jsonrpc ${sources})

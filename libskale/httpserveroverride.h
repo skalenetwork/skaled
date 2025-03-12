@@ -40,6 +40,7 @@ typedef intptr_t ssize_t;
 #include <unistd.h>
 #endif
 
+
 #include <stdexcept>
 #define RAPIDJSON_ASSERT( x )                                       \
     if ( !( x ) ) {                                                 \
