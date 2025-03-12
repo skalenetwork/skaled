@@ -24,6 +24,9 @@
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
 #include <libethereum/Defaults.h>
+#include <boost/filesystem.hpp>
+#include <boost/test/unit_test.hpp>
+#include <test/tools/libtesteth/BlockChainHelper.h>
 #include <test/tools/libtesteth/TestHelper.h>
 
 using namespace std;
@@ -31,6 +34,7 @@ using namespace dev;
 using namespace dev::eth;
 using skale::BaseState;
 using skale::State;
+namespace fs = boost::filesystem;
 
 namespace dev {
 namespace test {
