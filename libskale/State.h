@@ -250,6 +250,7 @@ public:
     dev::eth::TransactionReceipts safeLegacyPartialTransactionReceipts();
 
     void safeRemoveAllPartialTransactionReceipts();
+    void safeCommitZeroBlockLegacyPartialTransactionReceipts();
 
 
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
