@@ -193,9 +193,11 @@ add_subdirectory( libdevcore )
 add_subdirectory( libdevcrypto )
 add_subdirectory( libp2p )
 
-add_subdirectory( libhistoric )
-add_subdirectory( libskale )
+if ( HISTORIC_STATE )
+    add_subdirectory( libhistoric )
+endif()
 
+add_subdirectory( libskale )
 
 add_subdirectory( libethcore )
 add_subdirectory( libevm )

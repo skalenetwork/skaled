@@ -36,11 +36,14 @@
 #include <libethereum/Executive.h>
 #include <libethereum/Transaction.h>
 #include <libethereum/TransactionReceipt.h>
+#ifdef HISTORIC_STATE
 #include <libhistoric/HistoricState.h>
+#endif
 
 #include "BaseState.h"
 #include "OverlayDB.h"
 #include "OverlayFS.h"
+#include "Permanence.h"
 #include <libdevcore/DBImpl.h>
 
 #include <openssl/rand.h>
@@ -191,7 +194,10 @@ public:
     explicit State( dev::u256 const& _accountStartNonce )
         : State( _accountStartNonce, OverlayDB(),
 #ifdef HISTORIC_STATE
-              dev::OverlayDB(), dev::OverlayDB(),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
 #endif
               BaseState::Empty ) {
     }
@@ -203,7 +209,12 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32 );
+        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32
+#ifdef HISTORIC_STATE
+        ,
+        dev::s256 _maxHistoricStateDbSize = -1
+#endif
+    );
     /// which uses it. If you have no preexisting database then set BaseState to something other
 
     // this conswtructor is used for tests
@@ -211,7 +222,10 @@ public:
     State()
         : State( dev::Invalid256, skale::OverlayDB(),
 #ifdef HISTORIC_STATE
-              dev::OverlayDB(), dev::OverlayDB(),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
+              std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >(
+                  dev::OverlayDB(), std::shared_ptr< dev::db::RotatingHistoricState >() ),
 #endif
               BaseState::Empty ) {
     }
@@ -435,10 +449,18 @@ private:
 
     explicit State( dev::u256 const& _accountStartNonce, skale::OverlayDB const& _db,
 #ifdef HISTORIC_STATE
-        dev::OverlayDB const& _historicDb, dev::OverlayDB const& _historicBlockToStateRootDb,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+            _historicDb,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
+            _historicBlockToStateRootDb,
 #endif
         BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
-        dev::s256 _contractStorageLimit = 32 );
+        dev::s256 _contractStorageLimit = 32
+#ifdef HISTORIC_STATE
+        ,
+        dev::s256 _maxHistoricStateDbSize = -1
+#endif
+    );
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.

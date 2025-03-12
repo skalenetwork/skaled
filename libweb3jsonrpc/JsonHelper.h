@@ -35,7 +35,6 @@
         throw std::out_of_range( #x " failed with provided JSON" ); \
     }
 #define RAPIDJSON_ASSERT_THROWS
-
 #include <rapidjson/document.h>
 
 namespace dev {

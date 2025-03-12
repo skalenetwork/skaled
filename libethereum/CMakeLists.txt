@@ -12,11 +12,14 @@ target_include_directories( ethereum PRIVATE "${UTILS_INCLUDE_DIR}" ${SKUTILS_IN
         ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include
         ${CMAKE_SOURCE_DIR}/libconsensus/spdlog/include
         ${CMAKE_SOURCE_DIR}/libconsensus/libjson/include)
-target_link_libraries( ethereum PUBLIC evm ethcore p2p devcrypto devcore skale PRIVATE historic skutils snappy
+target_link_libraries( ethereum PUBLIC evm ethcore p2p devcrypto devcore skale PRIVATE skutils snappy
         jsoncpp # ${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/build/src/lib_json/libjsoncpp.a
         Boost::fiber Boost::context Boost::chrono
         batched-io
         )
+if (HISTORIC_STATE)
+    target_link_libraries(ethereum PRIVATE historic)
+endif()
 
 #target_compile_options( ethereum PRIVATE -Weffc++ )
 #target_compile_options( ethereum PRIVATE -Wno-error=effc++ )

@@ -36,8 +36,10 @@ BOOST_FIXTURE_TEST_SUITE( OverlayDBTests, TestOutputHelperFixture )
 
 BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
-    std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
-    BOOST_REQUIRE( db );
+    std::shared_ptr< db::DBImpl > dbImpl( new db::DBImpl( td.path() ) );
+    BOOST_REQUIRE( dbImpl );
+    auto db = std::make_unique< batched_io::batched_db >();
+    db->open( dbImpl );
 
     OverlayDB odb( std::move( db ) );
     BOOST_CHECK( !odb.get().size() );
@@ -67,8 +69,10 @@ BOOST_AUTO_TEST_CASE( basicUsage, *boost::unit_test::precondition( dev::test::ru
 
 BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     TransientDirectory td;
-    std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
-    BOOST_REQUIRE( db );
+    std::shared_ptr< db::DBImpl > dbImpl( new db::DBImpl( td.path() ) );
+    BOOST_REQUIRE( dbImpl );
+    auto db = std::make_unique< batched_io::batched_db >();
+    db->open( dbImpl );
 
     OverlayDB odb( std::move( db ) );
 
@@ -103,8 +107,10 @@ BOOST_AUTO_TEST_CASE( auxMem, *boost::unit_test::precondition( dev::test::run_no
 
 BOOST_AUTO_TEST_CASE( rollback ) {
     TransientDirectory td;
-    std::unique_ptr< db::DBImpl > db( new db::DBImpl( td.path() ) );
-    BOOST_REQUIRE( db );
+    std::shared_ptr< db::DBImpl > dbImpl( new db::DBImpl( td.path() ) );
+    BOOST_REQUIRE( dbImpl );
+    auto db = std::make_unique< batched_io::batched_db >();
+    db->open( dbImpl );
 
     OverlayDB odb( std::move( db ) );
     bytes value = fromHex( "42" );

@@ -28,14 +28,17 @@
 #include <memory>
 
 #include <libbatched-io/batched_db.h>
+#include <libdevcore/Address.h>
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
-#include <libethereum/Account.h>
+#include <libethcore/Common.h>
+//#include <libethereum/Account.h>
 
 namespace dev {
 namespace eth {
+class Account;
 class TransactionReceipt;
-}
+}  // namespace eth
 }  // namespace dev
 
 namespace skale {
@@ -80,6 +83,7 @@ public:
     // commit key-value pairs in storage
     void commitStorageValues();
     void commit();
+
     void rollback();
     void clearDB();
     bool connected() const;
@@ -125,12 +129,17 @@ private:
     dev::bytes getAuxiliaryKey( dev::h160 const& _address, _byte_ space ) const;
     dev::bytes getStorageKey( dev::h160 const& _address, dev::h256 const& _storageAddress ) const;
 
+    // a flag to commit to disk on every insert to save memory
+    // this is currently only used for historic state conversion
+    bool m_commitOnEveryInsert = false;
+
     mutable std::optional< dev::h256 > lastExecutedTransactionHash;
 
 
 public:
     std::shared_ptr< batched_io::db_face > db() { return m_db_face; }
-    void copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const;
+    void copyStorageIntoAccountMap(
+        std::unordered_map< dev::Address, dev::eth::Account >& _map ) const;
 };
 
 }  // namespace skale

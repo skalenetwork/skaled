@@ -228,8 +228,10 @@ void Client::populateNewChainStateFromGenesis() {
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateCopyAndClearCaches();
     m_state.populateFrom( bc().chainParams().genesisState );
-    m_state.mutableHistoricState().saveRootForBlock( 0 );
+    m_state.mutableHistoricState().saveRootForBlockNumber( 0 );  // TODO is it safe to assume
+                                                                 // it's 0?
     m_state.mutableHistoricState().db().commit();
+
 #else
     m_state.populateFrom( bc().chainParams().genesisState );
     m_state = m_state.createStateCopyAndClearCaches();
@@ -247,9 +249,14 @@ void Client::initStateFromDiskOrGenesis() {
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
-    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
-        BaseState::PreExisting, chainParams().accountInitialFunds,
-        chainParams().sChain.contractStorageLimit );
+    m_state = State(
+        chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
+        chainParams().accountInitialFunds, chainParams().sChain.contractStorageLimit
+#ifdef HISTORIC_STATE
+        ,
+        chainParams().sChain.maxHistoricStateDbSize
+#endif
+    );
 
 
     if ( m_state.empty() ) {
@@ -575,13 +582,19 @@ size_t Client::syncTransactions(
 
     DEV_WRITE_GUARDED( x_working ) {
         assert( !m_working.isSealed() );
+
+#ifdef HISTORIC_STATE
+        m_state.mutableHistoricState().rotateDbsIfNeeded( m_working.info().number() );
+#endif
+        // assert(m_state.m_db_write_lock.has_value());
+
         tie( newPendingReceipts, goodReceipts ) =
             m_working.syncEveryone( bc(), _transactions, _timestamp, _gasPrice );
         m_state = m_state.createStateCopyAndClearCaches();
 #ifdef HISTORIC_STATE
         // make sure the trie in new state object points to the new state root
-        m_state.mutableHistoricState().setRoot(
-            m_working.mutableState().mutableHistoricState().globalRoot() );
+        HistoricState& hs = m_working.mutableState().mutableHistoricState();
+        m_state.mutableHistoricState().setRoot( hs.globalRoot(), hs.globalRootBlockNumber() );
 #endif
     }
 
@@ -990,7 +1003,8 @@ Block Client::blockByNumber( BlockNumber _h ) const {
 
         // blockByNumber is only used for reads
         auto readState = m_state.createStateCopyAndClearCaches();
-        readState.mutableHistoricState().setRootByBlockNumber( _h );
+        readState.mutableHistoricState().setRootByBlockNumber( this->blockInfo( hash ).number() );
+
         // removed m_blockImportMutex here
         // this function doesn't interact with latest block so the mutex isn't needed
         return Block( bc(), hash, readState );

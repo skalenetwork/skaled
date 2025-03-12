@@ -573,7 +573,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
 #ifdef HISTORIC_STATE
-    m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
+    m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
 #endif
 
     // we got to the end of the block so we do not need partial transaction receipts anymore
