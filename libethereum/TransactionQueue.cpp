@@ -475,6 +475,17 @@ void TransactionQueue::dropGood( Transaction const& _t ) {
     remove_WITH_LOCK( _t.sha3() );
 }
 
+void TransactionQueue::dropMany( h256Hash const& _txHashes ) {
+    WriteGuard l( m_lock );
+
+    for ( auto&& _txHash : _txHashes ) {
+        if ( !m_known.count( _txHash ) )
+            continue;
+        m_dropped.insert( _txHash, true );
+        remove_WITH_LOCK( _txHash );
+    }
+}
+
 void TransactionQueue::clear() {
     WriteGuard l( m_lock );
     m_known.clear();

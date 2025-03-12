@@ -450,6 +450,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             return true;
         } );
 
+    // now we need to delete old transactions from the queue
+    m_tq.dropMany( to_delete );
+
     if ( counter++ == 0 )
         m_pending_createMutex.lock();
 
