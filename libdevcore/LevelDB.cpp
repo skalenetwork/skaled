@@ -20,6 +20,7 @@
 
 #include "LevelDB.h"
 #include "Assertions.h"
+#include "LevelDBSnap.h"
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
@@ -118,21 +119,33 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     return options;
 }
 
-LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
-    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, int64_t _reopenPeriodMs )
+LevelDB::LevelDBOptions LevelDB::defaultLevelDBOptions() {
+    LevelDBOptions options;
+    return options;
+}
+LevelDB::WrapperOptions LevelDB::defaultWrapperOptions() {
+    WrapperOptions options;
+    return options;
+}
+
+LevelDB::LevelDB( boost::filesystem::path const& _path, LevelDBOptions _levelDBOptions,
+    WrapperOptions _wrapperOptions )
     : m_db( nullptr ),
-      m_readOptions( std::move( _readOptions ) ),
-      m_writeOptions( std::move( _writeOptions ) ),
-      m_options( std::move( _dbOptions ) ),
+      m_readOptions( std::move( _levelDBOptions.readOptions ) ),
+      m_writeOptions( std::move( _levelDBOptions.writeOptions ) ),
+      m_options( std::move( _levelDBOptions.dbOptions ) ),
       m_path( _path ),
-      m_reopenPeriodMs( _reopenPeriodMs ) {
-    openDBInstanceUnsafe();
+      m_reopenPeriodMs( _wrapperOptions.reopenPeriodMs ) {
+    openDBInstanceUnsafe( _wrapperOptions.enableLogger );
 }
 
 // this does not hold any locks so it needs to be called
 // either from a constructor or from a function that holds a lock on m_db
-void LevelDB::openDBInstanceUnsafe() {
-    cnote << "Time to (re)open LevelDB at " + m_path.string();
+void LevelDB::openDBInstanceUnsafe( bool _enableLogger ) {
+    if ( _enableLogger ) {
+        cnote << "Time to (re)open LevelDB at " + m_path.string();
+    }
+
     auto startTimeMs = getCurrentTimeMs();
     auto db = static_cast< leveldb::DB* >( nullptr );
     auto const status = leveldb::DB::Open( m_options, m_path.string(), &db );
@@ -144,7 +157,12 @@ void LevelDB::openDBInstanceUnsafe() {
 
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
-    cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    m_dbReopenId++;
+
+    if ( _enableLogger ) {
+        cnote << "LEVELDB_OPENED:" << m_path.string()
+              << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    }
 }
 uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
@@ -152,6 +170,7 @@ uint64_t LevelDB::getCurrentTimeMs() {
 }
 
 LevelDB::~LevelDB() {
+    m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
     if ( m_db )
         m_db.reset();
     if ( m_options.filter_policy )
@@ -159,14 +178,15 @@ LevelDB::~LevelDB() {
 }
 
 std::string LevelDB::lookup( Slice _key ) const {
+    return lookup( _key, nullptr );
+}
+
+std::string LevelDB::lookup( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     leveldb::Slice const key( _key.data(), _key.size() );
     std::string value;
 
-    leveldb::Status status;
-    {
-        SharedDBGuard readLock( *this );
-        status = m_db->Get( m_readOptions, key, &value );
-    }
+    auto status = getValue( m_readOptions, key, value, _snap );
+
     if ( status.IsNotFound() )
         return std::string();
 
@@ -175,13 +195,15 @@ std::string LevelDB::lookup( Slice _key ) const {
 }
 
 bool LevelDB::exists( Slice _key ) const {
+    return exists( _key, nullptr );
+}
+
+bool LevelDB::exists( Slice _key, const std::shared_ptr< LevelDBSnap >& _snap ) const {
     std::string value;
     leveldb::Slice const key( _key.data(), _key.size() );
-    leveldb::Status status;
-    {
-        SharedDBGuard lock( *this );
-        status = m_db->Get( m_readOptions, key, &value );
-    }
+
+    auto status = getValue( m_readOptions, key, value, _snap );
+
     if ( status.IsNotFound() )
         return false;
 
@@ -189,12 +211,25 @@ bool LevelDB::exists( Slice _key ) const {
     return true;
 }
 
+leveldb::Status LevelDB::getValue( leveldb::ReadOptions _readOptions, const leveldb::Slice& _key,
+    std::string& _value, const std::shared_ptr< LevelDBSnap >& _snap ) const {
+    SharedDBGuard lock( *this );  // protect so db is not reopened during get call
+    if ( _snap ) {
+        // sanity check to make sure that the snap was created for this particular
+        // db handle
+        LDB_CHECK( m_dbReopenId == _snap->getParentDbReopenId() );
+        return _snap->getValue( m_db, _readOptions, _key, _value );
+    } else {
+        return m_db->Get( _readOptions, _key, &_value );
+    }
+}
+
 void LevelDB::insert( Slice _key, Slice _value ) {
     leveldb::Slice const key( _key.data(), _key.size() );
     leveldb::Slice const value( _value.data(), _value.size() );
     leveldb::Status status;
     {
-        SharedDBGuard lock( *this );
+        SharedDBGuard lock( *this );  // protect so db is not reopened during Put() call
         status = m_db->Put( m_writeOptions, key, value );
     }
     checkStatus( status );
@@ -224,7 +259,7 @@ void LevelDB::commit( std::unique_ptr< WriteBatchFace > _batch ) {
     }
     leveldb::Status status;
     {
-        SharedDBGuard lock( *this );
+        SharedDBGuard lock( *this );  // protect so db is not reopened during Write() call
         status = m_db->Write( m_writeOptions, &batchPtr->writeBatch() );
     }
     // Commit happened. This means the keys actually got deleted in LevelDB. Increment key deletes
@@ -247,17 +282,25 @@ void LevelDB::reopenDataBaseIfNeeded() {
     auto currentTimeMs = getCurrentTimeMs();
 
     if ( currentTimeMs - m_lastDBOpenTimeMs >= ( uint64_t ) m_reopenPeriodMs ) {
-        ExclusiveDBGuard lock( *this );
-        // releasing unique pointer will cause database destructor to be called that will close db
-        m_db.reset();
-        // now open db while holding the exclusive lock
-        openDBInstanceUnsafe();
+        reopen();
     }
+}
+void LevelDB::reopen() {
+    ExclusiveDBGuard lock( *this );
+    // close all current snaps by passing max lifetime as zero
+    auto aliveSnaps = m_snapManager.garbageCollectUnusedOldSnaps( m_db, m_dbReopenId, 0 );
+    LDB_CHECK( aliveSnaps == 0 );
+
+    // releasing unique pointer will cause database destructor to be called that will close db
+    LDB_CHECK( m_db );
+    m_db.reset();
+    // now open db while holding the exclusive lock
+    openDBInstanceUnsafe();
 }
 
 void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
     cwarn << "Iterating over the entire LevelDB database: " << this->m_path;
-    SharedDBGuard lock( *this );
+    SharedDBGuard lock( *this );  // protect so db is not reopened during iteration
     std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
@@ -273,10 +316,22 @@ void LevelDB::forEach( std::function< bool( Slice, Slice ) > f ) const {
 }
 
 void LevelDB::forEachWithPrefix(
-    std::string& _prefix, std::function< bool( Slice, Slice ) > f ) const {
-    cnote << "Iterating over the LevelDB prefix: " << _prefix;
-    SharedDBGuard lock( *this );
-    std::unique_ptr< leveldb::Iterator > itr( m_db->NewIterator( m_readOptions ) );
+    std::string& _prefix, std::function< bool( Slice, Slice ) > _f ) const {
+    forEachWithPrefix( _prefix, _f, nullptr );
+}
+
+void LevelDB::forEachWithPrefix( std::string& _prefix, std::function< bool( Slice, Slice ) > f,
+    const std::shared_ptr< LevelDBSnap >& _snap ) const {
+    SharedDBGuard lock( *this );  // protect so DB is not reopened during iteration
+
+    std::unique_ptr< leveldb::Iterator > itr;
+
+    if ( _snap ) {
+        LDB_CHECK( m_dbReopenId == _snap->getParentDbReopenId() );
+        itr = _snap->getIterator( m_db, m_readOptions );
+    } else {
+        itr.reset( m_db->NewIterator( m_readOptions ) );
+    }
     if ( itr == nullptr ) {
         BOOST_THROW_EXCEPTION( DatabaseError() << errinfo_comment( "null iterator" ) );
     }
@@ -290,6 +345,18 @@ void LevelDB::forEachWithPrefix(
         Slice const value( dbValue.data(), dbValue.size() );
         keepIterating = f( key, value );
     }
+}
+
+void LevelDB::createBlockSnap( uint64_t _blockNumber ) {
+    SharedDBGuard lock( *this );  // protect so db is not reopened during snap creation
+    m_snapManager.addSnapForBlock( _blockNumber, m_db, m_dbReopenId );
+}
+
+std::shared_ptr< LevelDBSnap > LevelDB::getLastBlockSnap() const {
+    SharedDBGuard lock( *this );  // protect so db is not reopened when while we get snap
+    auto snap = m_snapManager.getLastBlockSnap();
+    LDB_CHECK( snap );
+    return snap;
 }
 
 h256 LevelDB::hashBase() const {

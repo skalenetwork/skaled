@@ -549,7 +549,7 @@ ImportRoute BlockChain::import( VerifiedBlockRef const& _block, State& _state, b
 
         s.cleanup();
 
-        _state = _state.createNewCopyWithLocks();
+        _state = _state.createStateCopyAndClearCaches();
 
         totalDifficulty = pd.totalDifficulty + tdIncrease;
 
@@ -950,8 +950,8 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
     }
     pieceUsageBytes += writeSize;
 
-    LOG( m_loggerInfo ) << "Block " << tbi.number() << " DB usage is " << writeSize
-                        << ". Piece DB usage is " << pieceUsageBytes << " bytes";
+    LOG( m_loggerDetail ) << "BLOCK_DB+" << writeSize << ". Piece DB usage is " << pieceUsageBytes
+                          << " bytes";
 
     // re-evaluate batches and reset total usage counter if rotated!
     if ( rotateDBIfNeeded( pieceUsageBytes ) ) {
@@ -1736,13 +1736,13 @@ VerifiedBlockRef BlockChain::verifyBlock( bytesConstRef _block,
         for ( RLP const& tr : r[1] ) {
             bytesConstRef d = bytesRefFromTransactionRlp( tr );
             try {
+                auto blockTimestamp = this->info( numberHash( h.number() - 1 ) ).timestamp();
                 Transaction t( d,
                     ( _ir & ImportRequirements::TransactionSignatures ) ?
                         CheckTransaction::Everything :
                         CheckTransaction::None,
-                    false,
-                    EIP1559TransactionsPatch::isEnabledWhen(
-                        this->info( numberHash( h.number() - 1 ) ).timestamp() ) );
+                    false, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+                    MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
                 Ethash::verifyTransaction( chainParams(), _ir, t,
                     this->info( numberHash( h.number() - 1 ) ).timestamp(), h,
                     0 );  // the gasUsed vs

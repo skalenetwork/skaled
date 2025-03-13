@@ -19,7 +19,6 @@ target_link_libraries(
     ${EXECUTABLE_NAME}
     PRIVATE
         ethereum
-        historic
         ethashseal
         evm
         web3jsonrpc
@@ -32,6 +31,9 @@ target_link_libraries(
         idn2
         batched-io
     )
+if (HISTORIC_STATE)
+    target_link_libraries(${EXECUTABLE_NAME} PRIVATE historic)
+endif()
 if (CONSENSUS)
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE consensus)
 endif()

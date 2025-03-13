@@ -2,7 +2,7 @@
   <img src="https://uploads-ssl.webflow.com/5be05ae542686c4ebf192462/5be2f8beb08f6d0fbd2ea797_Skale_Logo_Blue-p-500.png"><br><br>
 </div>
 
------------------
+---------------
 
 
 # SKALED – SKALE C++ Client
@@ -41,7 +41,7 @@ Historically skaled started by forking [Aleth](https://github.com/ethereum/aleth
 
 ### OS requirements
 
-Skaled builds and runs on Ubuntu 20.04 and 22.04
+Skaled officially builds, runs, and is tested on on Ubuntu 22.04. You may build and run it on other Ubuntu versions at your own risk.
 
 ### Clone repository
 
@@ -59,26 +59,21 @@ If you have already cloned the repo and forgot to pass `--recurse-submodules`, e
 ```
 sudo apt update
 sudo apt install autoconf build-essential cmake libprocps-dev libtool texinfo wget yasm flex bison btrfs-progs python3 python3-pip gawk git vim doxygen 
-sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-9 g++-9 gperf clang-format-11 gnutls-dev
+sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-dev unzip zlib1g-dev libgcrypt20-dev docker.io gcc-11 g++-11 gperf clang-format-11 gnutls-dev
 sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov sudo apt-get install libv8-dev
 ```
 
-
-
-
-NB cmake needs to be of version >=3.21, git of version >=2.18
-
-### (for Ubuntu 20.10 or later) Set  gcc-9 as default compiler
+###  Set  gcc-11 as default compiler if you don (Ubuntu 22.04 has already has it as default)
 ```
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
-sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-9 9
-sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-9 9
-sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-9 9
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
+sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-11 11
+sudo update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-11 11
+sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-11 11
 gcc --version
 ```
 
-# Install latest cmake 
+# Install latest cmake
 
 ```
 sudo apt-get purge cmake
@@ -91,15 +86,6 @@ sudo snap install cmake --classic
 ```
 cd deps
 ./build.sh DEBUG=1
-```
-
-
-## Hunter fix
-
-```
-mkdir -p ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
-cd ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
-wget https://github.com/hunter-packages/crc32c/archive/refs/tags/hunter-1.0.5.tar.gz
 ```
 
 ### Configure and build skaled

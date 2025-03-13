@@ -68,6 +68,9 @@ void Debug::debug_forceBroadcast( const string& _transactionHash ) {
 }
 
 string Debug::debug_interfaceCall( const string& _arg ) {
+    if ( !m_debugInterface ) {
+        BOOST_THROW_EXCEPTION( jsonrpc::JsonRpcException( "Debug interface disabled" ) );
+    }
     return m_debugInterface->call( _arg );
 }
 
@@ -116,4 +119,19 @@ Json::Value Debug::debug_getFutureTransactions() {
     for ( auto& t : res )
         t.removeMember( "data" );
     return res;
+}
+
+Json::Value Debug::debug_getPatchTimestamps() {
+    Json::Value jsonResponse;
+    ChainParams chainParams = m_eth.chainParams();
+
+    size_t numberOfPatches = static_cast< size_t >( SchainPatchEnum::PatchesCount );
+    for ( size_t patch = 0; patch < numberOfPatches; patch++ ) {
+        SchainPatchEnum patchEnum = static_cast< SchainPatchEnum >( patch );
+        std::string patchName = getPatchNameForEnum( patchEnum ) + "Timestamp";
+        patchName[0] = tolower( patchName[0] );
+        jsonResponse[patchName] = chainParams.getPatchTimestamp( patchEnum );
+    }
+
+    return jsonResponse;
 }

@@ -36,6 +36,7 @@ protected:
     static std::atomic< time_t > committedBlockTimestamp;
 };
 
+
 #define DEFINE_AMNESIC_PATCH( CustomPatch )                                       \
     class CustomPatch : public SchainPatch {                                      \
     public:                                                                       \
@@ -128,11 +129,6 @@ DEFINE_AMNESIC_PATCH( StorageDestructionPatch );
 /*
  * Enable restriction on contract storage size, when it's doing selfdestruct
  */
-DEFINE_SIMPLE_PATCH( SelfdestructStorageLimitPatch );
-
-/*
- * Enable restriction on contract storage size, when it's doing selfdestruct
- */
 DEFINE_SIMPLE_PATCH( EIP1559TransactionsPatch );
 
 /*
@@ -150,5 +146,17 @@ DEFINE_SIMPLE_PATCH( FlexibleDeploymentPatch );
  * Context: fix externalGas calculation
  */
 DEFINE_SIMPLE_PATCH( ExternalGasPatch );
+
+/*
+ * Purpose: do not save partial receipts after block is executed
+ * Version introduced: 4.0.0
+ */
+DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
+
+/*
+ * Context: fix the check in transaction constructor
+ * maxFeePerGas cannot be less than maxPriorityFeePerGas
+ */
+DEFINE_SIMPLE_PATCH( MaxFeePerGasPatch );
 
 #endif  // SCHAINPATCH_H
