@@ -542,7 +542,7 @@ void TransactionQueue::verifierBody() {
             Transaction t( work.transaction, CheckTransaction::Cheap, false,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );  // Signature will be
-                                                                 // checked later
+                                                                             // checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );
         } catch ( ... ) {
