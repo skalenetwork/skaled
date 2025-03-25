@@ -97,7 +97,7 @@ ImportResult TransactionQueue::import(
     try {
         Transaction t = Transaction( _transactionRLP, CheckTransaction::Everything, false,
             EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-            MaxFeePerGasPatch::isEnabledInWorkingBlock() );
+            InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
         return import( t, _ik, _isFuture );
     } catch ( Exception const& ) {
         return ImportResult::Malformed;
@@ -541,7 +541,7 @@ void TransactionQueue::verifierBody() {
         try {
             Transaction t( work.transaction, CheckTransaction::Cheap, false,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                MaxFeePerGasPatch::isEnabledInWorkingBlock() );  // Signature will be
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );  // Signature will be
                                                                  // checked later
             ImportResult ir = import( t );
             m_onImport( ir, t.sha3(), work.nodeId );

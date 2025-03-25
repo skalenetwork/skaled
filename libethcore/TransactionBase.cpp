@@ -174,8 +174,7 @@ void TransactionBase::fillFromBytesLegacy(
     }
 }
 
-void TransactionBase::fillFromBytesType1(
-    bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid ) {
+void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -225,7 +224,12 @@ void TransactionBase::fillFromBytesType1(
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
         m_type = Type::Invalid;
-        m_rawData = std::make_shared< bytes >( _rlpData.toBytes() );
+        if ( _invalidTransactionFormatPatchEnabled )
+            // use croppedRlp here because the first byte in _rlpData contains transaction type identifier
+            // that is, it makes _rlpData an invalid rlp object
+            m_rawData = std::make_shared< bytes >( croppedRlp );
+        else
+            m_rawData = std::make_shared< bytes >( _rlpData.toBytes() );
 
         if ( !_allowInvalid )
             throw;
@@ -236,7 +240,7 @@ void TransactionBase::fillFromBytesType1(
 }
 
 void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _maxFeePerGasPatchEnabled ) {
+    bool _allowInvalid, bool _invalidTransactionFormatPatchEnabled ) {
     bytes croppedRlp( _rlpData.begin() + 1, _rlpData.end() );
     RLP const rlp( croppedRlp );
     try {
@@ -249,7 +253,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();
 
-        auto toCompare = _maxFeePerGasPatchEnabled ? m_maxFeePerGas : m_maxPriorityFeePerGas;
+        auto toCompare = _invalidTransactionFormatPatchEnabled ? m_maxFeePerGas : m_maxPriorityFeePerGas;
         if ( m_maxPriorityFeePerGas > toCompare )
             BOOST_THROW_EXCEPTION( InvalidTransactionFormat() << errinfo_comment(
                                        "maxFeePerGas cannot be less than maxPriorityFeePerGas (The "
@@ -295,7 +299,12 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
         _e << errinfo_name(
             "invalid transaction format: " + toString( rlp ) + " RLP: " + toHex( rlp.data() ) );
         m_type = Type::Invalid;
-        m_rawData = std::make_shared< bytes >( _rlpData.toBytes() );
+        if ( _invalidTransactionFormatPatchEnabled )
+            // use croppedRlp here because the first byte in _rlpData contains transaction type identifier
+            // that is, it makes _rlpData an invalid rlp object
+            m_rawData = std::make_shared< bytes >( croppedRlp );
+        else
+            m_rawData = std::make_shared< bytes >( _rlpData.toBytes() );
 
         if ( !_allowInvalid )
             throw;
@@ -306,16 +315,16 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
 }
 
 void TransactionBase::fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, TransactionType _type, bool _maxFeePerGasPatchEnabled ) {
+    bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled ) {
     switch ( _type ) {
     case TransactionType::Legacy:
         fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         break;
     case TransactionType::Type1:
-        fillFromBytesType1( _rlpData, _checkSig, _allowInvalid );
+        fillFromBytesType1( _rlpData, _checkSig, _allowInvalid, _invalidTransactionFormatPatchEnabled );
         break;
     case TransactionType::Type2:
-        fillFromBytesType2( _rlpData, _checkSig, _allowInvalid, _maxFeePerGasPatchEnabled );
+        fillFromBytesType2( _rlpData, _checkSig, _allowInvalid, _invalidTransactionFormatPatchEnabled );
         break;
     default:
         BOOST_THROW_EXCEPTION(
@@ -333,13 +342,13 @@ TransactionType TransactionBase::getTransactionType( bytesConstRef _rlp ) {
 }
 
 TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _checkSig,
-    bool _allowInvalid, bool _eip1559Enabled, bool _maxFeePerGasPatchEnabled ) {
+    bool _allowInvalid, bool _eip1559Enabled, bool _invalidTransactionFormatPatchEnabled ) {
     MICROPROFILE_SCOPEI( "TransactionBase", "ctor", MP_GOLD2 );
     try {
         if ( _eip1559Enabled ) {
             TransactionType txnType = getTransactionType( _rlpData );
             fillFromBytesByType(
-                _rlpData, _checkSig, _allowInvalid, txnType, _maxFeePerGasPatchEnabled );
+                _rlpData, _checkSig, _allowInvalid, txnType, _invalidTransactionFormatPatchEnabled );
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
