@@ -106,8 +106,8 @@ public:
     explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
         bool _invalidTransactionFormatPatchEnabled = false )
-        : TransactionBase(
-              &_rlp, _checkSig, _allowInvalid, _eip1559Enabled, _invalidTransactionFormatPatchEnabled ) {}
+        : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
+              _invalidTransactionFormatPatchEnabled ) {}
 
     TransactionBase( TransactionBase const& ) = default;
 
