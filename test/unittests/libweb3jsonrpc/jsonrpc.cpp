@@ -3770,7 +3770,7 @@ BOOST_AUTO_TEST_CASE( vInTxnSignature ) {
     BOOST_REQUIRE( v < 2 && v >= 0 );
 }
 
-BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
+BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
     Json::Reader().parse( _config, ret );
@@ -3779,9 +3779,9 @@ BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
     std::string chainID = "0x97";
     ret["params"]["chainID"] = chainID;
     time_t eip1559PatchActivationTimestamp = time( nullptr ) - 1;
-    time_t maxFeePerGasPatchActivationTimestamp = time( nullptr ) + 10;
-    ret["skaleConfig"]["sChain"]["MaxFeePerGasPatchTimestamp"] =
-        maxFeePerGasPatchActivationTimestamp;
+    time_t InvalidTransactionFormatPatchActivationTimestamp = time( nullptr ) + 10;
+    ret["skaleConfig"]["sChain"]["InvalidTransactionFormatPatchTimestamp"] =
+        InvalidTransactionFormatPatchActivationTimestamp;
     ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] =
         eip1559PatchActivationTimestamp;
 
@@ -3804,7 +3804,7 @@ BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
 
-    // send a txn with maxPriorityFeePerGas > maxFeePerGas before MaxFeePerGasPatchTimestamp
+    // send a txn with maxPriorityFeePerGas > maxFeePerGas before InvalidTransactionFormatPatchTimestamp
     txHash = fixture.rpcClient->eth_sendRawTransaction(
         "0x02f86d8197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080"
         "c001a0db2fe04a66fa54bfe9c6e0166d85a31b34cbff10dbde0e0584081aec6bb33c30a06b956a49c52f1460da"
@@ -3834,7 +3834,7 @@ BOOST_AUTO_TEST_CASE( maxFeePerGasPatch ) {
 
     sleep( 1 );
 
-    // send a txn with maxPriorityFeePerGas > maxFeePerGas after MaxFeePerGasPatchTimestamp, it
+    // send a txn with maxPriorityFeePerGas > maxFeePerGas after InvalidTransactionFormatPatchTimestamp, it
     // should fail
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(

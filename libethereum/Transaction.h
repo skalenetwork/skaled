@@ -109,11 +109,11 @@ public:
     /// Constructs a transaction from the given RLP.
     explicit Transaction( bytesConstRef _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _maxFeePerGasPatchEnabled = false );
+        bool _invalidTransactionFormatPatchEnabled = false );
 
     /// Constructs a transaction from the given RLP.
     explicit Transaction( bytes const& _rlp, CheckTransaction _checkSig, bool _allowInvalid = false,
-        bool _eip1559Enabled = false, bool _maxFeePerGasPatchEnabled = false );
+        bool _eip1559Enabled = false, bool _invalidTransactionFormatPatchEnabled = false );
 
     Transaction( Transaction const& ) = default;
 

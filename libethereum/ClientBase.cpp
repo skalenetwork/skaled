@@ -363,7 +363,7 @@ Transaction ClientBase::transaction( h256 _transactionHash ) const {
     auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
     return Transaction( bc().transaction( _transactionHash ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
 }
 
 LocalisedTransaction ClientBase::localisedTransaction( h256 const& _transactionHash ) const {
@@ -379,7 +379,7 @@ Transaction ClientBase::transaction( h256 _blockHash, unsigned _i ) const {
         // allow invalid
         return Transaction( b[1][_i].data(), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
     else
         return Transaction();
 }
@@ -389,7 +389,7 @@ LocalisedTransaction ClientBase::localisedTransaction( h256 const& _blockHash, u
     // allow invalid
     Transaction t = Transaction( bc().transaction( _blockHash, _i ), CheckTransaction::Cheap, true,
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
     return LocalisedTransaction( t, _blockHash, _i, numberFromHash( _blockHash ) );
 }
 
@@ -404,7 +404,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     // allow invalid
     Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap,
         true, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
     TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
     u256 gasUsed = tr.cumulativeGasUsed();
     if ( tl.second > 0 )
@@ -440,7 +440,7 @@ Transactions ClientBase::transactions( h256 _blockHash ) const {
         auto txRlp = b[1][i];
         res.emplace_back( bytesRefFromTransactionRlp( txRlp ), CheckTransaction::Cheap, true,
             EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-            MaxFeePerGasPatch::isEnabledWhen( blockTimestamp ) );
+            InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
     }
     return res;
 }
