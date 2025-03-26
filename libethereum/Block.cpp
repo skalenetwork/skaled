@@ -956,12 +956,14 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         cerror << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
-        LOG( m_logger ) << "Transaction with index " << _transactionIndex << " WouldNotBeInBlock: " << ex.what();
+        LOG( m_logger ) << "Transaction with index " << _transactionIndex
+                        << " WouldNotBeInBlock: " << ex.what();
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        LOG( m_logger ) << "Transaction with index " << _transactionIndex << " WouldNotBeInBlock: ...";
+        LOG( m_logger ) << "Transaction with index " << _transactionIndex
+                        << " WouldNotBeInBlock: ...";
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
