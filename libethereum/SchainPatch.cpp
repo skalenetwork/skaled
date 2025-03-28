@@ -40,8 +40,8 @@ SchainPatchEnum getEnumForPatchName( const std::string& _patchName ) {
         return SchainPatchEnum::ExternalGasPatch;
     else if ( _patchName == "ClearPartialReceiptsPatch" )
         return SchainPatchEnum::ClearPartialReceiptsPatch;
-    else if ( _patchName == "MaxFeePerGasPatch" )
-        return SchainPatchEnum::MaxFeePerGasPatch;
+    else if ( _patchName == "InvalidTransactionFormatPatch" )
+        return SchainPatchEnum::InvalidTransactionFormatPatch;
     else
         throw std::out_of_range( _patchName );
 }
@@ -80,8 +80,8 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
         return "ExternalGasPatch";
     case SchainPatchEnum::ClearPartialReceiptsPatch:
         return "ClearPartialReceiptsPatch";
-    case SchainPatchEnum::MaxFeePerGasPatch:
-        return "MaxFeePerGasPatch";
+    case SchainPatchEnum::InvalidTransactionFormatPatch:
+        return "InvalidTransactionFormatPatch";
     default:
         throw std::out_of_range(
             "UnknownPatch #" + std::to_string( static_cast< size_t >( _enumValue ) ) );

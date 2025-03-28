@@ -21,7 +21,7 @@ enum class SchainPatchEnum {
     FlexibleDeploymentPatch,
     ExternalGasPatch,
     ClearPartialReceiptsPatch,
-    MaxFeePerGasPatch,
+    InvalidTransactionFormatPatch,
     PatchesCount
 };
 

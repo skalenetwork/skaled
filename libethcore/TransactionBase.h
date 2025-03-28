@@ -100,14 +100,14 @@ public:
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _maxFeePerGasPatchEnabled = false );
+        bool _invalidTransactionFormatPatchEnabled = false );
 
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
         bool _allowInvalid = false, bool _eip1559Enabled = false,
-        bool _maxFeePerGasPatchEnabled = false )
-        : TransactionBase(
-              &_rlp, _checkSig, _allowInvalid, _eip1559Enabled, _maxFeePerGasPatchEnabled ) {}
+        bool _invalidTransactionFormatPatchEnabled = false )
+        : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
+              _invalidTransactionFormatPatchEnabled ) {}
 
     TransactionBase( TransactionBase const& ) = default;
 
@@ -332,13 +332,13 @@ private:
 
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-        bool _allowInvalid, TransactionType _type, bool _maxFeePerGasPatchEnabled );
+        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled );
     void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    void fillFromBytesType1(
-        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
+        bool _invalidTransactionFormatPatchEnabled );
     void fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
-        bool _maxFeePerGasPatchEnabled );
+        bool _invalidTransactionFormatPatchEnabled );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
