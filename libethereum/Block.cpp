@@ -1107,14 +1107,19 @@ void Block::commitToSeal(
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 
+
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
-    // bool removeEmptyAccounts =
-    //    m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    // We do not commit now because will do it in blockchain syncing
-    //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-    //                                         State::CommitBehaviour::KeepEmptyAccounts);
+
+#ifdef BITE
+    LOG( m_loggerDetailed ) << "Commiting applied rewards";
+    bool removeEmptyAccounts =
+        m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
+    // Commiting to apply block rewards
+    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                         dev::eth::CommitBehaviour::KeepEmptyAccounts );
+#endif
 
     LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
                             << cc::notice( "is not calculated in Skale state" );
