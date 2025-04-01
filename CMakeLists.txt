@@ -172,6 +172,10 @@ if (HISTORIC_STATE)
 add_definitions(-DHISTORIC_STATE=1)
 endif (HISTORIC_STATE)
 
+if (BITE)
+add_definitions(-DBITE=1)
+endif (BITE)
+
 add_subdirectory( evmc )
 
 #Global include path for all libs:
