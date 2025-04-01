@@ -780,7 +780,6 @@ void SkaleHost::broadcastFunc() {
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 
-
             // Wait for the queue to have transactions
 
             static auto MAX_WAIT_TIME = std::chrono::milliseconds( 100 );
@@ -792,8 +791,7 @@ void SkaleHost::broadcastFunc() {
 
                 m_broadcastQueueCondition.wait_for( lock, MAX_WAIT_TIME );
 
-
-                if ( m_broadcastPauseFlag ) {
+                if ( m_broadcastPauseFlag || m_broadcastQueue.empty() ) {
                     continue;
                 }
 
@@ -801,21 +799,18 @@ void SkaleHost::broadcastFunc() {
                 m_broadcastQueue = std::list< Transaction >();
             }
 
-
             for ( auto&& txn : queueCopy ) {
                 try {
                     MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
                     std::string rlp = toJS( txn.toBytes() );
-                    std::string h = toJS( txn.sha3() );
                     m_debugTracer.tracepoint( "broadcast" );
                     m_broadcaster->broadcast( rlp );
+                    ++m_bcast_counter;
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT";
                     cwarn << ex.what();
                 }  // catch
             }
-
-            ++m_bcast_counter;
 
             logState();
         } catch ( const std::exception& ex ) {
