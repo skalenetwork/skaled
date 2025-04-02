@@ -46,7 +46,9 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
 #include <libconsensus/exceptions/InvalidStateException.h>
+#ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
+#endif
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
