@@ -46,6 +46,7 @@
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
+#include <libweb3jsonrpc/Skale.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
@@ -355,7 +356,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         if ( !_isSyncNode )
             blockPromise.get_future().wait();
 
-        using FullServer = ModularServer< rpc::EthFace, rpc::NetFace, rpc::Web3Face,
+        using FullServer = ModularServer< rpc::EthFace, rpc::SkaleFace, rpc::NetFace, rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
@@ -366,10 +367,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
         auto ethFace = new rpc::Eth( std::string( "" ), *client, *accountHolder.get() );
+        auto skaleFace = _config.empty() ? nullptr : new rpc::Skale( _config, *client, *accountHolder.get() );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        rpcServer.reset( new FullServer( ethFace, new rpc::Net( chainParams ),
+        rpcServer.reset( new FullServer( ethFace, skaleFace, new rpc::Net( chainParams ),
             new rpc::Web3(),  // TODO Add version parameter here?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
             new rpc::Debug( *client, nullptr, "" ), new rpc::Test( *client ) ) );
