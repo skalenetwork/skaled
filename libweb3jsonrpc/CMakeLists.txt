@@ -128,11 +128,11 @@ link_directories(${BLS_WITH_FF_LIBRARY_DIR})
 
 target_include_directories( web3jsonrpc PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libBLS/
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/jsoncpp/include
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
-		${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
-		${DEPS_INSTALL_ROOT}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/jsoncpp/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen/jsonrpccpp/common/
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/build/gen
+        ${CMAKE_CURRENT_SOURCE_DIR}/../libconsensus/libjson-rpc-cpp/src
+        ${DEPS_INSTALL_ROOT}/include
         ${BLS_WITH_FF_INCLUDE_DIR}
         ${BLS_INCLUDE_DIRS}
 	"${UTILS_INCLUDE_DIR}"
@@ -148,7 +148,7 @@ target_compile_options( web3jsonrpc PRIVATE
 
 target_link_libraries( web3jsonrpc
                 consensus
-#    bls
+                te
 		ethashseal
                 skutils
 		jsonrpccpp-client # ${CMAKE_SOURCE_DIR}/libconsensus/libjson-rpc-cpp/build/lib/libjsonrpccpp-client.a

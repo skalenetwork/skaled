@@ -172,7 +172,7 @@ revert();
         },
         "0000000000000000000000000000000000000007": {
             "precompiled": {
-                "name": "getIMABLSPublicKey",
+                "name": "getCurrentBLSPublicKey",
                 "linear": {
                     "base": 15,
                     "word": 0
@@ -3947,6 +3947,14 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     joAnswer = nlohmann::json::parse( d.s_ );
     BOOST_REQUIRE( joAnswer.count( "jsonrpc" ) > 0 );
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
+}
+
+BOOST_AUTO_TEST_CASE( getBITECommonPublicKey ) {
+    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
+
+    auto blsPublicKey = fixture.rpcClient->skale_getBITECommonPublicKey();
+
+    BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {

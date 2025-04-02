@@ -128,7 +128,7 @@ public:
     dev::u256 getBlockRandom() const;
     dev::eth::SyncStatus syncStatus() const;
     std::map< std::string, uint64_t > getConsensusDbUsage() const;
-    std::array< std::string, 4 > getIMABLSPublicKey() const;
+    std::array< std::string, 4 > getCurrentBLSPublicKey() const;
 
     // get node id for historic node in chain
     std::string getHistoricNodeId( unsigned _id ) const;

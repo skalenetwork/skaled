@@ -46,6 +46,7 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
 #include <libconsensus/exceptions/InvalidStateException.h>
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
@@ -579,6 +580,19 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
+
+#ifdef BITE
+std::string Skale::skale_getBITECommonPublicKey() {
+    try {
+        auto publicKeyArray = m_client.getCurrentBLSPublicKey();
+        std::vector< std::string > publicKeyVector( publicKeyArray.begin(), publicKeyArray.end() );
+        libBLS::TEPublicKey publicKey( publicKeyVector );
+        return publicKey.toString();
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    }
+}
+#endif
 
 namespace snapshot {
 

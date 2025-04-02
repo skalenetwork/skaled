@@ -77,6 +77,10 @@ public:
     std::string oracle_submitRequest( std::string& request ) override;
     std::string oracle_checkResult( std::string& receipt ) override;
 
+#ifdef BITE
+    std::string skale_getBITECommonPublicKey() override;
+#endif
+
     static bool isWeb3ShutdownEnabled();
     static void enableWeb3Shutdown( bool bEnable = true );
     static bool isShutdownNeeded();
