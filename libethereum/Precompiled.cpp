@@ -1077,7 +1077,7 @@ ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
-ETH_REGISTER_PRECOMPILED( getCurrentBLSPublicKey )( bytesConstRef ) {
+ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     try {
         if ( !g_skaleHost )
             throw std::runtime_error( "SkaleHost accessor was not initialized" );

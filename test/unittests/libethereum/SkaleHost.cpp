@@ -1277,7 +1277,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     SkaleHostFixture fixture;
     auto& skaleHost = fixture.skaleHost;
 
-    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getCurrentBLSPublicKey" );
+    PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getIMABLSPublicKey" );
     auto res = exec( bytesConstRef() );
     std::array< std::string, 4 > imaBLSPublicKey = skaleHost->getCurrentBLSPublicKey();
     BOOST_REQUIRE( res.first );

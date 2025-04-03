@@ -173,7 +173,7 @@ revert();
         },
         "0000000000000000000000000000000000000007": {
             "precompiled": {
-                "name": "getCurrentBLSPublicKey",
+                "name": "getIMABLSPublicKey",
                 "linear": {
                     "base": 15,
                     "word": 0
