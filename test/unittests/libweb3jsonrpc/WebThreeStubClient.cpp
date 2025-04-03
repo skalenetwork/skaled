@@ -170,7 +170,7 @@ std::string WebThreeStubClient::skale_getBITECommonPublicKey() {
     Json::Value p;
     p = Json::nullValue;
     Json::Value result = this->CallMethod( "skale_getBITECommonPublicKey", p );
-    return result.toStyledString();
+    return result.asString();
 }
 
 std::string WebThreeStubClient::eth_protocolVersion() {

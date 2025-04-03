@@ -587,8 +587,13 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 std::string Skale::skale_getBITECommonPublicKey() {
     try {
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
-        std::vector< std::string > publicKeyVector( publicKeyArray.begin(), publicKeyArray.end() );
-        libBLS::TEPublicKey publicKey( publicKeyVector );
+        libff::alt_bn128_G2 publicKeyG2;
+        publicKeyG2.Z = libff::alt_bn128_Fq2::one();
+        publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
+        publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
+        publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
+        publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+        libBLS::TEPublicKey publicKey( publicKeyG2 );
         return publicKey.toString();
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );

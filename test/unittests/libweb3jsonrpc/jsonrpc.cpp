@@ -366,7 +366,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         adminSession =
             sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        auto ethFace = new rpc::Eth( std::string( "" ), *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( _config.empty() ? std::string( "" ) : _config, *client, *accountHolder.get() );
         auto skaleFace = _config.empty() ? nullptr : new rpc::Skale( *client );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
