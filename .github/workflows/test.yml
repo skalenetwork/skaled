@@ -310,7 +310,7 @@ jobs:
         run : |
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
-          cd build_BITE/test
+          cd build_bite/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
           export NO_NTP_CHECK=1
