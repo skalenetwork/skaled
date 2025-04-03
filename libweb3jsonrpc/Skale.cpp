@@ -597,6 +597,8 @@ std::string Skale::skale_getCommonPublicKey() {
         return publicKey.toString();
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
     }
 }
 #endif
