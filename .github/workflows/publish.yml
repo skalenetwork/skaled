@@ -43,6 +43,7 @@ jobs:
           echo "::set-output name=version_orig::$VERSION"
           echo "::set-output name=version_historic::$VERSION-historic"
           echo "::set-output name=version_bite::$VERSION-bite"
+          echo "::set-output name=version_bite_historic::$VERSION-bite-historic"
           
       - name: Create GitHub Release
         id: create_release
@@ -90,6 +91,18 @@ jobs:
       release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
+  
+  build-bite-historic:
+    needs: configure
+    uses: ./.github/workflows/setup-build-publish.yml
+    with:
+      branch_name: ${{ github.ref_name }}
+      image_version: ${{ needs.configure.outputs.version_bite_historic }}
+      build_type: "RelWithDebInfo"
+      node_type: bite
+      release_url: ${{ needs.configure.outputs.release_url }}
+      use_plain_version: true
+    secrets: inherit
 
   functional-tests:
     uses: ./.github/workflows/functional-tests.yml
@@ -109,8 +122,16 @@ jobs:
   
   functional-tests-bite:
     uses: ./.github/workflows/functional-tests.yml
-    name: Functional testing for historic build
+    name: Functional testing for bite build
     needs: build-bite
     with:
       version: ${{ needs.build-bite.outputs.version }}
+    secrets: inherit
+  
+  functional-tests-bite-historic:
+    uses: ./.github/workflows/functional-tests.yml
+    name: Functional testing for bite-historic build
+    needs: build-bite-historic
+    with:
+      version: ${{ needs.build-bite-historic.outputs.version }}
     secrets: inherit

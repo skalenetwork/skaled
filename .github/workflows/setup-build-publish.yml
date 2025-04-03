@@ -79,6 +79,15 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           export CMAKE_OPTS="-DBITE=1 ${{ inputs.cmake_options }}"
           echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
+      - name: Prepare workflow variables (BITE-HISTORIC)
+        if: inputs.node_type == 'bite-historic'
+        run: |
+          export VERSION_SUFFIX=$(echo "$BUILD_TYPE" | tr '[:upper:]' '[:lower:]')
+          [[ $PLAIN_VERSION = "true" ]] && export VERSION=${{ inputs.image_version }} || \
+            export VERSION=${{ inputs.image_version }}-$VERSION_SUFFIX
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          export CMAKE_OPTS="-DBITE=1 -DHISTORIC_STATE=1 ${{ inputs.cmake_options }}"
+          echo "CMAKE_OPTS=$CMAKE_OPTS" >> $GITHUB_ENV
       - name: update apt
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test || true 

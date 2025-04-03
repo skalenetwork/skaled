@@ -359,3 +359,31 @@ jobs:
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t BtrfsTestSuite -- --all && touch /tmp/tests/BtrfsTestSuitePassed
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
+
+      - name: Configure all as BITE-historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          mkdir -p build_bite_historic
+          cd build_bite_historic
+          # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DBITE=1 -DHISTORIC_STATE=1 ..
+          cd ..
+      - name: Build all BITE-historic
+        run: |
+          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+          export TARGET=all
+          export CMAKE_BUILD_TYPE=Debug
+          cd build_bite_historic
+          make testeth -j$(nproc)          
+          cd ..
+      - name: Print ccache stats after full historic build
+        run : |
+          ccache --show-stats
+      - name: Testeth historic
+        run : |
+          cd build_bite_historic/test
+          export NO_NTP_CHECK=1
+          export NO_ULIMIT_CHECK=1
+          ./testeth -t JsonRpcSuite -- --express --verbosity 4
