@@ -3951,6 +3951,7 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
 
+#ifdef BITE
 BOOST_AUTO_TEST_CASE( getBITECommonPublicKey ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
 
@@ -3958,6 +3959,7 @@ BOOST_AUTO_TEST_CASE( getBITECommonPublicKey ) {
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );

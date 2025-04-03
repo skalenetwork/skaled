@@ -27,6 +27,11 @@ then
     LATEST_IMAGE_NAME=$LATEST_IMAGE_NAME-historic
 fi
 
+if [[ $VERSION == *"bite" ]]
+then
+    LATEST_IMAGE_NAME=$LATEST_IMAGE_NAME-bite
+fi
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 
