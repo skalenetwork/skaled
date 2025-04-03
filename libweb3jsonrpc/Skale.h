@@ -78,7 +78,7 @@ public:
     std::string oracle_checkResult( std::string& receipt ) override;
 
 #ifdef BITE
-    std::string skale_getBITECommonPublicKey() override;
+    std::string skale_getCommonPublicKey() override;
 #endif
 
     static bool isWeb3ShutdownEnabled();

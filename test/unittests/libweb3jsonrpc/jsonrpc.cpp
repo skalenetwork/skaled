@@ -3952,10 +3952,10 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
 }
 
 #ifdef BITE
-BOOST_AUTO_TEST_CASE( getBITECommonPublicKey ) {
+BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
 
-    auto blsPublicKey = fixture.rpcClient->skale_getBITECommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }

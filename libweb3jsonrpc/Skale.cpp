@@ -584,7 +584,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 }
 
 #ifdef BITE
-std::string Skale::skale_getBITECommonPublicKey() {
+std::string Skale::skale_getCommonPublicKey() {
     try {
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
         libff::alt_bn128_G2 publicKeyG2;
