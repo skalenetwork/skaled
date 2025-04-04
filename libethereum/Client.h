@@ -318,7 +318,7 @@ public:
         return m_snapshotAgent->getSnapshotHashCalculationTime();
     }
 
-    std::array< std::string, 4 > getIMABLSPublicKey() const {
+    std::array< std::string, 4 > getCurrentBLSPublicKey() const {
         return chainParams().sChain.nodeGroups.at( historicGroupIndex ).blsPublicKey;
     }
 

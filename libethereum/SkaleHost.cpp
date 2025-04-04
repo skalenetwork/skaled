@@ -856,8 +856,8 @@ std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
 }
 
-std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
-    return m_client.getIMABLSPublicKey();
+std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
+    return m_client.getCurrentBLSPublicKey();
 }
 
 std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {

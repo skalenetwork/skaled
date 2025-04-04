@@ -46,6 +46,9 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
 #include <libconsensus/exceptions/InvalidStateException.h>
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
+#endif
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
@@ -579,6 +582,26 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
+
+#ifdef BITE
+std::string Skale::skale_getCommonPublicKey() {
+    try {
+        auto publicKeyArray = m_client.getCurrentBLSPublicKey();
+        libff::alt_bn128_G2 publicKeyG2;
+        publicKeyG2.Z = libff::alt_bn128_Fq2::one();
+        publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
+        publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
+        publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
+        publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+        libBLS::TEPublicKey publicKey( publicKeyG2 );
+        return publicKey.toString();
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    }
+}
+#endif
 
 namespace snapshot {
 

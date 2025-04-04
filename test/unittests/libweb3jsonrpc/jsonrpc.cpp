@@ -46,6 +46,7 @@
 #include <libweb3jsonrpc/Eth.h>
 #include <libweb3jsonrpc/ModularServer.h>
 #include <libweb3jsonrpc/Net.h>
+#include <libweb3jsonrpc/Skale.h>
 #include <libweb3jsonrpc/Test.h>
 #include <libweb3jsonrpc/Web3.h>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
@@ -355,7 +356,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         if ( !_isSyncNode )
             blockPromise.get_future().wait();
 
-        using FullServer = ModularServer< rpc::EthFace, rpc::NetFace, rpc::Web3Face,
+        using FullServer = ModularServer< rpc::EthFace, rpc::SkaleFace, rpc::NetFace, rpc::Web3Face,
             rpc::AdminEthFace /*, rpc::AdminNetFace*/, rpc::DebugFace, rpc::TestFace >;
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return client.get(); }, {} ) );
@@ -365,11 +366,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         adminSession =
             sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        auto ethFace = new rpc::Eth( std::string( "" ), *client, *accountHolder.get() );
+        auto ethFace = new rpc::Eth( _config.empty() ? std::string( "" ) : _config, *client, *accountHolder.get() );
+        auto skaleFace = _config.empty() ? nullptr : new rpc::Skale( *client );
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
-        rpcServer.reset( new FullServer( ethFace, new rpc::Net( chainParams ),
+        rpcServer.reset( new FullServer( ethFace, skaleFace, new rpc::Net( chainParams ),
             new rpc::Web3(),  // TODO Add version parameter here?
             new rpc::AdminEth( *client, *gasPricer, keyManager, *sessionManager ),
             new rpc::Debug( *client, nullptr, "" ), new rpc::Test( *client ) ) );
@@ -3948,6 +3950,16 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     BOOST_REQUIRE( joAnswer.count( "jsonrpc" ) > 0 );
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
+
+#ifdef BITE
+BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
+    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
+
+    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+
+    BOOST_REQUIRE( blsPublicKey.size() == 256 );
+}
+#endif
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
