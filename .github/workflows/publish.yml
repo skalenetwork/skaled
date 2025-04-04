@@ -101,7 +101,7 @@ jobs:
       branch_name: ${{ github.ref_name }}
       image_version: ${{ needs.configure.outputs.version_bite_historic }}
       build_type: "RelWithDebInfo"
-      node_type: bite
+      node_type: bite-historic
       release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
