@@ -169,8 +169,17 @@ if( TESTS )
 endif()
 
 if (HISTORIC_STATE)
-add_definitions(-DHISTORIC_STATE=1)
+    add_definitions(-DHISTORIC_STATE=1)
 endif (HISTORIC_STATE)
+
+if (BITE)
+    add_definitions(-DBITE=1)
+endif()
+
+if (PL)
+    add_definitions(-DBITE=1)
+    add_definitions(-DPL=1)
+endif()
 
 add_subdirectory( evmc )
 

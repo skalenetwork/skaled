@@ -166,8 +166,12 @@ std::string WebThreeStubClient::skale_stats() {
     return result.toStyledString();
 }
 
-
-
+std::string WebThreeStubClient::skale_getCommonPublicKey() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result = this->CallMethod( "skale_getCommonPublicKey", p );
+    return result.asString();
+}
 
 std::string WebThreeStubClient::eth_protocolVersion() {
     Json::Value p;
