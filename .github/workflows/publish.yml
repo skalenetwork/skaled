@@ -18,6 +18,8 @@ jobs:
     outputs:
       version_orig: ${{ steps.set-version.outputs.version_orig }}
       version_historic: ${{ steps.set-version.outputs.version_historic }}
+      version_bite: ${{ steps.set-version.outputs.version_bite }}
+      version_bite_historic: ${{ steps.set-version.outputs.version_bite_historic }}
       release_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
