@@ -26,6 +26,8 @@ Modifications Copyright (C) 2024 SKALE Labs
 #include <test/tools/libtesteth/TestHelper.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
+#include <curl/curl.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -45,11 +47,17 @@ enum class TransactionWait { WAIT_FOR_COMPLETION, DONT_WAIT_FOR_COMPLETION };
 
 enum class TransferType { NATIVE, ERC20 };
 
+enum class CallType {
+    TRANSACTION_COUNT, BALANCE, BLOCK_BY_NUMBER, BLOCK_NUMBER, CHAIN_ID, NET_VERSION, GAS_PRICE,
+    HASH_RATE, MINING, SYNCING, WEB3_CLIENT_VERSION
+};
+
 class SkaledAccount {
     Secret key;
     u256 currentTransactionCountOnChain = 0;
     std::optional< u256 > lastSentNonce = std::nullopt;
     std::optional< string > lastSentTxHash = std::nullopt;
+    string addressAsString;
 
     mutable std::shared_mutex mutex;
 
@@ -59,15 +67,14 @@ class SkaledAccount {
     friend std::shared_ptr< SkaledAccount > std::make_shared< SkaledAccount >();
 
 public:
-
-    void setLastTxHash(const string& _hash) {
+    void setLastTxHash( const string& _hash ) {
         std::unique_lock< std::shared_mutex > lock( mutex );
         this->lastSentTxHash = _hash;
     }
 
     string getLastTxHash() {
         std::shared_lock< std::shared_mutex > lock( mutex );
-        CHECK(lastSentTxHash)
+        CHECK( lastSentTxHash )
         return lastSentTxHash.value();
     }
 
@@ -94,7 +101,9 @@ public:
     }
 
 
-    string getAddressAsString() const { return "0x" + KeyPair( key ).address().hex(); }
+    string getAddressAsString() const {
+        return addressAsString;
+    }
 
 
     const Secret& getKey() const;
@@ -113,12 +122,9 @@ public:
     }
 
 
-
-
-
     // will return the next nonce that can be used for a transaction
     // if it is a batch, then _batchSize transactions will be sent
-    u256 computeNonceForNextTransactionOrBatch(uint64_t _batchSize) {
+    u256 computeNonceForNextTransactionOrBatch( uint64_t _batchSize ) {
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
@@ -135,11 +141,9 @@ public:
     }
 
 
-    u256 computeNonceForNextTx() {
-        return computeNonceForNextTransactionOrBatch( 1 );
-    }
+    u256 computeNonceForNextTx() { return computeNonceForNextTransactionOrBatch( 1 ); }
 
-    void notifyLastTransactionOrBatchCompleted(uint64_t _batchSize) {
+    void notifyLastTransactionOrBatchCompleted( uint64_t _batchSize ) {
         std::unique_lock< std::shared_mutex > lock( mutex );
 
 
@@ -147,9 +151,9 @@ public:
             throw std::runtime_error( "No pending transaction for this account" );
         }
 
-        CHECK( lastSentNonce == currentTransactionCountOnChain + _batchSize - 1);
+        CHECK( lastSentNonce == currentTransactionCountOnChain + _batchSize - 1 );
 
-        currentTransactionCountOnChain+= _batchSize;
+        currentTransactionCountOnChain += _batchSize;
 
         lastSentNonce = std::nullopt;
     }
@@ -193,6 +197,25 @@ public:
     void doRequestResponseAndCheckForError( std::string jsonPayload, Json::Value& response );
 
 
+
+    string eth_getLatestBlock();
+
+    string eth_blockNumber();
+
+    string eth_chainId();
+
+    string net_version();
+
+    string eth_gasPrice();
+
+    string eth_hashrate();
+
+    string eth_mining();
+
+    string eth_syncing();
+
+    string web3_clientVersion();
+
     u256 eth_getBalance( const std::string& _addressString );
 
     u256 eth_getTransactionCount( const std::string& _addressString );
@@ -214,18 +237,22 @@ public:
     void setupFirstKey();
 
     void deployERC20();
-    string checkReceiptStatusAndGetGasUsed( string _hash);
+    string checkReceiptStatusAndGetGasUsed( string _hash );
 
-    void mintERC20(std::shared_ptr< SkaledAccount >  _minter,
-        const string& _address, u256 _amount, u256 _gasPrice, TransactionWait _wait);
+    void mintERC20( std::shared_ptr< SkaledAccount > _minter, const string& _address, u256 _amount,
+        u256 _gasPrice, TransactionWait _wait );
 
     void setupTwoToTheNKeys( uint64_t _n );
 
     void doOneTinyTransfersIteration( TransferType _transferType );
 
+    void doOneReadCallIteration( CallType _transferType,  string _callName );
+
     void mintAllKeysWithERC20();
 
     void sendTinyTransfersForAllAccounts( uint64_t _iterations, TransferType _transferType );
+
+    void sendCallsForAllAccounts( uint64_t _iterations, CallType _callType, string _callName );
 
     void readInsecurePrivateKeyFromHardhatConfig();
 
@@ -245,34 +272,39 @@ public:
 
     u256 getBalance( const SkaledAccount& _account ) const;
 
-    string getTxPayload( Transaction& _transaction);
+    string getTxPayload( Transaction& _transaction );
 
     void sendSingleTransferOrBatch( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-        const string& _to, const u256& _gasPrice,  uint64_t _batchSize,
-        TransferType _transferType, TransactionWait _wait);
+        const string& _to, const u256& _gasPrice, uint64_t _batchSize, TransferType _transferType,
+        TransactionWait _wait );
 
     void sendSingleTransfer( u256 _amount, std::shared_ptr< SkaledAccount > _from,
-    const string& _to, const u256& _gasPrice,  TransferType _transferType, TransactionWait _wait) {
+        const string& _to, const u256& _gasPrice, TransferType _transferType,
+        TransactionWait _wait ) {
         sendSingleTransferOrBatch( _amount, _from, _to, _gasPrice, 1, _transferType, _wait );
     }
 
     string sendSingleDeployOrSolidityCall( u256 _amount, std::shared_ptr< SkaledAccount > _from,
         std::optional< string > _to, const string& _data, const u256& _gasPrice,
-        TransactionWait _wait);
+        TransactionWait _wait );
 
 
     void splitAccountInHalves( std::shared_ptr< SkaledAccount > _from,
-        std::shared_ptr< SkaledAccount > _to, u256& _gasPrice, TransactionWait _wait);
+        std::shared_ptr< SkaledAccount > _to, u256& _gasPrice, TransactionWait _wait );
 
 
     void sendTinyTransfer( std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice,
-        TransferType _transferType, TransactionWait _wait);
+        TransferType _transferType, TransactionWait _wait );
+
+
+    void doCall(
+        std::shared_ptr< SkaledAccount > _from, const u256& _gasPrice, CallType _callType );
 
 
     unique_ptr< WebThreeStubClient > rpcClient() const;
 
 
-    void calculateAndSetPowGas(Transaction& _t) const;
+    void calculateAndSetPowGas( Transaction& _t ) const;
 
     string skaledEndpoint;
     string ownerAddressStr;
@@ -298,13 +330,12 @@ public:
     TransactionType transactionType = TransactionType::Legacy;
 
 
-    void waitForTransactionOrBatch( std::shared_ptr< SkaledAccount > _account,
-        uint64_t _batchSize);
+    void waitForTransactionOrBatch(
+        std::shared_ptr< SkaledAccount > _account, uint64_t _batchSize );
 
     void waitForTransaction( std::shared_ptr< SkaledAccount > _account ) {
         waitForTransactionOrBatch( _account, 1 );
     }
-
 
 
     int timeBetweenTransactionCompletionChecksMs = 1000;

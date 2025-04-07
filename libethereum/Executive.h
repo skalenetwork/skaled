@@ -38,7 +38,6 @@ class State;
 }
 
 namespace dev {
-class OverlayDB;
 
 namespace eth {
 class Block;

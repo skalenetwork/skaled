@@ -63,12 +63,7 @@ sudo apt install make build-essential cmake pkg-config libgnutls28-dev libssl-de
 sudo apt install nettle-dev libhiredis-dev redis-server google-perftools libgoogle-perftools-dev lcov sudo apt-get install libv8-dev
 ```
 
-
-
-
-NB cmake needs to be of version >=3.21, git of version >=2.18
-
-###  Set  gcc-11 as default compiler
+###  Set  gcc-11 as default compiler if you don (Ubuntu 22.04 has already has it as default)
 ```
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
@@ -78,7 +73,7 @@ sudo update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-to
 gcc --version
 ```
 
-# Install latest cmake 
+# Install latest cmake
 
 ```
 sudo apt-get purge cmake
@@ -91,15 +86,6 @@ sudo snap install cmake --classic
 ```
 cd deps
 ./build.sh DEBUG=1
-```
-
-
-## Hunter fix
-
-```
-mkdir -p ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
-cd ~/.hunter/_Base/Download/crc32c/1.0.5/dc7fa8c/
-wget https://github.com/hunter-packages/crc32c/archive/refs/tags/hunter-1.0.5.tar.gz
 ```
 
 ### Configure and build skaled

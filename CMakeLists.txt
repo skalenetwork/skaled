@@ -4,6 +4,9 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+# Make sure we explicitely allow spaces in test names, so cmake does not issue warning
+cmake_policy(SET CMP0110 NEW)
+
 option( SKALE_SKIP_INSTALLING_DIRECTIVES "Do not use CMAKE install() directives " ON )
 
 ############################################################################################################
@@ -18,12 +21,6 @@ list( APPEND CMAKE_MODULE_PATH ${DEPS_INSTALL_ROOT}/lib/cmake )
 
 link_directories( ${CMAKE_BINARY_DIR}/deps/lib )          # HACK for not-found -lff in testeth
 
-if( NOT CMAKE_BUILD_TYPE MATCHES "Debug" )
-    set( CMAKE_CXX_FLAGS           "${CMAKE_CXX_FLAGS}           -rdynamic" )
-    set( CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS}    -rdynamic" )
-    set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic" )
-endif()
-
 option( SKALED_PROFILING "Build for profiling" OFF )
 if( SKALED_PROFILING )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -pg" )
@@ -31,6 +28,8 @@ if( SKALED_PROFILING )
     set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg" )
     set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg" )
 endif()
+
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -s")
 
 if( CMAKE_BUILD_TYPE STREQUAL "Release" )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O3" )
@@ -194,9 +193,11 @@ add_subdirectory( libdevcore )
 add_subdirectory( libdevcrypto )
 add_subdirectory( libp2p )
 
-add_subdirectory( libhistoric )
-add_subdirectory( libskale )
+if ( HISTORIC_STATE )
+    add_subdirectory( libhistoric )
+endif()
 
+add_subdirectory( libskale )
 
 add_subdirectory( libethcore )
 add_subdirectory( libevm )

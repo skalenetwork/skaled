@@ -30,6 +30,7 @@
 #include <string>
 
 namespace dev {
+
 namespace db {
 // WriteBatchFace implements database write batch for a specific concrete
 // database implementation.
@@ -53,7 +54,16 @@ protected:
 class DatabaseFace {
 public:
     virtual ~DatabaseFace() = default;
+#ifdef HISTORIC_STATE
+    virtual std::string lookup( Slice _key ) const { return lookup( _key, UINT64_MAX ); }
+    virtual std::string lookup( Slice _key, uint64_t _rootBlockNumber ) const {
+        assert( _rootBlockNumber == UINT64_MAX );
+        ( void ) _rootBlockNumber;
+        return lookup( _key );
+    }
+#else
     virtual std::string lookup( Slice _key ) const = 0;
+#endif
     virtual bool exists( Slice _key ) const = 0;
     virtual void insert( Slice _key, Slice _value ) = 0;
     virtual void kill( Slice _key ) = 0;

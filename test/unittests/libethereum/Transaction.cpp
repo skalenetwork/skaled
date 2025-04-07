@@ -294,6 +294,22 @@ BOOST_AUTO_TEST_CASE( accessList ) {
     BOOST_REQUIRE_THROW( Transaction( txRlp, CheckTransaction::None, false, true ), InvalidTransactionFormat );
 }
 
+BOOST_AUTO_TEST_CASE( InvaidTransaction ) {
+    // transaction has maxFeePerGas < maxPriorityFeePerGas, that is the transaction is invalid
+    auto txRlp = fromHex(
+        "0x02f90114846cc6deeb8261ea830493e0830186a083017f0a949040ab668c69f1e95223762c05d277526fcb86"
+        "2c80b8a456b8c72400000000000000000000000071cbe3fede33905d4d1bf2bd51f9d4a62375e6590000000000"
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000"
+        "033078300000000000000000000000000000000000000000000000000000000000c001a01becb115f963be32bd"
+        "b8194823894ced1931be08eaddee6ce34a6cc2b40e0829a0447aa23d66fe44875b58994b4fe2aa14d40b1e9ecf"
+        "dfb58a31a49aa79f9de479"); // create invalid transaction
+    Transaction tx( txRlp, CheckTransaction::Everything, true, true, true ); // enable all patches
+    dev::h256 hash;
+    // invalid transactions dont have signature
+    BOOST_REQUIRE_NO_THROW( hash = tx.sha3() );
+}
+
 BOOST_AUTO_TEST_CASE( ExecutionResultOutput, 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::stringstream buffer;

@@ -119,21 +119,33 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     return options;
 }
 
-LevelDB::LevelDB( boost::filesystem::path const& _path, leveldb::ReadOptions _readOptions,
-    leveldb::WriteOptions _writeOptions, leveldb::Options _dbOptions, int64_t _reopenPeriodMs )
+LevelDB::LevelDBOptions LevelDB::defaultLevelDBOptions() {
+    LevelDBOptions options;
+    return options;
+}
+LevelDB::WrapperOptions LevelDB::defaultWrapperOptions() {
+    WrapperOptions options;
+    return options;
+}
+
+LevelDB::LevelDB( boost::filesystem::path const& _path, LevelDBOptions _levelDBOptions,
+    WrapperOptions _wrapperOptions )
     : m_db( nullptr ),
-      m_readOptions( std::move( _readOptions ) ),
-      m_writeOptions( std::move( _writeOptions ) ),
-      m_options( std::move( _dbOptions ) ),
+      m_readOptions( std::move( _levelDBOptions.readOptions ) ),
+      m_writeOptions( std::move( _levelDBOptions.writeOptions ) ),
+      m_options( std::move( _levelDBOptions.dbOptions ) ),
       m_path( _path ),
-      m_reopenPeriodMs( _reopenPeriodMs ) {
-    openDBInstanceUnsafe();
+      m_reopenPeriodMs( _wrapperOptions.reopenPeriodMs ) {
+    openDBInstanceUnsafe( _wrapperOptions.enableLogger );
 }
 
 // this does not hold any locks so it needs to be called
 // either from a constructor or from a function that holds a lock on m_db
-void LevelDB::openDBInstanceUnsafe() {
-    cnote << "Time to (re)open LevelDB at " + m_path.string();
+void LevelDB::openDBInstanceUnsafe( bool _enableLogger ) {
+    if ( _enableLogger ) {
+        cnote << "Time to (re)open LevelDB at " + m_path.string();
+    }
+
     auto startTimeMs = getCurrentTimeMs();
     auto db = static_cast< leveldb::DB* >( nullptr );
     auto const status = leveldb::DB::Open( m_options, m_path.string(), &db );
@@ -146,7 +158,11 @@ void LevelDB::openDBInstanceUnsafe() {
     m_db.reset( db );
     m_lastDBOpenTimeMs = getCurrentTimeMs();
     m_dbReopenId++;
-    cnote << "LEVELDB_OPENED:TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+
+    if ( _enableLogger ) {
+        cnote << "LEVELDB_OPENED:" << m_path.string()
+              << ":TIME_MS:" << m_lastDBOpenTimeMs - startTimeMs;
+    }
 }
 uint64_t LevelDB::getCurrentTimeMs() {
     auto currentTime = std::chrono::system_clock::now().time_since_epoch();
@@ -154,6 +170,7 @@ uint64_t LevelDB::getCurrentTimeMs() {
 }
 
 LevelDB::~LevelDB() {
+    m_snapManager.closeAllOpenSnaps( m_db, m_dbReopenId );
     if ( m_db )
         m_db.reset();
     if ( m_options.filter_policy )

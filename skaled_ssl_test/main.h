@@ -109,7 +109,7 @@ public:
         skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) override;
 
     std::string desc( bool isColored = true ) const {
-        return getShortPeerDescription( isColored, false, false );
+        return getShortPeerDescription( isColored, false);
     }
     helper_server_ws_base& get_helper_server();
     const helper_server_ws_base& get_helper_server() const {

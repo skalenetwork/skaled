@@ -76,7 +76,11 @@
 #include <libweb3jsonrpc/SkalePerformanceTracker.h>
 #include <libweb3jsonrpc/SkaleStats.h>
 #include <libweb3jsonrpc/Test.h>
+#ifdef HISTORIC_STATE
 #include <libweb3jsonrpc/Tracing.h>
+#else
+#include <libweb3jsonrpc/TracingFace.h>
+#endif
 #include <libweb3jsonrpc/Web3.h>
 #include <libweb3jsonrpc/rapidjson_handlers.h>
 
@@ -1104,8 +1108,6 @@ int main( int argc, char** argv ) try {
         }
     }
 
-    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
-        boost::filesystem::path( configPath ).remove_filename() );
     // for now, leave previous values in file (for case of crash)
 
     if ( vm.count( "main-net-url" ) ) {
@@ -1544,6 +1546,14 @@ int main( int argc, char** argv ) try {
         chainParams.nodeInfo.sgxServerUrl = strURL;
     }
 
+    std::shared_ptr< StatusAndControl > statusAndControl = std::make_shared< StatusAndControlFile >(
+        boost::filesystem::path( configPath ).remove_filename() );
+
+    // Reset subsystem running status before initialization procedure started
+    statusAndControl->setSubsystemRunning( StatusAndControl::SnapshotDownloader, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, false );
+    statusAndControl->setSubsystemRunning( StatusAndControl::Rpc, false );
+
     std::shared_ptr< SharedSpace > sharedSpace;
     if ( vm.count( "shared-space-path" ) ) {
         try {
@@ -1779,6 +1789,7 @@ int main( int argc, char** argv ) try {
 
         // this must be last! (or client will be mining blocks before this!)
         g_client->startWorking();
+
         statusAndControl->setSubsystemRunning( StatusAndControl::Blockchain, true );
     }
 
@@ -1948,9 +1959,11 @@ int main( int argc, char** argv ) try {
         auto pAdminEthFace = bEnabledAPIs_admin ? new rpc::AdminEth( *g_client, *gasPricer.get(),
                                                       keyManager, *sessionManager.get() ) :
                                                   nullptr;
+
         auto pDebugFace = bEnabledAPIs_debug ?
                               new rpc::Debug( *g_client, &debugInterface, argv_string ) :
                               nullptr;
+        SkaleDebugInterface::g_isEnabled = bEnabledAPIs_debug;
 
 #ifdef HISTORIC_STATE
         // tracing interface is always enabled for the historic state nodes
@@ -2382,16 +2395,28 @@ int main( int argc, char** argv ) try {
             if ( joConfig.count( "unddos" ) > 0 ) {
                 nlohmann::json joUnDdosSettings = joConfig["unddos"];
                 skale_server_connector->unddos_.load_settings_from_json( joUnDdosSettings );
-            } else
-                skale_server_connector->unddos_.get_settings();  // auto-init
-            //
-            LOG( loggerDebug ) << "UN-DDOS is using configuration"
-                               << cc::j( skale_server_connector->unddos_.get_settings_json() );
+            } else {
+                LOG( m_loggerWarning ) << "No DDOS config found. DDOS Disabled";
+                skale_server_connector->unddos_.disable_ddos();  // auto-init
+            }
+
             skale_server_connector->max_http_handler_queues_ = max_http_handler_queues;
             skale_server_connector->is_async_http_transfer_mode_ = is_async_http_transfer_mode;
             skale_server_connector->maxCountInBatchJsonRpcRequest_ = cntInBatch;
             skale_server_connector->pg_threads_ = pg_threads;
             skale_server_connector->pg_threads_limit_ = pg_threads_limit;
+
+            if ( pg_threads > 0 ) {
+                clog( VerbosityInfo, "main" )
+                    << "Count of threads in proxygen server: " << pg_threads;
+            } else {
+                clog( VerbosityWarning, "main" )
+                    << "Count of threads in proxygen server is not defined in config. "
+                       "Using default value of 10 from the mainnet";
+                pg_threads = 10;
+                pg_threads_limit = 10;
+            }
+
             //
             pSkaleStatsFace->setProvider( skale_server_connector );
             skale_server_connector->setConsumer( pSkaleStatsFace );
@@ -2669,7 +2694,6 @@ int main( int argc, char** argv ) try {
             sessionManager->addSession(
                 strJsonAdminSessionKey, rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
-        LOG( loggerInfo ) << "JSONRPC Admin Session Key: " << strJsonAdminSessionKey;
     }  // if ( is_ipc || nExplicitPort...
 
     if ( bEnabledShutdownViaWeb3 ) {

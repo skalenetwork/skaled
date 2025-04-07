@@ -479,6 +479,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     TransactionReceipts receipts = m_receipts;
 
+    TransactionReceipts receiptsOfCommitted;
+
     unsigned countBad = 0;
 
     if ( m_receipts.size() > 0 ) {
@@ -545,6 +547,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ExecutionResult res =
                 execute( _bc.lastBlockHashes(), tr, Permanence::Committed, OnOpFunc(), i );
 
+            if ( !m_receipts.empty() &&
+                 !ClearPartialReceiptsPatch::isEnabledWhen( m_previousBlock.timestamp() ) ) {
+                receiptsOfCommitted.push_back( m_receipts.back() );
+            }
+
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
@@ -553,7 +560,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++countBad;
             }
-
 
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -564,12 +570,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
 #ifdef HISTORIC_STATE
-    m_state.mutableHistoricState().saveRootForBlock( m_currentBlock.number() );
+    m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
 #endif
 
     // we got to the end of the block so we do not need partial transaction receipts anymore
     m_state.safeRemoveAllPartialTransactionReceipts();
-
 
     // since we committed changes corresponding to a particular block
     // we need to create a new readonly snap
@@ -583,6 +588,32 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 
     LDB_CHECK( receipts.size() >= countBad );
+
+    bool weAreAtTheTimeStampBoundary = false;
+    auto latestCommittedBlockTimeStamp = m_previousBlock.timestamp();
+
+    if ( m_previousBlock.number() > 0 ) {
+        auto beforeLatestCommittedBlockTimeStamp =
+            _bc.info( m_previousBlock.parentHash() ).timestamp();
+        weAreAtTheTimeStampBoundary =
+            ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) &&
+            !ClearPartialReceiptsPatch::isEnabledWhen( beforeLatestCommittedBlockTimeStamp );
+    }
+
+    // we need to specially handle the boundary case
+    if ( weAreAtTheTimeStampBoundary ) {
+        LOG( m_logger ) << "Removing legacy partial receipts";
+        m_state.safeRemoveLegacyPartialTransactionReceipts();
+    }
+
+    if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
+        // Saving partial receipts old way to be compatible with < 4.0 version
+        if ( !receiptsOfCommitted.empty() ) {
+            LOG( m_loggerDetailed )
+                << "Saving partial transaction receipts. Size: " << receiptsOfCommitted.size();
+            m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
+        }
+    }
 
     return make_tuple( receipts, receipts.size() - countBad );
 }
@@ -922,14 +953,14 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         LOG( m_loggerError ) << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
-        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
-        LOG( m_loggerDebug ) << "Transaction " << sha << " WouldNotBeInBlock: " << ex.what();
+        LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
+                        << " WouldNotBeInBlock: " << ex.what();
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        h256 sha = _t.hasSignature() ? _t.sha3() : _t.sha3( WithoutSignature );
-        LOG( m_loggerDebug ) << "Transaction " << sha << " WouldNotBeInBlock: ...";
+        LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
+                        << " WouldNotBeInBlock: ...";
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;

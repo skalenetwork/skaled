@@ -346,7 +346,8 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     }
 
     Transaction transaction( jsToBytes( _rlp, OnFailed::Throw ), CheckTransaction::None, false,
-        EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+        EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+        InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
     h256 sha = transaction.sha3();
 
     //
@@ -443,6 +444,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
             return true;
         } );
 
+    // now we need to delete old transactions from the queue
+    m_tq.dropMany( to_delete );
+
     if ( counter++ == 0 )
         m_pending_createMutex.lock();
 
@@ -497,8 +501,6 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     } catch ( ... ) {
         LOG( m_loggerError ) << "BAD exception in pendingTransactions!";
     }
-
-    logState();
 
     m_debugTracer.tracepoint( "send_to_consensus" );
 
@@ -569,9 +571,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             h256 sha = sha3( data );
             LOG( m_loggerTrace ) << "Arrived txn: " << sha;
 
-
             Transaction t( data, CheckTransaction::Everything, true,
-                EIP1559TransactionsPatch::isEnabledInWorkingBlock() );
+                EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -607,34 +609,34 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     if ( n_succeeded != out_txns.size() )
         penalizePeer();
 
-    boost::chrono::high_resolution_clock::time_point skaledTimeFinish =
-        boost::chrono::high_resolution_clock::now();
+
+    auto skaledTimeFinish = boost::chrono::high_resolution_clock::now();
+
+
+    auto swt = boost::chrono::duration_cast< boost::chrono::milliseconds >(
+        skaledTimeFinish - skaledTimeStart )
+                   .count();
+
+
     if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
-        LOG( m_loggerInfo ) << "SWT:"
-                            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                   skaledTimeFinish - skaledTimeStart )
-                                   .count()
-                            << ':' << "BFT:"
+        LOG( m_loggerInfo ) << "SWT:" << swt << ':' << "BFT:"
                             << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                                    skaledTimeFinish - latestBlockTime )
-                                   .count();
+                                   .count()
+                            << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+                            << ":FTQ:" << m_tq.status().futureBytes
+                            << ":TQSIZE:CTQ:" << m_tq.status().current
+                            << ":FTQ:" << m_tq.status().future;
     } else {
-        LOG( m_loggerInfo ) << "SWT:"
-                            << boost::chrono::duration_cast< boost::chrono::milliseconds >(
-                                   skaledTimeFinish - skaledTimeStart )
-                                   .count();
+        LOG( m_loggerInfo ) << "SWT:" << swt << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+                            << ":FTQ:" << m_tq.status().futureBytes
+                            << ":TQSIZE:CTQ:" << m_tq.status().current
+                            << ":FTQ:" << m_tq.status().future;
     }
 
     latestBlockTime = skaledTimeFinish;
     LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
-
-    logState();
-
-    LOG( m_loggerInfo ) << "TQBYTES:CTQ:" << m_tq.status().currentBytes
-                        << ":FTQ:" << m_tq.status().futureBytes
-                        << ":TQSIZE:CTQ:" << m_tq.status().current
-                        << ":FTQ:" << m_tq.status().future;
 
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
@@ -722,8 +724,6 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-    LOG( m_loggerInfo ) << "1 before exitGracefully()";
-
     if ( ExitHandler::shouldExit() ) {
         // requested exit
         int signal = ExitHandler::getSignal();
@@ -737,16 +737,20 @@ void SkaleHost::stopWorking() {
         LOG( m_loggerInfo ) << "Exiting without request";
     }
 
+
+    cnote << "Skaled initiating consensus graceful exit";
+
     m_consensus->exitGracefully();
 
-    LOG( m_loggerInfo ) << "2 after exitGracefully()";
+    LOG( m_loggerInfo ) << "Exit initiated. Skaled waiting for consensus exit.";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    LOG( m_loggerInfo ) << "3 after wait loop";
+
+    LOG( m_loggerInfo ) << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -756,7 +760,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    LOG( m_loggerInfo ) << "4 before dtor";
+    LOG( m_loggerInfo ) << "Consensus and broadcat threads finished.";
 }
 
 void SkaleHost::broadcastFunc() {
@@ -765,10 +769,7 @@ void SkaleHost::broadcastFunc() {
         try {
             m_broadcaster->initSocket();
 
-            this->logState();
-
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
-
 
             // Wait for the queue to have transactions
 
@@ -781,8 +782,7 @@ void SkaleHost::broadcastFunc() {
 
                 m_broadcastQueueCondition.wait_for( lock, MAX_WAIT_TIME );
 
-
-                if ( m_broadcastPauseFlag ) {
+                if ( m_broadcastPauseFlag || m_broadcastQueue.empty() ) {
                     continue;
                 }
 
@@ -790,21 +790,18 @@ void SkaleHost::broadcastFunc() {
                 m_broadcastQueue = std::list< Transaction >();
             }
 
-
             for ( auto&& txn : queueCopy ) {
                 try {
                     MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
                     std::string rlp = toJS( txn.toBytes() );
-                    std::string h = toJS( txn.sha3() );
                     m_debugTracer.tracepoint( "broadcast" );
                     m_broadcaster->broadcast( rlp );
+                    ++m_bcast_counter;
                 } catch ( const std::exception& ex ) {
                     LOG( m_loggerWarning ) << "BROADCAST EXCEPTION CAUGHT";
                     LOG( m_loggerWarning ) << ex.what();
                 }  // catch
             }
-
-            ++m_bcast_counter;
 
             logState();
         } catch ( const std::exception& ex ) {

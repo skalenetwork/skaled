@@ -23,7 +23,6 @@
  */
 
 #include "OverlayDB.h"
-#include "libhistoric/HistoricState.h"
 #include <libethereum/SchainPatch.h>
 
 #include <boost/range/adaptor/map.hpp>
@@ -37,6 +36,8 @@ using std::vector;
 #include <libdevcore/Common.h>
 #include <libdevcore/db.h>
 #include <libethereum/BlockDetails.h>
+
+#include <libethereum/Account.h>
 
 using dev::bytes;
 using dev::bytesConstRef;
@@ -74,6 +75,14 @@ dev::db::Slice toSlice( std::string const& _s ) {
 OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
     : m_db_face( _db_face.release(), []( batched_io::db_face* db ) { delete db; } ) {}
 
+// ClassicOverlayDB::ClassicOverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
+//    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
+//          // clog(dev::VerbosityDebug, "overlaydb") << "Closing state DB";
+//          //        std::cerr << "!!! Closing state DB !!!" << std::endl;
+//          //        std::cerr.flush();
+//          delete db;
+//      } ) {}
+
 dev::h256 OverlayDB::getLastExecutedTransactionHash() const {
     if ( lastExecutedTransactionHash.has_value() )
         return lastExecutedTransactionHash.value();
@@ -110,6 +119,38 @@ std::vector< dev::bytes > OverlayDB::getPartialTransactionReceipts(
     return partialTransactionReceipts;
 }
 
+void OverlayDB::setLegacyPartialTransactionReceipts( const dev::bytes& _rawReceipt ) {
+    if ( m_db_face ) {
+        string legacyKey( "safeLastTransactionReceipts" );
+        m_db_face->insert( legacyKey, skale::slicing::toSlice( _rawReceipt ) );
+        m_db_face->commit( "Set legacy receipts" );
+    }
+}
+
+dev::bytes OverlayDB::getLegacyPartialTransactionReceipts() const {
+    dev::bytes legacyPartialTransactionReceipts;
+
+    string legacyKey( "safeLastTransactionReceipts" );
+
+    if ( m_db_face ) {
+        const std::string lookupResult = m_db_face->lookup( skale::slicing::toSlice( legacyKey ) );
+        if ( !lookupResult.empty() ) {
+            legacyPartialTransactionReceipts.insert(
+                legacyPartialTransactionReceipts.end(), lookupResult.begin(), lookupResult.end() );
+        }
+    }
+    return legacyPartialTransactionReceipts;
+}
+
+void OverlayDB::cleanupLegacyTransactionReceipts() {
+    string legacyKey( "safeLastTransactionReceipts" );
+    if ( m_db_face ) {
+        if ( m_db_face->exists( legacyKey ) ) {
+            m_db_face->kill( legacyKey );
+            m_db_face->commit( "Cleanup legacy receipts" );
+        }
+    }
+}
 
 void OverlayDB::removeAllPartialTransactionReceipts() {
     // first we get all keys
@@ -131,7 +172,6 @@ void OverlayDB::removeAllPartialTransactionReceipts() {
 
     m_db_face->commit( "Clean partial keys" );
 }
-
 
 void OverlayDB::setLastExecutedTransactionHash( const dev::h256& _newHash ) {
     this->lastExecutedTransactionHash = _newHash;
@@ -195,34 +235,32 @@ void OverlayDB::commit() {
 #if DEV_GUARDED_DB
             DEV_READ_GUARDED( x_this )
 #endif
-            {
-                for ( auto const& addressValuePair : m_cache ) {
-                    h160 const& address = addressValuePair.first;
-                    bytes const& value = addressValuePair.second;
-                    m_db_face->insert(
-                        skale::slicing::toSlice( address ), skale::slicing::toSlice( value ) );
-                }
-                for ( auto const& addressSpacePair : m_auxiliaryCache ) {
-                    h160 const& address = addressSpacePair.first;
-                    unordered_map< _byte_, bytes > const& spaces = addressSpacePair.second;
-                    for ( auto const& spaceValuePair : spaces ) {
-                        _byte_ space = spaceValuePair.first;
-                        bytes const& value = spaceValuePair.second;
-
-                        m_db_face->insert(
-                            skale::slicing::toSlice( getAuxiliaryKey( address, space ) ),
-                            skale::slicing::toSlice( value ) );
-                    }
-                }
-
-                commitStorageValues();
-
-                m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
-                    skale::slicing::toSlice( storageUsed_.str() ) );
-
-                m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
-                    skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
+            // debug commit id is empty for historic state
+            for ( auto const& addressValuePair : m_cache ) {
+                h160 const& address = addressValuePair.first;
+                bytes const& value = addressValuePair.second;
+                m_db_face->insert(
+                    skale::slicing::toSlice( address ), skale::slicing::toSlice( value ) );
             }
+            for ( auto const& addressSpacePair : m_auxiliaryCache ) {
+                h160 const& address = addressSpacePair.first;
+                unordered_map< _byte_, bytes > const& spaces = addressSpacePair.second;
+                for ( auto const& spaceValuePair : spaces ) {
+                    _byte_ space = spaceValuePair.first;
+                    bytes const& value = spaceValuePair.second;
+
+                    m_db_face->insert( skale::slicing::toSlice( getAuxiliaryKey( address, space ) ),
+                        skale::slicing::toSlice( value ) );
+                }
+            }
+
+            commitStorageValues();
+
+            m_db_face->insert( skale::slicing::toSlice( "storageUsed" ),
+                skale::slicing::toSlice( storageUsed_.str() ) );
+
+            m_db_face->insert( skale::slicing::toSlice( "safeLastExecutedTransactionHash" ),
+                skale::slicing::toSlice( getLastExecutedTransactionHash() ) );
 
             try {
                 m_db_face->commit( "OverlayDB_commit" );

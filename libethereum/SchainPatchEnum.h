@@ -14,13 +14,14 @@ enum class SchainPatchEnum {
     ContractStoragePatch,
     StorageDestructionPatch,
     SkipInvalidTransactionsPatch,
-    SelfdestructStorageLimitPatch,
     VerifyDaSigsPatch,
     FastConsensusPatch,
     EIP1559TransactionsPatch,
     VerifyBlsSyncPatch,
     FlexibleDeploymentPatch,
     ExternalGasPatch,
+    ClearPartialReceiptsPatch,
+    InvalidTransactionFormatPatch,
     PatchesCount
 };
 

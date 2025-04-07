@@ -9,6 +9,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/OverlayDB.h>
 #include <libdevcore/RLP.h>
+#include <libdevcore/RotatingHistoricState.h>
 #include <libethcore/BlockHeader.h>
 #include <libethcore/Exceptions.h>
 #include <libethereum/CodeSizeCache.h>
@@ -44,69 +45,69 @@ DEV_SIMPLE_EXCEPTION( IncorrectAccountStartNonceInState );
 class SealEngineFace;
 class AlethExecutive;
 
-/// An atomic state changelog entry.
-struct Change {
-    enum Kind : int {
-        /// Account balance changed. Change::value contains the amount the
-        /// balance was increased by.
-        Balance,
+///// An atomic state changelog entry.
+// struct Change {
+//    enum Kind : int {
+//        /// Account balance changed. Change::value contains the amount the
+//        /// balance was increased by.
+//        Balance,
 
-        /// Account storage was modified. Change::key contains the storage key,
-        /// Change::value the storage value.
-        Storage,
+//        /// Account storage was modified. Change::key contains the storage key,
+//        /// Change::value the storage value.
+//        Storage,
 
-        /// Account storage root was modified.  Change::value contains the old
-        /// account storage root.
-        StorageRoot,
+//        /// Account storage root was modified.  Change::value contains the old
+//        /// account storage root.
+//        StorageRoot,
 
-        /// Account nonce was changed.
-        Nonce,
+//        /// Account nonce was changed.
+//        Nonce,
 
-        /// Account was created (it was not existing before).
-        Create,
+//        /// Account was created (it was not existing before).
+//        Create,
 
-        /// New code was added to an account (by "create" message execution).
-        Code,
+//        /// New code was added to an account (by "create" message execution).
+//        Code,
 
-        /// Account was touched for the first time.
-        Touch
-    };
+//        /// Account was touched for the first time.
+//        Touch
+//    };
 
-    Kind kind;        ///< The kind of the change.
-    Address address;  ///< Changed account address.
-    u256 value;       ///< Change value, e.g. balance, storage and nonce.
-    u256 key;         ///< Storage key. Last because used only in one case.
+//    Kind kind;        ///< The kind of the change.
+//    Address address;  ///< Changed account address.
+//    u256 value;       ///< Change value, e.g. balance, storage and nonce.
+//    u256 key;         ///< Storage key. Last because used only in one case.
 
-    /// Helper constructor to make change log update more readable.
-    Change( Kind _kind, Address const& _addr, u256 const& _value = 0 )
-        : kind( _kind ), address( _addr ), value( _value ) {}
+//    /// Helper constructor to make change log update more readable.
+//    Change( Kind _kind, Address const& _addr, u256 const& _value = 0 )
+//        : kind( _kind ), address( _addr ), value( _value ) {}
 
-    /// Helper constructor especially for storage change log.
-    Change( Address const& _addr, u256 const& _key, u256 const& _value )
-        : kind( Storage ), address( _addr ), value( _value ), key( _key ) {}
+//    /// Helper constructor especially for storage change log.
+//    Change( Address const& _addr, u256 const& _key, u256 const& _value )
+//        : kind( Storage ), address( _addr ), value( _value ), key( _key ) {}
 
-    /// Helper constructor for nonce change log.
-    Change( Address const& _addr, u256 const& _value )
-        : kind( Nonce ), address( _addr ), value( _value ) {}
-};
+//    /// Helper constructor for nonce change log.
+//    Change( Address const& _addr, u256 const& _value )
+//        : kind( Nonce ), address( _addr ), value( _value ) {}
+//};
 
-using ChangeLog = std::vector< Change >;
+// using ChangeLog = std::vector< Change >;
 
-/**
- * Model of an Ethereum state, essentially a facade for the trie.
- *
- * Allows you to query the state of accounts as well as creating and modifying
- * accounts. It has built-in caching for various aspects of the state.
- *
- * # State Changelog
- *
- * Any atomic change to any account is registered and appended in the changelog.
- * In case some changes must be reverted, the changes are popped from the
- * changelog and undone. For possible atomic changes list @see Change::Kind.
- * The changelog is managed by savepoint(), rollback() and commit() methods.
- */
+///**
+// * Model of an Ethereum state, essentially a facade for the trie.
+// *
+// * Allows you to query the state of accounts as well as creating and modifying
+// * accounts. It has built-in caching for various aspects of the state.
+// *
+// * # State Changelog
+// *
+// * Any atomic change to any account is registered and appended in the changelog.
+// * In case some changes must be reverted, the changes are popped from the
+// * changelog and undone. For possible atomic changes list @see Change::Kind.
+// * The changelog is managed by savepoint(), rollback() and commit() methods.
+// */
 
-enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
+// enum class CommitBehaviour { KeepEmptyAccounts, RemoveEmptyAccounts };
 
 constexpr auto HISTORIC_STATE_DIR = "historic_state";
 constexpr auto HISTORIC_ROOTS_DIR = "historic_roots";
@@ -126,8 +127,10 @@ public:
     /// Use the default when you already have a database and you just want to make a State object
     /// which uses it. If you have no preexisting database then set BaseState to something other
     /// than BaseState::PreExisting in order to prepopulate the Trie.
-    explicit HistoricState( u256 const& _accountStartNonce, OverlayDB const& _db,
-        OverlayDB const& _blockToStateRootDB,
+    explicit HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricStateDbSize,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
+        std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
+            _blockToStateRootDB,
         skale::BaseState _bs = skale::BaseState::PreExisting );
 
     /// Copy state object.
@@ -138,11 +141,11 @@ public:
 
     /// Open a DB - useful for passing into the constructor & keeping for other states that are
     /// necessary.
-    static OverlayDB openDB( boost::filesystem::path const& _path, h256 const& _genesisHash,
+    static std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > openDB(
+        boost::filesystem::path const& _path, h256 const& _genesisHash,
         WithExisting _we = WithExisting::Trust );
-    OverlayDB const& db() const { return m_db; }
-    OverlayDB& db() { return m_db; }
-
+    dev::OverlayDB const& db() const { return m_db; }
+    dev::OverlayDB& db() { return m_db; }
 
     /// @returns the set containing all addresses currently in use in Ethereum.
     /// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds
@@ -159,7 +162,6 @@ public:
     std::pair< ExecutionResult, TransactionReceipt > execute( EnvInfo const& _envInfo,
         eth::ChainOperationParams const& _chainParams, Transaction const& _t,
         skale::Permanence _p = skale::Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc() );
-
 
     /// Check if the address is in use.
     bool addressInUse( Address const& _address ) const;
@@ -264,10 +266,12 @@ public:
     /// The hash of the root of our state tree.
     GlobalRoot globalRoot() const { return GlobalRoot( m_state.root() ); }
 
+    uint64_t globalRootBlockNumber() const { return m_state.rootBlockNumber(); }
+
     void commitExternalChanges( AccountMap const& _cache );
 
     /// Resets any uncommitted changes to the cache.
-    void setRoot( GlobalRoot const& _root );
+    void setRoot( GlobalRoot const& _root, uint64_t _rootBlockNumber );
 
     // Sets root by reading the block number from DB
 
@@ -290,13 +294,13 @@ public:
 
     ChangeLog const& changeLog() const { return m_changeLog; }
 
-
-    void saveRootForBlock( uint64_t _blockNumber );
-
+    void saveRootForBlockNumber( uint64_t _blockNumber );
 
     void setRootFromDB();
 
     uint64_t getAndResetBlockCommitTime();
+
+    void rotateDbsIfNeeded( uint64_t _timestamp );
 
 private:
     /// Turns all "touched" empty accounts into non-alive accounts.
@@ -320,11 +324,15 @@ private:
     bool executeTransaction( AlethExecutive& _e, Transaction const& _t, OnOpFunc const& _onOp );
 
     /// Our overlay for the state tree.
-    OverlayDB m_db;
-    // Overlay DB for the block id state root mapping
-    OverlayDB m_blockToStateRootDB;
+    dev::OverlayDB m_db;
+    /// Interface for rotating db for the state tree
+    std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingTreeDb;
+    /// ClassicOverlayDB for the block id state root mapping
+    dev::OverlayDB m_blockToStateRootDB;
+    /// Interface for rotating db for the state root mapping
+    std::shared_ptr< dev::db::RotatingHistoricState > m_rotatingRootsDb;
 
-    /// Our state tree, as an OverlayDB DB.
+    /// Our state tree, as an ClassicOverlayDB DB.
     SecureTrieDB< Address, OverlayDB > m_state;
     /// Our address cache. This stores the states of each address that has (or at least might have)
     /// been changed.
@@ -342,14 +350,17 @@ private:
     friend std::ostream& operator<<( std::ostream& _out, HistoricState const& _s );
     ChangeLog m_changeLog;
 
-
     uint64_t readLatestBlock();
 
     AddressHash commitExternalChangesIntoTrieDB(
         AccountMap const& _cache, SecureTrieDB< Address, OverlayDB >& _state );
 
+    dev::s256 storageUsedTotal() const { return m_db.storageUsed(); }
+
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
 
+    dev::s256 m_maxHistoricStateDbSize = -1;
+  
     /// Loggers
     static inline Logger m_loggerInfo{ createLogger( VerbosityInfo, "HistoricState" ) };
     static inline Logger m_loggerTrace{ createLogger( VerbosityTrace, "HistoricState" ) };
