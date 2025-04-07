@@ -750,7 +750,8 @@ void SkaleHost::stopWorking() {
     }
 
 
-    LOG( m_loggerInfo ) << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
+    LOG( m_loggerInfo )
+        << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();

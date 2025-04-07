@@ -264,7 +264,7 @@ void Client::initStateFromDiskOrGenesis() {
     if ( m_state.empty() ) {
         // Saving legacy transaction receipts empty value
         // to be compatible with < 4.0.0 zero block versions
-        LOG( m_logger ) << "Saving legacy transaction receipts for empty state";
+        LOG( m_loggerInfo ) << "Saving legacy transaction receipts for empty state";
         m_state.safeCommitZeroBlockLegacyPartialTransactionReceipts();
         populateNewChainStateFromGenesis();
     } else {

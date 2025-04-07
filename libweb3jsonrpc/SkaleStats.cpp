@@ -519,4 +519,3 @@ std::unordered_map< std::string, StatsCounter > SkaleStats::statsCounters;
 
 };  // namespace rpc
 };  // namespace dev
-

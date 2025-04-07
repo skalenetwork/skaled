@@ -339,15 +339,12 @@ bool SkaleStatsSubscriptionManager::subscribe(
                 joNotification["params"] = joParams;
                 std::string strNotification = joNotification.dump();
                 if ( getSSO().opts_.isTraceCalls_ )
-
                     LOG( m_loggerDebug )
-                        << " <<< " + subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() << " "
-                        << ( cc::ws_tx_inv( " <<< " +
-                                            subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() +
-                                            "/TX <<< " ) +
-                               subscriptionData.m_pPeer->desc() + cc::ws_tx( " <<< " ) +
-                               subscriptionData.m_pPeer->implPreformatTrafficJsonMessage(
-                                   strNotification, false );
+                        << " <<< " << subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC() << " "
+                        << " <<< " << subscriptionData.m_pPeer->getRelay().nfoGetSchemeUC()
+                        << "/TX <<< " << subscriptionData.m_pPeer->desc() << " <<< "
+                        << subscriptionData.m_pPeer->implPreformatTrafficJsonMessage(
+                               strNotification, false );
                 skutils::dispatch::async( subscriptionData.m_pPeer->m_strPeerQueueID,
                     [subscriptionData, strNotification, idSubscription, this]() -> void {
                         bool bMessageSentOK = false;
@@ -358,15 +355,13 @@ bool SkaleStatsSubscriptionManager::subscribe(
                                 throw std::runtime_error(
                                     "eth_subscription/skaleStats failed to sent message" );
                         } catch ( std::exception& ex ) {
-                            LOG( m_loggerError )
-                                << "eth_subscription/skaleStats"
-                                 << " will uninstall watcher callback because of "
-                                 << "exception: " << ex.what();
+                            LOG( m_loggerError ) << "eth_subscription/skaleStats"
+                                                 << " will uninstall watcher callback because of "
+                                                 << "exception: " << ex.what();
                         } catch ( ... ) {
-                            LOG( m_loggerError )
-                                << "eth_subscription/skaleStats"
-                                 << " will uninstall watcher callback because of "
-                                 << "unknown exception";
+                            LOG( m_loggerError ) << "eth_subscription/skaleStats"
+                                                 << " will uninstall watcher callback because of "
+                                                 << "unknown exception";
                         }
                         if ( !bMessageSentOK ) {
                             unsubscribe( idSubscription );
@@ -454,7 +449,8 @@ std::string SkaleWsPeer::getLoggerName() const {
 void SkaleWsPeer::onPeerRegister() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        LOG( m_loggerDebug ) << getLoggerName()  + ": " << "peer registered";
+        LOG( m_loggerDebug ) << getLoggerName() << ": "
+                             << "peer registered";
 
     skutils::ws::peer::onPeerRegister();
     register_ws_conn_for_origin();
@@ -464,7 +460,8 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
     m_pSSCTH.reset();
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        LOG( m_loggerDebug ) << getLoggerName() + ": " << "peer unregistered" );
+        LOG( m_loggerDebug ) << getLoggerName() << ": "
+                             << "peer unregistered";
     skutils::ws::peer::onPeerUnregister();
     uninstallAllWatches();
     string strQueueIdToRemove = m_strPeerQueueID;
@@ -476,23 +473,19 @@ void SkaleWsPeer::onPeerUnregister() {  // peer will no longer receive onMessage
 void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->isShutdownMode() ) {
-        LOG( m_loggerWarning ) << " >>> " + getLoggerName() + ": " << getRelay().nfoGetSchemeUC()
-            << "/" << getRelay().serverIndex()
-            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + cc::ws_rx( " >>> " ) + "" );
+        LOG( m_loggerWarning ) << " >>> " << getLoggerName() << ": "
+                               << "/RX >>> " << desc() << " >>> "
+                               << "";
 
         skutils::dispatch::remove( m_strPeerQueueID );  // remove queue earlier
         return;
     }
     if ( eOpCode != skutils::ws::opcv::text ) {
         // throw std::runtime_error( "only ws text messages are supported" );
-        LOG( m_loggerWarning ) << " >>> " + getLoggerName() + ": " << getRelay().nfoGetSchemeUC() )
-            << "/" << getRelay().serverIndex()
-            << ( cc::ws_rx_inv( " >>> " + getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( getRelay().serverIndex() ) + "/RX >>> " ) +
-                   desc() + cc::ws_rx( " >>> " ) +
-                   " got binary message and will try to interpret it as text: " + msg );
+        LOG( m_loggerWarning ) << " >>> " << getLoggerName() << ": "
+                               << "/RX >>> " << desc() << " >>> "
+                               << " got binary message and will try to interpret it as text: "
+                               << msg;
     }
     skutils::retain_release_ptr< SkaleWsPeer > pThis = this;
     nlohmann::json jarrRequest;
@@ -532,11 +525,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 strMethod = "unknown_json_rpc_method";
         }
         std::string e = "Bad JSON RPC request: " + msg;
-        LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC()
-            << "/" << pThis->getRelay().serverIndex()
-            << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                std::to_string( pThis->getRelay().serverIndex() ) + "/ERR !!! " ) +
-                   pThis->desc() + cc::ws_tx( " !!! " ) + e );
+        LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                    std::to_string( pThis->getRelay().serverIndex() ) + "/ERR " +
+                                    pThis->desc() + " " + e;
+
         json joErrorResponse;
         joErrorResponse["jsonrpc"] = "2.0";
         joErrorResponse["id"] = joID;
@@ -599,14 +591,10 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
             //
             auto beginTime = chrono::system_clock::now();
             if ( logger = pSO->getLoggerFromMethodTraceVerbosity( strMethod ) )
-                LOG( *logger ) << 
-                    cc::info( pThis->getRelay().nfoGetSchemeUC() + cc::debug( "/" ) +
-                        to_string( pThis->getRelay().serverIndex() ) )
-                    << ( cc::ws_rx_inv( " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/RX >>> " ) +
-                           pThis->desc() + cc::ws_rx( " >>> " ) +
-                           pThis->implPreformatTrafficJsonMessage( joRequest, true ) );
+                LOG( *logger ) << " >>> " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                      std::to_string( pThis->getRelay().serverIndex() ) +
+                                      "/RX >>> " + pThis->desc() + " >>> " +
+                                      pThis->implPreformatTrafficJsonMessage( joRequest, true );
             std::string strResponse;
             try {
                 if ( !pThis.get_unconst()->handleWebSocketSpecificRequest(
@@ -620,11 +608,8 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 nlohmann::json joResponse = nlohmann::json::parse( strResponse );
             } catch ( const std::exception& ex ) {
                 LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                               to_string( pThis->getRelay().serverIndex() )
-                    << ( cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/ERR !!! " ) +
-                           pThis->desc() + cc::ws_tx( " !!! " ) + ex.what() );
+                                            std::to_string( pThis->getRelay().serverIndex() ) +
+                                            "/ERR " + pThis->desc() + " " + ex.what();
                 json joErrorResponse;
                 joErrorResponse["jsonrpc"] = "2.0";
                 joErrorResponse["id"] = joID;
@@ -635,12 +620,9 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 strResponse = joErrorResponse.dump();
             } catch ( ... ) {
                 const char* e = "unknown exception in SkaleServerOverride";
-                LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC()
-                    << "/" << to_string( pThis->getRelay().serverIndex() )
-                    << cc::ws_tx_inv( " !!! " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                      std::to_string( pThis->getRelay().serverIndex() ) +
-                                      "/ERR !!! " )
-                    << pThis->desc() + cc::ws_tx( " !!! " ) + e;
+                LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                            std::to_string( pThis->getRelay().serverIndex() ) +
+                                            "/ERR " + pThis->desc() + " " + e;
                 json joErrorResponse;
                 joErrorResponse["jsonrpc"] = "2.0";
                 joErrorResponse["id"] = joID;
@@ -650,14 +632,12 @@ void SkaleWsPeer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode )
                 joErrorResponse["error"] = joErrorObj;
                 strResponse = joErrorResponse.dump();
             }
-            if ( logger = pSO->getLoggerFromMethodTraceVerbosity( strMethod ) )
-                LOG( *logger ) << pThis->getRelay().nfoGetSchemeUC()
-                    << "/" << pThis->getRelay().serverIndex()
-                    << ( cc::ws_tx_inv( " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                        std::to_string( pThis->getRelay().serverIndex() ) +
-                                        "/TX <<< " ) +
-                           pThis->desc() + cc::ws_tx( " <<< " ) +
-                           pThis->implPreformatTrafficJsonMessage( strResponse, false ) );
+            if ( logger = pSO->getLoggerFromMethodTraceVerbosity( strMethod ) ) {
+                LOG( *logger ) << " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/" +
+                                      std::to_string( pThis->getRelay().serverIndex() ) +
+                                      "/TX <<< " + pThis->desc() + " <<< " +
+                                      pThis->implPreformatTrafficJsonMessage( strResponse, false );
+            }
             if ( isBatch ) {
                 nlohmann::json joAnswerPart = nlohmann::json::parse( strResponse );
                 jarrBatchAnswer.push_back( joAnswerPart );
@@ -683,10 +663,9 @@ void SkaleWsPeer::onClose(
     const std::string& reason, int local_close_code, const std::string& local_close_code_as_str ) {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        LOG( m_loggerDebug ) << getLoggerName() + ": " <<
-            getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() ) )
-            << ( desc() + " peer close event with code=" + to_string( local_close_code ) +
-                   ", reason=" + reason );
+        LOG( m_loggerDebug ) << getLoggerName() + ": " << desc()
+                             << " peer close event with code=" << local_close_code
+                             << ", reason=" << reason;
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
     uninstallAllWatches();
 }
@@ -694,7 +673,7 @@ void SkaleWsPeer::onClose(
 void SkaleWsPeer::onFail() {
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        LOG( m_loggerError ) << getRelay().nfoGetSchemeUC() ) << desc() << " peer fail event";
+        LOG( m_loggerError ) << getLoggerName() << ": " << desc() << " peer fail event";
     skutils::ws::peer::onFail();
     uninstallAllWatches();
 }
@@ -704,8 +683,7 @@ void SkaleWsPeer::onLogMessage(
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ ) {
         dev::Logger logger = getLoggerFromWsMsgType( eWSLMT );
-        LOG( logger ) << getRelay().nfoGetSchemeUC()
-            << "/" << getRelay().serverIndex() << desc() << " peer log: " << msg;
+        LOG( logger ) << getLoggerName() << ": " << desc() << " peer log: " << msg;
     }
     skutils::ws::peer::onLogMessage( eWSLMT, msg );
 }
@@ -853,12 +831,12 @@ void SkaleWsPeer::eth_subscribe(
         strSubscriptionType = "<empty>";
     SkaleServerOverride* pSO = pso();
     if ( pSO->opts_.isTraceCalls_ )
-        LOG( m_loggerError ) << getRelay().nfoGetSchemeUC()
-            << "/" << getRelay().serverIndex() << desc() << " "
-            << "error in eth_subscribe"
-            << " rpc method, missing valid subscription type in parameters, was "
-               "specifiedL " +
-                   strSubscriptionType;
+        LOG( m_loggerError ) << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex()
+                             << desc() << " "
+                             << "error in eth_subscribe"
+                             << " rpc method, missing valid subscription type in parameters, was "
+                                "specifiedL " +
+                                    strSubscriptionType;
     json joError = json::object();
     joError["code"] = -32603;
     joError["message"] =
@@ -921,13 +899,12 @@ void SkaleWsPeer::eth_subscribe_logs(
                                 std::string strNotification = joNotification.dump();
                                 const SkaleServerOverride* pSO = pThis->pso();
                                 if ( pSO->opts_.isTraceCalls_ )
-                                    LOG( m_loggerDebug ) << pThis->getRelay().nfoGetSchemeUC()
-                                        << cc::ws_tx_inv( " <<< " +
-                                                          pThis->getRelay().nfoGetSchemeUC() +
-                                                          "/TX <<< " )
-                                        << ( pThis->desc() + cc::ws_tx( " <<< " ) +
-                                               pThis->implPreformatTrafficJsonMessage(
-                                                   strNotification, false );
+                                    LOG( m_loggerDebug )
+                                        << pThis->getRelay().nfoGetSchemeUC()
+                                        << " <<< " + pThis->getRelay().nfoGetSchemeUC()
+                                        << "/TX <<< " << pThis->desc() << " <<< "
+                                        << pThis->implPreformatTrafficJsonMessage(
+                                               strNotification, false );
                                 bool bMessageSentOK = false;
                                 try {
                                     bMessageSentOK = const_cast< SkaleWsPeer* >( pThis.get() )
@@ -937,24 +914,20 @@ void SkaleWsPeer::eth_subscribe_logs(
                                         throw std::runtime_error(
                                             "eth_subscription/logs failed to sent message" );
                                 } catch ( std::exception& ex ) {
-                                    LOG( m_loggerError )
-                                        << pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                               std::to_string( pThis->getRelay().serverIndex() ) +
-                                               ": "
-                                        << pThis->desc() + " " + "error in " +
-                                               "eth_subscription/logs" +
-                                               " will uninstall watcher callback "
-                                               "because of exception: " +
-                                               ex.what();
+                                    LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC()
+                                                         << "/" << pThis->getRelay().serverIndex()
+                                                         << ": " << pThis->desc() << " error in "
+                                                         << "eth_subscription/logs"
+                                                         << " will uninstall watcher callback "
+                                                            "because of exception: "
+                                                         << ex.what();
                                 } catch ( ... ) {
-                                    LOG( m_loggerError )
-                                        << pThis->getRelay().nfoGetSchemeUC() + "/" +
-                                               std::to_string( pThis->getRelay().serverIndex() ) +
-                                               ": "
-                                        << pThis->desc() + " " + "error in " +
-                                               "eth_subscription/logs" +
-                                               " will uninstall watcher callback "
-                                               "because of unknown exception";
+                                    LOG( m_loggerError ) << pThis->getRelay().nfoGetSchemeUC()
+                                                         << "/" << pThis->getRelay().serverIndex()
+                                                         << ": " << pThis->desc() << " error in "
+                                                         << "eth_subscription/logs"
+                                                         << " will uninstall watcher callback "
+                                                            "because of unknown exception";
                                 }
                                 if ( !bMessageSentOK ) {
                                     pThis->ethereum()->uninstallWatch( iw );
@@ -970,15 +943,16 @@ void SkaleWsPeer::eth_subscribe_logs(
         setInstalledWatchesLogs_.insert( iw );
         string strIW = dev::toJS( iw );
         if ( pSO->opts_.isTraceCalls_ )
-            LOG( m_loggerTrace ) << getRelay().nfoGetSchemeUC()
-                << "/" << getRelay().serverIndex() << desc() << " "
-                << "eth_subscribe/logs rpc method installed watch " << strIW;
+            LOG( m_loggerTrace ) << getRelay().nfoGetSchemeUC() << "/" << getRelay().serverIndex()
+                                 << desc() << " "
+                                 << "eth_subscribe/logs rpc method installed watch " << strIW;
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
-            LOG( m_loggerError ) <<
-                getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() )
-                << desc() << " error in eth_subscribe/logs  rpc method:" << ex.what();
+            LOG( m_loggerError ) << getRelay().nfoGetSchemeUC() + "/" +
+                                        to_string( getRelay().serverIndex() )
+                                 << desc()
+                                 << " error in eth_subscribe/logs  rpc method:" << ex.what();
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -987,9 +961,10 @@ void SkaleWsPeer::eth_subscribe_logs(
         return;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
-            LOG( m_loggerError ) <<
-                getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() ) +
-                    " error in eth_subscribe/logs" + " rpc method, unknown exception ";
+            LOG( m_loggerError ) << getRelay().nfoGetSchemeUC() + "/" +
+                                        to_string( getRelay().serverIndex() ) +
+                                        " error in eth_subscribe/logs" +
+                                        " rpc method, unknown exception ";
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] = "error in \"eth_subscribe/logs\" rpc method, unknown exception";
@@ -1019,12 +994,13 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                 joNotification["method"] = "eth_subscription";
                 joNotification["params"] = joParams;
                 std::string strNotification = joNotification.dump();
-                if ( pSO->opts_.isTraceCalls_ )
-                    LOG( m_loggerDebug ) << pThis->getRelay().nfoGetSchemeUC()
-                        << cc::ws_tx_inv(
-                               " <<< " + pThis->getRelay().nfoGetSchemeUC() + "/TX <<< " ) +
-                               pThis->desc() + cc::ws_tx( " <<< " ) +
-                               pThis->implPreformatTrafficJsonMessage( strNotification, false );
+                if ( pSO->opts_.isTraceCalls_ ) {
+                    LOG( m_loggerDebug )
+                        << pThis->getRelay().nfoGetSchemeUC() << ": "
+                        << " <<< " << pThis->getRelay().serverIndex() << "/TX <<< " << pThis->desc()
+                        << " <<< "
+                        << pThis->implPreformatTrafficJsonMessage( strNotification, false );
+                }
                 bool bMessageSentOK = false;
                 try {
                     bMessageSentOK =
@@ -1035,13 +1011,10 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
                             "eth_subscription/newPendingTransactions failed to sent message" );
                 } catch ( std::exception& ex ) {
                     LOG( m_loggerError )
-                        << pThis->getRelay().nfoGetSchemeUC() + "/" +
-                               std::to_string( pThis->getRelay().serverIndex() ) + ": "
-                        << ( pThis->desc() + " " + "error in " +
-                               "eth_subscription/newPendingTransactions" +
-
-                               " will uninstall watcher callback because of exception: " +
-                               ex.what() );
+                        << pThis->getRelay().nfoGetSchemeUC() << "/"
+                        << pThis->getRelay().serverIndex() << ": " << pThis->desc() << " error in "
+                        << "eth_subscription/newPendingTransactions"
+                        << " will uninstall watcher callback because of exception: " << ex.what();
                 } catch ( ... ) {
                     LOG( m_loggerError )
                         << pThis->getRelay().nfoGetSchemeUC() + "/" +
@@ -1061,17 +1034,19 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         setInstalledWatchesNewPendingTransactions_.insert( iw );
         iw |= SKALED_WS_SUBSCRIPTION_TYPE_NEW_PENDING_TRANSACTION;
         std::string strIW = dev::toJS( iw );
-        if ( pSO->opts_.isTraceCalls_ )
-            LOG( m_loggerTrace ) << getRelay().nfoGetSchemeUC() << "/" << to_string( getRelay().serverIndex() )
-                   << desc() << " " << cc::info( "eth_subscribe/newPendingTransactions" )
-                   << " rpc method did installed watch " << strIW;
+        if ( pSO->opts_.isTraceCalls_ ) {
+            LOG( m_loggerTrace ) << getLoggerName() << ": " << desc() << " "
+                                 << "eth_subscribe/newPendingTransactions"
+                                 << " rpc method did installed watch " << strIW;
+        }
         joResponse["result"] = strIW;
     } catch ( const std::exception& ex ) {
         if ( pSO->opts_.isTraceCalls_ )
-            LOG( m_loggerError ) <<
-                getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() )
-                << ( desc() + " " + "error in " + "eth_subscribe/newPendingTransactions" +
-                       " rpc method, exception " + ex.what() );
+            LOG( m_loggerError ) << getRelay().nfoGetSchemeUC() + "/" +
+                                        to_string( getRelay().serverIndex() )
+                                 << ( desc() + " " + "error in " +
+                                        "eth_subscribe/newPendingTransactions" +
+                                        " rpc method, exception " + ex.what() );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1081,10 +1056,11 @@ void SkaleWsPeer::eth_subscribe_newPendingTransactions(
         return;
     } catch ( ... ) {
         if ( pSO->opts_.isTraceCalls_ )
-            LOG( m_loggerError ) <<
-                getRelay().nfoGetSchemeUC() + "/" + to_string( getRelay().serverIndex() )
-                << ( desc() + " " + "error in " + "eth_subscribe/newPendingTransactions" +
-                       " rpc method, unknown exception " );
+            LOG( m_loggerError ) << getRelay().nfoGetSchemeUC() + "/" +
+                                        to_string( getRelay().serverIndex() )
+                                 << ( desc() + " " + "error in " +
+                                        "eth_subscribe/newPendingTransactions" +
+                                        " rpc method, unknown exception " );
         json joError = json::object();
         joError["code"] = -32602;
         joError["message"] =
@@ -1260,11 +1236,9 @@ void SkaleWsPeer::eth_unsubscribe(
             iw = joParamItem.get< unsigned >();
         }
         if ( iw == unsigned( -1 ) ) {
-            if ( pSO->opts_.isTraceCalls_ )
-                LOG( m_loggerError )
-                    << getLoggerName() + ": "
-                    << desc() + " error in eth_unsubscribe rpc method, bad subscription ID " +
-                           joParamItem.dump();
+            auto errMessage =
+                "eth_unsubscribe rpc method, bad subscription ID " + joParamItem.dump();
+            LOG( m_loggerError ) << getLoggerName() << ": " << desc() << errMessage;
             json joError = json::object();
             joError["code"] = -32602;
             joError["message"] = errMessage;
@@ -1669,13 +1643,14 @@ void SkaleServerOverride::logPerformanceWarning( double lfExecutionDuration, int
         ssProtocol << "/" << nServerIndex;
     ssProtocol << "/" << esm2str( esm ) << ":";
     std::string strProtocolDescription = ssProtocol.str();
-   
+
     std::string strCallID = joID.dump();
     LOG( m_loggerWarning ) << strProtocolDescription + ": "
-        << "Performance warning:"
-        << " " << lfExecutionDuration << " seconds execution time for " << strMethod
-        << " call with id =" << strCallID << " when called from origin " << strOrigin
-        << "through server with index =" << nServerIndex;
+                           << "Performance warning:"
+                           << " " << lfExecutionDuration << " seconds execution time for "
+                           << strMethod << " call with id =" << strCallID
+                           << " when called from origin " << strOrigin
+                           << "through server with index =" << nServerIndex;
 }
 
 void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const char* strProtocol,
@@ -1706,8 +1681,6 @@ void SkaleServerOverride::logTraceServerEvent( bool isError, int ipVer, const ch
 void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Logger logger, int ipVer,
     const char* strProtocol, int nServerIndex, e_server_mode_t esm, const char* strOrigin,
     const string& strPayload ) {
-    bool isError = verbosity == dev::VerbosityError;
-
     stringstream ssProtocol;
     string strProto = ( strProtocol && strProtocol[0] ) ? strProtocol : "Unknown network protocol";
 
@@ -1733,12 +1706,11 @@ void SkaleServerOverride::logTraceServerTraffic( bool isRX, dev::Logger logger, 
         ssProtocol << "/" << esm2str( esm ) << "/TX <<< ";
     }
     strOriginSuffix = strOrigin;
-    if ( isError )
-        strErrorSuffix = " ERROR ";
+
     std::string strProtocolDescription = ssProtocol.str();
 
-    LOG( logger ) << strProtocolDescription + ": "
-                  << strErrorSuffix << strOriginSuffix << strDirect << strPayload;
+    LOG( logger ) << strProtocolDescription + ": " << strErrorSuffix << strOriginSuffix << strDirect
+                  << strPayload;
 }
 
 static void stat_check_port_availability_for_server_to_start_listen( int ipVer, const char* strAddr,
@@ -1875,8 +1847,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         auto beginTime = chrono::system_clock::now();
         SkaleServerConnectionsTrackHelper sscth( *this );
         if ( logger = getLoggerFromMethodTraceVerbosity( strMethod ) )
-            logTraceServerTraffic( true, *logger, ipVer, strProtocol.c_str(), nServerIndex, esm,
-                strOrigin.c_str(), implPreformatTrafficJsonMessage( strBody, true ) );
+            logTraceServerTraffic( true, *logger, _ipVer, _protocol.c_str(), _serverIndex, _esm,
+                _origin.c_str(), implPreformatTrafficJsonMessage( strBody, true ) );
         std::string strResponse;
 
         try {
@@ -1908,14 +1880,12 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
                 rslt.joOut_ = json::parse( strResponse );
             }
         } catch ( const std::exception& ex ) {
-            logTraceServerTraffic( false, m_loggerError, ipVer, strProtocol.c_str(), _serverIndex,
-                _esm, strOrigin.c_str(), ex.what() );
+            logTraceServerTraffic( false, m_loggerError, _ipVer, _protocol.c_str(), _serverIndex,
+                _esm, _origin.c_str(), ex.what() );
             nlohmann::json joErrorResponce;
             joErrorResponce["jsonrpc"] = "2.0";
             joErrorResponce["id"] = joID;
             json joErrorObj;
-            logTraceServerTraffic( false, dev::VerbosityError, _ipVer, _protocol.c_str(),
-                _serverIndex, _esm, _origin.c_str(), ex.what() );
             json joErrorResponse;
             joErrorResponse["jsonrpc"] = "2.0";
             joErrorResponse["id"] = joID;
@@ -1930,11 +1900,11 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
             }
         } catch ( ... ) {
             const char* e = "unknown exception in SkaleServerOverride";
-            logTraceServerTraffic( false, m_loggerError, ipVer, strProtocol.c_str(), _serverIndex,
-                _esm, strOrigin.c_str(), e );
-            nlohmann::json joErrorResponce;
-            joErrorResponce["jsonrpc"] = "2.0";
-            joErrorResponce["id"] = joID;
+            logTraceServerTraffic( false, m_loggerError, _ipVer, _protocol.c_str(), _serverIndex,
+                _esm, _origin.c_str(), e );
+            nlohmann::json joErrorResponse;
+            joErrorResponse["jsonrpc"] = "2.0";
+            joErrorResponse["id"] = joID;
             json joErrorObj;
             joErrorObj["code"] = -32000;
             joErrorObj["message"] = string( e );
@@ -1946,8 +1916,8 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
             }
         }
         if ( logger = getLoggerFromMethodTraceVerbosity( strMethod ) )
-            logTraceServerTraffic( false, *logger, ipVer, strProtocol.c_str(), _serverIndex, _esm,
-                strOrigin.c_str(), implPreformatTrafficJsonMessage( strResponse, false ) );
+            logTraceServerTraffic( false, *logger, _ipVer, _protocol.c_str(), _serverIndex, _esm,
+                _origin.c_str(), implPreformatTrafficJsonMessage( strResponse, false ) );
         if ( isBatch ) {
             json joAnswerPart = json::parse( strResponse );
             jarrBatchAnswer.push_back( joAnswerPart );
@@ -2024,8 +1994,9 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
         implStopListening( pSrv, ipVer, bIsSSL, esm );
         if ( strAddr.empty() || nPort <= 0 )
             return true;
-        LOG( m_loggerTrace ) << "starting proxygen" << ( bIsSSL ? "HTTPS" : "HTTP" ) << "/" << nServerIndex << "/"
-              << esm2str( esm ) << " server on address " << strAddr << " and port " << nPort;
+        LOG( m_loggerTrace ) << "starting proxygen" << ( bIsSSL ? "HTTPS" : "HTTP" ) << "/"
+                             << nServerIndex << "/" << esm2str( esm ) << " server on address "
+                             << strAddr << " and port " << nPort;
 
 
         // check if somebody is already listening
@@ -2038,7 +2009,7 @@ bool SkaleServerOverride::implStartListening(  // proxygen HTTP
         // cher server listen in its dedicated thread(s)
         if ( !pSrv->is_running() )
             throw std::runtime_error( "failed to start proxygen server instance" );
-        LOG( m_loggerTrace) << "Started server";
+        LOG( m_loggerTrace ) << "Started server";
         return true;
     } catch ( const std::exception& ex ) {
         LOG( m_loggerError ) << "Failed to start proxygen" << ex.what();
@@ -2092,8 +2063,8 @@ bool SkaleServerOverride::implStopListening(  // proxygen HTTP
         int nPort = ( ( ipVer == 4 ) ? ( bIsSSL ? bo.nBasePortHTTPS4_ : bo.nBasePortHTTP4_ ) :
                                        ( bIsSSL ? bo.nBasePortHTTPS6_ : bo.nBasePortHTTP6_ ) ) +
                     nServerIndex;
-        LOG( m_loggerTrace ) << "Will stop proxygen" << ( bIsSSL ? "HTTPS" : "HTTP" ) << "server on address "
-               << strAddr << " and port " << nPort;
+        LOG( m_loggerTrace ) << "Will stop proxygen" << ( bIsSSL ? "HTTPS" : "HTTP" )
+                             << "server on address " << strAddr << " and port " << nPort;
         pSrv->stop();
         pSrv.reset();
         LOG( m_loggerTrace ) << "Stopped proxygen server";
@@ -2483,8 +2454,9 @@ void SkaleServerOverride::max_connection_set( size_t cntConnectionsMax ) {
 
 void SkaleServerOverride::on_connection_overflow_peer_closed(
     int ipVer, const char* strProtocol, int nServerIndex, int nPort, e_server_mode_t esm ) {
-    LOG( m_loggerDebug ) << ipVer << " " << strProtocol << nServerIndex << "server on port " << nPort
-           << " closed peer because of connection limit overflow" << ( int ) esm;
+    LOG( m_loggerDebug ) << ipVer << " " << strProtocol << nServerIndex << "server on port "
+                         << nPort << " closed peer because of connection limit overflow"
+                         << ( int ) esm;
 }
 
 SkaleServerOverride& SkaleServerOverride::getSSO() {  // abstract in SkaleStatsSubscriptionManager
@@ -2602,8 +2574,8 @@ void SkaleServerOverride::informational_eth_getBalance( const json& joRequest, j
             Json::FastWriter fastWriter;
             string strJSON = fastWriter.write( _jsonCallArgs );
             LOG( m_loggerError ) << "Error message from eth_call(): "
-                   << strRevertReason + ", with call arguments: " << strJSON
-                   << +", and using blockNumber" << blockNumber << DETAILED_ERROR;
+                                 << strRevertReason + ", with call arguments: " << strJSON
+                                 << +", and using blockNumber" << blockNumber << DETAILED_ERROR;
             throw std::runtime_error( strRevertReason );
         }
 
@@ -2742,8 +2714,8 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
             strIP );  // NOTICE: supports both IPv4 and IPv6
         // print info about this method call into log output
         LOG( m_loggerDebug ) << __FUNCTION__ << " call with finishTime =" << finishTime
-               << ", << origin =" << strOrigin << ", remote IP =" << strIP << ", "
-               << "isLocalAddress =" << isLocalAddress;
+                             << ", << origin =" << strOrigin << ", remote IP =" << strIP << ", "
+                             << "isLocalAddress =" << isLocalAddress;
         // return call error if call from outside of local network
         if ( !isLocalAddress )
             throw std::runtime_error(
@@ -2763,22 +2735,23 @@ void SkaleServerOverride::setSchainExitTime( const string& strOrigin,
         pClient->setSchainExitTime( uint64_t( finishTime ) );
         joResponse.Parse( strResponse.data() );
     } catch ( const std::exception& ex ) {
-        auto errMesssage = "setSchainExitTime rpc method, exception " + string( ex.what() );
-        LOG( m_loggerError ) << errMesssage;
+        auto errMessage = "setSchainExitTime rpc method, exception " + string( ex.what() );
+        LOG( m_loggerError ) << errMessage;
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
         rapidjson::Value v;
-        v.SetString( errMesssage.c_str(), errMesssage.size(), joResponse.GetAllocator() );
+        v.SetString( errMessage.c_str(), errMessage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
     } catch ( ... ) {
-        LOG( m_loggerError ) << "setSchainExitTime rpc method, unknown exception";
+        string errMessage = "setSchainExitTime rpc method, unknown exception";
+        LOG( m_loggerError ) << errMessage;
         rapidjson::Value joError;
         joError.SetObject();
         joError.AddMember( "code", -32602, joResponse.GetAllocator() );
         rapidjson::Value v;
-        v.SetString( errMesssage.c_str(), errMesssage.size(), joResponse.GetAllocator() );
+        v.SetString( errMessage.c_str(), errMessage.size(), joResponse.GetAllocator() );
         joError.AddMember( "message", v, joResponse.GetAllocator() );
         joResponse.AddMember( "error", joError, joResponse.GetAllocator() );
     }

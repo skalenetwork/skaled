@@ -602,15 +602,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     // we need to specially handle the boundary case
     if ( weAreAtTheTimeStampBoundary ) {
-        LOG( m_logger ) << "Removing legacy partial receipts";
+        LOG( m_loggerTrace ) << "Removing legacy partial receipts";
         m_state.safeRemoveLegacyPartialTransactionReceipts();
     }
 
     if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
         // Saving partial receipts old way to be compatible with < 4.0 version
         if ( !receiptsOfCommitted.empty() ) {
-            LOG( m_loggerDetailed )
-                << "Saving partial transaction receipts. Size: " << receiptsOfCommitted.size();
+            LOG( m_loggerTrace ) << "Saving partial transaction receipts. Size: "
+                                 << receiptsOfCommitted.size();
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }
@@ -954,13 +954,13 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         assert( false );
     } catch ( const std::exception& ex ) {
         LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
-                        << " WouldNotBeInBlock: " << ex.what();
+                             << " WouldNotBeInBlock: " << ex.what();
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
         LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
-                        << " WouldNotBeInBlock: ...";
+                             << " WouldNotBeInBlock: ...";
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;

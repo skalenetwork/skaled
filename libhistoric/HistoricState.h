@@ -360,7 +360,7 @@ private:
     uint64_t m_totalTimeSpentInStateCommitsPerBlock = 0;
 
     dev::s256 m_maxHistoricStateDbSize = -1;
-  
+
     /// Loggers
     static inline Logger m_loggerInfo{ createLogger( VerbosityInfo, "HistoricState" ) };
     static inline Logger m_loggerTrace{ createLogger( VerbosityTrace, "HistoricState" ) };
