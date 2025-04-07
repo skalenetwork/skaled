@@ -136,7 +136,7 @@ All development goes in develop branch.
 
 Learn more about the SKALE community over on [Discord](https://discord.gg/vvUtWJB).
 
-
+ 
 ## License
 
 [![License](https://img.shields.io/github/license/skalenetwork/skaled.svg)](LICENSE)
