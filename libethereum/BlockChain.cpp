@@ -1105,32 +1105,32 @@ void BlockChain::rescue( State const& /*_state*/ ) {
         }
     }
     unsigned l = u / 2;
-    LOG( m_loggerTrace ) << "Finding last likely block number...";
+    LOG( m_loggerInfo ) << "Finding last likely block number...";
     while ( u - l > 1 ) {
         unsigned m = ( u + l ) / 2;
-        LOG( m_loggerTrace ) << " " << m << flush;
+        LOG( m_loggerInfo ) << " " << m << flush;
         if ( isKnown( numberHash( m ) ) )
             l = m;
         else
             u = m;
     }
-    LOG( m_loggerTrace ) << "  lowest is " << l;
+    LOG( m_loggerInfo ) << "  lowest is " << l;
     for ( ; l > 0; --l ) {
         h256 h = numberHash( l );
-        LOG( m_loggerTrace ) << "Checking validity of " << l << " (" << h << ")..." << flush;
+        LOG( m_loggerInfo ) << "Checking validity of " << l << " (" << h << ")..." << flush;
         try {
-            LOG( m_loggerTrace ) << "block..." << flush;
+            LOG( m_loggerInfo ) << "block..." << flush;
             BlockHeader bi( block( h ) );
-            LOG( m_loggerTrace ) << "extras..." << flush;
+            LOG( m_loggerInfo ) << "extras..." << flush;
             details( h );
-            LOG( m_loggerTrace ) << "state..." << flush;
-            LOG( m_loggerTrace ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
+            LOG( m_loggerInfo ) << "state..." << flush;
+            LOG( m_loggerInfo ) << "STATE VALIDITY CHECK IS NOT SUPPORTED" << flush;
             //            if (_db.exists(bi.stateRoot()))
             //                break;
         } catch ( ... ) {
         }
     }
-    LOG( m_loggerTrace ) << "OK.";
+    LOG( m_loggerInfo ) << "OK.";
     rewind( l );
 }
 

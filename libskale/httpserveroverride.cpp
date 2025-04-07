@@ -1882,10 +1882,6 @@ skutils::result_of_http_request SkaleServerOverride::implHandleHttpRequest( cons
         } catch ( const std::exception& ex ) {
             logTraceServerTraffic( false, m_loggerError, _ipVer, _protocol.c_str(), _serverIndex,
                 _esm, _origin.c_str(), ex.what() );
-            nlohmann::json joErrorResponce;
-            joErrorResponce["jsonrpc"] = "2.0";
-            joErrorResponce["id"] = joID;
-            json joErrorObj;
             json joErrorResponse;
             joErrorResponse["jsonrpc"] = "2.0";
             joErrorResponse["id"] = joID;

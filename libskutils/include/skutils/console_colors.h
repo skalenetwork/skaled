@@ -1,16 +1,14 @@
 #ifndef CONSOLECOLORS_H
 #define CONSOLECOLORS_H
 
+#include <stdint.h>
+#include <time.h>
 #include <chrono>
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <string>
-// #include <type_traits>
-#include <stdint.h>
-#include <time.h>
 
-// #include <nlohmann/json.hpp>
 #include <json.hpp>
 
 #include <skutils/url.h>
