@@ -72,10 +72,6 @@ cable_configure_toolchain( DEFAULT ${toolchain} )
 set( ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory" )
 list( APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR} )
 
-# Map current configuration to configurations of imported targets.
-set( CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release )
-set( CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release )
-
 find_program( CCACHE_FOUND ccache )
 if( CCACHE_FOUND )
     set_property( GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache )
