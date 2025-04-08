@@ -220,7 +220,11 @@ class ConsensusExtImpl : public ConsensusExtFace {
 public:
     ConsensusExtImpl( SkaleHost& _host );
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
-    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
+#ifdef BITE
+  shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> _decryptedTransactions,
+#endif
+        uint64_t _timeStamp,
         uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex ) override;
     virtual void terminateApplication() override;
@@ -239,12 +243,16 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 }
 
 void ConsensusExtImpl::createBlock(
-    const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+    const ConsensusExtFace::transactions_vector& _approvedTransactions,
+#ifdef BITE
+    shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> _decryptedTransactions,
+#endif
+    uint64_t _timeStamp,
     uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock(
-        _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
+        _approvedTransactions, _decryptedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -514,6 +522,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+#ifdef BITE
+ shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> _decryptedTransactions,
+#endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
     boost::chrono::high_resolution_clock::time_point skaledTimeStart;

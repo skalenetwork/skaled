@@ -59,9 +59,12 @@ public:
         return m_extFace.pendingTransactions( _limit, stateRoot );
     }
     void createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+#ifdef BITE
+  shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> _decryptedTransactions,
+#endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
         uint64_t _winningNodeIndex = -1 ) {
-        m_extFace.createBlock( _approvedTransactions, _timeStamp, 0, _blockID, _gasPrice,
+        m_extFace.createBlock( _approvedTransactions, _decryptedTransactions, _timeStamp, 0, _blockID, _gasPrice,
             _stateRoot, _winningNodeIndex );
         setPriceForBlockId( _blockID, _gasPrice );
     }

@@ -44,7 +44,7 @@ elseif( CMAKE_BUILD_TYPE STREQUAL "Debug" )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
 else()
-	message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
+    message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
 endif()
 
 ############################################################################################################
@@ -238,6 +238,8 @@ set( CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME} )
 set( CPACK_PACKAGE_CHECKSUM SHA256 )
 set( CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE )
 include( CPack )
+
+set(PARENT_BINARY_DIR ${CMAKE_BINARY_DIR})
 
 if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus
