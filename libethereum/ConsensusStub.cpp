@@ -109,10 +109,9 @@ void ConsensusStub::doWork() {
         ++blockCounter;
         m_extFace.createBlock( out_vector,
 #ifdef BITE
-                               nullptr,
+            nullptr,
 #endif
-                               time( NULL ), 0, blockCounter,
-            getPriceForBlockId( blockCounter ), stateRoot, -1 );
+            time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
         std::cout << cc::debug( "createBlock" ) << std::endl;
     } catch ( const dev::Exception& x ) {
         std::cout << x.what() << std::endl;
