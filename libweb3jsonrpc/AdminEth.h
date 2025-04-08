@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libdevcore/Address.h>
+#include <libdevcore/Log.h>
 
 #include "AdminEthFace.h"
 
@@ -58,6 +59,9 @@ private:
     std::function< void( Address const& ) > m_setMiningBenefactor;
 
     h256 blockHash( std::string const& _blockNumberOrHash ) const;
+
+    /// Loggers
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "AdminEth" ) };
 };
 
 }  // namespace rpc

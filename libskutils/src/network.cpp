@@ -74,8 +74,7 @@ void basic_stream_socket_init( int native_fd, std::ostream& osLog ) {
          || ret_rcv_timeoout || ret_snd_timeoout
 #endif
     )
-        osLog << cc::error( "Failed to enable keep alive on TCP client socket" ) << native_fd
-              << cc::error( "." );
+        osLog << "Failed to enable keep alive on TCP client socket" << native_fd << ".";
 }
 
 std::string get_canonical_host_name() {
@@ -255,10 +254,8 @@ int get_address_info46( int ipVersion, const char* ads, sockaddr46** result ) {
     ::memset( &hints, 0, sizeof( hints ) );
     ( *result ) = nullptr;
     if ( ipVersion == 6 ) {
-        //#if !defined(__ANDROID__)
         hints.ai_family = AF_INET6;
         hints.ai_flags = AI_V4MAPPED;
-        //#endif
     } else {
         hints.ai_family = PF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;
@@ -316,7 +313,7 @@ std::string resolve_address_for_client_connection(
                 }
                 res = res->ai_next;
             }
-            //#if defined(LWS_FALLBACK_GETHOSTBYNAME)
+            // #if defined(LWS_FALLBACK_GETHOSTBYNAME)
         } else if ( n == EAI_SYSTEM ) {
             // ...log... ( "getaddrinfo (ipv4) failed, trying gethostbyname" );
             struct hostent* host = gethostbyname( ads );
@@ -326,7 +323,7 @@ std::string resolve_address_for_client_connection(
                 cce = "gethostbyname (ipv4) failed";
                 goto oom4;
             }
-            //#endif
+            // #endif
         } else {
             cce = "getaddrinfo failed";
             goto oom4;

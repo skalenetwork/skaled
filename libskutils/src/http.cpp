@@ -18,8 +18,6 @@
 
 #endif  // (!defined _WIN32)
 
-//#define __SKUTILS_HTTP_DEBUG_CONSOLE_TRACE_HTTP_TASK_STATES__ 1
-
 namespace skutils {
 namespace http {
 
@@ -2017,7 +2015,7 @@ bool server::listen_internal() {
             }
         }
     } catch ( const std::exception& ex ) {
-        std::cerr << ex.what() << std::endl;
+        std::cerr << ex.what() << "\n";
     }
     is_running_ = false;
     is_in_loop_ = false;

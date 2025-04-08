@@ -79,20 +79,18 @@ void helper_ssl_cert_and_key_holder::auto_init() {
     if ( ( !strFilePathKey_.empty() ) && ( !strFilePathCert_.empty() ) &&
          skutils::tools::file_exists( strFilePathKey_ ) &&
          skutils::tools::file_exists( strFilePathCert_ ) ) {
-        std::cout << ( cc::success( "Using externally specified " ) + cc::p( strFilePathKey_ ) +
-                       cc::success( " and " ) + cc::p( strFilePathCert_ ) + cc::success( "." ) +
-                       "\n" );
+        std::cout << "Using externally specified " + strFilePathKey_ +
+                       " and " + strFilePathCert_ + ".\n" ;
         need_remove_files_ = false;
         return;
     }
     std::string strPrefix = skutils::tools::get_tmp_file_path();
     strFilePathKey_ = strPrefix + ".key.pem";
     strFilePathCert_ = strPrefix + ".cert.pem";
-    std::cout << ( cc::info( "Will generate " ) + cc::p( strFilePathKey_ ) + cc::info( " and " ) +
-                   cc::p( strFilePathCert_ ) + cc::info( "..." ) + "\n" );
-    //
-    std::cout << ( cc::debug( "Will create " ) + cc::p( strFilePathKey_ ) + cc::debug( " and " ) +
-                   cc::p( strFilePathCert_ ) + cc::debug( "..." ) + "\n" );
+    std::cout << "Will generate " + strFilePathKey_ + " and " +
+                   strFilePathCert_ + "...\n";
+    std::cout << "Will create " + strFilePathKey_ + " and " +
+                   strFilePathCert_ + "...\n";
     std::string strCmd;
     strCmd +=
         "openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "
@@ -108,8 +106,9 @@ void helper_ssl_cert_and_key_holder::auto_init() {
         std::cerr << g_err_msg << "\n";
         throw std::runtime_error( g_err_msg );
     }
-    std::cout << ( cc::success( "OKay created " ) + cc::p( strFilePathKey_ ) +
-                   cc::success( " and " ) + cc::p( strFilePathCert_ ) + cc::success( "." ) + "\n" );
+
+    std::cout << "OKay created " + strFilePathKey_ +
+                   " and " + strFilePathCert_ + ".\n";
     need_remove_files_ = true;
 }
 
@@ -161,18 +160,17 @@ void helper_server::run_parallel() {
     check_can_listen();
     std::thread( [&]() -> void {
         thread_is_running_ = true;
-        std::cout << ( cc::info( strScheme_ ) + cc::debug( " network server thread started" ) +
-                       "\n" );
+
+        std::cout << strScheme_ + " network server thread started\n" ;
         run();
-        std::cout << ( cc::info( strScheme_ ) + cc::debug( " network server thread will exit" ) +
-                       "\n" );
+
+        std::cout << strScheme_ + " network server thread will exit\n";
         thread_is_running_ = false;
     } )
         .detach();
     while ( !thread_is_running_ )
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
-    std::cout << ( cc::debug( "Letting " ) + cc::info( strScheme_ ) +
-                   cc::debug( " network server init..." ) );
+    std::cout << "Letting " + strScheme_ + " network server init...";
     std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
 }
 
@@ -183,10 +181,10 @@ void helper_server::wait_parallel() {
 
 void helper_server::stat_check_port_availability_to_start_listen(
     int ipVer, const char* strAddr, int nPort, const char* strScheme ) {
-    std::cout << ( cc::debug( "Will check port " ) + cc::num10( nPort ) +
-                   cc::debug( "/IPv" + std::to_string( ipVer ) ) +
-                   cc::debug( " availability for " ) + cc::info( strScheme ) +
-                   cc::debug( " server..." ) + "\n" );
+    std::cout << "Will check port " + std::to_string(nPort) +
+                   "/IPv" + std::to_string( ipVer ) +
+                   " availability for " + strScheme +
+                   " server...\n";
     skutils::network::sockaddr46 sa46;
     std::string strError =
         skutils::network::resolve_address_for_client_connection( ipVer, strAddr, sa46 );
@@ -204,9 +202,9 @@ void helper_server::stat_check_port_availability_to_start_listen(
                                   std::string( "\", port " ) + std::to_string( nPort ) +
                                   std::string( ", IPv" ) + std::to_string( ipVer ) +
                                   std::string( " - port is already listening" ) );
-    std::cout << ( cc::notice( "Port " ) + cc::num10( nPort ) +
-                   cc::notice( "/IPv" + std::to_string( ipVer ) ) + cc::notice( " is free for " ) +
-                   cc::info( strScheme ) + cc::notice( " server to start" ) + "\n" );
+    std::cout << "Port " + std::to_string(nPort) +
+                   "/IPv" + std::to_string(ipVer) + " is free for " +
+                   strScheme + " server to start\n";
 }
 
 void helper_server::check_can_listen() {
@@ -221,20 +219,20 @@ void helper_server::check_can_listen() {
 helper_ws_peer::helper_ws_peer( skutils::ws::server& srv, const skutils::ws::hdl_t& hdl )
     : skutils::ws::peer( srv, hdl ) {
     strPeerQueueID_ = skutils::dispatch::generate_id( this, "relay_peer" );
-    std::cout << ( desc() + cc::notice( " peer ctor" ) + "\n" );
+    std::cout << desc() + " peer ctor\n" ;
 }
 helper_ws_peer::~helper_ws_peer() {
-    std::cout << ( desc() + cc::notice( " peer dtor" ) + "\n" );
+    std::cout << desc() + " peer dtor\n";
     skutils::dispatch::remove( strPeerQueueID_ );
 }
 
 void helper_ws_peer::onPeerRegister() {
-    std::cout << ( desc() + cc::notice( " peer registered" ) + "\n" );
+    std::cout << desc() + " peer registered\n";
     skutils::ws::peer::onPeerRegister();
 }
 void helper_ws_peer::onPeerUnregister() {  // peer will no longer receive onMessage after call to
                                            // this
-    std::cout << ( desc() + cc::notice( " peer unregistered" ) + "\n" );
+    std::cout << desc() + " peer unregistered\n";
     skutils::ws::peer::onPeerUnregister();
 }
 
@@ -242,13 +240,11 @@ void helper_ws_peer::onMessage( const std::string& msg, skutils::ws::opcv eOpCod
     if ( eOpCode != skutils::ws::opcv::text )
         throw std::runtime_error( "only ws text messages are supported" );
     skutils::dispatch::async( strPeerQueueID_, [=]() -> void {
-        std::cout << ( cc::ws_rx_inv(
-                           ">>> " + std::string( get_helper_server().strSchemeUC_ ) + "-RX >>> " ) +
-                       desc() + cc::ws_rx( " >>> " ) + cc::j( msg ) + "\n" );
+        std::cout << ">>> " + std::string( get_helper_server().strSchemeUC_ ) + "-RX >>> " +
+                       desc() + " >>> " + msg + "\n";
         std::string strResult = msg;
-        std::cout << ( cc::ws_tx_inv(
-                           "<<< " + std::string( get_helper_server().strSchemeUC_ ) + "-TX <<< " ) +
-                       desc() + cc::ws_tx( " <<< " ) + cc::j( strResult ) + "\n" );
+        std::cout << "<<< " + std::string( get_helper_server().strSchemeUC_ ) + "-TX <<< " +
+                       desc() + " <<< " + strResult + "\n";
         sendMessage( strResult );
     } );
     skutils::ws::peer::onMessage( msg, eOpCode );
@@ -256,19 +252,21 @@ void helper_ws_peer::onMessage( const std::string& msg, skutils::ws::opcv eOpCod
 
 void helper_ws_peer::onClose(
     const std::string& reason, int local_close_code, const std::string& local_close_code_as_str ) {
-    std::cout << ( desc() + cc::warn( " peer close event with code=" ) + cc::c( local_close_code ) +
-                   cc::debug( ", reason=" ) + cc::info( reason ) + "\n" );
+
+    std::cout << desc() + " peer close event with code=" + std::to_string(local_close_code) +
+                   ", reason=" + reason + "\n";
     skutils::ws::peer::onClose( reason, local_close_code, local_close_code_as_str );
 }
 
 void helper_ws_peer::onFail() {
-    std::cout << ( desc() + cc::error( " peer fail event" ) + "\n" );
+
+    std::cout << desc() + " peer fail event\n";
     skutils::ws::peer::onFail();
 }
 
 void helper_ws_peer::onLogMessage(
     skutils::ws::e_ws_log_message_type_t eWSLMT, const std::string& msg ) {
-    std::cout << ( desc() + cc::debug( " peer log: " ) + msg + "\n" );
+    std::cout << desc() + " peer log: " + msg + "\n";
     skutils::ws::peer::onLogMessage( eWSLMT, msg );
 }
 
@@ -284,16 +282,15 @@ helper_server_ws_base::helper_server_ws_base(
     : helper_server( strScheme, nListenPort, strBindAddressServer ) {
     onPeerInstantiate_ = [&]( skutils::ws::server& srv,
                              skutils::ws::hdl_t hdl ) -> skutils::ws::peer_ptr_t {
-        std::cout << ( cc::info( strScheme_ ) + cc::debug( " server will instantiate new peer" ) +
-                       "\n" );
+        std::cout << strScheme_ + " server will instantiate new peer\n";
         return new helper_ws_peer( srv, hdl );
     };
     // onPeerRegister_ =
     // onPeerUnregister_ =
 }
 helper_server_ws_base::~helper_server_ws_base() {
-    std::cout << ( cc::debug( "Will close " ) + cc::info( strScheme_ ) +
-                   cc::debug( " server, was running on port " ) + cc::c( nListenPort_ ) + "\n" );
+    std::cout << "Will close " + strScheme_ +
+                   " server, was running on port " + std::to_string(nListenPort_) + "\n";
     stop();
 }
 
@@ -308,9 +305,8 @@ void helper_server_ws_base::stop() {
 }
 
 void helper_server_ws_base::run() {
-    std::cout << ( cc::debug( "Will start server on port " ) + cc::c( nListenPort_ ) +
-                   cc::debug( " using " ) + cc::info( strScheme_ ) + cc::debug( " scheme" ) +
-                   "\n" );
+    std::cout << "Will start server on port " +  std::to_string(nListenPort_)  +
+                    " using " +  strScheme_  + " scheme\n";
     std::atomic_bool bServerOpenComplete( false );
     std::thread( [&]() {
         ws_server_thread_is_running_ = true;
@@ -320,20 +316,18 @@ void helper_server_ws_base::run() {
             strPrivateKeyFile_ = ssl_info.strFilePathKey_;
         }
         if ( !open( strScheme_.c_str(), nListenPort_ ) ) {
-            std::cerr << ( cc::fatal( "Failed to start server" ) + "\n" );
+            std::cerr << "Failed to start server\n";
             throw std::runtime_error( "Failed to start server" );
         }
-        std::cout << ( cc::sunny( "Server opened" ) + "\n" );
+        std::cout << "Server opened\n";
         bServerOpenComplete = true;
         if ( service_mode_supported() ) {
-            std::cout << ( cc::info( "Main loop" ) +
-                           cc::debug( " will run in poll in service mode" ) + "\n" );
+            std::cout << "Main loop will run in poll in service mode\n";
             service( [&]() -> bool {
                 return ( !/*skutils::signal::g_bStop*/ bStopFlag_ ) ? true : false;
             } );
         } else {
-            std::cout << ( cc::info( "Main loop" ) + cc::debug( " will run in poll/reset mode" ) +
-                           "\n" );
+            std::cout << "Main loop will run in poll/reset mode\n";
             for ( ; !bStopFlag_; ) {
                 poll( [&]() -> bool { return ( !bStopFlag_ ) ? true : false; } );
                 if ( bStopFlag_ )
@@ -341,16 +335,14 @@ void helper_server_ws_base::run() {
                 reset();
             }  // for( ; ! bStopFlag_; )
         }
-        std::cout << ( cc::info( "Main loop" ) + cc::debug( " finish" ) + "\n" );
+        std::cout << "Main loop finish\n";
         ws_server_thread_is_running_ = false;
     } )
         .detach();
-    std::cout << ( cc::debug( "Waiting for " ) + cc::note( "server" ) + cc::debug( " open..." ) +
-                   "\n" );
+    std::cout << "Waiting for server open...\n";
     while ( !bServerOpenComplete )
         std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
-    std::cout << ( cc::success( "Success, server " ) + cc::info( strScheme_ ) +
-                   cc::success( " server started" ) + "\n" );
+    std::cout << "Success, server " +  strScheme_ + " server started\n";
 }
 
 void helper_server_ws_base::onLogMessage(
@@ -410,7 +402,7 @@ helper_server_http_base::helper_server_http_base( const char* strScheme, int nLi
             __SKUTILS_HTTP_DEFAULT_MAX_PARALLEL_QUEUES_COUNT__, is_async_http_transfer_mode ) );
     pServer_->Options(
         "/", [&]( const skutils::http::request& /*req*/, skutils::http::response& res ) {
-            std::cout << ( cc::info( "OPTTIONS" ) + cc::debug( " request handler" ) + "\n" );
+            std::cout << "OPTTIONS request handler\n";
             // res.set_content( "", "text/plain" );
             res.set_header( "access-control-allow-headers", "Content-Type" );
             res.set_header( "access-control-allow-methods", "POST" );
@@ -422,15 +414,15 @@ helper_server_http_base::helper_server_http_base( const char* strScheme, int nLi
                 "vary", "Origin, Access-Control-request-Method, Access-Control-request-Headers" );
         } );
     pServer_->Post( "/", [&]( const skutils::http::request& req, skutils::http::response& res ) {
-        std::cout << ( cc::ws_rx_inv( ">>> " + std::string( strSchemeUC_ ) + "-RX-POST >>> " ) +
-                       cc::j( req.body_ ) + "\n" );
+        std::cout << ">>> " + std::string( strSchemeUC_ ) + "-RX-POST >>> " +
+                       req.body_ + "\n";
         //
         //
         std::string strResult = req.body_;
         //
         //
-        std::cout << ( cc::ws_tx_inv( "<<< " + std::string( strSchemeUC_ ) + "-TX-POST <<< " ) +
-                       cc::j( strResult ) + "\n" );
+        std::cout << "<<< " + std::string( strSchemeUC_ ) + "-TX-POST <<< " +
+                       strResult + "\n";
         res.set_header( "access-control-allow-origin", "*" );
         res.set_header( "vary", "Origin" );
         res.set_content( strResult.c_str(), "application/json" );
@@ -494,10 +486,8 @@ nlohmann::json helper_client::call( const nlohmann::json& joMsg ) {
     nlohmann::json joAnswer = nlohmann::json::object();
     if ( !call( joMsg, joAnswer ) ) {
         joAnswer = nlohmann::json::object();
-        std::cerr << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                       cc::fatal( "RPC CALL FAILURE:" ) +
-                       cc::error( " call failed on side of client " ) + cc::info( strClientName_ ) +
-                       "\n" );
+        std::cerr << strClientName_ +  ": RPC CALL FAILURE: call failed on side of client " +  strClientName_ +
+                       "\n";
     }
     return joAnswer;
 }
@@ -520,55 +510,45 @@ helper_client_ws_base::helper_client_ws_base( const char* strClientName, int nTa
         nLocalCloseCode_ = local_close_code;
         strLocalCloseCode_ = local_close_code_as_str;
         strCloseReason_ = reason;
-        std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                       cc::warn( "client got close event close with " ) + cc::info( "code" ) +
-                       cc::warn( "=" ) + cc::c( local_close_code ) +
-                       cc::warn( ", code explanation is " ) +
-                       ( local_close_code_as_str.empty() ? cc::debug( "empty text" ) :
-                                                           cc::info( local_close_code_as_str ) ) +
-                       cc::warn( ", reason is " ) +
-                       ( reason.empty() ? cc::debug( "empty text" ) : cc::info( reason ) ) + "\n" );
+
+        std::cout << strClientName_ +  ": client got close event close with code = " +  std::to_string(local_close_code) +
+                       ", code explanation is " +
+                       ( local_close_code_as_str.empty() ?  "empty text" :
+                                                            local_close_code_as_str ) +
+                       ", reason is " +
+                       ( reason.empty() ?  "empty text" :  reason ) + "\n";
     };
     onFail_ = [this]( skutils::ws::client::basic_socket&, skutils::ws::hdl_t ) -> void {
         ++cntFail_;
-        std::cerr << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                       cc::error( "client got fail event" ) + "\n" );
+        std::cerr << strClientName_ +  ": client got fail event\n";
     };
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::debug( "Will initalize client " ) + cc::info( strClientName_ ) +
-                   cc::debug( "..." ) + "\n" );
+    std::cout << strClientName_ + ": " + "Will initalize client " + strClientName_ +
+                    "...\n";
     enableRestartTimer( false );
     std::string strServerUrl = skutils::tools::format(
         "%s://%s:%d", strScheme_.c_str(), strBindAddressClient_.c_str(), nTargetPort_ );
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::debug( "client will connect to: " ) + cc::u( strServerUrl ) +
-                   cc::debug( "..." ) + "\n" );
+    std::cout << strClientName_ +  ": client will connect to: " + strServerUrl +
+                    "...\n";
     size_t cnt = nConnectAttempts;
     if ( cnt < 1 )
         cnt = 1;
     for ( size_t nClientConnectAttempt = 0;
           nClientConnectAttempt < cnt && ( !open( strServerUrl ) ); ++nClientConnectAttempt ) {
-        std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                       cc::debug( "Attempt " ) + cc::size10( nClientConnectAttempt + 1 ) +
-                       cc::debug( "..." ) + "\n" );
+        std::cout << strClientName_ +  ": Attempt " + std::to_string(nClientConnectAttempt + 1) +
+                        "...\n";
         std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
     }
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " + cc::success( "Success" ) +
-                   cc::debug( ", client " ) + cc::info( strClientName_ ) +
-                   cc::debug( " did connected to: " ) + cc::u( strServerUrl ) + cc::debug( "..." ) +
-                   "\n" );
+    std::cout << strClientName_ +  ": Success, client " + strClientName_ +
+                    " did connected to: " + strServerUrl + "...\n";
     //		std::this_thread::sleep_for( std::chrono::seconds(1) );
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " + cc::success( "Done" ) +
-                   cc::notice( ", did initialized client " ) + cc::info( strClientName_ ) + "\n" );
+    std::cout << strClientName_ +  ": Done, did initialized client " +  strClientName_ + "\n";
 }
 helper_client_ws_base::~helper_client_ws_base() {
     stop();
 }
 
 void helper_client_ws_base::stop() {
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::notice( "Will close client " ) + cc::info( strClientName_ ) +
-                   cc::notice( "..." ) + "\n" );
+    std::cout << (  strClientName_ ) +  ": Will close client " + strClientName_ + "...\n";
     pause_reading();
     cancel();
     //		std::this_thread::sleep_for( std::chrono::seconds(1) );
@@ -577,8 +557,7 @@ void helper_client_ws_base::stop() {
     // skutils::ws::client::close_status::normal );
     close();
     //
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " + cc::success( "Success" ) +
-                   cc::debug( ", did closed client " ) + cc::info( strClientName_ ) + "\n" );
+    std::cout << strClientName_ + ": Success, did closed client " + strClientName_ + "\n";
 }
 
 void helper_client_ws_base::run() {}
@@ -589,22 +568,22 @@ void helper_client_ws_base::onLogMessage(
     // case skutils::ws::e_ws_log_message_type_t::eWSLMT_debug:   break;
     // case skutils::ws::e_ws_log_message_type_t::eWSLMT_info:    break;
     case skutils::ws::e_ws_log_message_type_t::eWSLMT_warning:
-        std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " + msg + "\n" );
+        std::cout << strClientName_ +  ": " + msg + "\n";
         return;
     case skutils::ws::e_ws_log_message_type_t::eWSLMT_error:
-        std::cerr << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " + msg + "\n" );
+        std::cerr << strClientName_ + ": " + msg + "\n";
         return;
     default:
         break;
     }  // switch( eWSLMT )
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " + msg + "\n" );
+    std::cout << strClientName_ + ": " + msg + "\n";
 }
 
 bool helper_client_ws_base::sendMessage(
     const std::string& msg, skutils::ws::opcv eOpCode /*= skutils::ws::opcv::text*/ ) {
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::ws_tx_inv( "RPC CALL Tx " + strClientName_ ) + cc::ws_tx( " <<< " ) +
-                   cc::j( msg ) + "\n" );
+    std::cout << strClientName_ + ": " +
+                   "RPC CALL Tx " + strClientName_ + " <<< " +
+                   msg + "\n";
     strLastMessage_.clear();
     bHaveAnswer_ = false;
     return skutils::ws::client::client::sendMessage( msg, eOpCode );
@@ -620,9 +599,8 @@ bool helper_client_ws_base::sendMessage( const nlohmann::json& joMsg ) {
 
 void helper_client_ws_base::onMessage(
     skutils::ws::hdl_t /*hdl*/, skutils::ws::opcv /*eOpCode*/, const std::string& msg ) {
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::ws_rx_inv( "RPC CALL Rx " + strClientName_ ) + cc::ws_rx( " >>> " ) +
-                   cc::j( msg ) + "\n" );
+    std::cout << strClientName_ +  ": RPC CALL Rx " + strClientName_ + " >>> " +
+                   msg + "\n";
     strLastMessage_ = msg;
     bHaveAnswer_ = true;
 }
@@ -746,15 +724,13 @@ bool helper_client_http_base::call( const std::string& strMsg, std::string& strA
 bool helper_client_http_base::call( const nlohmann::json& joMsg, nlohmann::json& joAnswer ) {
     joAnswer = nlohmann::json::object();
     std::string strAnswer;
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::ws_tx_inv( "RPC CALL Tx " + strClientName_ ) + cc::ws_tx( " <<< " ) +
-                   cc::j( joMsg ) + "\n" );
+    std::cout << strClientName_ +  ": RPC CALL Tx " + strClientName_ + " <<< " +
+                   joMsg.dump() + "\n";
     if ( !call( joMsg.dump(), strAnswer ) )
         return false;
     joAnswer = nlohmann::json::parse( strAnswer );
-    std::cout << ( cc::info( strClientName_ ) + cc::debug( ":" ) + " " +
-                   cc::ws_rx_inv( "RPC CALL Rx " + strClientName_ ) + cc::ws_rx( " >>> " ) +
-                   cc::j( joAnswer ) + "\n" );
+    std::cout << strClientName_ +  ": " + "RPC CALL Rx " + strClientName_ + " >>> " +
+                   joAnswer.dump() + "\n";
     return true;
 }
 
@@ -894,12 +870,10 @@ void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
                 throw std::runtime_error( skutils::tools::format(
                     "Failed to create IPv6 busy listener on port %d", nSocketListenPort ) );
         }
-        std::cout << ( cc::debug( "Will execute " ) + cc::note( "busy port" ) +
-                       cc::debug( " callback..." ) + "\n" );
+        std::cout << "Will execute busy port callback...\n";
         if ( fnWorker )
             fnWorker();
-        std::cout << ( cc::success( "Success, did executed " ) + cc::note( "busy port" ) +
-                       cc::success( " callback" ) + "\n" );
+        std::cout << "Success, did executed busy port callback\n";
     } catch ( std::exception& ex ) {
         std::string strErrorDescription = ex.what();
         bool isIgnoreError = false;
@@ -907,9 +881,8 @@ void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
             isIgnoreError =
                 fnErrorHandler( strErrorDescription );  // returns true if errror should be ignored
         if ( !isIgnoreError ) {
-            std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from " ) +
-                           cc::note( "busy port" ) + cc::error( " callback: " ) +
-                           cc::warn( strErrorDescription ) + "\n" );
+            std::cerr << "FAILURE: Got exception from busy port callback: " +
+                           strErrorDescription + "\n";
             // assert( false );
         }
     } catch ( ... ) {
@@ -919,8 +892,7 @@ void with_busy_tcp_port( fn_with_busy_tcp_port_worker_t fnWorker,
             isIgnoreError =
                 fnErrorHandler( strErrorDescription );  // returns true if errror should be ignored
         if ( !isIgnoreError ) {
-            std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got unknown exception from " ) +
-                           cc::note( "busy port" ) + cc::error( " callback" ) + "\n" );
+            std::cerr << "FAILURE: Got unknown exception from busy port callback\n";
             // assert( false );
         }
     }
@@ -954,25 +926,19 @@ void with_server( fn_with_server_t fn, const std::string& strServerUrlScheme,
         pServer.reset( new helper_server_http( nSocketListenPort, strBindAddressServer, false ) );
         // assert( !pServer->isSSL() );
     } else {
-        std::cerr << ( cc::error( "Unknown server type: " ) + cc::warn( strServerUrlScheme ) +
-                       "\n" );
+        std::cerr << "Unknown server type: " +  strServerUrlScheme + "\n";
         throw std::runtime_error( "Unknown server type: " + strServerUrlScheme );
     }
     pServer->run_parallel();
     try {
-        std::cout << ( cc::debug( "Will execute " ) + cc::note( "server" ) +
-                       cc::debug( " callback..." ) + "\n" );
+        std::cout << "Will execute server callback...\n";
         fn( *pServer.get() );
-        std::cout << ( cc::success( "Success, did executed " ) + cc::note( "server" ) +
-                       cc::success( " callback" ) + "\n" );
+        std::cout << "Success, did executed server callback\n";
     } catch ( std::exception& ex ) {
-        std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from " ) +
-                       cc::note( "server" ) + cc::error( " callback: " ) + cc::warn( ex.what() ) +
-                       "\n" );
+        std::cerr << "FAILURE: Got exception from server callback: " + std::string(ex.what()) + "\n" ;
         // assert( false );
     } catch ( ... ) {
-        std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got unknown exception from " ) +
-                       cc::note( "server" ) + cc::error( " callback" ) + "\n" );
+        std::cerr << "FAILURE: Got unknown exception from server callback\n";
         // assert( false );
     }
     pServer->stop();
@@ -985,19 +951,16 @@ void with_client(
     const size_t nConnectAttempts  // = 10
 ) {
     if ( runClientInOtherThread ) {
-        std::cout << ( cc::debug( "Starting client " ) + cc::info( strClientName ) +
-                       cc::debug( " thread..." ) + "\n" );
+        std::cout << "Starting client " + strClientName + " thread...\n";
         std::atomic_bool bClientThreadFinished( false );
         std::thread clientThread( [&]() {
             with_client( fn, strClientName, strServerUrlScheme, strBindAddressClient,
                 nSocketListenPort, false, nConnectAttempts );
             bClientThreadFinished = true;
-            std::cout << ( cc::debug( " client " ) + cc::info( strClientName ) +
-                           cc::debug( " thread will exit" ) + "\n" );
+            std::cout << " client " + strClientName + " thread will exit\n";
         } );
-        std::cout << ( cc::success( "Done, client " ) + cc::info( strClientName ) +
-                       cc::success( " thread is running" ) + "\n" );
-        std::cout << ( cc::debug( "Waiting for client thread to finish..." ) + "\n" );
+        std::cout << "Done, client " + strClientName + " thread is running\n";
+        std::cout << "Waiting for client thread to finish...\n";
         while ( !bClientThreadFinished )
             std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
         try {
@@ -1006,11 +969,10 @@ void with_client(
         } catch ( ... ) {
         }
         if ( clientThread.joinable() ) {
-            std::cerr << ( cc::fatal( "Client thread is still running" ) + "\n" );
+            std::cerr << "Client thread is still running\n";
             throw std::runtime_error( "Client thread is still running" );
         }
-        std::cout << ( cc::success( "Done" ) + cc::debug( ",  client " ) +
-                       cc::info( strClientName ) + cc::debug( " thread is finished" ) + "\n" );
+        std::cout << "Done,  client " + strClientName + " thread is finished\n";
         return;
     }  // if( runClientInOtherThread )
 
@@ -1033,25 +995,20 @@ void with_client(
             new helper_client_http( strClientName.c_str(), nSocketListenPort, strBindAddressClient, nConnectAttempts ) );
         // assert( !pClient->isSSL() );
     } else {
-        std::cerr << ( cc::error( "Unknown client type: " ) + cc::warn( strServerUrlScheme ) +
-                       "\n" );
+        std::cerr << "Unknown client type: " + strServerUrlScheme + "\n";
         throw std::runtime_error( "Unknown client type: " + strServerUrlScheme );
     }
     try {
-        std::cerr << ( cc::debug( "Will execute client " ) + cc::info( pClient->strClientName_ ) +
-                       cc::debug( " callback..." ) + "\n" );
+        std::cerr << "Will execute client " +  pClient->strClientName_ + " callback..." + "\n";
         fn( *pClient.get() );
-        std::cerr << ( cc::success( "Success, did executed client " ) +
-                       cc::info( pClient->strClientName_ ) + cc::success( " callback" ) + "\n" );
+        std::cerr << (  "Success, did executed client " ) + pClient->strClientName_ + " callback" + "\n";
     } catch ( std::exception& ex ) {
-        std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got exception from client " ) +
-                       cc::info( pClient->strClientName_ ) + cc::error( " callback: " ) +
-                       cc::warn( ex.what() ) + "\n" );
+        std::cerr << "FAILURE: Got exception from client " +
+                        pClient->strClientName_ + " callback: " + ex.what() + "\n";
         // assert( false );
     } catch ( ... ) {
-        std::cerr << ( cc::fatal( "FAILURE:" ) +
-                       cc::error( " Got unknown exception from client " ) +
-                       cc::info( pClient->strClientName_ ) + cc::error( " callback" ) + "\n" );
+        std::cerr << "FAILURE: Got unknown exception from client " +
+                        pClient->strClientName_ +  " callback\n";
         // assert( false );
     }
     pClient->stop();
@@ -1074,16 +1031,16 @@ extern void with_clients( fn_with_client_t fn, const std::vector< std::string >&
                              nConnectAttempts, &cntRunningThreads, &vecClientNames]() -> void {
                 with_client( fn, vecClientNames[i], strServerUrlScheme, strBindAddressClient,
                     nSocketListenPort, false, nConnectAttempts );
-                std::cout << ( cc::debug( "  client " ) + cc::info( vecClientNames[i] ) +
-                               cc::debug( " thread will exit" ) + "\n" );
+                std::cout << "  client " + vecClientNames[i] +
+                                " thread will exit\n";
                 --cntRunningThreads;
             } ) );
     std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
     for ( size_t idxWait = 0; cntRunningThreads > 0; ++idxWait ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
         if ( idxWait % 1000 == 0 && idxWait != 0 )
-            std::cout << ( cc::debug( "Waiting for " ) + cc::size10( cntRunningThreads ) +
-                           cc::debug( " client thread(s)" ) + "\n" );
+            std::cout << "Waiting for " + std::to_string(cntRunningThreads) +
+                            " client thread(s)\n";
     }
     for ( i = 0; i < cnt; ++i ) {
         try {
@@ -1104,23 +1061,15 @@ void with_client_server( fn_with_client_server_t fn, const std::string& strClien
             with_client(
                 [&]( helper_client& refClient ) -> void {
                     try {
-                        std::cout << ( cc::debug( "Will execute " ) + cc::note( "client-server" ) +
-                                       cc::debug( " callback..." ) + "\n" );
+                        std::cout << "Will execute client-server callback...\n";
                         fn( refServer, refClient );
-                        std::cout << ( cc::success( "Success, did executed " ) +
-                                       cc::note( "client-server" ) + cc::success( " callback" ) +
-                                       "\n" );
+                        std::cout << "Success, did executed client-server callback\n";
                     } catch ( std::exception& ex ) {
-                        std::cerr << ( cc::fatal( "FAILURE:" ) +
-                                       cc::error( " Got exception from " ) +
-                                       cc::note( "client-server" ) + cc::error( " callback: " ) +
-                                       cc::warn( ex.what() ) + "\n" );
+                        std::cerr << "FAILURE: Got exception from client-server callback: " +
+                                        std::string(ex.what()) + "\n";
                         // assert( false );
                     } catch ( ... ) {
-                        std::cerr << ( cc::fatal( "FAILURE:" ) +
-                                       cc::error( " Got unknown exception from " ) +
-                                       cc::note( "client-server" ) + cc::error( " callback" ) +
-                                       "\n" );
+                        std::cerr << "FAILURE: Got unknown exception from client-server callback\n";
                         // assert( false );
                     }
                 },
@@ -1135,27 +1084,27 @@ void with_client_server( fn_with_client_server_t fn, const std::string& strClien
 
 void helper_protocol_busy_port(
     const char* strProtocol, const char* strBindAddressServer, int nPort ) {
-    std::cout << ( cc::debug( "Protocol busy port check" ) + "\n" );
+    std::cout << "Protocol busy port check\n";
     with_busy_tcp_port(
         [&]() -> void {  // fn_with_busy_tcp_port_worker_t
-            std::cout << ( cc::sunny( "Busy port allocated" ) + "\n" );
+            std::cout << "Busy port allocated\n";
             with_server(
                 [&]( helper_server & /*refServer*/ ) -> void {
-                    std::cout << ( cc::sunny( "Server startup" ) + "\n" );
-                    std::cout << ( cc::sunny( "WE SHOULD NOT REACH THIS EXECUTION POINT" ) + "\n" );
+                    std::cout << "Server startup\n";
+                    std::cout << "WE SHOULD NOT REACH THIS EXECUTION POINT\n";
                     // assert( false );
                 },
                 strProtocol, strBindAddressServer, nPort );
-            std::cout << ( cc::sunny( "Server finish" ) + "\n" );
+            std::cout << "Server finish\n";
         },
         [&]( const std::string& strErrorDescription ) -> bool {  // fn_with_busy_tcp_port_error_t
-            std::cout << ( cc::success( "Busy port detected with message: " ) +
-                           cc::bright( strErrorDescription ) + "\n" );
-            std::cout << ( cc::success( "SUCCESS - busy port handled" ) + "\n" );
+            std::cout << "Busy port detected with message: " +
+                           strErrorDescription + "\n";
+            std::cout << "SUCCESS - busy port handled\n";
             return true;  // returns true if errror should be ignored
         },
         strBindAddressServer, nPort );
-    std::cout << ( cc::sunny( "Busy port de-allocated" ) + "\n" );
+    std::cout << "Busy port de-allocated\n";
 }
 
 void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddressServer,
@@ -1168,33 +1117,33 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
                     "{ \"id\": \"1234567\", \"method\": \"hello\", \"params\": {} }" );
                 nlohmann::json joCall =
                     ensure_call_id_present_copy( nlohmann::json::parse( strCall ) );
-                std::cout << ( cc::normal( "Startup" ) + "\n" );
+                std::cout << "Startup\n";
                 std::string strURL = skutils::tools::format(
                     "%s://%s:%d", strProtocol, strBindAddressClient, nPort );
                 skutils::url u( strURL );
                 skutils::rest::client restCall( u );
-                std::cout << ( cc::info( "input" ) + cc::debug( "..........." ) +
-                               cc::normal( joCall.dump() ) + "\n" );
+                std::cout << "input..........." +
+                               joCall.dump() + "\n";
                 skutils::rest::data_t dataOut = restCall.call( strCall );
                 // assert( ! dataOut.empty() );
                 nlohmann::json joResult = nlohmann::json::parse( dataOut.s_ );
-                std::cout << ( cc::info( "output" ) + cc::debug( ".........." ) +
-                               cc::normal( joResult.dump() ) + "\n" );
+                std::cout << "output.........." +
+                               joResult.dump() + "\n";
                 // assert( joCall.dump() == joResult.dump() );
                 end_reached = true;
-                std::cout << ( cc::success( "Finish" ) + "\n" );
+                std::cout << "Finish\n";
                 if ( isAutoExitOnSuccess )
                     _exit( __EXIT_SUCCESS );
             } catch ( std::exception& ex ) {
                 std::string strErrorDescription = ex.what();
-                std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got in-test exception: " ) +
-                               cc::warn( strErrorDescription ) + "\n" );
+                std::cerr << "FAILURE: Got in-test exception: " +
+                                strErrorDescription + "\n";
                 // assert( false );
                 _exit( __EXIT_ERROR_IN_TEST_EXCEPTOION );
             } catch ( ... ) {
                 std::string strErrorDescription = "unknown exception";
-                std::cerr << ( cc::fatal( "FAILURE:" ) + cc::error( " Got in-test exception: " ) +
-                               cc::warn( strErrorDescription ) + "\n" );
+                std::cerr << "FAILURE: Got in-test exception: " +
+                                strErrorDescription + "\n";
                 // assert( false );
                 _exit( __EXIT_ERROR_IN_TEST_UNKNOWN_EXCEPTOION );
             }
@@ -1207,7 +1156,7 @@ void helper_protocol_rest_call( const char* strProtocol, const char* strBindAddr
 void helper_protocol_echo_server( const char* strProtocol, const char* strBindAddressServer, int nPort ) {
     with_server(
         [&]( helper_server & /*refServer*/ ) -> void {
-            std::cout << ( cc::success( "Echo server started" ) + "\n" );
+            std::cout << "Echo server started\n";
             for( ; true; ) {
                 std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
             }

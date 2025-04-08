@@ -71,8 +71,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
     //
-    clog( VerbosityInfo, "skale-host" )
-        << cc::note( "NOTE: Block number at startup is " ) << cc::size10( nfo.number() ) << "\n";
+    LOG( m_loggerInfo ) << "NOTE: Block number at startup is " << nfo.number();
     //
     auto ts = nfo.timestamp();
 
@@ -275,7 +274,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
                     last_block_when_log = current_block;
             }
 
-            LOG( m_traceLogger ) << "TRACEPOINT " << name << " "
+            LOG( m_loggerTrace ) << "TRACEPOINT " << name << " "
                                  << m_debugTracer.get_tracepoint_count( name );
         } );
 
@@ -285,7 +284,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_extFace.reset( new ConsensusExtImpl( *this ) );
 
     } catch ( const std::exception& e ) {
-        clog( Verbosity::VerbosityError, "main" ) << "Could not init SkaleHost" << e.what();
+        LOG( m_loggerError ) << "Could not init SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
     }
 
@@ -298,8 +297,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
             m_consensus = _consFactory->create( *m_extFace );
 
     } catch ( const std::exception& e ) {
-        clog( Verbosity::VerbosityError, "main" )
-            << "Could not create consensus in SkaleHost" << e.what();
+        LOG( m_loggerError ) << "Could not create consensus in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
     }
 
@@ -307,8 +305,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
     } catch ( const std::exception& e ) {
-        clog( Verbosity::VerbosityError, "main" )
-            << "Could not create parse consensus config in SkaleHost" << e.what();
+        LOG( m_loggerError ) << "Could not create parse consensus config in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
     }
 }
@@ -316,10 +313,10 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 SkaleHost::~SkaleHost() {}
 
 void SkaleHost::logState() {
-    LOG( m_traceLogger ) << cc::debug( " sent_to_consensus = " ) << total_sent
-                         << cc::debug( " got_from_consensus = " ) << total_arrived
-                         << cc::debug( " m_tq = " ) << m_tq.status().current
-                         << cc::debug( " m_bcast_counter = " ) << m_bcast_counter;
+    LOG( m_loggerTrace ) << " sent_to_consensus = " << total_sent
+                         << " got_from_consensus = " << total_arrived
+                         << " m_tq = " << m_tq.status().current
+                         << " m_bcast_counter = " << m_bcast_counter;
 }
 
 constexpr uint64_t MAX_BROADCAST_QUEUE_SIZE = 2048;
@@ -344,7 +341,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     // drop incoming transactions if skaled has an outdated state
     if ( m_client.bc().info().timestamp() + REJECT_OLD_TRANSACTION_THROUGH_BROADCAST_INTERVAL_SEC <
          std::time( NULL ) ) {
-        LOG( m_debugLogger ) << "Dropped the transaction received through broadcast";
+        LOG( m_loggerDebug ) << "Dropped the transaction received through broadcast";
         return h256();
     }
 
@@ -356,7 +353,6 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
     //
     m_debugTracer.tracepoint( "receive_transaction" );
 
-
 #if ( defined _DEBUG )
     h256 sha2 =
 #endif
@@ -366,7 +362,7 @@ h256 SkaleHost::receiveTransaction( std::string _rlp ) {
 #endif
 
     m_debugTracer.tracepoint( "receive_transaction_success" );
-    LOG( m_debugLogger ) << "Successfully received through broadcast " << sha;
+    LOG( m_loggerDebug ) << "Successfully received through broadcast " << sha;
 
 
     return sha;
@@ -440,13 +436,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                     getGasPrice(), isMtmEnabled );
             } catch ( const exception& ex ) {
                 if ( to_delete.count( tx.sha3() ) == 0 )
-                    clog( VerbosityInfo, "skale-host" )
-                        << "Dropped now-invalid transaction in pending queue " << tx.sha3() << ":"
-                        << ex.what();
+                    LOG( m_loggerInfo ) << "Dropped now-invalid transaction in pending queue "
+                                        << tx.sha3() << ":" << ex.what();
                 to_delete.insert( tx.sha3() );
                 return false;
             }
-
             return true;
         } );
 
@@ -490,11 +484,11 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 #ifdef DEBUG_TX_BALANCE
             if ( sent.count( sha ) != 0 ) {
                 int prev = sent[sha];
-                std::cerr << "Prev no = " << prev << std::endl;
+                LOG( m_loggerError ) << "Prev no = " << prev;
 
                 if ( sent.count( sha ) != 0 ) {
                     // TODO fix this!!?
-                    clog( VerbosityWarning, "skale-host" )
+                    LOG( m_loggerWarning )
                         << "Sending to consensus duplicate transaction (sent before!)";
                 }
             }
@@ -502,10 +496,10 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 #endif
 
             m_debugTracer.tracepoint( "sent_txn" );
-            LOG( m_traceLogger ) << "Sent txn: " << sha << std::endl;
+            LOG( m_loggerTrace ) << "Sent txn: " << sha;
         }
     } catch ( ... ) {
-        clog( VerbosityError, "skale-host" ) << "BAD exception in pendingTransactions!";
+        LOG( m_loggerError ) << "BAD exception in pendingTransactions!";
     }
 
     m_debugTracer.tracepoint( "send_to_consensus" );
@@ -522,12 +516,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex );
 
     if ( m_ignoreNewBlocks ) {
-        LOG( m_warningLogger ) << "WARNING: skaled got new block #" << _blockID
+        LOG( m_loggerWarning ) << "WARNING: skaled got new block #" << _blockID
                                << " after timestamp-related exit initiated!";
         return;
     }
 
-    LOG( m_debugLogger ) << "createBlock ID = #" << _blockID;
+    LOG( m_loggerDebug ) << "createBlock ID = #" << _blockID;
     m_debugTracer.tracepoint( "create_block" );
 
     // convert bytes back to transactions (using caching), delete them from q and push results into
@@ -537,12 +531,12 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         dev::h256 stCurrent =
             this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) ).stateRoot();
 
-        LOG( m_traceLogger ) << "STATE ROOT FOR BLOCK: " << std::to_string( _blockID - 1 ) << " "
+        LOG( m_loggerTrace ) << "STATE ROOT FOR BLOCK: " << std::to_string( _blockID - 1 ) << " "
                              << stCurrent.hex();
 
         // FATAL if mismatch in non-default
         if ( _winningNodeIndex != 0 && dev::h256::Arith( stCurrent ) != _stateRoot ) {
-            LOG( m_errorLogger ) << "FATAL STATE ROOT MISMATCH ERROR: current state root "
+            LOG( m_loggerError ) << "FATAL STATE ROOT MISMATCH ERROR: current state root "
                                  << dev::h256::Arith( stCurrent ).str()
                                  << " is not equal to arrived state root " << _stateRoot.str()
                                  << " with block ID #" << _blockID
@@ -557,7 +551,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         // WARN if default but non-zero
         if ( _winningNodeIndex == 0 && _stateRoot != u256() )
-            LOG( m_warningLogger ) << "WARNING: STATE ROOT MISMATCH!"
+            LOG( m_loggerWarning ) << "WARNING: STATE ROOT MISMATCH!"
                                    << "Current block is DEFAULT BUT arrived state root is "
                                    << _stateRoot.str() << " with block ID #" << _blockID;
     }
@@ -575,7 +569,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
             const bytes& data = *it;
             h256 sha = sha3( data );
-            LOG( m_traceLogger ) << "Arrived txn: " << sha;
+            LOG( m_loggerTrace ) << "Arrived txn: " << sha;
 
             Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
@@ -602,7 +596,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         total_arrived += out_txns.size();
 
         if ( _blockID != m_client.number() + 1 ) {
-            LOG( m_errorLogger ) << "Mismatch in block number:SKALED_NUMBER:" << m_client.number()
+            LOG( m_loggerError ) << "Mismatch in block number:SKALED_NUMBER:" << m_client.number()
                                  << ":CONSENSUS_NUMBER:" << _blockID;
             assert( false );
         }
@@ -625,7 +619,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
 
     if ( latestBlockTime != boost::chrono::high_resolution_clock::time_point() ) {
-        LOG( m_infoLogger ) << "SWT:" << swt << ':' << "BFT:"
+        LOG( m_loggerInfo ) << "SWT:" << swt << ':' << "BFT:"
                             << boost::chrono::duration_cast< boost::chrono::milliseconds >(
                                    skaledTimeFinish - latestBlockTime )
                                    .count()
@@ -634,14 +628,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                             << ":TQSIZE:CTQ:" << m_tq.status().current
                             << ":FTQ:" << m_tq.status().future;
     } else {
-        LOG( m_infoLogger ) << "SWT:" << swt << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
+        LOG( m_loggerInfo ) << "SWT:" << swt << ":TQBYTES:CTQ:" << m_tq.status().currentBytes
                             << ":FTQ:" << m_tq.status().futureBytes
                             << ":TQSIZE:CTQ:" << m_tq.status().current
                             << ":FTQ:" << m_tq.status().future;
     }
 
     latestBlockTime = skaledTimeFinish;
-    LOG( m_debugLogger ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
+    LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
 
     if ( m_instanceMonitor != nullptr ) {
@@ -650,17 +644,17 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             m_ignoreNewBlocks = true;
             m_consensus->exitGracefully();
             ExitHandler::exitHandler( -1, ExitHandler::ec_rotation_complete );
-            LOG( m_infoLogger ) << "Rotation is completed. Instance is exiting";
+            LOG( m_loggerInfo ) << "Rotation is completed. Instance is exiting";
         }
     }
 
 
 } catch ( const std::exception& ex ) {
-    LOG( m_errorLogger ) << "CRITICAL " << ex.what() << " (in createBlock)";
-    LOG( m_errorLogger ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+    LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (in createBlock)";
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 } catch ( ... ) {
-    LOG( m_errorLogger ) << "CRITICAL unknown exception (in createBlock)";
-    LOG( m_errorLogger ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
+    LOG( m_loggerError ) << "CRITICAL unknown exception (in createBlock)";
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 }
 
 void SkaleHost::startWorking() {
@@ -684,42 +678,40 @@ void SkaleHost::startWorking() {
     auto broadcastFunction = std::bind( &SkaleHost::broadcastFunc, this );
     m_broadcastThread = std::thread( broadcastFunction );
 
-    auto consensusFunction = [&]() {
-        try {
-            m_consensus->startAll();
-        } catch ( ... ) {
-            // cleanup
-            m_exitNeeded = true;
-            m_broadcastThread.join();
-            ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
-            return;
-        }
+    auto consensusFunction =
+        [&]() {
+            try {
+                m_consensus->startAll();
+            } catch ( ... ) {
+                // cleanup
+                m_exitNeeded = true;
+                m_broadcastThread.join();
+                ExitHandler::exitHandler( -1, ExitHandler::ec_termninated_by_signal );
+                return;
+            }
 
-        // comment out as this hack is in consensus now
-        // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
-        //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
-        //        m_consensus->setEmptyBlockIntervalMs( 50 );
-        try {
-            static const char g_strThreadName[] = "bootStrapAll";
-            dev::setThreadName( g_strThreadName );
-            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " started\n";
-            m_consensus->bootStrapAll();
-            clog( VerbosityInfo, "skale-host" ) << "Thread " << g_strThreadName << " will exit\n";
-        } catch ( std::exception& ex ) {
-            std::string s = ex.what();
-            if ( s.empty() )
-                s = "no description";
-            clog( VerbosityError, "skale-host" )
-                << "Consensus thread in skale host will exit with exception: " << s << "\n";
-        } catch ( ... ) {
-            clog( VerbosityError, "skale-host" )
-                << "Consensus thread in skale host will exit with unknown exception\n"
-                << skutils::signal::generate_stack_trace() << "\n";
-        }
-
-        // comment out as this hack is in consensus now
-        //        m_consensus->setEmptyBlockIntervalMs( tmp_interval );
-    };  // func
+            // comment out as this hack is in consensus now
+            // HACK Prevent consensus from hanging up for emptyBlockIntervalMs at bootstrapAll()!
+            //        uint64_t tmp_interval = m_consensus->getEmptyBlockIntervalMs();
+            //        m_consensus->setEmptyBlockIntervalMs( 50 );
+            try {
+                static const char g_strThreadName[] = "bootStrapAll";
+                dev::setThreadName( g_strThreadName );
+                LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " started";
+                m_consensus->bootStrapAll();
+                LOG( m_loggerInfo ) << "Thread " << g_strThreadName << " will exit";
+            } catch ( std::exception& ex ) {
+                std::string s = ex.what();
+                if ( s.empty() )
+                    s = "no description";
+                LOG( m_loggerError )
+                    << "Consensus thread in skale host will exit with exception: " << s;
+            } catch ( ... ) {
+                LOG( m_loggerError )
+                    << "Consensus thread in skale host will exit with unknown exception\n"
+                    << skutils::signal::generate_stack_trace();
+            }
+        };  // func
 
     m_consensusThread = std::thread( consensusFunction );
 }
@@ -732,19 +724,17 @@ void SkaleHost::stopWorking() {
     m_exitNeeded = true;
     pauseConsensus( false );
 
-
     if ( ExitHandler::shouldExit() ) {
         // requested exit
         int signal = ExitHandler::getSignal();
         int exitCode = ExitHandler::requestedExitCode();
         if ( signal > 0 )
-            clog( VerbosityInfo, "skale-host" ) << cc::info( "Exit requested with signal " )
-                                                << signal << " and exit code " << exitCode;
+            LOG( m_loggerInfo ) << "Exit requested with signal " << signal << " and exit code "
+                                << exitCode;
         else
-            clog( VerbosityInfo, "skale-host" )
-                << cc::info( "Exit requested internally with exit code " ) << exitCode;
+            LOG( m_loggerInfo ) << "Exit requested internally with exit code " << exitCode;
     } else {
-        clog( VerbosityInfo, "skale-host" ) << cc::info( "Exiting without request" );
+        LOG( m_loggerInfo ) << "Exiting without request";
     }
 
 
@@ -752,14 +742,16 @@ void SkaleHost::stopWorking() {
 
     m_consensus->exitGracefully();
 
-    cnote << "Exit initiated. Skaled waiting for consensus exit.";
+    LOG( m_loggerInfo ) << "Exit initiated. Skaled waiting for consensus exit.";
 
     while ( m_consensus->getStatus() != CONSENSUS_EXITED ) {
         timespec ms100{ 0, 100000000 };
         nanosleep( &ms100, nullptr );
     }
 
-    cnote << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
+
+    LOG( m_loggerInfo )
+        << "Consensus status is exited. Skaled is waiting for consensus and broadcast to finish.";
 
     if ( m_consensusThread.joinable() )
         m_consensusThread.join();
@@ -769,7 +761,7 @@ void SkaleHost::stopWorking() {
 
     working = false;
 
-    cnote << "Consensus and broadcat threads finished.";
+    LOG( m_loggerInfo ) << "Consensus and broadcat threads finished.";
 }
 
 void SkaleHost::broadcastFunc() {
@@ -807,19 +799,19 @@ void SkaleHost::broadcastFunc() {
                     m_broadcaster->broadcast( rlp );
                     ++m_bcast_counter;
                 } catch ( const std::exception& ex ) {
-                    cwarn << "BROADCAST EXCEPTION CAUGHT";
-                    cwarn << ex.what();
+                    LOG( m_loggerWarning ) << "BROADCAST EXCEPTION CAUGHT";
+                    LOG( m_loggerWarning ) << ex.what();
                 }  // catch
             }
 
             logState();
         } catch ( const std::exception& ex ) {
-            cerror << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (restarting broadcastFunc)";
+            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
             sleep( 2 );
         } catch ( ... ) {
-            cerror << "CRITICAL unknown exception (restarting broadcastFunc)";
-            cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+            LOG( m_loggerError ) << "CRITICAL unknown exception (restarting broadcastFunc)";
+            LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
             sleep( 2 );
         }
     }  // while
