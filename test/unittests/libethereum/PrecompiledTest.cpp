@@ -1717,7 +1717,11 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ClientTest* testClient = asClientTest( client.get() );
 
     testClient->mineBlocks( 1 );
-    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
+    testClient->importTransactionsAsBlock( dev::eth::Transactions(),
+#ifdef BITE
+           shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >(),
+#endif
+                                           1000, 4294967294 );
     dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );

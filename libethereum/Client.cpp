@@ -527,7 +527,11 @@ void Client::syncBlockQueue() {
 
 
 size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+    const Transactions& _transactions,
+#ifdef BITE
+    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactions,
+#endif
+        u256 _gasPrice, uint64_t _timestamp ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
