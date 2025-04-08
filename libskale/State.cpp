@@ -1067,7 +1067,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;
-        cerror << strOut;
+        LOG( m_loggerDebug ) << strOut;
     }
 
     bool removeEmptyAccounts = false;
