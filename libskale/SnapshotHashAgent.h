@@ -96,6 +96,14 @@ private:
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;
 
     size_t verifyAllData() const;
+
+    /// Loggers
+    mutable dev::Logger m_loggerDebug{ dev::createLogger(
+        dev::VerbosityDebug, "SnapshotHashAgent" ) };
+    mutable dev::Logger m_loggerInfo{ dev::createLogger(
+        dev::VerbosityInfo, "SnapshotHashAgent" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger(
+        dev::VerbosityError, "SnapshotHashAgent" ) };
 };
 
 #endif  // SNAPSHOTHASHAGENT_H

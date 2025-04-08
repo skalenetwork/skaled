@@ -30,6 +30,7 @@
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
 #include <libdevcore/Common.h>
+#include <libdevcore/Log.h>
 
 #include <json.hpp>
 
@@ -58,6 +59,9 @@ public:
     virtual Json::Value skale_performanceTrackingStart( const Json::Value& request ) override;
     virtual Json::Value skale_performanceTrackingStop( const Json::Value& request ) override;
     virtual Json::Value skale_performanceTrackingFetch( const Json::Value& request ) override;
+
+private:
+    Logger m_loggerError{ createLogger( VerbosityError, "SkalePerformanceTracker - IMA" ) };
 };
 
 };  // namespace rpc

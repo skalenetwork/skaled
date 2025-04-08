@@ -75,7 +75,7 @@ Skale::~Skale() {
     threadExitRequested = true;
     if ( snapshotDownloadFragmentMonitorThread != nullptr &&
          snapshotDownloadFragmentMonitorThread->joinable() ) {
-        clog( VerbosityInfo, "Skale" ) << "Joining downloadSnapshotFragmentMonitorThread";
+        LOG( m_loggerInfo ) << "Joining downloadSnapshotFragmentMonitorThread";
         snapshotDownloadFragmentMonitorThread->join();
     }
 }
@@ -103,15 +103,15 @@ void Skale::onShutdownInvoke( fn_on_shutdown_t fn ) {
 
 std::string Skale::skale_shutdownInstance() {
     if ( !g_bShutdownViaWeb3Enabled ) {
-        cwarn << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
+        LOG( m_loggerWarning ) << "\nINSTANCE SHUTDOWN ATTEMPT WHEN DISABLED\n\n";
         return toJS( "disabled" );
     }
     if ( g_bNodeInstanceShouldShutdown ) {
-        cnote << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
+        LOG( m_loggerInfo ) << "\nSECONDARY INSTANCE SHUTDOWN EVENT\n\n";
         return toJS( "in progress(secondary attempt)" );
     }
     g_bNodeInstanceShouldShutdown = true;
-    cnote << "\nINSTANCE SHUTDOWN EVENT\n\n";
+    LOG( m_loggerInfo ) << "\nINSTANCE SHUTDOWN EVENT\n\n";
     for ( auto& fn : g_list_fn_on_shutdown ) {
         if ( !fn )
             continue;
@@ -121,9 +121,9 @@ std::string Skale::skale_shutdownInstance() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            cerror << "Exception in shutdown event handler: " << s;
+            LOG( m_loggerError ) << "Exception in shutdown event handler: " << s;
         } catch ( ... ) {
-            cerror << "Unknown exception in shutdown event handler";
+            LOG( m_loggerError ) << "Unknown exception in shutdown event handler";
         }
     }  // for( auto & fn : g_list_fn_on_shutdown )
     g_list_fn_on_shutdown.clear();
@@ -215,15 +215,13 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
                 sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
             }
 
-            clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
-                << "Unlocking shared space.";
+            LOG( m_loggerInfo ) << "Unlocking shared space.";
 
             std::lock_guard< std::mutex > lock( m_snapshot_mutex );
             if ( currentSnapshotBlockNumber >= 0 ) {
                 try {
                     fs::remove( currentSnapshotPath );
-                    clog( VerbosityInfo, "skale_downloadSnapshotFragmentMonitorThread" )
-                        << "Deleted snapshot file.";
+                    LOG( m_loggerInfo ) << "Deleted snapshot file.";
                 } catch ( ... ) {
                 }
                 currentSnapshotBlockNumber = -1;
@@ -324,8 +322,7 @@ nlohmann::json Skale::impl_skale_downloadSnapshotFragmentJSON( const nlohmann::j
     std::string strBase64 = skutils::tools::base64::encode( buffer.data(), sizeOfChunk );
 
     if ( sizeOfChunk + idxFrom == sizeOfFile )
-        clog( VerbosityInfo, "skale_downloadSnapshotFragment" )
-            << "Sent all chunks for " << currentSnapshotPath.string();
+        LOG( m_loggerInfo ) << "Sent all chunks for " << currentSnapshotPath.string();
 
     joResponse["size"] = sizeOfChunk;
     joResponse["data"] = strBase64;
@@ -424,16 +421,15 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
             cli.optsSSL_ = ssl_options;
             bool fl = cli.open( sgxServerURL );
             if ( !fl ) {
-                clog( VerbosityError, "skale_getSnapshotSignature" )
-                    << "FATAL:"
-                    << " Exception while trying to connect to sgx server: "
-                    << "connection refused";
+                LOG( m_loggerInfo ) << "FATAL:"
+                                    << " Exception while trying to connect to sgx server: "
+                                    << "connection refused";
             }
 
             skutils::rest::data_t d;
             while ( true ) {
-                clog( VerbosityInfo, "skale_getSnapshotSignature" ) << ">>> SGX call >>>"
-                                                                    << " " << joCall;
+                LOG( m_loggerInfo ) << ">>> SGX call >>>"
+                                    << " " << joCall;
                 d = cli.call( joCall );
                 if ( d.ei_.et_ !=
                      skutils::http::common_network_exception::error_type::et_no_error ) {
@@ -441,16 +437,14 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                              skutils::http::common_network_exception::error_type::et_unknown ||
                          d.ei_.et_ ==
                              skutils::http::common_network_exception::error_type::et_fatal ) {
-                        clog( VerbosityError, "skale_getSnapshotSignature" )
-                            << "ERROR:"
-                            << " Exception while trying to connect to sgx server: "
-                            << " error with connection: "
-                            << " retrying... ";
+                        LOG( m_loggerError ) << "ERROR:"
+                                             << " Exception while trying to connect to sgx server: "
+                                             << " error with connection: "
+                                             << " retrying... ";
                     } else {
-                        clog( VerbosityError, "skale_getSnapshotSignature" )
-                            << "ERROR:"
-                            << " Exception while trying to connect to sgx server: "
-                            << " error with ssl certificates " << d.ei_.strError_;
+                        LOG( m_loggerError ) << "ERROR:"
+                                             << " Exception while trying to connect to sgx server: "
+                                             << " error with ssl certificates " << d.ei_.strError_;
                     }
                 } else {
                     break;
@@ -459,8 +453,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             if ( d.empty() ) {
                 static const char g_strErrMsg[] = "SGX Server call to blsSignMessageHash failed";
-                clog( VerbosityError, "skale_getSnapshotSignature" ) << "!!! SGX call error !!!"
-                                                                     << " " << g_strErrMsg;
+                LOG( m_loggerError ) << "SGX call error"
+                                     << " " << g_strErrMsg;
                 throw std::runtime_error( g_strErrMsg );
             }
 
@@ -541,7 +535,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
         std::string receipt;
         std::string errorMessage;
 
-        clog( VerbosityDebug, "Oracle request:" ) << request;
+        LOG( m_loggerDebug ) << request;
 
         uint64_t status = this->m_client.submitOracleRequest( request, receipt, errorMessage );
         if ( status != ORACLE_SUCCESS ) {
@@ -571,7 +565,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
             throw jsonrpc::JsonRpcException(
                 status, skutils::tools::format( "Oracle request failed with status %zu", status ) );
         }
-        clog( VerbosityDebug, "Oracle result:" ) << result;
+        LOG( m_loggerDebug ) << result;
         return result;
     } catch ( jsonrpc::JsonRpcException const& e ) {
         throw e;

@@ -14,6 +14,9 @@ public:
     explicit EVMC( evmc_instance* _instance ) noexcept;
 
     owning_bytes_ref exec( u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp ) final;
+
+private:
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "EVMC" ) };
 };
 }  // namespace eth
 }  // namespace dev

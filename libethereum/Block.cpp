@@ -86,7 +86,7 @@ Block::Block( const BlockChain& _bc, h256 const& _hash, const State& _state, Bas
 
     if ( !_bc.isKnown( _hash ) ) {
         // Might be worth throwing here.
-        cwarn << "Invalid block given for state population: " << _hash;
+        LOG( m_loggerWarning ) << "Invalid block given for state population: " << _hash;
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _hash ) );
     }
 
@@ -207,7 +207,7 @@ PopulationStatistics Block::populateFromChain(
 
     if ( !_bc.isKnown( _h ) ) {
         // Might be worth throwing here.
-        cwarn << "Invalid block given for state population: " << _h;
+        LOG( m_loggerWarning ) << "Invalid block given for state population: " << _h;
         BOOST_THROW_EXCEPTION( BlockNotFound() << errinfo_target( _h ) );
     }
 
@@ -273,14 +273,14 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
                 break;
             } catch ( Exception const& _e ) {
                 // TODO: Slightly nicer handling? :-)
-                cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
-                     << endl;
-                cerr << diagnostic_information( _e ) << endl;
+                LOG( m_loggerError )
+                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart.";
+                LOG( m_loggerError ) << diagnostic_information( _e );
             } catch ( std::exception const& _e ) {
                 // TODO: Slightly nicer handling? :-)
-                cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart."
-                     << endl;
-                cerr << _e.what() << endl;
+                LOG( m_loggerError )
+                    << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart.";
+                LOG( m_loggerError ) << _e.what();
             }
         }
 #endif
@@ -298,14 +298,6 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
         // Find most recent state dump and replay what's left.
         // (Most recent state dump might end up being genesis.)
 
-        //        if (m_state.db().lookup(bi.stateRoot()).empty())  // TODO: API in State for this?
-        //        {
-        //            cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot()
-        //                  << "not found in database.";
-        //            cwarn << "Database corrupt: contains block without stateRoot:" << bi;
-        //            cwarn << "Try rescuing the database by running: eth --rescue";
-        //            BOOST_THROW_EXCEPTION(InvalidStateRoot() << errinfo_target(bi.stateRoot()));
-        //        }
         m_previousBlock = bi;
         resetCurrent();
         ret = true;
@@ -337,8 +329,9 @@ bool Block::sync( BlockChain const& _bc, h256 const& _block, BlockHeader const& 
             }
         } catch ( ... ) {
             // TODO: Slightly nicer handling? :-)
-            cerr << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart." << endl;
-            cerr << boost::current_exception_diagnostic_information() << endl;
+            LOG( m_loggerError )
+                << "ERROR: Corrupt block-chain! Delete your block-chain DB and restart.";
+            LOG( m_loggerError ) << boost::current_exception_diagnostic_information();
             exit( 1 );
         }
 
@@ -388,7 +381,7 @@ pair< TransactionReceipts, bool > Block::sync(
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
                     } else if ( t.gasPrice() < _gp.ask( *this ) * 9 / 10 ) {
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << t.sha3() << " Dropping El Cheapo transaction (<90% of ask price)";
                         _tq.drop( t.sha3() );
                     }
@@ -398,11 +391,12 @@ pair< TransactionReceipts, bool > Block::sync(
 
                     if ( req > got ) {
                         // too old
-                        LOG( m_logger ) << t.sha3() << " Dropping old transaction (nonce too low)";
+                        LOG( m_loggerDebug )
+                            << t.sha3() << " Dropping old transaction (nonce too low)";
                         _tq.drop( t.sha3() );
                     } else if ( got > req + _tq.waiting( t.sender() ) ) {
                         // too new
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << t.sha3() << " Dropping new transaction (too many nonces ahead)";
                         _tq.drop( t.sha3() );
                     } else
@@ -410,16 +404,17 @@ pair< TransactionReceipts, bool > Block::sync(
                 } catch ( BlockGasLimitReached const& e ) {
                     bigint const& got = *boost::get_error_info< errinfo_got >( e );
                     if ( got > m_currentBlock.gasLimit() ) {
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << t.sha3()
                             << " Dropping over-gassy transaction (gas > block's gas limit)";
-                        LOG( m_logger )
+                        LOG( m_loggerDebug )
                             << "got: " << got << " required: " << m_currentBlock.gasLimit();
                         _tq.drop( t.sha3() );
                     } else {
-                        LOG( m_logger ) << t.sha3()
-                                        << " Temporarily no gas left in current block (txs gas > "
-                                           "block's gas limit)";
+                        LOG( m_loggerDebug )
+                            << t.sha3()
+                            << " Temporarily no gas left in current block (txs gas > "
+                               "block's gas limit)";
                         //_tq.drop(t.sha3());
                         // Temporarily no gas left in current block.
                         // OPTIMISE: could note this and then we don't evaluate until a block that
@@ -427,14 +422,15 @@ pair< TransactionReceipts, bool > Block::sync(
                     }
                 } catch ( Exception const& _e ) {
                     // Something else went wrong - drop it.
-                    LOG( m_logger )
+                    LOG( m_loggerDebug )
                         << t.sha3()
                         << " Dropping invalid transaction: " << diagnostic_information( _e );
                     _tq.drop( t.sha3() );
                 } catch ( std::exception const& ) {
                     // Something else went wrong - drop it.
                     _tq.drop( t.sha3() );
-                    cwarn << t.sha3() << "Transaction caused low-level exception :(";
+                    LOG( m_loggerWarning )
+                        << t.sha3() << "Transaction caused low-level exception :(";
                 }
             }
         if ( chrono::steady_clock::now() > deadline ) {
@@ -521,8 +517,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
 
             if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
-                LOG( m_logger ) << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
-                                << tr.gasPrice() << " < " << _gasPrice;
+                LOG( m_loggerDebug )
+                    << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
+                    << tr.gasPrice() << " < " << _gasPrice;
 
                 if ( SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ) {
                     // Add to the user-originated transactions that we've executed.
@@ -568,7 +565,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             ex << errinfo_transactionIndex( i );
             // throw;
             // just ignore invalid transactions
-            clog( VerbosityError, "block" ) << "FAILED transaction after consensus! " << ex.what();
+            LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
 
@@ -605,15 +602,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     // we need to specially handle the boundary case
     if ( weAreAtTheTimeStampBoundary ) {
-        LOG( m_logger ) << "Removing legacy partial receipts";
+        LOG( m_loggerTrace ) << "Removing legacy partial receipts";
         m_state.safeRemoveLegacyPartialTransactionReceipts();
     }
 
     if ( !ClearPartialReceiptsPatch::isEnabledWhen( latestCommittedBlockTimeStamp ) ) {
         // Saving partial receipts old way to be compatible with < 4.0 version
         if ( !receiptsOfCommitted.empty() ) {
-            LOG( m_loggerDetailed )
-                << "Saving partial transaction receipts. Size: " << receiptsOfCommitted.size();
+            LOG( m_loggerTrace ) << "Saving partial transaction receipts. Size: "
+                                 << receiptsOfCommitted.size();
             m_state.safeCommitLegacyPartialTransactionReceipts( receiptsOfCommitted );
         }
     }
@@ -668,8 +665,8 @@ u256 Block::enactOn( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 #if ETH_TIMED_ENACTMENTS
     enactment = t.elapsed();
     if ( populateVerify + populateGrand + syncReset + enactment > 0.5 )
-        LOG( m_logger ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
-                        << populateGrand << " / " << syncReset << " / " << enactment;
+        LOG( m_loggerDebug ) << "popVer/popGrand/syncReset/enactment = " << populateVerify << " / "
+                             << populateGrand << " / " << syncReset << " / " << enactment;
 #endif
     return ret;
 }
@@ -726,7 +723,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
         //		ex << errinfo_vmtrace(vmTrace(_block.block, _bc, ImportRequirements::None));
         for ( auto const& receipt : m_receipts ) {
             if ( !receipt.hasStatusCode() ) {
-                cwarn << "Skale does not support state root in receipt";
+                LOG( m_loggerWarning ) << "Skale does not support state root in receipt";
                 break;
             }
         }
@@ -953,17 +950,17 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         // use fake receipt created above if execution throws!!
     } catch ( const TransactionException& ex ) {
         // shoul not happen as exception in execute() means that tx should not be in block
-        cerror << DETAILED_ERROR;
+        LOG( m_loggerError ) << DETAILED_ERROR;
         assert( false );
     } catch ( const std::exception& ex ) {
-        LOG( m_logger ) << "Transaction with index " << _transactionIndex
-                        << " WouldNotBeInBlock: " << ex.what();
+        LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
+                             << " WouldNotBeInBlock: " << ex.what();
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     } catch ( ... ) {
-        LOG( m_logger ) << "Transaction with index " << _transactionIndex
-                        << " WouldNotBeInBlock: ...";
+        LOG( m_loggerDebug ) << "Transaction with index " << _transactionIndex
+                             << " WouldNotBeInBlock: ...";
         if ( _p != Permanence::Reverted )  // if it is not call
             _p = Permanence::CommittedWithoutState;
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
@@ -1116,9 +1113,9 @@ void Block::commitToSeal(
     //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
     //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
-    LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
-                            << cc::notice( "is not calculated in Skale state" );
-    LOG( m_loggerDetailed ) << m_state;
+    LOG( m_loggerTrace ) << "Post-reward stateRoot: "
+                         << "is not calculated in Skale state";
+    LOG( m_loggerTrace ) << m_state;
 
     m_currentBlock.setLogBloom( logBloom() );
     m_currentBlock.setGasUsed( gasUsed() );
@@ -1191,30 +1188,15 @@ LogBloom Block::logBloom() const {
 void Block::cleanup() {
     MICROPROFILE_SCOPEI( "Block", "cleanup", MP_BEIGE );
 
-    // Commit the new trie to disk.
-    //    LOG(m_logger) << "Committing to disk: stateRoot " << m_currentBlock.stateRoot() << " = "
-    //                  << rootHash() << " = " << toHex(asBytes(db().lookup(globalRoot())));
-
-    //    try
-    //    {
-    //        EnforceRefs er(db(), true);
-    //        globalRoot();
-    //    }
-    //    catch (BadRoot const&)
-    //    {
-    //        cwarn << "Trie corrupt! :-(";
-    //        throw;
-    //    }
-
     m_state.commit();  // TODO: State API for this?
 
-    LOG( m_logger ) << "Committed: stateRoot is not calculated in Skale state";
+    LOG( m_loggerDebug ) << "Committed: stateRoot is not calculated in Skale state";
 
     m_previousBlock = m_currentBlock;
     sealEngine()->populateFromParent( m_currentBlock, m_previousBlock );
 
-    LOG( m_logger ) << "finalising enactment. current -> previous, hash is "
-                    << m_previousBlock.hash();
+    LOG( m_loggerDebug ) << "finalising enactment. current -> previous, hash is "
+                         << m_previousBlock.hash();
 
     resetCurrent();
 }

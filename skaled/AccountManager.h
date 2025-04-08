@@ -21,6 +21,7 @@
  * @date 2016
  */
 #pragma once
+#include <libdevcore/Log.h>
 #include <libethcore/KeyManager.h>
 
 /**
@@ -49,4 +50,10 @@ private:
     bool openWallet();
 
     std::unique_ptr< dev::eth::KeyManager > m_keyManager;
+
+    /// Loggers
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "AccountManager" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger(
+        dev::VerbosityWarning, "AccountManager" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "AccountManager" ) };
 };
