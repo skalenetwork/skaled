@@ -545,10 +545,11 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             return Json::Value( Json::nullValue );
 
         u256 baseFeePerGas;
-        if ( EIP1559TransactionsPatch::isEnabledWhen(
-                 client()->blockInfo( client()->numberFromHash( h ) - 1 ).timestamp() ) )
+        BlockNumber bn = client()->numberFromHash( h );
+        if ( bn > 0 &&
+             EIP1559TransactionsPatch::isEnabledWhen( client()->blockInfo( bn - 1 ).timestamp() ) )
             try {
-                baseFeePerGas = client()->gasBidPrice( client()->numberFromHash( h ) - 1 );
+                baseFeePerGas = client()->gasBidPrice( bn - 1 );
             } catch ( std::invalid_argument& _e ) {
                 LOG( m_loggerDebug ) << "Cannot get gas price for block " << h;
                 LOG( m_loggerDebug ) << _e.what();
@@ -563,7 +564,6 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             Transactions transactions = client()->transactions( h );
 
 #ifdef HISTORIC_STATE
-            BlockNumber bn = client()->numberFromHash( h );
             if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
                      bn, client()->blockChain() ) ) {
                 // remove invalid transactions
@@ -581,7 +581,6 @@ Json::Value Eth::eth_getBlockByHash( string const& _blockHash, bool _includeTran
             h256s transactions = client()->transactionHashes( h );
 
 #ifdef HISTORIC_STATE
-            BlockNumber bn = client()->numberFromHash( h );
             if ( SkipInvalidTransactionsPatch::hasPotentialInvalidTransactionsInBlock(
                      bn, client()->blockChain() ) ) {
                 // remove invalid transactions
