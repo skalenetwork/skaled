@@ -32,6 +32,10 @@ public:
     static dev::h256 newStateRootForAll;
     static size_t lastBlockToModify;
     static std::vector< size_t > majorityNodesIds();
+
+private:
+    static inline dev::Logger m_loggerInfo{ dev::createLogger(
+        dev::VerbosityInfo, "AmsterdamFixPatch" ) };
 };
 
 #endif  // AMSTERDAMFIXPATCH_H

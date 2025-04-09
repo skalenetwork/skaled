@@ -51,8 +51,11 @@ public:
     void rewindToBlock( unsigned _number );
     h256 importRawBlock( std::string const& _blockRLP );
 
+private:
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "ClientTest" ) };
+
 protected:
-    unsigned const m_singleBlockMaxMiningTimeInSeconds = 5;
+    unsigned const m_singleBlockMaxMiningTimeInSeconds = 10;
 };
 
 ClientTest& asClientTest( Interface& _c );

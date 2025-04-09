@@ -80,6 +80,10 @@ public:
 
 private:
     const dev::eth::Client& m_client;
+
+    /// Loggers
+    mutable dev::Logger m_loggerInfo{ dev::createLogger(
+        dev::VerbosityInfo, "DefaultConsensusFactory" ) };
 #if CONSENSUS
     void fillSgxInfo( ConsensusEngine& consensus ) const;
     void fillPublicKeyInfo( ConsensusEngine& consensus ) const;
@@ -121,6 +125,8 @@ public:
     void onBlockImported( dev::eth::BlockHeader const& _info );
 
     dev::h256 receiveTransaction( std::string );
+
+    void pushToBroadcastQueue( const dev::eth::Transaction& _transaction );
 
     dev::u256 getGasPrice( unsigned _blockNumber = dev::eth::LatestBlock ) const;
     dev::u256 getBlockRandom() const;
@@ -172,8 +178,11 @@ private:
 
     std::thread m_broadcastThread;
     void broadcastFunc();
-    dev::h256Hash m_received;
-    std::mutex m_receivedMutex;
+
+
+    list< dev::eth::Transaction > m_broadcastQueue;
+    std::mutex m_broadcastQueueMutex;
+    std::condition_variable m_broadcastQueueCondition;
 
     // TODO implement more nicely and more fine-grained!
     std::recursive_mutex m_pending_createMutex;  // for race conditions between
@@ -183,8 +192,6 @@ private:
 
     void penalizePeer(){};  // fake function for now
 
-    int64_t m_lastBlockWithBornTransactions = -1;  // to track txns need re-verification
-
     std::thread m_consensusThread;
 
     std::atomic_bool m_exitNeeded = false;
@@ -193,9 +200,6 @@ private:
     std::atomic_bool m_consensusPaused = false;
     std::atomic_bool m_broadcastPauseFlag = false;  // not pause - just ignore
 
-    std::map< std::array< uint8_t, 32 >, dev::eth::Transaction >
-        m_m_transaction_cache;  // used to find Transaction objects when
-                                // creating block
     dev::eth::Client& m_client;
     dev::eth::TransactionQueue& m_tq;  // transactions ready to go to consensus
 
@@ -205,11 +209,11 @@ private:
     bool m_broadcastEnabled;
 
 
-    dev::Logger m_errorLogger{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
-    dev::Logger m_warningLogger{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };
-    dev::Logger m_infoLogger{ dev::createLogger( dev::VerbosityInfo, "skale-host" ) };
-    dev::Logger m_debugLogger{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
-    dev::Logger m_traceLogger{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
+    dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
+    dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "skale-host" ) };
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "skale-host" ) };
+    dev::Logger m_loggerTrace{ dev::createLogger( dev::VerbosityTrace, "skale-host" ) };
     void logState();
 
     std::unique_ptr< ConsensusExtFace > m_extFace;

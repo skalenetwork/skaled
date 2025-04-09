@@ -1,6 +1,3 @@
-
-
-
 add_executable(skale-vm main.cpp)
 
 target_compile_options( skale-vm PRIVATE
@@ -16,7 +13,6 @@ target_link_libraries(
     skale-vm
     PRIVATE
     ethereum
-    historic
     evm
     ethashseal
     devcore
@@ -26,6 +22,10 @@ target_link_libraries(
     "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
     pthread
     )
+
+if(HISTORIC_STATE)
+    target_link_libraries(skale-vm PRIVATE historic)
+endif()
 
 target_include_directories(skale-vm PRIVATE ../utils)
 

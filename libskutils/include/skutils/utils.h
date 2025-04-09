@@ -23,7 +23,6 @@
 #include <type_traits>
 #include <vector>
 
-//#include <nlohmann/json.hpp>
 #include <json.hpp>
 
 #include <skutils/url.h>
@@ -39,11 +38,6 @@ typedef std::list< string_type_t > string_list_t;
 typedef std::vector< string_type_t > string_vector_t;
 
 namespace tools {
-
-//        std::string format         ( const char * format, ... );
-//        std::string format_no_throw( const char * format, ... );
-//        std::string format         ( const char * format, va_list args );
-//        std::string format_no_throw( const char * format, va_list args );
 
 template < class T >
 bool equal( T d1, T d2, typename std::enable_if< std::is_floating_point< T >::value >::type* = 0 ) {
@@ -256,46 +250,6 @@ constexpr static char DISKSTATS[] = "/proc/diskstats";
 constexpr static int MAX_NAME_LEN = 128;
 constexpr static int MAX_LINE_LEN = 256;
 
-#if ( defined __BUILDING_4_MAC_OS_X__ )
-extern float osx_GetSystemMemoryUsagePercentage();
-extern float osx_GetCPULoad();
-#else
-struct DiskInfo {
-    size_t readIOS;
-    size_t writeIOS;
-    size_t readSectors;
-    size_t writeSectors;
-};
-extern std::atomic_size_t g_nSleepMillisecondsBetweenCpuLoadMeasurements;
-extern std::vector< long double > cpu_load();
-extern std::map< std::string, DiskInfo > disk_load();
-extern nlohmann::json calculate_load_interval( const std::map< std::string, DiskInfo >& prevLoad,
-    const std::map< std::string, DiskInfo >& currentLoad, size_t nSleepMs );
-#endif
-
-class load_monitor {
-    std::atomic_bool stop_flag_;
-    std::atomic< double > cpu_load_;
-    size_t nSleepMillisecondsBetweenCpuLoadMeasurements_;
-    std::thread thread_;
-
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
-    nlohmann::json diskLoad_;
-    mutable std::mutex diskLoadMutex_;
-#endif
-public:
-    load_monitor( size_t nSleepMillisecondsBetweenCpuLoadMeasurements =
-                      0 );  // 0 means use g_nSleepMillisecondsBetweenCpuLoadMeasurements
-    virtual ~load_monitor();
-    double last_cpu_load() const;
-    nlohmann::json last_disk_load() const;
-
-private:
-    void thread_proc();
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
-    void calculate_load( size_t nSleep );
-#endif
-};  /// class cpu_load_monitor
 
 extern std::string create_random_uuid( const char* strSeparator );
 extern std::string create_random_uuid();
@@ -312,8 +266,6 @@ extern std::vector< uint8_t > decodeBin( std::string const& encoded_string );
 extern std::string decode( std::string const& encoded_string );
 };  // namespace base64
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class md5 {  // based on https://www.codeproject.com/Articles/98355/SMTP-Client-with-SSL-TLS
 public:

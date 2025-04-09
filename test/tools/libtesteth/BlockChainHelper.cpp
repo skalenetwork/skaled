@@ -99,7 +99,7 @@ void TestBlock::initBlockFromJsonHeader( mObject const& _blockHeader, mObject co
     m_state = std::unique_ptr< State >(
         new State( 0, m_tempDirState.get()->path(), h256{}, BaseState::Empty, 0, 1000000000 ) );
     ImportTest::importState( _stateObj, *m_state );
-    m_state->createStateModifyCopy().commit( dev::eth::CommitBehaviour::KeepEmptyAccounts );
+    m_state->createStateCopyAndClearCaches().commit(dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
     json_spirit::mObject state = _stateObj;
     dev::test::replaceCodeInState( state );
@@ -198,7 +198,7 @@ void TestBlock::mine( TestBlockChain const& _bc ) {
 
         size_t transactionsOnImport = m_transactionQueue.topTransactions( 100 ).size();
         block.sync( blockchain, m_transactionQueue,
-            gp );  //!!! Invalid transactions could be dropped from queue here!!!
+            gp );  //Invalid transactions could be dropped from queue here
         // if (transactionsOnImport >  m_transactionQueue.topTransactions(1000).size())
         // BOOST_ERROR(TestOutputHelper::get().testName() + " Dropped invalid Transactions before
         // mining!");

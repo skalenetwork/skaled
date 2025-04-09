@@ -52,6 +52,7 @@ public:
     Broadcaster() {}
     virtual ~Broadcaster();
 
+    virtual void initSocket(){};
     virtual void broadcast( const std::string& _rlp ) = 0;
 
     virtual void startService() = 0;
@@ -73,6 +74,8 @@ private:
 
     void initClients( dev::eth::SChain, dev::eth::NodeInfo );
     std::string getHttpUrl( const dev::eth::sChainNode& );
+
+    dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "HttpBroadcaster" ) };
 };
 
 class ZmqBroadcaster : public Broadcaster {
@@ -81,6 +84,7 @@ public:
     virtual ~ZmqBroadcaster();
 
     virtual void broadcast( const std::string& _rlp );
+    virtual void initSocket();
 
     virtual void startService();
     virtual void stopService();
@@ -100,6 +104,13 @@ private:
     // threading
     std::atomic_bool m_need_exit;
     std::thread m_thread;
+
+    /// Logger
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerWarning{ dev::createLogger(
+        dev::VerbosityWarning, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "ZmqBroadcaster" ) };
+    mutable dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "ZmqBroadcaster" ) };
 };
 
 #endif  // BROADCASTER_H

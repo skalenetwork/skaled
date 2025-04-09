@@ -99,12 +99,15 @@ public:
 
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytesConstRef _rlp, CheckTransaction _checkSig,
-        bool _allowInvalid = false, bool _eip1559Enabled = false );
+        bool _allowInvalid = false, bool _eip1559Enabled = false,
+        bool _invalidTransactionFormatPatchEnabled = false );
 
     /// Constructs a transaction from the given RLP.
     explicit TransactionBase( bytes const& _rlp, CheckTransaction _checkSig,
-        bool _allowInvalid = false, bool _eip1559Enabled = false )
-        : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled ) {}
+        bool _allowInvalid = false, bool _eip1559Enabled = false,
+        bool _invalidTransactionFormatPatchEnabled = false )
+        : TransactionBase( &_rlp, _checkSig, _allowInvalid, _eip1559Enabled,
+              _invalidTransactionFormatPatchEnabled ) {}
 
     TransactionBase( TransactionBase const& ) = default;
 
@@ -131,6 +134,20 @@ public:
 
     /// Force the chainId to a particular value. This will result in an invalid transaction RLP.
     void forceChainId( uint64_t _chainID ) { m_chainId = _chainID; }
+
+    /// Force type. This is used in tests
+    void forceType( TransactionType _type ) { m_txType = _type; }
+
+
+    /// Force Type2 fees. This is used in tests
+    void forceType2Fees( const u256& _maxFeePerGas, const u256& _maxPriorityFeePerGas ) {
+        m_maxFeePerGas = _maxFeePerGas;
+        m_maxPriorityFeePerGas = _maxPriorityFeePerGas;
+    }
+
+    /// Force gas limit. This is used in tests
+    void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
+
 
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
@@ -291,7 +308,9 @@ protected:
     ///< refunded once the contract is ended.
     bytes m_data;  ///< The data associated with the transaction, or the initialiser if it's a
     ///< creation transaction.
-    bytes m_rawData;
+    // use shared pointer here speed up copy of transaction objects and save memory
+    std::shared_ptr< bytes > m_rawData =
+        std::make_shared< bytes >();    ///< Raw data, not owned by this object.>
     std::vector< bytes > m_accessList;  ///< The access list. see more
                                         ///< https://eips.ethereum.org/EIPS/eip-2930. Not valid for
                                         ///< legacy txns
@@ -313,13 +332,13 @@ private:
 
     /// Constructs a transaction from the given RLP and transaction type.
     void fillFromBytesByType( bytesConstRef _rlpData, CheckTransaction _checkSig,
-        bool _allowInvalid, TransactionType _type );
+        bool _allowInvalid, TransactionType _type, bool _invalidTransactionFormatPatchEnabled );
     void fillFromBytesLegacy(
         bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    void fillFromBytesType1(
-        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
-    void fillFromBytesType2(
-        bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid );
+    void fillFromBytesType1( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
+        bool _invalidTransactionFormatPatchEnabled );
+    void fillFromBytesType2( bytesConstRef _rlpData, CheckTransaction _checkSig, bool _allowInvalid,
+        bool _invalidTransactionFormatPatchEnabled );
 
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;

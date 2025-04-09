@@ -97,7 +97,9 @@ public:
     /// @param _txHash Transaction hash
     void drop( h256 const& _txHash );
 
-    int getCategory( const h256& hash ) { return m_currentByHash[hash]->category; }
+    /// Remove many transactions from the queue at once
+    /// @param _txHash Transaction hash
+    void dropMany( h256Hash const& _txHashes );
 
     /// Get number of pending transactions for account.
     /// @returns Pending transaction count.
@@ -111,7 +113,7 @@ public:
     Transactions topTransactions( unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
 
     // same with categories
-    Transactions topTransactions( unsigned _limit, int _maxCategory = 0, int _setCategory = -1 );
+    Transactions topTransactions( unsigned _limit );
 
     // generalization of previous
     template < class Pred >
@@ -127,7 +129,11 @@ public:
 
     /// Get a hash set of transactions in the queue
     /// @returns A hash set of all transactions in the queue
+    // this is really heavy operation and should be used with caution
     const h256Hash knownTransactions() const;
+
+    // Check if transaction is in the queue
+    bool isTransactionKnown( h256& _hash ) const;
 
     /// Get max nonce for an account
     /// @returns Max transaction nonce for account in the queue
@@ -202,16 +208,26 @@ public:
 public:
     /// Verified and imported transaction
     struct VerifiedTransaction {
-        VerifiedTransaction( Transaction const& _t ) : transaction( _t ) {}
+        // record object creation time. This is to make sure that
+        // transaction queue gives priority to transastions received earliest
+        // when everything else like gas price and height are the same
+        uint64_t creationTimeMs;
+
+        VerifiedTransaction( Transaction const& _t ) : transaction( _t ) {
+            creationTimeMs = std::chrono::duration_cast< std::chrono::milliseconds >(
+                std::chrono::system_clock::now().time_since_epoch() )
+                                 .count();
+        }
         VerifiedTransaction( VerifiedTransaction&& _t )
-            : transaction( std::move( _t.transaction ) ) {}
+            : transaction( std::move( _t.transaction ) ) {
+            creationTimeMs = _t.creationTimeMs;
+        }
 
         VerifiedTransaction( VerifiedTransaction const& ) = default;  // XXX removed "delete" for
                                                                       // tricks with queue
         VerifiedTransaction& operator=( VerifiedTransaction const& ) = delete;
 
         Transaction transaction;  ///< Transaction data
-        int category = 0;         // for sorting
 
         Counter< VerifiedTransaction > c;
 
@@ -253,17 +269,15 @@ public:
         /// Compare transaction by nonce height and gas price.
         bool operator()(
             VerifiedTransaction const& _first, VerifiedTransaction const& _second ) const {
-            int cat1 = _first.category;
-            int cat2 = _second.category;
-
             // HACK special case for "dummy" transaction - it is always to the left of others with
             // the same category
+
             if ( !_first.transaction && _second.transaction )
-                return cat1 >= cat2;
+                return false;
             else if ( _first.transaction && !_second.transaction )
-                return cat1 > cat2;
+                return true;
             else if ( !_first.transaction && !_second.transaction )
-                return cat1 < cat2;
+                return false;
 
             u256 const& height1 =
                 _first.transaction.nonce() -
@@ -273,11 +287,21 @@ public:
                 _second.transaction.nonce() -
                 queue.m_currentByAddressAndNonce[_second.transaction.sender()].begin()->first;
 
-            return cat1 > cat2 ||
-                   ( cat1 == cat2 &&
-                       ( height1 < height2 ||
-                           ( height1 == height2 &&
-                               _first.transaction.gasPrice() > _second.transaction.gasPrice() ) ) );
+
+            if ( height1 != height2 ) {
+                // transactions with smaller nonce difference vs the current account nonce go first
+                return height1 < height2;
+            }
+
+            // for the same height, transactions vs larger gas price go first
+            if ( _first.transaction.gasPrice() != _second.transaction.gasPrice() ) {
+                return _first.transaction.gasPrice() > _second.transaction.gasPrice();
+            }
+
+            // new - if the height and the gas price are the same, the earlier received transactions
+            // go first
+
+            return _first.creationTimeMs < _second.creationTimeMs;
         }
     };
 
@@ -295,8 +319,7 @@ private:
         unsigned _limit, h256Hash const& _avoid = h256Hash() ) const;
     template < class Pred >
     Transactions topTransactions_WITH_LOCK( unsigned _limit, Pred _pred ) const;
-    Transactions topTransactions_WITH_LOCK(
-        unsigned _limit, int _maxCategory = 0, int _setCategory = -1 );
+    Transactions topTransactions_WITH_LOCK( unsigned _limit );
 
     void insertCurrent_WITH_LOCK( std::pair< h256, Transaction > const& _p );
     void makeCurrent_WITH_LOCK( Transaction const& _t );
@@ -349,8 +372,11 @@ private:
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
-    Logger m_logger{ createLogger( VerbosityInfo, "tq" ) };
-    Logger m_loggerDetail{ createLogger( VerbosityDebug, "tq" ) };
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionQueue" ) };
+    Logger m_loggerTrace{ createLogger( VerbosityTrace, "TransactionQueue" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "TransactionQueue" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "TransactionQueue" ) };
 };
 
 template < class... Args >

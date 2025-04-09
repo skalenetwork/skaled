@@ -7,9 +7,9 @@
 #include "HistoricState.h"
 
 #include "DatabasePaths.h"
+#include <libbatched-io/batched_rotating_db_io.h>
 #include <libdevcore/Assertions.h>
 #include <libdevcore/DBFactory.h>
-#include <libdevcore/MemoryDB.h>
 #include <libdevcore/TrieHash.h>
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
@@ -24,12 +24,17 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-HistoricState::HistoricState( u256 const& _accountStartNonce, OverlayDB const& _db,
-    OverlayDB const& _blockToStateRootDB, skale::BaseState _bs )
-    : m_db( _db ),
-      m_blockToStateRootDB( _blockToStateRootDB ),
+HistoricState::HistoricState( u256 const& _accountStartNonce, s256 _maxHistoricStateDbSize,
+    std::pair< OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _db,
+    std::pair< OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > _blockToStateRootDB,
+    skale::BaseState _bs )
+    : m_db( _db.first ),
+      m_rotatingTreeDb( _db.second ),
+      m_blockToStateRootDB( _blockToStateRootDB.first ),
+      m_rotatingRootsDb( _blockToStateRootDB.second ),
       m_state( &m_db ),
-      m_accountStartNonce( _accountStartNonce ) {
+      m_accountStartNonce( _accountStartNonce ),
+      m_maxHistoricStateDbSize( _maxHistoricStateDbSize ) {
     if ( _bs != skale::BaseState::PreExisting || m_state.isNull() )
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -38,67 +43,77 @@ HistoricState::HistoricState( u256 const& _accountStartNonce, OverlayDB const& _
 
 HistoricState::HistoricState( HistoricState const& _s )
     : m_db( _s.m_db ),
+      m_rotatingTreeDb( _s.m_rotatingTreeDb ),
       m_blockToStateRootDB( _s.m_blockToStateRootDB ),
+      m_rotatingRootsDb( _s.m_rotatingRootsDb ),
       m_state( &m_db, _s.m_state.root(), Verification::Skip ),
       m_cache( _s.m_cache ),
       m_unchangedCacheEntries( _s.m_unchangedCacheEntries ),
       m_nonExistingAccountsCache( _s.m_nonExistingAccountsCache ),
       m_unrevertablyTouched( _s.m_unrevertablyTouched ),
       m_accountStartNonce( _s.m_accountStartNonce ),
-      m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ) {}
+      m_totalTimeSpentInStateCommitsPerBlock( _s.m_totalTimeSpentInStateCommitsPerBlock ),
+      m_maxHistoricStateDbSize( _s.m_maxHistoricStateDbSize ) {}
 
-OverlayDB HistoricState::openDB(
-    fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
+std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > >
+HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, WithExisting _we ) {
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
         if ( _we == WithExisting::Kill ) {
-            clog( VerbosityInfo, "statedb" ) << "Deleting state database: " << dbPaths.statePath();
+            LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
             fs::remove_all( dbPaths.statePath() );
         }
 
-        clog( VerbosityDebug, "statedb" )
-            << "Verifying path exists (and creating if not present): " << dbPaths.chainPath();
+        LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
+                             << dbPaths.chainPath();
         fs::create_directories( dbPaths.chainPath() );
-        clog( VerbosityDebug, "statedb" )
-            << "Ensuring permissions are set for path: " << dbPaths.chainPath();
+        LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
+
+        clog( VerbosityDebug, "statedb" )
+            << "Verifying path exists (and creating if not present): " << dbPaths.statePath();
+        fs::create_directories( dbPaths.statePath() );
+        clog( VerbosityDebug, "statedb" )
+            << "Ensuring permissions are set for path: " << dbPaths.statePath();
+        DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.statePath(), fs::owner_all ) );
     }
 
     try {
-        clog( VerbosityTrace, "statedb" ) << "Opening state database";
-        std::unique_ptr< db::DatabaseFace > db =
-            db::DBFactory::createHistoric( db::DatabaseKind::LevelDB, dbPaths.statePath() );
-        return OverlayDB( std::move( db ) );
+        LOG( m_loggerTrace ) << "Opening state database";
+        auto rotator =
+            std::make_shared< batched_io::BatchedRotatingHistoricDbIO >( dbPaths.statePath() );
+        auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
+        auto bdb = std::make_unique< batched_io::batched_db >();
+        bdb->open( rotatingDB );
+        return { dev::OverlayDB( std::move( bdb ) ), rotatingDB };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
-            clog( VerbosityError, "statedb" )
-                << "Error opening state database: " << dbPaths.statePath();
+            LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
             db::DatabaseStatus const dbStatus =
                 *boost::get_error_info< db::errinfo_dbStatusCode >( ex );
             if ( fs::space( dbPaths.statePath() ).available < 1024 ) {
-                clog( VerbosityError, "statedb" )
+                LOG( m_loggerError )
                     << "Not enough available space found on hard drive. Please free some up and "
                        "then re-run. Bailing.";
                 BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
             } else if ( dbStatus == db::DatabaseStatus::Corruption ) {
-                clog( VerbosityError, "statedb" )
+                LOG( m_loggerError )
                     << "Database corruption detected. Please see the exception for corruption "
                        "details. Exception: "
                     << boost::diagnostic_information( ex );
                 BOOST_THROW_EXCEPTION( DatabaseCorruption() );
             } else if ( dbStatus == db::DatabaseStatus::IOError ) {
-                clog( VerbosityError, "statedb" ) << "Database already open. You appear to have "
-                                                     "another instance of Aleth running.";
+                LOG( m_loggerError ) << "Database already open. You appear to have "
+                                        "another instance of Aleth running.";
                 BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
             }
         }
-        clog( VerbosityError, "statedb" )
+        LOG( m_loggerError )
             << "Unknown error encountered when opening state database. Exception details: "
             << boost::diagnostic_information( ex );
         throw;
     }
 }
-
 
 u256 const& HistoricState::requireAccountStartNonce() const {
     if ( m_accountStartNonce == Invalid256 )
@@ -131,7 +146,9 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
         return *this;
 
     m_db = _s.m_db;
+    m_rotatingTreeDb = _s.m_rotatingTreeDb;
     m_blockToStateRootDB = _s.m_blockToStateRootDB;
+    m_rotatingRootsDb = _s.m_rotatingRootsDb;
     m_state.open( &m_db, _s.m_state.root(), Verification::Skip );
     m_cache = _s.m_cache;
     m_unchangedCacheEntries = _s.m_unchangedCacheEntries;
@@ -139,6 +156,7 @@ HistoricState& HistoricState::operator=( HistoricState const& _s ) {
     m_unrevertablyTouched = _s.m_unrevertablyTouched;
     m_accountStartNonce = _s.m_accountStartNonce;
     m_totalTimeSpentInStateCommitsPerBlock = _s.m_totalTimeSpentInStateCommitsPerBlock;
+    m_maxHistoricStateDbSize = _s.m_maxHistoricStateDbSize;
     return *this;
 }
 
@@ -212,7 +230,6 @@ uint64_t HistoricState::getAndResetBlockCommitTime() {
     return retVal;
 }
 
-
 unordered_map< Address, u256 > HistoricState::addresses() const {
 #if ETH_FATDB
     unordered_map< Address, u256 > ret;
@@ -278,13 +295,12 @@ std::pair< HistoricState::AddressMap, h256 > HistoricState::addresses(
     return { addresses, nextKey };
 }
 
-void HistoricState::setRoot( GlobalRoot const& _r ) {
+void HistoricState::setRoot( GlobalRoot const& _r, uint64_t _rootBlockNumber ) {
     m_cache.clear();
     m_unchangedCacheEntries.clear();
     m_nonExistingAccountsCache.clear();
-    m_state.setRoot( _r );
+    m_state.setRoot( _r, Verification::Normal, _rootBlockNumber );
 }
-
 
 void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
     auto key = h256( _blockNumber );
@@ -293,18 +309,17 @@ void HistoricState::setRootByBlockNumber( uint64_t _blockNumber ) {
     }
     auto value = m_blockToStateRootDB.lookup( key );
     auto root = h256( value, h256::ConstructFromStringType::FromBinary );
-    setRoot( GlobalRoot( root ) );
+    setRoot( GlobalRoot( root ), _blockNumber );
 }
 
-
-void HistoricState::saveRootForBlock( uint64_t _blockNumber ) {
+void HistoricState::saveRootForBlockNumber( uint64_t _blockNumber ) {
     auto key = h256( _blockNumber );
     m_blockToStateRootDB.insert( key, m_state.root().ref() );
-    auto bn = to_string( _blockNumber );
+    auto str = to_string( _blockNumber );
 
     // record the latest block number
     auto bnk = sha3( "latest" );
-    m_blockToStateRootDB.insert( bnk, &bn );
+    m_blockToStateRootDB.insert( bnk, &str );
     m_blockToStateRootDB.commit();
 }
 
@@ -612,9 +627,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
 
     u256 const startGasUsed = _envInfo.gasUsed();
 
-
     bool const statusCode = executeTransaction( e, _t, onOp );
-
 
     switch ( _p ) {
     case skale::Permanence::Reverted:
@@ -638,7 +651,6 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
     return make_pair( res, receipt );
 }
 
-
 /// @returns true when normally halted; false when exceptionally halted; throws when internal VM
 /// exception occurred.
 bool HistoricState::executeTransaction(
@@ -657,7 +669,7 @@ bool HistoricState::executeTransaction(
 }
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s ) {
-    _out << "--- " << _s.globalRoot() << std::endl;
+    _out << "--- " << _s.globalRoot() << "\n";
     std::set< Address > d;
     std::set< Address > dtr;
     auto trie =
@@ -675,7 +687,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
         assert( cache || r );
 
         if ( cache && !cache->isAlive() )
-            _out << "XXX  " << i << std::endl;
+            _out << "XXX  " << i << "\n";
         else {
             string lead = ( cache ? r ? " *   " : " +   " : "     " );
             if ( cache && r && cache->nonce() == r[0].toInt< u256 >() &&
@@ -719,7 +731,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
 
                 for ( auto const& j : mem )
                     if ( j.second )
-                        contout << std::endl
+                        contout << "\n"
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
                                        cached.count( j.first ) ? " .     " :
@@ -727,7 +739,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
-                        contout << std::endl
+                        contout << "\n"
                                 << "XXX    " << std::hex << nouppercase << std::setw( 64 )
                                 << j.first << "";
             } else
@@ -735,12 +747,11 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
             _out << lead << i << ": " << std::dec
                  << ( cache ? cache->nonce() : r[0].toInt< u256 >() )
                  << " #:" << ( cache ? cache->balance() : r[1].toInt< u256 >() ) << contout.str()
-                 << std::endl;
+                 << "\n";
         }
     }
     return _out;
 }
-
 
 /*HistoricState &dev::eth::createIntermediateState(HistoricState &o_s, Block const &_block, unsigned
 _txIndex, BlockChain const &_bc) {
@@ -808,4 +819,17 @@ AddressHash HistoricState::commitExternalChangesIntoTrieDB(
             ret.insert( i.first );
         }
     return ret;
+}
+
+void HistoricState::rotateDbsIfNeeded( uint64_t _blockNumber ) {
+    if ( m_maxHistoricStateDbSize < 1 )
+        return;
+    if ( m_db.storageUsed() > m_maxHistoricStateDbSize ) {
+        m_rotatingTreeDb->rotate( _blockNumber );
+        m_db.updateStorageUsage( 0 );
+    }
+    if ( m_blockToStateRootDB.storageUsed() > m_maxHistoricStateDbSize ) {
+        m_rotatingRootsDb->rotate( _blockNumber );
+        m_blockToStateRootDB.updateStorageUsage( 0 );
+    }
 }

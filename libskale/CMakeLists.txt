@@ -51,12 +51,15 @@ target_include_directories( skale PUBLIC
 		${CMAKE_SOURCE_DIR}/libconsensus/jsoncpp/include
 		)
 
-target_link_libraries(skale PRIVATE ethereum web3jsonrpc historic skutils
+target_link_libraries(skale PRIVATE ethereum web3jsonrpc skutils
 		"${DEPS_INSTALL_ROOT}/lib/libzmq.a"
         "${DEPS_INSTALL_ROOT}/lib/libsodium.a"
         bls
         pthread
         )
+if (HISTORIC_STATE)
+    target_link_libraries(skale PUBLIC historic)
+endif()
 target_compile_options( skale PRIVATE
     -Wno-error=deprecated-copy -Wno-error=unused-result -Wno-error=unused-parameter -Wno-unused-variable -Wno-error=maybe-uninitialized
     -Wno-nonnull

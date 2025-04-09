@@ -177,7 +177,6 @@ public:
         changed();
     }
 
-
     /// @returns account's original storage
     /// not taking into account overlayed modifications
     std::unordered_map< u256, u256 > const& originalStorageCache() const;
@@ -246,7 +245,6 @@ public:
     /// not taking into account overlayed modifications
     u256 originalStorageValue( u256 const& _key, OverlayDB const& _db ) const;
 
-
     /// @returns account's storage value corresponding to the @_key
     /// taking into account overlayed modifications
     u256 storageValue( u256 const& _key, OverlayDB const& _db ) const {
@@ -256,7 +254,6 @@ public:
 
         return originalStorageValue( _key, _db );
     }
-
 
     /// Note that we've altered the account.
     void changed() { m_isUnchanged = false; }
@@ -310,7 +307,6 @@ protected:
     /// The base storage root. Used with the state DB to give a base to the storage.
     /// m_storageOverlay is overlaid on this and takes precedence for all values set.
     StorageRoot m_storageRoot = StorageRoot( EmptyTrie );
-
 
 public:
     static uint64_t howMany() { return Counter< Account >::howMany(); }

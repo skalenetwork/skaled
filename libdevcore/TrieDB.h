@@ -62,9 +62,19 @@ public:
     ~GenericTrieDB() {}
 
     void open( DB* _db ) { m_db = _db; }
-    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal ) {
+    void open( DB* _db, h256 const& _root, Verification _v = Verification::Normal
+#ifdef HISTORIC_STATE
+        ,
+        uint64_t _rootBlockNumber = UINT64_MAX
+#endif
+    ) {
         m_db = _db;
-        setRoot( _root, _v );
+        setRoot( _root, _v
+#ifdef HISTORIC_STATE
+            ,
+            _rootBlockNumber
+#endif
+        );
     }
 
     void init() {
@@ -72,8 +82,16 @@ public:
         assert( node( m_root ).size() );
     }
 
-    void setRoot( h256 const& _root, Verification _v = Verification::Normal ) {
+    void setRoot( h256 const& _root, Verification _v = Verification::Normal
+#ifdef HISTORIC_STATE
+        ,
+        uint64_t _rootBlockNumber = UINT64_MAX
+#endif
+    ) {
         m_root = _root;
+#ifdef HISTORIC_STATE
+        m_rootBlockNumber = _rootBlockNumber;
+#endif
         if ( _v == Verification::Normal ) {
             if ( m_root == EmptyTrie && !m_db->exists( m_root ) )
                 init();
@@ -94,6 +112,10 @@ public:
             BOOST_THROW_EXCEPTION( BadRoot() << errinfo_hash256( m_root ) );
         return m_root;
     }  // patch the root in the case of the empty trie. TODO: handle this properly.
+
+#ifdef HISTORIC_STATE
+    uint64_t rootBlockNumber() const { return m_rootBlockNumber; }
+#endif
 
     std::string at( bytes const& _key ) const { return at( &_key ); }
     std::string at( bytesConstRef _key ) const;
@@ -282,7 +304,11 @@ private:
     bool isTwoItemNode( RLP const& _n ) const;
     std::string deref( RLP const& _n ) const;
 
+#ifdef HISTORIC_STATE
+    std::string node( h256 const& _h ) const { return m_db->lookup( _h, m_rootBlockNumber ); }
+#else
     std::string node( h256 const& _h ) const { return m_db->lookup( _h ); }
+#endif
 
     // These are low-level node insertion functions that just go straight through into the DB.
     h256 forceInsertNode( bytesConstRef _v ) {
@@ -308,6 +334,11 @@ private:
 
     h256 m_root;
     DB* m_db = nullptr;
+#ifdef HISTORIC_STATE
+    uint64_t m_rootBlockNumber =
+        UINT64_MAX;  // timestamp of block with this root, used for optimized
+                     // scan of DBs in BatchedRotatingHistoricDbIO
+#endif
 };
 
 template < class DB >
@@ -454,6 +485,9 @@ public:
     using Super::leftOvers;
     using Super::open;
     using Super::root;
+#ifdef HISTORIC_STATE
+    using Super::rootBlockNumber;
+#endif
     using Super::setRoot;
 
     std::string at( bytesConstRef _key ) const { return Super::at( sha3( _key ) ); }
@@ -573,7 +607,7 @@ void GenericTrieDB< DB >::iterator::next( NibbleSlice _key ) {
             }
             if ( !rlp.isList() || ( rlp.itemCount() != 2 && rlp.itemCount() != 17 ) ) {
 #if ETH_PARANOIA
-                cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
+                cwarn << "ERROR. STATE TRIE CORRUPTED";
                 cwarn << b.rlp.size() << toHex( b.rlp );
                 cwarn << rlp;
                 auto c = rlp.itemCount();
@@ -687,7 +721,7 @@ void GenericTrieDB< DB >::iterator::next() {
             }
             if ( !( rlp.isList() && ( rlp.itemCount() == 2 || rlp.itemCount() == 17 ) ) ) {
 #if ETH_PARANOIA
-                cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
+                cwarn << "ERROR. STATE TRIE CORRUPTED";
                 cwarn << b.rlp.size() << toHex( b.rlp );
                 cwarn << rlp;
                 auto c = rlp.itemCount();
@@ -894,7 +928,7 @@ void GenericTrieDB< DB >::mergeAtAux(
     bool isRemovable = false;
     if ( !r.isList() && !r.isEmpty() ) {
         h256 h = _orig.toHash< h256 >();
-        //        std::cerr << "going down non-inline node " << h << "\n";
+
         s = node( h );
         r = RLP( s );
         assert( !r.isNull() );

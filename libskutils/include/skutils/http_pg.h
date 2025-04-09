@@ -10,18 +10,14 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wattributes"
 
-#include <folly/Memory.h>
 #include <proxygen/httpserver/RequestHandler.h>
 
 #include <folly/io/async/EventBaseManager.h>
-//#include <folly/portability/GFlags.h>
-#include <folly/portability/Unistd.h>
 #include <proxygen/httpserver/HTTPServer.h>
 #include <proxygen/httpserver/RequestHandlerFactory.h>
 
 #pragma GCC diagnostic pop
 
-//#include <nlohmann/json.hpp>
 #include <json.hpp>
 
 #include <skutils/http.h>
@@ -35,11 +31,9 @@ namespace http_pg {
 
 class server_side_request_handler;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class request_sink {
-    std::atomic_uint64_t reqCount_{ 0 };
+    std::atomic_uint64_t m_reqCount{ 0 };
 
 public:
     request_sink();
@@ -48,44 +42,41 @@ public:
     virtual uint64_t getRequestCount();
 };
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class request_site : public proxygen::RequestHandler {
-    request_sink& sink_;
-    std::unique_ptr< folly::IOBuf > body_;
-    server_side_request_handler* pSSRQ_;
-    static std::atomic_uint64_t g_instance_counter;
-    uint64_t nInstanceNumber_;
-    std::string strLogPrefix_;
-    size_t nBodyPartNumber_ = 0;
-    std::string strBody_;
+    request_sink& m_sink;
+    std::unique_ptr< folly::IOBuf > m_body;
+    server_side_request_handler* m_SSRQ;
+    static std::atomic_uint64_t g_instanceCounter;
+    uint64_t m_instanceNumber;
+    std::string m_strLogPrefix;
+    size_t m_bodyPartNumber = 0;
+    std::string m_strBody;
 
 public:
-    std::string strHttpMethod_, strOrigin_, strPath_, strDstAddress_;
-    int ipVer_ = -1, nDstPort_ = 0;
+    std::string m_httpMethod, m_origin, m_path, m_dstAddress_;
 
-    explicit request_site( request_sink& a_sink, server_side_request_handler* pSSRQ );
+    int m_ipVer = -1, m_dstPort = 0;
+
+    explicit request_site( request_sink& _aSink, server_side_request_handler* _SSRQ );
+
     ~request_site() override;
 
-    void onRequest( std::unique_ptr< proxygen::HTTPMessage > headers ) noexcept override;
-    void onBody( std::unique_ptr< folly::IOBuf > body ) noexcept override;
+    void onRequest( std::unique_ptr< proxygen::HTTPMessage > _headers ) noexcept override;
+    void onBody( std::unique_ptr< folly::IOBuf > _body ) noexcept override;
     void onEOM() noexcept override;
-    void onUpgrade( proxygen::UpgradeProtocol proto ) noexcept override;
+    void onUpgrade( proxygen::UpgradeProtocol _proto ) noexcept override;
     void requestComplete() noexcept override;
-    void onError( proxygen::ProxygenError err ) noexcept override;
+    void onError( proxygen::ProxygenError _err ) noexcept override;
 };  /// class request_site
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class request_site_factory : public proxygen::RequestHandlerFactory {
-    folly::ThreadLocalPtr< request_sink > sink_;
-    server_side_request_handler* pSSRQ_ = nullptr;
+    folly::ThreadLocalPtr< request_sink > m_sink;
+    server_side_request_handler* m_SSRQ = nullptr;
 
 public:
-    request_site_factory( server_side_request_handler* pSSRQ );
+    request_site_factory( server_side_request_handler* _SSRQ );
     ~request_site_factory() override;
     void onServerStart( folly::EventBase* /*evb*/ ) noexcept override;
     void onServerStop() noexcept override;
@@ -93,48 +84,41 @@ public:
         proxygen::RequestHandler*, proxygen::HTTPMessage* ) noexcept override;
 };  /// class request_site_factory
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class server_side_request_handler {
 public:
     server_side_request_handler();
     virtual ~server_side_request_handler();
     static nlohmann::json json_from_error_text(
-        const char* strErrorDescription, const nlohmann::json& joID );
+        const char* _errorDescription, const nlohmann::json& _joID );
     static std::string answer_from_error_text(
-        const char* strErrorDescription, const nlohmann::json& joID );
-    virtual skutils::result_of_http_request onRequest( const nlohmann::json& joIn,
-        const std::string& strOrigin, int ipVer, const std::string& strDstAddress,
-        int nDstPort ) = 0;
+        const char* _errorDescription, const nlohmann::json& _joID );
+    virtual skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
+        const std::string& _origin, int _ipVer, const std::string& _dstAddress, int _dstPort ) = 0;
 };  /// class server_side_request_handler
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class server : public server_side_request_handler {
-    std::thread thread_;
-    std::unique_ptr< proxygen::HTTPServer > server_;
-    pg_on_request_handler_t h_;
-    pg_accumulate_entries entries_;
-    int32_t threads_ = 0;
-    int32_t threads_limit_ = 0;
+    std::thread m_thread;
+    std::unique_ptr< proxygen::HTTPServer > m_server;
+    pg_on_request_handler_t m_h;
+    pg_accumulate_entries m_entries;
+    int32_t m_threads = 0;
+    int32_t m_threads_limit = 0;
 
-    std::string strLogPrefix_;
+    std::string m_logPrefix;
 
 public:
-    server( pg_on_request_handler_t h, const pg_accumulate_entries& entries, int32_t threads = 0,
-        int32_t threads_limit = 0 );
+    server( pg_on_request_handler_t _h, const pg_accumulate_entries& _entries, int32_t _threads = 0,
+        int32_t _threadsLimit = 0 );
     ~server() override;
     bool start();
     void stop();
-    skutils::result_of_http_request onRequest( const nlohmann::json& joIn,
-        const std::string& strOrigin, int ipVer, const std::string& strDstAddress,
-        int nDstPort ) override;
+    skutils::result_of_http_request onRequest( const nlohmann::json& _joIn,
+        const std::string& _origin, int _ipVer, const std::string& _dstAddress,
+        int _dstPort ) override;
 };  /// class server
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 };  // namespace http_pg
 };  // namespace skutils

@@ -496,16 +496,21 @@ void SnapshotManager::computeDatabaseHash(
     bool isContinue = true;
 
     while ( isContinue ) {
-        std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( _dbDir.string(),
-            dev::db::LevelDB::defaultSnapshotReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-            dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+        dev::db::LevelDB::LevelDBOptions options = { dev::db::LevelDB::defaultSnapshotReadOptions(),
+            dev::db::LevelDB::defaultWriteOptions(), dev::db::LevelDB::defaultSnapshotDBOptions() };
+        dev::db::LevelDB::WrapperOptions wrapperOptions;
+        wrapperOptions.enableLogger = false;
+
+        std::unique_ptr< dev::db::LevelDB > m_db(
+            new dev::db::LevelDB( _dbDir.string(), options, wrapperOptions ) );
 
         isContinue = m_db->hashBasePartially( &dbCtx, lastHashedKey );
     }
 
     dev::h256 dbHash;
     secp256k1_sha256_finalize( &dbCtx, dbHash.data() );
-    cnote << _dbDir << " hash is: " << dbHash << std::endl;
+
+    LOG( m_loggerInfo ) << _dbDir << " hash is: " << dbHash;
 
     secp256k1_sha256_write( ctx, dbHash.data(), dbHash.size );
 } catch ( const fs::filesystem_error& ex ) {
@@ -522,9 +527,12 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
         std::string last_price_str;
         std::string last_price_key = "1.0:" + std::to_string( _blockNumber );
         while ( it != end ) {
-            std::unique_ptr< dev::db::LevelDB > m_db( new dev::db::LevelDB( it->path().string(),
-                dev::db::LevelDB::defaultReadOptions(), dev::db::LevelDB::defaultWriteOptions(),
-                dev::db::LevelDB::defaultSnapshotDBOptions() ) );
+            dev::db::LevelDB::LevelDBOptions options;
+            options.dbOptions = dev::db::LevelDB::defaultSnapshotDBOptions();
+
+            std::unique_ptr< dev::db::LevelDB > m_db(
+                new dev::db::LevelDB( it->path().string(), options ) );
+
             if ( m_db->exists( last_price_key ) ) {
                 last_price_str = m_db->lookup( last_price_key );
                 break;
@@ -543,7 +551,8 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     }
 
     dev::h256 last_price_hash = dev::sha256( last_price.str() );
-    cnote << "Latest price hash is: " << last_price_hash << std::endl;
+
+    LOG( m_loggerInfo ) << "Latest price hash is: " << last_price_hash;
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 
@@ -732,19 +741,19 @@ void SnapshotManager::computeAllVolumesHash(
     //                this->computeDatabaseHash( content, ctx );
     //            }
 
-    //#ifdef HISTORIC_STATE
-    //            // historic dbs
-    //            this->computeDatabaseHash(
-    //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
-    //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-    //                ctx );
-    //            this->computeDatabaseHash(
-    //                this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
-    //                    dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
-    //                ctx );
-    //#endif
-    //        }
-    //    }
+    // #ifdef HISTORIC_STATE
+    //             // historic dbs
+    //             this->computeDatabaseHash(
+    //                 this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[0] /
+    //                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+    //                 ctx );
+    //             this->computeDatabaseHash(
+    //                 this->snapshotsDir / std::to_string( _blockNumber ) / archiveVolumes[1] /
+    //                     dev::eth::BlockChain::getChainDirName( chainParams ) / "state",
+    //                 ctx );
+    // #endif
+    //         }
+    //     }
 }
 
 void SnapshotManager::computeSnapshotHash( unsigned _blockNumber, bool is_checking ) {

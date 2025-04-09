@@ -292,8 +292,8 @@ bool stat_remove_all_content_in_directory( const char* s ) {
     strCmd += " 1>/dev/nullptr 2>/dev/nullptr";
     int nErrorCode = ::system( strCmd.c_str() );
     if ( nErrorCode != 0 ) {
-        std::cerr << cc::error( "Command \"" ) << cc::p( strCmd ) << cc::error( "\" returned " )
-                  << cc::c( int64_t( nErrorCode ) ) << cc::error( " error code\n" );
+        std::cerr << "Command \"" << strCmd << "\" returned " << int64_t( nErrorCode )
+                  << " error code\n";
         return false;
     }
     return true;
@@ -480,8 +480,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strDays = skutils::tools::format( "%" PRId64, days );
         strDaysSuffix = "d";
         if ( isColored ) {
-            strDays = cc::note( strDays );
-            strDaysSuffix = cc::debug( strDaysSuffix );
+            strDays = strDays;
+            strDaysSuffix = strDaysSuffix;
         }
         ss << strDays << strDaysSuffix;
     }
@@ -489,8 +489,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strHours = skutils::tools::format( "%02d", int( hours ) );
         strHoursSuffix = "h";
         if ( isColored ) {
-            strHours = cc::note( strHours );
-            strHoursSuffix = cc::debug( strHoursSuffix );
+            strHours = strHours;
+            strHoursSuffix = strHoursSuffix;
         }
         ss << strHours << strHoursSuffix;
     }
@@ -498,8 +498,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strMinutes = skutils::tools::format( "%02d", int( minutes ) );
         strMinutesSuffix = "m";
         if ( isColored ) {
-            strMinutes = cc::note( strMinutes );
-            strMinutesSuffix = cc::debug( strMinutesSuffix );
+            strMinutes = strMinutes;
+            strMinutesSuffix = strMinutesSuffix;
         }
         ss << strMinutes << strMinutesSuffix;
     }
@@ -507,8 +507,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strSeconds = skutils::tools::format( "%02d", int( seconds ) );
         strSecondsSuffix = "s";
         if ( isColored ) {
-            strSeconds = cc::note( strSeconds );
-            strSecondsSuffix = cc::debug( strSecondsSuffix );
+            strSeconds = strSeconds;
+            strSecondsSuffix = strSecondsSuffix;
         }
         ss << strSeconds << strSecondsSuffix;
     }
@@ -516,8 +516,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strMilliSeconds = skutils::tools::format( "%03d", int( milliseconds ) );
         strMilliSecondsSuffix = "ms";
         if ( isColored ) {
-            strMilliSeconds = cc::note( strMilliSeconds );
-            strMilliSecondsSuffix = cc::debug( strMilliSecondsSuffix );
+            strMilliSeconds = strMilliSeconds;
+            strMilliSecondsSuffix = strMilliSecondsSuffix;
         }
         ss << strMilliSeconds << strMilliSecondsSuffix;
     }
@@ -526,8 +526,8 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strMicroSeconds = skutils::tools::format( "%03d", int( microseconds ) );
         strMicroSecondsSuffix = "μs";
         if ( isColored ) {
-            strMicroSeconds = cc::note( strMicroSeconds );
-            strMicroSecondsSuffix = cc::debug( strMicroSecondsSuffix );
+            strMicroSeconds = strMicroSeconds;
+            strMicroSecondsSuffix = strMicroSecondsSuffix;
         }
         ss << strMicroSeconds << strMicroSecondsSuffix;
     }
@@ -536,16 +536,13 @@ std::string nanoseconds_2_lifetime_str( uint64_t ns, bool isColored /*= false*/ 
         strNanoSeconds = skutils::tools::format( "%03d", int( ns ) );
         strNanoSecondsSuffix = "ns";
         if ( isColored ) {
-            strNanoSeconds = cc::note( strNanoSeconds );
-            strNanoSecondsSuffix = cc::debug( strNanoSecondsSuffix );
+            strNanoSeconds = strNanoSeconds;
+            strNanoSecondsSuffix = strNanoSecondsSuffix;
         }
         ss << strNanoSeconds << strNanoSecondsSuffix;
     }
     return ss.str();
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool convert_json_string_value_to_boolean( const std::string& r ) {
     if ( r.empty() )
@@ -557,269 +554,9 @@ bool convert_json_string_value_to_boolean( const std::string& r ) {
     return ( lf != 0.0 ) ? true : false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 size_t cpu_count() {
     static const size_t g_cntCPUs = size_t( ::sysconf( _SC_NPROCESSORS_ONLN ) );
     return g_cntCPUs;
-}
-#if ( defined __BUILDING_4_MAC_OS_X__ )
-static double stat_ParseMemValue( const char* b ) {
-    while ( ( *b ) && ( isdigit( *b ) == false ) )
-        b++;
-    return isdigit( *b ) ? atof( b ) : -1.0;
-}
-// returns a number between 0.0f and 1.0f, with 0.0f meaning all RAM is available, and 1.0f meaning
-// all RAM is currently in use
-float osx_GetSystemMemoryUsagePercentage() {
-    FILE* fpIn = popen( "/usr/bin/vm_stat", "r" );
-    if ( fpIn ) {
-        double pagesUsed = 0.0, totalPages = 0.0;
-        char buf[512];
-        while ( fgets( buf, sizeof( buf ), fpIn ) != nullptr ) {
-            if ( strncmp( buf, "Pages", 5 ) == 0 ) {
-                double val = stat_ParseMemValue( buf );
-                if ( val >= 0.0 ) {
-                    if ( ( strncmp( buf, "Pages wired", 11 ) == 0 ) ||
-                         ( strncmp( buf, "Pages active", 12 ) == 0 ) )
-                        pagesUsed += val;
-                    totalPages += val;
-                }
-            } else if ( strncmp( buf, "Mach Virtual Memory Statistics", 30 ) != 0 )
-                break;  // Stop at "Translation Faults", we don't care about anything at or below
-                        // that
-        }
-        pclose( fpIn );
-        if ( totalPages > 0.0 )
-            return ( float ) ( pagesUsed / totalPages );
-    }
-    return -1.0f;  // indicate failure
-}
-static unsigned long long _previousTotalTicks = 0;
-static unsigned long long _previousIdleTicks = 0;
-static float stat_CalculateCPULoad( unsigned long long idleTicks, unsigned long long totalTicks ) {
-    unsigned long long totalTicksSinceLastTime = totalTicks - _previousTotalTicks;
-    unsigned long long idleTicksSinceLastTime = idleTicks - _previousIdleTicks;
-    float ret = 1.0f - ( ( totalTicksSinceLastTime > 0 ) ?
-                               ( ( float ) idleTicksSinceLastTime ) / totalTicksSinceLastTime :
-                               0 );
-    _previousTotalTicks = totalTicks;
-    _previousIdleTicks = idleTicks;
-    return ret;
-}
-// returns 1.0f for "CPU fully pinned", 0.0f for "CPU idle", or somewhere in between
-// you'll need to call this at regular intervals, since it measures the load between the previous
-// call and the current one.
-float osx_GetCPULoad() {
-    host_cpu_load_info_data_t cpuinfo;
-    mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
-    if ( host_statistics( mach_host_self(), HOST_CPU_LOAD_INFO, ( host_info_t ) &cpuinfo,
-             &count ) == KERN_SUCCESS ) {
-        unsigned long long totalTicks = 0;
-        for ( int i = 0; i < CPU_STATE_MAX; i++ )
-            totalTicks += cpuinfo.cpu_ticks[i];
-        return stat_CalculateCPULoad( cpuinfo.cpu_ticks[CPU_STATE_IDLE], totalTicks );
-    } else
-        return -1.0f;
-}
-#else
-std::atomic_size_t g_nSleepMillisecondsBetweenCpuLoadMeasurements( 1000 );
-
-std::vector< long double > cpu_load() {
-    std::vector< long double > cpuLoad( 4 );
-    //
-    FILE* fp = fopen( "/proc/stat", "r" );
-    if ( !fp )
-        return cpuLoad;
-    if ( fscanf( fp, "%*s %Lf %Lf %Lf %Lf", &cpuLoad[0], &cpuLoad[1], &cpuLoad[2], &cpuLoad[3] ) !=
-         4 ) {
-        fclose( fp );
-        throw std::runtime_error( "Can't parse /proc/stat" );
-    };
-    fclose( fp );
-
-    return cpuLoad;
-}
-
-/* this function returns read/write bytes per second */
-std::map< std::string, DiskInfo > disk_load() {
-    std::map< std::string, DiskInfo > readWritePerDevice;
-    FILE* fp = fopen( DISKSTATS, "r" );
-    if ( !fp )
-        return readWritePerDevice;
-
-    char line[MAX_LINE_LEN];
-    char dev_name[MAX_NAME_LEN];
-    memset( dev_name, 0, MAX_NAME_LEN );
-    memset( line, 0, MAX_LINE_LEN );
-    unsigned int ios_pgr, tot_ticks, rq_ticks, wr_ticks;
-    unsigned long rd_ios, rd_merges_or_rd_sec, rd_ticks_or_wr_sec, wr_ios;
-    unsigned long wr_merges, rd_sec_or_wr_ios, wr_sec;
-    unsigned int major, minor;
-    while ( fgets( line, sizeof( line ), fp ) ) {
-        int i = sscanf( line, "%u %u %s %lu %lu %lu %lu %lu %lu %lu %u %u %u %u", &major, &minor,
-            dev_name, &rd_ios, &rd_merges_or_rd_sec, &rd_sec_or_wr_ios, &rd_ticks_or_wr_sec,
-            &wr_ios, &wr_merges, &wr_sec, &wr_ticks, &ios_pgr, &tot_ticks, &rq_ticks );
-
-        if ( !strstr( dev_name, "sd" ) )
-            continue;
-
-        DiskInfo currInfo;
-        switch ( i ) {
-        case EXT_PART_NUM:
-            currInfo.readIOS = rd_ios;
-            currInfo.writeIOS = wr_ios;
-            currInfo.readSectors = rd_sec_or_wr_ios;
-            currInfo.writeSectors = wr_sec;
-            break;
-        case PART_NUM:
-            currInfo.readIOS = rd_ios;
-            currInfo.writeIOS = rd_sec_or_wr_ios;
-            currInfo.readSectors = rd_merges_or_rd_sec;
-            currInfo.writeSectors = rd_ticks_or_wr_sec;
-            break;
-        default:
-            continue;
-        }
-
-        readWritePerDevice.insert( std::make_pair( dev_name, currInfo ) );
-    }
-
-    fclose( fp );
-    // TODO: merge statistic for different partitions
-
-    return readWritePerDevice;
-}
-
-
-nlohmann::json calculate_load_interval( const std::map< std::string, DiskInfo >& prevLoad,
-    const std::map< std::string, DiskInfo >& currentLoad, size_t nSleepMs ) {
-#define S_VALUE( m, n, p ) ( ( ( double ) ( ( n ) - ( m ) ) ) / ( p ) *100 )
-    nlohmann::json jo = nlohmann::json::object();
-    if ( prevLoad.size() != currentLoad.size() )
-        return jo;  // some device missed
-    for ( auto itPrevLoad = prevLoad.cbegin(), itCurrLoad = currentLoad.cbegin();
-          itPrevLoad != prevLoad.cend() && itCurrLoad != currentLoad.cend();
-          ++itPrevLoad, ++itCurrLoad ) {
-        nlohmann::json currentDevice = nlohmann::json::object();
-        const auto& prevStat = itPrevLoad->second;
-        const auto& currStat = itCurrLoad->second;
-        size_t rd_sec = currStat.readSectors - prevStat.readSectors;
-        size_t wr_sec = currStat.writeSectors - prevStat.writeSectors;
-
-        const double rSectors = S_VALUE( prevStat.readSectors, currStat.readSectors, nSleepMs );
-        const double wSectors = S_VALUE( prevStat.writeSectors, currStat.writeSectors, nSleepMs );
-        const double perIter = S_VALUE(
-            prevStat.readIOS + prevStat.writeIOS, currStat.readIOS + currStat.writeIOS, nSleepMs );
-
-        currentDevice["kb_read_s"] = rd_sec;
-        currentDevice["kb_write_s"] = wr_sec;
-        currentDevice["kb_read"] = rSectors;
-        currentDevice["kb_write"] = wSectors;
-        currentDevice["tps"] = perIter;
-
-        const std::string devName = itCurrLoad->first;
-        jo[devName] = currentDevice;
-    }
-
-
-    return jo;
-}
-
-
-#endif
-
-load_monitor::load_monitor( size_t
-        nSleepMillisecondsBetweenCpuLoadMeasurements /*= 0*/ )  // 0 means use
-                                                                // g_nSleepMillisecondsBetweenCpuLoadMeasurements
-    : stop_flag_( false ),
-      cpu_load_( 0.0 ),
-      nSleepMillisecondsBetweenCpuLoadMeasurements_(
-          nSleepMillisecondsBetweenCpuLoadMeasurements ) {
-    thread_ = std::thread( [this]() {
-        skutils::multithreading::setThreadName(
-            skutils::tools::format( "sklm-%p", ( void* ) this ) );
-        thread_proc();
-    } );
-}
-load_monitor::~load_monitor() {
-    try {
-        stop_flag_ = true;
-        if ( thread_.joinable() )
-            thread_.join();
-    } catch ( ... ) {
-    }
-}
-double load_monitor::last_cpu_load() const {
-    double lf = cpu_load_;
-    return lf;
-}
-
-nlohmann::json load_monitor::last_disk_load() const {
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
-    std::lock_guard< std::mutex > lock{ diskLoadMutex_ };
-    return diskLoad_;
-#else
-    nlohmann::json jo = nullptr;
-    return jo;
-#endif
-}
-
-void load_monitor::thread_proc() {
-    for ( ; !stop_flag_; )
-#if ( defined __BUILDING_4_MAC_OS_X__ )
-        cpu_load_ = osx_GetCPULoad() / 100.0;
-    size_t nMS = nSleepMillisecondsBetweenCpuLoadMeasurements_;
-    if ( nMS < 1000 )
-        nMS = 1000;
-    std::this_thread::sleep_for( std::chrono::milliseconds( nMS ) );
-#else
-        calculate_load( nSleepMillisecondsBetweenCpuLoadMeasurements_ );
-
-#endif
-}
-
-#if ( !defined __BUILDING_4_MAC_OS_X__ )
-void load_monitor::calculate_load( size_t nSleep ) {
-    const auto prevDiskLoad = disk_load();
-    const auto cpuPrevLoad = cpu_load();
-
-    size_t nSleepMilliseconds = nSleep;
-    if ( nSleepMilliseconds == 0 )
-        nSleepMilliseconds = g_nSleepMillisecondsBetweenCpuLoadMeasurements;
-    std::this_thread::sleep_for( std::chrono::milliseconds( nSleepMilliseconds ) );
-
-    const auto currentDiskLoad = disk_load();
-    auto res = calculate_load_interval( prevDiskLoad, currentDiskLoad, nSleepMilliseconds );
-    {
-        std::lock_guard< std::mutex > lock{ diskLoadMutex_ };
-        diskLoad_ = res;
-    }
-    const auto cpuCurrentLoad = cpu_load();
-    cpu_load_ =
-        ( ( cpuCurrentLoad[0] + cpuCurrentLoad[1] + cpuCurrentLoad[2] ) -
-            ( cpuPrevLoad[0] + cpuPrevLoad[1] + cpuPrevLoad[2] ) ) /
-        ( ( cpuCurrentLoad[0] + cpuCurrentLoad[1] + cpuCurrentLoad[2] + cpuCurrentLoad[3] ) -
-            ( cpuPrevLoad[0] + cpuPrevLoad[1] + cpuPrevLoad[2] + cpuPrevLoad[3] ) );
-}
-#endif
-
-double mem_usage() {  // 0.0...1.0
-#if ( defined __BUILDING_4_MAC_OS_X__ )
-    float f = osx_GetSystemMemoryUsagePercentage();
-    if ( f <= 0.0f )
-        return 0.0;
-    return double( f );
-#else
-    double lfTotalPages = double( ::sysconf( _SC_PHYS_PAGES ) );
-    if ( lfTotalPages == 0.0 )
-        return 0.0;
-    double lfFreePages = double( ::sysconf( _SC_AVPHYS_PAGES ) );
-    double lfPercentAvail =
-        double( lfTotalPages - lfFreePages ) / double( lfTotalPages );  // 0.0...1.0
-    return lfPercentAvail;
-#endif
 }
 
 std::string create_random_uuid( const char* strSeparator ) {
@@ -862,9 +599,6 @@ std::string create_uuid() {
 //	#endif
 #endif
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::string generate_random_text_string( size_t cntCharacters /*= 10*/ ) {
     static const char possible[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -1065,8 +799,6 @@ unsigned char* md5::raw_digest() {
     uint1* s = new uint1[16];
     if ( !finalized ) {
         delete[] s;
-        // std::cerr << "md5::raw_digest: cannot get digest if you haven't finalized the digest" <<
-        // std::endl;
         s = nullptr;
     } else
         memcpy( s, digest, 16 );
@@ -1077,8 +809,6 @@ char* md5::hex_digest() {
     char* s = new char[33];
     ::memset( s, 0, 33 );
     if ( !finalized ) {
-        // std::cerr << "md5::hex_digest: cannot get digest if you haven't finalized the digest!" <<
-        // std::endl;
         return s;
     }
     for ( i = 0; i < 16; i++ )
@@ -1675,26 +1405,26 @@ void json_config_file_accessor::reloadConfigIfNeeded() {
         throw std::runtime_error( "Failed to access modified configuration file" );
     if ( configModificationTime_ == tt )
         return;
-    std::string strLogPrefix = cc::deep_info( "Reload configuration file" );
+    std::string strLogPrefix = "Reload configuration file";
     try {
-        std::cout << strLogPrefix << cc::debug( " Loading configuration from " )
-                  << cc::p( configPath_ ) << cc::debug( " ... " ) << "\n";
+        std::cout << strLogPrefix << " Loading configuration from " << configPath_ << " ... "
+                  << "\n";
         std::ifstream ifs( configPath_.c_str() );
-        std::cout << strLogPrefix << cc::debug( " Parsing configuration JSON ... " ) << "\n";
+        std::cout << strLogPrefix << " Parsing configuration JSON ... "
+                  << "\n";
         nlohmann::json joNewConfig = nlohmann::json::parse( ifs );
         joConfig_ = joNewConfig;
         configModificationTime_ = tt;
-        std::cout << strLogPrefix << cc::success( " Done, loaded configuration file " )
-                  << cc::p( configPath_ ) << "\n";
+        std::cout << strLogPrefix << " Done, loaded configuration file " << configPath_ << "\n";
     } catch ( std::exception& ex ) {
-        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
-                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( ex.what() ) << "\n";
+        std::cout << strLogPrefix << " Failed to reload modified configuration file " << configPath_
+                  << ": " << ex.what() << "\n";
         throw std::runtime_error(
             std::string( "Failed to reload modified configuration file: " ) + ex.what() );
     } catch ( ... ) {
-        std::cout << strLogPrefix << cc::error( " Failed to reload modified configuration file " )
-                  << cc::p( configPath_ ) << cc::error( ": " ) << cc::warn( "unknown exception" )
-                  << "\n";
+        std::cout << strLogPrefix << " Failed to reload modified configuration file " << configPath_
+                  << ": "
+                  << "unknown exception\n";
         throw std::runtime_error(
             "Failed to reload modified configuration file: unknown exception" );
     }

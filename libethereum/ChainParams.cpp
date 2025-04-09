@@ -227,7 +227,17 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     array< string, 4 > BLSPublicKeys;
     array< string, 4 > commonBLSPublicKeys;
     if ( !testSignatures ) {
+        if ( infoObj.count( "ecdsaKeyName" ) == 0 ) {
+            throw std::runtime_error(
+                "No ecdsaKeyName in config, and testSignatures is not set to true" );
+        }
+
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+
+        if ( infoObj.count( "wallets" ) == 0 ) {
+            throw std::runtime_error(
+                "No wallets section in test config, and testSignatures is not set to true" );
+        }
 
         js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
@@ -287,6 +297,13 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     s.levelDBReopenIntervalMs = sChainObj.count( "levelDBReopenIntervalMs" ) ?
                                     sChainObj.at( "levelDBReopenIntervalMs" ).get_int64() :
                                     c_defaultLevelDBReopenIntervalMs;
+
+#ifdef HISTORIC_STATE
+    // negative maxHistoricStateDbSize means rotations are disabled
+    s.maxHistoricStateDbSize = sChainObj.count( "maxHistoricStateDbSize" ) ?
+                                   sChainObj.at( "maxHistoricStateDbSize" ).get_int64() :
+                                   -1;
+#endif
 
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
@@ -483,10 +500,10 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 
     auto b = genesisBlock();
     if ( b != _genesisRLP ) {
-        cdebug << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
-        cdebug << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
-        cdebug << RLP( b );
-        cdebug << RLP( _genesisRLP );
+        LOG( m_loggerDebug ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
+        LOG( m_loggerDebug ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
+        LOG( m_loggerDebug ) << RLP( b );
+        LOG( m_loggerDebug ) << RLP( _genesisRLP );
         throw 0;
     }
 }

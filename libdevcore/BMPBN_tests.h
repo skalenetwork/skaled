@@ -50,18 +50,18 @@ inline bool test1( const std::string& s, bool bIsVerbose ) {
         ss << std::hex << std::setw( 2 ) << std::setfill( '0' ) << int( buffer[0] );
     if ( bIsVerbose ) {
         while ( --length > 0 )
-            ss << cc::debug( ":" ) << std::setw( 2 ) << std::setfill( '0' )
-               << int( buffer[++index] );
+            ss << ":" << std::setw( 2 ) << std::setfill( '0' ) << int( buffer[++index] );
     }
     if ( bIsVerbose )
-        ss << cc::debug( " = " ) << std::dec << std::setw( 1 ) << x << cc::debug( ", " );
+        ss << " = " << std::dec << std::setw( 1 ) << x << ", ";
     if ( x != y ) {
         if ( bIsVerbose )
-            std::cout << "    " << ss.str() << cc::fatal( "FAILED" ) << "\n";
+            std::cout << "    " << ss.str() << "FAILED"
+                      << "\n";
         return false;
     }
     // if ( bIsVerbose )
-    //    std::cout << "    " << cc::success( "OK for " ) << cc::info( s ) << "\n";
+    //    std::cout << "    " <<  "OK for " ) <<  s ) << "\n";
     return true;
 }  // namespace rpc
 
@@ -69,8 +69,8 @@ template < class T >
 inline bool test(
     bool bIncludeNegative, bool bIncludeHuge, bool bIsVerbose, const char* strTypeDescription ) {
     if ( bIsVerbose && strTypeDescription && strTypeDescription[0] )
-        std::cout << cc::debug( "Testing conversion of " ) << cc::info( strTypeDescription )
-                  << cc::debug( "..." ) << "\n";
+        std::cout << "Testing conversion of " << strTypeDescription << "..."
+                  << "\n";
     bool bOKay = true;
     //
     if ( !test1< T >( std::string( "0" ), bIsVerbose ) )
@@ -159,11 +159,12 @@ inline bool test(
     }
     if ( bIsVerbose && strTypeDescription && strTypeDescription[0] ) {
         if ( bOKay )
-            std::cout << cc::success( "Successful conversion test of " )
-                      << cc::info( strTypeDescription ) << cc::success( "." ) << "\n";
+            std::cout << "Successful conversion test of " << strTypeDescription << "."
+                      << "\n";
         else
-            std::cout << cc::fatal( "FAILED" ) << cc::error( " conversion test of " )
-                      << cc::warn( strTypeDescription ) << cc::error( "." ) << "\n";
+            std::cout << "FAILED"
+                      << " conversion test of " << strTypeDescription << "."
+                      << "\n";
     }
     return bOKay;
 }  // namespace BMPBN
@@ -172,8 +173,8 @@ template < class T >
 inline bool test_limit_limbs_and_halves(
     const char* strStartValue, size_t nBits, bool bIsVerbose ) {
     if ( bIsVerbose )
-        std::cout << cc::debug( "Testing limit margin of " ) << cc::size10( nBits )
-                  << cc::debug( " bit values..." ) << "\n";
+        std::cout << "Testing limit margin of " << nBits << " bit values..."
+                  << "\n";
     bool bOKay = true;
     if ( !test1< T >( std::string( strStartValue ), bIsVerbose ) )
         bOKay = false;
@@ -187,11 +188,12 @@ inline bool test_limit_limbs_and_halves(
     }
     if ( bIsVerbose ) {
         if ( bOKay )
-            std::cout << cc::success( "Successful conversion test of " ) << cc::size10( nBits )
-                      << cc::success( " bit values." ) << "\n";
+            std::cout << "Successful conversion test of " << nBits << " bit values."
+                      << "\n";
         else
-            std::cout << cc::fatal( "FAILED" ) << cc::error( " conversion test of " )
-                      << cc::size10( nBits ) << cc::debug( " bit values" ) << "\n";
+            std::cout << "FAILED"
+                      << " conversion test of " << nBits << " bit values"
+                      << "\n";
     }
     return bOKay;
 }

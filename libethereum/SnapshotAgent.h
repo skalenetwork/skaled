@@ -56,8 +56,9 @@ private:
     uint64_t snapshot_calculation_time_ms;
     uint64_t snapshot_hash_calculation_time_ms;
 
-    dev::Logger m_logger{ createLogger( dev::VerbosityInfo, "SnapshotAgent" ) };
-    dev::Logger m_loggerDetail{ createLogger( dev::VerbosityTrace, "SnapshotAgent" ) };
+    dev::Logger m_loggerInfo{ createLogger( dev::VerbosityInfo, "SnapshotAgent" ) };
+    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "SnapshotAgent" ) };
+    dev::Logger m_loggerError{ createLogger( dev::VerbosityError, "SnapshotAgent" ) };
 
     SkaleDebugTracer& m_debugTracer;
 };
