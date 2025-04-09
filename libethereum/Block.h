@@ -311,11 +311,11 @@ public:
 
 #ifdef BITE
     void setEncryptedTransactions(
-        const std::map< uint64_t, Transaction >& _encryptedTransactions ) {
+        const std::shared_ptr< std::map< uint64_t, Transaction > >& _encryptedTransactions ) {
         m_encryptedTransactions = _encryptedTransactions;
     }
 
-    std::map< uint64_t, Transaction > encryptedTransactions() const {
+    const std::shared_ptr< std::map< uint64_t, Transaction > >& encryptedTransactions() const {
         return m_encryptedTransactions;
     }
 #endif
@@ -366,7 +366,7 @@ private:
 #ifdef BITE
     // encrypted transactions to be stored with the block and their indexes
     // only filled for a working block
-    std::map< uint64_t, Transaction > m_encryptedTransactions;
+    std::shared_ptr< std::map< uint64_t, Transaction > > m_encryptedTransactions;
 #endif
 
     Logger m_logger{ createLogger( VerbosityDebug, "block" ) };

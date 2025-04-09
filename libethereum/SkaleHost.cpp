@@ -610,7 +610,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 #ifdef BITE
         // keep encrypted txns separetely
         // pass decrypted txns to the next block
-        std::map< uint64_t, Transaction > encryptedTransactions;
+        std::shared_ptr< std::map< uint64_t, Transaction > > encryptedTransactions =
+            std::make_shared< std::map< uint64_t, Transaction > >();
         for ( auto it = _decryptedTransactions->begin(); it != _decryptedTransactions->end();
               ++it ) {
             try {
@@ -624,7 +625,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
                 std::swap( out_txns.at( it->first ), t );
 
-                encryptedTransactions[it->first] = t;
+                encryptedTransactions->insert( { it->first, t } );
             } catch ( const dev::Exception& ex ) {
                 LOG( m_debugLogger ) << "Got invalid decrypted transaction with index " << it->first
                                      << " : " << ex.what();

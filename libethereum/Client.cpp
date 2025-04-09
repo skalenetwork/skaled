@@ -528,7 +528,7 @@ void Client::syncBlockQueue() {
 
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-    const std::map< uint64_t, Transaction >& _encryptedTransactions,
+    const std::shared_ptr< std::map< uint64_t, Transaction > >& _encryptedTransactions,
 #endif
     u256 _gasPrice, uint64_t _timestamp ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1

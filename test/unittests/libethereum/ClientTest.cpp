@@ -977,7 +977,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
 
     testClient->importTransactionsAsBlock( Transactions(),
 #ifdef BITE
-           map< uint64_t, Transaction >(),
+           shared_ptr< map< uint64_t, Transaction > >(),
 #endif
                                            1000, 4294967294 );
 
