@@ -50,7 +50,7 @@ uint64_t LevelDBSnapManager::garbageCollectUnusedOldSnaps(
         std::unique_lock< std::shared_mutex > snapLock( m_snapMutex );
         for ( auto it = oldSnaps.begin(); it != oldSnaps.end(); ) {
             // a snap is unused if no one using this snap anymore except the map itself
-            if ( it->second.use_count() == 1 ||
+            if ( it->second.use_count() == 1 &&
                  it->second->getCreationTimeMs() + _maxSnapLifetimeMs <= currentTimeMs ) {
                 // erase this snap from the map
                 // note that push back needs to happen before erase since erase will
