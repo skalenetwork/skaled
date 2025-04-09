@@ -29,6 +29,7 @@
 
 #include <jsonrpccpp/common/exception.h>
 #include <jsonrpccpp/server.h>
+#include <libdevcore/Log.h>
 #include <libdevcore/SharedSpace.h>
 #include <libethereum/Client.h>
 #include <libweb3jsonrpc/SkaleFace.h>
@@ -114,6 +115,12 @@ private:
     std::unique_ptr< std::thread > snapshotDownloadFragmentMonitorThread;
     std::atomic_bool threadExitRequested = false;
     mutable std::mutex m_snapshot_mutex;
+
+    /// Loggers
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "Skale" ) };
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "Skale" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "Skale" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "Skale" ) };
 };
 
 namespace snapshot {

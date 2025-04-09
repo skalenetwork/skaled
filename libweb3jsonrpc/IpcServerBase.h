@@ -25,6 +25,7 @@
 #pragma once
 
 #include <jsonrpccpp/server/abstractserverconnector.h>
+#include <libdevcore/Log.h>
 #include <atomic>
 #include <mutex>
 #include <string>
@@ -58,5 +59,10 @@ protected:
     std::unordered_set< S > m_sockets;
     std::mutex x_sockets;
     std::thread m_listeningThread;  // TODO use asio for parallel request processing
+
+private:
+    /// Loggers
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "IpcServerBase" ) };
+    Logger m_loggerTrace{ createLogger( VerbosityTrace, "IpcServerBase" ) };
 };
 }  // namespace dev

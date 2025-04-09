@@ -204,6 +204,9 @@ private:
     void computeDatabaseHash(
         const boost::filesystem::path& _dbDir, secp256k1_sha256_t* ctx ) const;
     void addLastPriceToHash( unsigned _blockNumber, secp256k1_sha256_t* ctx ) const;
+
+    /// Loggers
+    mutable dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "SnapshotManager" ) };
 };
 
 #endif  // SNAPSHOTMANAGER_H

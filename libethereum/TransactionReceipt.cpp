@@ -122,17 +122,19 @@ h256 const& TransactionReceipt::stateRoot() const {
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, TransactionReceipt const& _r ) {
     if ( _r.hasStatusCode() )
-        _out << "Status: " << _r.statusCode() << std::endl;
+        _out << "Status: " << _r.statusCode() << "\n";
     else
-        _out << "Root: " << _r.stateRoot() << std::endl;
-    _out << "Gas used: " << _r.cumulativeGasUsed() << std::endl;
-    _out << "Logs: " << _r.log().size() << " entries:" << std::endl;
+        _out << "Root: " << _r.stateRoot() << "\n";
+    _out << "Gas used: " << _r.cumulativeGasUsed() << "\n";
+    _out << "Logs: " << _r.log().size() << " entries:"
+         << "\n";
     for ( LogEntry const& i : _r.log() ) {
-        _out << "Address " << i.address << ". Topics:" << std::endl;
+        _out << "Address " << i.address << ". Topics:"
+             << "\n";
         for ( auto const& j : i.topics )
-            _out << "  " << j << std::endl;
-        _out << "  Data: " << toHex( i.data ) << std::endl;
+            _out << "  " << j << "\n";
+        _out << "  Data: " << toHex( i.data ) << "\n";
     }
-    _out << "Bloom: " << _r.bloom() << std::endl;
+    _out << "Bloom: " << _r.bloom() << "\n";
     return _out;
 }

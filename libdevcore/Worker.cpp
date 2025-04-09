@@ -67,7 +67,7 @@ void Worker::startWorking() {
                     cwarn << "Exception thrown in Worker thread: " << _e.what();
                 } catch ( ... ) {
                     cerror << "CRITICAL unknown exception thrown in Worker thread";
-                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n";
                 }
 
                 //				ex = WorkerState::Stopping;

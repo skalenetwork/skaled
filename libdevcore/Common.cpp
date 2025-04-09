@@ -58,7 +58,7 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                                string( "\nInternal exit requested while already exiting. " ) :
                                "\nInternal exit initiated. ";
     }
-    std::cerr << strMessagePrefix << skutils::signal::signal2str( nSignalNo ) << "\n\n";
+    cerr << strMessagePrefix << skutils::signal::signal2str( nSignalNo ) << "\n\n";
 
     switch ( nSignalNo ) {
     case SIGINT:
@@ -85,10 +85,10 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
     case SIGFPE:
     case SIGSEGV:
         // abort signals
-        std::cout << "\n" << skutils::signal::generate_stack_trace() << "\n";
-        std::cout.flush();
-        std::cout << skutils::signal::read_maps() << "\n";
-        std::cout.flush();
+        cerr << "\n" << skutils::signal::generate_stack_trace();
+        cerr.flush();
+        cerr << skutils::signal::read_maps();
+        cerr.flush();
 
         _exit( nSignalNo + 128 );
 
@@ -106,12 +106,11 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
             auto start_time = std::chrono::steady_clock::now();
 
             std::thread( [nSignalNo, start_time]() {
-                std::cerr << ( "\n" + string( "SELF-KILL:" ) + " " + "Will sleep " +
-                                 cc::size10( ExitHandler::KILL_TIMEOUT ) +
-                                 " seconds before force exit..." ) +
-                                 "\n\n";
+                cerr << "\nSELF-KILL: "
+                     << "Will sleep " << ExitHandler::KILL_TIMEOUT
+                     << " seconds before force exit...";
 
-                clog( VerbosityInfo, "exit" ) << "THREADS timer started";
+                cout << "THREADS timer started";
 
                 // while waiting, every 0.1s check whch threades exited
                 vector< string > threads;
@@ -128,7 +127,6 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                             cerr << seconds << " THREADS " << threads.size() << ":";
                             for ( const string& t : threads_diff )
                                 cerr << " " << t;
-                            cerr << endl;
                         }
                     } catch ( ... ) {
                         // swallow it
@@ -137,10 +135,9 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
                     std::this_thread::sleep_for( 100ms );
                 }
 
-                std::cerr << ( "\n" + string( "SELF-KILL:" ) + " " +
-                               "Will force exit after sleeping " +
-                               cc::size10( ExitHandler::KILL_TIMEOUT ) + cc::error( " second(s)" ) +
-                               "\n\n" );
+                cerr << "\nSELF-KILL: "
+                     << "Will force exit after sleeping " << ExitHandler::KILL_TIMEOUT
+                     << " second(s)";
 
                 // TODO deduplicate this with main() before return
                 ExitHandler::exit_code_t ec = ExitHandler::requestedExitCode();
@@ -158,7 +155,7 @@ void ExitHandler::exitHandler( int nSignalNo, ExitHandler::exit_code_t ec ) {
 
     // TODO deduplicate with first if()
     if ( ExitHandler::shouldExit() && s_nStopSignal > 0 && nSignalNo > 0 ) {
-        std::cerr << ( "\n" + string( "SIGNAL-HANDLER:" ) + " " + "Will force exit now...\n\n" );
+        cerr << "\nSIGNAL-HANDLER: Will force exit now...";
         _exit( 13 );
     }
 

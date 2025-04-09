@@ -372,8 +372,11 @@ private:
     mutable Mutex x_queue;                             ///< Verification queue mutex
     std::atomic_bool m_aborting;                       ///< Exit condition for verifier.
 
-    Logger m_logger{ createLogger( VerbosityInfo, "tq" ) };
-    Logger m_loggerDetail{ createLogger( VerbosityDebug, "tq" ) };
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "TransactionQueue" ) };
+    Logger m_loggerDebug{ createLogger( VerbosityDebug, "TransactionQueue" ) };
+    Logger m_loggerTrace{ createLogger( VerbosityTrace, "TransactionQueue" ) };
+    Logger m_loggerError{ createLogger( VerbosityError, "TransactionQueue" ) };
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "TransactionQueue" ) };
 };
 
 template < class... Args >

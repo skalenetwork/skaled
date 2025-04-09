@@ -135,7 +135,8 @@ void BlockQueue::verifierBody() try {
             m_readySet.erase( work.hash );
             m_knownBad.insert( work.hash );
             if ( !m_verifying.remove( work.hash ) )
-                cwarn << "Unexpected exception when verifying block: " << _ex.what();
+                LOG( m_loggerWarning )
+                    << "Unexpected exception when verifying block: " << _ex.what();
             drainVerified_WITH_BOTH_LOCKS();
             continue;
         }
@@ -158,18 +159,18 @@ void BlockQueue::verifierBody() try {
                 ready = true;
             } else {
                 if ( !m_verifying.replace( work.hash, move( res ) ) )
-                    cwarn << "BlockQueue missing our job: was there a GM?";
+                    LOG( m_loggerWarning ) << "BlockQueue missing our job: was there a GM?";
             }
         }
         if ( ready )
             m_onReady();
     }
 } catch ( const std::exception& ex ) {
-    cerror << "CRITICAL " << ex.what();
-    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+    LOG( m_loggerError ) << "CRITICAL " << ex.what();
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
 } catch ( ... ) {
-    cerror << "CRITICAL unknown exception";
-    cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+    LOG( m_loggerError ) << "CRITICAL unknown exception";
+    LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
 }
 
 void BlockQueue::drainVerified_WITH_BOTH_LOCKS() {
@@ -189,14 +190,14 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
     // Check if we already know this block.
     h256 h = BlockHeader::headerHashFromBlock( _block );
 
-    LOG( m_loggerDetail ) << "Queuing block " << h << " for import...";
+    LOG( m_loggerTrace ) << "Queuing block " << h << " for import...";
 
     UpgradableGuard l( m_lock );
 
     if ( contains( m_readySet, h ) || contains( m_drainingSet, h ) || contains( m_unknownSet, h ) ||
          contains( m_knownBad, h ) || contains( m_futureSet, h ) ) {
         // Already know about this one.
-        LOG( m_loggerDetail ) << "Already known.";
+        LOG( m_loggerTrace ) << "Already known.";
         return ImportResult::AlreadyKnown;
     }
 
@@ -206,16 +207,16 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
         // VERIFY: populates from the block and checks the block is internally coherent.
         bi = m_bc->verifyBlock( _block, m_onBad, ImportRequirements::PostGenesis ).info;
     } catch ( Exception const& _e ) {
-        cwarn << "Ignoring malformed block: " << diagnostic_information( _e );
+        LOG( m_loggerWarning ) << "Ignoring malformed block: " << diagnostic_information( _e );
         return ImportResult::Malformed;
     }
 
-    LOG( m_loggerDetail ) << "Block " << h << " is " << bi.number() << " parent is "
-                          << bi.parentHash();
+    LOG( m_loggerTrace ) << "Block " << h << " is " << bi.number() << " parent is "
+                         << bi.parentHash();
 
     // Check block doesn't already exist first!
     if ( m_bc->isKnown( h ) ) {
-        LOG( m_logger ) << "Already known in chain.";
+        LOG( m_loggerDebug ) << "Already known in chain.";
         return ImportResult::AlreadyInChain;
     }
 
@@ -230,8 +231,8 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
         time_t bit = static_cast< time_t >( bi.timestamp() );
         if ( strftime( buf, 24, "%X", localtime( &bit ) ) == 0 )
             buf[0] = '\0';  // empty if case strftime fails
-        LOG( m_loggerDetail ) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTime()
-                              << "] - will wait until " << buf;
+        LOG( m_loggerTrace ) << "OK - queued for future [" << bi.timestamp() << " vs " << utcTime()
+                             << "] - will wait until " << buf;
         m_difficulty += bi.difficulty();
         h256 const parentHash = bi.parentHash();
         bool const unknown = !contains( m_readySet, parentHash ) &&
@@ -249,7 +250,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
                     !m_drainingSet.count( bi.parentHash() ) && !m_bc->isKnown( bi.parentHash() ) ) {
             // We don't know the parent (yet) - queue it up for later. It'll get resent to us if we
             // find out about its ancestry later on.
-            LOG( m_loggerDetail ) << "OK - queued as unknown parent: " << bi.parentHash();
+            LOG( m_loggerTrace ) << "OK - queued as unknown parent: " << bi.parentHash();
             m_unknown.insert( bi.parentHash(), h, _block.toBytes() );
             m_unknownSet.insert( h );
             m_difficulty += bi.difficulty();
@@ -257,7 +258,7 @@ ImportResult BlockQueue::import( bytesConstRef _block, bool _isOurs ) {
             return ImportResult::UnknownParent;
         } else {
             // If valid, append to blocks.
-            LOG( m_loggerDetail ) << "OK - ready for chain insertion.";
+            LOG( m_loggerTrace ) << "OK - ready for chain insertion.";
             DEV_GUARDED( m_verification )
             m_unverified.enqueue( UnverifiedBlock{ h, bi.parentHash(), _block.toBytes() } );
             m_moreToVerify.notify_one();
@@ -354,13 +355,13 @@ void BlockQueue::tick() {
         if ( m_future.isEmpty() )
             return;
 
-        LOG( m_logger ) << cc::debug( "Checking past-future blocks..." );
+        LOG( m_loggerDebug ) << "Checking past-future blocks...";
 
         time_t t = utcTime();
         if ( t < m_future.firstKey() )
             return;
 
-        LOG( m_logger ) << cc::debug( "Past-future blocks ready." );
+        LOG( m_loggerDebug ) << "Past-future blocks ready.";
 
         {
             UpgradeGuard l2( l );
@@ -370,8 +371,7 @@ void BlockQueue::tick() {
                 m_futureSet.erase( hash.first );
         }
     }
-    LOG( m_logger ) << cc::debug( "Importing " ) << todo.size()
-                    << cc::debug( " past-future blocks." );
+    LOG( m_loggerDebug ) << "Importing " << todo.size() << " past-future blocks.";
 
     for ( auto const& b : todo )
         import( &b.second );

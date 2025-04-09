@@ -3949,6 +3949,18 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
 
+BOOST_AUTO_TEST_CASE( getZeroBlock ) {
+    JsonRpcFixture fixture;
+
+    Json::Value block = fixture.rpcClient->eth_getBlockByNumber( "0", "false" );
+    BOOST_REQUIRE( block["number"] == string( "0x0" ) );
+
+    string blockHash = block["hash"].asString();
+    Json::Value blockByHash = fixture.rpcClient->eth_getBlockByHash( blockHash, "false" );
+    BOOST_REQUIRE( blockByHash["number"] == string( "0x0" ) );
+    BOOST_REQUIRE( blockByHash["hash"] == blockHash );
+}
+
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
