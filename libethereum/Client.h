@@ -290,10 +290,9 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactions,
+        const std::map< uint64_t, Transaction >& _encryptedTransactions,
 #endif
-                                      u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+        u256 _gasPrice, uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         return m_snapshotAgent->createSnapshotFile( _blockNumber );

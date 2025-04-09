@@ -580,7 +580,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
-
         for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
             const bytes& data = *it;
             h256 sha = sha3( data );
@@ -608,6 +607,38 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             m_tq.dropGood( t );
         }
 
+#ifdef BITE
+        // keep encrypted txns separetely
+        // pass decrypted txns to the next block
+        std::map< uint64_t, Transaction > encryptedTransactions;
+        for ( auto it = _decryptedTransactions->begin(); it != _decryptedTransactions->end();
+              ++it ) {
+            try {
+                const bytes& data = *it->second;
+
+                Transaction t( data, CheckTransaction::Everything, true,
+                    EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
+                    InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+                t.checkOutExternalGas(
+                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
+
+                std::swap( out_txns.at( it->first ), t );
+
+                encryptedTransactions[it->first] = t;
+            } catch ( const dev::Exception& ex ) {
+                LOG( m_debugLogger ) << "Got invalid decrypted transaction with index " << it->first
+                                     << " : " << ex.what();
+            } catch ( const std::exception& ex ) {
+                LOG( m_debugLogger ) << "Got invalid decrypted transaction with index " << it->first
+                                     << " : " << ex.what();
+            } catch ( ... ) {
+                LOG( m_debugLogger )
+                    << "Got invalid decrypted transaction with index " << it->first;
+            }
+        }
+#endif
+
+
         total_arrived += out_txns.size();
 
         if ( _blockID != m_client.number() + 1 ) {
@@ -620,9 +651,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
 #ifdef BITE
-    _decryptedTransactions,
+            encryptedTransactions,
 #endif
-                                                          _gasPrice, _timeStamp );
+            _gasPrice, _timeStamp );
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )
