@@ -37,6 +37,9 @@ struct VerifiedBlockRef {
     bytesConstRef block;                      ///< Block data reference
     BlockHeader info;                         ///< Prepopulated block info
     std::vector< Transaction > transactions;  ///< Verified list of block transactions
+#ifdef BITE
+    std::map< uint64_t, Transaction > encryptedTransactions;  ///< Encrypted transactions to be stored in blockchain
+#endif
 };
 
 /// @brief Verified block info, combines block data and verified info/transactions

@@ -309,6 +309,16 @@ public:
 
     void startReadState();
 
+#ifdef BITE
+    void setEncryptedTransactions( const std::map< uint64_t, Transaction >& _encryptedTransactions ) {
+        m_encryptedTransactions = _encryptedTransactions;
+    }
+
+    std::map< uint64_t, Transaction > encryptedTransactions() const {
+        return m_encryptedTransactions;
+    }
+#endif
+
 private:
     SealEngineFace* sealEngine() const;
 
@@ -351,6 +361,12 @@ private:
 
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
+
+#ifdef BITE
+    // encrypted transactions to be stored with the block and their indexes
+    // only filled for a working block
+    std::map< uint64_t, Transaction > m_encryptedTransactions;
+#endif
 
     Logger m_logger{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerDetailed{ createLogger( VerbosityTrace, "block" ) };

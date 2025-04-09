@@ -597,6 +597,9 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.info = _block.info();
     verifiedBlock.block = ref( _block.blockData() );
     verifiedBlock.transactions = _block.pending();
+#ifdef BITE
+    verifiedBlock.encryptedTransactions = _block.encryptedTransactions();
+#endif
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
     BlockReceipts blockReceipts;
@@ -769,6 +772,23 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 
             ++ta.index;
         }
+
+#ifdef BITE
+        // store encrypted transaction's location by its hash
+        // so that every BITE transaction is available by both "encrtypted" and "decrypted" hash
+        for ( auto it = _block.encryptedTransactions.begin(); it != _block.encryptedTransactions.end(); ++it ) {
+            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
+
+            auto txBytes = it->second.toBytes();
+
+            TransactionAddress transactionAddress;
+            transactionAddress.blockHash = tbi.hash();
+            transactionAddress.index = it->first; // index is verified earlier
+
+            extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
+                ( db::Slice ) dev::ref( ta.rlp() ) );
+        }
+#endif
     }
 
     // Collate logs into blooms.

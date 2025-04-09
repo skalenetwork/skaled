@@ -540,6 +540,14 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
+#ifdef BITE
+    {
+        // store encrypted transactions
+        DEV_WRITE_GUARDED( x_working )
+        m_working.setEncryptedTransactions( _encryptedTransactions );
+    }
+#endif
+
     size_t cntSucceeded = 0;
     cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
     sealUnconditionally( false );
