@@ -310,7 +310,8 @@ public:
     void startReadState();
 
 #ifdef BITE
-    void setEncryptedTransactions( const std::map< uint64_t, Transaction >& _encryptedTransactions ) {
+    void setEncryptedTransactions(
+        const std::map< uint64_t, Transaction >& _encryptedTransactions ) {
         m_encryptedTransactions = _encryptedTransactions;
     }
 
