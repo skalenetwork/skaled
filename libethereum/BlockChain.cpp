@@ -786,7 +786,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
             transactionAddress.index = it->first; // index is verified earlier
 
             extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
-                ( db::Slice ) dev::ref( ta.rlp() ) );
+                ( db::Slice ) dev::ref( transactionAddress.rlp() ) );
         }
 #endif
     }

@@ -2,6 +2,7 @@
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
 #include <libconsensus/node/ConsensusEngine.h>
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 #include <libskale/ConsensusGasPricer.h>
 
 #include <test/tools/libtesteth/TestHelper.h>
@@ -1365,6 +1366,63 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                      toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
+
+#ifdef BITE
+BOOST_AUTO_TEST_CASE( biteTransactions ) {
+    SkaleHostFixture fixture;
+
+    auto& client = fixture.client;
+    auto& coinbase = fixture.coinbase;
+    auto& accountHolder = fixture.accountHolder;
+    auto& skaleHost = fixture.skaleHost;
+    auto& stub = fixture.stub;
+
+    auto senderAddress = coinbase.address();
+    auto receiver = KeyPair::create();
+
+    Json::Value json;
+    json["from"] = toJS( senderAddress );
+    json["to"] = toJS( receiver.address() );
+    json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
+    json["nonce"] = 0;
+
+    std::string dataToEncrypt = "11223344556677889900aabbccddeeff";
+    json["data"] = std::string( "0x" ) + dataToEncrypt;
+
+    TransactionSkeleton ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = accountHolder->authenticate( ts );
+    Transaction txOriginal( ts, ar.second );
+
+    h256 originalTxHash = txOriginal.sha3();
+
+    libBLS::TEBase::initializeIfNecessary();
+    auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
+    auto publicKeyBytes = libBLS::ThresholdUtils::G2ToBytes( libff::alt_bn128_G2::random_element() );
+    auto cyphertext = libBLS::ThresholdEncryption::encrypt( messageToEncrypt, publicKeyBytes );
+
+    json["data"] = std::string( "0x" ) + libBLS::ThresholdUtils::bytesToHexString( cyphertext.toBytes() );
+
+    ts = toTransactionSkeleton( json );
+    ts = client->populateTransactionWithDefaults( ts );
+    ar = accountHolder->authenticate( ts );
+    Transaction txEncrypted( ts, ar.second );
+
+    h256 encryptedTxHash = txEncrypted.sha3();
+
+    shared_ptr< vector< uint8_t > > txOriginalBytesPtr = std::make_shared< vector< uint8_t > >( txOriginal.toBytes() );
+    map< uint64_t, shared_ptr< vector< uint8_t > > > decryptedTxnMap{ { 0, txOriginalBytesPtr } };
+
+    // simulate new block
+    BOOST_REQUIRE_NO_THROW( stub->createBlock(
+        ConsensusExtFace::transactions_vector{ txEncrypted.toBytes() },
+        make_shared< map< uint64_t, shared_ptr< vector< uint8_t > > > >( decryptedTxnMap ),
+        utcTime(), 1U ) );
+
+    BOOST_REQUIRE( client->transaction( originalTxHash ).toBytes() == txOriginal.toBytes() );
+    BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txOriginal.toBytes() );
+}
+#endif
 
 struct dummy {};
 
