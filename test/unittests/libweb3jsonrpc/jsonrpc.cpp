@@ -113,7 +113,7 @@ static std::string const c_genesisConfigString =
             "emptyBlockIntervalMs": -1,
             "nodeGroups": {},
             "nodes": [
-                { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
+                { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
     std::to_string( rand_port ) +
     R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ],
@@ -3949,6 +3949,54 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
 
+BOOST_AUTO_TEST_CASE( block_author_balance ) {
+    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
+    string etherbase = fixture.rpcClient->eth_coinbase();
+
+    u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+
+    auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
+
+    // mine block without transactions
+    dev::eth::simulateMining( *( fixture.client ), 1 );
+    sleep(3);
+    etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+    BOOST_REQUIRE_GT( etherbaseBalance, 0 );
+
+    // mine transaction
+    Json::Value sampleTx;
+    sampleTx["value"] = 1000000;
+    sampleTx["data"] = toJS( bytes() );
+    sampleTx["from"] = fixture.coinbase.address().hex();
+    sampleTx["to"] = fixture.account2.address().hex();
+    sampleTx["gasPrice"] = 1000000000000;
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
+    BOOST_REQUIRE( !txHash.empty() );
+
+    cout << fixture.client->blockChain().transactions().size() << endl;
+    // Transaction tx = Transaction( txBytes );
+    dev::eth::mineTransaction( *( fixture.client ), 2 );
+
+    fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
+
+    auto txData = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+
+    auto blockNumAsString = fixture.rpcClient->eth_blockNumber();
+
+    auto author = fixture.rpcClient->eth_getBlockByNumber( blockNumAsString, false )["author"];
+    auto blockNumber = jsToU256( blockNumAsString );
+
+    BOOST_REQUIRE( author != etherbase );
+    auto totalReward = fixture.client->chainParams().blockReward(
+                fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
+    auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
+    auto expectedBalanceChange = blockNumber * totalReward + feeForTx;
+
+    BOOST_REQUIRE_EQUAL(
+                fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance, expectedBalanceChange );
+}
+
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
@@ -4000,11 +4048,15 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
 
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+#ifdef BITE
+    BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
+#else
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
         etherbaseBalance +
             jsToU256( t["gasUsed"].asString() ) *
                 jsToU256( partiallyRetrieveTx["gasPrice"].asString() ) -
             u256( 1000000 ) );
+#endif
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ),
         balance + u256( 1000000 ) );
@@ -4034,9 +4086,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
     t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-    BOOST_REQUIRE_EQUAL( jsToU256( t["gasUsed"].asString() ) *
-                             jsToU256( partiallyRetrieveTx["gasPrice"].asString() ),
-        etherbaseBalance );
+    BOOST_REQUIRE_EQUAL(  etherbaseBalance, 0 );
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ),
         balance + oldEtherbaseBalance );
@@ -4549,14 +4599,14 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
          << endl;
 
     // 1 import 1 transaction to increase block number
-    // also send 1 eth to account2
+    // also send 0.895 eth to account2
     // TODO repair mineMoney function! (it asserts)
     Json::Value txJson;
     txJson["from"] = fixture.coinbase.address().hex();
     txJson["gas"] = "200000";
     txJson["gasPrice"] = "5000000000000";
     txJson["to"] = fixture.account2.address().hex();
-    txJson["value"] = "1000000000000000000";
+    txJson["value"] = "895000000000000000";
 
     txJson["nonce"] = "0";
     TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
@@ -4711,7 +4761,6 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     BOOST_REQUIRE_EQUAL( r2["blockNumber"], toJS( fixture.client->number() ) );
 #endif
 }
-
 
 BOOST_AUTO_TEST_CASE( eth_signAndSendRawTransaction,
     *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
