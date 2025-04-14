@@ -160,12 +160,34 @@ struct TransactionAddress {
     static const unsigned size = 67;
 };
 
+struct DecryptedTransactionData {
+    DecryptedTransactionData() {}
+    DecryptedTransactionData( const bytes& _data ) : m_data( _data ), size( _data.size() ) {}
+    DecryptedTransactionData( RLP const& _rlp ) {
+        m_data = _rlp.toBytes();
+        size = m_data.size();
+    }
+    DecryptedTransactionData( const DecryptedTransactionData& other ) = default;
+    DecryptedTransactionData& operator=( const DecryptedTransactionData& other ) = default;
+    bytes rlp() const {
+        return dev::rlp( m_data );
+    }
+    bytes data() const { return m_data; }
+    bool empty() const { return size == 0; }
+
+    bytes m_data;
+    size_t size = 0;
+};
+
 using BlockDetailsHash = std::unordered_map< h256, BlockDetails >;
 using BlockLogBloomsHash = std::unordered_map< h256, BlockLogBlooms >;
 using BlockReceiptsHash = std::unordered_map< h256, BlockReceipts >;
 using TransactionAddressHash = std::unordered_map< h256, TransactionAddress >;
 using BlockHashHash = std::map< uint64_t, BlockHash >;
 using BlocksBloomsHash = std::unordered_map< h256, BlocksBlooms >;
+#ifdef BITE
+using DecryptedTransactionDataHash = std::unordered_map< h256, DecryptedTransactionData >;
+#endif
 
 static const BlockDetails NullBlockDetails;
 static const BlockLogBlooms NullBlockLogBlooms;
