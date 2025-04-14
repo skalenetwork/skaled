@@ -104,6 +104,10 @@ enum {
     ExtraLogBlooms,
     ExtraReceipts,
     ExtraBlocksBlooms
+#ifdef BITE
+    ,
+    ExtraTransactionDecryptedData
+#endif
 };
 
 class VersionChecker {
@@ -333,6 +337,12 @@ public:
     }
     std::vector< bytes > transactions() const { return transactions( currentHash() ); }
 
+    DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const {
+        return queryExtras< DecryptedTransactionData, ExtraTransactionDecryptedData >(
+            _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
+            DecryptedTransactionData() );
+    }
+
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
     unsigned number( h256 const& _hash ) const { return details( _hash ).number; }
     unsigned number() const {
@@ -398,9 +408,16 @@ public:
         unsigned memReceipts = 0;
         unsigned memTransactionAddresses = 0;
         unsigned memBlockHashes = 0;
+#ifdef BITE
+        unsigned memDecryptedTransactionsData = 0;
+#endif
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
-                   memBlockHashes;
+                   memBlockHashes
+#ifdef BITE
+                   + memDecryptedTransactionsData
+#endif
+                ;
         }
     };
 
@@ -566,6 +583,10 @@ private:
     mutable BlockHashHash m_blockHashes;
     mutable SharedMutex x_blocksBlooms;
     mutable BlocksBloomsHash m_blocksBlooms;
+#ifdef BITE
+    mutable SharedMutex x_decryptedTransactionsData;
+    mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
+#endif
 
     using CacheID = std::pair< h256, unsigned >;
     mutable Mutex x_cacheUsage;

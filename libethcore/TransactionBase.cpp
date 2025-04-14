@@ -589,3 +589,9 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
     else
         return _rlp.payload();
 }
+
+bytes const& TransactionBase::decryptedData() const {
+    if ( !m_decryptedData )
+        return data();
+    return *m_decryptedData;
+}

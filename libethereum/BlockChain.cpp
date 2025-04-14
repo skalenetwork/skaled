@@ -770,6 +770,18 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
             extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
+#ifdef BITE
+            for ( auto it = _block.encryptedTransactions->begin();
+                  it != _block.encryptedTransactions->end(); ++it )
+                std::cout << it->first << ' ' << dev::toHex( it->second.data() ) << '\n';
+            auto txIt = _block.encryptedTransactions->find( ta.index );
+            if ( txIt != _block.encryptedTransactions->end() ) {
+                DecryptedTransactionData txData( txIt->second.data() );
+                extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
+                    ( db::Slice ) dev::ref( txData.rlp() ) );
+            }
+#endif
+
             ++ta.index;
         }
 
@@ -1315,6 +1327,13 @@ void BlockChain::updateStats() const {
         m_lastStats.memTransactionAddresses =
             m_transactionAddresses.size() * ( 64 + TransactionAddress::size );
     }
+#ifdef BITE
+    {
+        DEV_READ_GUARDED( x_decryptedTransactionsData )
+        m_lastStats.memDecryptedTransactionsData =
+            getApproximateHashSize( m_decryptedTransactionsData );
+    }
+#endif
 }
 
 uint64_t BlockChain::getTotalCacheMemory() {
@@ -1377,6 +1396,13 @@ void BlockChain::garbageCollect( bool _force ) {
                 m_blocksBlooms.erase( id.first );
                 break;
             }
+#ifdef BITE
+            case ExtraTransactionDecryptedData: {
+                WriteGuard l( x_decryptedTransactionsData );
+                m_decryptedTransactionsData.erase( id.first );
+                break;
+            }
+#endif
             }
         }
         m_cacheUsage.pop_back();
@@ -1435,6 +1461,12 @@ void BlockChain::clearCaches() {
         WriteGuard l( x_blockHashes );
         m_blockHashes.clear();
     }
+#ifdef BITE
+    {
+        WriteGuard l( x_decryptedTransactionsData );
+        m_decryptedTransactionsData.clear();
+    }
+#endif
 }
 
 void BlockChain::doLevelDbCompaction() const {
@@ -1477,6 +1509,11 @@ void BlockChain::clearCachesDuringChainReversion( unsigned _firstInvalid ) {
         m_blockHashes.erase( i );
     DEV_WRITE_GUARDED( x_transactionAddresses )
     m_transactionAddresses.clear();  // TODO: could perhaps delete them individually?
+
+#ifdef BITE
+    DEV_WRITE_GUARDED( x_decryptedTransactionsData )
+    m_decryptedTransactionsData.clear();
+#endif
 
     // If we are reverting previous blocks, we need to clear their blooms (in particular, to
     // rebuild any higher level blooms that they contributed to).

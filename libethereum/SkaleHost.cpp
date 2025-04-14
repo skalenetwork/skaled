@@ -623,7 +623,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 t.checkOutExternalGas(
                     m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
-                std::swap( out_txns.at( it->first ), t );
+                //                std::swap( out_txns.at( it->first ), t );
+                out_txns.at( it->first ).forceDecryptedData( t.data() );
 
                 encryptedTransactions->insert( { it->first, t } );
             } catch ( const dev::Exception& ex ) {

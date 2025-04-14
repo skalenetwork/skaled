@@ -146,6 +146,10 @@ public:
     BlockHeader pendingInfo() const override;
     BlockDetails pendingDetails() const override;
 
+#ifdef BITE
+    DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const;
+#endif
+
     EVMSchedule evmSchedule() const override;
 
     ImportResult injectBlock( bytes const& _block ) override;

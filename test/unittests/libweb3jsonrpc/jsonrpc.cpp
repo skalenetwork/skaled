@@ -57,6 +57,10 @@
 
 #include <cstdlib>
 
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#endif
+
 // This is defined by some weird windows header - workaround for now.
 #undef GetMessage
 
@@ -3959,6 +3963,44 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
+
+BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
+    JsonRpcFixture fixture;
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    Json::Value txEncryptedData;
+    txEncryptedData["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txEncryptedData["from"] = senderAddress;
+    txEncryptedData["gas"] = "100000";
+    txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txEncryptedData["value"] = 1000000000000000000;
+
+    std::string plaintext = dev::h256::random().hex();
+
+    libBLS::TEBase::initializeIfNecessary();
+    auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( plaintext.c_str() );
+    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
+    std::string epochId = "0000000000000000";
+    std::string magicNumber = "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
+
+    std::string encryptedData = std::string( "0x" ) + magicNumber + epochId + libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
+
+    txEncryptedData["data"] = encryptedData;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txEncryptedData );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto txEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    BOOST_REQUIRE( txEncryptedResponse["input"].asString() == encryptedData );
+
+    txEncryptedResponse = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( txEncryptedResponse["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
+
+    auto txDecryptedResponse = fixture.rpcClient->eth_getDecryptedTransactionData( txHash );
+    BOOST_REQUIRE( txDecryptedResponse == plaintext );
+}
+
 #endif
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
