@@ -181,7 +181,6 @@ void Block::resetCurrent( int64_t _timestamp ) {
     performIrregularModifications();
     updateBlockhashContract();
 
-
     m_state = m_state.createStateCopyAndClearCaches();
 }
 
@@ -830,8 +829,11 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
+
+#ifndef BITE
     applyRewards( rewarded,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#endif
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state
@@ -1002,6 +1004,7 @@ void Block::applyRewards(
             i.author(), _blockReward * ( 8 + i.number() - m_currentBlock.number() ) / 8 );
         r += _blockReward / 32;
     }
+
     m_state.addBalance( m_currentBlock.author(), r );
 }
 
@@ -1104,6 +1107,7 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
+
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 
@@ -1113,10 +1117,10 @@ void Block::commitToSeal(
     DEV_TIMED_ABOVE( "commit", 500 )
 
 #ifdef BITE
-    LOG( m_loggerDetailed ) << "Commiting applied rewards";
+    LOG( m_loggerDetailed ) << "Commiting new author";
     bool removeEmptyAccounts =
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
-    // Commiting to apply block rewards
+    // Commiting to apply new block author
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 #endif
@@ -1220,6 +1224,7 @@ void Block::cleanup() {
 
     LOG( m_logger ) << "finalising enactment. current -> previous, hash is "
                     << m_previousBlock.hash();
+
 
     resetCurrent();
 }
