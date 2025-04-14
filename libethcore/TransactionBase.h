@@ -150,8 +150,8 @@ public:
 
 #ifdef BITE
     // Pass the decrypted data for BITE transaction
-    void forceDecryptedData( const bytes& _decryptedData ) {
-        m_decryptedData = std::make_shared< bytes >( _decryptedData );
+    void forceDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
+        m_decryptedData = std::move( _decryptedData );
     }
 
     /// @returns the decrypted data associated with this (BITE) transaction.

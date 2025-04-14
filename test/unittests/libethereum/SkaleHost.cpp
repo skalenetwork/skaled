@@ -1386,15 +1386,13 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
     json["value"] = jsToDecimal( toJS( 10000 * dev::eth::szabo ) );
     json["nonce"] = 0;
 
-    std::string dataToEncrypt = "11223344556677889900aabbccddeeff";
+    std::string dataToEncrypt = dev::h256::random().hex();
     json["data"] = std::string( "0x" ) + dataToEncrypt;
 
     TransactionSkeleton ts = toTransactionSkeleton( json );
     ts = client->populateTransactionWithDefaults( ts );
     pair< bool, Secret > ar = accountHolder->authenticate( ts );
     Transaction txOriginal( ts, ar.second );
-
-    h256 originalTxHash = txOriginal.sha3();
 
     libBLS::TEBase::initializeIfNecessary();
     auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( dataToEncrypt.c_str() );
@@ -1410,17 +1408,17 @@ BOOST_AUTO_TEST_CASE( biteTransactions ) {
 
     h256 encryptedTxHash = txEncrypted.sha3();
 
-    shared_ptr< vector< uint8_t > > txOriginalBytesPtr = std::make_shared< vector< uint8_t > >( txOriginal.toBytes() );
-    map< uint64_t, shared_ptr< vector< uint8_t > > > decryptedTxnMap{ { 0, txOriginalBytesPtr } };
+    shared_ptr< vector< uint8_t > > originalDataBytesPtr = std::make_shared< vector< uint8_t > >( messageToEncrypt );
+    map< uint64_t, shared_ptr< vector< uint8_t > > > decryptedTxnDataMap{ { 0, originalDataBytesPtr } };
 
     // simulate new block
     BOOST_REQUIRE_NO_THROW( stub->createBlock(
         ConsensusExtFace::transactions_vector{ txEncrypted.toBytes() },
-        make_shared< map< uint64_t, shared_ptr< vector< uint8_t > > > >( decryptedTxnMap ),
+        make_shared< map< uint64_t, shared_ptr< vector< uint8_t > > > >( decryptedTxnDataMap ),
         utcTime(), 1U ) );
 
-    BOOST_REQUIRE( client->transaction( originalTxHash ).toBytes() == txOriginal.toBytes() );
-    BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txOriginal.toBytes() );
+    BOOST_REQUIRE( client->transaction( encryptedTxHash ).toBytes() == txEncrypted.toBytes() );
+    BOOST_REQUIRE( client->decryptedTransactionData( encryptedTxHash ).data() == txOriginal.data() );
 }
 #endif
 

@@ -598,7 +598,7 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.block = ref( _block.blockData() );
     verifiedBlock.transactions = _block.pending();
 #ifdef BITE
-    verifiedBlock.encryptedTransactions = _block.encryptedTransactions();
+    verifiedBlock.decryptedTransactionDataFields = _block.decryptedTransactionDataFields();
 #endif
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
@@ -771,12 +771,12 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
-            for ( auto it = _block.encryptedTransactions->begin();
-                  it != _block.encryptedTransactions->end(); ++it )
-                std::cout << it->first << ' ' << dev::toHex( it->second.data() ) << '\n';
-            auto txIt = _block.encryptedTransactions->find( ta.index );
-            if ( txIt != _block.encryptedTransactions->end() ) {
-                DecryptedTransactionData txData( txIt->second.data() );
+            for ( auto it = _block.decryptedTransactionDataFields->begin();
+                  it != _block.decryptedTransactionDataFields->end(); ++it )
+                std::cout << it->first << ' ' << dev::toHex( *it->second ) << '\n';
+            auto txIt = _block.decryptedTransactionDataFields->find( ta.index );
+            if ( txIt != _block.decryptedTransactionDataFields->end() ) {
+                DecryptedTransactionData txData( *txIt->second );
                 extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
                     ( db::Slice ) dev::ref( txData.rlp() ) );
             }
@@ -784,24 +784,6 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 
             ++ta.index;
         }
-
-#ifdef BITE
-        // store encrypted transaction's location by its hash
-        // so that every BITE transaction is available by both "encrtypted" and "decrypted" hash
-        for ( auto it = _block.encryptedTransactions->begin();
-              it != _block.encryptedTransactions->end(); ++it ) {
-            MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
-
-            auto txBytes = it->second.toBytes();
-
-            TransactionAddress transactionAddress;
-            transactionAddress.blockHash = tbi.hash();
-            transactionAddress.index = it->first;  // index is verified earlier
-
-            extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
-                ( db::Slice ) dev::ref( transactionAddress.rlp() ) );
-        }
-#endif
     }
 
     // Collate logs into blooms.

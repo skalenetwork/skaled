@@ -222,7 +222,8 @@ public:
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactions,
+        shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >
+            _decryptedTransactionDataFields,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 _stateRoot, uint64_t _winningNodeIndex ) override;
@@ -244,13 +245,16 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactions,
+    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
 #endif
     uint64_t _timeStamp, uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice,
     u256 _stateRoot, uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock( _approvedTransactions, _decryptedTransactions, _timeStamp, _blockID,
-        _gasPrice, _stateRoot, _winningNodeIndex );
+    m_host.createBlock( _approvedTransactions,
+#ifdef BITE
+        _decryptedTransactionDataFields,
+#endif
+        _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -521,7 +525,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactions,
+    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
 #endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
@@ -580,14 +584,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
-        for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
-            const bytes& data = *it;
+        for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
+            const bytes& data = _approvedTransactions[i];
             h256 sha = sha3( data );
             LOG( m_traceLogger ) << "Arrived txn: " << sha;
 
             Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+            if ( _decryptedTransactionDataFields->count( i ) > 0 )
+                t.forceDecryptedData( _decryptedTransactionDataFields->at( i ) );
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -607,40 +613,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             m_tq.dropGood( t );
         }
 
-#ifdef BITE
-        // keep encrypted txns separetely
-        // pass decrypted txns to the next block
-        std::shared_ptr< std::map< uint64_t, Transaction > > encryptedTransactions =
-            std::make_shared< std::map< uint64_t, Transaction > >();
-        for ( auto it = _decryptedTransactions->begin(); it != _decryptedTransactions->end();
-              ++it ) {
-            try {
-                const bytes& data = *it->second;
-
-                Transaction t( data, CheckTransaction::Everything, true,
-                    EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
-                    InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
-                t.checkOutExternalGas(
-                    m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
-
-                //                std::swap( out_txns.at( it->first ), t );
-                out_txns.at( it->first ).forceDecryptedData( t.data() );
-
-                encryptedTransactions->insert( { it->first, t } );
-            } catch ( const dev::Exception& ex ) {
-                LOG( m_debugLogger ) << "Got invalid decrypted transaction with index " << it->first
-                                     << " : " << ex.what();
-            } catch ( const std::exception& ex ) {
-                LOG( m_debugLogger ) << "Got invalid decrypted transaction with index " << it->first
-                                     << " : " << ex.what();
-            } catch ( ... ) {
-                LOG( m_debugLogger )
-                    << "Got invalid decrypted transaction with index " << it->first;
-            }
-        }
-#endif
-
-
         total_arrived += out_txns.size();
 
         if ( _blockID != m_client.number() + 1 ) {
@@ -653,7 +625,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
 #ifdef BITE
-            encryptedTransactions,
+            _decryptedTransactionDataFields,
 #endif
             _gasPrice, _timeStamp );
     }  // m_blockImportMutex

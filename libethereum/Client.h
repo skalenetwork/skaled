@@ -290,7 +290,8 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-        const std::shared_ptr< std::map< uint64_t, Transaction > >& _encryptedTransactions,
+        const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+            _decryptedTransactionDataFields,
 #endif
         u256 _gasPrice, uint64_t _timestamp = ( uint64_t ) utcTime() );
 
