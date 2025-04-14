@@ -526,8 +526,13 @@ void Client::syncBlockQueue() {
 }
 
 
+#ifdef BITE
+size_t Client::importTransactionsAsBlock(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _winningNodeIndex, uint64_t _timestamp ) {
+#else
 size_t Client::importTransactionsAsBlock(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+#endif
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -537,8 +542,15 @@ size_t Client::importTransactionsAsBlock(
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
+#ifdef BITE
+    Address _winningNodeAddress = bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+    LOG( m_loggerDetail ) << "Winning node address: " << _winningNodeAddress;
+    m_working.safeSetAuthor( _winningNodeAddress );
+#endif
+
     size_t cntSucceeded = 0;
     cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
+
     sealUnconditionally( false );
     importWorkingBlock();
 

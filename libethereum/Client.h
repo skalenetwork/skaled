@@ -288,8 +288,14 @@ public:
     std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
 
     // main entry point after consensus
+
+#ifdef BITE
+    size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
+        uint64_t _winningNodeIndex, uint64_t _timestamp = ( uint64_t ) utcTime() );
+#else
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
         uint64_t _timestamp = ( uint64_t ) utcTime() );
+#endif
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
