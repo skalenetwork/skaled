@@ -160,6 +160,7 @@ struct TransactionAddress {
     static const unsigned size = 67;
 };
 
+#ifdef BITE
 struct DecryptedTransactionData {
     DecryptedTransactionData() {}
     DecryptedTransactionData( const bytes& _data ) : m_data( _data ), size( _data.size() ) {}
@@ -176,6 +177,7 @@ struct DecryptedTransactionData {
     bytes m_data;
     size_t size = 0;
 };
+#endif
 
 using BlockDetailsHash = std::unordered_map< h256, BlockDetails >;
 using BlockLogBloomsHash = std::unordered_map< h256, BlockLogBlooms >;

@@ -2,7 +2,9 @@
 #pragma GCC diagnostic ignored "-Wreturn-type"
 
 #include <libconsensus/node/ConsensusEngine.h>
+#ifdef BITE
 #include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#endif
 #include <libskale/ConsensusGasPricer.h>
 
 #include <test/tools/libtesteth/TestHelper.h>
@@ -65,7 +67,11 @@ public:
 #endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
         uint64_t _winningNodeIndex = -1 ) {
-        m_extFace.createBlock( _approvedTransactions, _decryptedTransactions, _timeStamp, 0, _blockID, _gasPrice,
+        m_extFace.createBlock( _approvedTransactions,
+#ifdef BITE
+                              _decryptedTransactions,
+#endif
+                               _timeStamp, 0, _blockID, _gasPrice,
             _stateRoot, _winningNodeIndex );
         setPriceForBlockId( _blockID, _gasPrice );
     }

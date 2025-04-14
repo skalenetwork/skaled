@@ -771,15 +771,13 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
-            for ( auto it = _block.decryptedTransactionDataFields->begin();
-                  it != _block.decryptedTransactionDataFields->end(); ++it )
-                std::cout << it->first << ' ' << dev::toHex( *it->second ) << '\n';
             auto txIt = _block.decryptedTransactionDataFields->find( ta.index );
             if ( txIt != _block.decryptedTransactionDataFields->end() ) {
                 DecryptedTransactionData txData( *txIt->second );
                 extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
                     ( db::Slice ) dev::ref( txData.rlp() ) );
             }
+
 #endif
 
             ++ta.index;

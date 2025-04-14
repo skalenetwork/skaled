@@ -337,11 +337,13 @@ public:
     }
     std::vector< bytes > transactions() const { return transactions( currentHash() ); }
 
+#ifdef BITE
     DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const {
         return queryExtras< DecryptedTransactionData, ExtraTransactionDecryptedData >(
             _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
             DecryptedTransactionData() );
     }
+#endif
 
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
     unsigned number( h256 const& _hash ) const { return details( _hash ).number; }
