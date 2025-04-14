@@ -1669,7 +1669,7 @@ static std::string const genesisInfoSkaleConfigTest = R"(
             }
         },
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
+          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
         std::to_string( rand_port ) +
         R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc"}
         ]
