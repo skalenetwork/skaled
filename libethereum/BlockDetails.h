@@ -169,9 +169,7 @@ struct DecryptedTransactionData {
     }
     DecryptedTransactionData( const DecryptedTransactionData& other ) = default;
     DecryptedTransactionData& operator=( const DecryptedTransactionData& other ) = default;
-    bytes rlp() const {
-        return dev::rlp( m_data );
-    }
+    bytes rlp() const { return dev::rlp( m_data ); }
     bytes data() const { return m_data; }
     bool empty() const { return size == 0; }
 
