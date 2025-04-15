@@ -1044,7 +1044,7 @@ std::string Eth::eth_getDecryptedTransactionData( const std::string& _transactio
         // skip invalid
         auto rcp = client()->localisedTransactionReceipt( h );
         if ( rcp.gasUsed() == 0 )
-            return Json::Value( Json::nullValue );
+            return std::string();
 #endif
 
         auto decryptedData = client()->decryptedTransactionData( h );
