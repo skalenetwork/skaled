@@ -593,8 +593,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
-            if ( _decryptedTransactionDataFields->count( i ) > 0 )
-                t.forceDecryptedData( _decryptedTransactionDataFields->at( i ) );
+            auto it = _decryptedTransactionDataFields->find( i );
+            if ( it != _decryptedTransactionDataFields->end() )
+                t.setDecryptedData( it->second );
 #endif
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );

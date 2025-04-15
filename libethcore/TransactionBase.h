@@ -150,8 +150,8 @@ public:
 
 #ifdef BITE
     // Pass the decrypted data for BITE transaction
-    void forceDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
-        m_decryptedData = std::move( _decryptedData );
+    void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
+        m_decryptedData = _decryptedData;
     }
 
     /// @returns the decrypted data associated with this (BITE) transaction.
@@ -327,8 +327,8 @@ protected:
     u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
 
 #ifdef BITE
-    std::shared_ptr< bytes > m_decryptedData;  ///< Transaction data that was decrypted in BITE
-                                               ///< protocol
+    std::shared_ptr< bytes > m_decryptedData = nullptr;  ///< Transaction data that was decrypted in BITE
+                                                         ///< protocol
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;
