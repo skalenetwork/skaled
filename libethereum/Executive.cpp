@@ -275,11 +275,10 @@ bool Executive::execute() {
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 
-    bytes dataToPassToEvm;
 #ifdef BITE
-    dataToPassToEvm = m_t.decryptedData();
+    bytes const& dataToPassToEvm = m_t.decryptedData();
 #else
-    dataToPassToEvm = m_t.data();
+    bytes const& dataToPassToEvm = m_t.data();
 #endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );

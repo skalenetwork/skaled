@@ -4006,35 +4006,47 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto txDecryptedResponse = fixture.rpcClient->eth_getDecryptedTransactionData( txHash );
     BOOST_REQUIRE( txDecryptedResponse == plaintext );
 
-//    // SPDX-License-Identifier: GPL-3.0
+    //    pragma solidity >=0.8.2 <0.9.0;
 
-//    pragma solidity 0.4.25;
+    //    /**
+    //     * @title Storage
+    //     * @dev Store & retrieve value in a variable
+    //     * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
+    //     */
+    //    contract Storage {
 
-//    /**
-//     * @title Storage
-//     * @dev Store & retrieve value in a variable
-//     */
-//    contract Storage {
+    //        uint256 number;
+    //        uint256 number1;
+    //        uint256 number2;
 
-//        uint256 number;
+    //        /**
+    //         * @dev Store value in variable
+    //         * @param num value to store
+    //         */
+    //        function store(uint256 num) public {
+    //            number = num;
+    //            number1 = num;
+    //            number2 = num;
+    //        }
 
-//        /**
-//         * @dev Store value in variable
-//         * @param num value to store
-//         */
-//        function store(uint256 num) public {
-//            number = num;
-//        }
-
-//        /**
-//         * @dev Return value
-//         * @return value of 'number'
-//         */
-//        function retrieve() public view returns (uint256){
-//            return number;
-//        }
-//    }
-    std::string bytecode = "6080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680632e64cec114604e5780636057361d146076575b600080fd5b348015605957600080fd5b50606060a0565b6040518082815260200191505060405180910390f35b348015608157600080fd5b50609e6004803603810190808035906020019092919050505060a9565b005b60008054905090565b80600081905550505600a165627a7a72305820104cf48975b632dfba48b4b6923cac3382f64263e946d2e7ddbbe8574a6c45230029";
+    //        /**
+    //         * @dev Return value
+    //         * @return value of 'number'
+    //         */
+    //        function retrieve() public view returns (uint256){
+    //            return number;
+    //        }
+    //    }
+    string bytecode = "608060405234801561001057600080fd5b50610155806100206000396000f3fe60806040523"
+                      "4801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b57"
+                      "80636057361d14610059575b600080fd5b610043610075565b60405161005091906100e3565"
+                      "b60405180910390f35b610073600480360381019061006e91906100ab565b61007e565b005b"
+                      "60008054905090565b80600081905550806001819055508060028190555050565b600081359"
+                      "0506100a581610108565b92915050565b6000602082840312156100bd57600080fd5b600061"
+                      "00cb84828501610096565b91505092915050565b6100dd816100fe565b82525050565b60006"
+                      "020820190506100f860008301846100d4565b92915050565b6000819050919050565b610111"
+                      "816100fe565b811461011c57600080fd5b5056fea2646970667358221220edbb1123b5e4538"
+                      "463747d4497720f4c0b79ff718b7bf245e6ba81dc37dc1a0364736f6c63430008040033";
 
     Json::Value create;
     create["from"] = toJS( senderAddress );
@@ -4047,9 +4059,17 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     std::string contractAddress = receipt["contractAddress"].asString();
 
+    // verify state is empty
+    Json::Value call;
+    call["to"] = contractAddress;
+    call["data"] = "0x2e64cec1";
+    call["from"] = toJS( senderAddress );
+    BOOST_REQUIRE( u256( 0 ) == dev::jsToU256( fixture.rpcClient->eth_call( call, "latest" ) ) );
+
     string dataStore1 = "6057361d0000000000000000000000000000000000000000000000000000000000000001";
     string dataStoreInvalid = "6057361e0000000000000000000000000000000000000000000000000000000000000001";
 
+    // send txn to change state
     Json::Value store1;
     store1["to"] = contractAddress;
     store1["data"] = formEncryptedMessageMockup( dataStore1 );
@@ -4059,17 +4079,15 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    std::cout << receipt["gasUsed"] << '\n';
     BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
 
     // check that previous txn changed the state
-    Json::Value call;
     call["to"] = contractAddress;
     call["data"] = "0x2e64cec1";
     call["from"] = toJS( senderAddress );
-    BOOST_REQUIRE( "0x1" == fixture.rpcClient->eth_call( call, "latest" ) );
+    BOOST_REQUIRE( u256( 1 ) == dev::jsToU256( fixture.rpcClient->eth_call( call, "latest" ) ) );
 
-    // send invalid call to contract - txn should fail
+    // send invalid call to the contract - txn should fail
     Json::Value txInvalidContractCall;
     txInvalidContractCall["to"] = contractAddress;
     txInvalidContractCall["data"] = formEncryptedMessageMockup( dataStoreInvalid );
