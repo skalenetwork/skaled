@@ -18,6 +18,8 @@ jobs:
     outputs:
       version_orig: ${{ steps.set-version.outputs.version_orig }}
       version_historic: ${{ steps.set-version.outputs.version_historic }}
+      version_bite: ${{ steps.set-version.outputs.version_bite }}
+      version_bite_historic: ${{ steps.set-version.outputs.version_bite_historic }}
       release_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout repository
@@ -99,7 +101,7 @@ jobs:
       branch_name: ${{ github.ref_name }}
       image_version: ${{ needs.configure.outputs.version_bite_historic }}
       build_type: "RelWithDebInfo"
-      node_type: bite
+      node_type: bite-historic
       release_url: ${{ needs.configure.outputs.release_url }}
       use_plain_version: true
     secrets: inherit
