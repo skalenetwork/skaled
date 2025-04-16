@@ -616,7 +616,6 @@ std::string Skale::skale_getDecryptedTransactionData( const std::string& _transa
 #endif
 
         auto decryptedData = m_client.decryptedTransactionData( h );
-        std::cout << "DECRYPTED DATA: " << dev::toHexPrefixed( decryptedData.data() ) << '\n';
         return dev::toHexPrefixed( decryptedData.data() );
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
