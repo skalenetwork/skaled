@@ -610,7 +610,7 @@ std::string Skale::skale_getDecryptedTransactionData( const std::string& _transa
 
 #ifdef HISTORIC_STATE
         // skip invalid
-        auto rcp = client()->localisedTransactionReceipt( h );
+        auto rcp = m_client.localisedTransactionReceipt( h );
         if ( rcp.gasUsed() == 0 )
             return std::string();
 #endif
