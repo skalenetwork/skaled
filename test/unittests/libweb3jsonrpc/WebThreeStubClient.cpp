@@ -1429,10 +1429,10 @@ std::string WebThreeStubClient::skale_getCommonPublicKey() {
     return result.asString();
 }
 
-std::string WebThreeStubClient::eth_getDecryptedTransactionData( const std::string& param1 ) {
+std::string WebThreeStubClient::skale_getDecryptedTransactionData( const std::string& param1 ) {
     Json::Value p;
     p.append( param1 );
-    Json::Value result = this->CallMethod( "eth_getDecryptedTransactionData", p );
+    Json::Value result = this->CallMethod( "skale_getDecryptedTransactionData", p );
     return result.asString();
 }
 #endif

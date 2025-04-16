@@ -95,6 +95,11 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         ( void ) request;
         response = this->skale_getCommonPublicKey();
     }
+
+    inline virtual void skale_getDecryptedTransactionDataI(
+        const Json::Value& request, Json::Value& response ) {
+        response = this->skale_getDecryptedTransactionData( request[0u].asString() );
+    }
 #endif
 
     virtual std::string skale_protocolVersion() = 0;
@@ -110,6 +115,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
 #ifdef BITE
     virtual std::string skale_getCommonPublicKey() = 0;
+    virtual std::string skale_getDecryptedTransactionData( const std::string& request ) = 0;
 #endif
 
 public:
@@ -156,6 +162,10 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getCommonPublicKey",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::skale_getCommonPublicKeyI );
+        this->bindAndAddMethod(
+            jsonrpc::Procedure( "skale_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,
+                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
+            &dev::rpc::SkaleFace::skale_getDecryptedTransactionDataI );
 #endif
     }
 };

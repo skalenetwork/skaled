@@ -601,6 +601,32 @@ std::string Skale::skale_getCommonPublicKey() {
         throw jsonrpc::JsonRpcException( e.what() );
     }
 }
+
+std::string Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_client.isKnownTransaction( h ) )
+            return std::string();
+
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = client()->localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return std::string();
+#endif
+
+        auto decryptedData = m_client.decryptedTransactionData( h );
+        std::cout << "DECRYPTED DATA: " << dev::toHexPrefixed( decryptedData.data() ) << '\n';
+        return dev::toHexPrefixed( decryptedData.data() );
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
 #endif
 
 namespace snapshot {

@@ -228,12 +228,6 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "eth_maxPriorityFeePerGas",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::EthFace::eth_maxPriorityFeePerGasI );
-#ifdef BITE
-        this->bindAndAddMethod(
-            jsonrpc::Procedure( "eth_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,
-                jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::EthFace::eth_getDecryptedTransactionDataI );
-#endif
     }
 
     inline virtual void eth_protocolVersionI( const Json::Value& request, Json::Value& response ) {
@@ -467,12 +461,6 @@ public:
         ( void ) request;
         response = this->eth_maxPriorityFeePerGas();
     }
-#ifdef BITE
-    inline virtual void eth_getDecryptedTransactionDataI(
-        const Json::Value& request, Json::Value& response ) {
-        response = this->eth_getDecryptedTransactionData( request[0u].asString() );
-    }
-#endif
     virtual std::string eth_protocolVersion() = 0;
     virtual std::string eth_hashrate() = 0;
     virtual std::string eth_coinbase() = 0;
@@ -543,9 +531,6 @@ public:
     virtual Json::Value eth_feeHistory(
         dev::u256 param1, const std::string& param2, const Json::Value& param3 ) = 0;
     virtual std::string eth_maxPriorityFeePerGas() = 0;
-#ifdef BITE
-    virtual std::string eth_getDecryptedTransactionData( const std::string& param1 ) = 0;
-#endif
 };
 
 }  // namespace rpc

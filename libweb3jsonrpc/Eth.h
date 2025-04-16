@@ -221,9 +221,6 @@ public:
     virtual Json::Value eth_feeHistory(
         dev::u256 param1, const std::string& param2, const Json::Value& param3 ) override;
     virtual std::string eth_maxPriorityFeePerGas() override;
-#ifdef BITE
-    virtual std::string eth_getDecryptedTransactionData( const std::string& param1 ) override;
-#endif
 
     void setTransactionDefaults( eth::TransactionSkeleton& _t );
 

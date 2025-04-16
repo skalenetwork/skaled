@@ -371,7 +371,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
         auto ethFace = new rpc::Eth( _config.empty() ? std::string( "" ) : _config, *client, *accountHolder.get() );
-        auto skaleFace = _config.empty() ? nullptr : new rpc::Skale( *client );
+
+        dev::rpc::Skale* skaleFace = nullptr;
+#ifdef BITE
+        skaleFace = new rpc::Skale( *client );
+#endif
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
@@ -4003,8 +4007,9 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto txEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( txEncryptedResponse["input"].asString() == encryptedData );
 
-    auto txDecryptedResponse = fixture.rpcClient->eth_getDecryptedTransactionData( txHash );
-    BOOST_REQUIRE( txDecryptedResponse == plaintext );
+    auto txDecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( txHash );
+    std::cout << plaintext << ' ' << txDecryptedResponse << '\n';
+    BOOST_REQUIRE( txDecryptedResponse == "0x" + plaintext );
 
     //    pragma solidity >=0.8.2 <0.9.0;
 

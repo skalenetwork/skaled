@@ -1033,31 +1033,6 @@ std::string Eth::eth_maxPriorityFeePerGas() {
     return "0x0";
 }
 
-#ifdef BITE
-std::string Eth::eth_getDecryptedTransactionData( const std::string& _transactionHash ) {
-    try {
-        h256 h = jsToFixed< 32 >( _transactionHash );
-        if ( !client()->isKnownTransaction( h ) )
-            return std::string();
-
-#ifdef HISTORIC_STATE
-        // skip invalid
-        auto rcp = client()->localisedTransactionReceipt( h );
-        if ( rcp.gasUsed() == 0 )
-            return std::string();
-#endif
-
-        auto decryptedData = client()->decryptedTransactionData( h );
-        return dev::toHex( decryptedData.data() );
-    } catch ( const std::exception& ex ) {
-        std::cout << ex.what();
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    } catch ( ... ) {
-        BOOST_THROW_EXCEPTION( JsonRpcException( Errors::ERROR_RPC_INVALID_PARAMS ) );
-    }
-}
-#endif
-
 bool Eth::eth_submitWork( string const& _nonce, string const&, string const& _mixHash ) {
     try {
         return asEthashClient( client() )

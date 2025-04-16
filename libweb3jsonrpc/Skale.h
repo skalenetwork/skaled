@@ -79,6 +79,7 @@ public:
 
 #ifdef BITE
     std::string skale_getCommonPublicKey() override;
+    std::string skale_getDecryptedTransactionData( const std::string& request ) override;
 #endif
 
     static bool isWeb3ShutdownEnabled();
