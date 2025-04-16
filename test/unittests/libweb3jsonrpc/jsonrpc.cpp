@@ -5244,7 +5244,11 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
     // to do - move to real skaled testing
     sleep( 3 );
 
-    client->importTransactionsAsBlock( Transactions{ invalid, valid }, 1 );
+    client->importTransactionsAsBlock( Transactions{ invalid, valid },
+#ifdef BITE
+                                       std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+                                       1 );
 
     BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 2 );
     BOOST_REQUIRE_EQUAL( cache.gappedBlockTransactionCount( LatestBlock ), 1 );
@@ -5274,7 +5278,11 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
         CheckTransaction::None );
     valid.ignoreExternalGas();
 
-    client->importTransactionsAsBlock( Transactions{ invalid, valid }, 1 );
+    client->importTransactionsAsBlock( Transactions{ invalid, valid },
+#ifdef BITE
+                                      std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+                                       1 );
 
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );
