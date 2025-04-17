@@ -1717,7 +1717,13 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ClientTest* testClient = asClientTest( client.get() );
 
     testClient->mineBlocks( 1 );
+
+#ifdef BITE
+    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 1, 4294967294 );
+#else
     testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
+#endif
+
     dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );
@@ -1728,7 +1734,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     auto res = exec( bytesConstRef( in.data(), in.size() ) );
 
     BOOST_REQUIRE( res.first );
-    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 26 );
+    BOOST_REQUIRE( dev::fromBigEndian<dev::u256>( res.second ) == 30 );
 
     input = stringToHex( "skaleConfig.sChain.nodes.0.schainIndex" );
     input = input.substr(0, 76); // remove 0s in the end
