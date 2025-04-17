@@ -777,7 +777,6 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
                 extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
                     ( db::Slice ) dev::ref( txData.rlp() ) );
             }
-
 #endif
 
             ++ta.index;

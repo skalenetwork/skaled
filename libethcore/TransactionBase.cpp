@@ -592,7 +592,7 @@ bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
 
 #ifdef BITE
 bytes const& TransactionBase::decryptedData() const {
-    if ( m_decryptedData->empty() )
+    if ( !m_decryptedData )
         return data();
     return *m_decryptedData;
 }
