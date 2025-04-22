@@ -174,8 +174,10 @@ struct DecryptedTransactionData {
     bytes data() const { return m_data; }
     bool empty() const { return size == 0; }
 
+    explicit operator bool() const { return size != size_t( -1 ); }
+
     bytes m_data;
-    size_t size = 0;
+    size_t size = -1;
 };
 #endif
 
@@ -195,6 +197,7 @@ static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
 static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
+static const DecryptedTransactionData NullDecryptedTransactionData;
 
 
 }  // namespace eth

@@ -1288,6 +1288,11 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         for ( unsigned k = 0; k < transactions.size(); k++ ) {
             Json::Value transactionLog( Json::objectValue );
             Transaction tx = transactions.at( k );
+#ifdef BITE
+            auto decryptedDataFromDb = decryptedTransactionData( tx.sha3() );
+            if ( decryptedDataFromDb )
+                tx.setDecryptedData( std::make_shared< bytes >( decryptedDataFromDb.data() ) );
+#endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );

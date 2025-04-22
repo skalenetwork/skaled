@@ -341,7 +341,7 @@ public:
     DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const {
         return queryExtras< DecryptedTransactionData, ExtraTransactionDecryptedData >(
             _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
-            DecryptedTransactionData() );
+            NullDecryptedTransactionData );
     }
 #endif
 
