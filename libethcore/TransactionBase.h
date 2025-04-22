@@ -151,6 +151,7 @@ public:
 #ifdef BITE
     // Pass the decrypted data for BITE transaction
     void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
+        CHECK_EXPRESSION( _decryptedData )
         m_decryptedData = _decryptedData;
     }
 

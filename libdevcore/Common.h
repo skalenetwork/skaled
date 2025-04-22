@@ -76,6 +76,14 @@ using _byte_ = uint8_t;
         X;                 \
     } catch ( ... )
 
+#define CHECK_EXPRESSION( X )                                                                \
+    if ( !( X ) ) {                                                                          \
+        std::string errorMsg = std::string( "Check failed: " ) + #X + "\n" +                 \
+                               std::string( __FILE__ ) + ":" + std::string( __FUNCTION__ ) + \
+                               std::to_string( __LINE__ );                                   \
+        throw std::invalid_argument( errorMsg );                                             \
+    }
+
 namespace dev {
 using namespace boost::multiprecision::literals;
 
