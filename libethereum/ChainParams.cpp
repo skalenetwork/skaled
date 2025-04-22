@@ -332,8 +332,8 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             SchainPatchEnum patchEnum = getEnumForPatchName( patchName );
             s._patchTimestamps[static_cast< size_t >( patchEnum )] =
                 it.second.get_int64();  // time_t is signed
-        }                               // if
-    }                                   // for
+        }  // if
+    }  // for
 
     if ( sChainObj.count( "nodeGroups" ) ) {
         vector< NodeGroup > nodeGroups;
@@ -663,7 +663,7 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
 #ifdef BITE
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
     auto& sChainNodes = sChain.nodes;
-    auto has_schain_index = [ &_sChainIndex ]( const sChainNode& node ) {
+    auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
         return node.sChainIndex == _sChainIndex;
     };
     auto nodeIterator = find_if( sChainNodes.begin(), sChainNodes.end(), has_schain_index );

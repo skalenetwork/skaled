@@ -375,7 +375,7 @@ pair< TransactionReceipts, bool > Block::sync(
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
 
     for ( int goodTxs = max( 0, ( int ) transactions.size() - 1 );
-          goodTxs < ( int ) transactions.size(); ) {
+        goodTxs < ( int ) transactions.size(); ) {
         goodTxs = 0;
         for ( auto const& t : transactions )
             if ( !m_transactionSet.count( t.sha3() ) ) {
@@ -809,7 +809,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             // cB.p^8
             auto expectedUncleParent = _bc.details( m_currentBlock.parentHash() ).parent;
             for ( unsigned i = 1; i < depth;
-                  expectedUncleParent = _bc.details( expectedUncleParent ).parent, ++i ) {
+                expectedUncleParent = _bc.details( expectedUncleParent ).parent, ++i ) {
             }
             if ( expectedUncleParent != uncleParent.hash() ) {
                 UncleParentNotInChain ex;
@@ -1120,7 +1120,7 @@ void Block::commitToSeal(
         m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     // Commiting to apply new block author
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                         dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 #endif
 
     LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
