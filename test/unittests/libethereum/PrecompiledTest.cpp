@@ -1719,7 +1719,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     testClient->mineBlocks( 1 );
     testClient->importTransactionsAsBlock( dev::eth::Transactions(),
 #ifdef BITE
-           shared_ptr< map< uint64_t, std::shared_ptr< bytes > > >(),
+           make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
 #endif
                                            1000, 4294967294 );
     dev::eth::g_skaleHost = testClient->skaleHost();
