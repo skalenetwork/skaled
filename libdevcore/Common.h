@@ -80,7 +80,7 @@ using _byte_ = uint8_t;
     if ( !( X ) ) {                                                                          \
         std::string errorMsg = std::string( "Check failed: " ) + #X + "\n" +                 \
                                std::string( __FILE__ ) + ":" + std::string( __FUNCTION__ ) + \
-                               std::to_string( __LINE__ );                                   \
+                               ":" + std::to_string( __LINE__ );                             \
         throw std::invalid_argument( errorMsg );                                             \
     }
 

@@ -492,12 +492,27 @@ public:
     void doLevelDbCompaction() const;
 
 private:
+    struct DbWriteProxy {
+        DbWriteProxy( batched_io::db_operations_face& _backend ) : backend( _backend ) {}
+        // HACK +1 is needed for SplitDB; of course, this should be redesigned!
+        void insert( db::Slice _key, db::Slice _value ) {
+            consumedBytes += _key.size() + _value.size() + 1;
+            backend.insert( _key, _value );
+        }
+        batched_io::db_operations_face& backend;
+        size_t consumedBytes = 0;
+    };
+
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
 
     // auxiliary method for insertBlockAndExtras
     size_t prepareDbDataAndReturnSize( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
         ImportPerformanceLogger& _performanceLogger );
+
+    void insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger );
+    void insertTransactionsDetailsToDb( DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& tbi );
+    void insertBloomsDetailsToDb( DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull );
 
     // auxiliary method for recomputing blocks inserted earlier
     void recomputeExistingOccupiedSpaceForBlockRotation();

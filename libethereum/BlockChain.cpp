@@ -690,28 +690,11 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     return true;
 }
 
-struct DbWriteProxy {
-    DbWriteProxy( batched_io::db_operations_face& _backend ) : backend( _backend ) {}
-    // HACK +1 is needed for SplitDB; of course, this should be redesigned!
-    void insert( db::Slice _key, db::Slice _value ) {
-        consumedBytes += _key.size() + _value.size() + 1;
-        backend.insert( _key, _value );
-    }
-    batched_io::db_operations_face& backend;
-    size_t consumedBytes = 0;
-};
-
-// TOOD ACHTUNG This function must be kept in sync with the next one!
-size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
-    bytesConstRef _receipts, u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
-    ImportPerformanceLogger& _performanceLogger ) {
-    DbWriteProxy blocksWriteBatch( *m_blocksDB );
-    DbWriteProxy extrasWriteBatch( *m_extrasDB );
-
+void BlockChain::insertBlockDetailsToDb(DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch, const VerifiedBlockRef &_block, bytesConstRef _receipts, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger ) {
     try {
         MICROPROFILE_SCOPEI( "BlockChain", "write", MP_DARKKHAKI );
 
-        blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
+        _blocksWriteBatch.insert( toSlice( _block.info.hash() ), db::Slice( _block.block ) );
 
         // ensure parent is cached for later addition.
         // TODO: this is a bit horrible would be better refactored into an enveloping
@@ -722,7 +705,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         DEV_WRITE_GUARDED( x_details ) {
             m_details[_block.info.parentHash()].children.clear();
             m_details[_block.info.parentHash()].children.push_back( _block.info.hash() );
-            extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
+            _extrasWriteBatch.insert( toSlice( _block.info.parentHash(), ExtraDetails ),
                 ( db::Slice ) dev::ref( m_details[_block.info.parentHash()].rlp() ) );
         }
 
@@ -730,16 +713,16 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
             _block.info.parentHash(), {}, _block.block.size() );
         bytes details_rlp = details.rlp();
         details.size = details_rlp.size();
-        extrasWriteBatch.insert(
+        _extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraDetails ), ( db::Slice ) dev::ref( details_rlp ) );
 
         BlockLogBlooms blb;
         for ( auto i : RLP( _receipts ) )
             blb.blooms.push_back( TransactionReceipt( i.data() ).bloom() );
-        extrasWriteBatch.insert(
+        _extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraLogBlooms ), ( db::Slice ) dev::ref( blb.rlp() ) );
 
-        extrasWriteBatch.insert(
+        _extrasWriteBatch.insert(
             toSlice( _block.info.hash(), ExtraReceipts ), ( db::Slice ) _receipts );
 
         _performanceLogger.onStageFinished( "writing" );
@@ -747,11 +730,9 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         addBlockInfo( ex, _block.info, _block.block.toBytes() );
         throw;
     }
+}
 
-    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
-
-    BlockHeader tbi = _block.info;
-
+void BlockChain::insertTransactionsDetailsToDb( DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& _tbi ) {
     // Collate transaction hashes and remember who they were.
     // h256s newTransactionAddresses;
     {
@@ -759,7 +740,7 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 
         RLP blockRLP( _block.block );
         TransactionAddress ta;
-        ta.blockHash = tbi.hash();
+        ta.blockHash = _tbi.hash();
         ta.index = 0;
 
         RLP txns_rlp = blockRLP[1];
@@ -768,14 +749,14 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
             MICROPROFILE_SCOPEI( "insertBlockAndExtras", "for2", MP_HONEYDEW );
 
             auto txBytes = bytesRefFromTransactionRlp( *it );
-            extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
+            _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionAddress ),
                 ( db::Slice ) dev::ref( ta.rlp() ) );
 
 #ifdef BITE
             auto txIt = _block.decryptedTransactionDataFields->find( ta.index );
             if ( txIt != _block.decryptedTransactionDataFields->end() ) {
                 DecryptedTransactionData txData( *txIt->second );
-                extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
+                _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
                     ( db::Slice ) dev::ref( txData.rlp() ) );
             }
 #endif
@@ -783,7 +764,9 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
             ++ta.index;
         }
     }
+}
 
+void BlockChain::insertBloomsDetailsToDb( DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull ) {
     // Collate logs into blooms.
     h256s alteredBlooms;
     {
@@ -798,19 +781,19 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         //
         // old code was: // LogBloom blockBloom = tbi.logBloom();
         //
-        LogBloom blockBloom = pLogBloomFull ? ( *pLogBloomFull ) : tbi.logBloom();
+        LogBloom blockBloom = pLogBloomFull ? ( *pLogBloomFull ) : _tbi.logBloom();
         //
         //
 
-        blockBloom.shiftBloom< 3 >( sha3( tbi.author().ref() ) );
+        blockBloom.shiftBloom< 3 >( sha3( _tbi.author().ref() ) );
 
         // Pre-memoize everything we need before locking x_blocksBlooms
-        for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+        for ( unsigned level = 0, index = ( unsigned ) _tbi.number(); level < c_bloomIndexLevels;
               level++, index /= c_bloomIndexSize )
             blocksBlooms( chunkId( level, index / c_bloomIndexSize ) );
 
         WriteGuard l( x_blocksBlooms );
-        for ( unsigned level = 0, index = ( unsigned ) tbi.number(); level < c_bloomIndexLevels;
+        for ( unsigned level = 0, index = ( unsigned ) _tbi.number(); level < c_bloomIndexLevels;
               level++, index /= c_bloomIndexSize ) {
             unsigned i = index / c_bloomIndexSize;
             unsigned o = index % c_bloomIndexSize;
@@ -829,11 +812,29 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
         MICROPROFILE_SCOPEI( "insertBlockAndExtras", "insert_to_extras", MP_LIGHTSKYBLUE );
 
         for ( auto const& h : alteredBlooms )
-            extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
+            _extrasWriteBatch.insert( toSlice( h, ExtraBlocksBlooms ),
                 ( db::Slice ) dev::ref( m_blocksBlooms[h].rlp() ) );
-        extrasWriteBatch.insert( toSlice( h256( tbi.number() ), ExtraBlockHash ),
-            ( db::Slice ) dev::ref( BlockHash( tbi.hash() ).rlp() ) );
+        _extrasWriteBatch.insert( toSlice( h256( _tbi.number() ), ExtraBlockHash ),
+            ( db::Slice ) dev::ref( BlockHash( _tbi.hash() ).rlp() ) );
     }
+}
+
+// TOOD ACHTUNG This function must be kept in sync with the next one!
+size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
+    bytesConstRef _receipts, u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
+    ImportPerformanceLogger& _performanceLogger ) {
+    DbWriteProxy blocksWriteBatch( *m_blocksDB );
+    DbWriteProxy extrasWriteBatch( *m_extrasDB );
+
+    insertBlockDetailsToDb( blocksWriteBatch, extrasWriteBatch, _block, _receipts, _totalDifficulty, _performanceLogger );
+
+    MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
+
+    BlockHeader tbi = _block.info;
+
+    insertTransactionsDetailsToDb( extrasWriteBatch, _block, tbi );
+
+    insertBloomsDetailsToDb( extrasWriteBatch, tbi, pLogBloomFull );
 
     size_t writeSize = blocksWriteBatch.consumedBytes + extrasWriteBatch.consumedBytes;
 
