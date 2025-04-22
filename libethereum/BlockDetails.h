@@ -197,8 +197,9 @@ static const BlockReceipts NullBlockReceipts;
 static const TransactionAddress NullTransactionAddress;
 static const BlockHash NullBlockHash;
 static const BlocksBlooms NullBlocksBlooms;
+#ifdef BITE
 static const DecryptedTransactionData NullDecryptedTransactionData;
-
+#endif
 
 }  // namespace eth
 }  // namespace dev
