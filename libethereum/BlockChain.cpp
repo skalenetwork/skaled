@@ -690,7 +690,9 @@ bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     return true;
 }
 
-void BlockChain::insertBlockDetailsToDb(DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch, const VerifiedBlockRef &_block, bytesConstRef _receipts, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger ) {
+void BlockChain::insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch,
+    DbWriteProxy& _extrasWriteBatch, const VerifiedBlockRef& _block, bytesConstRef _receipts,
+    u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger ) {
     try {
         MICROPROFILE_SCOPEI( "BlockChain", "write", MP_DARKKHAKI );
 
@@ -732,7 +734,8 @@ void BlockChain::insertBlockDetailsToDb(DbWriteProxy& _blocksWriteBatch, DbWrite
     }
 }
 
-void BlockChain::insertTransactionsDetailsToDb( DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& _tbi ) {
+void BlockChain::insertTransactionsDetailsToDb(
+    DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& _tbi ) {
     // Collate transaction hashes and remember who they were.
     // h256s newTransactionAddresses;
     {
@@ -766,7 +769,8 @@ void BlockChain::insertTransactionsDetailsToDb( DbWriteProxy& _extrasWriteBatch,
     }
 }
 
-void BlockChain::insertBloomsDetailsToDb( DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull ) {
+void BlockChain::insertBloomsDetailsToDb(
+    DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull ) {
     // Collate logs into blooms.
     h256s alteredBlooms;
     {
@@ -826,7 +830,8 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
     DbWriteProxy blocksWriteBatch( *m_blocksDB );
     DbWriteProxy extrasWriteBatch( *m_extrasDB );
 
-    insertBlockDetailsToDb( blocksWriteBatch, extrasWriteBatch, _block, _receipts, _totalDifficulty, _performanceLogger );
+    insertBlockDetailsToDb( blocksWriteBatch, extrasWriteBatch, _block, _receipts, _totalDifficulty,
+        _performanceLogger );
 
     MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
 

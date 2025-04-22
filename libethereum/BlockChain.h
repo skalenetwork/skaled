@@ -510,9 +510,13 @@ private:
         u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
         ImportPerformanceLogger& _performanceLogger );
 
-    void insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty, ImportPerformanceLogger& _performanceLogger );
-    void insertTransactionsDetailsToDb( DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& tbi );
-    void insertBloomsDetailsToDb( DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull );
+    void insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch,
+        VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty,
+        ImportPerformanceLogger& _performanceLogger );
+    void insertTransactionsDetailsToDb(
+        DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& tbi );
+    void insertBloomsDetailsToDb(
+        DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull );
 
     // auxiliary method for recomputing blocks inserted earlier
     void recomputeExistingOccupiedSpaceForBlockRotation();
