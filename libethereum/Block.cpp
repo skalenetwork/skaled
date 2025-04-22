@@ -830,10 +830,8 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
 
-#ifndef BITE
     applyRewards( rewarded,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
-#endif
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state

@@ -226,7 +226,11 @@ BOOST_AUTO_TEST_CASE( bConstantinopleBlockReward ) {
     testBlockchain.addBlock( testBlock );
 
     TestBlock const& topBlock = testBlockchain.topBlock();
+#ifdef BITE
+    BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 4 * ether );
+#else
     BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 2 * ether );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
