@@ -617,7 +617,9 @@ std::string Skale::skale_getDecryptedTransactionData( const std::string& _transa
 
         auto decryptedData = m_client.decryptedTransactionData( h );
         if ( !decryptedData )
-            throw std::invalid_argument( "Transaction with provided hash does not have any decrypted data associated with it." );
+            throw std::invalid_argument(
+                "Transaction with provided hash does not have any decrypted data associated with "
+                "it." );
         return dev::toHexPrefixed( decryptedData.data() );
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
