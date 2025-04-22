@@ -514,7 +514,7 @@ private:
         VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty,
         ImportPerformanceLogger& _performanceLogger );
     void insertTransactionsDetailsToDb(
-        DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& tbi );
+        DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block );
     void insertBloomsDetailsToDb(
         DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull );
 

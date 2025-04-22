@@ -735,7 +735,7 @@ void BlockChain::insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch,
 }
 
 void BlockChain::insertTransactionsDetailsToDb(
-    DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block, const BlockHeader& _tbi ) {
+    DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block ) {
     // Collate transaction hashes and remember who they were.
     // h256s newTransactionAddresses;
     {
@@ -743,7 +743,7 @@ void BlockChain::insertTransactionsDetailsToDb(
 
         RLP blockRLP( _block.block );
         TransactionAddress ta;
-        ta.blockHash = _tbi.hash();
+        ta.blockHash = _block.info.hash();
         ta.index = 0;
 
         RLP txns_rlp = blockRLP[1];
@@ -835,11 +835,9 @@ size_t BlockChain::prepareDbDataAndReturnSize( VerifiedBlockRef const& _block,
 
     MICROPROFILE_SCOPEI( "insertBlockAndExtras", "difficulty", MP_HOTPINK );
 
-    BlockHeader tbi = _block.info;
+    insertTransactionsDetailsToDb( extrasWriteBatch, _block );
 
-    insertTransactionsDetailsToDb( extrasWriteBatch, _block, tbi );
-
-    insertBloomsDetailsToDb( extrasWriteBatch, tbi, pLogBloomFull );
+    insertBloomsDetailsToDb( extrasWriteBatch, _block.info, pLogBloomFull );
 
     size_t writeSize = blocksWriteBatch.consumedBytes + extrasWriteBatch.consumedBytes;
 
