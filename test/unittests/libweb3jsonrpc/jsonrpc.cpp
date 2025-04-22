@@ -3949,6 +3949,23 @@ BOOST_AUTO_TEST_CASE( jsonrpcVersionInResponseHeader ) {
     BOOST_REQUIRE( joAnswer["jsonrpc"] == "2.0" );
 }
 
+
+BOOST_AUTO_TEST_CASE( getZeroBlock ) {
+    JsonRpcFixture fixture;
+    Json::Value block = fixture.rpcClient->eth_getBlockByNumber( "0", "false" );
+
+    BOOST_REQUIRE( block["number"] == string( "0x0" ) );
+    string blockHash = block["hash"].asString();
+
+
+    Json::Value blockByHash = fixture.rpcClient->eth_getBlockByHash( blockHash, "false" );
+    BOOST_REQUIRE( blockByHash["number"] == string( "0x0" ) );
+
+    BOOST_REQUIRE( blockByHash["hash"] == blockHash );
+}
+
+
+#ifdef BITE
 BOOST_AUTO_TEST_CASE( block_author_balance ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
@@ -3996,6 +4013,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     BOOST_REQUIRE_EQUAL(
                 fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance, expectedBalanceChange );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
@@ -4086,7 +4104,13 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
     t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
+#ifdef BITE
     BOOST_REQUIRE_EQUAL(  etherbaseBalance, 0 );
+#else
+    BOOST_REQUIRE_EQUAL(  etherbaseBalance,
+                          jsToU256( t["gasUsed"].asString() *
+                              jsToU256( partiallyRetrieveTx["gasPrice"].asString()  );
+#endif
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ),
         balance + oldEtherbaseBalance );
@@ -4599,14 +4623,18 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
          << endl;
 
     // 1 import 1 transaction to increase block number
-    // also send 0.895 eth to account2
+    // also send some eth to account2
     // TODO repair mineMoney function! (it asserts)
     Json::Value txJson;
     txJson["from"] = fixture.coinbase.address().hex();
     txJson["gas"] = "200000";
     txJson["gasPrice"] = "5000000000000";
     txJson["to"] = fixture.account2.address().hex();
+#ifdef BITE
     txJson["value"] = "895000000000000000";
+#else
+    txJson["value"] = "1000000000000000000";
+#endif
 
     txJson["nonce"] = "0";
     TransactionSkeleton ts1 = toTransactionSkeleton( txJson );
