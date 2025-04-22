@@ -599,8 +599,8 @@ ImportRoute BlockChain::import( const Block& _block ) {
     verifiedBlock.transactions = _block.pending();
 #ifdef BITE
     verifiedBlock.decryptedTransactionDataFields = _block.decryptedTransactionDataFields();
-#endif
     CHECK_EXPRESSION( verifiedBlock.decryptedTransactionDataFields );
+#endif
     //    verifyBlock( ref( _block.blockData() ), m_onBad, ImportRequirements::OutOfOrderChecks );
 
     BlockReceipts blockReceipts;
