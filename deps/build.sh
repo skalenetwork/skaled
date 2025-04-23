@@ -71,17 +71,6 @@ then
 	export SO_EXT=dylib
 fi
 
-# detect working directories, change if needed
-WORKING_DIR_OLD=$(pwd)
-WORKING_DIR_NEW="$(dirname "$0")"
-WORKING_DIR_OLD=$("$READLINK" -f "$WORKING_DIR_OLD")
-WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
-cd "$WORKING_DIR_NEW"
-
-cd "$WORKING_DIR_NEW/../libconsensus/deps"
-eval bash ./build.sh
-cd ../../deps
-
 #
 # MUST HAVE: make, git, svn, nasm, yasm, wget, cmake, ccmake, libtool, libtool_bin, autogen, automake, autopoint, gperf, awk (mawk or gawk), sed, shtool, texinfo, pkg-config
 #
@@ -103,6 +92,18 @@ done
 #
 #
 #
+
+# detect working directories, change if needed
+WORKING_DIR_OLD=$(pwd)
+WORKING_DIR_NEW="$(dirname "$0")"
+WORKING_DIR_OLD=$("$READLINK" -f "$WORKING_DIR_OLD")
+WORKING_DIR_NEW=$("$READLINK" -f "$WORKING_DIR_NEW")
+cd "$WORKING_DIR_NEW"
+
+cd "$WORKING_DIR_NEW/../libconsensus/deps"
+bash ./build.sh DEBUG=$DEBUG
+cd ../../deps
+
 
 simple_find_tool_program () { # program_name, var_name_to_export_full_path, is_optional("yes" or "no")
 	echo -e "checking for tool program: $1"
@@ -195,19 +196,20 @@ fi
 TOP_CMAKE_BUILD_TYPE="Release"
 if [ "$DEBUG" = "1" ];
 then
-	DEBUG=1
-	TOP_CMAKE_BUILD_TYPE="Debug"
-	DEBUG_D="d"
-	# DEBUG_DEBUG="_debug"
-	DEBUG__DEBUG="_debug"
-	CONF_DEBUG_OPTIONS="--enable-debug"
+        DEBUG=1
+        TOP_CMAKE_BUILD_TYPE="Debug"
+        DEBUG_D="d"
+        # DEBUG_DEBUG="_debug"
+        DEBUG__DEBUG="_debug"
+        CONF_DEBUG_OPTIONS="--enable-debug"
 else
-	DEBUG=0
-	DEBUG_D=""
-	# DEBUG_DEBUG=""
-	DEBUG__DEBUG=""
-	CONF_DEBUG_OPTIONS=""
+        DEBUG=0
+        DEBUG_D=""
+        # DEBUG_DEBUG=""
+        DEBUG__DEBUG=""
+        CONF_DEBUG_OPTIONS=""
 fi
+
 #
 if [ -z "${USE_LLVM}" ];
 then
@@ -247,7 +249,7 @@ setup_variable() {
 setup_variable WITH_ZLIB "no"
 setup_variable WITH_OPENSSL "no"
 setup_variable WITH_CURL "no"
-setup_variable WITH_LZMA "yes"
+setup_variable WITH_LZMA "no" # built in skale-consensus
 setup_variable WITH_SSH "no"
 setup_variable WITH_UNWIND "yes"
 
@@ -256,7 +258,7 @@ setup_variable WITH_SDL_TTF "no"
 
 # notice: WITH_EV and WITH_EVENT should not be used at a same time
 setup_variable WITH_EV "no"
-setup_variable WITH_EVENT "yes"
+setup_variable WITH_EVENT "no" # built in skale-consensus
 setup_variable WITH_UV "yes"
 setup_variable WITH_LWS "yes"
 
@@ -286,17 +288,17 @@ setup_variable WITH_FF "no"
 setup_variable WITH_GMP "no"
 setup_variable WITH_PBC "no"
 
-setup_variable WITH_FMT "yes"
-setup_variable WITH_ZSTD "yes"
-setup_variable WITH_DOUBLE_CONVERSION "yes"
-setup_variable WITH_GOOGLE_LOG "yes"
-setup_variable WITH_GFLAGS "yes"
-setup_variable WITH_FOLLY "yes"
+setup_variable WITH_FMT "no" # built in skale-consensus
+setup_variable WITH_ZSTD "no" # built in skale-consensus
+setup_variable WITH_DOUBLE_CONVERSION "no" # built in skale-consensus
+setup_variable WITH_GOOGLE_LOG "no" # built in skale-consensus
+setup_variable WITH_GFLAGS "no" # built in skale-consensus
+setup_variable WITH_FOLLY "no" # built in skale-consensus
 setup_variable WITH_SODIUM "no"
-setup_variable WITH_WANGLE "yes"
+setup_variable WITH_WANGLE "no" # built in skale-consensus
 setup_variable WITH_GTEST "yes"
-setup_variable WITH_FIZZ "yes"
-setup_variable WITH_PROXYGEN "yes"
+setup_variable WITH_FIZZ "no" # built in skale-consensus
+setup_variable WITH_PROXYGEN "no" # built in skale-consensus
 setup_variable WITH_SNAPPY "yes"
 setup_variable WITH_LIBSCRYPT "yes"
 setup_variable WITH_ETHASH "yes"

@@ -37,6 +37,16 @@ struct VerifiedBlockRef {
     bytesConstRef block;                      ///< Block data reference
     BlockHeader info;                         ///< Prepopulated block info
     std::vector< Transaction > transactions;  ///< Verified list of block transactions
+#ifdef BITE
+    std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >
+        decryptedTransactionDataFields =
+            std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >();  ///< Decrypted
+                                                                                   ///< transaction
+                                                                                   ///< data fields
+                                                                                   ///< to be stored
+                                                                                   ///< in
+                                                                                   ///< blockchain
+#endif
 };
 
 /// @brief Verified block info, combines block data and verified info/transactions

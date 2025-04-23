@@ -601,6 +601,35 @@ std::string Skale::skale_getCommonPublicKey() {
         throw jsonrpc::JsonRpcException( e.what() );
     }
 }
+
+std::string Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_client.isKnownTransaction( h ) )
+            throw std::invalid_argument( "Transaction with provided hash does not exist." );
+
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = m_client.localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return std::string();
+#endif
+
+        auto decryptedData = m_client.decryptedTransactionData( h );
+        if ( !decryptedData )
+            throw std::invalid_argument(
+                "Transaction with provided hash does not have any decrypted data associated with "
+                "it." );
+        return dev::toHexPrefixed( decryptedData.data() );
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
 #endif
 
 namespace snapshot {

@@ -57,6 +57,10 @@
 
 #include <cstdlib>
 
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#endif
+
 // This is defined by some weird windows header - workaround for now.
 #undef GetMessage
 
@@ -367,7 +371,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             sessionManager->newSession( rpc::SessionPermissions{ { rpc::Privilege::Admin } } );
 
         auto ethFace = new rpc::Eth( _config.empty() ? std::string( "" ) : _config, *client, *accountHolder.get() );
-        auto skaleFace = _config.empty() ? nullptr : new rpc::Skale( *client );
+
+        dev::rpc::Skale* skaleFace = nullptr;
+#ifdef BITE
+        skaleFace = new rpc::Skale( *client );
+#endif
 
         gasPricer = make_shared< eth::TrivialGasPricer >( 0, DefaultGasPrice );
 
@@ -3959,6 +3967,144 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
+
+std::string formEncryptedMessageMockup( const std::string& message ) {
+    libBLS::TEBase::initializeIfNecessary();
+    auto messageToEncrypt = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
+    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
+    std::string epochId = "0000000000000000";
+    std::string magicNumber = "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
+
+    return std::string( "0x" ) + magicNumber + epochId + libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
+
+}
+
+BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
+    JsonRpcFixture fixture;
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    Json::Value txEncryptedData;
+    txEncryptedData["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txEncryptedData["from"] = senderAddress;
+    txEncryptedData["gas"] = "100000";
+    txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txEncryptedData["value"] = 1;
+
+    std::string plaintext = dev::h256::random().hex();
+
+    std::string encryptedData = formEncryptedMessageMockup( plaintext );
+
+    txEncryptedData["data"] = encryptedData;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txEncryptedData );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( txReceipt["status"].asString() == std::string( "0x1" ) );
+    BOOST_REQUIRE( txReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
+
+    auto txEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( txHash );
+    BOOST_REQUIRE( txEncryptedResponse["input"].asString() == encryptedData );
+
+    auto txDecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( txHash );
+    std::cout << plaintext << ' ' << txDecryptedResponse << '\n';
+    BOOST_REQUIRE( txDecryptedResponse == "0x" + plaintext );
+
+    //    pragma solidity >=0.8.2 <0.9.0;
+
+    //    /**
+    //     * @title Storage
+    //     * @dev Store & retrieve value in a variable
+    //     * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
+    //     */
+    //    contract Storage {
+
+    //        uint256 number;
+    //        uint256 number1;
+    //        uint256 number2;
+
+    //        /**
+    //         * @dev Store value in variable
+    //         * @param num value to store
+    //         */
+    //        function store(uint256 num) public {
+    //            number = num;
+    //            number1 = num;
+    //            number2 = num;
+    //        }
+
+    //        /**
+    //         * @dev Return value
+    //         * @return value of 'number'
+    //         */
+    //        function retrieve() public view returns (uint256){
+    //            return number;
+    //        }
+    //    }
+    string bytecode = "608060405234801561001057600080fd5b50610155806100206000396000f3fe60806040523"
+                      "4801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b57"
+                      "80636057361d14610059575b600080fd5b610043610075565b60405161005091906100e3565"
+                      "b60405180910390f35b610073600480360381019061006e91906100ab565b61007e565b005b"
+                      "60008054905090565b80600081905550806001819055508060028190555050565b600081359"
+                      "0506100a581610108565b92915050565b6000602082840312156100bd57600080fd5b600061"
+                      "00cb84828501610096565b91505092915050565b6100dd816100fe565b82525050565b60006"
+                      "020820190506100f860008301846100d4565b92915050565b6000819050919050565b610111"
+                      "816100fe565b811461011c57600080fd5b5056fea2646970667358221220edbb1123b5e4538"
+                      "463747d4497720f4c0b79ff718b7bf245e6ba81dc37dc1a0364736f6c63430008040033";
+
+    Json::Value create;
+    create["from"] = toJS( senderAddress );
+    create["data"] = formEncryptedMessageMockup( bytecode );
+    create["gas"] = "1800000";
+    txHash = fixture.rpcClient->eth_sendTransaction( create );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
+    std::string contractAddress = receipt["contractAddress"].asString();
+
+    // verify state is empty
+    Json::Value call;
+    call["to"] = contractAddress;
+    call["data"] = "0x2e64cec1";
+    call["from"] = toJS( senderAddress );
+    BOOST_REQUIRE( u256( 0 ) == dev::jsToU256( fixture.rpcClient->eth_call( call, "latest" ) ) );
+
+    string dataStore1 = "6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    string dataStoreInvalid = "6057361e0000000000000000000000000000000000000000000000000000000000000001";
+
+    // send txn to change state
+    Json::Value store1;
+    store1["to"] = contractAddress;
+    store1["data"] = formEncryptedMessageMockup( dataStore1 );
+    store1["from"] = toJS( senderAddress );
+    store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( store1 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == std::string( "0x1" ) );
+
+    // check that previous txn changed the state
+    call["to"] = contractAddress;
+    call["data"] = "0x2e64cec1";
+    call["from"] = toJS( senderAddress );
+    BOOST_REQUIRE( u256( 1 ) == dev::jsToU256( fixture.rpcClient->eth_call( call, "latest" ) ) );
+
+    // send invalid call to the contract - txn should fail
+    Json::Value txInvalidContractCall;
+    txInvalidContractCall["to"] = contractAddress;
+    txInvalidContractCall["data"] = formEncryptedMessageMockup( dataStoreInvalid );
+    txInvalidContractCall["from"] = toJS( senderAddress );
+    txInvalidContractCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txHash = fixture.rpcClient->eth_sendTransaction( txInvalidContractCall );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+    BOOST_REQUIRE( receipt["status"] == std::string( "0x0" ) );
+}
+
 #endif
 
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
@@ -5098,7 +5244,11 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
     // to do - move to real skaled testing
     sleep( 3 );
 
-    client->importTransactionsAsBlock( Transactions{ invalid, valid }, 1 );
+    client->importTransactionsAsBlock( Transactions{ invalid, valid },
+#ifdef BITE
+                                       std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+                                       1 );
 
     BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 2 );
     BOOST_REQUIRE_EQUAL( cache.gappedBlockTransactionCount( LatestBlock ), 1 );
@@ -5128,7 +5278,11 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
         CheckTransaction::None );
     valid.ignoreExternalGas();
 
-    client->importTransactionsAsBlock( Transactions{ invalid, valid }, 1 );
+    client->importTransactionsAsBlock( Transactions{ invalid, valid },
+#ifdef BITE
+                                      std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+                                       1 );
 
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );

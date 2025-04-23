@@ -975,7 +975,11 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
     BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
 
-    testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
+    testClient->importTransactionsAsBlock( Transactions(),
+#ifdef BITE
+           make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+                                           1000, 4294967294 );
 
     sleep(3);
 
