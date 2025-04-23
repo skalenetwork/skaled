@@ -4109,7 +4109,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
 #else
     BOOST_REQUIRE_EQUAL(  etherbaseBalance,
                           jsToU256( t["gasUsed"].asString() *
-                              jsToU256( partiallyRetrieveTx["gasPrice"].asString()  );
+                              jsToU256( partiallyRetrieveTx["gasPrice"].asString()  ));
 #endif
     BOOST_REQUIRE_EQUAL(
         fixture.client->balanceAt( jsToAddress( "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F" ) ),
