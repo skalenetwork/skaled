@@ -527,11 +527,12 @@ void Client::syncBlockQueue() {
 
 
 #ifdef BITE
-size_t Client::importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
-    uint64_t _winningNodeIndex, uint64_t _timestamp ) {
+	size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
+    	const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+        _decryptedTransactionDataFields, u256 _gasPrice, uint64_t _winningNodeIndex, uint64_t _timestamp) {
 #else
-size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+	size_t Client::importTransactionsAsBlock(
+	    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
 #endif
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
@@ -543,10 +544,18 @@ size_t Client::importTransactionsAsBlock(
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
 #ifdef BITE
-    Address _winningNodeAddress =
-        bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+	// get winning node address
+	Address _winningNodeAddress =
+    bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
     LOG( m_loggerDetail ) << "Winning node address: " << _winningNodeAddress;
-    m_working.safeSetAuthor( _winningNodeAddress );
+    {
+        // store encrypted transactions
+        DEV_WRITE_GUARDED( x_working )
+        m_working.setDecryptedTransactionDataFields( _decryptedTransactionDataFields );
+
+        // set block author as winning node address
+        m_working.safeSetAuthor( _winningNodeAddress );
+    }
 #endif
 
     size_t cntSucceeded = 0;
@@ -1289,6 +1298,11 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         for ( unsigned k = 0; k < transactions.size(); k++ ) {
             Json::Value transactionLog( Json::objectValue );
             Transaction tx = transactions.at( k );
+#ifdef BITE
+            auto decryptedDataFromDb = decryptedTransactionData( tx.sha3() );
+            if ( decryptedDataFromDb )
+                tx.setDecryptedData( std::make_shared< bytes >( decryptedDataFromDb.data() ) );
+#endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );

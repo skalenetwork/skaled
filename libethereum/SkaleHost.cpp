@@ -220,9 +220,13 @@ class ConsensusExtImpl : public ConsensusExtFace {
 public:
     ConsensusExtImpl( SkaleHost& _host );
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
-    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-        uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-        uint64_t _winningNodeIndex ) override;
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
+#ifdef BITE
+        shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >
+            _decryptedTransactionDataFields,
+#endif
+        uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
+        u256 _stateRoot, uint64_t _winningNodeIndex ) override;
     virtual void terminateApplication() override;
     virtual ~ConsensusExtImpl() override = default;
 
@@ -239,12 +243,18 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 }
 
 void ConsensusExtImpl::createBlock(
-    const ConsensusExtFace::transactions_vector& _approvedTransactions, uint64_t _timeStamp,
-    uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
-    uint64_t _winningNodeIndex ) {
+    const ConsensusExtFace::transactions_vector& _approvedTransactions,
+#ifdef BITE
+    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
+#endif
+    uint64_t _timeStamp, uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice,
+    u256 _stateRoot, uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
-    m_host.createBlock(
-        _approvedTransactions, _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
+    m_host.createBlock( _approvedTransactions,
+#ifdef BITE
+        _decryptedTransactionDataFields,
+#endif
+        _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
 
 void ConsensusExtImpl::terminateApplication() {
@@ -514,6 +524,9 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 }
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
+#ifdef BITE
+    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
+#endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
     boost::chrono::high_resolution_clock::time_point skaledTimeStart;
@@ -571,15 +584,19 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
-
-        for ( auto it = _approvedTransactions.begin(); it != _approvedTransactions.end(); ++it ) {
-            const bytes& data = *it;
+        for ( size_t i = 0; i < _approvedTransactions.size(); ++i ) {
+            const bytes& data = _approvedTransactions.at( i );
             h256 sha = sha3( data );
             LOG( m_traceLogger ) << "Arrived txn: " << sha;
 
             Transaction t( data, CheckTransaction::Everything, true,
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
+#ifdef BITE
+            auto it = _decryptedTransactionDataFields->find( i );
+            if ( it != _decryptedTransactionDataFields->end() )
+                t.setDecryptedData( it->second );
+#endif
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -611,10 +628,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
 #ifdef BITE
         n_succeeded = m_client.importTransactionsAsBlock(
-            out_txns, _gasPrice, _winningNodeIndex, _timeStamp );
+            out_txns, _decryptedTransactionDataFields, _gasPrice, _winningNodeIndex, _timeStamp );
 #else
         n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
 #endif
+
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )
@@ -785,7 +803,6 @@ void SkaleHost::broadcastFunc() {
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 
-
             // Wait for the queue to have transactions
 
             static auto MAX_WAIT_TIME = std::chrono::milliseconds( 100 );
@@ -797,8 +814,7 @@ void SkaleHost::broadcastFunc() {
 
                 m_broadcastQueueCondition.wait_for( lock, MAX_WAIT_TIME );
 
-
-                if ( m_broadcastPauseFlag ) {
+                if ( m_broadcastPauseFlag || m_broadcastQueue.empty() ) {
                     continue;
                 }
 
@@ -806,21 +822,18 @@ void SkaleHost::broadcastFunc() {
                 m_broadcastQueue = std::list< Transaction >();
             }
 
-
             for ( auto&& txn : queueCopy ) {
                 try {
                     MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc.broadcast", MP_CHARTREUSE1 );
                     std::string rlp = toJS( txn.toBytes() );
-                    std::string h = toJS( txn.sha3() );
                     m_debugTracer.tracepoint( "broadcast" );
                     m_broadcaster->broadcast( rlp );
+                    ++m_bcast_counter;
                 } catch ( const std::exception& ex ) {
                     cwarn << "BROADCAST EXCEPTION CAUGHT";
                     cwarn << ex.what();
                 }  // catch
             }
-
-            ++m_bcast_counter;
 
             logState();
         } catch ( const std::exception& ex ) {
@@ -866,8 +879,8 @@ std::map< std::string, uint64_t > SkaleHost::getConsensusDbUsage() const {
     return m_consensus->getConsensusDbUsage();
 }
 
-std::array< std::string, 4 > SkaleHost::getIMABLSPublicKey() const {
-    return m_client.getIMABLSPublicKey();
+std::array< std::string, 4 > SkaleHost::getCurrentBLSPublicKey() const {
+    return m_client.getCurrentBLSPublicKey();
 }
 
 std::string SkaleHost::getHistoricNodeId( unsigned _id ) const {

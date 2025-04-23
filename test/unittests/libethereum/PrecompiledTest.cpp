@@ -59,7 +59,7 @@ std::string stringToHex( std::string inputString ) {
 
 BOOST_FIXTURE_TEST_SUITE( PrecompiledTests, TestOutputHelperFixture )
 
-BOOST_AUTO_TEST_CASE( modexpFermatTheorem, 
+BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE( modexpFermatTheorem,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpZeroBase, 
+BOOST_AUTO_TEST_CASE( modexpZeroBase,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroBase,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored, 
+BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE( modexpExtraByteIgnored,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpRightPadding, 
+BOOST_AUTO_TEST_CASE( modexpRightPadding,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE( modexpMissingValues ) {
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpEmptyValue, 
+BOOST_AUTO_TEST_CASE( modexpEmptyValue,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE( modexpEmptyValue,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpZeroPowerZero, 
+BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZero,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero, 
+BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE( modexpZeroPowerZeroModZero,
         res.second.begin(), res.second.end(), expected.begin(), expected.end() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpModLengthZero, 
+BOOST_AUTO_TEST_CASE( modexpModLengthZero,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "modexp" );
 
@@ -223,7 +223,7 @@ BOOST_AUTO_TEST_CASE( modexpModLengthZero,
     BOOST_REQUIRE( res.second.empty() );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostFermatTheorem, 
+BOOST_AUTO_TEST_CASE( modexpCostFermatTheorem,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -239,7 +239,7 @@ BOOST_AUTO_TEST_CASE( modexpCostFermatTheorem,
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 13056 );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostTooLarge, 
+BOOST_AUTO_TEST_CASE( modexpCostTooLarge,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -258,7 +258,7 @@ BOOST_AUTO_TEST_CASE( modexpCostTooLarge,
         "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostEmptyExponent, 
+BOOST_AUTO_TEST_CASE( modexpCostEmptyExponent,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE( modexpCostEmptyExponent,
     BOOST_REQUIRE_MESSAGE( res == bigint{"12"}, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostZeroExponent, 
+BOOST_AUTO_TEST_CASE( modexpCostZeroExponent,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_CASE( modexpCostZeroExponent,
     BOOST_REQUIRE_MESSAGE( res == bigint{"5"}, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostApproximated, 
+BOOST_AUTO_TEST_CASE( modexpCostApproximated,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE( modexpCostApproximated,
 }
 
 BOOST_AUTO_TEST_CASE( modexpCostApproximatedPartialByte,
-    
+
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE( modexpCostApproximatedPartialByte,
     BOOST_REQUIRE_MESSAGE( res == bigint{"1285"}, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostApproximatedGhost, 
+BOOST_AUTO_TEST_CASE( modexpCostApproximatedGhost,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -345,7 +345,7 @@ BOOST_AUTO_TEST_CASE( modexpCostApproximatedGhost,
     BOOST_REQUIRE_MESSAGE( res == bigint{"40"}, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostMidRange, 
+BOOST_AUTO_TEST_CASE( modexpCostMidRange,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -363,7 +363,7 @@ BOOST_AUTO_TEST_CASE( modexpCostMidRange,
         res == ( ( 74 * 74 / 4 + 96 * 74 - 3072 ) * 8 ) / 20, "Got: " + toString( res ) );
 }
 
-BOOST_AUTO_TEST_CASE( modexpCostHighRange, 
+BOOST_AUTO_TEST_CASE( modexpCostHighRange,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "modexp" );
 
@@ -1510,7 +1510,7 @@ BOOST_AUTO_TEST_CASE( bench_bn256Pairing,
     benchmarkPrecompiled( "alt_bn128_pairing_product", tests, 1000 );
 }
 
-BOOST_AUTO_TEST_CASE( ecaddCostBeforeIstanbul, 
+BOOST_AUTO_TEST_CASE( ecaddCostBeforeIstanbul,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_add" );
 
@@ -1521,7 +1521,7 @@ BOOST_AUTO_TEST_CASE( ecaddCostBeforeIstanbul,
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 500 );
 }
 
-BOOST_AUTO_TEST_CASE( ecaddCostIstanbul, 
+BOOST_AUTO_TEST_CASE( ecaddCostIstanbul,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_add" );
 
@@ -1532,7 +1532,7 @@ BOOST_AUTO_TEST_CASE( ecaddCostIstanbul,
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 150 );
 }
 
-BOOST_AUTO_TEST_CASE( ecmulBeforeIstanbul, 
+BOOST_AUTO_TEST_CASE( ecmulBeforeIstanbul,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_mul" );
 
@@ -1543,7 +1543,7 @@ BOOST_AUTO_TEST_CASE( ecmulBeforeIstanbul,
     BOOST_REQUIRE_EQUAL( static_cast< int >( res ), 40000 );
 }
 
-BOOST_AUTO_TEST_CASE( ecmulCostIstanbul, 
+BOOST_AUTO_TEST_CASE( ecmulCostIstanbul,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     PrecompiledPricer cost = PrecompiledRegistrar::pricer( "alt_bn128_G1_mul" );
 
@@ -1719,7 +1719,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     testClient->mineBlocks( 1 );
 
 #ifdef BITE
-    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 1, 4294967294 );
+    testClient->importTransactionsAsBlock( dev::eth::Transactions(), make_shared< map< uint64_t, std::shared_ptr< bytes > > >(), 1000, 1, 4294967294 );
 #else
     testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
 #endif

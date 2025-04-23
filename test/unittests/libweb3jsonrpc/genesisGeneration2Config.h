@@ -917,6 +917,24 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "maxFileStorageBytes": 178124851,
             "maxReservedStorageBytes": 59374950,
             "contractStoragePatchTimestamp": 1000,
+        "nodeGroups": {
+            "0": {
+                "nodes": {
+                    "8": [
+                        1,
+                        8,
+                        "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                    "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                    "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                    "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                }
+            }
+        },
             "nodes": [
                 {
                     "nodeID": 8,

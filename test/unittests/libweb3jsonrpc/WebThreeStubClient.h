@@ -169,6 +169,11 @@ public:
     Json::Value debug_doBlocksDbCompaction() noexcept( false );
     Json::Value debug_getFutureTransactions() noexcept( false );
     Json::Value debug_getPatchTimestamps() noexcept( false );
+
+#ifdef BITE
+    std::string skale_getCommonPublicKey() noexcept( false );
+    std::string skale_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
+#endif
 };
 
 #endif  // JSONRPC_CPP_STUB_WEBTHREESTUBCLIENT_H_

@@ -288,9 +288,10 @@ public:
     std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
 
     // main entry point after consensus
-
 #ifdef BITE
-    size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
+    size_t importTransactionsAsBlock( const Transactions& _transactions,
+    	const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+        _decryptedTransactionDataFields, u256 _gasPrice,
         uint64_t _winningNodeIndex, uint64_t _timestamp = ( uint64_t ) utcTime() );
 #else
     size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
@@ -324,7 +325,7 @@ public:
         return m_snapshotAgent->getSnapshotHashCalculationTime();
     }
 
-    std::array< std::string, 4 > getIMABLSPublicKey() const {
+    std::array< std::string, 4 > getCurrentBLSPublicKey() const {
         return chainParams().sChain.nodeGroups.at( historicGroupIndex ).blsPublicKey;
     }
 

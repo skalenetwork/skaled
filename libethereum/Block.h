@@ -316,6 +316,20 @@ public:
 
     void startReadState();
 
+#ifdef BITE
+    void setDecryptedTransactionDataFields(
+        const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+            _decryptedTransactionDataFields ) {
+        CHECK_EXPRESSION( _decryptedTransactionDataFields );
+        m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
+    }
+
+    const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+    decryptedTransactionDataFields() const {
+        return m_decryptedTransactionDataFields;
+    }
+#endif
+
 private:
     SealEngineFace* sealEngine() const;
 
@@ -358,6 +372,14 @@ private:
 
 
     SealEngineFace* m_sealEngine = nullptr;  ///< The chain's seal engine.
+
+#ifdef BITE
+    // decrypted transaction data fields to be stored with the block and their indexes
+    // only filled for a working block
+    std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >
+        m_decryptedTransactionDataFields =
+            std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >();
+#endif
 
     Logger m_logger{ createLogger( VerbosityDebug, "block" ) };
     Logger m_loggerDetailed{ createLogger( VerbosityTrace, "block" ) };

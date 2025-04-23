@@ -135,7 +135,11 @@ public:
         return buffer;
     }
 
-    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
+#ifdef BITE
+  shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> /*_decryptedTransactions*/,
+#endif
+        uint64_t _timeStamp,
         uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice, u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         transaction_promise = decltype( transaction_promise )();
 
@@ -290,7 +294,11 @@ public:
         return tmp;
     }
 
-    virtual void createBlock( const transactions_vector& _approvedTransactions, uint64_t _timeStamp,
+    virtual void createBlock( const transactions_vector& _approvedTransactions,
+#ifdef BITE
+  shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> _decryptedTransactions,
+#endif
+                              uint64_t _timeStamp,
         uint32_t /* timeStampMs */, uint64_t _blockID, u256 /*_gasPrice */,
         u256 /*_stateRoot*/, uint64_t /*_winningNodeIndex*/ ) override {
         ( void ) _timeStamp;
@@ -401,11 +409,8 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     // block 2
 
     v = transactions_vector( 9000 );
-    size_t i = 0;
     for ( auto& tx : v ) {
-        for(size_t j=0; j<sizeof(i); ++j)
-            tx.push_back( ((unsigned char*)&i)[j] );
-        ++i;
+        tx = dev::eth::Transaction(0, 0, 0, dev::Address(), dev::bytes(), 0, dev::Secret::random() ).toBytes();
     }  // for
 
     std::tie( approvedTransactions, timeStamp, timeStampMs, blockID, gasPrice ) = singleRun( v );
