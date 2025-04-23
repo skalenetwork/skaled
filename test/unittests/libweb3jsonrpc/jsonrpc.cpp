@@ -4108,7 +4108,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     BOOST_REQUIRE_EQUAL(  etherbaseBalance, 0 );
 #else
     BOOST_REQUIRE_EQUAL(  etherbaseBalance,
-                          jsToU256( t["gasUsed"].asString() *
+                          jsToU256( t["gasUsed"].asString() ) *
                               jsToU256( partiallyRetrieveTx["gasPrice"].asString()  ));
 #endif
     BOOST_REQUIRE_EQUAL(
