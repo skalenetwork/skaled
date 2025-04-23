@@ -223,14 +223,15 @@ BOOST_AUTO_TEST_CASE( bConstantinopleBlockReward ) {
     TestBlockChain testBlockchain;
     TestBlock testBlock;
     testBlock.mine( testBlockchain );
+
+// For BITE rewards are applied during commitToSeal
+#ifndef BITE
     testBlockchain.addBlock( testBlock );
+#endif
 
     TestBlock const& topBlock = testBlockchain.topBlock();
-#ifdef BITE
-    BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 4 * ether );
-#else
     BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 2 * ether );
-#endif
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

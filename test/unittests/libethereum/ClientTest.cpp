@@ -418,7 +418,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
         "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
         ]
     }
   },
