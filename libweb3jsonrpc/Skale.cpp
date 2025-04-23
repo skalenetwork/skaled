@@ -606,7 +606,7 @@ std::string Skale::skale_getDecryptedTransactionData( const std::string& _transa
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_client.isKnownTransaction( h ) )
-            throw std::invalid_argument("Transaction with provided hash does not exist.");
+            throw std::invalid_argument( "Transaction with provided hash does not exist." );
 
 #ifdef HISTORIC_STATE
         // skip invalid
