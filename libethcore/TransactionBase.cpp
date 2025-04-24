@@ -610,13 +610,12 @@ void TransactionBase::checkAndValidateBITETransaction() const {
     if ( m_data.size() < BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
         BOOST_THROW_EXCEPTION( BITETransactionTooShort()
                                << errinfo_comment( "BITE transaction's data is too short." ) );
-    // validate encrypted AES key
     std::array< uint8_t, BITE_ENCRYPTED_AES_KEY_LEN > cipheredKeyBytes;
     std::copy( m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN,
         m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN,
         cipheredKeyBytes.begin() );
     try {
-        // it does 3 pairings instead of 2 - can be optimized
+        // validate encrypted AES key
         auto cipheredKey = libBLS::CipheredKey::fromBytes( cipheredKeyBytes );
         libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
         return;
