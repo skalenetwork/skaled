@@ -3988,7 +3988,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto formTransactionData = []( const std::string& magic, const std::string& epoch,
                                    const std::string& encryptedKey,
             const std::string& encryptedData ) {
-        return "0x" + magic + epoch + encryptedData + encryptedKey;
+        return "0x" + magic + epoch + encryptedKey + encryptedData;
     };
 
     size_t nonce = 0;
@@ -4024,7 +4024,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     std::copy( encryptedKeyByteArray.begin(), encryptedKeyByteArray.end(), encryptedKeyBytes.begin() );
     auto encryptedKey = libBLS::ThresholdUtils::bytesToHexString( encryptedKeyBytes );
 
-    auto validBITEData = formTransactionData( magicNumber, epochId, encryptedData, encryptedKey );
+    auto validBITEData = formTransactionData( magicNumber, epochId, encryptedKey, encryptedData );
     auto validBITETransactionRlp = formTransactionRlp( validBITEData );
 
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
@@ -4064,7 +4064,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
     std::vector< uint8_t > randomEncryptedKeyBytes( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(), randomEncryptedKeyBytes.begin() );
-    auto randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( encryptedKeyBytes );
+    auto randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( randomEncryptedKeyBytes );
 
     invalidBITEData = formTransactionData( magicNumber, epochId, randomEncryptedKey, encryptedData );
     invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
@@ -4078,7 +4078,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     randomEncryptedKeyBytes.clear();
     randomEncryptedKeyBytes.resize( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
     std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(), randomEncryptedKeyBytes.begin() );
-    randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( encryptedKeyBytes );
+    randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( randomEncryptedKeyBytes );
 
     invalidBITEData = formTransactionData( magicNumber, epochId, randomEncryptedKey, encryptedData );
     invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
