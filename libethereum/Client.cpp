@@ -527,12 +527,13 @@ void Client::syncBlockQueue() {
 
 
 #ifdef BITE
-	size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
-    	const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
-        _decryptedTransactionDataFields, u256 _gasPrice, uint64_t _winningNodeIndex, uint64_t _timestamp) {
+size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
+    const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+        _decryptedTransactionDataFields,
+    u256 _gasPrice, uint64_t _winningNodeIndex, uint64_t _timestamp ) {
 #else
-	size_t Client::importTransactionsAsBlock(
-	    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::importTransactionsAsBlock(
+    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
 #endif
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
@@ -544,9 +545,9 @@ void Client::syncBlockQueue() {
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
 #ifdef BITE
-	// get winning node address
-	Address _winningNodeAddress =
-    bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+    // get winning node address
+    Address _winningNodeAddress =
+        bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
     LOG( m_loggerDetail ) << "Winning node address: " << _winningNodeAddress;
     {
         // store encrypted transactions
