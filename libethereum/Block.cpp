@@ -1113,8 +1113,7 @@ void Block::commitToSeal(
 
 #ifdef BITE
     LOG( m_loggerDetailed ) << "Commiting new author";
-    bool removeEmptyAccounts =
-        m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
     // Commiting to apply changes including new block author and balance
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
