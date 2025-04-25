@@ -276,6 +276,15 @@ bool Executive::execute() {
     }
 
 #ifdef BITE
+    // don't execute invalid BITE transaction
+    // this could only happen if a user submitted it on purpose
+    // charge user with FULL AMOUNT of gas they provided
+    // increment nonce and finalize execution
+    if ( m_t.isInvalidBiteTransaction() ) {
+        m_s.incNonce( m_t.sender() );
+        return true;
+    }
+
     bytes const& dataToPassToEvm = m_t.decryptedData();
 #else
     bytes const& dataToPassToEvm = m_t.data();
