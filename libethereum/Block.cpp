@@ -1129,7 +1129,7 @@ void Block::commitToSeal(
     }
 
 #ifdef BITE
-    LOG( m_loggerDetailed ) << "Commiting after preparing for seal is done";
+    LOG( m_loggerDetailed ) << "Commiting after preparing for seal is completed";
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
     // Commiting after preparing for seal is done including new block author and balance
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :

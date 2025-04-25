@@ -69,6 +69,11 @@ BOOST_AUTO_TEST_CASE( opendb ) {
 BOOST_AUTO_TEST_CASE( Mining_1_mineBlockWithTransaction ) {
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
 #ifdef BITE
+    // addBlock imports block to blockchain.
+    // Within tests it uses Block::enact, which is never called on nodes.
+    // For BITE state commit is done in commitToSeal during block.mine.
+    // Commit is also done in Block::enact. It causes double nonce increment.
+    // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
     u256 nonce = 2;
 #else
     u256 nonce = 1;
@@ -88,6 +93,9 @@ BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     block.addTransaction( tr );
     block.mine( bc );
 #ifndef BITE
+    // addBlock imports block to blockchain.
+    // Within tests it uses Block::enact, which is never called on nodes.
+    // For BITE state commit is done in commitToSeal during block.mine, so no import needed
     bc.addBlock( block );
 #endif
 
@@ -238,6 +246,11 @@ BOOST_AUTO_TEST_CASE( attemptImport ) {
 
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
 #ifdef BITE
+    // addBlock imports block to blockchain.
+    // Within tests it uses Block::enact, which is never called on nodes.
+    // For BITE state commit is done in commitToSeal during block.mine.
+    // Commit is also done in Block::enact. It causes double nonce increment.
+    // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
     u256 nonce = 2;
 #else
     u256 nonce = 1;
@@ -278,6 +291,11 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
     BOOST_CHECK_EQUAL( stat.memTransactionAddresses, 0 );
 
 #ifdef BITE
+    // addBlock imports block to blockchain.
+    // Within tests it uses Block::enact, which is never called on nodes.
+    // For BITE state commit is done in commitToSeal during block.mine.
+    // Commit is also done in Block::enact. It causes double nonce increment.
+    // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
     u256 nonce = 2;
 #else
     u256 nonce = 1;

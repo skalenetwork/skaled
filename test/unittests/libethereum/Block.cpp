@@ -224,8 +224,10 @@ BOOST_AUTO_TEST_CASE( bConstantinopleBlockReward ) {
     TestBlock testBlock;
     testBlock.mine( testBlockchain );
 
-// For BITE rewards are applied during commitToSeal
 #ifndef BITE
+    // addBlock imports block to blockchain.
+    // Within tests it uses Block::enact, which is never called on nodes.
+    // For BITE state commit is done in commitToSeal during block.mine, so no import needed
     testBlockchain.addBlock( testBlock );
 #endif
 
