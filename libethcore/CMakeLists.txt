@@ -16,3 +16,6 @@ target_link_libraries( ethcore PUBLIC
 	devcore
 	skale
 	)
+if (BITE)
+    target_link_libraries( ethcore PUBLIC te )
+endif()
