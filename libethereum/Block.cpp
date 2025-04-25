@@ -1111,14 +1111,6 @@ void Block::commitToSeal(
     // accordingly.
     DEV_TIMED_ABOVE( "commit", 500 )
 
-#ifdef BITE
-    LOG( m_loggerDetailed ) << "Commiting new author";
-    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
-    // Commiting to apply changes including new block author and balance
-    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
-#endif
-
     LOG( m_loggerDetailed ) << cc::debug( "Post-reward stateRoot: " )
                             << cc::notice( "is not calculated in Skale state" );
     LOG( m_loggerDetailed ) << m_state;
@@ -1136,7 +1128,16 @@ void Block::commitToSeal(
         m_currentBlock.setExtraData( ed );
     }
 
+#ifdef BITE
+    LOG( m_loggerDetailed ) << "Commiting after preparing for seal is done";
+    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+    // Commiting after preparing for seal is done including new block author and balance
+    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
+#endif
+
     m_committedToSeal = true;
+
 }
 
 void Block::uncommitToSeal() {
