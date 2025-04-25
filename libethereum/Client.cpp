@@ -561,7 +561,6 @@ size_t Client::importTransactionsAsBlock(
 
     size_t cntSucceeded = 0;
     cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
-
     sealUnconditionally( false );
     importWorkingBlock();
 

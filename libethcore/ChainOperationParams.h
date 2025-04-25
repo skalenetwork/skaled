@@ -27,7 +27,11 @@
 #include <vector>
 
 #include <libdevcore/Common.h>
+
+#ifdef BITE
 #include <libethcore/CommonJS.h>
+#endif
+
 #include <libethereum/Precompiled.h>
 #include <libethereum/SchainPatchEnum.h>
 

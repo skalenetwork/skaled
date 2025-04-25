@@ -121,12 +121,14 @@ public:
         resetCurrent();
     }
 
+#ifdef BITE
     /// Set the author address for any transactions we do and rewards we get.
     /// No reset of current block
     void safeSetAuthor( Address const& _id ) {
         m_author = _id;
         m_currentBlock.setAuthor( m_author );
     }
+#endif
 
     /// Note the fact that this block is being used with a particular chain.
     /// Call this before using any non-const methods.
