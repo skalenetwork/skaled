@@ -1137,7 +1137,6 @@ void Block::commitToSeal(
 #endif
 
     m_committedToSeal = true;
-
 }
 
 void Block::uncommitToSeal() {
