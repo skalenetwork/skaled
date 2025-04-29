@@ -1032,8 +1032,10 @@ BOOST_AUTO_TEST_SUITE_END()
 // Transition from fork to fork tests
 BOOST_FIXTURE_TEST_SUITE( TransitionTests, bcTransitionFixture )
 
-BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
-BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
+#ifndef BITE
+    BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
+    BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

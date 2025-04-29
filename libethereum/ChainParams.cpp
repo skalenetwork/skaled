@@ -662,7 +662,7 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
 
 #ifdef BITE
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
-    auto& sChainNodes = sChain.nodes;
+    const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
         return node.sChainIndex == _sChainIndex;
     };

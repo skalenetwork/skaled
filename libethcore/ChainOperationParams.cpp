@@ -95,10 +95,14 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
+#ifdef BITE
+    return m_blockReward;
+#else
     if ( _schedule.blockRewardOverwrite )
         return *_schedule.blockRewardOverwrite;
     else
         return m_blockReward;
+#endif
 }
 
 u256 ChainOperationParams::blockReward(

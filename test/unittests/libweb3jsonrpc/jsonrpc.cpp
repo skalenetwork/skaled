@@ -635,7 +635,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
+#ifdef BITE
+    const u256 blockReward = 5 * dev::eth::ether;
+#else
     const u256 blockReward = 2 * dev::eth::ether;
+#endif
     cerr << "Reward: " << blockReward << endl;
     cerr << "Balance before: " << fixture.client->balanceAt( senderAddress ) << endl;
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
@@ -677,7 +681,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
+#ifdef BITE
+    const u256 blockReward = 5 * dev::eth::ether;
+#else
     const u256 blockReward = 2 * dev::eth::ether;
+#endif
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -713,7 +721,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
+#ifdef BITE
+    const u256 blockReward = 5 * dev::eth::ether;
+#else
     const u256 blockReward = 2 * dev::eth::ether;
+#endif
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -739,7 +751,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
+#ifdef BITE
+    const u256 blockReward = 5 * dev::eth::ether;
+#else
     const u256 blockReward = 2 * dev::eth::ether;
+#endif
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
@@ -2102,7 +2118,11 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
+#ifdef BITE
+    const u256 blockReward = 5 * dev::eth::ether;
+#else
     const u256 blockReward = 2 * dev::eth::ether;
+#endif
     dev::eth::simulateMining( *( fixture.client ), blocksToMine );
     BOOST_CHECK_EQUAL( blockReward, fixture.client->balanceAt( senderAddress ) );
 
