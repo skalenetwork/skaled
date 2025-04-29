@@ -32,7 +32,10 @@
 
 #include <libdevcore/microprofile.h>
 
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
 using namespace std;
+#include <libconsensus/node/ConsensusInterface.h>
+
 using namespace dev;
 using namespace dev::eth;
 
@@ -595,5 +598,35 @@ bytes const& TransactionBase::decryptedData() const {
     if ( !m_decryptedData )
         return data();
     return *m_decryptedData;
+}
+
+void TransactionBase::checkAndValidateBITETransaction() const {
+    // if a txn does not match MAGIC return false
+    if ( m_data.empty() || m_data.size() < BITE_MAGIC_SIZE ||
+         !std::equal( BITE_MAGIC_AS_BYTE_ARRAY, BITE_MAGIC_AS_BYTE_ARRAY + BITE_MAGIC_SIZE,
+             m_data.begin() ) )
+        return;
+    // minimum size of an encrypted with AES key message is 64 bytes
+    if ( m_data.size() < BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
+        BOOST_THROW_EXCEPTION( BITETransactionTooShort()
+                               << errinfo_comment( "BITE transaction's data is too short." ) );
+    std::array< uint8_t, BITE_ENCRYPTED_AES_KEY_LEN > cipheredKeyBytes;
+    std::copy( m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN,
+        m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN,
+        cipheredKeyBytes.begin() );
+    try {
+        // validate encrypted AES key
+        auto cipheredKey = libBLS::CipheredKey::fromBytes( cipheredKeyBytes );
+        libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
+        return;
+    } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
+        BOOST_THROW_EXCEPTION(
+            InvalidBITETransaction()
+            << errinfo_comment( std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
+    } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
+        BOOST_THROW_EXCEPTION(
+            InvalidBITETransaction()
+            << errinfo_comment( std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
+    }
 }
 #endif

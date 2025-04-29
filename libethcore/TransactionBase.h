@@ -157,6 +157,8 @@ public:
 
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
+
+    void checkAndValidateBITETransaction() const;
 #endif
 
     /// @throws TransactionIsUnsigned if signature was not initialized
