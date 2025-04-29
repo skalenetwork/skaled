@@ -110,5 +110,10 @@ DEV_SIMPLE_EXCEPTION( UnknownAccount );
 
 DEV_SIMPLE_EXCEPTION( TooBigResponse );
 
+#ifdef BITE
+DEV_SIMPLE_EXCEPTION( InvalidBITETransaction );
+DEV_SIMPLE_EXCEPTION( BITETransactionTooShort );
+#endif
+
 }  // namespace eth
 }  // namespace dev
