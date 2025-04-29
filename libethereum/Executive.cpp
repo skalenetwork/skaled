@@ -285,6 +285,9 @@ bool Executive::execute() {
         return true;
     }
 
+    // load data to be executed inside EVM
+    // for BITE transactions returns decrypted data
+    // for regular transactions returns regular data
     bytes const& dataToPassToEvm = m_t.decryptedData();
 #else
     bytes const& dataToPassToEvm = m_t.data();

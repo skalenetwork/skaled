@@ -151,15 +151,13 @@ public:
 #ifdef BITE
     // Pass the decrypted data for BITE transaction
     void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
-        CHECK_EXPRESSION( _decryptedData )
-        m_decryptedData = _decryptedData;
+        if ( _decryptedData )
+            m_decryptedData = _decryptedData;
         m_isBITETxn = true;
     }
 
     // if a txn is marked as BITE but doesn't contain valid decrypted data
-    bool isInvalidBiteTransaction() const {
-        return m_isBITETxn && !m_decryptedData;
-    }
+    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData; }
 
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
