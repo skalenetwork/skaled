@@ -187,6 +187,9 @@ revert();
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
             "balance" : "1000000000000000000000000000000"
         },
+        "0xc868AF52a6549c773082A334E5AE232e0Ea3B513" : {
+            "balance" : "1000000000000000000000000000000"
+        },
         "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
             "balance" : "0x00",
             "code" : "0x6080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14604e578063f38fb65b146062575b600080fd5b348015605957600080fd5b5060606076565b005b348015606d57600080fd5b50607460ec565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f1935050505050565b60f26076565b600080fd00a165627a7a72305820262a5822c4fe6c154b2ef3198c7827d35fc6da59da2cea2c4f2fad9d4a5ccd5e0029",
@@ -3980,36 +3983,116 @@ std::string formEncryptedMessageMockup( const std::string& message ) {
 }
 
 BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
-    JsonRpcFixture fixture;
+    std::string _config = c_genesisConfigString;
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    // enable type1 & type2 txs
+    ret["skaleConfig"]["sChain"]["EIP1559TransactionsPatchTimestamp"] = 1;
+    // Set chainID = 151
+    std::string chainID = "0x97";
+    ret["params"]["chainID"] = chainID;
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 128;
+
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+    JsonRpcFixture fixture( config );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
 
-    Json::Value txEncryptedData;
-    txEncryptedData["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
-    txEncryptedData["from"] = senderAddress;
-    txEncryptedData["gas"] = "100000";
-    txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    txEncryptedData["value"] = 1;
+    int nonce = 0;
 
-    std::string plaintext = dev::h256::random().hex();
+    // ---- Legacy -----
+    Json::Value legacyTx;
+    legacyTx["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    legacyTx["from"] = senderAddress;
+    legacyTx["gas"] = "100000";
+    legacyTx["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    legacyTx["value"] = 1;
 
-    std::string encryptedData = formEncryptedMessageMockup( plaintext );
+    std::string plaintext = "6057361d0000000000000000000000000000000000000000000000000000000000000001";
+    // data ciphered from a single run of formEncryptedMessageMockup( plaintext )
+    // since it differs each run, and the RLP-encoded tx was built outside this test case, we need to set
+    // this mannually
+    std::string encryptedData = "0xf3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000ff89a800e42c011e37f85496c7681e8bfb91cfcd77361dfb512535154a6facc5000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d79ed07d8f81c1f22209d0998c914a610a91967b477aab5c170c7d20ae75f0aef51498baa7b6676aabace0f03a86a827fcfaae9622dd60eb5e0cac0d2932490c73843afc3ebbc031b22ce9c6fd870e9125ef73e2cc3db5da2deecae698a97cf1";
+    legacyTx["data"] = encryptedData;
 
-    txEncryptedData["data"] = encryptedData;
-    string txHash = fixture.rpcClient->eth_sendTransaction( txEncryptedData );
+    std::cout << "encryptedData: " << encryptedData << std::endl;
+    
+    legacyTx["nonce"] = nonce++;
+
+    TransactionSkeleton legacyTs = toTransactionSkeleton( legacyTx );
+    legacyTs = fixture.client->populateTransactionWithDefaults( legacyTs );
+    pair< bool, Secret > legacyAr = fixture.accountHolder->authenticate( legacyTs );
+    Transaction legacyTransaction( legacyTs, legacyAr.second );
+
+    std::string legacyRLP = dev::toHexPrefixed( legacyTransaction.toBytes() );
+    std::string legacyHash = fixture.rpcClient->eth_sendRawTransaction( legacyRLP );
+
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
-    auto txReceipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-    BOOST_REQUIRE( txReceipt["status"].asString() == std::string( "0x1" ) );
-    BOOST_REQUIRE( txReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
+    auto legacyTxReceipt = fixture.rpcClient->eth_getTransactionReceipt( legacyHash );
+    BOOST_REQUIRE( legacyTxReceipt["status"].asString() == std::string( "0x1" ) );
+    BOOST_REQUIRE( legacyTxReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
 
-    auto txEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( txHash );
-    BOOST_REQUIRE( txEncryptedResponse["input"].asString() == encryptedData );
+    auto legacyEncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( legacyHash );
+    BOOST_REQUIRE( legacyEncryptedResponse["input"].asString() == encryptedData );
 
-    auto txDecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( txHash );
-    std::cout << plaintext << ' ' << txDecryptedResponse << '\n';
-    BOOST_REQUIRE( txDecryptedResponse == "0x" + plaintext );
+    auto legacyDecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( legacyHash );
+    BOOST_REQUIRE( legacyDecryptedResponse == "0x" + plaintext );
+
+
+    // ---- Type1 tx -----
+    /* 
+        transaction1['nonce'] = 0
+        transaction1['gasPrice'] = 20000000000
+        transaction1['gas'] = 30000
+        transaction1['to'] = 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251
+        transaction1['value'] = 0
+        transaction1['chainId'] = 151
+        transaction1['type'] = 1
+        transaction1['data'] = encryptedData
+    */
+    std::string type1Tx = "0x01f901c18197808504a817c800827530945edf1e852fdd1b0bc47c0307ef755c76f4b9c25180b90158f3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000ff89a800e42c011e37f85496c7681e8bfb91cfcd77361dfb512535154a6facc5000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d79ed07d8f81c1f22209d0998c914a610a91967b477aab5c170c7d20ae75f0aef51498baa7b6676aabace0f03a86a827fcfaae9622dd60eb5e0cac0d2932490c73843afc3ebbc031b22ce9c6fd870e9125ef73e2cc3db5da2deecae698a97cf1c001a07f8c2149b0fbbca4d1384c50df3f7a0707a427ef702fe35c202dc6a528fd8f46a0790a6271f2efc83ac7d84eaa88d12510b7540d3493d0db7bb41ba7df7fc0e1fd";
+    std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
+
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto type1TxReceipt = fixture.rpcClient->eth_getTransactionReceipt( type1Hash );
+    BOOST_REQUIRE( type1TxReceipt["status"].asString() == std::string( "0x1" ) );
+    BOOST_REQUIRE( type1TxReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
+
+    auto type1EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type1Hash );
+    BOOST_REQUIRE( type1EncryptedResponse["input"].asString() == encryptedData );
+
+    auto type1DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type1Hash );
+    BOOST_REQUIRE( type1DecryptedResponse == "0x" + plaintext );
+
+    // ---- Type2 tx -----
+    /* 
+        transaction1['nonce'] = 1
+        transaction1['maxFeePerGas'] = 20000000000
+        transaction1['maxPriorityFeePerGas'] = 20000000000 + 1
+        transaction1['to'] = 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251
+        transaction1['value'] = 0
+        transaction1['chainId'] = 151
+        transaction1['type'] = 2
+        transaction1['data'] = encryptedData
+    */
+   std::string type2Tx = "0x02f901c78197018504a817c8018504a817c800827530945edf1e852fdd1b0bc47c0307ef755c76f4b9c25180b90158f3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000ff89a800e42c011e37f85496c7681e8bfb91cfcd77361dfb512535154a6facc5000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d79ed07d8f81c1f22209d0998c914a610a91967b477aab5c170c7d20ae75f0aef51498baa7b6676aabace0f03a86a827fcfaae9622dd60eb5e0cac0d2932490c73843afc3ebbc031b22ce9c6fd870e9125ef73e2cc3db5da2deecae698a97cf1c080a055cfda3a05a5944e5b8b498699107cfdfc0b0a9e5664e96d2e30cdac34737033a025e0574414e0e64f0dc713a79cf1d02c1bbc50808e35401c581281d9c4b949dd";
+   std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
+
+   dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+   auto type2TxReceipt = fixture.rpcClient->eth_getTransactionReceipt( type2Hash );
+   BOOST_REQUIRE( type2TxReceipt["status"].asString() == std::string( "0x1" ) );
+   BOOST_REQUIRE( type2TxReceipt["blockNumber"].asString() == fixture.rpcClient->eth_blockNumber() );
+
+   auto type2EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type2Hash );
+   BOOST_REQUIRE( type1EncryptedResponse["input"].asString() == encryptedData );
+
+   auto type2DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type2Hash );
+   BOOST_REQUIRE( type2DecryptedResponse == "0x" + plaintext );
 
     //    pragma solidity >=0.8.2 <0.9.0;
 
@@ -4056,8 +4139,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     Json::Value create;
     create["from"] = toJS( senderAddress );
     create["data"] = formEncryptedMessageMockup( bytecode );
-    create["gas"] = "1800000";
-    txHash = fixture.rpcClient->eth_sendTransaction( create );
+    create["gas"] = "180000";
+    std::string txHash = fixture.rpcClient->eth_sendTransaction( create );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
