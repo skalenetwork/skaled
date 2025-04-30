@@ -488,6 +488,106 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
             }
 }
 
+#ifdef BITE
+int ImportTest::compareStatesPOS( State const& _stateExpect, State const& _statePost,
+    unordered_set<Address> const& owners,
+    AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
+    bool wasError = false;
+#define CHECK( a, b )                       \
+    {                                       \
+            if ( _throw == WhenError::Throw ) { \
+                BOOST_CHECK_MESSAGE( a, b );    \
+                if ( !a )                       \
+                return 1;                   \
+        } else {                            \
+                BOOST_WARN_MESSAGE( a, b );     \
+                if ( !a )                       \
+                wasError = true;            \
+        }                                   \
+    }
+
+    for ( auto const& a : _stateExpect.addresses() ) {
+        AccountMask addressOptions( true );
+        auto accountAddress = a.first;
+        if ( _expectedStateOptions.size() ) {
+            try {
+                addressOptions = _expectedStateOptions.at( accountAddress );
+            } catch ( std::out_of_range const& ) {
+                BOOST_ERROR( TestOutputHelper::get().testName() +
+                             " expectedStateOptions map does not match expectedState in "
+                             "checkExpectedState!" );
+                break;
+            }
+        }
+
+        if ( addressOptions.shouldExist() ) {
+            CHECK( _statePost.addressInUse( accountAddress ),
+                TestOutputHelper::get().testName() + " Compare States: "
+                    << accountAddress << " missing expected address!" );
+        } else {
+            CHECK( !_statePost.addressInUse( accountAddress ),
+                TestOutputHelper::get().testName() + " Compare States: "
+                    << accountAddress << " address not expected to exist!" );
+        }
+
+        if ( _statePost.addressInUse( accountAddress ) ) {
+            // Check only non owner accounts
+            if ( owners.find( accountAddress ) == owners.end() ) {
+                if ( addressOptions.hasBalance() )
+                    CHECK( ( _stateExpect.balance( accountAddress ) == _statePost.balance( accountAddress ) ),
+                        TestOutputHelper::get().testName() + " Check State: "
+                            << accountAddress << ": incorrect balance " << _statePost.balance( accountAddress )
+                            << ", expected " << _stateExpect.balance( accountAddress ) );
+            }
+            if ( addressOptions.hasNonce() )
+                CHECK( ( _stateExpect.getNonce( accountAddress ) == _statePost.getNonce( accountAddress ) ),
+                    TestOutputHelper::get().testName() + " Check State: "
+                        << accountAddress << ": incorrect nonce " << _statePost.getNonce( accountAddress )
+                        << ", expected " << _stateExpect.getNonce( accountAddress ) );
+
+            if ( addressOptions.hasStorage() ) {
+                map< h256, pair< u256, u256 > > stateStorage = _statePost.storage( accountAddress );
+                for ( auto const& s : _stateExpect.storage( accountAddress ) )
+                    CHECK( ( stateStorage[s.first] == s.second ),
+                        TestOutputHelper::get().testName() + " Check State: "
+                            << accountAddress << ": incorrect storage ["
+                            << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( stateStorage[s.first].second )
+                            << ", expected [" << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( s.second.second ) );
+
+                        // Check for unexpected storage values
+                map< h256, pair< u256, u256 > > expectedStorage = _stateExpect.storage( accountAddress );
+                for ( auto const& s : _statePost.storage( accountAddress ) ) {
+                    if (s.second.second == 0 && expectedStorage.count( s.first ) == 0 ) {
+                        // take into account fact that storage() in skaled historically
+                        // can return zero values of storage, which could just be omitted
+                        // since Ethereum default value for storage is zero anyway
+                        continue;
+                    }
+                    CHECK( ( expectedStorage[s.first] == s.second ),
+                        TestOutputHelper::get().testName() + " Check State: "
+                            << accountAddress << ": unexpected incorrect storage ["
+                            << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( s.second.second ) << ", expected ["
+                            << toCompactHexPrefixed( s.second.first )
+                            << "] = " << toCompactHexPrefixed( expectedStorage[s.first].second ) );
+                }
+            }
+
+            if ( addressOptions.hasCode() )
+                CHECK( ( _stateExpect.code( accountAddress ) == _statePost.code( accountAddress) ),
+                    TestOutputHelper::get().testName() + " Check State: "
+                        << accountAddress << ": incorrect code '"
+                        << toHexPrefixed( _statePost.code( accountAddress ) ) << "', expected '"
+                        << toHexPrefixed( _stateExpect.code( accountAddress ) ) << "'" );
+        }
+    }
+
+    return wasError;
+}
+#endif
+
 int ImportTest::compareStates( State const& _stateExpect, State const& _statePost,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
     bool wasError = false;
@@ -714,8 +814,11 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                         _search->second.second = stateMap;
                         return true;
                     }
-                    int errcode =
-                        compareStates( expectState, postState, stateMap, WhenError::Throw );
+#ifdef BITE
+                    int errcode = ImportTest::compareStatesPOS( expectState, postState, unordered_set< Address >(), stateMap, WhenError::Throw );
+#else
+                    int errcode = ImportTest::compareStates( expectState, postState, stateMap, WhenError::Throw );
+#endif
                     if ( errcode > 0 ) {
                         cerr << trInfo << "\n";
                         _errorTransactions.push_back( i );

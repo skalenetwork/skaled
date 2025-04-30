@@ -830,8 +830,12 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
+#ifdef BITE
+    applyRewardsPOS( _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#else
     applyRewards( rewarded,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#endif
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state
@@ -994,6 +998,12 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     return resultReceipt.first;
 }
 
+#ifdef BITE
+void Block::applyRewardsPOS( u256 const& _blockReward ) {
+    m_state.addBalance( m_currentBlock.author(), _blockReward );
+}
+#endif
+
 void Block::applyRewards(
     vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward ) {
     u256 r = _blockReward;
@@ -1104,8 +1114,12 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
+#ifdef BITE
+    applyRewardsPOS( _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#else
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#endif
 
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.

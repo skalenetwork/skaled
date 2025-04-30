@@ -342,6 +342,10 @@ private:
     /// Throws on failure.
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
+#ifdef BITE
+    // Apply earned rewards exclusively for block author
+    void applyRewardsPOS( u256 const& _blockReward );
+#endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
         std::vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward );

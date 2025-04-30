@@ -375,8 +375,14 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
+#ifdef BITE
+                    unordered_set< Address > owners;
+                    ImportTest::compareStatesPOS(
+                        expectState, postState, owners, expectStateMap, WhenError::Throw );
+#else
                     ImportTest::compareStates(
                         expectState, postState, expectStateMap, WhenError::Throw );
+#endif
                 }
                 BOOST_REQUIRE_MESSAGE( testOutput.count( "expect" ) == 0,
                     testname + " expect should have been erased!" );
@@ -400,8 +406,14 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     ImportTest::importState( testOutput.at( "post" ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
+#ifdef BITE
+                    unordered_set< Address > owners;
+                    ImportTest::compareStatesPOS(
+                        expectState, postState, owners, expectStateMap, WhenError::Throw );
+#else
                     ImportTest::compareStates(
                         expectState, postState, expectStateMap, WhenError::Throw );
+#endif
                 }
 
                 BOOST_REQUIRE_MESSAGE( testOutput.count( "expect" ) == 0,
@@ -462,8 +474,12 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
+#ifdef BITE
+                unordered_set< Address > owners;
+                ImportTest::compareStatesPOS( expectState, postState, owners );
+#else
                 ImportTest::compareStates( expectState, postState );
-
+#endif
                 // checkAddresses<std::map<Address, std::tuple<u256, u256, std::map<u256, u256>,
                 // bytes> > >(test.addresses, fev.addresses);
 
