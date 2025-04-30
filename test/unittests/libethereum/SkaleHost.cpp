@@ -780,7 +780,7 @@ BOOST_DATA_TEST_CASE(
     Json::Value json;
     json["from"] = toJS( senderAddress );
     json["to"] = toJS( receiver.address() );
-    json["value"] = jsToDecimal( toJS( 3 * dev::eth::ether + dev::eth::wei ) );
+    json["value"] = jsToDecimal( toJS( 6 * dev::eth::ether + dev::eth::wei ) );
     json["nonce"] = 0;
 
     TransactionSkeleton ts = toTransactionSkeleton( json );
