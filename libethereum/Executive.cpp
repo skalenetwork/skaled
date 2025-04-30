@@ -275,6 +275,8 @@ bool Executive::execute() {
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 
+    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
+
 #ifdef BITE
     // don't execute invalid BITE transaction
     // this could only happen if a user submitted it on purpose
@@ -295,7 +297,6 @@ bool Executive::execute() {
     bytes const& dataToPassToEvm = m_t.data();
 #endif
 
-    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
