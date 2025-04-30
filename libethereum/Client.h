@@ -388,7 +388,10 @@ protected:
     }
 
     // get read only latest block copy
-    Block getReadOnlyLatestBlockCopy() const { return m_postSeal.getReadOnlyCopy(); }
+    Block getReadOnlyLatestBlockCopy() const {
+        ReadGuard l( x_postSeal );
+        return m_postSeal.getReadOnlyCopy();
+    }
 
     Block postSeal() const override {
         ReadGuard l( x_postSeal );
