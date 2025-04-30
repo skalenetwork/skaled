@@ -4096,7 +4096,8 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // Set chainID = 151
     std::string chainID = "0x97";
     ret["params"]["chainID"] = chainID;
-    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 256;
+    // 4 * 32 byte (3 from sc deployed below + 1 from sc deployed from config file)
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 160;
 
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
@@ -4122,9 +4123,6 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // this mannually
     std::string encryptedData = "0xf3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000ff89a800e42c011e37f85496c7681e8bfb91cfcd77361dfb512535154a6facc5000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000d79ed07d8f81c1f22209d0998c914a610a91967b477aab5c170c7d20ae75f0aef51498baa7b6676aabace0f03a86a827fcfaae9622dd60eb5e0cac0d2932490c73843afc3ebbc031b22ce9c6fd870e9125ef73e2cc3db5da2deecae698a97cf1";
     legacyTx["data"] = encryptedData;
-
-    std::cout << "encryptedData: " << encryptedData << std::endl;
-    
     legacyTx["nonce"] = nonce++;
 
     TransactionSkeleton legacyTs = toTransactionSkeleton( legacyTx );
