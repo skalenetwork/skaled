@@ -548,7 +548,7 @@ size_t Client::importTransactionsAsBlock(
     // get winning node address
     Address _winningNodeAddress =
         bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
-    LOG( m_loggerDetail ) << "Winning node address: " << _winningNodeAddress;
+    LOG( m_logger ) << "Winner for block " << number() <<  ": address - " << _winningNodeAddress << " index - " << _winningNodeIndex;
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
