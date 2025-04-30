@@ -4124,14 +4124,15 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     std::string txnDataField = std::string( "0x" ) + std::string( "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00" ) + std::string( "0000000000000000" ) + encryptedKey + invalidEncryptedData;
     std::string txnRlp = formTransactionRlp( fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", txnDataField, nonce );
 
+    Transaction t( dev::fromHex( txnRlp ), dev::eth::CheckTransaction::None );
+    auto minGasRequired = t.baseGasRequired( fixture.client->evmSchedule() );
+
     auto gasPrice = fixture.rpcClient->eth_gasPrice();
-    // gasLimit is 100000
-    dev::u256 chargeForGas = dev::jsToU256( gasPrice ) * 100000;
     auto invalidTxnHash = fixture.rpcClient->eth_sendRawTransaction( txnRlp );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     auto balanceAfter = fixture.rpcClient->eth_getBalance( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", "latest" );
-    BOOST_REQUIRE( balanceAfter == dev::toJS( balanceBeforeU256 - chargeForGas ) );
+    BOOST_REQUIRE( balanceAfter == dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
 
     try {
         fixture.rpcClient->skale_getDecryptedTransactionData( invalidTxnHash );
@@ -4139,6 +4140,9 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
         std::string errorMessage = "Transaction with provided hash does not have any decrypted data associated with it.";
         BOOST_REQUIRE( ex.what() == errorMessage );
     }
+
+    auto receipt = fixture.rpcClient->eth_getTransactionReceipt( invalidTxnHash );
+    BOOST_REQUIRE( receipt["revertReason"] == std::string( "Could not decrypt BITE transaction." ) );
 }
 
 
