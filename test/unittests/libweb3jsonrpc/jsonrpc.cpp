@@ -4096,7 +4096,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // Set chainID = 151
     std::string chainID = "0x97";
     ret["params"]["chainID"] = chainID;
-    // 4 * 32 byte (3 from sc deployed below + 1 from sc deployed from config file)
+    // (3 + 2) * 32 byte (3 from sc deployed below + 2 from sc deployed from config file)
     ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 160;
 
     Json::FastWriter fastWriter;
