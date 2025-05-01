@@ -548,7 +548,8 @@ size_t Client::importTransactionsAsBlock(
     // get winning node address
     Address _winningNodeAddress =
         bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
-    LOG( m_logger ) << "Winner for block " << number() <<  ": " << _winningNodeAddress << " (index " << _winningNodeIndex << ")";
+    LOG( m_logger ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
+                    << _winningNodeIndex << ")";
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
@@ -1198,7 +1199,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
                 historicBlock.mutableState().mutableHistoricState().addBalance(
-                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1220,7 +1221,8 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.forceChainId( chainParams().chainID );
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
-            temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            temp.mutableState().addBalance(
+                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_logger ) << "exception in client call(1):"
@@ -1253,7 +1255,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         // lots of gas to it
         auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
+            _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer =
             make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );
