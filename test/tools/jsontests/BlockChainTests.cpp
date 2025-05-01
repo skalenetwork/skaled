@@ -384,7 +384,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
 #ifdef BITE
         unordered_set< Address > owners;
         owners.insert( testChain.topBlock().blockHeader().author() );
-        if ( ImportTest::compareStatesPOS(
+        if ( ImportTest::compareStatesBITE(
                  stateExpect, testChain.topBlock().state(), owners, expectStateMap, WhenError::Throw ) )
             cerr << testName << "\n";
 #else
@@ -551,8 +551,8 @@ void testBCTest( json_spirit::mObject const& _o ) {
 #ifdef BITE
     unordered_set< Address > owners;
     owners.insert( testChain.topBlock().blockHeader().author() );
-    ImportTest::compareStatesPOS( postState, testChain.topBlock().state(), owners );
-    ImportTest::compareStatesPOS( postState, blockchain.topBlock().state(), owners );
+    ImportTest::compareStatesBITE( postState, testChain.topBlock().state(), owners );
+    ImportTest::compareStatesBITE( postState, blockchain.topBlock().state(), owners );
 #else
     ImportTest::compareStates( postState, testChain.topBlock().state() );
     ImportTest::compareStates( postState, blockchain.topBlock().state() );

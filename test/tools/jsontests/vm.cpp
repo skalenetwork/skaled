@@ -377,7 +377,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
 #ifdef BITE
                     unordered_set< Address > owners;
-                    ImportTest::compareStatesPOS(
+                    ImportTest::compareStatesBITE(
                         expectState, postState, owners, expectStateMap, WhenError::Throw );
 #else
                     ImportTest::compareStates(
@@ -408,7 +408,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
 #ifdef BITE
                     unordered_set< Address > owners;
-                    ImportTest::compareStatesPOS(
+                    ImportTest::compareStatesBITE(
                         expectState, postState, owners, expectStateMap, WhenError::Throw );
 #else
                     ImportTest::compareStates(
@@ -476,7 +476,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
 #ifdef BITE
                 unordered_set< Address > owners;
-                ImportTest::compareStatesPOS( expectState, postState, owners );
+                ImportTest::compareStatesBITE( expectState, postState, owners );
 #else
                 ImportTest::compareStates( expectState, postState );
 #endif
