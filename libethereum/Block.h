@@ -344,7 +344,7 @@ private:
 
 #ifdef BITE
     // Apply earned rewards exclusively for block author
-    void applyRewardsPOS( u256 const& _blockReward );
+    void rewardBlockAuthor( u256 const& _blockReward );
 #endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
