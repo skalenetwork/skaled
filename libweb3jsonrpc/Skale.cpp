@@ -46,6 +46,9 @@
 #include <jsonrpccpp/client/connectors/httpclient.h>
 
 #include <libconsensus/exceptions/InvalidStateException.h>
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/TEPublicKey.h>
+#endif
 #include <skutils/rest_call.h>
 #include <skutils/utils.h>
 
@@ -573,6 +576,55 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
+
+#ifdef BITE
+std::string Skale::skale_getCommonPublicKey() {
+    try {
+        auto publicKeyArray = m_client.getCurrentBLSPublicKey();
+        libff::alt_bn128_G2 publicKeyG2;
+        publicKeyG2.Z = libff::alt_bn128_Fq2::one();
+        publicKeyG2.X.c0 = libff::alt_bn128_Fq( publicKeyArray[0].c_str() );
+        publicKeyG2.X.c1 = libff::alt_bn128_Fq( publicKeyArray[1].c_str() );
+        publicKeyG2.Y.c0 = libff::alt_bn128_Fq( publicKeyArray[2].c_str() );
+        publicKeyG2.Y.c1 = libff::alt_bn128_Fq( publicKeyArray[3].c_str() );
+        libBLS::TEPublicKey publicKey( publicKeyG2 );
+        return publicKey.toString();
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    }
+}
+
+std::string Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+    try {
+        h256 h = jsToFixed< 32 >( _transactionHash );
+        if ( !m_client.isKnownTransaction( h ) )
+            throw std::invalid_argument( "Transaction with provided hash does not exist." );
+
+#ifdef HISTORIC_STATE
+        // skip invalid
+        auto rcp = m_client.localisedTransactionReceipt( h );
+        if ( rcp.gasUsed() == 0 )
+            return std::string();
+#endif
+
+        auto decryptedData = m_client.decryptedTransactionData( h );
+        if ( !decryptedData )
+            throw std::invalid_argument(
+                "Transaction with provided hash does not have any decrypted data associated with "
+                "it." );
+        return dev::toHexPrefixed( decryptedData.data() );
+    } catch ( Exception const& ) {
+        throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
+    } catch ( const std::exception& e ) {
+        throw jsonrpc::JsonRpcException( e.what() );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            jsonrpc::JsonRpcException( jsonrpc::Errors::ERROR_RPC_INVALID_PARAMS ) );
+    }
+}
+#endif
 
 namespace snapshot {
 

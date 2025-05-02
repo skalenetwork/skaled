@@ -449,6 +449,12 @@ TransactionHashes ClientBase::transactionHashes( h256 _blockHash ) const {
     return bc().transactionHashes( _blockHash );
 }
 
+#ifdef BITE
+DecryptedTransactionData ClientBase::decryptedTransactionData( h256 _transactionHash ) const {
+    return bc().decryptedTransactionData( _transactionHash );
+}
+#endif
+
 BlockHeader ClientBase::uncle( h256 _blockHash, unsigned _i ) const {
     auto bl = bc().block( _blockHash );
     RLP b( bl );

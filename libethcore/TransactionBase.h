@@ -148,6 +148,18 @@ public:
     /// Force gas limit. This is used in tests
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
+#ifdef BITE
+    // Pass the decrypted data for BITE transaction
+    void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
+        CHECK_EXPRESSION( _decryptedData )
+        m_decryptedData = _decryptedData;
+    }
+
+    /// @returns the decrypted data associated with this (BITE) transaction.
+    bytes const& decryptedData() const;
+
+    void checkAndValidateBITETransaction() const;
+#endif
 
     /// @throws TransactionIsUnsigned if signature was not initialized
     /// @throws InvalidSValue if the signature has an invalid S value.
@@ -316,6 +328,11 @@ protected:
                                         ///< legacy txns
     u256 m_maxPriorityFeePerGas;  ///< The maximum priority fee per gas. Only valid for type2 txns
     u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
+
+#ifdef BITE
+    std::shared_ptr< bytes > m_decryptedData = nullptr;  ///< Transaction data that was decrypted in
+                                                         ///< BITE protocol
+#endif
 
     TransactionType m_txType = TransactionType::Legacy;
 

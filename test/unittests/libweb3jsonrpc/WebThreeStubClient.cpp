@@ -166,9 +166,6 @@ std::string WebThreeStubClient::skale_stats() {
     return result.toStyledString();
 }
 
-
-
-
 std::string WebThreeStubClient::eth_protocolVersion() {
     Json::Value p;
     p = Json::nullValue;
@@ -1423,3 +1420,19 @@ Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
         throw jsonrpc::JsonRpcException(
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
 }
+
+#ifdef BITE
+std::string WebThreeStubClient::skale_getCommonPublicKey() {
+    Json::Value p;
+    p = Json::nullValue;
+    Json::Value result = this->CallMethod( "skale_getCommonPublicKey", p );
+    return result.asString();
+}
+
+std::string WebThreeStubClient::skale_getDecryptedTransactionData( const std::string& param1 ) {
+    Json::Value p;
+    p.append( param1 );
+    Json::Value result = this->CallMethod( "skale_getDecryptedTransactionData", p );
+    return result.asString();
+}
+#endif

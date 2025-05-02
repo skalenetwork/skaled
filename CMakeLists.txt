@@ -44,7 +44,7 @@ elseif( CMAKE_BUILD_TYPE STREQUAL "Debug" )
     set( CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0" )
 else()
-	message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
+    message( INFO "---- CMAKE_BUILD_TYPE = ${DEPS_INSTALL_ROOT} is not supported explicitly" )
 endif()
 
 ############################################################################################################
@@ -71,10 +71,6 @@ cable_configure_toolchain( DEFAULT ${toolchain} )
 
 set( ETH_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE PATH "The path to the cmake directory" )
 list( APPEND CMAKE_MODULE_PATH ${ETH_CMAKE_DIR} )
-
-# Map current configuration to configurations of imported targets.
-set( CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release )
-set( CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release )
 
 find_program( CCACHE_FOUND ccache )
 if( CCACHE_FOUND )
@@ -169,8 +165,17 @@ if( TESTS )
 endif()
 
 if (HISTORIC_STATE)
-add_definitions(-DHISTORIC_STATE=1)
+    add_definitions(-DHISTORIC_STATE=1)
 endif (HISTORIC_STATE)
+
+if (BITE)
+    add_definitions(-DBITE=1)
+endif()
+
+if (MIRAGE)
+    add_definitions(-DBITE=1)
+    add_definitions(-DMIRAGE=1)
+endif()
 
 add_subdirectory( evmc )
 
@@ -229,6 +234,8 @@ set( CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME} )
 set( CPACK_PACKAGE_CHECKSUM SHA256 )
 set( CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE )
 include( CPack )
+
+set(PARENT_BINARY_DIR ${CMAKE_BINARY_DIR})
 
 if ( CONSENSUS )
     set( SKALED_LATEST_STANDARD ON CACHE BOOL "Use latest standards" ) # depricated option. TODO: remove from consensus

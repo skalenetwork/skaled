@@ -275,13 +275,19 @@ bool Executive::execute() {
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 
+#ifdef BITE
+    bytes const& dataToPassToEvm = m_t.decryptedData();
+#else
+    bytes const& dataToPassToEvm = m_t.data();
+#endif
+
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
-            m_t.gas() - ( u256 ) m_baseGasRequired, &m_t.data(), m_t.sender() );
+            m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
         return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
-            bytesConstRef( &m_t.data() ), m_t.gas() - ( u256 ) m_baseGasRequired );
+            bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
 bool Executive::call( Address const& _receiveAddress, Address const& _senderAddress,

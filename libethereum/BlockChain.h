@@ -104,6 +104,10 @@ enum {
     ExtraLogBlooms,
     ExtraReceipts,
     ExtraBlocksBlooms
+#ifdef BITE
+    ,
+    ExtraTransactionDecryptedData
+#endif
 };
 
 class VersionChecker {
@@ -330,6 +334,14 @@ public:
     }
     std::vector< bytes > transactions() const { return transactions( currentHash() ); }
 
+#ifdef BITE
+    DecryptedTransactionData decryptedTransactionData( h256 _transactionHash ) const {
+        return queryExtras< DecryptedTransactionData, ExtraTransactionDecryptedData >(
+            _transactionHash, m_decryptedTransactionsData, x_decryptedTransactionsData,
+            NullDecryptedTransactionData );
+    }
+#endif
+
     /// Get a number for the given hash (or the most recent mined if none given). Thread-safe.
     unsigned number( h256 const& _hash ) const { return details( _hash ).number; }
     unsigned number() const {
@@ -395,9 +407,16 @@ public:
         unsigned memReceipts = 0;
         unsigned memTransactionAddresses = 0;
         unsigned memBlockHashes = 0;
+#ifdef BITE
+        unsigned memDecryptedTransactionsData = 0;
+#endif
         unsigned memTotal() const {
             return memBlocks + memDetails + memLogBlooms + memReceipts + memTransactionAddresses +
-                   memBlockHashes;
+                   memBlockHashes
+#ifdef BITE
+                   + memDecryptedTransactionsData
+#endif
+                ;
         }
     };
 
@@ -470,12 +489,31 @@ public:
     void doLevelDbCompaction() const;
 
 private:
+    struct DbWriteProxy {
+        DbWriteProxy( batched_io::db_operations_face& _backend ) : backend( _backend ) {}
+        // HACK +1 is needed for SplitDB; of course, this should be redesigned!
+        void insert( db::Slice _key, db::Slice _value ) {
+            consumedBytes += _key.size() + _value.size() + 1;
+            backend.insert( _key, _value );
+        }
+        batched_io::db_operations_face& backend;
+        size_t consumedBytes = 0;
+    };
+
     bool rotateDBIfNeeded( uint64_t pieceUsageBytes );
 
     // auxiliary method for insertBlockAndExtras
     size_t prepareDbDataAndReturnSize( VerifiedBlockRef const& _block, bytesConstRef _receipts,
         u256 const& _totalDifficulty, const LogBloom* pLogBloomFull,
         ImportPerformanceLogger& _performanceLogger );
+
+    void insertBlockDetailsToDb( DbWriteProxy& _blocksWriteBatch, DbWriteProxy& _extrasWriteBatch,
+        VerifiedBlockRef const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty,
+        ImportPerformanceLogger& _performanceLogger );
+    void insertTransactionsDetailsToDb(
+        DbWriteProxy& _extrasWriteBatch, VerifiedBlockRef const& _block );
+    void insertBloomsDetailsToDb(
+        DbWriteProxy& _extrasWriteBatch, const BlockHeader& _tbi, const LogBloom* pLogBloomFull );
 
     // auxiliary method for recomputing blocks inserted earlier
     void recomputeExistingOccupiedSpaceForBlockRotation();
@@ -563,6 +601,10 @@ private:
     mutable BlockHashHash m_blockHashes;
     mutable SharedMutex x_blocksBlooms;
     mutable BlocksBloomsHash m_blocksBlooms;
+#ifdef BITE
+    mutable SharedMutex x_decryptedTransactionsData;
+    mutable DecryptedTransactionDataHash m_decryptedTransactionsData;
+#endif
 
     using CacheID = std::pair< h256, unsigned >;
     mutable Mutex x_cacheUsage;

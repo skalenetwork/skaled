@@ -528,8 +528,12 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
+size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
+#ifdef BITE
+    const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+        _decryptedTransactionDataFields,
+#endif
+    u256 _gasPrice, uint64_t _timestamp ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -538,6 +542,14 @@ size_t Client::importTransactionsAsBlock(
         m_snapshotAgentInited = true;
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
+
+#ifdef BITE
+    {
+        // store encrypted transactions
+        DEV_WRITE_GUARDED( x_working )
+        m_working.setDecryptedTransactionDataFields( _decryptedTransactionDataFields );
+    }
+#endif
 
     size_t cntSucceeded = 0;
     cntSucceeded = syncTransactions( _transactions, _gasPrice, _timestamp );
@@ -1106,6 +1118,13 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
 
+    // invalid BITE transactions should not be added to txn queue
+#ifdef BITE
+    // only validate in production setup
+    if ( !chainParams().nodeInfo.testSignatures )
+        _t.checkAndValidateBITETransaction();
+#endif
+
     ImportResult res;
     if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
          m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
@@ -1277,6 +1296,11 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
         for ( unsigned k = 0; k < transactions.size(); k++ ) {
             Json::Value transactionLog( Json::objectValue );
             Transaction tx = transactions.at( k );
+#ifdef BITE
+            auto decryptedDataFromDb = decryptedTransactionData( tx.sha3() );
+            if ( decryptedDataFromDb )
+                tx.setDecryptedData( std::make_shared< bytes >( decryptedDataFromDb.data() ) );
+#endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );

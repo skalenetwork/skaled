@@ -107,8 +107,11 @@ void ConsensusStub::doWork() {
 
     try {
         ++blockCounter;
-        m_extFace.createBlock( out_vector, time( NULL ), 0, blockCounter,
-            getPriceForBlockId( blockCounter ), stateRoot, -1 );
+        m_extFace.createBlock( out_vector,
+#ifdef BITE
+            shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >(),
+#endif
+            time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
         LOG( m_loggerDebug ) << "createBlock"
                              << "\n";
     } catch ( const dev::Exception& x ) {
