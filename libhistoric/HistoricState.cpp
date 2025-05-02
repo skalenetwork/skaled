@@ -60,15 +60,14 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
     DatabasePaths const dbPaths{ _basePath, _genesisHash };
     if ( db::isDiskDatabase() ) {
         if ( _we == WithExisting::Kill ) {
-            clog( VerbosityInfo, "statedb" ) << "Deleting state database: " << dbPaths.statePath();
+            LOG( m_loggerInfo ) << "Deleting state database: " << dbPaths.statePath();
             fs::remove_all( dbPaths.statePath() );
         }
 
-        clog( VerbosityDebug, "statedb" )
-            << "Verifying path exists (and creating if not present): " << dbPaths.chainPath();
+        LOG( m_loggerDebug ) << "Verifying path exists (and creating if not present): "
+                             << dbPaths.chainPath();
         fs::create_directories( dbPaths.chainPath() );
-        clog( VerbosityDebug, "statedb" )
-            << "Ensuring permissions are set for path: " << dbPaths.chainPath();
+        LOG( m_loggerDebug ) << "Ensuring permissions are set for path: " << dbPaths.chainPath();
         DEV_IGNORE_EXCEPTIONS( fs::permissions( dbPaths.chainPath(), fs::owner_all ) );
 
         clog( VerbosityDebug, "statedb" )
@@ -80,7 +79,7 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
     }
 
     try {
-        clog( VerbosityTrace, "statedb" ) << "Opening state database";
+        LOG( m_loggerTrace ) << "Opening state database";
         auto rotator =
             std::make_shared< batched_io::BatchedRotatingHistoricDbIO >( dbPaths.statePath() );
         auto rotatingDB = std::make_shared< dev::db::RotatingHistoricState >( rotator );
@@ -89,28 +88,27 @@ HistoricState::openDB( fs::path const& _basePath, h256 const& _genesisHash, With
         return { dev::OverlayDB( std::move( bdb ) ), rotatingDB };
     } catch ( boost::exception const& ex ) {
         if ( db::isDiskDatabase() ) {
-            clog( VerbosityError, "statedb" )
-                << "Error opening state database: " << dbPaths.statePath();
+            LOG( m_loggerError ) << "Error opening state database: " << dbPaths.statePath();
             db::DatabaseStatus const dbStatus =
                 *boost::get_error_info< db::errinfo_dbStatusCode >( ex );
             if ( fs::space( dbPaths.statePath() ).available < 1024 ) {
-                clog( VerbosityError, "statedb" )
+                LOG( m_loggerError )
                     << "Not enough available space found on hard drive. Please free some up and "
                        "then re-run. Bailing.";
                 BOOST_THROW_EXCEPTION( NotEnoughAvailableSpace() );
             } else if ( dbStatus == db::DatabaseStatus::Corruption ) {
-                clog( VerbosityError, "statedb" )
+                LOG( m_loggerError )
                     << "Database corruption detected. Please see the exception for corruption "
                        "details. Exception: "
                     << boost::diagnostic_information( ex );
                 BOOST_THROW_EXCEPTION( DatabaseCorruption() );
             } else if ( dbStatus == db::DatabaseStatus::IOError ) {
-                clog( VerbosityError, "statedb" ) << "Database already open. You appear to have "
-                                                     "another instance of Aleth running.";
+                LOG( m_loggerError ) << "Database already open. You appear to have "
+                                        "another instance of Aleth running.";
                 BOOST_THROW_EXCEPTION( DatabaseAlreadyOpen() );
             }
         }
-        clog( VerbosityError, "statedb" )
+        LOG( m_loggerError )
             << "Unknown error encountered when opening state database. Exception details: "
             << boost::diagnostic_information( ex );
         throw;
@@ -671,7 +669,7 @@ bool HistoricState::executeTransaction(
 }
 
 std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s ) {
-    _out << "--- " << _s.globalRoot() << std::endl;
+    _out << "--- " << _s.globalRoot() << "\n";
     std::set< Address > d;
     std::set< Address > dtr;
     auto trie =
@@ -689,7 +687,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
         assert( cache || r );
 
         if ( cache && !cache->isAlive() )
-            _out << "XXX  " << i << std::endl;
+            _out << "XXX  " << i << "\n";
         else {
             string lead = ( cache ? r ? " *   " : " +   " : "     " );
             if ( cache && r && cache->nonce() == r[0].toInt< u256 >() &&
@@ -733,7 +731,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
 
                 for ( auto const& j : mem )
                     if ( j.second )
-                        contout << std::endl
+                        contout << "\n"
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
                                        cached.count( j.first ) ? " .     " :
@@ -741,7 +739,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
-                        contout << std::endl
+                        contout << "\n"
                                 << "XXX    " << std::hex << nouppercase << std::setw( 64 )
                                 << j.first << "";
             } else
@@ -749,7 +747,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, HistoricState const& _s 
             _out << lead << i << ": " << std::dec
                  << ( cache ? cache->nonce() : r[0].toInt< u256 >() )
                  << " #:" << ( cache ? cache->balance() : r[1].toInt< u256 >() ) << contout.str()
-                 << std::endl;
+                 << "\n";
         }
     }
     return _out;

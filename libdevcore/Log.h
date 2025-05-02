@@ -146,7 +146,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, bigint const& _value ) {
     std::stringstream ss;
     ss << _value;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -154,7 +154,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -162,7 +162,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, u256 const& _value ) {
     std::stringstream ss;
     ss << _value;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -170,7 +170,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -178,7 +178,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, u160 const& _value ) {
     std::stringstream ss;
     ss << _value;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -186,7 +186,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -195,7 +195,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, FixedHash< N > const& _value ) {
     std::stringstream ss;
     ss << _value.abridged();
-    _strm.stream() << cc::warn( "#" ) << cc::info( ss.str() );
+    _strm.stream() << "#" << ss.str();
     return _strm;
 }
 template < unsigned N >
@@ -204,7 +204,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -212,7 +212,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h160 const& _value ) {
     std::stringstream ss;
     ss << _value.abridged();
-    _strm.stream() << cc::warn( "#" ) << cc::error( ss.str() );
+    _strm.stream() << "#" << ss.str();
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -220,7 +220,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::error( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -228,7 +228,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h256 const& _value ) {
     std::stringstream ss;
     ss << _value.abridged();
-    _strm.stream() << cc::warn( "#" ) << cc::info( ss.str() );
+    _strm.stream() << "#" << ss.str();
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -236,7 +236,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -244,7 +244,7 @@ inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, h512 const& _value ) {
     std::stringstream ss;
     ss << _value.abridged();
-    _strm.stream() << cc::warn( "##" ) << cc::info( ss.str() );
+    _strm.stream() << "##" << ss.str();
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -252,7 +252,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
@@ -271,7 +271,7 @@ namespace boost {
 namespace log {
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, dev::bytes const& _value ) {
-    _strm.stream() << cc::warn( "%" ) << cc::c( dev::toHex( _value ) );
+    _strm.stream() << "%" << dev::toHex( _value );
     return _strm;
 }
 inline boost::log::formatting_ostream& operator<<(
@@ -284,21 +284,21 @@ inline boost::log::formatting_ostream& operator<<(
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::vector< T > const& _value ) {
-    _strm.stream() << cc::attention( "[" );
+    _strm.stream() << "[";
     size_t idxWalk = 0;
     int n = 0;
     for ( T const& i : _value ) {
-        _strm.stream() << ( n++ ? ( cc::debug( ", " ) ) : std::string( "" ) );
+        _strm.stream() << ( n++ ? ", " : "" );
         std::stringstream ss;
         ss << i;
-        _strm << cc::notice( ss.str() );
+        _strm << ss.str();
         if ( cc::_max_value_size_ != std::string::npos && idxWalk > cc::_max_value_size_ ) {
             _strm << cc::trimmed_str( _value.size() );
             break;
         }
         ++idxWalk;
     }
-    _strm.stream() << cc::attention( "]" );
+    _strm.stream() << "]";
     return _strm;
 }
 template < typename T >
@@ -307,28 +307,28 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::set< T > const& _value ) {
-    _strm.stream() << cc::attention( "{" );
+    _strm.stream() << "{";
     size_t idxWalk = 0;
     int n = 0;
     for ( T const& i : _value ) {
-        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        _strm.stream() << n++ ? ", " : std::string( "" );
         std::stringstream ss;
         ss << i;
-        _strm << cc::notice( ss.str() );
+        _strm << ss.str();
         if ( cc::_max_value_size_ != std::string::npos && idxWalk > cc::_max_value_size_ ) {
             _strm << cc::trimmed_str( _value.size() );
             break;
         }
         ++idxWalk;
     }
-    _strm.stream() << cc::attention( "}" );
+    _strm.stream() << "}";
     return _strm;
 }
 template < typename T >
@@ -337,28 +337,28 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
 template < typename T >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_set< T > const& _value ) {
-    _strm.stream() << cc::attention( "{" );
+    _strm.stream() << "{";
     size_t idxWalk = 0;
     int n = 0;
     for ( T const& i : _value ) {
-        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        _strm.stream() << n++ ? ", " : std::string( "" );
         std::stringstream ss;
         ss << i;
-        _strm << cc::notice( ss.str() );
+        _strm << ss.str();
         if ( cc::_max_value_size_ != std::string::npos && idxWalk > cc::_max_value_size_ ) {
             _strm << cc::trimmed_str( _value.size() );
             break;
         }
         ++idxWalk;
     }
-    _strm.stream() << cc::attention( "}" );
+    _strm.stream() << "}";
     return _strm;
 }
 template < typename T >
@@ -367,30 +367,30 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::map< T, U > const& _value ) {
-    _strm.stream() << cc::attention( "{" );
+    _strm.stream() << "{";
     int n = 0;
     for ( auto const& i : _value ) {
-        _strm << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        _strm << n++ ? ", " : std::string( "" );
         {  // block
             std::stringstream ss;
             ss << i.first;
-            _strm << cc::notice( ss.str() );
+            _strm << ss.str();
         }  // block
-        _strm << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        _strm << n++ ? ", " : std::string( "" );
         {  // block
             std::stringstream ss;
             ss << i.second;
-            _strm << cc::notice( ss.str() );
+            _strm << ss.str();
         }  // block
     }
-    _strm.stream() << cc::attention( "}" );
+    _strm.stream() << "}";
     return _strm;
 }
 template < typename T, typename U >
@@ -399,30 +399,30 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm << cc::info( ss.str() );
+    _strm << ss.str();
     return _strm;
 }
 
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::unordered_map< T, U > const& _value ) {
-    _strm << cc::attention( "{" );
+    _strm << "{";
     int n = 0;
     for ( auto const& i : _value ) {
-        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        _strm.stream() << n++ ? ", " : std::string( "" );
         {  // block
             std::stringstream ss;
             ss << i.first;
-            _strm << cc::notice( ss.str() );
+            _strm << ss.str();
         }  // block
-        _strm.stream() << ( n++ ? cc::debug( ", " ) : std::string( "" ) );
+        _strm.stream() << n++ ? ", " : std::string( "" );
         {  // block
             std::stringstream ss;
             ss << i.second;
-            _strm << cc::notice( ss.str() );
+            _strm << ss.str();
         }  // block
     }
-    _strm << cc::attention( "}" );
+    _strm << "}";
     return _strm;
 }
 template < typename T, typename U >
@@ -431,18 +431,18 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 
 template < typename T, typename U >
 inline boost::log::formatting_ostream& operator<<(
     boost::log::formatting_ostream& _strm, std::pair< T, U > const& _value ) {
-    _strm.stream() << cc::attention( "(" );
+    _strm.stream() << "(";
     _strm << _value.first;
-    _strm.stream() << cc::debug( ", " );
+    _strm.stream() << ", ";
     _strm << _value.second;
-    _strm.stream() << cc::attention( ")" );
+    _strm.stream() << ")";
     return _strm;
 }
 template < typename T, typename U >
@@ -451,7 +451,7 @@ inline boost::log::formatting_ostream& operator<<(
     auto const& constValue = _value;
     std::stringstream ss;
     ss << constValue;
-    _strm.stream() << cc::info( ss.str() );
+    _strm.stream() << ss.str();
     return _strm;
 }
 }  // namespace log

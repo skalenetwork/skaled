@@ -1,8 +1,7 @@
 #include <skutils/command_line_parser.h>
 #include <skutils/console_colors.h>
-#include <skutils/utils.h>
-//#include <skutils/ws.h>
 #include <skutils/network.h>
+#include <skutils/utils.h>
 #include <algorithm>
 
 namespace skutils {
@@ -221,8 +220,8 @@ bool parser::on_default_value( const std::string& v ) {
 std::string parser::banner_text() const {
     const std::string &a = app_name(), &v = app_version();
     if ( v.empty() )
-        return cc::note( a ) + "\n";
-    return cc::note( a ) + cc::debug( " version " ) + cc::note( v ) + cc::debug( "." ) + "\n";
+        return a + "\n";
+    return a + " version " + v + "." + "\n";
 }
 std::string parser::options_text(
     parser::e_options_publishing_type_t eoptt  // = parser::e_options_publishing_type_t::eoptt_auto
@@ -257,52 +256,52 @@ std::string parser::options_text(
     std::string s;
     if ( eoptt_effective == e_options_publishing_type_t::eoptt_linear ) {
         // linear options publishing
-        s += cc::note( "Options:" ) + "\n";
+        s += "Options:\n";
         std::for_each( list_sequence_handlers_.cbegin(), list_sequence_handlers_.cend(),
             [&]( name_sequence_list_t::const_reference name ) {
                 std::string nameXnb = "--" + name;
-                std::string nameX = cc::debug( "--" ) + cc::note( name );
+                std::string nameX = "--" + name;
                 if ( const_cast< parser* >( this )->value_handler( name ) ) {
                     nameXnb += value_suffix1;
                     nameXnb += value_suffix2;
-                    nameX += cc::info( value_suffix1 );
-                    nameX += cc::warn( value_suffix2 );
+                    nameX += value_suffix1;
+                    nameX += value_suffix2;
                 }
-                s += cc::debug( option_space_prefix );
+                s += option_space_prefix;
                 s += nameX;
                 std::string strSpace;
                 for ( size_t name_len = nameXnb.length(); name_len < name_len_max; ++name_len )
                     strSpace += ".";
-                s += cc::debug( strSpace );
-                s += cc::debug( option_space_suffix );
-                s += cc::info( description( name ) ) + "\n";
+                s += strSpace;
+                s += option_space_suffix;
+                s += description( name ) + "\n";
             } );
     } else {
         // categorized options publishing
         std::for_each( list_sequence_categories_.cbegin(), list_sequence_categories_.cend(),
             [&]( name_sequence_list_t::const_reference strCategory ) {
-                s += cc::sunny( strCategory ) + cc::note( " options:" ) + "\n";
+                s += strCategory + " options:\n";
                 const name_sequence_list_t& cat_opts =
                     ( const_cast< parser* >( this ) )->map_category_opts_[strCategory];
                 std::for_each( cat_opts.cbegin(), cat_opts.cend(),
                     [&]( name_sequence_list_t::const_reference name ) {
                         std::string nameXnb = "--" + name;
-                        std::string nameX = cc::debug( "--" ) + cc::note( name );
+                        std::string nameX = "--" + name;
                         if ( const_cast< parser* >( this )->value_handler( name ) ) {
                             nameXnb += value_suffix1;
                             nameXnb += value_suffix2;
-                            nameX += cc::info( value_suffix1 );
-                            nameX += cc::warn( value_suffix2 );
+                            nameX += value_suffix1;
+                            nameX += value_suffix2;
                         }
-                        s += cc::debug( option_space_prefix );
+                        s += option_space_prefix;
                         s += nameX;
                         std::string strSpace;
                         for ( size_t name_len = nameXnb.length(); name_len < name_len_max;
                               ++name_len )
                             strSpace += ".";
-                        s += cc::debug( strSpace );
-                        s += cc::debug( option_space_suffix );
-                        s += cc::info( description( name ) ) + "\n";
+                        s += strSpace;
+                        s += option_space_suffix;
+                        s += description( name ) + "\n";
                     } );
             } );
     }
@@ -411,7 +410,7 @@ static std::string stat_gen_if( const std::pair< std::string, std::string >& x )
         for ( i = nLenIfName; i < g_align; ++i )
             strSpace += '.';
     }
-    ss << cc::bright( x.first ) << cc::debug( strSpace ) << cc::sunny( x.second );
+    ss << x.first << strSpace << x.second;
     return ss.str();
 }
 
@@ -419,19 +418,17 @@ void parser::stat_network_interfaces_info( std::ostream& os ) {
     std::list< std::pair< std::string, std::string > > lst;  // first-interface name, second-address
     std::list< std::pair< std::string, std::string > >::const_iterator itWalk, itEnd;
     lst = skutils::network::get_machine_ip_addresses( true, false );  // try IP4
-    os << cc::info( "Number of of found IPv4 interfaces" ) + cc::debug( "..................." )
-       << cc::size10( lst.size() ) << std::endl;
+    os << "Number of of found IPv4 interfaces ..................." << lst.size() << "\n";
     for ( itWalk = lst.cbegin(), itEnd = lst.cend(); itWalk != itEnd; ++itWalk )
-        os << cc::debug( "...." )
-           << cc::info( "IPv4 interface" ) + cc::debug( "..................................." )
-           << stat_gen_if( *itWalk ) << std::endl;
+        os << "...."
+           << "IPv4 interface ..................................." << stat_gen_if( *itWalk )
+           << "\n";
     lst = skutils::network::get_machine_ip_addresses( false, true );  // try IP6
-    os << cc::info( "Number of of found IPv6 interfaces" ) + cc::debug( "..................." )
-       << cc::size10( lst.size() ) << std::endl;
+    os << "Number of of found IPv6 interfaces ..................." << lst.size() << "\n";
     for ( itWalk = lst.cbegin(), itEnd = lst.cend(); itWalk != itEnd; ++itWalk )
-        os << cc::debug( "...." )
-           << cc::info( "IPv6 interface" ) + cc::debug( "..................................." )
-           << stat_gen_if( *itWalk ) << std::endl;
+        os << "...."
+           << "IPv6 interface ..................................." << stat_gen_if( *itWalk )
+           << "\n";
 }
 
 };  // namespace command_line

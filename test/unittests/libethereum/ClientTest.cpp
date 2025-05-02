@@ -179,36 +179,36 @@ public:
                 std::string s = fastWriter.write( json );
                 nlohmann::json jo = nlohmann::json::parse( s );
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Will compute status of transaction: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+                    "Will compute status of transaction: " + jo.dump() + " ...";
             } // block
             Transaction tx = tx_from_json(json);
             auto txHash = m_ethereum->importTransaction(tx);
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Mining transaction..." ) );
+                    "Mining transaction...";
             dev::eth::mineTransaction(*(m_ethereum), 1);
             sleep(1);
             clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Getting transaction receipt..." ) );
+                    "Getting transaction receipt...";
             Json::Value receipt = toJson(m_ethereum->localisedTransactionReceipt(txHash));
             { // block
                 Json::FastWriter fastWriter;
                 std::string s = fastWriter.write( receipt );
                 nlohmann::json jo = nlohmann::json::parse( s );
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::debug( "Got transaction receipt: " ) + cc::j( jo ) + cc::debug( " ..." ) );
+                    "Got transaction receipt: " + jo.dump() + " ...";
             } // block
             bool bStatusFlag = ( receipt["status"] == "0x1" ) ? true : false;
             if( bStatusFlag )
                 clog( VerbosityInfo, "TestClientFixture::getTransactionStatus()" ) <<
-                    ( cc::success( "SUCCESS: Got positive transaction status" ) );
+                    "SUCCESS: Got positive transaction status";
             else
-                cerr << "TestClientFixture::getTransactionStatus() ERROR:" << receipt["status"] << endl;
+            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << receipt["status"] << '\n';
             return bStatusFlag;
         } catch ( std::exception & ex ) {
-            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << ex.what() << endl;
+            cerr << "TestClientFixture::getTransactionStatus() ERROR:" << ex.what() << '\n';
             return false;
         } catch (...) {
-            cerr << "TestClientFixture::getTransactionStatus() Unknown exception" << endl;
+            cerr << "TestClientFixture::getTransactionStatus() Unknown exception" << '\n';
             return false;
         }
     }

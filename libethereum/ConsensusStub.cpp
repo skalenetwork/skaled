@@ -88,8 +88,8 @@ void ConsensusStub::doWork() {
     if ( txns.size() == 0 )  // check for exit
         return;
 
-    std::cout << cc::debug( "Taken " ) << txns.size() << cc::debug( " transactions for consensus" )
-              << std::endl;
+    LOG( m_loggerDebug ) << "Taken " << txns.size() << " transactions for consensus"
+                         << "\n";
 
     size_t txns_in_block = txns.size();  // rand()%txns.size();
                                          // any subset but not zero
@@ -112,9 +112,10 @@ void ConsensusStub::doWork() {
             shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >(),
 #endif
             time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
-        std::cout << cc::debug( "createBlock" ) << std::endl;
+        LOG( m_loggerDebug ) << "createBlock"
+                             << "\n";
     } catch ( const dev::Exception& x ) {
-        std::cout << x.what() << std::endl;
+        LOG( m_loggerDebug ) << x.what() << "\n";
     }  // catch
 }
 

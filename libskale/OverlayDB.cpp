@@ -73,12 +73,7 @@ dev::db::Slice toSlice( std::string const& _s ) {
 };  // namespace slicing
 
 OverlayDB::OverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
-    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
-          // clog(dev::VerbosityDebug, "overlaydb") << "Closing state DB";
-          //        std::cerr << "!!! Closing state DB !!!" << std::endl;
-          //        std::cerr.flush();
-          delete db;
-      } ) {}
+    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) { delete db; } ) {}
 
 // ClassicOverlayDB::ClassicOverlayDB( std::unique_ptr< batched_io::db_face > _db_face )
 //    : m_db_face( _db_face.release(), []( batched_io::db_face* db ) {
@@ -272,24 +267,28 @@ void OverlayDB::commit() {
                 break;
             } catch ( boost::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail(1) writing to state database. Bombing out. ";
-                    cwarn << DETAILED_ERROR;
+                    LOG( m_loggerWarning ) << "Fail(1) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
                 cerror << "Error(2) writing to state database (during DB commit): "
                        << boost::diagnostic_information( ex );
-                cwarn << "Error writing to state database: " << boost::diagnostic_information( ex );
-                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                LOG( m_loggerWarning )
+                    << "Error writing to state database: " << boost::diagnostic_information( ex );
+                LOG( m_loggerWarning )
+                    << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             } catch ( std::exception const& ex ) {
                 if ( commitTry == 9 ) {
-                    cwarn << "Fail(2) writing to state database. Bombing out. ";
-                    cwarn << DETAILED_ERROR;
+                    LOG( m_loggerWarning ) << "Fail(2) writing to state database. Bombing out. ";
+                    LOG( m_loggerWarning ) << DETAILED_ERROR;
                     exit( -1 );
                 }
-                cerror << "Error(2) writing to state database (during DB commit): " << ex.what();
-                cwarn << "Error(2) writing to state database: " << ex.what();
-                cwarn << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
+                LOG( m_loggerError )
+                    << "Error(2) writing to state database (during DB commit): " << ex.what();
+                LOG( m_loggerWarning ) << "Error(2) writing to state database: " << ex.what();
+                LOG( m_loggerWarning )
+                    << "Sleeping for" << ( commitTry + 1 ) << "seconds, then retrying.";
                 std::this_thread::sleep_for( std::chrono::seconds( commitTry + 1 ) );
             }
         }
@@ -303,7 +302,7 @@ void OverlayDB::commit() {
             m_db_face->revert();
         }
     } else {
-        cnote << "Try to commit into closed or not initialized DB";
+        LOG( m_loggerInfo ) << "Try to commit into closed or not initialized DB";
     }
 }
 
@@ -322,7 +321,7 @@ string OverlayDB::lookupAuxiliary( h160 const& _address, _byte_ _space ) const {
     std::string const loadedValue =
         m_db_face->lookup( skale::slicing::toSlice( getAuxiliaryKey( _address, _space ) ) );
     if ( loadedValue.empty() )
-        cwarn << "Aux not found: " << _address;
+        LOG( m_loggerWarning ) << "Aux not found: " << _address;
 
     return loadedValue;
 }
@@ -347,7 +346,8 @@ void OverlayDB::killAuxiliary( const dev::h160& _address, _byte_ _space ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( key ) );
             } else {
-                ctrace << "Try to delete non existing key " << _address << "(" << _space << ")";
+                LOG( m_loggerTrace )
+                    << "Try to delete non existing key " << _address << "(" << _space << ")";
             }
         }
     }
@@ -369,7 +369,7 @@ void OverlayDB::insertAuxiliary(
 }
 
 std::unordered_map< h160, string > OverlayDB::accounts() const {
-    cnote << "Iterating over all accounts in state";
+    LOG( m_loggerInfo ) << "Iterating over all accounts in state";
     unordered_map< h160, string > accounts;
     if ( m_db_face ) {
         m_db_face->forEach( [&accounts]( Slice key, Slice value ) {
@@ -392,24 +392,25 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
     if ( m_db_face ) {
         // iterate of a keys that start with the given substring
         string prefix( ( const char* ) _address.data(), _address.size );
-        m_db_face->forEachWithPrefix( prefix, [&storage, &_address]( Slice key, Slice value ) {
-            if ( key.size() == h160::size + h256::size ) {
-                // key is storage address
-                string keyString( key.begin(), key.end() );
-                h160 address = h160(
-                    keyString.substr( 0, h160::size ), h160::ConstructFromStringType::FromBinary );
-                if ( address == _address ) {
-                    h256 memoryAddress = h256(
-                        keyString.substr( h160::size ), h256::ConstructFromStringType::FromBinary );
-                    u256 memoryValue = h256( string( value.begin(), value.end() ),
-                        h256::ConstructFromStringType::FromBinary );
-                    storage[memoryAddress] = memoryValue;
-                } else {
-                    cerror << "Address mismatch in:" << __FUNCTION__;
+        m_db_face->forEachWithPrefix(
+            prefix, [this, &storage, &_address]( Slice key, Slice value ) {
+                if ( key.size() == h160::size + h256::size ) {
+                    // key is storage address
+                    string keyString( key.begin(), key.end() );
+                    h160 address = h160( keyString.substr( 0, h160::size ),
+                        h160::ConstructFromStringType::FromBinary );
+                    if ( address == _address ) {
+                        h256 memoryAddress = h256( keyString.substr( h160::size ),
+                            h256::ConstructFromStringType::FromBinary );
+                        u256 memoryValue = h256( string( value.begin(), value.end() ),
+                            h256::ConstructFromStringType::FromBinary );
+                        storage[memoryAddress] = memoryValue;
+                    } else {
+                        LOG( m_loggerError ) << "Address mismatch in:" << __FUNCTION__;
+                    }
                 }
-            }
-            return true;
-        } );
+                return true;
+            } );
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }
@@ -420,7 +421,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
     static uint64_t counter = 0;
 
     if ( m_db_face ) {
-        m_db_face->forEach( [&_map]( Slice key, Slice value ) {
+        m_db_face->forEach( [this, &_map]( Slice key, Slice value ) {
             if ( key.size() == h160::size + h256::size ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
@@ -435,18 +436,17 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
                 [[maybe_unused]] u256 memoryValue = h256( string( value.begin(), value.end() ),
                     h256::ConstructFromStringType::FromBinary );
 
-
                 _map.at( address ).setStorage( memoryAddress, memoryValue );
                 counter++;
                 if ( counter % 1000000 == 0 ) {
-                    std::cout << ".";
-                    std::cout.flush();
+                    LOG( m_loggerDebug ) << ".";
+                    LOG( m_loggerDebug ).flush();
                 }
             }
             return true;
         } );
 
-        std::cout << std::endl;
+        LOG( m_loggerInfo ) << "\n";
     } else {
         cerror << "Try to load account's storage but connection to database is not established";
     }
@@ -535,7 +535,7 @@ void OverlayDB::kill( h160 const& _h ) {
                 // NB! This is not committed! So, this can be reverted
                 m_db_face->kill( skale::slicing::toSlice( _h ) );
             } else {
-                ctrace << "Try to delete non existing key " << _h;
+                LOG( m_loggerTrace ) << "Try to delete non existing key " << _h;
             }
         }
     }

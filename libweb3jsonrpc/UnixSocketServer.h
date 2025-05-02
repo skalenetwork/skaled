@@ -40,6 +40,9 @@ protected:
 
     sockaddr_un m_address;
     std::atomic< int > m_socket{ 0 };
+
+private:
+    Logger m_loggerError{ createLogger( VerbosityError, "UnixDomainSocketServer" ) };
 };
 
 }  // namespace dev
