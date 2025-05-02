@@ -55,6 +55,10 @@ enum class TransactionException {
     AddressAlreadyUsed,
     InvalidContractDeployer,
     WouldNotBeInBlock  ///< In original Ethereum this tx should not be included in block
+#ifdef BITE
+    ,
+    InvalidBITEAESData
+#endif
 };
 
 enum class CodeDeposit { None = 0, Failed, Success };

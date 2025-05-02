@@ -575,6 +575,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
+    auto validDecryptedTransactionDataFields =
+        std::make_shared< std::map< uint64_t, std::shared_ptr< std::vector< uint8_t > > > >();
+
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -588,8 +591,11 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
             auto it = _decryptedTransactionDataFields->find( i );
-            if ( it != _decryptedTransactionDataFields->end() )
+            if ( it != _decryptedTransactionDataFields->end() ) {
                 t.setDecryptedData( it->second );
+                if ( it->second )
+                    validDecryptedTransactionDataFields->insert( *it );
+            }
 #endif
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
@@ -622,7 +628,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
 #ifdef BITE
-            _decryptedTransactionDataFields,
+            validDecryptedTransactionDataFields,
 #endif
             _gasPrice, _timeStamp );
     }  // m_blockImportMutex

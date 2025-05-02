@@ -10,9 +10,9 @@ Every encrypted transaction's data can be split into four parts:
 
 2. **`EPOCH_ID`** - 8-byte integer - The number of the epoch when a transaction is sent. The number is incremented with every committee rotation.
 
-3. **Encrypted Original Data** - The original data encrypted with an `AES` key. Its size depends on the original data size.
+3. **Encrypted `AES` Key** - The `AES` key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively.
 
-4. **Encrypted `AES` Key** - The `AES` key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively.
+4. **Encrypted Original Data** - The original data encrypted with an `AES` key. Its size depends on the original data size.
 
 # Transaction Flow
 

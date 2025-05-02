@@ -293,6 +293,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
                     "0x1c2cd4b70c2b8c6cd7144bbbfbd1e5c6eacb4a5efd9c86d0e29cbbec4e8483b9" ) );
+                // address is 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f
                 account3 = dev::KeyPair( dev::Secret(
                     "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             }
@@ -3991,6 +3992,24 @@ std::string formEncryptedMessageMockup( const std::string& message ) {
 
 }
 
+std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string& senderAddress,
+                                const std::string& data, size_t& nonce ) {
+    Json::Value txEncryptedData;
+    txEncryptedData["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
+    txEncryptedData["from"] = senderAddress;
+    txEncryptedData["gas"] = "100000";
+    txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txEncryptedData["data"] = data;
+    txEncryptedData["nonce"] = nonce++;
+
+    TransactionSkeleton ts = toTransactionSkeleton( txEncryptedData );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    return dev::toHexPrefixed( tx.toBytes() );
+}
+
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true, true );
 
@@ -4004,23 +4023,6 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     };
 
     size_t nonce = 0;
-
-    auto formTransactionRlp = [&senderAddress, &fixture, &nonce]( const std::string& data ) {
-        Json::Value txEncryptedData;
-        txEncryptedData["to"] = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251";
-        txEncryptedData["from"] = senderAddress;
-        txEncryptedData["gas"] = "100000";
-        txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-        txEncryptedData["data"] = data;
-        txEncryptedData["nonce"] = nonce++;
-
-        TransactionSkeleton ts = toTransactionSkeleton( txEncryptedData );
-        ts = fixture.client->populateTransactionWithDefaults( ts );
-        pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
-        Transaction tx( ts, ar.second );
-
-        return dev::toHexPrefixed( tx.toBytes() );
-    };
 
     std::string magicNumber = "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
     std::string epochId = "0000000000000000";
@@ -4037,7 +4039,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto encryptedKey = libBLS::ThresholdUtils::bytesToHexString( encryptedKeyBytes );
 
     auto validBITEData = formTransactionData( magicNumber, epochId, encryptedKey, encryptedData );
-    auto validBITETransactionRlp = formTransactionRlp( validBITEData );
+    auto validBITETransactionRlp = formTransactionRlp( fixture, senderAddress, validBITEData, nonce );
 
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validBITETransactionRlp ) );
 
@@ -4049,25 +4051,25 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
 
     spoiledMagicNumber[ idxToSpoil ] = hex[idxSubstitute];
     auto validNonBITEData = formTransactionData( spoiledMagicNumber, epochId, encryptedKey, encryptedData );
-    auto validNonBITETransactionRlp = formTransactionRlp( validNonBITEData );
+    auto validNonBITETransactionRlp = formTransactionRlp( fixture, senderAddress, validNonBITEData, nonce );
 
     // should not throw any excpetion because txn is not BITE-formatted
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_sendRawTransaction( validNonBITETransactionRlp ) );
 
     auto invalidBITEData = formTransactionData( magicNumber, "", "", "" );
-    auto invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
+    auto invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress, invalidBITEData, nonce );
     // data is too short - should throw an exception
     BOOST_REQUIRE_THROW( fixture.client->importTransaction( Transaction( dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ), dev::eth::BITETransactionTooShort );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ), jsonrpc::JsonRpcException );
 
     invalidBITEData = formTransactionData( magicNumber, epochId, "", "" );
-    invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
+    invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress, invalidBITEData, nonce );
     // data is too short - should throw an exception
     BOOST_REQUIRE_THROW( fixture.client->importTransaction( Transaction( dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ), dev::eth::BITETransactionTooShort );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ), jsonrpc::JsonRpcException );
 
     invalidBITEData = formTransactionData( magicNumber, epochId, encryptedKey, "" );
-    invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
+    invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress, invalidBITEData, nonce );
     // data is too short - should throw an exception
     BOOST_REQUIRE_THROW( fixture.client->importTransaction( Transaction( dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ), dev::eth::BITETransactionTooShort );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ), jsonrpc::JsonRpcException );
@@ -4079,7 +4081,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     auto randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( randomEncryptedKeyBytes );
 
     invalidBITEData = formTransactionData( magicNumber, epochId, randomEncryptedKey, encryptedData );
-    invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
+    invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress, invalidBITEData, nonce );
     // encrypted key elements dont correspond to each other - should throw an exception
     BOOST_REQUIRE_THROW( fixture.client->importTransaction( Transaction( dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ), dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ), jsonrpc::JsonRpcException );
@@ -4093,11 +4095,68 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( randomEncryptedKeyBytes );
 
     invalidBITEData = formTransactionData( magicNumber, epochId, randomEncryptedKey, encryptedData );
-    invalidBITETransactionRlp = formTransactionRlp( invalidBITEData );
+    invalidBITETransactionRlp = formTransactionRlp( fixture, senderAddress, invalidBITEData, nonce );
     // encrypted key is not well formed - should throw an exception
     BOOST_REQUIRE_THROW( fixture.client->importTransaction( Transaction( dev::jsToBytes( invalidBITETransactionRlp ), CheckTransaction::None, false ) ), dev::eth::InvalidBITETransaction );
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendRawTransaction( invalidBITETransactionRlp ), jsonrpc::JsonRpcException );
 }
+
+BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
+    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true, true );
+
+    dev::eth::simulateMining( *( fixture.client ), 20 );
+    string senderAddress = toJS( fixture.coinbase.address() );
+
+    // address 0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f is preset in config
+    auto balanceBefore = fixture.rpcClient->eth_getBalance( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", "latest" );
+    auto balanceBeforeU256 = dev::jsToU256( balanceBefore );
+    BOOST_REQUIRE( balanceBeforeU256 == dev::u256( dev::bigint( "1000000000000000000000000000000" ) ) );
+
+    auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( h256::random().hex().c_str() );
+    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+
+    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
+    auto encryptedData = libBLS::ThresholdUtils::bytesToHexString( encryptedMessage.getData() );
+    auto encryptedKeyByteArray = encryptedMessage.key.toBytes();
+    std::vector< uint8_t > encryptedKeyBytes( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
+    std::copy( encryptedKeyByteArray.begin(), encryptedKeyByteArray.end(), encryptedKeyBytes.begin() );
+    auto encryptedKey = libBLS::ThresholdUtils::bytesToHexString( encryptedKeyBytes );
+
+    // spoil random element in decryptedData
+    std::string hex = "0123456789abcdef";
+    auto invalidEncryptedData = encryptedData;
+    size_t idxToSpoil = rand() % encryptedData.size();
+    uint8_t hexSubstitute = rand() % 16;
+    while ( invalidEncryptedData[ idxToSpoil ] == hex[ hexSubstitute ] )
+        hexSubstitute = rand() % 16;
+
+    invalidEncryptedData[ idxToSpoil ] = hex[ hexSubstitute ];
+
+    size_t nonce = 0;
+    std::string txnDataField = std::string( "0x" ) + std::string( "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00" ) + std::string( "0000000000000000" ) + encryptedKey + invalidEncryptedData;
+    std::string txnRlp = formTransactionRlp( fixture, "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", txnDataField, nonce );
+
+    Transaction t( dev::fromHex( txnRlp ), dev::eth::CheckTransaction::None );
+    auto minGasRequired = t.baseGasRequired( fixture.client->evmSchedule() );
+
+    auto gasPrice = fixture.rpcClient->eth_gasPrice();
+    auto invalidTxnHash = fixture.rpcClient->eth_sendRawTransaction( txnRlp );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+
+    auto balanceAfter = fixture.rpcClient->eth_getBalance( "0x7aa5e36aa15e93d10f4f26357c30f052dacdde5f", "latest" );
+    BOOST_REQUIRE( balanceAfter == dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
+
+    try {
+        fixture.rpcClient->skale_getDecryptedTransactionData( invalidTxnHash );
+    } catch ( const jsonrpc::JsonRpcException& ex ) {
+        std::string errorMessage = "Transaction with provided hash does not have any decrypted data associated with it.";
+        BOOST_REQUIRE( ex.what() == errorMessage );
+    }
+
+    auto receipt = fixture.rpcClient->eth_getTransactionReceipt( invalidTxnHash );
+    BOOST_REQUIRE( receipt["revertReason"] == std::string( "Could not decrypt BITE transaction." ) );
+}
+
 
 BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     std::string _config = c_genesisConfigString;

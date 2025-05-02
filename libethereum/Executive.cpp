@@ -275,13 +275,28 @@ bool Executive::execute() {
         m_s.subBalance( m_t.sender(), m_gasCost );
     }
 
+    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
+
 #ifdef BITE
+    // don't execute invalid BITE transaction
+    // this could only happen if a user submitted it on purpose
+    // charge user with minimum gas required for this transaction
+    // increment nonce and finalize execution
+    if ( m_t.isInvalidBiteTransaction() ) {
+        m_s.incNonce( m_t.sender() );
+        m_gas = m_t.gas() - m_baseGasRequired;
+        m_excepted = TransactionException::InvalidBITEAESData;
+        return true;
+    }
+
+    // load data to be executed inside EVM
+    // for BITE transactions returns decrypted data
+    // for regular transactions returns regular data
     bytes const& dataToPassToEvm = m_t.decryptedData();
 #else
     bytes const& dataToPassToEvm = m_t.data();
 #endif
 
-    assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
