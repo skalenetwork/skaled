@@ -1070,8 +1070,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         LOG( m_loggerDebug ) << strOut;
     }
 #ifdef BITE
-    if ( res.excepted == dev::eth::TransactionException::InvalidBITEAESData )
+    if ( res.excepted == dev::eth::TransactionException::InvalidBITEAESData ) {
         strRevertReason = "Could not decrypt BITE transaction.";
+        std::string strOut = "Error message from State::execute(): " + strRevertReason;
+        LOG( m_loggerDebug ) << strOut;
+    }
 #endif
 
     bool removeEmptyAccounts = false;
