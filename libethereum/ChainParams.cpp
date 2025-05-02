@@ -500,10 +500,10 @@ void ChainParams::populateFromGenesis( bytes const& _genesisRLP, AccountMap cons
 
     auto b = genesisBlock();
     if ( b != _genesisRLP ) {
-        cdebug << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
-        cdebug << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
-        cdebug << RLP( b );
-        cdebug << RLP( _genesisRLP );
+        LOG( m_loggerDebug ) << "Block passed:" << bi.hash() << bi.hash( WithoutSeal );
+        LOG( m_loggerDebug ) << "Genesis now:" << BlockHeader::headerHashFromBlock( b );
+        LOG( m_loggerDebug ) << RLP( b );
+        LOG( m_loggerDebug ) << RLP( _genesisRLP );
         throw 0;
     }
 }

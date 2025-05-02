@@ -285,9 +285,6 @@ public:
     BlocksBlooms blocksBlooms( h256 const& _chunkId ) const {
         auto res = queryExtras< BlocksBlooms, ExtraBlocksBlooms >(
             _chunkId, m_blocksBlooms, x_blocksBlooms, NullBlocksBlooms );
-        // std::cerr << "Queried " << _chunkId.hex() << "->" << std::endl;
-        // for ( size_t i = 0; i < 16; ++i )
-        //    std::cerr << "\t" << i << " = " << res.blooms[i].hex() << std::endl;
         return res;
     }
     LogBloom blockBloom( unsigned _number ) const {
@@ -659,10 +656,11 @@ private:
 
     boost::filesystem::path m_dbPath;
 
-    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "chain" ) };
-    mutable Logger m_logger{ createLogger( VerbosityDebug, "chain" ) };
-    mutable Logger m_loggerDetail{ createLogger( VerbosityTrace, "chain" ) };
-    mutable Logger m_loggerError{ createLogger( VerbosityError, "chain" ) };
+    mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "Blockchain" ) };
+    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "Blockchain" ) };
+    mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "Blockchain" ) };
+    mutable Logger m_loggerError{ createLogger( VerbosityError, "Blockchain" ) };
+    mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "Blockchain" ) };
 
     friend std::ostream& operator<<( std::ostream& _out, BlockChain const& _bc );
 };

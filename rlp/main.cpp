@@ -41,7 +41,7 @@ namespace js = json_spirit;
 namespace po = boost::program_options;
 
 void version() {
-    cout << "rlp version " << dev::Version << endl;
+    cout << "rlp version " << dev::Version << "\n";
     exit( 0 );
 }
 
@@ -139,21 +139,21 @@ void putOut( bytes _out, Encoding _encoding, bool _encrypt, bool _quiet ) {
     if ( _encrypt )
         crypto::Secp256k1PP::get()->encrypt( toPublic( Secret( h ) ), _out );
     if ( !_quiet )
-        cerr << "Keccak of RLP: " << h.hex() << endl;
+        cerr << "Keccak of RLP: " << h.hex() << "\n";
 
     switch ( _encoding ) {
     case Encoding::Hex:
     case Encoding::Auto:
-        cout << toHex( _out ) << endl;
+        cout << toHex( _out ) << "\n";
         break;
     case Encoding::Base64:
-        cout << toBase64( &_out ) << endl;
+        cout << toBase64( &_out ) << "\n";
         break;
     case Encoding::Binary:
         cout.write( ( char const* ) _out.data(), _out.size() );
         break;
     case Encoding::Keccak:
-        cout << sha3( _out ).hex() << endl;
+        cout << sha3( _out ).hex() << "\n";
         break;
     }
 }
@@ -233,15 +233,12 @@ int main( int argc, char** argv ) {
     }
     if ( vm.count( "help" ) ) {
         cout << "Usage rlp <mode> [OPTIONS]\nModes:\n"
-             << "    create   <json>  Given a simplified JSON string, output the RLP." << endl
-             << "    render   [ <file> | -- ]  Render the given RLP." << endl
-             << "    list     [ <file> | -- ]  List the items in the RLP list by hash and size."
-             << endl
-             << "    extract  [ <file> | -- ]  Extract all items in the RLP list, named by hash."
-             << endl
+             << "    create   <json>  Given a simplified JSON string, output the RLP.\n"
+             << "    render   [ <file> | -- ]  Render the given RLP.\n"
+             << "    list     [ <file> | -- ]  List the items in the RLP list by hash and size.\n"
+             << "    extract  [ <file> | -- ]  Extract all items in the RLP list, named by hash.\n"
              << "    assemble [ <manifest> | <base path> ] <file> ...  Given a manifest & files, "
-                "output the RLP."
-             << endl
+                "output the RLP.\n"
              << renderOptions << generalOptions;
         exit( 0 );
     }
@@ -296,7 +293,6 @@ int main( int argc, char** argv ) {
                 if ( b != '\n' && b != ' ' && b != '\t' ) {
                     if ( encoding == Encoding::Hex && ( b < '0' || b > '9' ) &&
                          ( b < 'a' || b > 'f' ) && ( b < 'A' || b > 'F' ) ) {
-                        //                      cerr << "'" << b << "':" << (int)b << endl;
                         encoding = Encoding::Base64;
                     }
                     if ( encoding == Encoding::Base64 && ( b < '0' || b > '9' ) &&
@@ -335,29 +331,29 @@ int main( int argc, char** argv ) {
         switch ( mode ) {
         case Mode::ListArchive: {
             if ( !rlp.isList() ) {
-                cout << "Error: Invalid format; RLP data is not a list." << endl;
+                cout << "Error: Invalid format; RLP data is not a list.\n";
                 exit( 1 );
             }
-            cout << rlp.itemCount() << " items:" << endl;
+            cout << rlp.itemCount() << " items:\n";
             for ( auto i : rlp ) {
                 if ( !i.isData() ) {
-                    cout << "Error: Invalid format; RLP list item is not data." << endl;
+                    cout << "Error: Invalid format; RLP list item is not data.\n";
                     if ( !lenience )
                         exit( 1 );
                 }
-                cout << "    " << i.size() << " bytes: " << sha3( i.data() ) << endl;
+                cout << "    " << i.size() << " bytes: " << sha3( i.data() ) << "\n";
             }
             break;
         }
         case Mode::ExtractArchive: {
             if ( !rlp.isList() ) {
-                cout << "Error: Invalid format; RLP data is not a list." << endl;
+                cout << "Error: Invalid format; RLP data is not a list.\n";
                 exit( 1 );
             }
-            cout << rlp.itemCount() << " items:" << endl;
+            cout << rlp.itemCount() << " items:\n";
             for ( auto i : rlp ) {
                 if ( !i.isData() ) {
-                    cout << "Error: Invalid format; RLP list item is not data." << endl;
+                    cout << "Error: Invalid format; RLP list item is not data.\n";
                     if ( !lenience )
                         exit( 1 );
                 }
@@ -406,7 +402,7 @@ int main( int argc, char** argv ) {
             strings addedInputs;
             for ( auto i : otherInputs )
                 if ( !boost::filesystem::is_regular_file( i ) )
-                    cerr << "Skipped " << i << std::endl;
+                    cerr << "Skipped " << i << "\n";
                 else
                     addedInputs.push_back( i );
 
@@ -465,7 +461,7 @@ int main( int argc, char** argv ) {
                     out << vb.get_int();
                     break;
                 default:
-                    cerr << "ERROR: Unsupported type in JSON." << endl;
+                    cerr << "ERROR: Unsupported type in JSON.\n";
                     if ( !lenience )
                         exit( 1 );
                 }
@@ -476,7 +472,7 @@ int main( int argc, char** argv ) {
         default:;
         }
     } catch ( ... ) {
-        cerr << "Error: Invalid format; bad RLP." << endl;
+        cerr << "Error: Invalid format; bad RLP.\n";
         exit( 1 );
     }
 

@@ -13,9 +13,9 @@ std::string test_crash_at;
 namespace batched_io {
 void test_crash_before_commit( const std::string& id ) {
     if ( !test_crash_at.empty() ) {
-        cnote << "test_crash_before_commit: " << id << std::endl;
+        cnote << "test_crash_before_commit: " << id;
         if ( id == test_crash_at ) {
-            cerror << "test_crash_before_commit: crashing at " << test_crash_at << std::endl;
+            cerror << "test_crash_before_commit: crashing at " << test_crash_at;
             _exit( 33 );
         }
     }  // if 1

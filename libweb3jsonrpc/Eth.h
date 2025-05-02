@@ -242,6 +242,9 @@ protected:
 #ifdef HISTORIC_STATE
     std::unique_ptr< _detail::GappedTransactionIndexCache > m_gapCache;
 #endif
+
+private:
+    dev::Logger m_loggerDebug{ dev::createLogger( dev::VerbosityDebug, "Eth" ) };
 };
 
 }  // namespace rpc

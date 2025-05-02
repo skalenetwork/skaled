@@ -311,6 +311,8 @@ e_high_load_detection_result_t tracked_origin::recordMethodUseAndDetectBan(
 
 e_high_load_detection_result_t tracked_origin::detectBan(
     uint64_t _callTimeSec, const std::string& _strMethod ) {
+    std::shared_lock< std::shared_mutex > lock( x_mutex );
+
     auto maxCallsPerMinute = m_dosLimits.max_calls_per_minute( _strMethod );
 
     if ( maxCallsPerMinute > 0 ) {
@@ -344,7 +346,7 @@ void tracked_origin::recordUse( uint64_t _useTimeSec, const std::string& _method
     static constexpr uint64_t SECONDS_IN_MINUTE = 60;
     auto minute = _useTimeSec / SECONDS_IN_MINUTE;
 
-    std::lock_guard lock( x_mutex );
+    std::unique_lock< std::shared_mutex > lock( x_mutex );
 
     if ( ( uint64_t ) _useTimeSec > m_currentSec ) {
         // next hour arrived. Reset use counter
@@ -403,7 +405,7 @@ e_high_load_detection_result_t algorithm::register_call_from_origin(
     // set the call time to current time if it was not provided
     setCallTimeToNowIfZero( _callTime );
 
-    // first check for global ban since it does not need to acces the map
+    // first check for global ban since it does not need to access the map
 
     auto result = m_globalOrigin.recordMethodUseAndDetectBan( _callTime, _strMethod );
 

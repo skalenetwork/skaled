@@ -607,7 +607,7 @@ void GenericTrieDB< DB >::iterator::next( NibbleSlice _key ) {
             }
             if ( !rlp.isList() || ( rlp.itemCount() != 2 && rlp.itemCount() != 17 ) ) {
 #if ETH_PARANOIA
-                cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
+                cwarn << "ERROR. STATE TRIE CORRUPTED";
                 cwarn << b.rlp.size() << toHex( b.rlp );
                 cwarn << rlp;
                 auto c = rlp.itemCount();
@@ -721,7 +721,7 @@ void GenericTrieDB< DB >::iterator::next() {
             }
             if ( !( rlp.isList() && ( rlp.itemCount() == 2 || rlp.itemCount() == 17 ) ) ) {
 #if ETH_PARANOIA
-                cwarn << "BIG FAT ERROR. STATE TRIE CORRUPTED!!!!!";
+                cwarn << "ERROR. STATE TRIE CORRUPTED";
                 cwarn << b.rlp.size() << toHex( b.rlp );
                 cwarn << rlp;
                 auto c = rlp.itemCount();
@@ -928,7 +928,7 @@ void GenericTrieDB< DB >::mergeAtAux(
     bool isRemovable = false;
     if ( !r.isList() && !r.isEmpty() ) {
         h256 h = _orig.toHash< h256 >();
-        //        std::cerr << "going down non-inline node " << h << "\n";
+
         s = node( h );
         r = RLP( s );
         assert( !r.isNull() );

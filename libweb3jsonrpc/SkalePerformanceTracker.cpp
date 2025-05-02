@@ -53,7 +53,7 @@ SkalePerformanceTracker::SkalePerformanceTracker( const std::string& configPath 
 
 Json::Value SkalePerformanceTracker::skale_performanceTrackingStatus(
     const Json::Value& /*request*/ ) {
-    std::string strLogPrefix = cc::deep_info( "Performance tracking status" );
+    std::string strLogPrefix = "Performance tracking status";
     try {
         skutils::task::performance::tracker_ptr pTracker =
             skutils::task::performance::get_default_tracker();
@@ -71,25 +71,22 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStatus(
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << ( strLogPrefix + " " +
+                                  "FATAL:" + " Exception while processing request: " + ex.what() );
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix + " " +
+                                    "FATAL:" + " Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                                           cc::error( " Exception while processing request: " ) +
-                                           cc::warn( "unknown exception" ) );
+        LOG( m_loggerError ) << strLogPrefix + " " + "FATAL:" +
+                                    " Exception while processing request: " + "unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
 Json::Value SkalePerformanceTracker::skale_performanceTrackingStart( const Json::Value& request ) {
-    std::string strLogPrefix = cc::deep_info( "Performance tracking start" );
+    std::string strLogPrefix = "Performance tracking start";
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -118,26 +115,23 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStart( const Json:
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                                           cc::error( " Exception while processing request: " ) +
-                                           cc::warn( "unknown exception" ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
 Json::Value SkalePerformanceTracker::skale_performanceTrackingStop(
     const Json::Value& /*request*/ ) {
-    std::string strLogPrefix = cc::deep_info( "Performance tracking stop" );
+    std::string strLogPrefix = "Performance tracking stop";
     try {
         skutils::task::performance::tracker_ptr pTracker =
             skutils::task::performance::get_default_tracker();
@@ -158,25 +152,22 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingStop(
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                                           cc::error( " Exception while processing request: " ) +
-                                           cc::warn( "unknown exception" ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }
 
 Json::Value SkalePerformanceTracker::skale_performanceTrackingFetch( const Json::Value& request ) {
-    std::string strLogPrefix = cc::deep_info( "Performance tracking fetch" );
+    std::string strLogPrefix = "Performance tracking fetch";
     try {
         Json::FastWriter fastWriter;
         const std::string strRequest = fastWriter.write( request );
@@ -204,19 +195,16 @@ Json::Value SkalePerformanceTracker::skale_performanceTrackingFetch( const Json:
         Json::Reader().parse( s, ret );
         return ret;
     } catch ( Exception const& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& ex ) {
-        clog( VerbosityError, "IMA" )
-            << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                   cc::error( " Exception while processing request: " ) + cc::warn( ex.what() ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: " + ex.what();
         throw jsonrpc::JsonRpcException( ex.what() );
     } catch ( ... ) {
-        clog( VerbosityError, "IMA" ) << ( strLogPrefix + " " + cc::fatal( "FATAL:" ) +
-                                           cc::error( " Exception while processing request: " ) +
-                                           cc::warn( "unknown exception" ) );
+        LOG( m_loggerError ) << strLogPrefix +
+                                    " FATAL: Exception while processing request: unknown exception";
         throw jsonrpc::JsonRpcException( "unknown exception" );
     }
 }

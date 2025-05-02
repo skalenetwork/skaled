@@ -620,12 +620,8 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
         convertBytesToString( _in, 64, rawString, lengthString );
 
         typedef std::function< std::string( const std::string& s ) > fnColorizer_t;
-        fnColorizer_t fnHeader = []( const std::string& s ) -> std::string {
-            return cc::info( s );
-        };
-        fnColorizer_t fnText = []( const std::string& s ) -> std::string {
-            return cc::normal( s );
-        };
+        fnColorizer_t fnHeader = []( const std::string& s ) -> std::string { return s; };
+        fnColorizer_t fnText = []( const std::string& s ) -> std::string { return s; };
 
         std::string strMessageTypeDesc = "";
         switch ( nMessageType ) {
@@ -634,28 +630,28 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
             strMessageTypeDesc = "normal";
             break;
         case 1:  // debug message
-            fnHeader = []( const std::string& s ) -> std::string { return cc::normal( s ); };
-            fnText = []( const std::string& s ) -> std::string { return cc::debug( s ); };
+            fnHeader = []( const std::string& s ) -> std::string { return s; };
+            fnText = []( const std::string& s ) -> std::string { return s; };
             strMessageTypeDesc = "debug";
             break;
         case 2:  // trace message
-            fnHeader = []( const std::string& s ) -> std::string { return cc::debug( s ); };
-            fnText = []( const std::string& s ) -> std::string { return cc::debug( s ); };
+            fnHeader = []( const std::string& s ) -> std::string { return s; };
+            fnText = []( const std::string& s ) -> std::string { return s; };
             strMessageTypeDesc = "trace";
             break;
         case 3:  // warning message
-            fnHeader = []( const std::string& s ) -> std::string { return cc::warn( s ); };
-            fnText = []( const std::string& s ) -> std::string { return cc::warn( s ); };
+            fnHeader = []( const std::string& s ) -> std::string { return s; };
+            fnText = []( const std::string& s ) -> std::string { return s; };
             strMessageTypeDesc = "warning";
             break;
         case 4:  // error message
-            fnHeader = []( const std::string& s ) -> std::string { return cc::error( s ); };
-            fnText = []( const std::string& s ) -> std::string { return cc::error( s ); };
+            fnHeader = []( const std::string& s ) -> std::string { return s; };
+            fnText = []( const std::string& s ) -> std::string { return s; };
             strMessageTypeDesc = "error";
             break;
         case 5:  // fatal message
-            fnHeader = []( const std::string& s ) -> std::string { return cc::fatal( s ); };
-            fnText = []( const std::string& s ) -> std::string { return cc::error( s ); };
+            fnHeader = []( const std::string& s ) -> std::string { return s; };
+            fnText = []( const std::string& s ) -> std::string { return s; };
             strMessageTypeDesc = "FATAL";
             break;
         }

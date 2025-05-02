@@ -24,6 +24,7 @@
 
 #pragma once
 #include "TestFace.h"
+#include <libdevcore/Log.h>
 
 namespace dev {
 
@@ -46,6 +47,8 @@ public:
 
 private:
     eth::Client& m_eth;
+
+    Logger m_loggerWarning{ createLogger( VerbosityWarning, "Test" ) };
 };
 
 }  // namespace rpc

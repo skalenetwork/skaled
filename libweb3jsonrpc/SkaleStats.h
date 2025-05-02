@@ -32,7 +32,7 @@
 
 #include <libethereum/ChainParams.h>
 
-//#include <nlohmann/json.hpp>
+// #include <nlohmann/json.hpp>
 #include <json.hpp>
 
 #include <time.h>
@@ -63,11 +63,11 @@ class Interface;
 };  // namespace eth
 
 // if following is defined then pending IMA transactions will be tracked in dispatch timer based job
-//#define __IMA_PTX_ENABLE_TRACKING_PARALLEL 1
+// #define __IMA_PTX_ENABLE_TRACKING_PARALLEL 1
 
 // if following is defined then pending IMA transactions will be tracked on-the-fly during
 // insert/erase
-//#define __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY 1
+// #define __IMA_PTX_ENABLE_TRACKING_ON_THE_FLY 1
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

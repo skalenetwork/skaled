@@ -110,7 +110,7 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 #endif
     m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
-        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -151,7 +151,7 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
     m_fs_ptr = state.fs();
     if ( _bs == BaseState::PreExisting ) {
-        clog( VerbosityDebug, "statedb" ) << cc::debug( "Using existing database" );
+        LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
         // Initialise to the state entailed by the genesis block; this guarantees the trie is built
         // correctly.
@@ -169,9 +169,9 @@ const uint64_t STATE_IMPORT_BATCH_COUNT = 16;
 void State::populateHistoricStateFromSkaleState() {
     auto allAccountAddresses = this->addresses();
 
-    cout << "Number of addresses in statedb:" << allAccountAddresses.size() << endl;
-    cout << "Historic state does not yet exist. Populating historic state ..." << endl;
-    cout << "Please be patient as it may take up to several hours for a large state" << endl;
+    LOG( m_loggerInfo ) << "Number of addresses in statedb:" << allAccountAddresses.size();
+    LOG( m_loggerInfo ) << "Historic state does not yet exist. Populating historic state ...";
+    LOG( m_loggerInfo ) << "Please be patient as it may take up to several hours for a large state";
 
 
     // this is done to save memory, otherwise OverlayDB will frow
@@ -179,7 +179,7 @@ void State::populateHistoricStateFromSkaleState() {
         populateHistoricStateBatchFromSkaleState( allAccountAddresses, i );
     }
 
-    cout << "Completed state import" << endl;
+    LOG( m_loggerInfo ) << "Completed state import";
 }
 
 
@@ -213,7 +213,8 @@ dev::eth::AccountMap State::getBatchOfAccounts(
 
 void State::populateHistoricStateBatchFromSkaleState(
     std::unordered_map< Address, u256 >& _allAccountAddresses, uint64_t _batchNumber ) {
-    cout << "Now running batch " << _batchNumber << " out of " << STATE_IMPORT_BATCH_COUNT << endl;
+    LOG( m_loggerInfo ) << "Now running batch " << _batchNumber << " out of "
+                        << STATE_IMPORT_BATCH_COUNT;
 
     dev::eth::AccountMap accountMap = getBatchOfAccounts( _allAccountAddresses, _batchNumber );
 
@@ -228,7 +229,7 @@ skale::OverlayDB State::openDB(
     fs::path path = _basePath.empty() ? eth::Defaults::dbPath() : _basePath;
 
     if ( _we == WithExisting::Kill ) {
-        clog( VerbosityDebug, "statedb" ) << "Killing state database (WithExisting::Kill).";
+        LOG( m_loggerDebug ) << "Killing state database (WithExisting::Kill).";
         fs::remove_all( path / fs::path( "state" ) );
     }
 
@@ -243,19 +244,21 @@ skale::OverlayDB State::openDB(
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );
-        clog( VerbosityDebug, "statedb" ) << cc::success( "Opened state DB." );
+        LOG( m_loggerDebug ) << "Opened state DB.";
         return OverlayDB( std::move( bdb ) );
     } catch ( boost::exception const& ex ) {
-        cwarn << boost::diagnostic_information( ex ) << '\n';
+        LOG( m_loggerWarning ) << boost::diagnostic_information( ex );
         if ( fs::space( path / fs::path( "state" ) ).available < 1024 ) {
-            cwarn << "Not enough available space found on hard drive. Please free some up and "
-                     "then "
-                     "re-run. Bailing.";
+            LOG( m_loggerWarning )
+                << "Not enough available space found on hard drive. Please free some up and "
+                   "then "
+                   "re-run. Bailing.";
             BOOST_THROW_EXCEPTION( eth::NotEnoughAvailableSpace() );
         } else {
-            cwarn << "Database " << ( path / fs::path( "state" ) )
-                  << "already open. You appear to have another instance of ethereum running. "
-                     "Bailing.";
+            LOG( m_loggerWarning )
+                << "Database " << ( path / fs::path( "state" ) )
+                << "already open. You appear to have another instance of ethereum running. "
+                   "Bailing.";
             BOOST_THROW_EXCEPTION( eth::DatabaseAlreadyOpen() );
         }
     }
@@ -1064,7 +1067,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         if ( strRevertReason.empty() )
             strRevertReason = "EVM revert instruction without description message";
         std::string strOut = "Error message from State::execute(): " + strRevertReason;
-        cerror << strOut;
+        LOG( m_loggerDebug ) << strOut;
     }
 #ifdef BITE
     if ( res.excepted == dev::eth::TransactionException::InvalidBITEAESData )
@@ -1088,8 +1091,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
                                      // dev::eth::WithoutSignature );
         this->m_db_ptr->setLastExecutedTransactionHash( shaLastTx );
-        // std::cout << "--- saving \"safeLastExecutedTransactionHash\" = " <<
-        // shaLastTx.hex() << "\n";
+
 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
@@ -1212,7 +1214,8 @@ dev::s256 State::storageUsed( const dev::Address& _addr ) const {
 
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
-    _out << cc::debug( "--- Cache ---" ) << std::endl;
+    _out << "--- Cache ---"
+         << "\n";
     std::set< Address > d;
     for ( auto i : _s.m_cache )
         d.insert( i.first );
@@ -1223,11 +1226,11 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
         assert( cache );
 
         if ( cache && !cache->isAlive() )
-            _out << cc::debug( "XXX  " ) << i << std::endl;
+            _out << "XXX  " << i << "\n";
         else {
-            string lead = cc::debug( " +   " );
+            string lead = " +   ";
             if ( cache )
-                lead = cc::debug( " .   " );
+                lead = " .   ";
 
             stringstream contout;
 
@@ -1250,13 +1253,13 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
 
                 contout << " @:";
                 if ( cache && cache->hasNewCode() )
-                    contout << cc::debug( " $" ) << toHex( cache->code() );
+                    contout << " $" << toHex( cache->code() );
                 else
-                    contout << cc::debug( " $" ) << ( cache ? cache->codeHash() : dev::h256( 0 ) );
+                    contout << " $" << ( cache ? cache->codeHash() : dev::h256( 0 ) );
 
                 for ( auto const& j : mem )
                     if ( j.second )
-                        contout << std::endl
+                        contout << "\n"
                                 << ( delta.count( j.first ) ?
                                            back.count( j.first ) ? " *     " : " +     " :
                                        cached.count( j.first ) ? " .     " :
@@ -1264,14 +1267,13 @@ std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
                                 << std::hex << nouppercase << std::setw( 64 ) << j.first << ": "
                                 << std::setw( 0 ) << j.second;
                     else
-                        contout << std::endl
-                                << cc::debug( "XXX    " ) << std::hex << nouppercase
-                                << std::setw( 64 ) << j.first << "";
+                        contout << "\n"
+                                << "XXX    " << std::hex << nouppercase << std::setw( 64 )
+                                << j.first << "";
             } else
-                contout << cc::debug( " [SIMPLE]" );
-            _out << lead << i << cc::debug( ": " ) << std::dec
-                 << ( cache ? cache->nonce() : u256( 0 ) ) << cc::debug( " #:" )
-                 << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << std::endl;
+                contout << " [SIMPLE]";
+            _out << lead << i << ": " << std::dec << ( cache ? cache->nonce() : u256( 0 ) )
+                 << " #:" << ( cache ? cache->balance() : u256( 0 ) ) << contout.str() << "\n";
         }
     }
     return _out;

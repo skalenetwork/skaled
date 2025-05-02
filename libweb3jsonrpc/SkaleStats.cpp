@@ -52,7 +52,6 @@
 #include <stdio.h>
 #include <time.h>
 
-
 #include <bls/bls.h>
 #include <skutils/utils.h>
 

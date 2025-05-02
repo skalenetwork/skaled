@@ -35,7 +35,7 @@ namespace skale {
 class BaseOp {
 public:
     virtual bool execute() = 0;
-    dev::Logger m_logger{ createLogger( dev::VerbosityDebug, "fs" ) };
+    dev::Logger m_loggerDebug{ createLogger( dev::VerbosityDebug, "fs" ) };
 };
 
 class CreateFileOp : public BaseOp {

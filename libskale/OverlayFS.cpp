@@ -45,9 +45,9 @@ bool CreateFileOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in CreateFileOp: " << strError << "\n";
+        LOG( m_loggerDebug ) << "Exception in CreateFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in CreateFileOp\n";
+        LOG( m_loggerDebug ) << "Unknown exception in CreateFileOp\n";
     }
     return false;
 }
@@ -64,9 +64,9 @@ bool CreateDirectoryOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in createDirectoryOp: " << strError << "\n";
+        LOG( m_loggerDebug ) << "Exception in createDirectoryOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in createDirectoryOp\n";
+        LOG( m_loggerDebug ) << "Unknown exception in createDirectoryOp\n";
     }
     return false;
 }
@@ -82,9 +82,9 @@ bool DeleteFileOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in DeleteFileOp: " << strError << "\n";
+        LOG( m_loggerDebug ) << "Exception in DeleteFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in DeleteFileOp\n";
+        LOG( m_loggerDebug ) << "Unknown exception in DeleteFileOp\n";
     }
     return false;
 }
@@ -100,9 +100,9 @@ bool DeleteDirectoryOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in DeleteDirectoryOp: " << strError << "\n";
+        LOG( m_loggerDebug ) << "Exception in DeleteDirectoryOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in DeleteDirectoryOp\n";
+        LOG( m_loggerDebug ) << "Unknown exception in DeleteDirectoryOp\n";
     }
     return false;
 }
@@ -118,9 +118,9 @@ bool WriteChunkOp::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in WriteChunkOp: " << strError << "\n";
+        LOG( m_loggerDebug ) << "Exception in WriteChunkOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in WriteChunkOp\n";
+        LOG( m_loggerDebug ) << "Unknown exception in WriteChunkOp\n";
     }
     return false;
 }
@@ -160,9 +160,9 @@ bool CalculateFileHash::execute() {
         std::string strError = ex.what();
         if ( strError.empty() )
             strError = "exception without description";
-        LOG( m_logger ) << "Exception in WriteHashFileOp: " << strError << "\n";
+        LOG( m_loggerDebug ) << "Exception in WriteHashFileOp: " << strError << "\n";
     } catch ( ... ) {
-        LOG( m_logger ) << "Unknown exception in WriteHashFileOp\n";
+        LOG( m_loggerDebug ) << "Unknown exception in WriteHashFileOp\n";
     }
     return false;
 }

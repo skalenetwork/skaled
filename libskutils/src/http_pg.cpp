@@ -68,6 +68,7 @@ void request_sink::OnRecordRequestCountIncrement() {
 
 std::atomic_uint64_t request_site::g_instanceCounter = 0;
 
+
 request_site::request_site( request_sink& _aSink, server_side_request_handler* _SSRQ )
     : m_sink( _aSink ), m_SSRQ( _SSRQ ), m_instanceNumber( g_instanceCounter++ ) {
     m_strLogPrefix =
@@ -149,6 +150,7 @@ void request_site::onEOM() noexcept {
         proxygen::ResponseBuilder( downstream_ ).sendWithEOM();
         return;
     }
+
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body part(s): " + to_string( m_bodyPartNumber ) );
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body size: " + to_string( m_strBody.size() ) );
     PG_LOG( m_strLogPrefix + __FUNCTION__ + " body content: " + m_strBody );
@@ -271,9 +273,7 @@ server::~server() {
 
 bool server::start() {
     stop();
-
     PG_LOG( m_logPrefix + "starting server thread" );
-
     std::vector< proxygen::HTTPServer::IPConfig > IPs;
     pg_accumulate_entries::const_iterator itWalk = m_entries.cbegin(), itEnd = m_entries.cend();
     for ( ; itWalk != itEnd; ++itWalk ) {

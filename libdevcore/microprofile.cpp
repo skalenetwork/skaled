@@ -6922,7 +6922,7 @@ void MicroProfileGpuShutdown() {
 #include "microprofile_xboxone.h"
 #endif
 
-#endif  //#if MICROPROFILE_ENABLED
+#endif  // #if MICROPROFILE_ENABLED
 
 #include "microprofile_html.h"
 
