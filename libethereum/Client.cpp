@@ -548,8 +548,6 @@ size_t Client::importTransactionsAsBlock(
     // get winning node address
     Address _winningNodeAddress =
         bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
-    LOG( m_logger ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
-                    << _winningNodeIndex << ")";
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
@@ -580,6 +578,9 @@ size_t Client::importTransactionsAsBlock(
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateHistoricGroupIndex();
         // Print balance of all node owner addresses
+
+    LOG( m_logger ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
+                    << _winningNodeIndex << ")";
     for (size_t i = 0; i < chainParams().sChain.nodes.size(); i++) {
         Address nodeAddress = chainParams().sChain.nodes[i].owner;
         u256 balance = m_state.balance(nodeAddress);
