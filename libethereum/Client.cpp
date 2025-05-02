@@ -579,7 +579,13 @@ size_t Client::importTransactionsAsBlock(
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateHistoricGroupIndex();
-
+        // Print balance of all node owner addresses
+    for (size_t i = 0; i < chainParams().sChain.nodes.size(); i++) {
+        Address nodeAddress = chainParams().sChain.nodes[i].owner;
+        u256 balance = m_state.balance(nodeAddress);
+        LOG( m_logger ) << "Node " << i << ", Owner: " << nodeAddress
+                        << ", Balance: " << balance << " at block #" << number();
+    }
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
     tick();
