@@ -184,6 +184,10 @@ public:
 #endif
     size_t t = 1;
 
+#ifdef MIRAGE
+    uint64_t constantGasPrice = 100000;
+#endif
+
     // key is patch name
     // public - for tests, don't access it directly
     std::vector< time_t > _patchTimestamps =
