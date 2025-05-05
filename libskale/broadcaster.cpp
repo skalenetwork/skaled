@@ -56,7 +56,7 @@ void HttpBroadcaster::initClients( dev::eth::SChain sChain, dev::eth::NodeInfo n
 std::string HttpBroadcaster::getHttpUrl( const dev::eth::sChainNode& node ) {
     std::string url =
         "http://" + node.ip + ":" + ( node.port + 3 ).str();  // HACK +0 +1 +2 are used by consensus
-    clog( dev::VerbosityInfo, "broadcaster" ) << url;         // todo
+    LOG( m_loggerInfo ) << url;                               // todo
     return url;
 }
 
@@ -82,7 +82,7 @@ ZmqBroadcaster::ZmqBroadcaster( dev::eth::Client& _client, SkaleHost& _skaleHost
 
 std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const {
     std::string url = "tcp://" + node.ip + ":" + ( node.port + 5 ).str();  // HACK +5
-    clog( dev::VerbosityInfo, "broadcaster" ) << url;                      // todo
+    LOG( m_loggerInfo ) << url;
     return url;
 }
 
@@ -192,7 +192,7 @@ void ZmqBroadcaster::startService() {
                 }
 
                 if ( res < 0 ) {
-                    clog( dev::VerbosityWarning, "skale-host" )
+                    LOG( m_loggerWarning )
                         << "Received bad message on ZmqBroadcaster port. errno = " << errno;
                     continue;
                 }
@@ -205,17 +205,17 @@ void ZmqBroadcaster::startService() {
                 try {
                     m_skaleHost.receiveTransaction( str );
                 } catch ( const std::exception& ex ) {
-                    clog( dev::VerbosityDebug, "skale-host" )
+                    LOG( m_loggerDebug )
                         << "Received bad transaction through broadcast: " << ex.what();
                 }
 
             } catch ( const std::exception& ex ) {
-                cerror << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
-                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                LOG( m_loggerError ) << "CRITICAL " << ex.what() << " (restarting ZmqBroadcaster)";
+                LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             } catch ( ... ) {
-                cerror << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
-                cerror << "\n" << skutils::signal::generate_stack_trace() << "\n" << std::endl;
+                LOG( m_loggerError ) << "CRITICAL unknown exception (restarting ZmqBroadcaster)";
+                LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace() << "\n";
                 sleep( 2 );
             }
 
@@ -249,8 +249,7 @@ void ZmqBroadcaster::initSocket() {
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );
     if ( res <= 0 ) {
-        clog( dev::VerbosityWarning, "zmq-broadcaster" )
-            << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
+        LOG( m_loggerWarning ) << "Got error " << res << " in zmq_send: " << zmq_strerror( res );
         throw std::runtime_error( "Zmq can't send data" );
     }
 }

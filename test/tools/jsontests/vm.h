@@ -94,7 +94,7 @@ public:
     u256 gas;
     u256 execGas;
 
-    mutable Logger m_logger{createLogger( VerbosityTrace, "EVM" )};
+    mutable Logger m_loggerTrace{createLogger( VerbosityTrace, "EVM" )};
 };
 
 class VmTestSuite : public TestSuite {

@@ -55,6 +55,10 @@ enum class TransactionException {
     AddressAlreadyUsed,
     InvalidContractDeployer,
     WouldNotBeInBlock  ///< In original Ethereum this tx should not be included in block
+#ifdef BITE
+    ,
+    InvalidBITEAESData
+#endif
 };
 
 enum class CodeDeposit { None = 0, Failed, Success };
@@ -134,6 +138,9 @@ public:
 private:
     bool m_externalGasIsChecked = false;
     std::optional< u256 > m_externalGas;
+
+    dev::Logger m_loggerInfo{ createLogger( dev::VerbosityInfo, "Transaction" ) };
+    dev::Logger m_loggerTrace{ createLogger( dev::VerbosityTrace, "Transaction" ) };
 };
 
 /// Nice name for vector of Transaction.

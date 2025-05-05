@@ -123,12 +123,10 @@ void setupLogging( LoggingOptions const& _options ) {
         ss << channel;
         strChannel = ss.str();
     }  // block
-    sink->set_formatter( expr::stream
-                         << timestamp << " " << cc::info( strThreadName ) << " "
-                         << cc::warn( strChannel )
-                         << expr::if_( expr::has_attr(
-                                context ) )[expr::stream << " " << cc::warn( strChannel )]
-                         << " " << expr::smessage );
+    sink->set_formatter(
+        expr::stream << timestamp << " " << strThreadName << " " << strChannel
+                     << expr::if_( expr::has_attr( context ) )[expr::stream << " " << strChannel]
+                     << " " << expr::smessage );
 
     boost::log::core::get()->add_sink( sink );
     boost::log::core::get()->add_global_attribute(
