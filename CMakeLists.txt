@@ -173,7 +173,9 @@ if (BITE)
 endif()
 
 if (MIRAGE)
+    set(BITE "1" CACHE STRING "Enable BITE features")
     add_definitions(-DBITE=1)
+    set(MIRAGE "1" CACHE STRING "Enable MIRAGE features")
     add_definitions(-DMIRAGE=1)
 endif()
 
