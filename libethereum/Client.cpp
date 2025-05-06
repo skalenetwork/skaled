@@ -578,16 +578,16 @@ size_t Client::importTransactionsAsBlock(
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateHistoricGroupIndex();
-        // Print balance of all node owner addresses
+    // Print balance of all node owner addresses
 
 #ifdef BITE
     LOG( m_logger ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
                     << _winningNodeIndex << ")";
-    for (size_t i = 0; i < chainParams().sChain.nodes.size(); i++) {
+    for ( size_t i = 0; i < chainParams().sChain.nodes.size(); i++ ) {
         Address nodeAddress = chainParams().sChain.nodes[i].owner;
-        u256 balance = m_state.balance(nodeAddress);
-        LOG( m_logger ) << "Node " << i << ", Owner: " << nodeAddress
-                        << ", Balance: " << balance << " at block #" << number();
+        u256 balance = m_state.balance( nodeAddress );
+        LOG( m_logger ) << "Node " << i << ", Owner: " << nodeAddress << ", Balance: " << balance
+                        << " at block #" << number();
     }
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
