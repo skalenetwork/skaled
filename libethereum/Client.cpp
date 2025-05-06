@@ -580,6 +580,7 @@ size_t Client::importTransactionsAsBlock(
         updateHistoricGroupIndex();
         // Print balance of all node owner addresses
 
+#ifdef BITE
     LOG( m_logger ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
                     << _winningNodeIndex << ")";
     for (size_t i = 0; i < chainParams().sChain.nodes.size(); i++) {
@@ -588,6 +589,7 @@ size_t Client::importTransactionsAsBlock(
         LOG( m_logger ) << "Node " << i << ", Owner: " << nodeAddress
                         << ", Balance: " << balance << " at block #" << number();
     }
+#endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
     tick();
