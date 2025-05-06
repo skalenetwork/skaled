@@ -578,7 +578,7 @@ size_t Client::importTransactionsAsBlock(
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateHistoricGroupIndex();
-    // Print balance of all node owner addresses
+        // Print balance of all node owner addresses
 
 #ifdef BITE
     LOG( m_logger ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
@@ -1209,7 +1209,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 // geth does a similar thing, we need to check whether it is fully compatible with
                 // geth
                 historicBlock.mutableState().mutableHistoricState().addBalance(
-                    _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                    _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
                 ret = historicBlock.executeHistoricCall( bc().lastBlockHashes(), t, nullptr, 0 );
             } catch ( ... ) {
                 cwarn << boost::current_exception_diagnostic_information();
@@ -1232,7 +1232,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance(
-                _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+                _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
     } catch ( InvalidNonce const& in ) {
         LOG( m_loggerInfo ) << "exception in client call(1):"

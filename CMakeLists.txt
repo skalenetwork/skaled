@@ -6,6 +6,18 @@ cmake_minimum_required(VERSION 3.5.1)
 
 # Make sure we explicitely allow spaces in test names, so cmake does not issue warning
 cmake_policy(SET CMP0110 NEW)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=ignored-attributes")
+
+if (BITE)
+    add_definitions(-DBITE=1)
+endif()
+
+if (MIRAGE)
+    set(BITE "1" CACHE STRING "Enable BITE features")
+    add_definitions(-DBITE=1)
+    set(MIRAGE "1" CACHE STRING "Enable MIRAGE features")
+    add_definitions(-DMIRAGE=1)
+endif()
 
 option( SKALE_SKIP_INSTALLING_DIRECTIVES "Do not use CMAKE install() directives " ON )
 
@@ -167,17 +179,6 @@ endif()
 if (HISTORIC_STATE)
     add_definitions(-DHISTORIC_STATE=1)
 endif (HISTORIC_STATE)
-
-if (BITE)
-    add_definitions(-DBITE=1)
-endif()
-
-if (MIRAGE)
-    set(BITE "1" CACHE STRING "Enable BITE features")
-    add_definitions(-DBITE=1)
-    set(MIRAGE "1" CACHE STRING "Enable MIRAGE features")
-    add_definitions(-DMIRAGE=1)
-endif()
 
 add_subdirectory( evmc )
 
