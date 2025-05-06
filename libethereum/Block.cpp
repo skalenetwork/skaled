@@ -807,7 +807,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             // cB.p^8
             auto expectedUncleParent = _bc.details( m_currentBlock.parentHash() ).parent;
             for ( unsigned i = 1; i < depth;
-                expectedUncleParent = _bc.details( expectedUncleParent ).parent, ++i ) {
+                  expectedUncleParent = _bc.details( expectedUncleParent ).parent, ++i ) {
             }
             if ( expectedUncleParent != uncleParent.hash() ) {
                 UncleParentNotInChain ex;

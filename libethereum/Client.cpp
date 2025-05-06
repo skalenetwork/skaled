@@ -1264,7 +1264,7 @@ Json::Value Client::traceCall( Address const& _from, u256 _value, Address _to, b
         // lots of gas to it
         auto originalFromBalance = historicBlock.mutableState().balance( _from );
         historicBlock.mutableState().mutableHistoricState().addBalance(
-            _from, ( u256 ) ( t.gas() * t.gasPrice() + t.value() ) );
+            _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         auto traceOptions = TraceOptions::make( _jsonTraceConfig );
         auto tracer =
             make_shared< AlethStandardTrace >( t, historicBlock.author(), traceOptions, true );
