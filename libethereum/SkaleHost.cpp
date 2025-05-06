@@ -246,8 +246,8 @@ void ConsensusExtImpl::createBlock(
 #ifdef BITE
     shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
 #endif
-    uint64_t _timeStamp, uint32_t _timeStampMs , uint64_t _blockID, u256 _gasPrice,
-    u256 _stateRoot, uint64_t _winningNodeIndex ) {
+    uint64_t _timeStamp, uint32_t _timeStampMs , uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
+    uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions,
 #ifdef BITE
