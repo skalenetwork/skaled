@@ -73,6 +73,10 @@ DA_SIG_SHARE_DB_SIZE = 10 * unit;
 DA_PROOF_DB_SIZE = 10 * unit;
 BLOCK_PROPOSAL_DB_SIZE = 100 * unit;
 INTERNAL_INFO_DB_SIZE = 1 * unit;
+#ifdef BITE
+INCOMING_MSG_DB_SIZE = 1 * unit;
+TE_DECRYPTION_DB_SIZE = 8 * unit;
+#else
 INCOMING_MSG_DB_SIZE = 9 * unit;
 ```
 
