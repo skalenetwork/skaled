@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document outlines the structure of `skaled` and `consensus` databases—what they consist of and how they are rotated.
+This document outlines the structure, functionality, and rotation process of the`skaled` and `consensus` databases.
 
 ## Skaled
 
