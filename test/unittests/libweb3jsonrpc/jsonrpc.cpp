@@ -4340,6 +4340,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     store1["data"] = formEncryptedMessageMockup( dataStore1 );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    store1["gas"] = "111000";
     txHash = fixture.rpcClient->eth_sendTransaction( store1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
