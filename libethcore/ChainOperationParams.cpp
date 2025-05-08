@@ -87,22 +87,22 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     else
         return FrontierSchedule;
 
+#ifdef BITE
+    result = MirageZeroPatch::makeSchedule( result );
+#else
     // 2 based on previous - decide by timestamp
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
+#endif
 
     return result;
 }
 
 u256 ChainOperationParams::blockReward( EVMSchedule const& _schedule ) const {
-#ifdef BITE
-    return m_blockReward;
-#else
     if ( _schedule.blockRewardOverwrite )
         return *_schedule.blockRewardOverwrite;
     else
         return m_blockReward;
-#endif
 }
 
 u256 ChainOperationParams::blockReward(

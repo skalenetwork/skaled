@@ -159,4 +159,11 @@ DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
  */
 DEFINE_SIMPLE_PATCH( InvalidTransactionFormatPatch );
 
+
+
+/*
+ * Context: MIRAGE block rewards patch
+ */
+DEFINE_EVM_PATCH( MirageZeroPatch );
+
 #endif  // SCHAINPATCH_H

@@ -119,3 +119,10 @@ EVMSchedule PushZeroPatch::makeSchedule( const EVMSchedule& _base ) {
     ret.havePush0 = true;
     return ret;
 }
+
+EVMSchedule MirageZeroPatch::makeSchedule( const EVMSchedule& _base ) {
+    EVMSchedule ret = _base;
+    ret.havePush0 = true;
+    ret.blockRewardOverwrite = { 5 * ether };
+    return ret;
+}
