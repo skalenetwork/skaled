@@ -777,10 +777,17 @@ BOOST_DATA_TEST_CASE(
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
+#ifdef BITE
+    auto value = 6 * dev::eth::ether + dev::eth::wei;
+#else
+    auto value = 3 * dev::eth::ether + dev::eth::wei;
+#endif
+
     Json::Value json;
     json["from"] = toJS( senderAddress );
     json["to"] = toJS( receiver.address() );
-    json["value"] = jsToDecimal( toJS( 6 * dev::eth::ether + dev::eth::wei ) );
+
+    json["value"] = jsToDecimal( toJS( value ) );
     json["nonce"] = 0;
 
     TransactionSkeleton ts = toTransactionSkeleton( json );
