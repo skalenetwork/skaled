@@ -72,8 +72,11 @@ const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkip
 };  // the last value is for the test
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
-    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
+    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds
+#ifndef MIRAGE
+    ,
     dev::s256 _contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
     ,
     dev::s256 _maxHistoricStateDbSize
@@ -81,8 +84,11 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ),
+      m_initial_funds( _initialFunds )
+#ifndef MIRAGE
+      ,
       contractStorageLimit_( _contractStorageLimit )
+#endif
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize,
@@ -127,7 +133,10 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
-    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit
+    skale::BaseState _bs, u256 _initialFunds
+#ifndef MIRAGE
+    , s256 _contractStorageLimit
+#endif    
 #ifdef HISTORIC_STATE
     ,
     s256 _maxHistoricStateDbSize
@@ -136,8 +145,11 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ),
+      m_initial_funds( _initialFunds )
+#ifndef MIRAGE
+      ,
       contractStorageLimit_( _contractStorageLimit )
+#endif
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize, _historicDb,
@@ -280,7 +292,9 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
+#ifndef MIRAGE
     contractStorageLimit_ = _s.contractStorageLimit_;
+#endif
     totalStorageUsed_ = _s.storageUsedTotal();
 }
 
@@ -294,7 +308,9 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+#ifndef MIRAGE
     contractStorageLimit_ = _s.contractStorageLimit_;
+#endif
     totalStorageUsed_ = _s.storageUsedTotal();
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
@@ -778,9 +794,11 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     storageUsage[_contract] += count * 32;
     currentStorageUsed_ += count * 32;
 
+#ifndef MIRAGE
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
+#endif
 }
 
 void State::clearStorageValue(

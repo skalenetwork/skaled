@@ -209,7 +209,10 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32
+        dev::u256 _initialFunds = 0
+#ifndef MIRAGE
+        , dev::s256 _contractStorageLimit = 32
+#endif
 #ifdef HISTORIC_STATE
         ,
         dev::s256 _maxHistoricStateDbSize = -1
@@ -437,10 +440,11 @@ public:
         return m_db_ptr->storageUsed();
     }
 
+#ifndef MIRAGE
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
-
+#endif
 
     void createReadOnlyStateDBSnap( uint64_t _blockNumber );
 
@@ -454,8 +458,11 @@ private:
         std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
             _historicBlockToStateRootDb,
 #endif
-        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
+        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0
+#ifndef MIRAGE
+        ,
         dev::s256 _contractStorageLimit = 32
+#endif
 #ifdef HISTORIC_STATE
         ,
         dev::s256 _maxHistoricStateDbSize = -1
@@ -539,7 +546,9 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
+#ifndef MIRAGE
     dev::s256 contractStorageLimit_ = 0;
+#endif
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;

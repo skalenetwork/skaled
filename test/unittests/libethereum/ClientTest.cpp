@@ -251,7 +251,15 @@ public:
         gainRoot();
 
         ChainParams chainParams;
-        chainParams = chainParams.loadConfig( _config );
+
+#ifndef MIRAGE
+    Json::Value ret;
+    Json::Reader().parse( _config, ret );
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+#endif
+        chainParams = chainParams.loadConfig( config );
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
@@ -414,7 +422,6 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
-        "contractStorageLimit": 32000,
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
         "nodes": [

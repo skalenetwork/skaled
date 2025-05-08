@@ -1631,7 +1631,6 @@ static std::string const genesisInfoSkaleConfigTest = R"(
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
-        "contractStorageLimit": 32000,
         "precompiledConfigPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
@@ -1695,8 +1694,16 @@ static std::string const genesisInfoSkaleConfigTest = R"(
 )";
 
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
+    Json::Value ret;
+    Json::Reader().parse( genesisInfoSkaleConfigTest, ret );
+#ifndef MIRAGE
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+#endif
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+
     ChainParams chainParams;
-    chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
+    chainParams = chainParams.loadConfig( config );
     chainParams.sealEngineName = NoProof::name();
     chainParams.allowFutureBlocks = true;
 

@@ -253,7 +253,10 @@ void Client::initStateFromDiskOrGenesis() {
 
     m_state = State(
         chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
-        chainParams().accountInitialFunds, chainParams().sChain.contractStorageLimit
+        chainParams().accountInitialFunds
+#ifndef MIRAFE 
+        , chainParams().sChain.contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
         ,
         chainParams().sChain.maxHistoricStateDbSize

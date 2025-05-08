@@ -266,7 +266,9 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "snapshotDownloadInactiveTimeout",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifndef MIRAGE
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
+#endif
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
