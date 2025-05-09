@@ -26,6 +26,12 @@ public:
 protected:
     static void printInfo( const std::string& _patchName, time_t _timeStamp );
     static bool isPatchEnabledInWorkingBlock( SchainPatchEnum _patchEnum ) {
+#ifdef MIRAGE
+        if ( preEnabledForMIRAGE.count( _patchEnum ) > 0 )
+            return true;
+        if ( preDisabledForMIRAGE.count( _patchEnum ) > 0 )
+            return false;
+#endif
         time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
         return activationTimestamp != 0 && committedBlockTimestamp >= activationTimestamp;
     }

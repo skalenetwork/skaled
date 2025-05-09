@@ -110,6 +110,12 @@ void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) 
 
 bool SchainPatch::isPatchEnabledWhen(
     SchainPatchEnum _patchEnum, time_t _committedBlockTimestamp ) {
+#ifdef MIRAGE
+    if ( preEnabledForMIRAGE.count( _patchEnum ) > 0 )
+        return true;
+    if ( preDisabledForMIRAGE.count( _patchEnum ) > 0 )
+        return false;
+#endif
     time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
     return activationTimestamp != 0 && _committedBlockTimestamp >= activationTimestamp;
 }
