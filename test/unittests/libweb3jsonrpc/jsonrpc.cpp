@@ -282,7 +282,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                            ["0x0"] = toJS( account2.address() );
                 }
 #ifndef MIRAGE
-                ret["skaleConfig"]["sChain"]["PowCheckPatchTimestamp"] = 1;
+                ret["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
 #endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
