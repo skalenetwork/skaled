@@ -1632,7 +1632,6 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         "schainName": "TestChain",
         "schainID": 1,
         "contractStorageLimit": 32000,
-        "precompiledConfigPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
             "1": {
@@ -1694,6 +1693,7 @@ static std::string const genesisInfoSkaleConfigTest = R"(
 }
 )";
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ChainParams chainParams;
     chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
@@ -1803,6 +1803,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 }
+#endif
 
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
