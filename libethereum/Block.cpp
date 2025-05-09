@@ -499,6 +499,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
+#ifdef BITE
+        if ( i == _transactions.size() - 1 )
+            rewardBlockAuthor( _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#endif
         Transaction const& tr = _transactions[i];
         try {
             if ( i < saved_receipts.size() ) {
@@ -568,6 +572,15 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+#ifdef BITE
+    if ( _transactions.empty() ) {
+        LOG( m_loggerDebug ) << "Rewarding for empty block and commiting";
+        rewardBlockAuthor( _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+        bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+        m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                              dev::eth::CommitBehaviour::KeepEmptyAccounts );
+    }
+#endif
 
 #ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
@@ -1112,10 +1125,7 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
-#ifdef BITE
-    rewardBlockAuthor(
-        _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
-#else
+#ifndef BITE
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 #endif
@@ -1140,14 +1150,6 @@ void Block::commitToSeal(
         ed.resize( 32 );
         m_currentBlock.setExtraData( ed );
     }
-
-#ifdef BITE
-    LOG( m_loggerDebug ) << "Commiting after preparing for seal is completed";
-    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
-    // Commiting after preparing for seal is done including new block author and balance
-    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
-#endif
 
     m_committedToSeal = true;
 }

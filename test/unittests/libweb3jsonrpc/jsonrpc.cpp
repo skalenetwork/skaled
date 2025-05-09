@@ -4000,6 +4000,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
 
     auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
+    auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
 
     // mine block without transactions
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -4035,7 +4036,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     auto totalReward = fixture.client->chainParams().blockReward(
                 fixture.client->latestBlock().info().timestamp(), fixture.client->number() );
     auto feeForTx = jsToU256( sampleTx["gasPrice"].asString() ) * jsToU256( txData["gasUsed"].asString() );
-    auto expectedBalanceChange = blockNumber * totalReward + feeForTx;
+    auto expectedBalanceChange = ( blockNumber - initialBlockNumber ) * totalReward + feeForTx;
 
     BOOST_REQUIRE_EQUAL(
                 fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance, expectedBalanceChange );
