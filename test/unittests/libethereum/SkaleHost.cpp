@@ -258,7 +258,11 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
 BOOST_AUTO_TEST_SUITE( SkaleHostSuite )  //, *boost::unit_test::disabled() )
 
+#ifndef MIRAGE
 auto skipInvalidTransactionsVariants = boost::unit_test::data::make( { false, true } );
+#else
+auto skipInvalidTransactionsVariants = boost::unit_test::data::make( { true } );
+#endif
 
 BOOST_DATA_TEST_CASE(
     validTransaction, skipInvalidTransactionsVariants, skipInvalidTransactionsFlag ) {

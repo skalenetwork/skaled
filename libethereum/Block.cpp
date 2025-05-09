@@ -552,6 +552,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 receiptsOfCommitted.push_back( m_receipts.back() );
             }
 
+#ifndef MIRAGE
             if ( !SkipInvalidTransactionsPatch::isEnabledInWorkingBlock() ||
                  res.excepted != TransactionException::WouldNotBeInBlock ) {
                 receipts.push_back( m_receipts.back() );
@@ -560,6 +561,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 if ( res.excepted == TransactionException::WouldNotBeInBlock )
                     ++countBad;
             }
+#endif
 
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -966,6 +968,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
         resultReceipt.first.excepted = TransactionException::WouldNotBeInBlock;
     }  // catch
 
+#ifndef MIRAGE
     if ( _p == Permanence::Committed || _p == Permanence::CommittedWithoutState ||
          _p == Permanence::Uncommitted ) {
         // Add to the user-originated transactions that we've executed.
@@ -976,6 +979,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
             m_transactionSet.insert( _t.sha3() );
         }
     }
+#endif
 
 
     // if we are doing real block processing with commit, we currently clear cache
