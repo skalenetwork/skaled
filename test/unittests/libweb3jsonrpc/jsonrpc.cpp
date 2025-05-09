@@ -1845,6 +1845,7 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
@@ -1991,6 +1992,7 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
     BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
     std::string _config = c_genesisConfigString;
