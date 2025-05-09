@@ -320,10 +320,12 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::CorrectForkInPowPatch )] =
                 powPatchActivationTimestamp;
+#ifndef MIRAGE
             push0PatchActivationTimestamp = time( nullptr ) + 10;
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::PushZeroPatch )] =
                 push0PatchActivationTimestamp;
+#endif
             chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
@@ -1223,6 +1225,7 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     callObject["from"] = toJS( fixture.account2.address() );
     callObject["to"] = contractAddress;
 
+#ifndef MIRAGE
     // first try without PushZeroPatch
 
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
@@ -1244,17 +1247,21 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE_GE( fixture.client->blockInfo( LatestBlock ).timestamp(),
         fixture.push0PatchActivationTimestamp );
+#endif
 
+#ifdef HISTORIC_STATE
     uint64_t crossingBlockNumber = fixture.client->number();
-    ( void ) crossingBlockNumber;
+#endif
 
-    // in the "corssing" block tx still should fail
+#ifndef MIRAGE
+    // in the "crossing" block tx still should fail
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
+#endif
 
     // in 1st block with patch call should succeed
-    callResult = fixture.rpcClient->eth_call( callObject, "latest" );
-    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
+    auto callResult1 = fixture.rpcClient->eth_call( callObject, "latest" );
+    BOOST_REQUIRE_NE( callResult1, string( "0x" ) );
 
     // tx should succeed too
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
@@ -1263,14 +1270,15 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
 
 #ifdef HISTORIC_STATE
-    // histoic call should fail before activation and succees after it
-
+#ifndef MIRAGE
+    // historic call should fail before activation and succees after it
     callResult = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
     BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );
+#endif // MIRAGE
 
     callResult = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
     BOOST_REQUIRE_NE( callResult, string( "0x" ) );
-#endif
+#endif // HISTORIC_STATE
 }
 
 BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
