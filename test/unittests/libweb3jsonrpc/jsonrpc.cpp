@@ -121,8 +121,7 @@ static std::string const c_genesisConfigString =
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
     std::to_string( rand_port ) +
     R"(, "schainIndex" : 1, "publicKey": "0xfa"}
-            ],
-            "contractStorageZeroValuePatchTimestamp": 0,
+            ]
         }
     },
     "accounts": {
