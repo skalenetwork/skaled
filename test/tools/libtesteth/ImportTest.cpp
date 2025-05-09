@@ -60,8 +60,10 @@ ImportTest::ImportTest( json_spirit::mObject const& _input, json_spirit::mObject
       m_statePost( 0 ),
       m_testInputObject( _input ),
       m_testOutputObject( _output ) {
+#ifndef MIRAGE
     m_statePre.setStorageLimit(1000000000);
     m_statePost.setStorageLimit(1000000000);
+#endif
     importEnv( _input.at( "env" ).get_obj() );
     importTransaction( _input.at( "transaction" ).get_obj() );
     importState( _input.at( "pre" ).get_obj(), m_statePre );
@@ -209,7 +211,9 @@ bytes ImportTest::executeTest( bool _isFilling ) {
             if ( statePreIsChanged ) {
                 // revert changes in m_statePre
                 m_statePre = State( 0 );
+#ifndef MIRAGE
                 m_statePre.setStorageLimit(1000000000);
+#endif
                 importState( m_testInputObject.at( "pre" ).get_obj(), m_statePre );
             }
 

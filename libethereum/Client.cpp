@@ -254,7 +254,7 @@ void Client::initStateFromDiskOrGenesis() {
     m_state = State(
         chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
         chainParams().accountInitialFunds
-#ifndef MIRAFE 
+#ifndef MIRAGE
         , chainParams().sChain.contractStorageLimit
 #endif
 #ifdef HISTORIC_STATE

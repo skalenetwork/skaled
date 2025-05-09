@@ -421,7 +421,9 @@ public:
 
     void testGasConsumed( std::string const& _codeStr, u256 const& _originalValue,
         u256 const& _expectedGasConsumed, u256 const& _expectedRefund ) {
+#ifndef MIRAGE
         state.setStorageLimit(1000000000);
+#endif
         state.setStorage( to, 0, _originalValue );
         state.commit( dev::eth::CommitBehaviour::RemoveEmptyAccounts );
 
