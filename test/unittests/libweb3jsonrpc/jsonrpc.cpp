@@ -285,7 +285,14 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 std::string output = fastWriter.write( ret );
                 chainParams = chainParams.loadConfig( output );
             } else {
-                chainParams = chainParams.loadConfig( _config );
+                Json::Value ret;
+                Json::Reader().parse( _config, ret );
+#ifndef BITE
+                ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
+#endif
+                Json::FastWriter fastWriter;
+                std::string output = fastWriter.write( ret );
+                chainParams = chainParams.loadConfig( output );
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -310,10 +317,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #ifndef MIRAGE
             chainParams.sChain.
                     _patchTimestamps[static_cast< size_t >( SchainPatchEnum::PowCheckPatch )] = 1;
-#endif
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
+#endif
             chainParams.sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::StorageDestructionPatch )] = 1;
             powPatchActivationTimestamp = time( nullptr ) + 60;
