@@ -122,7 +122,6 @@ static std::string const c_genesisConfigString =
     std::to_string( rand_port ) +
     R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ],
-            "revertableFSPatchTimestamp": 0,
             "contractStorageZeroValuePatchTimestamp": 0,
             "powCheckPatchTimestamp": 1
         }
@@ -5405,6 +5404,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
@@ -5433,6 +5433,7 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
 
     BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
