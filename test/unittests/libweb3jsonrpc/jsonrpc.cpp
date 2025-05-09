@@ -281,13 +281,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                         ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]
                            ["0x0"] = toJS( account2.address() );
                 }
+#ifndef MIRAGE
+                ret["skaleConfig"]["sChain"]["PowCheckPatchTimestamp"] = 1;
+#endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams = chainParams.loadConfig( output );
             } else {
                 Json::Value ret;
                 Json::Reader().parse( _config, ret );
-#ifndef BITE
+#ifndef MIRAGE
                 ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
 #endif
                 Json::FastWriter fastWriter;
@@ -315,8 +318,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
 #ifndef MIRAGE
-            chainParams.sChain.
-                    _patchTimestamps[static_cast< size_t >( SchainPatchEnum::PowCheckPatch )] = 1;
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
