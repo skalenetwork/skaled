@@ -88,12 +88,14 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
     }
 }
 
+#ifdef MIRAGE
 const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForMIRAGE = { SchainPatchEnum::CorrectForkInPowPatch,
                                            SchainPatchEnum::ContractStorageZeroValuePatch, SchainPatchEnum::PushZeroPatch, SchainPatchEnum::ContractStoragePatch, SchainPatchEnum::StorageDestructionPatch,
                                            SchainPatchEnum::SkipInvalidTransactionsPatch, SchainPatchEnum::VerifyDaSigsPatch, SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::EIP1559TransactionsPatch,
                                            SchainPatchEnum::VerifyBlsSyncPatch, SchainPatchEnum::ClearPartialReceiptsPatch, SchainPatchEnum::InvalidTransactionFormatPatch };
 const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForMIRAGE = { SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::PowCheckPatch,
         SchainPatchEnum::CorrectForkInPowPatch, SchainPatchEnum::FlexibleDeploymentPatch, SchainPatchEnum::ExternalGasPatch };
+#endif
 
 void SchainPatch::init( const dev::eth::ChainOperationParams& _cp ) {
     chainParams = _cp;
