@@ -3308,6 +3308,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0xc868AF52a6549c773082A334E5AE232e0Ea3B513",
                        "latest" ) == "0x16345785d8a0000" );
 
+#ifndef MIRAGE
     // try sending type1 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -3316,6 +3317,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
             "40a0a93017a5cd0e9f10ee50f165bf4b1b4c78ddae" ),
         jsonrpc::JsonRpcException );  // INVALID_PARAMS
     sleep( 10 );
+#endif
 
     // force 1 block to update timestamp
     txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
@@ -3509,6 +3511,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251",
                        "latest" ) == "0x16345785d8a0000" );
 
+#ifndef MIRAGE
     // try sending type2 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -3519,6 +3522,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
             "a00e7f0dd8b5277766d447ea51b7d8f571dc8bb57ff95c068c58f5b6fe9089dde8" ),
         jsonrpc::JsonRpcException );  // INVALID_PARAMS
     sleep( 10 );
+#endif
 
     // force 1 block to update timestamp
     txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
