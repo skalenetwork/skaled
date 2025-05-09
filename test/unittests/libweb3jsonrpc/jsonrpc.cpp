@@ -3841,6 +3841,7 @@ BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
 
+#ifndef MIRAGE
     // send a txn with maxPriorityFeePerGas > maxFeePerGas before InvalidTransactionFormatPatchTimestamp
     txHash = fixture.rpcClient->eth_sendRawTransaction(
         "0x02f86d8197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080"
@@ -3857,6 +3858,7 @@ BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
 
     dev::eth::Transaction t = fixture.client->transaction( dev::h256( txHash ) );
     BOOST_REQUIRE( t.maxFeePerGas() < t.maxPriorityFeePerGas() );
+#endif
 
     sleep( 10 );
 
