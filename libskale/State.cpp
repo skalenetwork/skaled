@@ -135,8 +135,9 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
     skale::BaseState _bs, u256 _initialFunds
 #ifndef MIRAGE
-    , s256 _contractStorageLimit
-#endif    
+    ,
+    s256 _contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
     ,
     s256 _maxHistoricStateDbSize

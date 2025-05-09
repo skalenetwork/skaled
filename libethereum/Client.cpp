@@ -251,11 +251,11 @@ void Client::initStateFromDiskOrGenesis() {
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
-    m_state = State(
-        chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
-        chainParams().accountInitialFunds
+    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds
 #ifndef MIRAGE
-        , chainParams().sChain.contractStorageLimit
+        ,
+        chainParams().sChain.contractStorageLimit
 #endif
 #ifdef HISTORIC_STATE
         ,

@@ -211,7 +211,8 @@ public:
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
         dev::u256 _initialFunds = 0
 #ifndef MIRAGE
-        , dev::s256 _contractStorageLimit = 32
+        ,
+        dev::s256 _contractStorageLimit = 32
 #endif
 #ifdef HISTORIC_STATE
         ,
