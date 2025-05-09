@@ -295,6 +295,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #ifndef MIRAGE
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 106874910;
 #endif
+                Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams = chainParams.loadConfig( output );
                 // insecure schain owner(originator) private key
