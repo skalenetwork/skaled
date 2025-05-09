@@ -1632,6 +1632,7 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         "schainName": "TestChain",
         "schainID": 1,
         "contractStorageLimit": 32000,
+        "precompiledConfigPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
             "1": {
