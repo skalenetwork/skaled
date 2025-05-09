@@ -1797,6 +1797,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
 }
 #endif
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
     std::string _config = c_genesisConfigString;
@@ -1845,7 +1846,6 @@ BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     }
 }
 
-#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     std::string _config = c_genesisConfigString;
     Json::Value ret;
