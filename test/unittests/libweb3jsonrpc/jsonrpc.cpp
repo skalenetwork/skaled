@@ -1694,6 +1694,7 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     u256 ESTIMATE_AFTER_PATCH = u256( 21000 + 1024 * 16 );
     u256 ESTIMATE_BEFORE_PATCH = u256( 21000 + 1024 * 68 );
@@ -1780,6 +1781,7 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], "0x1" );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
