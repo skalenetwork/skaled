@@ -286,31 +286,31 @@ jobs:
           export NO_ULIMIT_CHECK=1
           ./testeth -t JsonRpcSuite -- --express --verbosity 4
       
-      - name: Configure all BITE
+      - name: Configure all MIRAGE
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          mkdir -p build_bite
-          cd build_bite
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DBITE=1 ..
+          mkdir -p build_mirage
+          cd build_mirage
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 ..
           cd ..
-      - name: Build all BITE
+      - name: Build all MIRAGE
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          cd build_bite
+          cd build_mirage
           make testeth -j$(nproc)          
           cd ..
-      - name: Print ccache stats after full BITE build
+      - name: Print ccache stats after full MIRAGE build
         run : |
           ccache --show-stats
-      - name: Testeth BITE
+      - name: Testeth MIRAGE
         run : |
           mkdir -p /tmp/tests/
           sudo rm -rf /tmp/tests/*
-          cd build_bite/test
+          cd build_mirage/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
           export NO_NTP_CHECK=1
@@ -360,22 +360,22 @@ jobs:
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t HashSnapshotTestSuite -- --all && touch /tmp/tests/HashSnapshotTestSuitePassed
           sudo NO_ULIMIT_CHECK=1 NO_NTP_CHECK=1 ./testeth -t ClientSnapshotsSuite -- --all && touch /tmp/tests/ClientSnapshotsSuitePassed
 
-      - name: Configure all as BITE-historic
+      - name: Configure all as MIRAGE-historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          mkdir -p build_bite_historic
-          cd build_bite_historic
+          mkdir -p build_mirage_historic
+          cd build_mirage_historic
           # -DCMAKE_C_FLAGS=-O3 -DCMAKE_CXX_FLAGS=-O3
-          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DBITE=1 -DHISTORIC_STATE=1 ..
+          cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DCOVERAGE=$CODE_COVERAGE -DMIRAGE=1 -DHISTORIC_STATE=1 ..
           cd ..
-      - name: Build all BITE-historic
+      - name: Build all MIRAGE-historic
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
-          cd build_bite_historic
+          cd build_mirage_historic
           make testeth -j$(nproc)          
           cd ..
       - name: Print ccache stats after full historic build
@@ -383,7 +383,7 @@ jobs:
           ccache --show-stats
       - name: Testeth historic
         run : |
-          cd build_bite_historic/test
+          cd build_mirage_historic/test
           export NO_NTP_CHECK=1
           export NO_ULIMIT_CHECK=1
           ./testeth -t JsonRpcSuite -- --express --verbosity 4
