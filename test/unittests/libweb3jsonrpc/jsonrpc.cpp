@@ -320,9 +320,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
-#endif
             chainParams.sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::StorageDestructionPatch )] = 1;
+#endif
             powPatchActivationTimestamp = time( nullptr ) + 60;
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::CorrectForkInPowPatch )] =
