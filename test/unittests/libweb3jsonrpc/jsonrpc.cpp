@@ -2738,7 +2738,7 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
 #else
     BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 192 );
+        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 160 );
 #endif
 }
 
