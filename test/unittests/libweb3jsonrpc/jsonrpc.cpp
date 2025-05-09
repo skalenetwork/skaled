@@ -123,7 +123,6 @@ static std::string const c_genesisConfigString =
     R"(, "schainIndex" : 1, "publicKey": "0xfa"}
             ],
             "contractStorageZeroValuePatchTimestamp": 0,
-            "powCheckPatchTimestamp": 1
         }
     },
     "accounts": {
@@ -309,6 +308,10 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
+#ifndef MIRAGE
+            chainParams.sChain.
+                    _patchTimestamps[static_cast< size_t >( SchainPatchEnum::PowCheckPatch )] = 1;
+#endif
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
@@ -2021,6 +2024,7 @@ BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
     BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x5ac0" );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -2094,6 +2098,7 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     JsonRpcFixture fixture;
