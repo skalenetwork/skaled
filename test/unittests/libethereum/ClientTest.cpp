@@ -110,7 +110,14 @@ public:
 
         ChainParams chainParams;
         if ( _config != "" ) {
-            chainParams = chainParams.loadConfig( _config );
+            Json::Value ret;
+            Json::Reader().parse( _config, ret );
+    #ifndef MIRAGE
+            ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+    #endif
+            Json::FastWriter fastWriter;
+            std::string config = fastWriter.write( ret );
+            chainParams = chainParams.loadConfig( config );
         }
         else {
             chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
@@ -252,13 +259,13 @@ public:
 
         ChainParams chainParams;
 
+        Json::Value ret;
+        Json::Reader().parse( _config, ret );
 #ifndef MIRAGE
-    Json::Value ret;
-    Json::Reader().parse( _config, ret );
-    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
-    Json::FastWriter fastWriter;
-    std::string config = fastWriter.write( ret );
+        ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
 #endif
+        Json::FastWriter fastWriter;
+        std::string config = fastWriter.write( ret );
         chainParams = chainParams.loadConfig( config );
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
