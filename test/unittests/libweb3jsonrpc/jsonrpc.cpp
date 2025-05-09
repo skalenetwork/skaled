@@ -4566,6 +4566,7 @@ BOOST_AUTO_TEST_CASE( deploy_controller_generation2 ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
     // Inserting ConfigController mockup into config and enabling flexibleDeploymentPatch.
     // ConfigController mockup contract:
@@ -4680,6 +4681,7 @@ BOOST_AUTO_TEST_CASE( deployment_control_v2 ) {
     code = fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
