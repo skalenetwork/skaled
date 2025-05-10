@@ -281,9 +281,6 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                         ret["accounts"]["0xD2002000000000000000000000000000000000D2"]["storage"]
                            ["0x0"] = toJS( account2.address() );
                 }
-#ifndef MIRAGE
-                ret["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
-#endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams = chainParams.loadConfig( output );
@@ -3130,7 +3127,14 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
 }
 
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
-    JsonRpcFixture fixture( c_genesisConfigString, false, false, true, false );
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+#ifndef MIRAGE
+    configJson["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
+#endif
+    Json::FastWriter fastWriter;
+    std::string customConfigFile = fastWriter.write( configJson );
+    JsonRpcFixture fixture( customConfigFile, false, false, true, false );
 
     // mine blocks without transactions
     dev::eth::simulateMining( *( fixture.client ), 2000000 );
