@@ -150,7 +150,7 @@ public:
 
 #ifdef BITE
     // TODO - do we need to have m_decryptedData and m_decryptedTo fields separately?
-    // can't we just overwrite the original fields from the tx? 
+    // can't we just overwrite the original fields from the tx?
     // Pass the decrypted data for BITE transaction
     void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
         CHECK_EXPRESSION( _decryptedData )
@@ -166,7 +166,7 @@ public:
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
 
-    /// @return the decrypted address  
+    /// @return the decrypted address
     Address decryptedTo() const;
 
     // if a txn is marked as BITE but doesn't contain valid decrypted data

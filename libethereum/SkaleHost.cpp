@@ -221,7 +221,7 @@ public:
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
+        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 _stateRoot, uint64_t _winningNodeIndex ) override;
@@ -591,10 +591,10 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 DecryptedTransactionFields& txFields = it->second;
 
                 t.setDecryptedData( txFields.data );
-                dev::Address to = dev::Address(txFields.to.get());
-                t.setDecryptedTo( std::make_shared< dev::Address >(to) );
+                dev::Address to = dev::Address( txFields.to.get() );
+                t.setDecryptedTo( std::make_shared< dev::Address >( to ) );
             }
-            
+
 #endif
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );

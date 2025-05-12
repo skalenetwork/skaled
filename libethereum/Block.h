@@ -314,14 +314,12 @@ public:
 
 #ifdef BITE
     void setDecryptedTransactionDataFields(
-        const std::shared_ptr< DecryptedTransactionFieldsMap >&
-            _decryptedTransactionDataFields ) {
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields ) {
         CHECK_EXPRESSION( _decryptedTransactionDataFields );
         m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
     }
 
-    const std::shared_ptr< DecryptedTransactionFieldsMap >&
-    decryptedTransactionDataFields() const {
+    const std::shared_ptr< DecryptedTransactionFieldsMap >& decryptedTransactionDataFields() const {
         return m_decryptedTransactionDataFields;
     }
 #endif
@@ -372,9 +370,8 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    std::shared_ptr< DecryptedTransactionFieldsMap >
-        m_decryptedTransactionDataFields =
-            std::make_shared< DecryptedTransactionFieldsMap >();
+    std::shared_ptr< DecryptedTransactionFieldsMap > m_decryptedTransactionDataFields =
+        std::make_shared< DecryptedTransactionFieldsMap >();
 #endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };

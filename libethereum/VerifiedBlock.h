@@ -42,14 +42,13 @@ struct VerifiedBlockRef {
     BlockHeader info;                         ///< Prepopulated block info
     std::vector< Transaction > transactions;  ///< Verified list of block transactions
 #ifdef BITE
-    std::shared_ptr< DecryptedTransactionFieldsMap >
-        decryptedTransactionDataFields =
-            std::make_shared< DecryptedTransactionFieldsMap >();  ///< Decrypted
-                                                                                   ///< transaction
-                                                                                   ///< data fields
-                                                                                   ///< to be stored
-                                                                                   ///< in
-                                                                                   ///< blockchain
+    std::shared_ptr< DecryptedTransactionFieldsMap > decryptedTransactionDataFields =
+        std::make_shared< DecryptedTransactionFieldsMap >();  ///< Decrypted
+                                                              ///< transaction
+                                                              ///< data fields
+                                                              ///< to be stored
+                                                              ///< in
+                                                              ///< blockchain
 #endif
 };
 

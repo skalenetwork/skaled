@@ -163,8 +163,8 @@ struct TransactionAddress {
 #ifdef BITE
 struct DecryptedTransactionData {
     DecryptedTransactionData() {}
-    DecryptedTransactionData( const bytes& _data, const Address& _to ) : 
-        m_data( _data ), m_to( _to ), size( _data.size() + Address::size ) {}
+    DecryptedTransactionData( const bytes& _data, const Address& _to )
+        : m_data( _data ), m_to( _to ), size( _data.size() + Address::size ) {}
     DecryptedTransactionData( RLP const& _rlp );
     DecryptedTransactionData( const DecryptedTransactionData& other ) = default;
     DecryptedTransactionData& operator=( const DecryptedTransactionData& other ) = default;

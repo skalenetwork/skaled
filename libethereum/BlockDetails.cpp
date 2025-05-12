@@ -47,24 +47,22 @@ bytes BlockDetails::rlp() const {
 #ifdef BITE
 
 DecryptedTransactionData::DecryptedTransactionData( RLP const& _rlp ) {
-        
-    if (_rlp.itemCount() != 2)
-        throw std::invalid_argument("Invalid RLP for DecryptedTransactionData");
+    if ( _rlp.itemCount() != 2 )
+        throw std::invalid_argument( "Invalid RLP for DecryptedTransactionData" );
 
     m_data = _rlp[0].toBytes();
     m_to = _rlp[1].toHash< Address >();
 
-    size = m_data.size() + Address::size;   
+    size = m_data.size() + Address::size;
 }
 
 bytes DecryptedTransactionData::rlp() const {
     RLPStream s;
-    s.appendList(2);
+    s.appendList( 2 );
     s << m_data;
     s << m_to;
     return s.out();
 }
-
 
 
 #endif

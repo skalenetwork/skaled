@@ -601,7 +601,7 @@ bytes const& TransactionBase::decryptedData() const {
 }
 
 Address TransactionBase::decryptedTo() const {
-    if (!m_decryptedTo )
+    if ( !m_decryptedTo )
         return to();
     return *m_decryptedTo;
 }
