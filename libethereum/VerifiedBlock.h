@@ -24,10 +24,7 @@
 
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
-
-#ifdef BITE
 #include "libconsensus/node/ConsensusInterface.h"
-#endif
 
 #pragma once
 

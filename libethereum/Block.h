@@ -42,9 +42,7 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 
-#ifdef BITE
 #include "libconsensus/node/ConsensusInterface.h"
-#endif
 
 namespace skale {
 class State;

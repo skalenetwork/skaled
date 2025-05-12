@@ -159,12 +159,6 @@ public:
         m_isBITETxn = true;
     }
 
-    // Pass the decrypted to address to the transaction
-    void setDecryptedTo( const std::shared_ptr< Address >& _decryptedTo ) {
-        CHECK_EXPRESSION( _decryptedTo )
-        m_decryptedTo = _decryptedTo;
-    }
-
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
 
