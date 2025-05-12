@@ -3547,11 +3547,11 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     // send 1 WEI from 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251 to
     // 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b encoded type 2 txn
     txHash = fixture.rpcClient->eth_sendRawTransaction(
-        "0x02f8c98197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
-        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
-        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
-        "00000701a005bd1eedc509a8e94cfcfc84d0b5fd53a0888a475274cbeee321047da5d139f8a00e7f0dd8b52777"
-        "66d447ea51b7d8f571dc8bb57ff95c068c58f5b6fe9089dde8" );
+        "0x02f8c98197808504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
+        "0f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a000000000000000000000000000000000"
+        "00000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000"
+        "00000000780a0f000a16aeee9ac96602e8b179d39caca61f347a296e78ec9c57ec06c6e378422a02462cfad48"
+        "32a32ed8c55fddf8a033d4a73f62fed993de3687ba14902eaea2d4" );
 
     auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
     BOOST_REQUIRE( pendingTransactions.isArray() && pendingTransactions.size() == 1 );
@@ -3563,14 +3563,14 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     // compare with txn hash from geth
-    BOOST_REQUIRE( txHash == "0xde30b1c26b89e20f6426a87b9427381f9e79e2bb80f992a6f2e1b4dccfa345de" );
+    BOOST_REQUIRE( txHash == "0xd9463624627c7add3b3ac18a228569b3a9075cc05bec64db060ea8904f3c4288" );
     BOOST_REQUIRE(
         dev::toHexPrefixed( fixture.client->transactions( 4 )[0].toBytes() ) ==
-        "0x02f8c98197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
-        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
-        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
-        "00000701a005bd1eedc509a8e94cfcfc84d0b5fd53a0888a475274cbeee321047da5d139f8a00e7f0dd8b52777"
-        "66d447ea51b7d8f571dc8bb57ff95c068c58f5b6fe9089dde8" );
+            "0x02f8c98197808504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
+            "0f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a000000000000000000000000000000000"
+            "00000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000"
+            "00000000780a0f000a16aeee9ac96602e8b179d39caca61f347a296e78ec9c57ec06c6e378422a02462cfad48"
+            "32a32ed8c55fddf8a033d4a73f62fed993de3687ba14902eaea2d4" );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance(
                        "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
@@ -3597,7 +3597,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
-    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3609,8 +3609,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE(
         result.isMember( "maxPriorityFeePerGas" ) && result["maxPriorityFeePerGas"].isString() );
     BOOST_REQUIRE( result.isMember( "maxFeePerGas" ) && result["maxFeePerGas"].isString() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
-    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3619,8 +3619,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
 
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
-    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x4", "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3629,8 +3629,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
 
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
-    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c801" );
 
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_getBlockByNumber( "0x0", false ) );
 }
