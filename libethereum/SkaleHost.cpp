@@ -589,10 +589,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             auto it = _decryptedTransactionFields->find( i );
             if ( it != _decryptedTransactionFields->end() ) {
                 DecryptedTransactionFields& txFields = it->second;
-
-                t.setDecryptedData( txFields.data );
+                
                 dev::Address to = dev::Address( txFields.to.get() );
-                t.setDecryptedTo( std::make_shared< dev::Address >( to ) );
+                t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to )  );
             }
 
 #endif

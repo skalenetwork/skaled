@@ -149,12 +149,13 @@ public:
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
 #ifdef BITE
-    // TODO - do we need to have m_decryptedData and m_decryptedTo fields separately?
-    // can't we just overwrite the original fields from the tx?
-    // Pass the decrypted data for BITE transaction
-    void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
-        CHECK_EXPRESSION( _decryptedData )
-        m_decryptedData = _decryptedData;
+
+    void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData, const std::shared_ptr< Address >& _decryptedTo ) {
+        if ( _decryptedData && _decryptedTo ) {
+            m_decryptedData = _decryptedData;
+            m_decryptedTo = _decryptedTo;
+        }
+        m_isBITETxn = true;
     }
 
     // Pass the decrypted to address to the transaction
@@ -169,8 +170,8 @@ public:
     /// @return the decrypted address
     Address decryptedTo() const;
 
-    // if a txn is marked as BITE but doesn't contain valid decrypted data
-    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData; }
+    // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
+    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData && !m_decryptedTo; }
 
     void checkAndValidateBITETransaction() const;
 #endif
