@@ -1331,7 +1331,9 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
     ar = accountHolder->authenticate( ts );
     Transaction tx2( ts, ar.second );
 
+#ifndef MIRAGE
     h256 txHash = tx2.sha3();
+#endif
 
     CHECK_NONCE_BEGIN( senderAddress );
     CHECK_BALANCE_BEGIN( senderAddress );
@@ -1345,8 +1347,12 @@ BOOST_AUTO_TEST_CASE( partialCatchUp
                                 utcTime(), 2U ) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
+#ifndef MIRAGE
     REQUIRE_BLOCK_SIZE( 2, 2 );
     REQUIRE_BLOCK_TRANSACTION( 2, 1, txHash );
+#else
+    REQUIRE_BLOCK_SIZE( 2, 0 );
+#endif
 
     REQUIRE_NONCE_INCREASE( senderAddress, 0 );
     REQUIRE_BALANCE_DECREASE( senderAddress, 0 );

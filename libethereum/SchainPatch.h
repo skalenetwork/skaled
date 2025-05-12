@@ -21,8 +21,6 @@ public:
     static void init( const dev::eth::ChainOperationParams& _cp );
     static void useLatestBlockTimestamp( time_t _timestamp );
 
-    static SchainPatchEnum getEnumForPatchName( const std::string& _patchName );
-
 protected:
     static void printInfo( const std::string& _patchName, time_t _timeStamp );
     static bool isPatchEnabledInWorkingBlock( SchainPatchEnum _patchEnum ) {

@@ -116,6 +116,16 @@ void SchainPatch::useLatestBlockTimestamp( time_t _timestamp ) {
 }
 
 void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) {
+#ifdef MIRAGE
+    if ( preEnabledForMIRAGE.count( getEnumForPatchName( _patchName ) ) > 0 ) {
+        cnote << "Patch " << _patchName << " is enabled";
+        return;
+    }
+    if ( preDisabledForMIRAGE.count( getEnumForPatchName( _patchName ) ) > 0 ) {
+        cnote << "Patch " << _patchName << " is enabled";
+        return;
+    }
+#endif
     if ( _timeStamp == 0 ) {
         cnote << "Patch " << _patchName << " is disabled";
     } else {

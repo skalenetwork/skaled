@@ -474,9 +474,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     m_state = m_state.createStateCopyAndClearCaches();  // mainly for debugging
 
-    TransactionReceipts saved_receipts =
+    TransactionReceipts saved_receipts = m_receipts =
+        m_state.safePartialTransactionReceipts( info().number() );
 
-        m_receipts = m_state.safePartialTransactionReceipts( info().number() );
     TransactionReceipts receipts = m_receipts;
 
     TransactionReceipts receiptsOfCommitted;
@@ -507,7 +507,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                 m_transactions.push_back( tr );
                 m_transactionSet.insert( tr.sha3() );
                 continue;
-                ;
             }
 
 
