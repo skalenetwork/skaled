@@ -150,7 +150,8 @@ public:
 
 #ifdef BITE
 
-    void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData, const std::shared_ptr< Address >& _decryptedTo ) {
+    void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData,
+        const std::shared_ptr< Address >& _decryptedTo ) {
         if ( _decryptedData && _decryptedTo ) {
             m_decryptedData = _decryptedData;
             m_decryptedTo = _decryptedTo;
@@ -171,7 +172,9 @@ public:
     Address decryptedTo() const;
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
-    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData && !m_decryptedTo; }
+    bool isInvalidBiteTransaction() const {
+        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
+    }
 
     void checkAndValidateBITETransaction() const;
 #endif
