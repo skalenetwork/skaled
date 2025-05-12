@@ -2328,9 +2328,25 @@ BOOST_AUTO_TEST_CASE( getLogs_limit ) {
     JsonRpcFixture fixture(
         "", true, true, false, false, false, -1, { { "getLogsBlocksLimit", "10" } } );
 
-    dev::eth::simulateMining( *( fixture.client ), 1 );
+    dev::eth::simulateMining( *( fixture.client ), 100 );
 
-    /*
+    // push0Patch is enabled by default for MIRAGE
+#ifndef MIRAGE
+    // wait for push0Patch to be activated
+    sleep(10);
+
+    // update block timestamp to activate patch
+    Json::Value txRefill;
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = toJS( fixture.coinbase.address() );
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 100000000000000000;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+#endif
+
+/*
 // SPDX-License-Identifier: None
 pragma solidity ^0.8;
 contract Logger{
@@ -2365,7 +2381,7 @@ fallback() external payable {
     t["from"] = toJS( fixture.coinbase.address() );
     t["value"] = jsToDecimal( "0" );
     t["to"] = contractAddress;
-    t["gas"] = "99000";
+    t["gas"] = "999000";
 
     for ( int i = 0; i < 11; ++i ) {
         std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
