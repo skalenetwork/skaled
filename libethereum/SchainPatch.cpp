@@ -99,8 +99,8 @@ const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForMIRAGE = {
     SchainPatchEnum::InvalidTransactionFormatPatch
 };
 const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForMIRAGE = {
-    SchainPatchEnum::RevertableFSPatch,
-    SchainPatchEnum::FlexibleDeploymentPatch, SchainPatchEnum::ExternalGasPatch
+    SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,
+    SchainPatchEnum::ExternalGasPatch
 };
 #endif
 
