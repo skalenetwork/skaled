@@ -4,29 +4,27 @@ The BITE (Blockchain Integrated Threshold Encryption) protocol is an extension o
 
 # Ciphertext Format
 
-Every encrypted transaction's data can be split into four parts:
+Every encrypted transaction's data can be split into three parts:
 
-1. **`MAGIC_NUMBER`** - `f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00` - Allows the nodes running a chain to identify a transaction as a BITE transaction and validate and handle it during the consensus phase.
+1. **`EPOCH_ID`** - 8-byte integer - The number of the epoch when a transaction is sent. The number is incremented with every committee rotation.
 
-2. **`EPOCH_ID`** - 8-byte integer - The number of the epoch when a transaction is sent. The number is incremented with every committee rotation.
+2. **Encrypted `AES` Key** - The `AES` key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively.
 
-3. **Encrypted `AES` Key** - The `AES` key encrypted using the `Threshold Encryption` algorithm. This is of fixed size, always 224 bytes, and consists of three parts of sizes 128 bytes, 32 bytes, and 64 bytes, respectively.
-
-4. **Encrypted Original Data** - The original data encrypted with an `AES` key. Its size depends on the original data size.
+3. **Encrypted Original Data** - The original data encrypted with an `AES` key. Includes the plaintext `TO` address. Its size depends on the original data size.
 
 # Transaction Flow
 
 1. The transaction is encrypted by a client and sent to the blockchain.
 
-2. The transaction is validated and added to the transaction queue. If the first 16 bytes of the transaction's data do not match the `MAGIC_NUMBER`, it will be processed as a regular transaction. If the transaction matches the `MAGIC_NUMBER` but does not match the `EPOCH_ID` or the cipher cannot be validated, it should be rejected.
+2. The transaction is validated and added to the transaction queue. If the `TO` field of the transaction matches the `BITE_MAGIC_ADDRESS`, then the transaction's data is expected to be encrypted, and to include the original plaintext `TO` destination address. Else, it is processed as a normal transaction. If the `TO` field matches the `BITE_MAGIC_ADDRESS` but the data field does not match the `EPOCH_ID` or the cipher cannot be validated, it should be rejected.
 
 3. If a malicious party includes an invalid BITE transaction in their proposal, such a proposal should be rejected.
 
 4. After a block is decided, consensus runs a decryption round to decrypt all BITE transactions that occurred in the block. If any transaction cannot be decrypted, it is passed to `skaled` in encrypted format.
 
-5. Consensus passes to `skaled` the list of transactions with encrypted data along with the list of the decrypted data fields for corresponding transactions.
+5. Consensus passes to `skaled` the list of transactions with encrypted data along with the list of the decrypted `data` and `to` fields for corresponding transactions.
 
-6. Transactions are validated once again on the `skaled` side. When a BITE transaction is executed inside the EVM, `skaled` swaps the encrypted data with the decrypted data.
+6. Transactions are validated once again on the `skaled` side. When a BITE transaction is executed inside the EVM, `skaled` swaps the encrypted data with the decrypted data, as well as the `BITE_MAGIC_ADDRESS` in the `to` field with the original plaintext destination address.
 
 # Storing Inside the Database
 
@@ -36,4 +34,4 @@ Decrypted data fields are passed from consensus to `skaled` and later used durin
 
 1. **`skale_getCommonPublicKey`** - Returns the current common `BLS` public key for a chain from a given node as a 128-byte hexadecimal string. Note that if a node is in a catch-up state, it may return an outdated key.
 
-2. **`skale_getDecryptedTransactionData`** - Receives a transaction hash as an input parameter and returns the decrypted data associated with the given transaction. If such a transaction does not exist or does not have any decrypted data associated with it, the method throws an error.
+2. **`skale_getDecryptedTransactionData`** - Receives a transaction hash as an input parameter and returns the decrypted `data` and `to` fields associated with the given transaction. If such a transaction does not exist or does not have any decrypted data associated with it, the method throws an error.

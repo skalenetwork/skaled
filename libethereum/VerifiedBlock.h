@@ -25,6 +25,10 @@
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
 
+#ifdef BITE
+#include "libconsensus/node/ConsensusInterface.h"
+#endif
+
 #pragma once
 
 namespace dev {
@@ -38,9 +42,9 @@ struct VerifiedBlockRef {
     BlockHeader info;                         ///< Prepopulated block info
     std::vector< Transaction > transactions;  ///< Verified list of block transactions
 #ifdef BITE
-    std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >
+    std::shared_ptr< DecryptedTransactionFieldsMap >
         decryptedTransactionDataFields =
-            std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >();  ///< Decrypted
+            std::make_shared< DecryptedTransactionFieldsMap >();  ///< Decrypted
                                                                                    ///< transaction
                                                                                    ///< data fields
                                                                                    ///< to be stored

@@ -42,6 +42,9 @@
 #include "Transaction.h"
 #include "TransactionReceipt.h"
 
+#ifdef BITE
+#include "libconsensus/node/ConsensusInterface.h"
+#endif
 
 namespace skale {
 class State;
@@ -311,13 +314,13 @@ public:
 
 #ifdef BITE
     void setDecryptedTransactionDataFields(
-        const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+        const std::shared_ptr< DecryptedTransactionFieldsMap >&
             _decryptedTransactionDataFields ) {
         CHECK_EXPRESSION( _decryptedTransactionDataFields );
         m_decryptedTransactionDataFields = _decryptedTransactionDataFields;
     }
 
-    const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+    const std::shared_ptr< DecryptedTransactionFieldsMap >&
     decryptedTransactionDataFields() const {
         return m_decryptedTransactionDataFields;
     }
@@ -369,9 +372,9 @@ private:
 #ifdef BITE
     // decrypted transaction data fields to be stored with the block and their indexes
     // only filled for a working block
-    std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >
+    std::shared_ptr< DecryptedTransactionFieldsMap >
         m_decryptedTransactionDataFields =
-            std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >();
+            std::make_shared< DecryptedTransactionFieldsMap >();
 #endif
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "block" ) };

@@ -600,6 +600,12 @@ bytes const& TransactionBase::decryptedData() const {
     return *m_decryptedData;
 }
 
+Address TransactionBase::decryptedTo() const {
+    if (!m_decryptedTo )
+        return to();
+    return *m_decryptedTo;
+}
+
 void TransactionBase::checkAndValidateBITETransaction() const {
     // if a txn does not match MAGIC return false
     if ( m_data.empty() || m_data.size() < BITE_MAGIC_SIZE ||

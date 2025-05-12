@@ -596,6 +596,7 @@ std::string Skale::skale_getCommonPublicKey() {
     }
 }
 
+// TODO - returns the data + to address (?)
 std::string Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );

@@ -149,18 +149,28 @@ public:
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
 #ifdef BITE
+    // TODO - do we need to have m_decryptedData and m_decryptedTo fields separately?
+    // can't we just overwrite the original fields from the tx? 
     // Pass the decrypted data for BITE transaction
     void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
-        if ( _decryptedData )
-            m_decryptedData = _decryptedData;
-        m_isBITETxn = true;
+        CHECK_EXPRESSION( _decryptedData )
+        m_decryptedData = _decryptedData;
     }
 
-    // if a txn is marked as BITE but doesn't contain valid decrypted data
-    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData; }
+    // Pass the decrypted to address to the transaction
+    void setDecryptedTo( const std::shared_ptr< Address >& _decryptedTo ) {
+        CHECK_EXPRESSION( _decryptedTo )
+        m_decryptedTo = _decryptedTo;
+    }
 
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
+
+    /// @return the decrypted address  
+    Address decryptedTo() const;
+
+    // if a txn is marked as BITE but doesn't contain valid decrypted data
+    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData; }
 
     void checkAndValidateBITETransaction() const;
 #endif
@@ -337,6 +347,8 @@ protected:
     bool m_isBITETxn = false;
     std::shared_ptr< bytes > m_decryptedData = nullptr;  ///< Transaction data that was decrypted in
                                                          ///< BITE protocol
+    std::shared_ptr< Address > m_decryptedTo = nullptr;  ///< Transaction to address that was
+                                                         ///< decrypted in BITE protocol
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;
