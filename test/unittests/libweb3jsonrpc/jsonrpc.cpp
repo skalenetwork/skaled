@@ -1275,12 +1275,12 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
 #ifdef HISTORIC_STATE
 #ifndef MIRAGE
     // historic call should fail before activation and succees after it
-    callResult = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
-    BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );
+    callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
+    BOOST_REQUIRE_EQUAL( callResult1, string( "0x" ) );
 #endif // MIRAGE
 
-    callResult = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
-    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
+    callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
+    BOOST_REQUIRE_NE( callResult1, string( "0x" ) );
 #endif // HISTORIC_STATE
 }
 
