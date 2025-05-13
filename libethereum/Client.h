@@ -207,6 +207,10 @@ public:
         restartMining();
     }
 
+#ifdef BITE
+    Address getWinningNodeAddressByIndex( uint64_t _winningNodeIndex );
+#endif
+
     /// Type of sealers available for this seal engine.
     strings sealers() const { return sealEngine()->sealers(); }
     /// Current sealer in use.

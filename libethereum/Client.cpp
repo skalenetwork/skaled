@@ -549,7 +549,7 @@ size_t Client::importTransactionsAsBlock(
 #ifdef BITE
     // get winning node address
     Address _winningNodeAddress =
-        bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+        getWinningNodeAddressByIndex( _winningNodeIndex );
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
@@ -596,6 +596,16 @@ size_t Client::importTransactionsAsBlock(
 
     return cntSucceeded;
 }
+
+#ifdef BITE
+Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
+    if ( _winningNodeIndex > 0 ) {
+        return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+    } else {
+        return Block::DEFAULT_BLOCK_ADDRESS;
+    }
+}
+#endif
 
 size_t Client::syncTransactions(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {

@@ -369,7 +369,7 @@ pair< TransactionReceipts, bool > Block::sync(
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
 
     for ( int goodTxs = max( 0, ( int ) transactions.size() - 1 );
-          goodTxs < ( int ) transactions.size(); ) {
+        goodTxs < ( int ) transactions.size(); ) {
         goodTxs = 0;
         for ( auto const& t : transactions )
             if ( !m_transactionSet.count( t.sha3() ) ) {
@@ -501,7 +501,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
 #ifdef BITE
         if ( i == _transactions.size() - 1 )
-            rewardBlockAuthor( _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+            rewardBlockAuthorForNonDefaultBlock( _bc.sealEngine()->blockReward(
+                previousInfo().timestamp(), m_currentBlock.number() ) );
 #endif
         Transaction const& tr = _transactions[i];
         try {
@@ -575,7 +576,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 #ifdef BITE
     if ( _transactions.empty() ) {
         LOG( m_loggerDebug ) << "Rewarding for empty block and commiting";
-        rewardBlockAuthor( _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+        rewardBlockAuthorForNonDefaultBlock(
+            _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
         bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
         m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                               dev::eth::CommitBehaviour::KeepEmptyAccounts );
@@ -820,7 +822,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
             // cB.p^8
             auto expectedUncleParent = _bc.details( m_currentBlock.parentHash() ).parent;
             for ( unsigned i = 1; i < depth;
-                  expectedUncleParent = _bc.details( expectedUncleParent ).parent, ++i ) {
+                expectedUncleParent = _bc.details( expectedUncleParent ).parent, ++i ) {
             }
             if ( expectedUncleParent != uncleParent.hash() ) {
                 UncleParentNotInChain ex;
@@ -840,8 +842,9 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
+
 #ifdef BITE
-    rewardBlockAuthor(
+    rewardBlockAuthorForNonDefaultBlock(
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 #else
     applyRewards( rewarded,
@@ -1010,9 +1013,14 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 }
 
 #ifdef BITE
-void Block::rewardBlockAuthor( u256 const& _blockReward ) {
-    m_state.addBalance( m_currentBlock.author(), _blockReward );
+void Block::rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward ) {
+    if ( m_currentBlock.author() != DEFAULT_BLOCK_ADDRESS ) {
+        m_state.addBalance( m_currentBlock.author(), _blockReward );
+    }
 }
+
+const Address Block::DEFAULT_BLOCK_ADDRESS = jsToAddress( "0x0000000000000000000000000000000000000000" );
+
 #endif
 
 void Block::applyRewards(

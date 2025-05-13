@@ -117,7 +117,7 @@ public:
     /// Set the author address for any transactions we do and rewards we get.
     /// This causes a complete reset of current block.
     void setAuthor( Address const& _id ) {
-        m_author = _id;
+        m_author = Address(_id);
         resetCurrent();
     }
 
@@ -125,9 +125,11 @@ public:
     /// Set the author address for any transactions we do and rewards we get.
     /// No reset of current block
     void safeSetAuthor( Address const& _id ) {
-        m_author = _id;
+        m_author = Address(_id);
         m_currentBlock.setAuthor( m_author );
     }
+
+    static const Address DEFAULT_BLOCK_ADDRESS;
 #endif
 
     /// Note the fact that this block is being used with a particular chain.
@@ -343,8 +345,8 @@ private:
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
 #ifdef BITE
-    // Apply earned rewards exclusively for block author
-    void rewardBlockAuthor( u256 const& _blockReward );
+    // Apply block reward for block author, if it is not default block
+    void rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward );
 #endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
