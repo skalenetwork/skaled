@@ -548,8 +548,7 @@ size_t Client::importTransactionsAsBlock(
 
 #ifdef BITE
     // get winning node address
-    Address _winningNodeAddress =
-        getWinningNodeAddressByIndex( _winningNodeIndex );
+    Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
@@ -581,13 +580,13 @@ size_t Client::importTransactionsAsBlock(
         // Print balance of all node owner addresses
 
 #ifdef BITE
-    LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress << " (index "
-                    << _winningNodeIndex << ")";
+    LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
+                        << " (index " << _winningNodeIndex << ")";
     for ( size_t i = 0; i < chainParams().sChain.nodes.size(); i++ ) {
         Address nodeAddress = chainParams().sChain.nodes[i].owner;
         u256 balance = m_state.balance( nodeAddress );
-        LOG( m_loggerInfo ) << "Node " << i << ", Owner: " << nodeAddress << ", Balance: " << balance
-                        << " at block #" << number();
+        LOG( m_loggerInfo ) << "Node " << i << ", Owner: " << nodeAddress
+                            << ", Balance: " << balance << " at block #" << number();
     }
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );

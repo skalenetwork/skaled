@@ -627,8 +627,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         m_debugTracer.tracepoint( "import_block" );
 
 #ifdef BITE
-        n_succeeded = m_client.importTransactionsAsBlock(
-            out_txns, validDecryptedTransactionDataFields, _gasPrice, _winningNodeIndex, _timeStamp );
+        n_succeeded = m_client.importTransactionsAsBlock( out_txns,
+            validDecryptedTransactionDataFields, _gasPrice, _winningNodeIndex, _timeStamp );
 #else
         n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
 #endif
