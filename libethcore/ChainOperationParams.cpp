@@ -87,12 +87,12 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     else
         return FrontierSchedule;
 
-#ifdef BITE
-    result = MirageZeroPatch::makeSchedule( result );
-#else
     // 2 based on previous - decide by timestamp
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
+
+#ifdef BITE
+    result = MirageZeroPatch::makeSchedule( result );
 #endif
 
     return result;
