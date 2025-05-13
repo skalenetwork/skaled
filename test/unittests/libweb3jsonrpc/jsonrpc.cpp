@@ -5748,15 +5748,19 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 
 #ifndef MIRAGE
     BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 2 );
-#else
-    BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 1 );
-#endif
-    BOOST_REQUIRE_EQUAL( cache.gappedBlockTransactionCount( LatestBlock ), 1 );
     BOOST_REQUIRE_EQUAL( cache.realIndexFromGapped( LatestBlock, 0 ), 1 );
     BOOST_REQUIRE_EQUAL( cache.gappedIndexFromReal( LatestBlock, 1 ), 0 );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 0 ), std::out_of_range );
     BOOST_REQUIRE_EQUAL( cache.transactionPresent( LatestBlock, 0 ), false );
     BOOST_REQUIRE_EQUAL( cache.transactionPresent( LatestBlock, 1 ), true );
+#else
+    BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 1 );
+    BOOST_REQUIRE_EQUAL( cache.gappedBlockTransactionCount( LatestBlock ), 1 );
+    BOOST_REQUIRE_EQUAL( cache.realIndexFromGapped( LatestBlock, 0 ), 0 );
+    BOOST_REQUIRE_NO_THROW( cache.gappedIndexFromReal( LatestBlock, 0 ) );
+    BOOST_REQUIRE_EQUAL( cache.transactionPresent( LatestBlock, 0 ), true );
+    BOOST_REQUIRE_THROW( cache.transactionPresent( LatestBlock, 1 ), std::out_of_range );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( test_exceptions ) {
