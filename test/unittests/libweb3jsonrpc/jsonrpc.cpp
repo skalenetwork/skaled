@@ -5038,7 +5038,7 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     JsonRpcFixture fixture( c_genesisConfigString, true, true, false, true );
     dev::eth::simulateMining( *( fixture.client ), 1 );  // 2 Ether
 
-    cout << "Balance: "
+    cout << " Balance: "
          << fixture.rpcClient->eth_getBalance(
                 fixture.accountHolder->allAccounts()[0].hex(), "latest" )
          << endl;
@@ -5052,7 +5052,8 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     txJson["gasPrice"] = "5000000000000";
     txJson["to"] = fixture.account2.address().hex();
 #ifdef BITE
-    txJson["value"] = "895000000000000000";
+    // Since default block reward is increased to 5
+    txJson["value"] = "3500000000000000000";
 #else
     txJson["value"] = "1000000000000000000";
 #endif
@@ -5066,12 +5067,15 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
 
     // 1 eth left (returned to author)
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    cout << "Balance2: "
+    cout << fixture.accountHolder->allAccounts()[0].hex() << " Balance2: "
          << fixture.rpcClient->eth_getBalance(
                 fixture.accountHolder->allAccounts()[0].hex(), "latest" )
          << endl;
 
     // 2 import 4 transactions with money for 1st, 2nd, and 3rd
+    // Send 4 transactions. 2 from coinbase, 1 from account2
+    // ts2 has future nonce and should not have enough balance.
+    // Therefore ts2 should be skipped and have nullptr receipt
 
     // require full 1 Ether for gas+value
     txJson["gas"] = "100000";
@@ -5114,6 +5118,11 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
          << fixture.rpcClient->eth_getBalance(
                 fixture.accountHolder->allAccounts()[0].hex(), "latest" )
          << endl;
+
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( toJS( h1 ) )["status"], "0x1");  // ok
+    BOOST_CHECK_THROW( fixture.rpcClient->eth_getTransactionReceipt( toJS( h2 ) ), jsonrpc::JsonRpcException );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( toJS( h3 ) )["status"], "0x1");  // ok
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( toJS( h4 ) )["status"], "0x1");  // ok
 
     ( void ) h1;
     ( void ) h2;
