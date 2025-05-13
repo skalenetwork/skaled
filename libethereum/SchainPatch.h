@@ -159,8 +159,6 @@ DEFINE_SIMPLE_PATCH( ClearPartialReceiptsPatch );
  */
 DEFINE_SIMPLE_PATCH( InvalidTransactionFormatPatch );
 
-
-
 /*
  * Context: MIRAGE block rewards patch
  */
