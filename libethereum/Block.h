@@ -117,7 +117,7 @@ public:
     /// Set the author address for any transactions we do and rewards we get.
     /// This causes a complete reset of current block.
     void setAuthor( Address const& _id ) {
-        m_author = Address( _id );
+        m_author = _id;
         resetCurrent();
     }
 
@@ -125,7 +125,7 @@ public:
     /// Set the author address for any transactions we do and rewards we get.
     /// No reset of current block
     void safeSetAuthor( Address const& _id ) {
-        m_author = Address(_id);
+        m_author = _id;
         m_currentBlock.setAuthor( m_author );
     }
 
