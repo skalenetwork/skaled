@@ -1,4 +1,4 @@
-﻿/*
+/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -537,7 +537,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef MIRAGE
     uint64_t _winningNodeIndex,
 #endif
-	uint64_t _timestamp ) {
+    uint64_t _timestamp ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -548,13 +548,13 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
 #ifdef MIRAGE
-// get winning node address
-Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
-{
-	DEV_WRITE_GUARDED( x_working )
-    // set block author as winning node address
-    m_working.safeSetAuthor( _winningNodeAddress );
-}
+    // get winning node address
+    Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
+    {
+        DEV_WRITE_GUARDED( x_working )
+        // set block author as winning node address
+        m_working.safeSetAuthor( _winningNodeAddress );
+    }
 #endif
 
 #ifdef BITE
@@ -583,7 +583,6 @@ Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
 
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateHistoricGroupIndex();
-        // Print balance of all node owner addresses
 
 #ifdef MIRAGE
     LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
@@ -592,7 +591,7 @@ Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
         Address nodeAddress = chainParams().sChain.nodes[i].owner;
         u256 balance = m_state.balance( nodeAddress );
         LOG( m_loggerDebug ) << "Node " << i << ", Owner: " << nodeAddress
-                            << ", Balance: " << balance << " at block #" << number();
+                             << ", Balance: " << balance << " at block #" << number();
     }
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );

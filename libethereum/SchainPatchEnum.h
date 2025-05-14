@@ -23,10 +23,10 @@ enum class SchainPatchEnum {
     ClearPartialReceiptsPatch,
     InvalidTransactionFormatPatch,
 #ifdef MIRAGE
-	PatchesCount,
+    PatchesCount,
     MirageZeroPatch
 #else
-	PatchesCount
+    PatchesCount
 #endif
 };
 

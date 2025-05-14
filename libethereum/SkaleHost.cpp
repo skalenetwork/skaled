@@ -633,9 +633,9 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 #endif
             _gasPrice,
 #ifdef MIRAGE
-			_winningNodeIndex,
+            _winningNodeIndex,
 #endif
-			_timeStamp );
+            _timeStamp );
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )
