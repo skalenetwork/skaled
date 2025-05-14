@@ -9,6 +9,10 @@
 
 #include <string>
 
+#ifdef MIRAGE
+#include <unordered_set>
+#endif
+
 namespace dev {
 namespace eth {
 struct EVMSchedule;
@@ -39,7 +43,6 @@ protected:
     static dev::eth::ChainOperationParams chainParams;
     static std::atomic< time_t > committedBlockTimestamp;
 #ifdef MIRAGE
-#include <unordered_set>
     static const std::unordered_set< SchainPatchEnum > preEnabledForMIRAGE;
     static const std::unordered_set< SchainPatchEnum > preDisabledForMIRAGE;
 #endif
