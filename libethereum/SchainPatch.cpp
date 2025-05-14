@@ -123,7 +123,7 @@ void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) 
         return;
     }
     if ( preDisabledForMIRAGE.count( getEnumForPatchName( _patchName ) ) > 0 ) {
-        cnote << "Patch " << _patchName << " is enabled";
+        cnote << "Patch " << _patchName << " is disabled";
         return;
     }
 #endif
