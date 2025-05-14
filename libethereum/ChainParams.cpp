@@ -387,7 +387,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         auto nodeConfObj = nodeConf.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-#ifdef BITE
+#ifdef MIRAGE
         node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
 #endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
@@ -660,7 +660,7 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     return false;
 }
 
-#ifdef BITE
+#ifdef MIRAGE
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
     const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {

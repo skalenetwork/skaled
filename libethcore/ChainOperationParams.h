@@ -28,7 +28,7 @@
 
 #include <libdevcore/Common.h>
 
-#ifdef BITE
+#ifdef MIRAGE
 #include <libethcore/CommonJS.h>
 #endif
 
@@ -140,7 +140,7 @@ public:
 struct sChainNode {
 public:
     u256 id;
-#ifdef BITE
+#ifdef MIRAGE
     Address owner;
 #endif
     std::string ip;
@@ -204,7 +204,7 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
-#ifdef BITE
+#ifdef MIRAGE
         sChainNode me = { u256( 1 ), jsToAddress( "0x0000000000000000000000000000000000000000" ),
             "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa",
             { "0", "1", "0", "1" } };

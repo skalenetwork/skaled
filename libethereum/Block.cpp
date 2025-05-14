@@ -499,7 +499,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
-#ifdef BITE
+#ifdef MIRAGE
         if ( i == _transactions.size() - 1 )
             rewardBlockAuthorForNonDefaultBlock( _bc.sealEngine()->blockReward(
                 previousInfo().timestamp(), m_currentBlock.number() ) );
@@ -573,7 +573,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
-#ifdef BITE
+#ifdef MIRAGE
     if ( _transactions.empty() ) {
         LOG( m_loggerDebug ) << "Rewarding for empty block and commiting";
         rewardBlockAuthorForNonDefaultBlock(
@@ -843,7 +843,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
 
-#ifdef BITE
+#ifdef MIRAGE
     rewardBlockAuthorForNonDefaultBlock(
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 #else
@@ -1012,7 +1012,7 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     return resultReceipt.first;
 }
 
-#ifdef BITE
+#ifdef MIRAGE
 void Block::rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward ) {
     if ( m_currentBlock.author() != DEFAULT_BLOCK_ADDRESS ) {
         m_state.addBalance( m_currentBlock.author(), _blockReward );
@@ -1134,7 +1134,7 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
-#ifndef BITE
+#ifndef MIRAGE
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
 #endif

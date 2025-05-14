@@ -58,7 +58,7 @@ public:
 
     bytes executeTest( bool _isFilling );
     int exportTest();
-#ifdef BITE
+#ifdef MIRAGE
     static int compareStatesBITE( skale::State const& _stateExpect, State const& _statePost,
         std::unordered_set<Address> const& owners,
         eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),

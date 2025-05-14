@@ -91,7 +91,7 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
     if ( PushZeroPatch::isEnabledWhen( _committedBlockTimestamp ) )
         result = PushZeroPatch::makeSchedule( result );
 
-#ifdef BITE
+#ifdef MIRAGE
     result = MirageZeroPatch::makeSchedule( result );
 #endif
 

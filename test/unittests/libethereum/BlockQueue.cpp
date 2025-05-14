@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE( BlockQueueImport ) {
     TestBlockChain blockchain2( genesisBlock );
 
     TestBlock block1;
-#ifdef BITE
+#ifdef MIRAGE
     u256 nonce = 2;
 #else
     u256 nonce = 1;

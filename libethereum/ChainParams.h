@@ -77,7 +77,7 @@ struct ChainParams : public ChainOperationParams {
     bool checkAdminOriginAllowed( const std::string& origin ) const;
     static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj );
 
-#ifdef BITE
+#ifdef MIRAGE
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
 #endif
 

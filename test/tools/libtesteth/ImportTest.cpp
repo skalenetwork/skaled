@@ -488,7 +488,7 @@ void ImportTest::importTransaction( json_spirit::mObject const& o_tr ) {
             }
 }
 
-#ifdef BITE
+#ifdef MIRAGE
 int ImportTest::compareStatesBITE( State const& _stateExpect, State const& _statePost,
     unordered_set<Address> const& owners,
     AccountMaskMap const _expectedStateOptions, WhenError _throw ) {
@@ -814,7 +814,7 @@ bool ImportTest::checkGeneralTestSectionSearch( json_spirit::mObject const& _exp
                         _search->second.second = stateMap;
                         return true;
                     }
-#ifdef BITE
+#ifdef MIRAGE
                     int errcode = ImportTest::compareStatesBITE( expectState, postState, unordered_set< Address >(), stateMap, WhenError::Throw );
 #else
                     int errcode = ImportTest::compareStates( expectState, postState, stateMap, WhenError::Throw );

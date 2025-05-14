@@ -207,7 +207,7 @@ public:
         restartMining();
     }
 
-#ifdef BITE
+#ifdef MIRAGE
     Address getWinningNodeAddressByIndex( uint64_t _winningNodeIndex );
 #endif
 
@@ -292,15 +292,16 @@ public:
     std::shared_ptr< SkaleHost > skaleHost() const { return m_skaleHost; }
 
     // main entry point after consensus
-#ifdef BITE
     size_t importTransactionsAsBlock( const Transactions& _transactions,
-        const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
-            _decryptedTransactionDataFields,
-        u256 _gasPrice, uint64_t _winningNodeIndex, uint64_t _timestamp = ( uint64_t ) utcTime() );
-#else
-    size_t importTransactionsAsBlock( const Transactions& _transactions, u256 _gasPrice,
-        uint64_t _timestamp = ( uint64_t ) utcTime() );
+#ifdef BITE
+    	const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
+        	_decryptedTransactionDataFields,
 #endif
+	    u256 _gasPrice,
+#ifdef MIRAGE
+	    uint64_t _winningNodeIndex,
+#endif
+		uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
@@ -564,6 +565,9 @@ protected:
     mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
     mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "client" ) };
     mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
+#ifdef MIRAGE
+    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "client" ) };
+#endif
     mutable Logger m_loggerError{ createLogger( VerbosityError, "client" ) };
 
     SkaleDebugTracer m_debugTracer;

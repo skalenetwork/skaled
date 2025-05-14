@@ -777,7 +777,8 @@ BOOST_DATA_TEST_CASE(
     auto senderAddress = coinbase.address();
     auto receiver = KeyPair::create();
 
-#ifdef BITE
+#ifdef MIRAGE
+	// block reward increased for MIRAGE to 5 ETH
     auto value = 6 * dev::eth::ether + dev::eth::wei;
 #else
     auto value = 3 * dev::eth::ether + dev::eth::wei;

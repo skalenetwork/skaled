@@ -636,7 +636,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_validTransaction,
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef BITE
+#ifdef MIRAGE
     const u256 blockReward = 5 * dev::eth::ether;
 #else
     const u256 blockReward = 2 * dev::eth::ether;
@@ -682,7 +682,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInvalidNonce,
 
     // Mine to generate a non-zero account balance
     const size_t blocksToMine = 1;
-#ifdef BITE
+#ifdef MIRAGE
     const u256 blockReward = 5 * dev::eth::ether;
 #else
     const u256 blockReward = 2 * dev::eth::ether;
@@ -722,7 +722,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorInsufficientGas ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef BITE
+#ifdef MIRAGE
     const u256 blockReward = 5 * dev::eth::ether;
 #else
     const u256 blockReward = 2 * dev::eth::ether;
@@ -752,7 +752,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_errorDuplicateTransaction ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef BITE
+#ifdef MIRAGE
     const u256 blockReward = 5 * dev::eth::ether;
 #else
     const u256 blockReward = 2 * dev::eth::ether;
@@ -2119,7 +2119,7 @@ BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
 
     // Mine to generate a non-zero account balance
     const int blocksToMine = 1;
-#ifdef BITE
+#ifdef MIRAGE
     const u256 blockReward = 5 * dev::eth::ether;
 #else
     const u256 blockReward = 2 * dev::eth::ether;
@@ -3992,7 +3992,7 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
 }
 
 
-#ifdef BITE
+#ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( block_author_balance ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
@@ -4041,7 +4041,9 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     BOOST_REQUIRE_EQUAL(
                 fixture.client->balanceAt( jsToAddress( author.asString() ) ) - authorInitialBalance, expectedBalanceChange );
 }
+#endif
 
+#ifdef BITE
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
 
@@ -4287,7 +4289,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
 
     // ---- Type1 tx -----
-    /* 
+    /*
         transaction1['nonce'] = 0
         transaction1['gasPrice'] = 20000000000
         transaction1['gas'] = 30000
@@ -4313,7 +4315,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( type1DecryptedResponse == "0x" + plaintext );
 
     // ---- Type2 tx -----
-    /* 
+    /*
         transaction1['nonce'] = 1
         transaction1['gas'] = 30000
         transaction1['maxFeePerGas'] = 20000000000
@@ -4487,7 +4489,8 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
 
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
-#ifdef BITE
+#ifdef MIRAGE
+	// reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
 #else
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
@@ -4525,7 +4528,8 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 4 );
     t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
-#ifdef BITE
+#ifdef MIRAGE
+// reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL(  etherbaseBalance, 0 );
 #else
     BOOST_REQUIRE_EQUAL(  etherbaseBalance,
@@ -5051,7 +5055,7 @@ BOOST_AUTO_TEST_CASE( skip_invalid_transactions ) {
     txJson["gas"] = "200000";
     txJson["gasPrice"] = "5000000000000";
     txJson["to"] = fixture.account2.address().hex();
-#ifdef BITE
+#ifdef MIRAGE
     txJson["value"] = "3500000000000000000";
 #else
     txJson["value"] = "1000000000000000000";
@@ -5585,7 +5589,10 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-                                       std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(), 1,
+                                       std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+#ifdef MIRAGE
+                                       1,
 #endif
                                        1 );
 
@@ -5619,7 +5626,10 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-                                      std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(), 1,
+                                      std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+#endif
+#ifdef MIRAGE
+                                      1,
 #endif
                                        1 );
 

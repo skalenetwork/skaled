@@ -1718,7 +1718,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     testClient->mineBlocks( 1 );
 
-#ifdef BITE
+#ifdef MIRAGE
     testClient->importTransactionsAsBlock( dev::eth::Transactions(), make_shared< map< uint64_t, std::shared_ptr< bytes > > >(), 1000, 1, 4294967294 );
 #else
     testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );

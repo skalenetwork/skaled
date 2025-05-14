@@ -215,7 +215,7 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                 }
 
                 if (hasBite) {
-    #ifdef BITE
+    #ifdef MIRAGE
                     filteredFiles.push_back(biteFile);
     #else
                     filteredFiles.push_back(nonBiteFile);

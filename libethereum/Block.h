@@ -121,7 +121,7 @@ public:
         resetCurrent();
     }
 
-#ifdef BITE
+#ifdef MIRAGE
     /// Set the author address for any transactions we do and rewards we get.
     /// No reset of current block
     void safeSetAuthor( Address const& _id ) {
@@ -344,7 +344,7 @@ private:
     /// Throws on failure.
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
-#ifdef BITE
+#ifdef MIRAGE
     // Apply block reward for block author, if it is not default block
     void rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward );
 #endif

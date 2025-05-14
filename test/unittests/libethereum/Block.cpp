@@ -227,15 +227,13 @@ BOOST_AUTO_TEST_CASE( bConstantinopleBlockReward ) {
 
     TestBlock const& topBlock = testBlockchain.topBlock();
 
-    #ifdef BITE
-        // default block reward for BITE is 5 ether
+    #ifdef MIRAGE
+        // default block reward for MIRAGE is 5 ether
         BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 5 * ether );
     #else
         // constantinople block reward is 2 ether
         BOOST_REQUIRE_EQUAL( topBlock.state().balance( topBlock.beneficiary() ), 2 * ether );
     #endif
-
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -626,13 +626,16 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
         m_debugTracer.tracepoint( "import_block" );
 
-#ifdef BITE
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
-            validDecryptedTransactionDataFields, _gasPrice, _winningNodeIndex, _timeStamp );
-#else
-        n_succeeded = m_client.importTransactionsAsBlock( out_txns, _gasPrice, _timeStamp );
-#endif
 
+#ifdef BITE
+            validDecryptedTransactionDataFields,
+#endif
+            _gasPrice,
+#ifdef MIRAGE
+			_winningNodeIndex,
+#endif
+			_timeStamp );
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )

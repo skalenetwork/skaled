@@ -381,7 +381,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         AccountMaskMap expectStateMap;
         State stateExpect = State();
         ImportTest::importState( _input.at( "expect" ).get_obj(), stateExpect, expectStateMap );
-#ifdef BITE
+#ifdef MIRAGE
         unordered_set< Address > owners;
         owners.insert( testChain.topBlock().blockHeader().author() );
         if ( ImportTest::compareStatesBITE(
@@ -548,7 +548,7 @@ void testBCTest( json_spirit::mObject const& _o ) {
     postState.setStorageLimit(1000000000);
     BOOST_REQUIRE( ( _o.count( "postState" ) > 0 ) );
     ImportTest::importState( _o.at( "postState" ).get_obj(), postState );
-#ifdef BITE
+#ifdef MIRAGE
     unordered_set< Address > owners;
     owners.insert( testChain.topBlock().blockHeader().author() );
     ImportTest::compareStatesBITE( postState, testChain.topBlock().state(), owners );
@@ -1046,9 +1046,12 @@ BOOST_AUTO_TEST_SUITE_END()
 // Transition from fork to fork tests
 BOOST_FIXTURE_TEST_SUITE( TransitionTests, bcTransitionFixture )
 
-#ifndef BITE
-    BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
-    BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
+BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
+
+#ifndef MIRAGE
+
+BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
+
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()

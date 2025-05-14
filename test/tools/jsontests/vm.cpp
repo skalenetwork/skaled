@@ -375,7 +375,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
-#ifdef BITE
+#ifdef MIRAGE
                     unordered_set< Address > owners;
                     ImportTest::compareStatesBITE(
                         expectState, postState, owners, expectStateMap, WhenError::Throw );
@@ -406,7 +406,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     ImportTest::importState( testOutput.at( "post" ).get_obj(), postState );
                     ImportTest::importState(
                         testInput.at( "expect" ).get_obj(), expectState, expectStateMap );
-#ifdef BITE
+#ifdef MIRAGE
                     unordered_set< Address > owners;
                     ImportTest::compareStatesBITE(
                         expectState, postState, owners, expectStateMap, WhenError::Throw );
@@ -474,7 +474,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
-#ifdef BITE
+#ifdef MIRAGE
                 unordered_set< Address > owners;
                 ImportTest::compareStatesBITE( expectState, postState, owners );
 #else

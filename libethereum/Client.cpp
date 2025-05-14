@@ -528,15 +528,16 @@ void Client::syncBlockQueue() {
     onChainChanged( ir );
 }
 
-#ifdef BITE
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
+#ifdef BITE
     const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
         _decryptedTransactionDataFields,
-    u256 _gasPrice, uint64_t _winningNodeIndex, uint64_t _timestamp ) {
-#else
-size_t Client::importTransactionsAsBlock(
-    const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {
 #endif
+    u256 _gasPrice,
+#ifdef MIRAGE
+    uint64_t _winningNodeIndex,
+#endif
+	uint64_t _timestamp ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -546,16 +547,21 @@ size_t Client::importTransactionsAsBlock(
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
 
+#ifdef MIRAGE
+// get winning node address
+Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
+{
+	DEV_WRITE_GUARDED( x_working )
+    // set block author as winning node address
+    m_working.safeSetAuthor( _winningNodeAddress );
+}
+#endif
+
 #ifdef BITE
-    // get winning node address
-    Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
     {
         // store encrypted transactions
         DEV_WRITE_GUARDED( x_working )
         m_working.setDecryptedTransactionDataFields( _decryptedTransactionDataFields );
-
-        // set block author as winning node address
-        m_working.safeSetAuthor( _winningNodeAddress );
     }
 #endif
 
@@ -579,13 +585,13 @@ size_t Client::importTransactionsAsBlock(
         updateHistoricGroupIndex();
         // Print balance of all node owner addresses
 
-#ifdef BITE
+#ifdef MIRAGE
     LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
                         << " (index " << _winningNodeIndex << ")";
     for ( size_t i = 0; i < chainParams().sChain.nodes.size(); i++ ) {
         Address nodeAddress = chainParams().sChain.nodes[i].owner;
         u256 balance = m_state.balance( nodeAddress );
-        LOG( m_loggerInfo ) << "Node " << i << ", Owner: " << nodeAddress
+        LOG( m_loggerDebug ) << "Node " << i << ", Owner: " << nodeAddress
                             << ", Balance: " << balance << " at block #" << number();
     }
 #endif
@@ -596,7 +602,7 @@ size_t Client::importTransactionsAsBlock(
     return cntSucceeded;
 }
 
-#ifdef BITE
+#ifdef MIRAGE
 Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
     if ( _winningNodeIndex > 0 ) {
         return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );

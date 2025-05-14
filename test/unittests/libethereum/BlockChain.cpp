@@ -68,10 +68,10 @@ BOOST_AUTO_TEST_CASE( opendb ) {
 
 BOOST_AUTO_TEST_CASE( Mining_1_mineBlockWithTransaction ) {
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-#ifdef BITE
+#ifdef MIRAGE
     // addBlock imports block to blockchain.
     // Within tests it uses Block::enact, which is never called on nodes.
-    // For BITE state commit is done in commitToSeal during block.mine.
+    // For MIRAGE state commit is done in syncEveryone during block.mine.
     // Commit is also done in Block::enact. It causes double nonce increment.
     // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
     u256 nonce = 2;
@@ -92,10 +92,10 @@ BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     TestBlock block;
     block.addTransaction( tr );
     block.mine( bc );
-#ifndef BITE
+#ifndef MIRAGE
     // addBlock imports block to blockchain.
     // Within tests it uses Block::enact, which is never called on nodes.
-    // For BITE state commit is done in commitToSeal during block.mine, so no import needed
+    // For MIRAGE state commit is done in syncEveryone during block.mine, so no import needed
     bc.addBlock( block );
 #endif
 
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     TestBlock block2;
     block2.addTransaction( tr2 );
     block2.mine( bc );
-#ifndef BITE
+#ifndef MIRAGE
     bc.addBlock( block2 );
 #endif
 
@@ -245,10 +245,10 @@ BOOST_AUTO_TEST_CASE( attemptImport ) {
     // Malformed
 
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-#ifdef BITE
+#ifdef MIRAGE
     // addBlock imports block to blockchain.
     // Within tests it uses Block::enact, which is never called on nodes.
-    // For BITE state commit is done in commitToSeal during block.mine.
+    // For MIRAGE state commit is done in syncEveryone during block.mine.
     // Commit is also done in Block::enact. It causes double nonce increment.
     // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
     u256 nonce = 2;
@@ -290,10 +290,10 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
     BOOST_CHECK_EQUAL( stat.memTotal(), 0 );
     BOOST_CHECK_EQUAL( stat.memTransactionAddresses, 0 );
 
-#ifdef BITE
+#ifdef MIRAGE
     // addBlock imports block to blockchain.
     // Within tests it uses Block::enact, which is never called on nodes.
-    // For BITE state commit is done in commitToSeal during block.mine.
+    // For MIRAGE state commit is done in syncEveryone during block.mine.
     // Commit is also done in Block::enact. It causes double nonce increment.
     // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
     u256 nonce = 2;

@@ -975,7 +975,7 @@ BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     BOOST_REQUIRE( testClient->getHistoricNodeId( 0 ) == "26" );
     BOOST_REQUIRE( testClient->getHistoricNodeIndex( 0 ) == "3" );
 
-#ifdef BITE
+#ifdef MIRAGE
     testClient->importTransactionsAsBlock( Transactions(), make_shared< map< uint64_t, std::shared_ptr< bytes > > >(), 1000, 0, 4294967294 );
 #else
     testClient->importTransactionsAsBlock( Transactions(), 1000, 4294967294 );
