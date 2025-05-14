@@ -433,7 +433,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         std::vector< sChainNode > nodes;
         if ( startTs > 0 )
             parseNodes( it->second.get_array(), nodes, !keyShareName.empty() );
-        s.currentGroups[ std::distance( nodesObjects.begin(), it ) ] = { nodes, startTs };
+        s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes, startTs };
     }
 
     if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )

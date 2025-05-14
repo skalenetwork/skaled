@@ -182,16 +182,17 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
 
 #ifdef MIRAGE
 // open blocks_and_extras db and read LATEST_BLOCK_TIMESTAMP_KEY from current
-uint64_t BlockChain::getLatestBlockTimestamp( const ChainParams& _params,
-                                           const boost::filesystem::path& _dataDir ) {
+uint64_t BlockChain::getLatestBlockTimestamp(
+    const ChainParams& _params, const boost::filesystem::path& _dataDir ) {
     boost::filesystem::path dbDir = _dataDir / getChainDirName( _params );
 
     fs::create_directories( dbDir / fs::path( "blocks_and_extras" ) );
-    auto rotator = std::make_shared< batched_io::rotating_db_io >( dbDir /
-                                fs::path( "blocks_and_extras" ), 5, _params.nodeInfo.archiveMode );
+    auto rotator = std::make_shared< batched_io::rotating_db_io >(
+        dbDir / fs::path( "blocks_and_extras" ), 5, _params.nodeInfo.archiveMode );
     auto rotatingDb = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
 
-    std::string latestBlockTimestampStr = rotatingDb->lookup( db::Slice( db::LATEST_BLOCK_TIMESTAMP_KEY ) );
+    std::string latestBlockTimestampStr =
+        rotatingDb->lookup( db::Slice( db::LATEST_BLOCK_TIMESTAMP_KEY ) );
     if ( latestBlockTimestampStr.empty() )
         return 0;
 
@@ -1047,7 +1048,7 @@ ImportRoute BlockChain::insertBlockAndExtras( VerifiedBlockRef const& _block,
 #ifdef MIRAGE
             // update LATEST_BLOCK_TIMESTAMP_KEY
             m_db->insert( db::Slice( db::LATEST_BLOCK_TIMESTAMP_KEY ),
-                          db::Slice( std::to_string( _block.info.timestamp() ) ) );
+                db::Slice( std::to_string( _block.info.timestamp() ) ) );
 #endif
             m_db->commit( "insertBlockAndExtras" );
         } catch ( boost::exception const& ex ) {

@@ -135,8 +135,8 @@ public:
     static std::string getChainDirName( const ChainParams& _cp );
 
 #ifdef MIRAGE
-    static uint64_t getLatestBlockTimestamp( const ChainParams& _params,
-                                          const boost::filesystem::path& _dataDir );
+    static uint64_t getLatestBlockTimestamp(
+        const ChainParams& _params, const boost::filesystem::path& _dataDir );
 #endif
 
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
