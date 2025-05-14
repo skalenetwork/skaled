@@ -359,6 +359,12 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
+#ifdef BITE
+        // check if a txn is a BITE txn here
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        checkIfBITETxnAndSet();
+#endif
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -528,8 +534,19 @@ void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck )
 }
 
 int64_t TransactionBase::baseGasRequired(
-    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es ) {
+    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es
+#ifdef BITE
+    ,
+    bool _isBITETxn
+#endif
+) {
     int64_t g = _contractCreation ? _es.txCreateGas : _es.txGas;
+
+    // charge the cost of BITE transaction
+#ifdef BITE
+    if ( _isBITETxn )
+        g += _es.BITETxnCost;
+#endif
 
     // Calculate the cost of input data.
     // No risk of overflow by using int64 until txDataNonZeroGas is quite small
@@ -600,12 +617,27 @@ bytes const& TransactionBase::decryptedData() const {
     return *m_decryptedData;
 }
 
-void TransactionBase::checkAndValidateBITETransaction() const {
+void TransactionBase::checkIfBITETxnAndSet() {
     // if a txn does not match MAGIC return false
     if ( m_data.empty() || m_data.size() < BITE_MAGIC_SIZE ||
          !std::equal( BITE_MAGIC_AS_BYTE_ARRAY, BITE_MAGIC_AS_BYTE_ARRAY + BITE_MAGIC_SIZE,
              m_data.begin() ) )
         return;
+
+    // transaction data starts with BITE_MAGIC_NUMBER
+    // therefore the transaction is considered as BITE txn
+    // it may still be invalid, will check it later
+    m_isBITETxn = true;
+}
+
+void TransactionBase::checkAndValidateBITETransaction() const {
+    // skip non-BITE txn
+    if ( !m_isBITETxn )
+        return;
+
+    // we already checked that the txn data starts with BITE_MAGIC_NUMBER
+    // now verify that the rest of the fields are valid
+
     // minimum size of an encrypted with AES key message is 64 bytes
     if ( m_data.size() < BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
         BOOST_THROW_EXCEPTION( BITETransactionTooShort()
