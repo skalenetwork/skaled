@@ -160,6 +160,15 @@ struct NodeGroup {
     std::array< std::string, 4 > blsPublicKey;
 };
 
+#ifdef MIRAGE
+struct CurrentGroup {
+    std::vector< sChainNode > nodes;
+    uint64_t startTs;
+};
+
+using CurrentGroups = std::array< CurrentGroup, 2 >;
+#endif
+
 /// skale
 struct SChain {
 public:
@@ -168,6 +177,9 @@ public:
     Address owner;
     Address blockAuthor;
     std::vector< sChainNode > nodes;
+#ifdef MIRAGE
+    CurrentGroups currentGroups;
+#endif
     std::vector< NodeGroup > nodeGroups;
     s256 contractStorageLimit = 1000000000;
     uint64_t dbStorageLimit = 0;
@@ -199,6 +211,10 @@ public:
         sChainNode me = { u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
             "0xfa", { "0", "1", "0", "1" } };
         nodes.push_back( me );
+#ifdef MIRAGE
+        currentGroups[0] = { nodes, 1 };
+        currentGroups[1] = { nodes, 2 };
+#endif
     }
 };
 

@@ -268,7 +268,11 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifndef MIRAGE
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
+#else
+            { "nodes", { { js::obj_type }, JsonFieldPresence::Required } },
+#endif
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxFileStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxReservedStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },

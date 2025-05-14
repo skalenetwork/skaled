@@ -32,6 +32,9 @@
 namespace dev {
 
 namespace db {
+
+const static std::string LATEST_BLOCK_TIMESTAMP_KEY = "LATEST_BLOCK_TIMESTAMP";
+
 // WriteBatchFace implements database write batch for a specific concrete
 // database implementation.
 class WriteBatchFace {

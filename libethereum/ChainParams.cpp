@@ -383,42 +383,64 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         s.nodeGroups = nodeGroups;
     }
 
-    for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
-        auto nodeConfObj = nodeConf.get_obj();
-        sChainNode node{};
-        node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-        node.ip = nodeConfObj.at( "ip" ).get_str();
-        node.port = nodeConfObj.at( "basePort" ).get_uint64();
-        try {
-            node.ip6 = nodeConfObj.at( "ip6" ).get_str();
-        } catch ( ... ) {
-            node.ip6 = "";
-        }
-        try {
-            node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
-        } catch ( ... ) {
-            node.port6 = 0;
-        }
-        node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
-        try {
-            node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
-        } catch ( ... ) {
-        }
-        if ( !keyShareName.empty() ) {
+    auto parseNodes = []( auto nodesMap, std::vector< sChainNode >& container, bool isBLSEnabled ) {
+        for ( auto nodeConf : nodesMap ) {
+            auto nodeConfObj = nodeConf.get_obj();
+            sChainNode node{};
+            node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+            node.ip = nodeConfObj.at( "ip" ).get_str();
+            node.port = nodeConfObj.at( "basePort" ).get_uint64();
             try {
-                node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
-                node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
-                node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
-                node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                node.ip6 = nodeConfObj.at( "ip6" ).get_str();
             } catch ( ... ) {
-                node.blsPublicKey[0] = "";
-                node.blsPublicKey[1] = "";
-                node.blsPublicKey[2] = "";
-                node.blsPublicKey[3] = "";
+                node.ip6 = "";
             }
+            try {
+                node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+            } catch ( ... ) {
+                node.port6 = 0;
+            }
+            node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
+            try {
+                node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+            } catch ( ... ) {
+            }
+            if ( isBLSEnabled ) {
+                try {
+                    node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                    node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                    node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                    node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+                } catch ( ... ) {
+                    node.blsPublicKey[0] = "";
+                    node.blsPublicKey[1] = "";
+                    node.blsPublicKey[2] = "";
+                    node.blsPublicKey[3] = "";
+                }
+            }
+            container.push_back( node );
         }
-        s.nodes.push_back( node );
+    };
+
+#ifndef MIRAGE
+    parseNodes( sChainObj.at( "nodes" ).get_array(), s.nodes, !keyShareName.empty() );
+#else
+    auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
+    if ( nodesObjects.size() != 2 )
+        BOOST_THROW_EXCEPTION( runtime_error( "Nodes must have exactly 2 groups provided." ) );
+    for ( auto it = nodesObjects.begin(); it != nodesObjects.end(); ++it ) {
+        uint64_t startTs = std::stoull( it->first );
+        std::vector< sChainNode > nodes;
+        if ( startTs > 0 )
+            parseNodes( it->second.get_array(), nodes, !keyShareName.empty() );
+        s.currentGroups[ std::distance( nodesObjects.begin(), it ) ] = { nodes, startTs };
     }
+
+    if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )
+        std::swap( s.nodes[0], s.nodes[1] );
+
+    s.nodes = s.currentGroups[1].nodes;
+#endif
     cp.sChain = s;
 
     cp.vecAdminOrigins.clear();
@@ -604,7 +626,7 @@ const std::string& ChainParams::getOriginalJson() const {
 
     js::mArray nodes;
 
-    for ( auto node : sChain.nodes ) {
+    for ( const auto& node : sChain.nodes ) {
         js::mObject nodeConfObj;
         nodeConfObj["nodeID"] = ( int64_t ) node.id;
         nodeConfObj["ip"] = node.ip;
@@ -655,4 +677,10 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
             return true;
     }
     return false;
+}
+
+void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
+    if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
+         sChain.currentGroups[0].startTs != uint64_t( -1 ) )
+        sChain.nodes = sChain.currentGroups[0].nodes;
 }

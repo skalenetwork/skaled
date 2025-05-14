@@ -77,6 +77,10 @@ struct ChainParams : public ChainOperationParams {
     bool checkAdminOriginAllowed( const std::string& origin ) const;
     static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj );
 
+#ifdef MIRAGE
+    void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+#endif
+
 private:
     void populateFromGenesis( bytes const& _genesisRLP, AccountMap const& _state );
 
