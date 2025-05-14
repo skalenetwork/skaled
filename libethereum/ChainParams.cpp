@@ -686,4 +686,3 @@ void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
         sChain.nodes = sChain.currentGroups[0].nodes;
 }
 #endif
-
