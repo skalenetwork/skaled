@@ -679,8 +679,11 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     return false;
 }
 
+#ifdef MIRAGE
 void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
          sChain.currentGroups[0].startTs != uint64_t( -1 ) )
         sChain.nodes = sChain.currentGroups[0].nodes;
 }
+#endif
+
