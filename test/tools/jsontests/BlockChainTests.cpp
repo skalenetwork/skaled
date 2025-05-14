@@ -384,7 +384,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
 #ifdef MIRAGE
         unordered_set< Address > owners;
         owners.insert( testChain.topBlock().blockHeader().author() );
-        if ( ImportTest::compareStatesBITE(
+        if ( ImportTest::compareStatesMIRAGE(
                  stateExpect, testChain.topBlock().state(), owners, expectStateMap, WhenError::Throw ) )
             cerr << testName << "\n";
 #else
@@ -551,8 +551,8 @@ void testBCTest( json_spirit::mObject const& _o ) {
 #ifdef MIRAGE
     unordered_set< Address > owners;
     owners.insert( testChain.topBlock().blockHeader().author() );
-    ImportTest::compareStatesBITE( postState, testChain.topBlock().state(), owners );
-    ImportTest::compareStatesBITE( postState, blockchain.topBlock().state(), owners );
+    ImportTest::compareStatesMIRAGE( postState, testChain.topBlock().state(), owners );
+    ImportTest::compareStatesMIRAGE( postState, blockchain.topBlock().state(), owners );
 #else
     ImportTest::compareStates( postState, testChain.topBlock().state() );
     ImportTest::compareStates( postState, blockchain.topBlock().state() );
