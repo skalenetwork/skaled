@@ -1048,11 +1048,7 @@ BOOST_FIXTURE_TEST_SUITE( TransitionTests, bcTransitionFixture )
 
 BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
 
-#ifndef MIRAGE
-
 BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
-
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 
