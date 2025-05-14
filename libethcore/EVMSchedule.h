@@ -85,6 +85,12 @@ struct EVMSchedule {
     unsigned blockhashGas = 20;
     unsigned maxCodeSize = unsigned( -1 );
 
+#ifdef BITE
+    // set it to 21000 currently - same as txGas
+    // we will change it later to tune the network operations
+    unsigned BITETxnCost = 21000;
+#endif
+
     boost::optional< u256 > blockRewardOverwrite;
 
     bool staticCallDepthLimit() const { return !eip150Mode; }
