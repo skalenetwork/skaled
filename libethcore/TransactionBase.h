@@ -159,6 +159,9 @@ public:
     // if a txn is marked as BITE but doesn't contain valid decrypted data
     bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData; }
 
+    // for tests
+    bool isBITETxn() const { return m_isBITETxn; }
+
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
 
@@ -276,7 +279,12 @@ public:
     /// @returns amount of gas required for the basic payment.
     int64_t baseGasRequired( EVMSchedule const& _es ) const {
         assert( !isInvalid() );
-        return baseGasRequired( isCreation(), &m_data, _es );
+        return baseGasRequired( isCreation(), &m_data, _es
+#ifdef BITE
+            ,
+            m_isBITETxn
+#endif
+        );
     }
 
     bool isInvalid() const { return m_type == Type::Invalid; }
@@ -291,7 +299,12 @@ public:
 
     /// Get the fee associated for a transaction with the given data.
     static int64_t baseGasRequired(
-        bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es );
+        bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es
+#ifdef BITE
+        ,
+        bool _isBITETxn = false
+#endif
+    );
 
 protected:
     /// Type of transaction.
@@ -365,6 +378,13 @@ private:
     void streamLegacyTransaction( RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const;
     void streamType1Transaction( RLPStream& _s, IncludeSignature _sig ) const;
     void streamType2Transaction( RLPStream& _s, IncludeSignature _sig ) const;
+
+#ifdef BITE
+    // called in TransactionBase constructor
+    // sets m_isBITETxn to true if a txn data field
+    // starts with BITE_MAGIC_NUMBER
+    void checkIfBITETxnAndSet();
+#endif
 
 public:
     mutable int64_t verifiedOn = -1;  // on which block it was imported

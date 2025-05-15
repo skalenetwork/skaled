@@ -88,6 +88,22 @@ std::string getPatchNameForEnum( SchainPatchEnum _enumValue ) {
     }
 }
 
+#ifdef MIRAGE
+const std::unordered_set< SchainPatchEnum > SchainPatch::preEnabledForMIRAGE = {
+    SchainPatchEnum::PowCheckPatch, SchainPatchEnum::CorrectForkInPowPatch,
+    SchainPatchEnum::ContractStorageZeroValuePatch, SchainPatchEnum::PushZeroPatch,
+    SchainPatchEnum::ContractStoragePatch, SchainPatchEnum::StorageDestructionPatch,
+    SchainPatchEnum::SkipInvalidTransactionsPatch, SchainPatchEnum::VerifyDaSigsPatch,
+    SchainPatchEnum::FastConsensusPatch, SchainPatchEnum::EIP1559TransactionsPatch,
+    SchainPatchEnum::VerifyBlsSyncPatch, SchainPatchEnum::ClearPartialReceiptsPatch,
+    SchainPatchEnum::InvalidTransactionFormatPatch
+};
+const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForMIRAGE = {
+    SchainPatchEnum::RevertableFSPatch, SchainPatchEnum::FlexibleDeploymentPatch,
+    SchainPatchEnum::ExternalGasPatch
+};
+#endif
+
 void SchainPatch::init( const dev::eth::ChainOperationParams& _cp ) {
     chainParams = _cp;
     for ( size_t i = 0; i < _cp.sChain._patchTimestamps.size(); ++i ) {
@@ -101,6 +117,16 @@ void SchainPatch::useLatestBlockTimestamp( time_t _timestamp ) {
 }
 
 void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) {
+#ifdef MIRAGE
+    if ( preEnabledForMIRAGE.count( getEnumForPatchName( _patchName ) ) > 0 ) {
+        cnote << "Patch " << _patchName << " is enabled";
+        return;
+    }
+    if ( preDisabledForMIRAGE.count( getEnumForPatchName( _patchName ) ) > 0 ) {
+        cnote << "Patch " << _patchName << " is disabled";
+        return;
+    }
+#endif
     if ( _timeStamp == 0 ) {
         cnote << "Patch " << _patchName << " is disabled";
     } else {
@@ -110,6 +136,12 @@ void SchainPatch::printInfo( const std::string& _patchName, time_t _timeStamp ) 
 
 bool SchainPatch::isPatchEnabledWhen(
     SchainPatchEnum _patchEnum, time_t _committedBlockTimestamp ) {
+#ifdef MIRAGE
+    if ( preEnabledForMIRAGE.count( _patchEnum ) > 0 )
+        return true;
+    if ( preDisabledForMIRAGE.count( _patchEnum ) > 0 )
+        return false;
+#endif
     time_t activationTimestamp = chainParams.getPatchTimestamp( _patchEnum );
     return activationTimestamp != 0 && _committedBlockTimestamp >= activationTimestamp;
 }

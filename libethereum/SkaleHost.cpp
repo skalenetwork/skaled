@@ -77,12 +77,14 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
     std::map< std::string, std::uint64_t > patchTimeStamps;
 
+#ifndef MIRAGE
     patchTimeStamps["verifyDaSigsPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyDaSigsPatch );
     patchTimeStamps["fastConsensusPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
+#endif
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
