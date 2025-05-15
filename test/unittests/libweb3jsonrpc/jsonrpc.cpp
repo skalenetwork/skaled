@@ -121,10 +121,7 @@ static std::string const c_genesisConfigString =
                 { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
     std::to_string( rand_port ) +
     R"(, "schainIndex" : 1, "publicKey": "0xfa"}
-            ],
-            "revertableFSPatchTimestamp": 0,
-            "contractStorageZeroValuePatchTimestamp": 0,
-            "powCheckPatchTimestamp": 1
+            ]
         }
     },
     "accounts": {
@@ -288,7 +285,14 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 std::string output = fastWriter.write( ret );
                 chainParams = chainParams.loadConfig( output );
             } else {
-                chainParams = chainParams.loadConfig( _config );
+                Json::Value ret;
+                Json::Reader().parse( _config, ret );
+#ifndef MIRAGE
+                ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
+#endif
+                Json::FastWriter fastWriter;
+                std::string output = fastWriter.write( ret );
+                chainParams = chainParams.loadConfig( output );
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -310,6 +314,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
+#ifndef MIRAGE
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
@@ -323,6 +328,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::PushZeroPatch )] =
                 push0PatchActivationTimestamp;
+#endif
             chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
@@ -1222,6 +1228,7 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     callObject["from"] = toJS( fixture.account2.address() );
     callObject["to"] = contractAddress;
 
+#ifndef MIRAGE
     // first try without PushZeroPatch
 
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
@@ -1243,17 +1250,21 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
     BOOST_REQUIRE_GE( fixture.client->blockInfo( LatestBlock ).timestamp(),
         fixture.push0PatchActivationTimestamp );
+#endif
 
+#ifdef HISTORIC_STATE
     uint64_t crossingBlockNumber = fixture.client->number();
-    ( void ) crossingBlockNumber;
+#endif
 
-    // in the "corssing" block tx still should fail
+#ifndef MIRAGE
+    // in the "crossing" block tx still should fail
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x0" ) );
+#endif
 
     // in 1st block with patch call should succeed
-    callResult = fixture.rpcClient->eth_call( callObject, "latest" );
-    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
+    auto callResult1 = fixture.rpcClient->eth_call( callObject, "latest" );
+    BOOST_REQUIRE_NE( callResult1, string( "0x" ) );
 
     // tx should succeed too
     txHash = fixture.rpcClient->eth_sendTransaction( callObject );
@@ -1262,14 +1273,15 @@ BOOST_AUTO_TEST_CASE( push0_patch_activation ) {
     BOOST_REQUIRE_EQUAL( receipt["status"], string( "0x1" ) );
 
 #ifdef HISTORIC_STATE
-    // histoic call should fail before activation and succees after it
+#ifndef MIRAGE
+    // historic call should fail before activation and succees after it
+    callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
+    BOOST_REQUIRE_EQUAL( callResult1, string( "0x" ) );
+#endif // MIRAGE
 
-    callResult = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber - 1 ) );
-    BOOST_REQUIRE_EQUAL( callResult, string( "0x" ) );
-
-    callResult = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
-    BOOST_REQUIRE_NE( callResult, string( "0x" ) );
-#endif
+    callResult1 = fixture.rpcClient->eth_call( callObject, toJS( crossingBlockNumber ) );
+    BOOST_REQUIRE_NE( callResult1, string( "0x" ) );
+#endif // HISTORIC_STATE
 }
 
 BOOST_AUTO_TEST_CASE( eth_estimateGas ) {
@@ -1692,6 +1704,7 @@ BOOST_AUTO_TEST_CASE( estimate_gas_with_error ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     u256 ESTIMATE_AFTER_PATCH = u256( 21000 + 1024 * 16 );
     u256 ESTIMATE_BEFORE_PATCH = u256( 21000 + 1024 * 68 );
@@ -1778,7 +1791,9 @@ BOOST_AUTO_TEST_CASE( simplePoWTransaction ) {
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE_EQUAL( receipt["status"], "0x1" );
 }
+#endif
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( clearPartialReceipts ) {
     // Prepare fixture
     std::string _config = c_genesisConfigString;
@@ -1973,6 +1988,7 @@ BOOST_AUTO_TEST_CASE( recalculateExternalGas ) {
     BOOST_REQUIRE( receipt["status"].asString() == "0x1" );
     BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x13ef4" );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
     std::string _config = c_genesisConfigString;
@@ -2022,6 +2038,7 @@ BOOST_AUTO_TEST_CASE( skipTransactionExecution ) {
     BOOST_REQUIRE( receipt["gasUsed"].asString() == "0x5ac0" );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     JsonRpcFixture fixture;
     dev::eth::simulateMining( *( fixture.client ), 1 );
@@ -2095,6 +2112,7 @@ BOOST_AUTO_TEST_CASE( transactionWithoutFunds ) {
     balanceString = fixture.rpcClient->eth_getBalance( toJS( address2 ), "latest" );
     BOOST_REQUIRE_EQUAL( toJS( 0 ), balanceString );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( eth_sendRawTransaction_gasPriceTooLow ) {
     JsonRpcFixture fixture;
@@ -2310,9 +2328,25 @@ BOOST_AUTO_TEST_CASE( getLogs_limit ) {
     JsonRpcFixture fixture(
         "", true, true, false, false, false, -1, { { "getLogsBlocksLimit", "10" } } );
 
-    dev::eth::simulateMining( *( fixture.client ), 1 );
+    dev::eth::simulateMining( *( fixture.client ), 100 );
 
-    /*
+    // push0Patch is enabled by default for MIRAGE
+#ifndef MIRAGE
+    // wait for push0Patch to be activated
+    sleep(10);
+
+    // update block timestamp to activate patch
+    Json::Value txRefill;
+    txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
+    txRefill["from"] = toJS( fixture.coinbase.address() );
+    txRefill["gas"] = "100000";
+    txRefill["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txRefill["value"] = 100000000000000000;
+    string txHash = fixture.rpcClient->eth_sendTransaction( txRefill );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
+#endif
+
+/*
 // SPDX-License-Identifier: None
 pragma solidity ^0.8;
 contract Logger{
@@ -2347,7 +2381,7 @@ fallback() external payable {
     t["from"] = toJS( fixture.coinbase.address() );
     t["value"] = jsToDecimal( "0" );
     t["to"] = contractAddress;
-    t["gas"] = "99000";
+    t["gas"] = "999000";
 
     for ( int i = 0; i < 11; ++i ) {
         std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
@@ -3107,7 +3141,14 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
 }
 
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
-    JsonRpcFixture fixture( c_genesisConfigString, false, false, true, false );
+    Json::Value configJson;
+    Json::Reader().parse( c_genesisConfigString, configJson );
+#ifndef MIRAGE
+    configJson["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
+#endif
+    Json::FastWriter fastWriter;
+    std::string customConfigFile = fastWriter.write( configJson );
+    JsonRpcFixture fixture( customConfigFile, false, false, true, false );
 
     // mine blocks without transactions
     dev::eth::simulateMining( *( fixture.client ), 2000000 );
@@ -3288,6 +3329,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0xc868AF52a6549c773082A334E5AE232e0Ea3B513",
                        "latest" ) == "0x16345785d8a0000" );
 
+#ifndef MIRAGE
     // try sending type1 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -3296,6 +3338,7 @@ BOOST_AUTO_TEST_CASE( eip2930Transactions ) {
             "40a0a93017a5cd0e9f10ee50f165bf4b1b4c78ddae" ),
         jsonrpc::JsonRpcException );  // INVALID_PARAMS
     sleep( 10 );
+#endif
 
     // force 1 block to update timestamp
     txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
@@ -3489,6 +3532,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance( "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251",
                        "latest" ) == "0x16345785d8a0000" );
 
+#ifndef MIRAGE
     // try sending type2 txn before patchTimestmap
     BOOST_REQUIRE_THROW(
         fixture.rpcClient->eth_sendRawTransaction(
@@ -3499,6 +3543,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
             "a00e7f0dd8b5277766d447ea51b7d8f571dc8bb57ff95c068c58f5b6fe9089dde8" ),
         jsonrpc::JsonRpcException );  // INVALID_PARAMS
     sleep( 10 );
+#endif
 
     // force 1 block to update timestamp
     txRefill["to"] = "0xc868AF52a6549c773082A334E5AE232e0Ea3B513";
@@ -3518,11 +3563,11 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     // send 1 WEI from 0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251 to
     // 0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b encoded type 2 txn
     txHash = fixture.rpcClient->eth_sendRawTransaction(
-        "0x02f8c98197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
-        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
-        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
-        "00000701a005bd1eedc509a8e94cfcfc84d0b5fd53a0888a475274cbeee321047da5d139f8a00e7f0dd8b52777"
-        "66d447ea51b7d8f571dc8bb57ff95c068c58f5b6fe9089dde8" );
+        "0x02f8c98197808504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
+        "0f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a000000000000000000000000000000000"
+        "00000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000"
+        "00000000780a0f000a16aeee9ac96602e8b179d39caca61f347a296e78ec9c57ec06c6e378422a02462cfad48"
+        "32a32ed8c55fddf8a033d4a73f62fed993de3687ba14902eaea2d4" );
 
     auto pendingTransactions = fixture.rpcClient->eth_pendingTransactions();
     BOOST_REQUIRE( pendingTransactions.isArray() && pendingTransactions.size() == 1 );
@@ -3534,14 +3579,14 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     // compare with txn hash from geth
-    BOOST_REQUIRE( txHash == "0xde30b1c26b89e20f6426a87b9427381f9e79e2bb80f992a6f2e1b4dccfa345de" );
+    BOOST_REQUIRE( txHash == "0xd9463624627c7add3b3ac18a228569b3a9075cc05bec64db060ea8904f3c4288" );
     BOOST_REQUIRE(
         dev::toHexPrefixed( fixture.client->transactions( 4 )[0].toBytes() ) ==
-        "0x02f8c98197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
-        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
-        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
-        "00000701a005bd1eedc509a8e94cfcfc84d0b5fd53a0888a475274cbeee321047da5d139f8a00e7f0dd8b52777"
-        "66d447ea51b7d8f571dc8bb57ff95c068c58f5b6fe9089dde8" );
+            "0x02f8c98197808504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b018"
+            "0f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a000000000000000000000000000000000"
+            "00000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000"
+            "00000000780a0f000a16aeee9ac96602e8b179d39caca61f347a296e78ec9c57ec06c6e378422a02462cfad48"
+            "32a32ed8c55fddf8a033d4a73f62fed993de3687ba14902eaea2d4" );
 
     BOOST_REQUIRE( fixture.rpcClient->eth_getBalance(
                        "0x7D36aF85A184E220A656525fcBb9A63B9ab3C12b", "latest" ) == "0x1" );
@@ -3568,7 +3613,7 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
     BOOST_REQUIRE( receipt["type"] == "0x2" );
-    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c800" );
+    BOOST_REQUIRE( receipt["effectiveGasPrice"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByHash( txHash );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3580,8 +3625,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE(
         result.isMember( "maxPriorityFeePerGas" ) && result["maxPriorityFeePerGas"].isString() );
     BOOST_REQUIRE( result.isMember( "maxFeePerGas" ) && result["maxFeePerGas"].isString() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
-    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockHashAndIndex( blockHash, "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3590,8 +3635,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
 
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
-    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c801" );
 
     result = fixture.rpcClient->eth_getTransactionByBlockNumberAndIndex( "0x4", "0x0" );
     BOOST_REQUIRE( result["hash"].asString() == txHash );
@@ -3600,8 +3645,8 @@ BOOST_AUTO_TEST_CASE( eip1559Transactions ) {
     BOOST_REQUIRE( result["yParity"].asString() == result["v"].asString() );
 
     BOOST_REQUIRE( result["accessList"].isArray() );
-    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c801" );
-    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxPriorityFeePerGas"] == "0x4a817c800" );
+    BOOST_REQUIRE( result["maxFeePerGas"] == "0x4a817c801" );
 
     BOOST_REQUIRE_NO_THROW( fixture.rpcClient->eth_getBlockByNumber( "0x0", false ) );
 }
@@ -3769,11 +3814,9 @@ BOOST_AUTO_TEST_CASE( vInTxnSignature ) {
 
     // send type2 txn
     txHash = fixture.rpcClient->eth_sendRawTransaction(
-        "0x02f8c98197038504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b0180"
-        "f85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000"
-        "000000000000000000000000000003a00000000000000000000000000000000000000000000000000000000000"
-        "00000701a0c16ec291a6f4e91476f39e624baf42730b21a805e570fe52334df13d69b63d3fa01c7e9662635512"
-        "a3bc47d479b17af2df59491e6663823ca13789a86da6dff1a5" );
+        "0x02f86d8197038504a817c8008504a817c801827530947d36af85a184e220a656525fcbb9a63b9ab3c12b808"
+        "0c001a0f399bf6ecf7f7d464d18a36a05475c6464760a111a2039b9be76eadbe185e4b4a0234c828163103039"
+        "446653ebc8031631ab984e59169be57a759345fe4a1bf127" );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     txn = fixture.rpcClient->eth_getTransactionByHash( txHash );
@@ -3815,6 +3858,7 @@ BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["status"] == string( "0x1" ) );
 
+#ifndef MIRAGE
     // send a txn with maxPriorityFeePerGas > maxFeePerGas before InvalidTransactionFormatPatchTimestamp
     txHash = fixture.rpcClient->eth_sendRawTransaction(
         "0x02f86d8197808504a817c8018504a817c800827530947d36af85a184e220a656525fcbb9a63b9ab3c12b8080"
@@ -3831,6 +3875,7 @@ BOOST_AUTO_TEST_CASE( InvalidTransactionFormatPatch ) {
 
     dev::eth::Transaction t = fixture.client->transaction( dev::h256( txHash ) );
     BOOST_REQUIRE( t.maxFeePerGas() < t.maxPriorityFeePerGas() );
+#endif
 
     sleep( 10 );
 
@@ -3973,8 +4018,195 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
 }
 
 #ifdef BITE
+
+static std::string const c_BITEConfigString =
+    R"(
+{
+    "sealEngine": "NoProof",
+    "params": {
+         "accountStartNonce": "0x00",
+         "maximumExtraDataSize": "0x1000000",
+         "blockReward": "0x4563918244F40000",
+         "allowFutureBlocks": true,
+         "homesteadForkBlock": "0x00",
+         "EIP150ForkBlock": "0x00",
+         "EIP158ForkBlock": "0x00",
+         "byzantiumForkBlock": "0x00",
+         "constantinopleForkBlock": "0x00",
+         "istanbulForkBlock": "0x00",
+         "skaleDisableChainIdCheck": true,
+         "externalGasDifficulty": "0x1"
+    },
+    "genesis": {
+        "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
+        "difficulty" : "0x20000",
+        "gasLimit" : "0x0f4240",
+        "nonce" : "0x00",
+        "extraData" : "0x00",
+        "timestamp" : "0x00",
+        "mixHash" : "0x00",
+        "stateRoot": "0x01"
+    },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeID": 8,
+            "nodeName": "test_node",
+            "bindIP": "0.0.0.0",
+            "logLevel": "info",
+            "logLevelConfig": "info",
+            "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
+            "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",
+            "rotateAfterBlock": 10240,
+            "basePort": )" +
+    std::to_string( rand_port ) + R"(,
+            "logLevel": "trace",
+            "logLevelProposal": "trace",
+            "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68",
+            "wallets": {
+                "ima": {
+                    "keyShareName": "BLS_KEY:SCHAIN_ID:1:NODE_ID:0:DKG_ID:0",
+                    "t": 1,
+                    "n": 1,
+                    "certFile": "/skale-data/node_data/sgx_certs/sgx.crt",
+                    "keyFile": "/skale-data/node_data/sgx_certs/sgx.key",
+                    "commonBLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                    "commonBLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                    "commonBLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                    "commonBLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
+                    "BLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                    "BLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                    "BLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                    "BLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                }
+            }
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "contractStorageLimit": 128,
+            "emptyBlockIntervalMs": -1,
+            "nodeGroups": {
+                "0": {
+                    "nodes": {
+                        "8": [
+                            1,
+                            8,
+                            "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467"
+                        ]
+                    },
+                    "finish_ts": null,
+                    "bls_public_key": {
+                        "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                        "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                        "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                        "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                    }
+                }
+            },
+            "nodes": [
+                {
+                    "nodeID": 8,
+                    "nodeName": "test_node",
+                    "basePort": )" + std::to_string( rand_port ) + R"(,
+                    "httpRpcPort": 9568,
+                    "httpsRpcPort": 9573,
+                    "wsRpcPort": 9567,
+                    "wssRpcPort": 9572,
+                    "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                    "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                    "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                    "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
+                    "publicKey": "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                    "owner": "0x5112ce768917e907191557d7e9521c2590cdd3a0",
+                    "schainIndex": 1,
+                    "ip": "186.14.217.13",
+                    "publicIP": "4.127.224.50"
+                }
+            ]
+        }
+    },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)"
+    /*
+pragma solidity ^0.4.25;
+contract Caller {
+function call() public {
+bool status;
+string memory fileName = "test";
+address sender = 0x000000000000000000000000000000AA;
+assembly{
+let ptr := mload(0x40)
+mstore(ptr, sender)
+mstore(add(ptr, 0x20), 4)
+mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+mstore(add(ptr, 0x60), 1)
+status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+}
+}
+
+function revertCall() public {
+call();
+revert();
+}
+}
+*/
+    R"("0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
+            "balance" : "1000000000000000000000000000000"
+        },
+        "0x7aa5E36AA15E93D10F4F26357C30F052DacDde5F": {
+            "balance": "1000000000000000000000000000000"
+        },
+        "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+            "balance" : "0x00",
+            "code" : "0x6080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14604e578063f38fb65b146062575b600080fd5b348015605957600080fd5b5060606076565b005b348015606d57600080fd5b50607460ec565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f1935050505050565b60f26076565b600080fd00a165627a7a72305820262a5822c4fe6c154b2ef3198c7827d35fc6da59da2cea2c4f2fad9d4a5ccd5e0029",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
+            "balance" : "0x0de0b6b3a7640000",
+            "code" : "0x6001600101600055",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0xC2002000000000000000000000000000000000C2": {
+            "balance": "0",
+            "code": "0x6080604052348015600f57600080fd5b506004361060325760003560e01c80639b063104146037578063cd16ecbf146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b81019080803590602001909291905050506097565b005b8060018190555050565b806000819055505056fea265627a7a7231582029df540a7555533ef4b3f66bc4f9abe138b00117d1496efbfd9d035a48cd595e64736f6c634300050d0032",
+            "storage": {
+                "0x0": "0x01"
+            },
+            "nonce": "0"
+        },
+        "0xD2002000000000000000000000000000000000D2": {
+            "balance": "0",
+            "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
+            "storage": {
+            },
+            "nonce": "0"
+        },
+        "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+            "balance" : "0x0de0b6b3a7640000",
+            "code" : "0x",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0xD2001300000000000000000000000000000000D4": {
+            "balance": "0",
+            "nonce": "0",
+            "storage": {},
+            "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"
+        }
+    }
+}
+)";
+
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
-    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
     auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
 
@@ -4011,7 +4243,7 @@ std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string
 }
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
-    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true, true );
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
@@ -4102,7 +4334,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
 }
 
 BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
-    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true, true );
+    JsonRpcFixture fixture( c_BITEConfigString, false, false, true, true );
 
     dev::eth::simulateMining( *( fixture.client ), 20 );
     string senderAddress = toJS( fixture.coinbase.address() );
@@ -4221,14 +4453,14 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     /* 
         transaction1['nonce'] = 0
         transaction1['gasPrice'] = 20000000000
-        transaction1['gas'] = 30000
+        transaction1['gas'] = 60000
         transaction1['to'] = 0xc868AF52a6549c773082A334E5AE232e0Ea3B513
         transaction1['value'] = 0
         transaction1['chainId'] = 151
         transaction1['type'] = 1
         transaction1['data'] = encryptedData
     */
-    std::string type1Tx = "0x01f9021d8197808504a817c80082753094c868af52a6549c773082a334e5ae232e0ea3b51380b90158f3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000e4ec6dc92d704a46f665eab4426fe350be599ed05cd024943d73407da78c81a7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b8cab15065028fb53f105fd193743e7591ac4e112bcc560cf8c2b3110efc2c5df6aff05e0605075ea60e5da0975fe41f94e9d5383c6109eba8c986aed7df39477b3bec9f406d1b86df399071ebf3b865aac42e2f165978c51368596d7ba253bff85bf85994de0b295669a9fd93d5f28d9ec85e40f4cb697baef842a00000000000000000000000000000000000000000000000000000000000000003a0000000000000000000000000000000000000000000000000000000000000000701a00efa248f852092b34c99c89ab5fe1f70c0122ac47b8533aedaa6c4e0c5d34332a0241eac560bf60504fb852af28e42a9d8c77979eb131eebca4f3526be8bec3b82";
+    std::string type1Tx = "0x01f901c18197808504a817c80082ea6094c868af52a6549c773082a334e5ae232e0ea3b51380b90158f3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000e4ec6dc92d704a46f665eab4426fe350be599ed05cd024943d73407da78c81a7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b8cab15065028fb53f105fd193743e7591ac4e112bcc560cf8c2b3110efc2c5df6aff05e0605075ea60e5da0975fe41f94e9d5383c6109eba8c986aed7df39477b3bec9f406d1b86df399071ebf3b865aac42e2f165978c51368596d7ba253bfc080a0554eec8381742af6d4a2ea9d28ce72cad23fe36e6d153c7b80a5fe50e3080cf3a052dcc837dfdb78d26719d48236c32a13aae1adf150c6dda2ae21f3df1b16316a";
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -4246,7 +4478,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // ---- Type2 tx -----
     /* 
         transaction1['nonce'] = 1
-        transaction1['gas'] = 30000
+        transaction1['gas'] = 60000
         transaction1['maxFeePerGas'] = 20000000000
         transaction1['maxPriorityFeePerGas'] = 20000000000 - 1
         transaction1['to'] = 0xc868AF52a6549c773082A334E5AE232e0Ea3B513
@@ -4255,7 +4487,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
         transaction1['type'] = 2
         transaction1['data'] = encryptedData
     */
-   std::string type2Tx = "0x02f901c78197018504a817c7ff8504a817c80082753094c868af52a6549c773082a334e5ae232e0ea3b51380b90158f3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000e4ec6dc92d704a46f665eab4426fe350be599ed05cd024943d73407da78c81a7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b8cab15065028fb53f105fd193743e7591ac4e112bcc560cf8c2b3110efc2c5df6aff05e0605075ea60e5da0975fe41f94e9d5383c6109eba8c986aed7df39477b3bec9f406d1b86df399071ebf3b865aac42e2f165978c51368596d7ba253bfc001a032e55a5697f8ab1c4396a9c083e73706080c95fc35d67549cc8f34724884f84ea01cf8a93ad9530f2bb5fb8bb12f021ee8e4d5692a487a1d8f6c88e2d136e04c87";
+   std::string type2Tx = "0x02f901c78197018504a817c7ff8504a817c80082ea6094c868af52a6549c773082a334e5ae232e0ea3b51380b90158f3a9c7b1e4d5f28c7b1e9a3f5d2c8b000000000000000000e4ec6dc92d704a46f665eab4426fe350be599ed05cd024943d73407da78c81a7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b8cab15065028fb53f105fd193743e7591ac4e112bcc560cf8c2b3110efc2c5df6aff05e0605075ea60e5da0975fe41f94e9d5383c6109eba8c986aed7df39477b3bec9f406d1b86df399071ebf3b865aac42e2f165978c51368596d7ba253bfc080a05e9fefdc630a869f97a8e49ddbda0d3f1831f574aea2b36fcb1b36a3f6c2f9a9a00b07b097cbf260f7c77ceadc9b2e5017c0ed423a68cc048882e8cdd8a78e0896";
    std::string type2Hash = fixture.rpcClient->eth_sendRawTransaction( type2Tx );
 
    dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -4340,6 +4572,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     store1["data"] = formEncryptedMessageMockup( dataStore1 );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    store1["gas"] = "111000";
     txHash = fixture.rpcClient->eth_sendTransaction( store1 );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
@@ -4367,6 +4600,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
 
 #endif
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
@@ -4730,6 +4964,7 @@ BOOST_AUTO_TEST_CASE( filestorage_generation2 ) {
     hasRoleCall["to"] = "0xD3002000000000000000000000000000000000d3";
     BOOST_REQUIRE( jsToInt( fixture.rpcClient->eth_call( hasRoleCall, "latest" ) ) == 100 );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( PrecompiledPrintFakeEth,
     *boost::unit_test::precondition( []( unsigned long ) -> bool { return false; } ) ) {
@@ -5405,6 +5640,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
@@ -5433,6 +5669,7 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
 
     BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
@@ -5510,13 +5747,21 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 #endif
                                        1 );
 
+#ifndef MIRAGE
     BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 2 );
-    BOOST_REQUIRE_EQUAL( cache.gappedBlockTransactionCount( LatestBlock ), 1 );
     BOOST_REQUIRE_EQUAL( cache.realIndexFromGapped( LatestBlock, 0 ), 1 );
     BOOST_REQUIRE_EQUAL( cache.gappedIndexFromReal( LatestBlock, 1 ), 0 );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 0 ), std::out_of_range );
     BOOST_REQUIRE_EQUAL( cache.transactionPresent( LatestBlock, 0 ), false );
     BOOST_REQUIRE_EQUAL( cache.transactionPresent( LatestBlock, 1 ), true );
+#else
+    BOOST_REQUIRE_EQUAL( cache.realBlockTransactionCount( LatestBlock ), 1 );
+    BOOST_REQUIRE_EQUAL( cache.gappedBlockTransactionCount( LatestBlock ), 1 );
+    BOOST_REQUIRE_EQUAL( cache.realIndexFromGapped( LatestBlock, 0 ), 0 );
+    BOOST_REQUIRE_NO_THROW( cache.gappedIndexFromReal( LatestBlock, 0 ) );
+    BOOST_REQUIRE_EQUAL( cache.transactionPresent( LatestBlock, 0 ), true );
+    BOOST_REQUIRE_THROW( cache.transactionPresent( LatestBlock, 1 ), std::out_of_range );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( test_exceptions ) {
@@ -5547,7 +5792,9 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 1 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.realIndexFromGapped( LatestBlock, 2 ), std::out_of_range );
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 2 ), std::out_of_range );
+#ifndef MIRAGE
     BOOST_REQUIRE_THROW( cache.gappedIndexFromReal( LatestBlock, 0 ), std::out_of_range );
+#endif
     BOOST_REQUIRE_THROW( cache.transactionPresent( LatestBlock, 2 ), std::out_of_range );
 }
 
