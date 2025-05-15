@@ -156,7 +156,6 @@ public:
             m_decryptedData = _decryptedData;
             m_decryptedTo = _decryptedTo;
         }
-        m_isBITETxn = true;
     }
 
     /// @returns the decrypted data associated with this (BITE) transaction.
@@ -167,8 +166,10 @@ public:
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
     bool isInvalidBiteTransaction() const {
-        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
+        return isBite() && !m_decryptedData && !m_decryptedTo;
     }
+
+    bool isBite() const { return m_receiveAddress == BITE_ADDRESS; }
 
     void checkAndValidateBITETransaction() const;
 #endif
@@ -342,11 +343,12 @@ protected:
     u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
 
 #ifdef BITE
-    bool m_isBITETxn = false;
     std::shared_ptr< bytes > m_decryptedData = nullptr;  ///< Transaction data that was decrypted in
                                                          ///< BITE protocol
     std::shared_ptr< Address > m_decryptedTo = nullptr;  ///< Transaction to address that was
                                                          ///< decrypted in BITE protocol
+
+    static const Address BITE_ADDRESS;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;

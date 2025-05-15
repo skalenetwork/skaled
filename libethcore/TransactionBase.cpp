@@ -41,6 +41,12 @@ using namespace dev::eth;
 
 const size_t MAX_ACCESS_LIST_COUNT = 16;
 
+
+#ifdef BITE
+// Used for comparing the 'to' address against this constant to check if transaction is BITE
+const dev::Address TransactionBase::BITE_ADDRESS = dev::Address(std::string(BITE_ADDRESS_AS_STRING));
+#endif
+
 std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
     if ( !_data.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
@@ -608,17 +614,17 @@ Address TransactionBase::decryptedTo() const {
 
 void TransactionBase::checkAndValidateBITETransaction() const {
     // if a txn does not match MAGIC return false
-    if ( m_data.empty() || m_data.size() < BITE_MAGIC_SIZE ||
-         !std::equal( BITE_MAGIC_AS_BYTE_ARRAY, BITE_MAGIC_AS_BYTE_ARRAY + BITE_MAGIC_SIZE,
+    if ( m_data.empty() || m_data.size() < ADDRESS_SIZE ||
+         !std::equal( BITE_ADDRESS_AS_BYTE_ARRAY, BITE_ADDRESS_AS_BYTE_ARRAY + ADDRESS_SIZE,
              m_data.begin() ) )
         return;
     // minimum size of an encrypted with AES key message is 64 bytes
-    if ( m_data.size() < BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
+    if ( m_data.size() < ADDRESS_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
         BOOST_THROW_EXCEPTION( BITETransactionTooShort()
                                << errinfo_comment( "BITE transaction's data is too short." ) );
     std::array< uint8_t, BITE_ENCRYPTED_AES_KEY_LEN > cipheredKeyBytes;
-    std::copy( m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN,
-        m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN,
+    std::copy( m_data.begin() + ADDRESS_SIZE + BITE_EPOCH_ID_LEN,
+        m_data.begin() + ADDRESS_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN,
         cipheredKeyBytes.begin() );
     try {
         // validate encrypted AES key

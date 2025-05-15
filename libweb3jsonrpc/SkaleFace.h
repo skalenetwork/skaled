@@ -115,7 +115,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
 #ifdef BITE
     virtual std::string skale_getCommonPublicKey() = 0;
-    virtual std::string skale_getDecryptedTransactionData( const std::string& request ) = 0;
+    virtual Json::Value skale_getDecryptedTransactionData( const std::string& request ) = 0;
 #endif
 
 public:
