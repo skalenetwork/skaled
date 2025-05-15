@@ -917,7 +917,6 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "emptyBlockIntervalMs": -1,
-        "precompiledConfigPatchTimestamp": 1,
         "nodeGroups": {
             "1": {
                 "nodes": {
@@ -973,14 +972,11 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
 BOOST_AUTO_TEST_CASE( initAndUpdateHistoricConfigFields ) {
     TestClientFixture fixture( c_genesisInfoSkaleIMABLSPublicKeyTest );
 
-
     sleep(3);
 
     ClientTest* testClient = asClientTest( fixture.ethereum() );
 
-
     BOOST_REQUIRE(testClient);
-
 
     std::array< std::string, 4 > imaBLSPublicKeyOnStartUp = { "12457351342169393659284905310882617316356538373005664536506840512800919345414", "11573096151310346982175966190385407867176668720531590318594794283907348596326", "13929944172721019694880576097738949215943314024940461401664534665129747139387", "7375214420811287025501422512322868338311819657776589198925786170409964211914" };
 

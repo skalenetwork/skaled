@@ -1116,7 +1116,6 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     const_cast< Transaction& >( _t ).checkOutExternalGas(
         chainParams(), bc().info().timestamp(), number() );
 
-
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
         chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );

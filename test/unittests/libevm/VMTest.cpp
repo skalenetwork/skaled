@@ -652,7 +652,9 @@ class InstructionTestFixture : public TestOutputHelperFixture {
 public:
     InstructionTestFixture() : vm{new LegacyVM()} {
         ChainParams cp( genesisInfo( Network::IstanbulTest ) );
+#ifndef MIRAGE
         cp.sChain._patchTimestamps[static_cast<size_t>(SchainPatchEnum::PushZeroPatch)] = 1;
+#endif
         SchainPatch::init(cp);
 
         se.reset(cp.createSealEngine());
