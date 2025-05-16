@@ -76,6 +76,8 @@ public:
     void setPartialTransactionReceipt( const dev::bytes& _newReceipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
+    void setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber );
+
     dev::bytes getLegacyPartialTransactionReceipts() const;
     void setLegacyPartialTransactionReceipts( const dev::bytes& _newReceipt );
     void cleanupLegacyTransactionReceipts();

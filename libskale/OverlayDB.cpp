@@ -201,6 +201,12 @@ void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
 }
 
 
+void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
+    string key = "lastRewardedBlockNumber";
+    m_db_face->insert( skale::slicing::toSlice( key ), _blockNumber );
+}
+
+
 void OverlayDB::commitStorageValues() {
     for ( auto const& addressStoragePair : m_storageCache ) {
         h160 const& address = addressStoragePair.first;

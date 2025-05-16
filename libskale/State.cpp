@@ -382,6 +382,12 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     }
 }
 
+void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setLastRewardedBlockNumber( _blockNumber );
+    }
+}
+
 
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
