@@ -429,15 +429,24 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     if ( nodesObjects.size() != 2 )
         BOOST_THROW_EXCEPTION( runtime_error( "Nodes must have exactly 2 groups provided." ) );
     for ( auto it = nodesObjects.begin(); it != nodesObjects.end(); ++it ) {
-        uint64_t startTs = std::stoull( it->first );
+        int64_t startTs;
+        try {
+            startTs = std::stoll( it->first );
+        } catch ( const std::exception& ) {
+            BOOST_THROW_EXCEPTION( runtime_error( "Invalid startTs in nodes section." ) );
+        }
+
         std::vector< sChainNode > nodes;
         if ( startTs > 0 )
             parseNodes( it->second.get_array(), nodes, !keyShareName.empty() );
-        s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes, startTs };
+        else
+            startTs = 0;
+        s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
+            ( uint64_t ) startTs };
     }
 
     if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )
-        std::swap( s.nodes[0], s.nodes[1] );
+        std::swap( s.currentGroups[0], s.currentGroups[1] );
 
     s.nodes = s.currentGroups[1].nodes;
 #endif
@@ -624,9 +633,7 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
-    js::mArray nodes;
-
-    for ( const auto& node : sChain.nodes ) {
+    auto addNodeToArray = []( const sChainNode& node, js::mArray& nodes ) {
         js::mObject nodeConfObj;
         nodeConfObj["nodeID"] = ( int64_t ) node.id;
         nodeConfObj["ip"] = node.ip;
@@ -637,7 +644,24 @@ const std::string& ChainParams::getOriginalJson() const {
         nodeConfObj["publicKey"] = node.publicKey;
 
         nodes.push_back( nodeConfObj );
+    };
+#ifndef MIRAGE
+    js::mArray nodes;
+
+    for ( const auto& node : sChain.nodes ) {
+        addNodeToArray( node, nodes );
     }
+#else
+    js::mObject nodes;
+
+    for ( const auto& currentGroup : sChain.currentGroups ) {
+        js::mArray currentNodes;
+        for ( const auto& schainNode : currentGroup.nodes ) {
+            addNodeToArray( schainNode, currentNodes );
+        }
+        nodes[std::to_string( currentGroup.startTs )] = currentNodes;
+    }
+#endif
     sChainObj["nodes"] = nodes;
 
     skaleObj["sChain"] = sChainObj;
@@ -684,5 +708,27 @@ void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
          sChain.currentGroups[0].startTs != uint64_t( -1 ) )
         sChain.nodes = sChain.currentGroups[0].nodes;
+}
+
+std::string ChainParams::getConfigForConsensus() const {
+    js::mValue val;
+    json_spirit::read_string_or_throw( getOriginalJson(), val );
+    js::mObject obj = val.get_obj();
+
+    js::mObject skaleConfigObj = obj["skaleConfig"].get_obj();
+    js::mObject sChainObj = skaleConfigObj["sChain"].get_obj();
+    js::mObject nodesObj = sChainObj["nodes"].get_obj();
+
+    js::mArray newNodesObj;
+    if ( sChain.nodes == sChain.currentGroups[0].nodes )
+        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[0].startTs )].get_array();
+    else
+        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )].get_array();
+
+    sChainObj["nodes"] = newNodesObj;
+    skaleConfigObj["sChain"] = sChainObj;
+    obj["skaleConfig"] = skaleConfigObj;
+
+    return js::write_string( js::mValue( obj ), true );
 }
 #endif

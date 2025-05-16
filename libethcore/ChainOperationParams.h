@@ -302,5 +302,11 @@ public:
     }
 };
 
+inline bool operator==( const sChainNode& lhs, const sChainNode& rhs ) {
+    // if BLS public keys are different there is no point to check anything else
+    // on the other hand, if the keys are equal they belong to the same node
+    return lhs.blsPublicKey == rhs.blsPublicKey;
+}
+
 }  // namespace eth
 }  // namespace dev

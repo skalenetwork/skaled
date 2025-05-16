@@ -293,8 +293,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             }
         } );
 
-    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
-    for ( auto const& obj : nodes ) {
+    auto validateNodeObj = []( const auto& obj ) {
         const js::mObject node = obj.get_obj();
 
         requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
@@ -331,7 +330,22 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
                 { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
+    };
+
+#ifndef MIRAGE
+    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+    for ( auto const& obj : nodes ) {
+        validateNodeObj( obj );
     }
+#else
+    js::mObject const& nodeGroups = sChain.at( "nodes" ).get_obj();
+    for ( const auto& nodeGroup : nodeGroups ) {
+        const js::mArray& nodes = nodeGroup.second.get_array();
+        for ( const auto& obj : nodes ) {
+            validateNodeObj( obj );
+        }
+    }
+#endif
 }
 
 void validateAccountMaskObj( js::mObject const& _obj ) {

@@ -79,6 +79,8 @@ struct ChainParams : public ChainOperationParams {
 
 #ifdef MIRAGE
     void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+
+    std::string getConfigForConsensus() const;
 #endif
 
 private:
