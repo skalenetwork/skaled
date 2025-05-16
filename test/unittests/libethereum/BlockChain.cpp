@@ -245,16 +245,7 @@ BOOST_AUTO_TEST_CASE( attemptImport ) {
     // Malformed
 
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-#ifdef MIRAGE
-    // addBlock imports block to blockchain.
-    // Within tests it uses Block::enact, which is never called on nodes.
-    // For MIRAGE state commit is done in syncEveryone during block.mine.
-    // Commit is also done in Block::enact. It causes double nonce increment.
-    // TODO: Fix this test by introducing proper TestBlock that compatible with SKALE import.
-    u256 nonce = 2;
-#else
     u256 nonce = 1;
-#endif
     TestTransaction tr = TestTransaction::defaultTransaction( nonce );
     TestBlock block;
     block.addTransaction( tr );
