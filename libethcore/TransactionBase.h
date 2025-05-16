@@ -165,9 +165,7 @@ public:
     Address decryptedTo() const;
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
-    bool isInvalidBiteTransaction() const {
-        return isBite() && !m_decryptedData && !m_decryptedTo;
-    }
+    bool isInvalidBiteTransaction() const { return isBite() && !m_decryptedData && !m_decryptedTo; }
 
     bool isBite() const { return m_receiveAddress == BITE_ADDRESS; }
 

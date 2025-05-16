@@ -22,9 +22,9 @@
  */
 
 
+#include "libconsensus/node/ConsensusInterface.h"
 #include <libdevcore/Common.h>
 #include <libethcore/BlockHeader.h>
-#include "libconsensus/node/ConsensusInterface.h"
 
 #pragma once
 

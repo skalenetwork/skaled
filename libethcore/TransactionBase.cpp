@@ -44,7 +44,8 @@ const size_t MAX_ACCESS_LIST_COUNT = 16;
 
 #ifdef BITE
 // Used for comparing the 'to' address against this constant to check if transaction is BITE
-const dev::Address TransactionBase::BITE_ADDRESS = dev::Address(std::string(BITE_ADDRESS_AS_STRING));
+const dev::Address TransactionBase::BITE_ADDRESS =
+    dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );
 #endif
 
 std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
@@ -613,19 +614,18 @@ Address TransactionBase::decryptedTo() const {
 }
 
 void TransactionBase::checkAndValidateBITETransaction() const {
-    // if a txn does not match MAGIC return false
-    if ( m_data.empty() || m_data.size() < ADDRESS_SIZE ||
-         !std::equal( BITE_ADDRESS_AS_BYTE_ARRAY, BITE_ADDRESS_AS_BYTE_ARRAY + ADDRESS_SIZE,
-             m_data.begin() ) )
+    if ( !isBite() )
         return;
-    // minimum size of an encrypted with AES key message is 64 bytes
-    if ( m_data.size() < ADDRESS_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
+
+    if ( m_data.empty() || m_data.size() < BITE_EPOCH_ID_LEN + BITE_CIPHERTEXT_MIN_LEN ) {
         BOOST_THROW_EXCEPTION( BITETransactionTooShort()
                                << errinfo_comment( "BITE transaction's data is too short." ) );
+    }
+
+    // Extract ciphered key bytes
     std::array< uint8_t, BITE_ENCRYPTED_AES_KEY_LEN > cipheredKeyBytes;
-    std::copy( m_data.begin() + ADDRESS_SIZE + BITE_EPOCH_ID_LEN,
-        m_data.begin() + ADDRESS_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN,
-        cipheredKeyBytes.begin() );
+    std::copy( m_data.begin() + BITE_EPOCH_ID_LEN,
+        m_data.begin() + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN, cipheredKeyBytes.begin() );
     try {
         // validate encrypted AES key
         auto cipheredKey = libBLS::CipheredKey::fromBytes( cipheredKeyBytes );

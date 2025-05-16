@@ -399,19 +399,16 @@ TransactionReceipt ClientBase::transactionReceipt( h256 const& _transactionHash 
 
 LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
-
-    auto [ blockHash, transactionIdx ] = bc().transactionLocation( _transactionHash );
+    auto [blockHash, transactionIdx] = bc().transactionLocation( _transactionHash );
     dev::eth::BlockNumber blockNumber{ numberFromHash( blockHash ) };
 
     auto blockTimestamp = blockInfo( blockNumber - 1 ).timestamp();
 
-    Transaction t = Transaction( 
-        bc().transaction( blockHash, transactionIdx),                   // rlp
-        CheckTransaction::Cheap,                                        // Check sig
-        true,                                                           // allow invalid
+    Transaction t = Transaction( bc().transaction( blockHash, transactionIdx ),  // rlp
+        CheckTransaction::Cheap,                                                 // Check sig
+        true,                                                                    // allow invalid
         EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
-        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) 
-    );
+        InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
 
     TransactionReceipt receipt = bc().transactionReceipt( blockHash, transactionIdx );
 
@@ -419,7 +416,7 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     if ( transactionIdx > 0 ) {
         gasUsed -= bc().transactionReceipt( blockHash, transactionIdx - 1 ).cumulativeGasUsed();
     }
-    
+
     // The "contractAddress" field must be null for all types of transactions but contract
     // deployment ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
@@ -428,43 +425,30 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
         // if this transaction is contract deployment
         contractAddress = toAddress( t.from(), t.nonce() );
     }
-    
+
     // Set transaction's 'to' address
     // If BITE -> get decrypted 'to'
     // Else    -> get 'to'
     dev::Address to;
     if ( !t.isInvalid() ) {
-        if ( t.isBite() ) { 
-            DecryptedTransactionData decryptedData = decryptedTransactionData(_transactionHash);
+        if ( t.isBite() ) {
+            DecryptedTransactionData decryptedData = decryptedTransactionData( _transactionHash );
             to = decryptedData.to();
+        } else {
+            to = t.to();
         }
-        else { 
-            to = t.to(); 
-        }
-    }
-    else { 
-        to = dev::Address( 0 ); 
+    } else {
+        to = dev::Address( 0 );
     }
 
     // Build all other needed fields
-    dev::h256 txHash                 { t.sha3() };
-    dev::Address from                { t.isInvalid() ? dev::Address( 0 ) : t.from() };
-    int txType                       { t.txType() };
-    dev::u256 effectiveGasPrice      { t.isInvalid() ? 0 : t.gasPrice() };
+    dev::h256 txHash{ t.sha3() };
+    dev::Address from{ t.isInvalid() ? dev::Address( 0 ) : t.from() };
+    int txType{ t.txType() };
+    dev::u256 effectiveGasPrice{ t.isInvalid() ? 0 : t.gasPrice() };
 
-    return LocalisedTransactionReceipt( 
-        receipt, 
-        txHash, 
-        blockHash, 
-        blockNumber,
-        transactionIdx, 
-        from, 
-        to, 
-        gasUsed, 
-        contractAddress, 
-        txType, 
-        effectiveGasPrice
-    );
+    return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
+        from, to, gasUsed, contractAddress, txType, effectiveGasPrice );
 }
 
 pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transactionHash ) const {
