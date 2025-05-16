@@ -383,7 +383,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         s.nodeGroups = nodeGroups;
     }
 
-    auto parseNodes = []( auto nodesMap, std::vector< sChainNode >& container, bool isBLSEnabled ) {
+    auto parseNodes = []( const auto& nodesMap, std::vector< sChainNode >& container, bool isBLSEnabled ) {
         for ( auto nodeConf : nodesMap ) {
             auto nodeConfObj = nodeConf.get_obj();
             sChainNode node{};
