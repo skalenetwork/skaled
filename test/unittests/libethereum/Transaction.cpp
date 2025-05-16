@@ -512,7 +512,7 @@ dev::bytes createTestTransactionRlp( const dev::bytes& txnData ) {
 
     dev::Secret privateKey( dev::Secret::random() );
     auto txnSignature = dev::sign( privateKey, txnHashWithoutSignature );
-    SignatureStruct sigStruct = *( SignatureStruct const* ) &txnSignature;
+    SignatureStruct sigStruct = SignatureStruct( txnSignature );
 
     RLPStream txnRlp;
 
