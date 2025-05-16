@@ -319,7 +319,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
             m_client.chainParams().getConfigForConsensus(), _gethURL );
 #else
         m_consensus->parseFullConfigAndCreateNode(
-            m_client.chainParams().getOriginalJSON(), _gethURL );
+            m_client.chainParams().getOriginalJson(), _gethURL );
 #endif
     } catch ( const std::exception& e ) {
         LOG( m_loggerError ) << "Could not create parse consensus config in SkaleHost" << e.what();
