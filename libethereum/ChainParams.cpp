@@ -667,6 +667,10 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
         return node.sChainIndex == _sChainIndex;
     };
     auto nodeIterator = find_if( sChainNodes.begin(), sChainNodes.end(), has_schain_index );
+    if ( nodeIterator == sChainNodes.end() ) {
+        std::string sChainIndexStringRep = std::to_string( _sChainIndex );
+        throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
+    }
     return nodeIterator->owner;
 }
 #endif

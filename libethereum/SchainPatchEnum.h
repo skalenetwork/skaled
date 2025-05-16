@@ -22,12 +22,7 @@ enum class SchainPatchEnum {
     ExternalGasPatch,
     ClearPartialReceiptsPatch,
     InvalidTransactionFormatPatch,
-#ifdef MIRAGE
-    PatchesCount,
-    MirageZeroPatch
-#else
     PatchesCount
-#endif
 };
 
 extern SchainPatchEnum getEnumForPatchName( const std::string& _patchName );

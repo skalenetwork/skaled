@@ -92,7 +92,7 @@ EVMSchedule const ChainOperationParams::makeEvmSchedule(
         result = PushZeroPatch::makeSchedule( result );
 
 #ifdef MIRAGE
-    result = MirageZeroPatch::makeSchedule( result );
+    result.blockRewardOverwrite = { 5 * ether };
 #endif
 
     return result;

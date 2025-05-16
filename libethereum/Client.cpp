@@ -587,12 +587,6 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef MIRAGE
     LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
                         << " (index " << _winningNodeIndex << ")";
-    for ( size_t i = 0; i < chainParams().sChain.nodes.size(); i++ ) {
-        Address nodeAddress = chainParams().sChain.nodes[i].owner;
-        u256 balance = m_state.balance( nodeAddress );
-        LOG( m_loggerDebug ) << "Node " << i << ", Owner: " << nodeAddress
-                             << ", Balance: " << balance << " at block #" << number();
-    }
 #endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
