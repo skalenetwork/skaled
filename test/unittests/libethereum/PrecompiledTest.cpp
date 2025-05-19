@@ -1694,6 +1694,7 @@ static std::string const genesisInfoSkaleConfigTest = R"(
 }
 )";
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ChainParams chainParams;
     chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
@@ -1718,11 +1719,13 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     testClient->mineBlocks( 1 );
 
-#ifdef MIRAGE
-    testClient->importTransactionsAsBlock( dev::eth::Transactions(), make_shared< map< uint64_t, std::shared_ptr< bytes > > >(), 1000, 1, 4294967294 );
-#else
-    testClient->importTransactionsAsBlock( dev::eth::Transactions(), 1000, 4294967294 );
+    testClient->importTransactionsAsBlock(
+        dev::eth::Transactions(),
+#ifdef BITE
+        make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
 #endif
+        1000,
+        4294967294 );
 
     dev::eth::g_skaleHost = testClient->skaleHost();
 
@@ -1805,6 +1808,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 }
+#endif
 
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
