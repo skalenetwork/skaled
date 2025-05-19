@@ -1,4 +1,4 @@
-﻿/*
+/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -569,12 +569,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     }
 #ifdef MIRAGE
 	auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
-	for ( auto blockNumber = lastRewardedBlockNumber;
-          blockNumber < m_currentBlock.number(); ++blockNumber ) {
-		auto blockTimestamp = _bc.info( _bc.numberHash( blockNumber ) ).timestamp();
-		auto reward = _bc.sealEngine()->blockReward( blockTimestamp, blockNumber );
+    if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
+        auto blockTimestamp = m_currentBlock.timestamp();
+        auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
 		rewardBlockAuthorForNonDefaultBlock( reward );
-		m_state.safeSetLastRewardedBlockNumber( blockNumber );
+        m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
 	}
 
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;

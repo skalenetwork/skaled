@@ -191,6 +191,7 @@ std::string OverlayDB::uint64ToFixedLengthHex( uint64_t value ) {
     return res.str();
 }
 
+
 void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
     dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex ) {
     string key = "safeLastTransactionReceipts." + uint64ToFixedLengthHex( _blockNumber ) + "." +
@@ -201,9 +202,18 @@ void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
 }
 
 
+#ifdef MIRAGE
+// Converts a hexadecimal string to a uint64_t value.
+std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
+    std::stringstream valueStream( hexValue );
+    std::uint64_t result;
+    valueStream >> std::hex >> result;
+    return result;
+}
+
 void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
     string key = "lastRewardedBlockNumber";
-    string blockNumberFixedLengthHex = uint64ToFixedLengthHex( _blockNumber );
+    string blockNumberFixedLengthHex = uint64ToFixedLengthHex( static_cast<uint64_t>( _blockNumber ) );
     m_db_face->insert( skale::slicing::toSlice( key ), blockNumberFixedLengthHex );
 }
 
@@ -212,10 +222,11 @@ dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
 	auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
 	dev::eth::BlockNumber number = 0;
 	if ( !lookupResult.empty() ) {
-		number = *lookupResult.begin();
+		number = static_cast<dev::eth::BlockNumber>( hexToUint64( lookupResult ) );
     }
     return number;
 }
+#endif
 
 void OverlayDB::commitStorageValues() {
     for ( auto const& addressStoragePair : m_storageCache ) {
