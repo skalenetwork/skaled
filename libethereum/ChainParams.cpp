@@ -438,6 +438,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         }
 
         std::vector< sChainNode > nodes;
+        // timestamp is set to 0 for BOOT group
         if ( startTs > 0 )
             parseNodes( it->second.get_array(), nodes, !keyShareName.empty() );
         else
@@ -706,8 +707,9 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
 
 #ifdef MIRAGE
 void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
+    // for BOOT group timestamp is set to 0
     if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
-         sChain.currentGroups[0].startTs != uint64_t( -1 ) )
+         sChain.currentGroups[0].startTs != 0 )
         sChain.nodes = sChain.currentGroups[0].nodes;
 }
 
