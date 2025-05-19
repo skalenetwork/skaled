@@ -213,16 +213,17 @@ std::uint64_t OverlayDB::hexToUint64( const std::string& hexValue ) {
 
 void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
     string key = "lastRewardedBlockNumber";
-    string blockNumberFixedLengthHex = uint64ToFixedLengthHex( static_cast<uint64_t>( _blockNumber ) );
+    string blockNumberFixedLengthHex =
+        uint64ToFixedLengthHex( static_cast< uint64_t >( _blockNumber ) );
     m_db_face->insert( skale::slicing::toSlice( key ), blockNumberFixedLengthHex );
 }
 
 dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
-	string key = "lastRewardedBlockNumber";
-	auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
-	dev::eth::BlockNumber number = 0;
-	if ( !lookupResult.empty() ) {
-		number = static_cast<dev::eth::BlockNumber>( hexToUint64( lookupResult ) );
+    string key = "lastRewardedBlockNumber";
+    auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+    dev::eth::BlockNumber number = 0;
+    if ( !lookupResult.empty() ) {
+        number = static_cast< dev::eth::BlockNumber >( hexToUint64( lookupResult ) );
     }
     return number;
 }

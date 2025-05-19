@@ -86,16 +86,14 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize,
-          dev::eth::HistoricState::openDB(
-              boost::filesystem::path( std::string( _dbPath.string() )
-                                           .append( "/" )
-                                           .append( dev::eth::HISTORIC_STATE_DIR ) ),
+          dev::eth::HistoricState::openDB( boost::filesystem::path( std::string( _dbPath.string() )
+                                                   .append( "/" )
+                                                   .append( dev::eth::HISTORIC_STATE_DIR ) ),
               _genesis,
               _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ),
-          dev::eth::HistoricState::openDB(
-              boost::filesystem::path( std::string( _dbPath.string() )
-                                           .append( "/" )
-                                           .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
+          dev::eth::HistoricState::openDB( boost::filesystem::path( std::string( _dbPath.string() )
+                                                   .append( "/" )
+                                                   .append( dev::eth::HISTORIC_ROOTS_DIR ) ),
               _genesis,
               _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) )
 #endif
@@ -390,11 +388,11 @@ void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber )
 }
 
 dev::eth::BlockNumber State::getLastRewardedBlockNumber() {
-	dev::eth::BlockNumber blockNumber = 0;
-	if ( m_db_ptr ) {
-		blockNumber = m_db_ptr->getLastRewardedBlockNumber();
-	}
-	return blockNumber;
+    dev::eth::BlockNumber blockNumber = 0;
+    if ( m_db_ptr ) {
+        blockNumber = m_db_ptr->getLastRewardedBlockNumber();
+    }
+    return blockNumber;
 }
 #endif
 

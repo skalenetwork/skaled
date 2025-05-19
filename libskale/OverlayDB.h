@@ -32,7 +32,7 @@
 #include <libdevcore/Common.h>
 #include <libdevcore/Log.h>
 #include <libethcore/Common.h>
-//#include <libethereum/Account.h>
+// #include <libethereum/Account.h>
 
 namespace dev {
 namespace eth {
@@ -81,7 +81,7 @@ public:
     void cleanupLegacyTransactionReceipts();
 
 #ifdef MIRAGE
-	std::uint64_t hexToUint64( const std::string& hexValue );
+    std::uint64_t hexToUint64( const std::string& hexValue );
     void setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber );
     dev::eth::BlockNumber getLastRewardedBlockNumber();
 #endif

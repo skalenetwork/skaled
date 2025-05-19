@@ -578,7 +578,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-            dev::eth::CommitBehaviour::KeepEmptyAccounts );
+                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
 #endif
 
