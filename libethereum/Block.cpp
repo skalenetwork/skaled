@@ -499,11 +499,6 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
 
 
     for ( unsigned i = 0; i < _transactions.size(); ++i ) {
-#ifdef MIRAGE
-        if ( i == _transactions.size() - 1 )
-            rewardBlockAuthorForNonDefaultBlock( _bc.sealEngine()->blockReward(
-                previousInfo().timestamp(), m_currentBlock.number() ) );
-#endif
         Transaction const& tr = _transactions[i];
         try {
             if ( i < saved_receipts.size() ) {
@@ -573,14 +568,19 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         }
     }
 #ifdef MIRAGE
-    if ( _transactions.empty() ) {
-        LOG( m_loggerDebug ) << "Rewarding for empty block and commiting";
-        rewardBlockAuthorForNonDefaultBlock(
-            _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
-        bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
-        m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                              dev::eth::CommitBehaviour::KeepEmptyAccounts );
-    }
+	auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
+	for ( auto blockNumber = lastRewardedBlockNumber;
+          blockNumber < m_currentBlock.number(); ++blockNumber ) {
+		auto blockTimestamp = _bc.info( _bc.numberHash( blockNumber ) ).timestamp();
+		auto reward = _bc.sealEngine()->blockReward( blockTimestamp, blockNumber );
+		rewardBlockAuthorForNonDefaultBlock( reward );
+		m_state.safeSetLastRewardedBlockNumber( blockNumber );
+	}
+
+    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+            dev::eth::CommitBehaviour::KeepEmptyAccounts );
+
 #endif
 
 #ifdef HISTORIC_STATE

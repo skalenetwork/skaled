@@ -258,6 +258,7 @@ public:
 
     /// Save last block for which rewards has been applied
     void safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber );
+    dev::eth::BlockNumber getLastRewardedBlockNumber();
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );

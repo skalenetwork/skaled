@@ -203,9 +203,19 @@ void OverlayDB::setPartialTransactionReceipt( const dev::bytes& _newReceipt,
 
 void OverlayDB::setLastRewardedBlockNumber( const dev::eth::BlockNumber _blockNumber ) {
     string key = "lastRewardedBlockNumber";
-    m_db_face->insert( skale::slicing::toSlice( key ), _blockNumber );
+    string blockNumberFixedLengthHex = uint64ToFixedLengthHex( _blockNumber );
+    m_db_face->insert( skale::slicing::toSlice( key ), blockNumberFixedLengthHex );
 }
 
+dev::eth::BlockNumber OverlayDB::getLastRewardedBlockNumber() {
+	string key = "lastRewardedBlockNumber";
+	auto lookupResult = m_db_face->lookup( skale::slicing::toSlice( key ) );
+	dev::eth::BlockNumber number = 0;
+	if ( !lookupResult.empty() ) {
+		number = *lookupResult.begin();
+    }
+    return number;
+}
 
 void OverlayDB::commitStorageValues() {
     for ( auto const& addressStoragePair : m_storageCache ) {

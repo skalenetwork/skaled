@@ -388,6 +388,13 @@ void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber )
     }
 }
 
+dev::eth::BlockNumber State::getLastRewardedBlockNumber() {
+	dev::eth::BlockNumber blockNumber = 0;
+	if ( m_db_ptr ) {
+		blockNumber = m_db_ptr->getLastRewardedBlockNumber();
+	}
+	return blockNumber;
+}
 
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
