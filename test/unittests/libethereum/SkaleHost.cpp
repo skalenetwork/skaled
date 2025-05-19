@@ -66,7 +66,12 @@ public:
   shared_ptr<map<uint64_t, shared_ptr<vector<uint8_t>>>> _decryptedTransactions,
 #endif
         uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice = 0, u256 _stateRoot = 0,
-        uint64_t _winningNodeIndex = -1 ) {
+#ifdef MIRAGE
+        uint64_t _winningNodeIndex = 1
+#else
+        uint64_t _winningNodeIndex = -1
+#endif
+        ) {
         m_extFace.createBlock( _approvedTransactions,
 #ifdef BITE
                               _decryptedTransactions,
@@ -301,7 +306,7 @@ BOOST_DATA_TEST_CASE(
 #ifdef BITE
            make_shared< map< uint64_t, shared_ptr< vector< uint8_t > > > >(),
 #endif
-                           utcTime(), 1U ) );
+                           utcTime(), 1U) );
 
     REQUIRE_BLOCK_INCREASE( 1 );
     REQUIRE_BLOCK_SIZE( 1, 1 );
