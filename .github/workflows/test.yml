@@ -123,6 +123,8 @@ jobs:
           export TARGET=all
           export CMAKE_BUILD_TYPE=Debug
           cd deps
+          # prepare boost library
+          mv pre_downloaded/boost_1_68_0.tar.gz boost_1_68_0.tar.gz
           #######################################./clean.sh
           rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh DEBUG=1 PARALLEL_COUNT=$(nproc)
