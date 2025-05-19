@@ -277,7 +277,12 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } },
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } }
+#ifdef MIRAGE
+            ,
+            { "constantGasPrice", { { js::int_type }, JsonFieldPresence::Optional } }
+#endif
+        },
         []( const string& _key ) {
             // function fow allowing fields
             // exception means bad name
