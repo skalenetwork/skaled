@@ -574,12 +574,10 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
         rewardBlockAuthorForNonDefaultBlock( reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
+        bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+        m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                              dev::eth::CommitBehaviour::KeepEmptyAccounts );
     }
-
-    bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
-    m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
-                                          dev::eth::CommitBehaviour::KeepEmptyAccounts );
-
 #endif
 
 #ifdef HISTORIC_STATE
