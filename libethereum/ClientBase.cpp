@@ -431,16 +431,15 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     // Else    -> get 'to'
     dev::Address to;
     if ( !t.isInvalid() ) {
-
 #ifdef BITE
         if ( t.isBite() ) {
             DecryptedTransactionData decryptedData = decryptedTransactionData( _transactionHash );
             to = decryptedData.to();
         } else
-#endif 
+#endif
 
             to = t.to();
-        
+
     } else {
         to = dev::Address( 0 );
     }

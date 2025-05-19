@@ -374,7 +374,7 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // check if a txn is a BITE txn here
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
-        checkIfBITETxnAndSet(m_receiveAddress);
+        checkIfBITETxnAndSet( m_receiveAddress );
 #endif
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
@@ -628,7 +628,7 @@ bytes const& TransactionBase::decryptedData() const {
     return *m_decryptedData;
 }
 
-void TransactionBase::checkIfBITETxnAndSet(const Address &_to) {
+void TransactionBase::checkIfBITETxnAndSet( const Address& _to ) {
     m_isBITETxn = _to == BITE_ADDRESS;
 }
 

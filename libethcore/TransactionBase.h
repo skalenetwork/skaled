@@ -165,7 +165,9 @@ public:
     Address decryptedTo() const;
 
     // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
-    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData && !m_decryptedTo; }
+    bool isInvalidBiteTransaction() const {
+        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
+    }
 
     bool isBite() const { return m_isBITETxn; }
 
@@ -356,7 +358,7 @@ protected:
     std::shared_ptr< Address > m_decryptedTo = nullptr;  ///< Transaction to address that was
                                                          ///< decrypted in BITE protocol
 
-    bool m_isBITETxn = false;                            ///< Is this a BITE transaction
+    bool m_isBITETxn = false;  ///< Is this a BITE transaction
 
     static const Address BITE_ADDRESS;
 #endif
@@ -392,7 +394,7 @@ private:
     // called in TransactionBase constructor
     // sets m_isBITETxn to true if a txn 'to' field
     // maches BITE address
-    void checkIfBITETxnAndSet(const Address &_to);
+    void checkIfBITETxnAndSet( const Address& _to );
 #endif
 
 public:
