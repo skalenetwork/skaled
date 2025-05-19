@@ -323,6 +323,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     if ( sChainObj.count( "multiTransactionMode" ) )
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
 
+#ifdef MIRAGE
+    if ( sChainObj.count( "constantGasPrice" ) )
+        s.constantGasPrice = sChainObj.at( "constantGasPrice" ).get_uint64();
+#endif
+
     // extract all "*PatchTimestamp" records
     for ( const auto& it : sChainObj ) {
         const string& key = it.first;
