@@ -108,6 +108,10 @@ TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& 
       m_receiveAddress( _ts.to ) {
     if ( _s )
         sign( _s );
+
+#ifdef BITE
+    checkIfBITETxnAndSet( _ts.to );
+#endif
 }
 
 void TransactionBase::fillFromBytesLegacy(
@@ -366,6 +370,12 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         } else {
             fillFromBytesLegacy( _rlpData, _checkSig, _allowInvalid );
         }
+#ifdef BITE
+        // check if a txn is a BITE txn here
+        // bad formatted txns cannot make it to the block
+        // therefore no need to check it anywhere else
+        checkIfBITETxnAndSet(m_receiveAddress);
+#endif
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
         RLPStream s;
@@ -535,8 +545,19 @@ void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck )
 }
 
 int64_t TransactionBase::baseGasRequired(
-    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es ) {
+    bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es
+#ifdef BITE
+    ,
+    bool _isBITETxn
+#endif
+) {
     int64_t g = _contractCreation ? _es.txCreateGas : _es.txGas;
+
+    // charge the cost of BITE transaction
+#ifdef BITE
+    if ( _isBITETxn )
+        g += _es.BITETxnCost;
+#endif
 
     // Calculate the cost of input data.
     // No risk of overflow by using int64 until txDataNonZeroGas is quite small
@@ -605,6 +626,10 @@ bytes const& TransactionBase::decryptedData() const {
     if ( !m_decryptedData )
         return data();
     return *m_decryptedData;
+}
+
+void TransactionBase::checkIfBITETxnAndSet(const Address &_to) {
+    m_isBITETxn = _to == BITE_ADDRESS;
 }
 
 Address TransactionBase::decryptedTo() const {

@@ -414,7 +414,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     u256 price2 = m_consensus->getPriceForBlockId( 2 );
 
     BOOST_REQUIRE_EQUAL( price0, price1 );
+#ifndef MIRAGE
     BOOST_REQUIRE_GT( price2, price1 );
+#else
+    BOOST_REQUIRE_EQUAL( price2, price1 );
+#endif
 
     // block 3
 
@@ -424,7 +428,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     BOOST_REQUIRE_EQUAL( gasPrice, price2 );
     u256 price3 = m_consensus->getPriceForBlockId( 3 );
 
+#ifndef MIRAGE
     BOOST_REQUIRE_LT( price3, price2 );
+#else
+    BOOST_REQUIRE_EQUAL( price3, price2 );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

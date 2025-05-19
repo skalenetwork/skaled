@@ -27,6 +27,11 @@
 #include <libethcore/Exceptions.h>
 #include <libevm/VMFace.h>
 #include <test/tools/libtesteth/BlockChainHelper.h>
+
+#ifdef BITE
+#include <libconsensus/libBLS/threshold_encryption/ThresholdEncryption.h>
+#endif
+
 using namespace dev;
 using namespace eth;
 using namespace dev::test;
@@ -488,5 +493,103 @@ BOOST_AUTO_TEST_CASE( CheckLowSForUnsignedTransactionThrows,
         0, 0, 10000, Address( "a94f5374fce5edbc8e2a8697c15331677e6ebf0b" ), bytes(), 0 );
     BOOST_REQUIRE_THROW( tx.checkLowS(), TransactionIsUnsigned );
 }
+
+#ifdef BITE
+
+dev::bytes createTestTransactionRlp( const dev::bytes& txnData ) {
+    // create a legacy transaction
+    dev::Address randomAddress = dev::Address::random();
+    RLPStream txnRlpStreamWithoutSignature;
+    txnRlpStreamWithoutSignature.appendList( 6 );
+    txnRlpStreamWithoutSignature << 0; // nonce
+    txnRlpStreamWithoutSignature << 100000; // gasPrice
+    txnRlpStreamWithoutSignature << 100000; // gasLimit
+    txnRlpStreamWithoutSignature << randomAddress; // to
+    txnRlpStreamWithoutSignature << 0; // value
+    txnRlpStreamWithoutSignature << txnData; // data
+
+    auto txnHashWithoutSignature = dev::sha3( txnRlpStreamWithoutSignature.out() );
+
+    dev::Secret privateKey( dev::Secret::random() );
+    auto txnSignature = dev::sign( privateKey, txnHashWithoutSignature );
+    SignatureStruct sigStruct = *( SignatureStruct const* ) &txnSignature;
+
+    RLPStream txnRlp;
+
+    txnRlp.appendList( 9 );
+    txnRlp << 0; // nonce
+    txnRlp << 100000; // gasPrice
+    txnRlp << 100000; // gasLimit
+    txnRlp << randomAddress; // to
+    txnRlp << 0; // value
+    txnRlp << txnData; // data
+
+    txnRlp << sigStruct.v + 27; // v
+    txnRlp << sigStruct.r; // r
+    txnRlp << sigStruct.s; // s
+
+    return txnRlp.out();
+}
+
+BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
+    std::string magicNumber = "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
+    std::string epochId = "0000000000000000";
+
+    libff::init_alt_bn128_params();
+    libBLS::TEPublicKey publicKey( libff::alt_bn128_G2::random_element() );
+
+    auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( dev::h256::random().hex().c_str() );
+
+    auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey );
+    auto encryptedData = libBLS::ThresholdUtils::bytesToHexString( encryptedMessage.getData() );
+    auto encryptedKeyByteArray = encryptedMessage.key.toBytes();
+    std::vector< uint8_t > encryptedKeyBytes( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
+    std::copy( encryptedKeyByteArray.begin(), encryptedKeyByteArray.end(), encryptedKeyBytes.begin() );
+    auto encryptedKey = libBLS::ThresholdUtils::bytesToHexString( encryptedKeyBytes );
+
+    std::string validBITETxnData = "0x" + magicNumber + epochId + encryptedKey + encryptedData;
+
+    dev::bytes validBITETxnRlp = createTestTransactionRlp( dev::fromHex( validBITETxnData ) );
+    Transaction validBITETxn( validBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE( validBITETxn.isBite() );
+    auto baseGasRequiredForValidBITETxn = validBITETxn.baseGasRequired( IstanbulSchedule );
+
+    // change non-zero byte to non-zero byte in magicNumber and make the txn non-BITE
+    std::string notMagicNumber = "e3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
+    std::string validNonBITETxnData = "0x" + notMagicNumber + epochId + encryptedKey + encryptedData;
+    dev::bytes validNonBITETxnRlp = createTestTransactionRlp( dev::fromHex( validNonBITETxnData ) );
+    Transaction validNonBITETxn( validNonBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE( !validNonBITETxn.isBite() );
+    auto baseGasRequiredForValidNonBITETxn = validNonBITETxn.baseGasRequired( IstanbulSchedule );
+    BOOST_REQUIRE_GT( baseGasRequiredForValidBITETxn, baseGasRequiredForValidNonBITETxn );
+    BOOST_REQUIRE( baseGasRequiredForValidBITETxn - baseGasRequiredForValidNonBITETxn == IstanbulSchedule.BITETxnCost );
+
+    std::string invalidTooShortBITETxnData = "0x" + magicNumber;
+    dev::bytes invalidTooShortBITETxnRlp = createTestTransactionRlp( dev::fromHex( invalidTooShortBITETxnData ) );
+    Transaction invalidTooShortBITETxn( invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(), dev::eth::BITETransactionTooShort );
+
+    invalidTooShortBITETxnData = "0x" + magicNumber + epochId;
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( dev::fromHex( invalidTooShortBITETxnData ) );
+    invalidTooShortBITETxn = Transaction( invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(), dev::eth::BITETransactionTooShort );
+
+    invalidTooShortBITETxnData = "0x" + magicNumber + epochId + encryptedKey;
+    invalidTooShortBITETxnRlp = createTestTransactionRlp( dev::fromHex( invalidTooShortBITETxnData ) );
+    invalidTooShortBITETxn = Transaction( invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(), dev::eth::BITETransactionTooShort );
+
+    auto randomEncryptedKeyObj = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(), encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
+    auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
+    std::vector< uint8_t > randomEncryptedKeyBytes( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
+    std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(), randomEncryptedKeyBytes.begin() );
+    auto randomEncryptedKey = libBLS::ThresholdUtils::bytesToHexString( randomEncryptedKeyBytes );
+
+    std::string invalidBITETxnData = "0x" + magicNumber + epochId + randomEncryptedKey + encryptedData;
+    dev::bytes invalidBITETxnRlp = createTestTransactionRlp( dev::fromHex( invalidBITETxnData ) );
+    Transaction invalidBITETxn( invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW( invalidBITETxn.checkAndValidateBITETransaction(), dev::eth::InvalidBITETransaction );
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
