@@ -1,10 +1,9 @@
 #!/bin/bash
 
 set -e
-export CMAKE=cmake3
 export SKALED_DEPS_CHAIN=1
 
-#env_clear_all() {
+#env_clear_all() { 
 #	for i in $(env | awk -F"=" '{print $1}') ; do
 #	unset $i ; done
 #}
@@ -1349,10 +1348,7 @@ then
 			if [ ! -f "boost_1_68_0.tar.bz2" ];
 			then
 				echo -e "${COLOR_INFO}downloading it${COLOR_DOTS}...${COLOR_RESET}"
-                git clone https://github.com/skalenetwork/build-artifacts.git
-                mv build-artifacts/artifacts/boost/boost_1_68_0.tar.bz2 .
-                rm -r build-artifacts
-				# eval "$WGET" https://sourceforge.net/projects/boost/files/boost/1.68.0/boost_1_68_0.tar.bz2
+				eval "$WGET" https://sourceforge.net/projects/boost/files/boost/1.68.0/boost_1_68_0.tar.bz2
 			fi
 			echo -e "${COLOR_INFO}unpacking it${COLOR_DOTS}...${COLOR_RESET}"
                         eval tar -xf boost_1_68_0.tar.bz2
