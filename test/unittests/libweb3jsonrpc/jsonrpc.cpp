@@ -314,6 +314,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams.sChain.contractStorageLimit = 128;
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams.sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
+#ifdef MIRAGE
+            chainParams.sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
+#endif
 #ifndef MIRAGE
             chainParams.sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
@@ -4039,12 +4042,13 @@ BOOST_AUTO_TEST_CASE( getZeroBlock ) {
 
 #ifdef MIRAGE
 BOOST_AUTO_TEST_CASE( block_author_balance ) {
-    JsonRpcFixture fixture( c_genesisGeneration2ConfigString, false, false, true );
+    JsonRpcFixture fixture; //  ( c_genesisConfigString, false, false, true );
     string etherbase = fixture.rpcClient->eth_coinbase();
 
     u256 etherbaseBalance = fixture.client->balanceAt( jsToAddress( etherbase ) );
 
     auto authorInitialBalance = fixture.client->balanceAt( jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" ) );
+
     auto initialBlockNumber = jsToU256( fixture.rpcClient->eth_blockNumber() );
 
     // mine block without transactions
@@ -4063,9 +4067,7 @@ BOOST_AUTO_TEST_CASE( block_author_balance ) {
     std::string txHash = fixture.rpcClient->eth_sendTransaction( sampleTx );
     BOOST_REQUIRE( !txHash.empty() );
 
-    cout << fixture.client->blockChain().transactions().size() << endl;
-    // Transaction tx = Transaction( txBytes );
-    dev::eth::mineTransaction( *( fixture.client ), 2 );
+    dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     fixture.client->state().getOriginalDb()->createBlockSnap( 2 );
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( fixture.account2.address() ), u256( 1000000 ) );
