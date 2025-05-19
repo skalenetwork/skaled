@@ -600,7 +600,7 @@ Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
     if ( _winningNodeIndex > 0 ) {
         return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
     } else {
-        return Block::DEFAULT_BLOCK_ADDRESS;
+        return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
     }
 }
 #endif

@@ -129,7 +129,7 @@ public:
         m_currentBlock.setAuthor( m_author );
     }
 
-    static const Address DEFAULT_BLOCK_ADDRESS;
+    static const Address DEFAULT_BLOCK_OWNER_ADDRESS;
 #endif
 
     /// Note the fact that this block is being used with a particular chain.

@@ -572,9 +572,9 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
     if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
         auto blockTimestamp = m_currentBlock.timestamp();
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
-		rewardBlockAuthorForNonDefaultBlock( reward );
+        rewardBlockAuthorForNonDefaultBlock( reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
-	}
+    }
 
     bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
@@ -1012,12 +1012,12 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
 
 #ifdef MIRAGE
 void Block::rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward ) {
-    if ( m_currentBlock.author() != DEFAULT_BLOCK_ADDRESS ) {
+    if ( m_currentBlock.author() != DEFAULT_BLOCK_OWNER_ADDRESS ) {
         m_state.addBalance( m_currentBlock.author(), _blockReward );
     }
 }
 
-const Address Block::DEFAULT_BLOCK_ADDRESS =
+const Address Block::DEFAULT_BLOCK_OWNER_ADDRESS =
     jsToAddress( "0x0000000000000000000000000000000000000000" );
 
 #endif
