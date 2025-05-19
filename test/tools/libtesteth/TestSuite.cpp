@@ -179,15 +179,15 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
     vector< fs::path > files = test::getFiles( getFullPathFiller( _testFolder ),
         {".json", ".yml"}, filter.empty() ? filter : filter + "Filler" );
 
-    // Filter out test files based on BITE flag for files with the same prefix
+    // Filter out test files based on MIRAGE flag for files with the same prefix
     if ( filter.empty() ) {
         std::unordered_map<std::string, std::vector<fs::path>> filesByPrefix;
         for (auto const& file : files) {
             std::string fileName = file.stem().string();
             std::string prefix;
 
-            if (fileName.size() > 5 && fileName.substr(0, 5) == "BITE_") {
-                prefix = fileName.substr(5);
+            if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
+                prefix = fileName.substr(7);
             } else {
                 prefix = fileName;
             }
@@ -201,27 +201,27 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                 filteredFiles.push_back(entry.second[0]);
             } else {
                 // We have multiple files with the same prefix
-                bool hasBite = false;
-                fs::path biteFile;
-                fs::path nonBiteFile;
+                bool hasMirage = false;
+                fs::path mirageFile;
+                fs::path nonMirageFile;
                 for (auto const& file : entry.second) {
                     std::string fileName = file.stem().string();
-                    if (fileName.size() > 5 && fileName.substr(0, 5) == "BITE_") {
-                        hasBite = true;
-                        biteFile = file;
+                    if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
+                        hasMirage = true;
+                        mirageFile = file;
                     } else {
-                        nonBiteFile = file;
+                        nonMirageFile = file;
                     }
                 }
 
-                if (hasBite) {
+                if (hasMirage) {
     #ifdef MIRAGE
-                    filteredFiles.push_back(biteFile);
+                    filteredFiles.push_back(mirageFile);
     #else
-                    filteredFiles.push_back(nonBiteFile);
+                    filteredFiles.push_back(nonMirageFile);
     #endif
                 } else {
-                    // If no bite/non-bite distinction, add all files
+                    // If no mirage/non-mirage distinction, add all files
                     for (auto const& file : entry.second) {
                         filteredFiles.push_back(file);
                     }
