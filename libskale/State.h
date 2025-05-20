@@ -260,6 +260,13 @@ public:
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
 
+#ifdef MIRAGE
+    /// Save last block for which rewards has been applied
+    void safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber );
+    /// Get last block for which rewards has been applied
+    dev::eth::BlockNumber getLastRewardedBlockNumber();
+#endif
+
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
 

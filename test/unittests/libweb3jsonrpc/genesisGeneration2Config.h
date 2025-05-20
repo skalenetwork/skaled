@@ -947,7 +947,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
                     "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
                     "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
                     "publicKey": "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-                    "owner": "0x5112ce768917e907191557d7e9521c2590cdd3a0",
+                    "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588",
                     "schainIndex": 1,
                     "ip": "186.14.217.13",
                     "publicIP": "4.127.224.50"

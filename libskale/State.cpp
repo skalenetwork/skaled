@@ -403,6 +403,21 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     }
 }
 
+#ifdef MIRAGE
+void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setLastRewardedBlockNumber( _blockNumber );
+    }
+}
+
+dev::eth::BlockNumber State::getLastRewardedBlockNumber() {
+    dev::eth::BlockNumber blockNumber = 0;
+    if ( m_db_ptr ) {
+        blockNumber = m_db_ptr->getLastRewardedBlockNumber();
+    }
+    return blockNumber;
+}
+#endif
 
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {

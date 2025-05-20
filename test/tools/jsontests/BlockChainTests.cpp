@@ -381,9 +381,17 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         AccountMaskMap expectStateMap;
         State stateExpect = State();
         ImportTest::importState( _input.at( "expect" ).get_obj(), stateExpect, expectStateMap );
+#ifdef MIRAGE
+        unordered_set< Address > owners;
+        owners.insert( testChain.topBlock().blockHeader().author() );
+        if ( ImportTest::compareStatesMIRAGE(
+                 stateExpect, testChain.topBlock().state(), owners, expectStateMap, WhenError::Throw ) )
+            cerr << testName << "\n";
+#else
         if ( ImportTest::compareStates(
                  stateExpect, testChain.topBlock().state(), expectStateMap, WhenError::Throw ) )
             cerr << testName << "\n";
+#endif
     }
 
     output["blocks"] = blArray;
@@ -542,8 +550,15 @@ void testBCTest( json_spirit::mObject const& _o ) {
 #endif
     BOOST_REQUIRE( ( _o.count( "postState" ) > 0 ) );
     ImportTest::importState( _o.at( "postState" ).get_obj(), postState );
+#ifdef MIRAGE
+    unordered_set< Address > owners;
+    owners.insert( testChain.topBlock().blockHeader().author() );
+    ImportTest::compareStatesMIRAGE( postState, testChain.topBlock().state(), owners );
+    ImportTest::compareStatesMIRAGE( postState, blockchain.topBlock().state(), owners );
+#else
     ImportTest::compareStates( postState, testChain.topBlock().state() );
     ImportTest::compareStates( postState, blockchain.topBlock().state() );
+#endif
 }
 
 bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
@@ -987,7 +1002,6 @@ public:
             cnote << "Skipping " << casename << " because --all option is not specified.\n";
             return;
         }
-
         suite.runAllTestsInFolder( casename );
     }
 };
@@ -1035,6 +1049,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_FIXTURE_TEST_SUITE( TransitionTests, bcTransitionFixture )
 
 BOOST_AUTO_TEST_CASE( bcEIP158ToByzantium ) {}
+
 BOOST_AUTO_TEST_CASE( bcByzantiumToConstantinopleFix ) {}
 
 BOOST_AUTO_TEST_SUITE_END()

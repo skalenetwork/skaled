@@ -1,4 +1,4 @@
-﻿/*
+/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -536,7 +536,11 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
         _decryptedTransactionDataFields,
 #endif
-    u256 _gasPrice, uint64_t _timestamp ) {
+    u256 _gasPrice,
+#ifdef MIRAGE
+    uint64_t _winningNodeIndex,
+#endif
+    uint64_t _timestamp ) {
     // on schain creation, SnapshotAgent needs timestamp of block 1
     // so we use this HACK
     // pass block number 0 as for bigger BN it is initialized in init()
@@ -545,6 +549,16 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
         m_snapshotAgentInited = true;
     }
     m_snapshotAgent->finishHashComputingAndUpdateHashesIfNeeded( _timestamp );
+
+#ifdef MIRAGE
+    // get winning node address
+    Address _winningNodeAddress = getWinningNodeAddressByIndex( _winningNodeIndex );
+    {
+        DEV_WRITE_GUARDED( x_working )
+        // set block author as winning node address
+        m_working.safeSetAuthor( _winningNodeAddress );
+    }
+#endif
 
 #ifdef BITE
     {
@@ -573,12 +587,26 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     if ( chainParams().sChain.nodeGroups.size() > 0 )
         updateHistoricGroupIndex();
 
+#ifdef MIRAGE
+    LOG( m_loggerInfo ) << "Winner for block " << number() << ": " << _winningNodeAddress
+                        << " (index " << _winningNodeIndex << ")";
+#endif
     m_snapshotAgent->doSnapshotIfNeeded( number(), _timestamp );
 
     tick();
 
     return cntSucceeded;
 }
+
+#ifdef MIRAGE
+Address Client::getWinningNodeAddressByIndex( uint64_t _winningNodeIndex ) {
+    if ( _winningNodeIndex > 0 ) {
+        return bc().chainParams().getSChainNodeAddressByIndex( _winningNodeIndex );
+    } else {
+        return Block::DEFAULT_BLOCK_OWNER_ADDRESS;
+    }
+}
+#endif
 
 size_t Client::syncTransactions(
     const Transactions& _transactions, u256 _gasPrice, uint64_t _timestamp ) {

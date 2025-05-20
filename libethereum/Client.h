@@ -207,6 +207,10 @@ public:
         restartMining();
     }
 
+#ifdef MIRAGE
+    Address getWinningNodeAddressByIndex( uint64_t _winningNodeIndex );
+#endif
+
     /// Type of sealers available for this seal engine.
     strings sealers() const { return sealEngine()->sealers(); }
     /// Current sealer in use.
@@ -293,7 +297,11 @@ public:
         const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
             _decryptedTransactionDataFields,
 #endif
-        u256 _gasPrice, uint64_t _timestamp = ( uint64_t ) utcTime() );
+        u256 _gasPrice,
+#ifdef MIRAGE
+        uint64_t _winningNodeIndex,
+#endif
+        uint64_t _timestamp = ( uint64_t ) utcTime() );
 
     boost::filesystem::path createSnapshotFile( unsigned _blockNumber ) {
         return m_snapshotAgent->createSnapshotFile( _blockNumber );
@@ -561,6 +569,9 @@ protected:
     mutable Logger m_loggerInfo{ createLogger( VerbosityInfo, "client" ) };
     mutable Logger m_loggerTrace{ createLogger( VerbosityTrace, "client" ) };
     mutable Logger m_loggerWarning{ createLogger( VerbosityWarning, "client" ) };
+#ifdef MIRAGE
+    mutable Logger m_loggerDebug{ createLogger( VerbosityDebug, "client" ) };
+#endif
     mutable Logger m_loggerError{ createLogger( VerbosityError, "client" ) };
 
     SkaleDebugTracer m_debugTracer;

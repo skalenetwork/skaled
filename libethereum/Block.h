@@ -121,6 +121,17 @@ public:
         resetCurrent();
     }
 
+#ifdef MIRAGE
+    /// Set the author address for any transactions we do and rewards we get.
+    /// No reset of current block
+    void safeSetAuthor( Address const& _id ) {
+        m_author = _id;
+        m_currentBlock.setAuthor( m_author );
+    }
+
+    static const Address DEFAULT_BLOCK_OWNER_ADDRESS;
+#endif
+
     /// Note the fact that this block is being used with a particular chain.
     /// Call this before using any non-const methods.
     void noteChain( BlockChain const& _bc );
@@ -333,6 +344,10 @@ private:
     /// Throws on failure.
     u256 enact( VerifiedBlockRef const& _block, BlockChain const& _bc );
 
+#ifdef MIRAGE
+    // Apply block reward for block author, if it is not default block
+    void rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward );
+#endif
     /// Finalise the block, applying the earned rewards.
     void applyRewards(
         std::vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward );

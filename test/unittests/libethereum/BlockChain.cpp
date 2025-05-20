@@ -68,7 +68,9 @@ BOOST_AUTO_TEST_CASE( opendb ) {
 
 BOOST_AUTO_TEST_CASE( Mining_1_mineBlockWithTransaction ) {
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-    TestTransaction tr = TestTransaction::defaultTransaction( 1 );  // nonce = 1
+    u256 nonce = 1;
+
+    TestTransaction tr = TestTransaction::defaultTransaction( nonce );
     TestBlock block;
     block.addTransaction( tr );
     block.mine( bc );
@@ -78,7 +80,7 @@ BOOST_AUTO_TEST_CASE( Mining_1_mineBlockWithTransaction ) {
 
 BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-    TestTransaction tr = TestTransaction::defaultTransaction( 1 );  // nonce = 1
+    TestTransaction tr = TestTransaction::defaultTransaction(); // nonce 1
     TestBlock block;
     block.addTransaction( tr );
     block.mine( bc );
@@ -90,8 +92,7 @@ BOOST_AUTO_TEST_CASE( Mining_2_mineUncles ) {
     uncleBlock2.mine( bc );
 
     sleep( 1 );
-
-    TestTransaction tr2 = TestTransaction::defaultTransaction( 2 );
+    TestTransaction tr2 = TestTransaction::defaultTransaction( 2 ); // nonce 2
     TestBlock block2;
     block2.addTransaction( tr2 );
     block2.mine( bc );
@@ -228,8 +229,8 @@ BOOST_AUTO_TEST_CASE( attemptImport ) {
     // Malformed
 
     TestBlockChain bc( TestBlockChain::defaultGenesisBlock() );
-
-    TestTransaction tr = TestTransaction::defaultTransaction();
+    u256 nonce = 1;
+    TestTransaction tr = TestTransaction::defaultTransaction( nonce );
     TestBlock block;
     block.addTransaction( tr );
     block.mine( bc );
@@ -264,7 +265,8 @@ BOOST_AUTO_TEST_CASE( updateStats ) {
     BOOST_CHECK_EQUAL( stat.memTotal(), 0 );
     BOOST_CHECK_EQUAL( stat.memTransactionAddresses, 0 );
 
-    TestTransaction tr = TestTransaction::defaultTransaction();
+    u256 nonce = 1;
+    TestTransaction tr = TestTransaction::defaultTransaction( nonce );
     TestBlock block;
     block.addTransaction( tr );
     block.mine( bc );

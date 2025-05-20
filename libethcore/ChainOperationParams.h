@@ -27,6 +27,11 @@
 #include <vector>
 
 #include <libdevcore/Common.h>
+
+#ifdef MIRAGE
+#include <libethcore/CommonJS.h>
+#endif
+
 #include <libethereum/Precompiled.h>
 #include <libethereum/SchainPatchEnum.h>
 
@@ -135,6 +140,9 @@ public:
 struct sChainNode {
 public:
     u256 id;
+#ifdef MIRAGE
+    Address owner;
+#endif
     std::string ip;
     u256 port;
     std::string ip6;
@@ -202,8 +210,14 @@ public:
 
         // HACK This creates one node and allows to run tests - BUT when loading config we need to
         // delete this explicitly!!
+#ifdef MIRAGE
+        sChainNode me = { u256( 1 ), jsToAddress( "0x0000000000000000000000000000000000000000" ),
+            "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa",
+            { "0", "1", "0", "1" } };
+#else
         sChainNode me = { u256( 1 ), "127.0.0.11", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ),
             "0xfa", { "0", "1", "0", "1" } };
+#endif
         nodes.push_back( me );
     }
 };
