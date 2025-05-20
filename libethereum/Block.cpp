@@ -841,7 +841,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
 #ifdef MIRAGE
     rewardBlockAuthorForNonDefaultBlock(
-        _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+        _bc.sealEngine()->blockReward( m_currentBlock.timestamp(), m_currentBlock.number() ) );
 #else
     applyRewards( rewarded,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
