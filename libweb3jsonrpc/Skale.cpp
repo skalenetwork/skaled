@@ -516,7 +516,7 @@ Json::Value Skale::skale_getDBUsage() {
     joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
     joSkaledDBUsage["contractStorageUsed"] = stateDbUsage.second;
 #else
-    joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
+    joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage;
 #endif
 
     joDBUsageInfo["skaledDBUsage"] = joSkaledDBUsage;
