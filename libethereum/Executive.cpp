@@ -293,10 +293,10 @@ bool Executive::execute() {
     // for BITE transactions returns decrypted data
     // for regular transactions returns regular data
     bytes const& dataToPassToEvm = m_t.decryptedData();
-    Address const& receiverAddressToPassToEvm = m_t.decryptedTo();
+    Address receiverAddressToPassToEvm = m_t.decryptedTo();
 #else
     bytes const& dataToPassToEvm = m_t.data();
-    Address const& receiverAddressToPassToEvm = m_t.receiveAddress();
+    Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
     if ( m_t.isCreation() )

@@ -130,10 +130,10 @@ bool AlethExecutive::execute() {
 
 #ifdef BITE
     bytes const& dataToPassToEvm = m_t.decryptedData();
-    Address const& receiverAddressToPassToEvm = m_t.decryptedTo();
+    Address receiverAddressToPassToEvm = m_t.decryptedTo();
 #else
     bytes const& dataToPassToEvm = m_t.data();
-    Address const& receiverAddressToPassToEvm = m_t.receiveAddress();
+    Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
