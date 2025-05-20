@@ -1297,7 +1297,7 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #ifdef BITE
             auto decryptedDataFromDb = decryptedTransactionData( tx.sha3() );
             if ( decryptedDataFromDb )
-                tx.setDecryptedData( std::make_shared< bytes >( decryptedDataFromDb.data() ) );
+                tx.setDecryptedFields( std::make_shared< bytes >( decryptedDataFromDb.data() ), std::make_shared< dev::Address >( decryptedDataFromDb.to() ) );
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;

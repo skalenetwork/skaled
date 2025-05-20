@@ -5824,7 +5824,7 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-        std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+        std::make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1 );
 
@@ -5866,7 +5866,7 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
-        std::make_shared< std::map< uint64_t, std::shared_ptr< bytes > > >(),
+        std::make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1 );
 
