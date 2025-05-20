@@ -2609,16 +2609,21 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     string contractAddress = receipt["contractAddress"].asString();
+#ifndef MIRAGE
     dev::Address contract = dev::Address( contractAddress );
+#endif
 
     Json::Value txCall;  // call foo()
     txCall["to"] = contractAddress;
     txCall["data"] = "0xc2985578";
     txCall["from"] = toJS( senderAddress );
     txCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    txHash = fixture.rpcClient->eth_call( txCall, "latest" );
+    auto callResult = fixture.rpcClient->eth_call( txCall, "latest" );
+#ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 0 );
+#endif
+    BOOST_REQUIRE_EQUAL( callResult, std::string( "0x" ) );
 
     Json::Value txPushValueAndCall;  // call storeAndCall(1)
     txPushValueAndCall["to"] = contractAddress;
@@ -2628,8 +2633,11 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txPushValueAndCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValueAndCall );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txPushValue;  // call store(2)
     txPushValue["to"] = contractAddress;
@@ -2639,8 +2647,11 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
     txPushValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txPushValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txThrow;  // trying to call store(3)
     txThrow["to"] = contractAddress;
@@ -2652,9 +2663,9 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
 #else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 160 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 #endif
 
     Json::Value txEraseValue;  // call erase(2)
@@ -2668,10 +2679,9 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
-#else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
+
 
     Json::Value txZeroValue;  // call zero(1)
     txZeroValue["to"] = contractAddress;
@@ -2684,10 +2694,8 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 64 );
-#else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txZeroValue1;  // call zero(1)
     txZeroValue1["to"] = contractAddress;
@@ -2700,10 +2708,8 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 64 );
-#else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txValueChanged;  // call strangeFunction(1)
     txValueChanged["to"] = contractAddress;
@@ -2716,10 +2722,8 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
-#else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txValueChanged1;  // call strangeFunction(0)
     txValueChanged1["to"] = contractAddress;
@@ -2732,10 +2736,8 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 96 );
-#else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txValueChanged2;  // call strangeFunction(2)
     txValueChanged2["to"] = contractAddress;
@@ -2748,10 +2750,8 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
-#else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 160 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txValueChanged3;  // try call strangeFunction(3)
     txValueChanged3["to"] = contractAddress;
@@ -2764,9 +2764,9 @@ BOOST_AUTO_TEST_CASE( storage_limit_contract ) {
 #ifndef MIRAGE
     BOOST_REQUIRE(
         fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 128 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
 #else
-    BOOST_REQUIRE(
-        fixture.client->state().createReadOnlySnapBasedCopy().storageUsed( contract ) == 160 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 #endif
 }
 
@@ -2830,7 +2830,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStore );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     // call store(2)
     txStore["to"] = contractAddress1;
@@ -2839,7 +2842,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStore );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 96 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txErase;  // call erase(1)
     txErase["to"] = contractAddress1;
@@ -2848,7 +2854,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txErase["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txErase );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     //    pragma solidity >=0.4.22 <0.7.0;
 
@@ -2892,7 +2901,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStoreSecondContract["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStoreSecondContract );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     // try call store(2) to second contract
     txStoreSecondContract["to"] = contractAddress2;
@@ -2904,8 +2916,9 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 #ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
 #else
-    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 160 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 #endif
 
     // try call store(3) to first contract
@@ -2915,10 +2928,11 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txStore["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStore );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    #ifndef MIRAGE
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 128 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x0" );
 #else
-    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 192 );
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 #endif
 
     Json::Value txZeroValue;  // call zero(1)
@@ -2929,17 +2943,18 @@ BOOST_AUTO_TEST_CASE( storage_limit_chain ) {
     txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
-    #ifndef MIRAGE
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 96 );
-#else
-    BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 160 );
 #endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     JsonRpcFixture fixture( c_genesisConfigString );
     dev::eth::simulateMining( *( fixture.client ), 20 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+#endif
 
     string contractAddress = "0xC2002000000000000000000000000000000000C2";
     string senderAddress = toJS( fixture.coinbase.address() );
@@ -2952,7 +2967,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     string txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txZeroValue;
     txZeroValue["to"] = contractAddress;
@@ -2962,7 +2980,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txZeroValue["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txZeroValue );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 32 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 
     Json::Value txChangeInt1;
     txChangeInt["to"] = contractAddress;
@@ -2972,7 +2993,10 @@ BOOST_AUTO_TEST_CASE( storage_limit_predeployed ) {
     txChangeInt["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txChangeInt );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == 64 );
+#endif
+    BOOST_REQUIRE_EQUAL( fixture.rpcClient->eth_getTransactionReceipt( txHash )["status"], "0x1" );
 }
 
 BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
@@ -3096,7 +3120,9 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     BOOST_REQUIRE( receipt2["status"] == string( "0x1" ) );
     string contractAddress2 = receipt2["contractAddress"].asString();
 
+#ifndef MIRAGE
     auto storageUsed = fixture.client->state().storageUsedTotal();
+#endif
 
     Json::Value txStoreTry;
     txStoreTry["to"] = contractAddress2;
@@ -3105,7 +3131,9 @@ BOOST_AUTO_TEST_CASE( storage_limit_reverted ) {
     txStoreTry["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txStoreTry );
     dev::eth::mineTransaction( *( fixture.client ), 1 );
+#ifndef MIRAGE
     BOOST_REQUIRE( fixture.client->state().storageUsedTotal() == storageUsed );
+#endif
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
     BOOST_REQUIRE( receipt["gasUsed"] != "0x0" );

@@ -429,6 +429,7 @@ public:
 
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
+#ifndef MIRAGE
     void resetStorageChanges() {
         storageUsage.clear();
         currentStorageUsed_ = 0;
@@ -441,7 +442,6 @@ public:
         return m_db_ptr->storageUsed();
     }
 
-#ifndef MIRAGE
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
@@ -496,9 +496,11 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+#ifndef MRIAGE
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 
     void updateStorageUsage();
+#endif
 
     void resetOverlayFS( bool _enableCache ) {
         m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
@@ -549,10 +551,10 @@ private:
 
 #ifndef MIRAGE
     dev::s256 contractStorageLimit_ = 0;
-#endif
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+#endif
     // if the state is based on a LevelDB snap, the instance of the snap goes here
     std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
