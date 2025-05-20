@@ -1060,11 +1060,7 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
-    auto bn = testClient->number();
-    // snapshot 2 is needed
-    while ( testClient->number() - bn < 2 ) {
-        std::this_thread::sleep_for( 10ms );
-    }
+    std::this_thread::sleep_for( 5000ms );
 
     BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" ) );
 
