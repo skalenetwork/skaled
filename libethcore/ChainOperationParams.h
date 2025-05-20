@@ -169,7 +169,9 @@ public:
     Address blockAuthor;
     std::vector< sChainNode > nodes;
     std::vector< NodeGroup > nodeGroups;
+#ifndef MIRAGE
     s256 contractStorageLimit = 1000000000;
+#endif
     uint64_t dbStorageLimit = 0;
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
