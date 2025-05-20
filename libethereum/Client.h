@@ -350,7 +350,11 @@ public:
 
     std::pair< uint64_t, uint64_t > getBlocksDbUsage() const;
 
+#ifndef MIRAGE
     std::pair< uint64_t, uint64_t > getStateDbUsage() const;
+#else
+    uint64_t getStateDbUsage() const;
+#endif
 
 #ifdef HISTORIC_STATE
     uint64_t getHistoricStateDbUsage() const;

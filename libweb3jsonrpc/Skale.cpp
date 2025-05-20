@@ -512,8 +512,12 @@ Json::Value Skale::skale_getDBUsage() {
 
     joSkaledDBUsage["blocks.db_disk_usage"] = blocksDbUsage.first;
     joSkaledDBUsage["pieceUsageBytes"] = blocksDbUsage.second;
+#ifndef MIRAGE
     joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
     joSkaledDBUsage["contractStorageUsed"] = stateDbUsage.second;
+#else
+    joSkaledDBUsage["state.db_disk_usage"] = stateDbUsage.first;
+#endif
 
     joDBUsageInfo["skaledDBUsage"] = joSkaledDBUsage;
 
