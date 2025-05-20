@@ -41,14 +41,6 @@ namespace fs = boost::filesystem;
 
 static size_t rand_port = ( srand(time(nullptr)), 1024 + rand() % 64000 );
 
-#define WAIT_FOR_THE_NEXT_BLOCK()          \
-{                                      \
-        auto bn = testClient->number();        \
-        while ( testClient->number() == bn + 1 ) { \
-            std::this_thread::sleep_for( 10ms );                \
-    }                                  \
-}
-
 struct FixtureCommon {
     const string BTRFS_FILE_PATH = "btrfs.file";
     const string BTRFS_DIR_PATH = "btrfs";
@@ -1068,8 +1060,11 @@ BOOST_AUTO_TEST_CASE( ClientSnapshotsTest, *boost::unit_test::disabled() ) {
 
     BOOST_REQUIRE( testClient->getSnapshotHash( 0 ) != dev::h256() );
 
-    // std::this_thread::sleep_for( 5000ms );
-    WAIT_FOR_THE_NEXT_BLOCK();
+    auto bn = testClient->number();
+    // snapshot 2 is needed
+    while ( testClient->number() - bn < 2 ) {
+        std::this_thread::sleep_for( 10ms );
+    }
 
     BOOST_REQUIRE( fs::exists( fs::path( fixture.getTmpDataDir() ) / "snapshots" / "2" ) );
 
