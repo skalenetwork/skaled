@@ -908,7 +908,6 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "schainID": 1,
             "schainName": "daateufj",
             "blockAuthor": "0xd2bA3e0000000000000000000000000000000000",
-            "contractStorageLimit": 106874910,
             "dbStorageLimit": 71249940,
             "snapshotIntervalSec": 0,
             "emptyBlockIntervalMs": 1000,

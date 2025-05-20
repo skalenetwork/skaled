@@ -1545,11 +1545,15 @@ void LegacyVM::interpretCases() {
 
             updateIOGas();
 
+#ifndef MIRAGE
             try {
                 m_ext->setStore( m_SP[0], m_SP[1] );
             } catch ( dev::StorageOverflow& ex ) {
                 throwStorageOverflow( ex.what() );
             }
+#else
+            m_ext->setStore( m_SP[0], m_SP[1] );
+#endif
         }
         NEXT
 

@@ -251,9 +251,12 @@ void Client::initStateFromDiskOrGenesis() {
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
-    m_state = State(
-        chainParams().accountStartNonce, m_dbPath, bc().genesisHash(), BaseState::PreExisting,
-        chainParams().accountInitialFunds, chainParams().sChain.contractStorageLimit
+    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().accountInitialFunds
+#ifndef MIRAGE
+        ,
+        chainParams().sChain.contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
         ,
         chainParams().sChain.maxHistoricStateDbSize
@@ -1419,6 +1422,7 @@ std::pair< uint64_t, uint64_t > Client::getBlocksDbUsage() const {
     return { dev::getDirSize( blocksDbPath ), pieceUsageBytes };
 }
 
+#ifndef MIRAGE
 std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
     uint64_t contractStorageUsed = m_state.storageUsedTotal().convert_to< uint64_t >();
     fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
@@ -1426,6 +1430,14 @@ std::pair< uint64_t, uint64_t > Client::getStateDbUsage() const {
                            fs::path( "state" );
     return { dev::getDirSize( stateDbPath ), contractStorageUsed };
 }
+#else
+uint64_t Client::getStateDbUsage() const {
+    fs::path stateDbPath = m_dbPath / BlockChain::getChainDirName( chainParams() ) /
+                           fs::path( toString( dev::eth::c_databaseVersion ) ) /
+                           fs::path( "state" );
+    return dev::getDirSize( stateDbPath );
+}
+#endif
 
 #ifdef HISTORIC_STATE
 uint64_t Client::getHistoricStateDbUsage() const {

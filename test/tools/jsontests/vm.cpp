@@ -368,9 +368,13 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                     BOOST_REQUIRE_MESSAGE(
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
                     State postState = State();
+#ifndef MIRAGE
                     postState.setStorageLimit(1000000000);
+#endif
                     State expectState = State();
+#ifndef MIRAGE
                     expectState.setStorageLimit(1000000000);
+#endif
                     AccountMaskMap expectStateMap;
                     ImportTest::importState( mValue( fev.exportState() ).get_obj(), postState );
                     ImportTest::importState(
@@ -396,9 +400,13 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                         testInput.count( "expect" ) == 1, testname + " multiple expect set!" );
 
                     State postState = State();
+#ifndef MIRAGE
                     postState.setStorageLimit(1000000000);
+#endif
                     State expectState = State();
+#ifndef MIRAGE
                     expectState.setStorageLimit(1000000000);
+#endif
                     AccountMaskMap expectStateMap;
 
                     // json_spirit::mObject const& debug_var = testOutput.at("post").get_obj();
@@ -468,9 +476,13 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
                 BOOST_CHECK_EQUAL( toInt( testInput.at( "gas" ) ), fev.gas );
 
                 State postState = State();
+#ifndef MIRAGE
                 postState.setStorageLimit(1000000000);
+#endif
                 State expectState = State();
+#ifndef MIRAGE
                 expectState.setStorageLimit(1000000000);
+#endif
                 mObject mPostState = fev.exportState();
                 ImportTest::importState( mPostState, postState );
                 ImportTest::importState( testInput.at( "post" ).get_obj(), expectState );
