@@ -164,9 +164,7 @@ struct CurrentGroup {
     std::array< std::string, 4 > commonBLSPublicKeys;
 };
 
-#ifdef MIRAGE
 using CurrentGroups = std::array< CurrentGroup, c_currentGroupsSize >;
-#endif
 
 /// skale
 struct SChain {
@@ -252,7 +250,7 @@ public:
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
         };
 #else
-        CurrentGroup = {
+        currentGroups[0] = {
             nodes,
             1,
             "",
