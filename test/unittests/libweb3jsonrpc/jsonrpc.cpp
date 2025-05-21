@@ -272,12 +272,11 @@ static std::string const c_genesisConfigString =
         "sChain": {
             "schainName": "TestChain",
             "schainID": 1,
-            "contractStorageLimit": 128,
             "emptyBlockIntervalMs": -1,
             "nodeGroups": {},
             "nodes": {
                 "1": [
-                        { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
+                        { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )" +
                             std::to_string( rand_port ) +
                             R"(, "schainIndex" : 1, "publicKey": "0xfa"}
                     ],
