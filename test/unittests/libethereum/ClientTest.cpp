@@ -1137,7 +1137,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() +
         "nodes": {
             "1":
                 [
-                  { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
                 ],
             "-1" : []
         }
