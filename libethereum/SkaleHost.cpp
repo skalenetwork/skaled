@@ -134,7 +134,7 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
 
     std::string ecdsaKeyName = m_client.chainParams().nodeInfo.ecdsaKeyName;
 
-    std::string blsKeyName = m_client.chainParams().nodeInfo.keyShareName;
+    std::string blsKeyName = m_client.chainParams().sChain.currentGroups.back().keyShareName;
 
     consensus.setSGXKeyInfo(
         sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName, blsKeyName );
@@ -159,18 +159,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 
     std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        std::vector< std::string > public_key_share( 4 );
-        if ( node.id != this->m_client.chainParams().nodeInfo.id ) {
-            public_key_share[0] = node.blsPublicKey.at( 0 );
-            public_key_share[1] = node.blsPublicKey.at( 1 );
-            public_key_share[2] = node.blsPublicKey.at( 2 );
-            public_key_share[3] = node.blsPublicKey.at( 3 );
-        } else {
-            public_key_share[0] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 0 );
-            public_key_share[1] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 1 );
-            public_key_share[2] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 2 );
-            public_key_share[3] = m_client.chainParams().nodeInfo.BLSPublicKeys.at( 3 );
-        }
+        std::vector< std::string > public_key_share( node.blsPublicKey.begin(), node.blsPublicKey.end() );
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );

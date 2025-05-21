@@ -357,9 +357,9 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
-    dev::eth::ChainParams chainParams = this->m_client.chainParams();
-    if ( !chainParams.nodeInfo.syncNode && ( chainParams.nodeInfo.keyShareName.empty() ||
-                                               chainParams.nodeInfo.sgxServerUrl.empty() ) )
+    const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
+    std::string keyShareName = chainParams.sChain.currentGroups.back().keyShareName;
+    if ( !chainParams.nodeInfo.syncNode && ( keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
@@ -385,7 +385,7 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 joCall["type"] = "BLSSignReq";
             nlohmann::json obj = nlohmann::json::object();
 
-            obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
+            obj["keyShareName"] = keyShareName;
             obj["messageHash"] = snapshotHash.hex();
             obj["n"] = chainParams.sChain.nodes.size();
             obj["t"] = chainParams.sChain.t;

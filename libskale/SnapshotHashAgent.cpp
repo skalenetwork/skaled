@@ -62,14 +62,11 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
 }
 
 void SnapshotHashAgent::readPublicKeyFromConfig() {
-    this->commonPublicKey_.X.c0 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-    this->commonPublicKey_.X.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-    this->commonPublicKey_.Y.c0 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-    this->commonPublicKey_.Y.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+    auto commonPublicKeyArray = chainParams_.sChain.currentGroups.back().commonBLSPublicKeys;
+    this->commonPublicKey_.X.c0 = libff::alt_bn128_Fq( commonPublicKeyArray[0].c_str() );
+    this->commonPublicKey_.X.c1 = libff::alt_bn128_Fq( commonPublicKeyArray[1].c_str() );
+    this->commonPublicKey_.Y.c0 = libff::alt_bn128_Fq( commonPublicKeyArray[2].c_str() );
+    this->commonPublicKey_.Y.c1 = libff::alt_bn128_Fq( commonPublicKeyArray[3].c_str() );
     this->commonPublicKey_.Z = libff::alt_bn128_Fq2::one();
 }
 
@@ -178,14 +175,12 @@ bool SnapshotHashAgent::voteForHash() {
                    "common public key from config";
 
             libff::alt_bn128_G2 commonPublicKey_from_config;
-            commonPublicKey_from_config.X.c0 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-            commonPublicKey_from_config.X.c1 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-            commonPublicKey_from_config.Y.c0 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-            commonPublicKey_from_config.Y.c1 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+
+            auto commonPublicKeyArray = chainParams_.sChain.currentGroups.back().commonBLSPublicKeys;
+            commonPublicKey_from_config.X.c0 = libff::alt_bn128_Fq( commonPublicKeyArray[0].c_str() );
+            commonPublicKey_from_config.X.c1 = libff::alt_bn128_Fq( commonPublicKeyArray[1].c_str() );
+            commonPublicKey_from_config.Y.c0 = libff::alt_bn128_Fq( commonPublicKeyArray[2].c_str() );
+            commonPublicKey_from_config.Y.c1 = libff::alt_bn128_Fq( commonPublicKeyArray[3].c_str() );
             commonPublicKey_from_config.Z = libff::alt_bn128_Fq2::one();
             LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
             commonPublicKey_from_config.print_coordinates();

@@ -73,13 +73,13 @@ public:
         auto lagrange_coeffs = libBLS::ThresholdUtils::LagrangeCoeffs( idx, _chainParams.sChain.t );
         auto keys = obj.KeysRecover( lagrange_coeffs, this->blsPrivateKeys_ );
         keys.second.to_affine_coordinates();
-        _chainParams.nodeInfo.commonBLSPublicKeys[0] =
+        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[0] =
             libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c0 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[1] =
+        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[1] =
             libBLS::ThresholdUtils::fieldElementToString( keys.second.X.c1 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[2] =
+        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[2] =
             libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c0 );
-        _chainParams.nodeInfo.commonBLSPublicKeys[3] =
+        _chainParams.sChain.currentGroups.back().commonBLSPublicKeys[3] =
             libBLS::ThresholdUtils::fieldElementToString( keys.second.Y.c1 );
 
         this->secret_as_is = keys.first;
@@ -87,7 +87,7 @@ public:
         isSnapshotMajorityRequired = !urlToDownloadSnapshotFrom.empty();
 
         this->hashAgent_.reset( new SnapshotHashAgent(
-            _chainParams, _chainParams.nodeInfo.commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
+            _chainParams, _chainParams.sChain.currentGroups.back().commonBLSPublicKeys, urlToDownloadSnapshotFrom ) );
     }
 
     void fillData( const std::vector< dev::h256 >& snapshot_hashes ) {
