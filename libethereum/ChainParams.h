@@ -81,6 +81,8 @@ struct ChainParams : public ChainOperationParams {
     void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
 
     std::string getConfigForConsensus() const;
+
+    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
 #endif
 
 private:

@@ -266,7 +266,9 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "snapshotDownloadInactiveTimeout",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifndef MIRAGE
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
+#endif
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
 #ifndef MIRAGE
             { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
@@ -279,7 +281,12 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
             { "multiTransactionMode", { { js::bool_type }, JsonFieldPresence::Optional } },
-            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } } },
+            { "nodeGroups", { { js::obj_type }, JsonFieldPresence::Optional } }
+#ifdef MIRAGE
+            ,
+            { "constantGasPrice", { { js::int_type }, JsonFieldPresence::Optional } }
+#endif
+        },
         []( const string& _key ) {
             // function fow allowing fields
             // exception means bad name

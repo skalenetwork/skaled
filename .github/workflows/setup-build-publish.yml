@@ -180,6 +180,8 @@ jobs:
           [[ $CMAKE_BUILD_TYPE = "Debug" ]] && export DEBUG_FLAG=1 || export DEBUG_FLAG=0
           cd deps
           ./clean.sh
+          # prepare boost library
+          mv pre_downloaded/boost_1_68_0.tar.bz2 ../libconsensus/libBLS/deps/boost_1_68_0.tar.bz2
           rm -f ./libwebsockets-from-git.tar.gz
           ./build.sh PARALLEL_COUNT=$(nproc) DEBUG=$DEBUG_FLAG
           cd ..

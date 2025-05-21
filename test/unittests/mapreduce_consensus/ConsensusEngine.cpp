@@ -221,7 +221,12 @@ public:
         chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
+
+#ifdef MIRAGE
+        sChainNode node2{u256( 2 ), jsToAddress( "0x0000000000000000000000000000000000000000" ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
+#else
         sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
+#endif
         chainParams.sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 
@@ -417,7 +422,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     u256 price2 = m_consensus->getPriceForBlockId( 2 );
 
     BOOST_REQUIRE_EQUAL( price0, price1 );
+#ifndef MIRAGE
     BOOST_REQUIRE_GT( price2, price1 );
+#else
+    BOOST_REQUIRE_EQUAL( price2, price1 );
+#endif
 
     // block 3
 
@@ -427,7 +436,11 @@ BOOST_AUTO_TEST_CASE( gasPriceIncrease ) {
     BOOST_REQUIRE_EQUAL( gasPrice, price2 );
     u256 price3 = m_consensus->getPriceForBlockId( 3 );
 
+#ifndef MIRAGE
     BOOST_REQUIRE_LT( price3, price2 );
+#else
+    BOOST_REQUIRE_EQUAL( price3, price2 );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

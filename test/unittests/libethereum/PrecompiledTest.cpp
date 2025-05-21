@@ -1631,7 +1631,6 @@ static std::string const genesisInfoSkaleConfigTest = R"(
     "sChain": {
         "schainName": "TestChain",
         "schainID": 1,
-        "contractStorageLimit": 32000,
         "precompiledConfigPatchTimestamp": 1,
         "emptyBlockIntervalMs": -1,
         "nodeGroups": {
@@ -1671,7 +1670,7 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         "nodes": [
           { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
         std::to_string( rand_port ) +
-        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x21abd6db4e347b4e8c937c1c8370e4b5ed3f0dd3db69cbdb7a38e1e50b1b82fc"}
+        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
         ]
     }
   },
@@ -1696,8 +1695,16 @@ static std::string const genesisInfoSkaleConfigTest = R"(
 
 #ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( getConfigVariable ) {
+    Json::Value ret;
+    Json::Reader().parse( genesisInfoSkaleConfigTest, ret );
+#ifndef MIRAGE
+    ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 32000;
+#endif
+    Json::FastWriter fastWriter;
+    std::string config = fastWriter.write( ret );
+
     ChainParams chainParams;
-    chainParams = chainParams.loadConfig( genesisInfoSkaleConfigTest );
+    chainParams = chainParams.loadConfig( config );
     chainParams.sealEngineName = NoProof::name();
     chainParams.allowFutureBlocks = true;
 
@@ -1718,11 +1725,15 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     ClientTest* testClient = asClientTest( client.get() );
 
     testClient->mineBlocks( 1 );
-    testClient->importTransactionsAsBlock( dev::eth::Transactions(),
+
+    testClient->importTransactionsAsBlock(
+        dev::eth::Transactions(),
 #ifdef BITE
-           make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
+        make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
 #endif
-                                           1000, 4294967294 );
+        1000,
+        4294967294 );
+
     dev::eth::g_skaleHost = testClient->skaleHost();
 
     PrecompiledExecutor exec = PrecompiledRegistrar::executor( "getConfigVariableUint256" );

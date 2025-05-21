@@ -176,8 +176,60 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
     }
 
     // run all tests
-    vector< fs::path > const files = test::getFiles( getFullPathFiller( _testFolder ),
+    vector< fs::path > files = test::getFiles( getFullPathFiller( _testFolder ),
         {".json", ".yml"}, filter.empty() ? filter : filter + "Filler" );
+
+    // Filter out test files based on MIRAGE flag for files with the same prefix
+    if ( filter.empty() ) {
+        std::unordered_map<std::string, std::vector<fs::path>> filesByPrefix;
+        for (auto const& file : files) {
+            std::string fileName = file.stem().string();
+            std::string prefix;
+
+            if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
+                prefix = fileName.substr(7);
+            } else {
+                prefix = fileName;
+            }
+
+            filesByPrefix[prefix].push_back(file);
+        }
+
+        std::vector<fs::path> filteredFiles;
+        for (auto const& entry : filesByPrefix) {
+            if (entry.second.size() == 1) {
+                filteredFiles.push_back(entry.second[0]);
+            } else {
+                // We have multiple files with the same prefix
+                bool hasMirage = false;
+                fs::path mirageFile;
+                fs::path nonMirageFile;
+                for (auto const& file : entry.second) {
+                    std::string fileName = file.stem().string();
+                    if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
+                        hasMirage = true;
+                        mirageFile = file;
+                    } else {
+                        nonMirageFile = file;
+                    }
+                }
+
+                if (hasMirage) {
+    #ifdef MIRAGE
+                    filteredFiles.push_back(mirageFile);
+    #else
+                    filteredFiles.push_back(nonMirageFile);
+    #endif
+                } else {
+                    // If no mirage/non-mirage distinction, add all files
+                    for (auto const& file : entry.second) {
+                        filteredFiles.push_back(file);
+                    }
+                }
+            }
+        }
+        files = filteredFiles;
+    }
 
     auto& testOutput = test::TestOutputHelper::get();
     testOutput.initTest( files.size() );

@@ -305,9 +305,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                                    -1;
 #endif
 
+#ifndef MIRAGE
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
                                  0;
+#endif
 
     s.dbStorageLimit =
         sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
@@ -322,6 +324,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
 
     if ( sChainObj.count( "multiTransactionMode" ) )
         s.multiTransactionMode = sChainObj.at( "multiTransactionMode" ).get_bool();
+
+#ifdef MIRAGE
+    if ( sChainObj.count( "constantGasPrice" ) )
+        s.constantGasPrice = sChainObj.at( "constantGasPrice" ).get_uint64();
+#endif
 
     // extract all "*PatchTimestamp" records
     for ( const auto& it : sChainObj ) {
@@ -389,6 +396,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             auto nodeConfObj = nodeConf.get_obj();
             sChainNode node{};
             node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+#ifdef MIRAGE
+            node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+#endif
             node.ip = nodeConfObj.at( "ip" ).get_str();
             node.port = nodeConfObj.at( "basePort" ).get_uint64();
             try {
@@ -632,7 +642,9 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
     sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
+#ifndef MIRAGE
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
+#endif
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
     auto addNodeToArray = []( const sChainNode& node, js::mArray& nodes ) {
@@ -733,5 +745,18 @@ std::string ChainParams::getConfigForConsensus() const {
     obj["skaleConfig"] = skaleConfigObj;
 
     return js::write_string( js::mValue( obj ), true );
+}
+  
+Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
+    const auto& sChainNodes = sChain.nodes;
+    auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
+        return node.sChainIndex == _sChainIndex;
+    };
+    auto nodeIterator = find_if( sChainNodes.begin(), sChainNodes.end(), has_schain_index );
+    if ( nodeIterator == sChainNodes.end() ) {
+        std::string sChainIndexStringRep = std::to_string( _sChainIndex );
+        throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
+    }
+    return nodeIterator->owner;
 }
 #endif
