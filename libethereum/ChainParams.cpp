@@ -722,6 +722,7 @@ void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     // invariant here - relevant group MUST BE stored under index 1
     if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
          sChain.currentGroups[0].startTs != 0 ) {
+        LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
         std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
         sChain.nodes = sChain.currentGroups[1].nodes;
     }

@@ -94,6 +94,9 @@ private:
     mutable std::string originalJSON;
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
+#ifdef MIRAGE
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
+#endif
 };
 
 }  // namespace dev::eth
