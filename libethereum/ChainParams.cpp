@@ -236,7 +236,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
 
     cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, syncNode, archiveMode,
-                    syncFromCatchup, testSignatures };
+        syncFromCatchup, testSignatures };
 
     auto sChainObj = skaleObj.at( "sChain" ).get_obj();
     SChain s{};
@@ -368,7 +368,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     // read current group(s) details
     auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
     if ( nodesObjects.size() != c_currentGroupsSize )
-        BOOST_THROW_EXCEPTION( runtime_error( std::string( "Nodes must have exactly " ) + std::to_string( c_currentGroupsSize ) + std::string( " groups provided." ) ) );
+        BOOST_THROW_EXCEPTION( runtime_error( std::string( "Nodes must have exactly " ) +
+                                              std::to_string( c_currentGroupsSize ) +
+                                              std::string( " groups provided." ) ) );
     for ( auto it = nodesObjects.begin(); it != nodesObjects.end(); ++it ) {
         int64_t startTs;
         try {
@@ -448,8 +450,8 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
             // timestamp is set to 0 for BOOT group
             startTs = 0;
         }
-        s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
-            ( uint64_t ) startTs, keyShareName, BLSPublicKey, commonBLSPublicKey };
+        s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes, ( uint64_t ) startTs,
+            keyShareName, BLSPublicKey, commonBLSPublicKey };
         s.t = t;
     }
 

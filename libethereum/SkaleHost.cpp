@@ -159,7 +159,8 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 
     std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
     for ( const auto& node : m_client.chainParams().sChain.nodes ) {
-        std::vector< std::string > public_key_share( node.blsPublicKey.begin(), node.blsPublicKey.end() );
+        std::vector< std::string > public_key_share(
+            node.blsPublicKey.begin(), node.blsPublicKey.end() );
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );

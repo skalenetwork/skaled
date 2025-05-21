@@ -299,25 +299,30 @@ void validateConfigJson( js::mObject const& _obj ) {
     js::mObject const& nodeGroups = sChain.at( "nodes" ).get_obj();
     for ( const auto& nodeGroup : nodeGroups ) {
         const js::mObject& groupInfo = nodeGroup.second.get_obj();
-        requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes", { { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } } } );
+        requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+            { { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } } } );
         if ( groupInfo.count( "blsKey" ) ) {
             const js::mObject& blsKeyInfo = groupInfo.at( "blsKey" ).get_obj();
-            requireJsonFields( blsKeyInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes::blsKey", { { "keyShareName", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "t", { { js::int_type }, JsonFieldPresence::Required } },
-                                                                                                            { "n", { { js::int_type }, JsonFieldPresence::Required } },
-                                                                                                            { "commonBLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "commonBLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "commonBLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "commonBLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "certFile", { { js::str_type }, JsonFieldPresence::Required } },
-                                                                                                            { "keyFile", { { js::str_type }, JsonFieldPresence::Required } },
-                               } );
+            requireJsonFields( blsKeyInfo,
+                "ChainParams::loadConfig::skaleConfig::sChain::nodes::blsKey",
+                {
+                    { "keyShareName", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "t", { { js::int_type }, JsonFieldPresence::Required } },
+                    { "n", { { js::int_type }, JsonFieldPresence::Required } },
+                    { "commonBLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "commonBLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "commonBLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "commonBLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "certFile", { { js::str_type }, JsonFieldPresence::Required } },
+                    { "keyFile", { { js::str_type }, JsonFieldPresence::Required } },
+                } );
         }
-        requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes", { { "group", { { js::obj_type }, JsonFieldPresence::Required } } } );
+        requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+            { { "group", { { js::obj_type }, JsonFieldPresence::Required } } } );
         const js::mArray& nodes = groupInfo.at( "group" ).get_array();
         for ( const auto& obj : nodes ) {
             const js::mObject node = obj.get_obj();
@@ -326,7 +331,8 @@ void validateConfigJson( js::mObject const& _obj ) {
                 { { "nodeName", { { js::str_type }, JsonFieldPresence::Optional } },
                     { "nodeID", { { js::int_type }, JsonFieldPresence::Required } },
                     { "ip", { { js::str_type }, JsonFieldPresence::Required } },
-                    { "publicIP", { { js::str_type }, JsonFieldPresence::Optional } },  // TODO not used
+                    { "publicIP", { { js::str_type }, JsonFieldPresence::Optional } },  // TODO not
+                                                                                        // used
                     { "basePort", { { js::int_type }, JsonFieldPresence::Required } },
                     { "ip6", { { js::str_type }, JsonFieldPresence::Optional } },
                     { "basePort6", { { js::int_type }, JsonFieldPresence::Optional } },
