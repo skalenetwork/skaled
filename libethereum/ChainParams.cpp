@@ -746,7 +746,7 @@ std::string ChainParams::getConfigForConsensus() const {
 
     return js::write_string( js::mValue( obj ), true );
 }
-  
+
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
     const auto& sChainNodes = sChain.nodes;
     auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
