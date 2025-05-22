@@ -230,26 +230,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "syncNodeReadJsonHeaderTimeoutSec",
                 { { js::int_type }, JsonFieldPresence::Optional } } } );
 
-    std::string keyShareName = "";
-    try {
-        nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "keyShareName" ).get_str();
-    } catch ( ... ) {
-    }
-
-    if ( !keyShareName.empty() ) {
-        requireJsonFields( nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj(),
-            "ChainParams::loadConfig::skaleConfig::nodeInfo::wallets::ima",
-            { { "t", { { js::int_type }, JsonFieldPresence::Required } },
-                { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
-                { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
-                { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
-                { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
-                { "commonBLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
-                { "commonBLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
-                { "commonBLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
-                { "commonBLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } } } );
-    }  // keyShareName
-
     const js::mObject& sChain = _obj.at( c_skaleConfig ).get_obj().at( "sChain" ).get_obj();
     requireJsonFields( sChain, "ChainParams::loadConfig::skaleConfig::sChain",
         { { "schainName", { { js::str_type }, JsonFieldPresence::Required } },
@@ -300,7 +280,8 @@ void validateConfigJson( js::mObject const& _obj ) {
     for ( const auto& nodeGroup : nodeGroups ) {
         const js::mObject& groupInfo = nodeGroup.second.get_obj();
         requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
-            { { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } } } );
+            { { "group", { { js::array_type }, JsonFieldPresence::Required } },
+                { "blsKey", { { js::obj_type }, JsonFieldPresence::Optional } } } );
         if ( groupInfo.count( "blsKey" ) ) {
             const js::mObject& blsKeyInfo = groupInfo.at( "blsKey" ).get_obj();
             requireJsonFields( blsKeyInfo,
@@ -321,8 +302,6 @@ void validateConfigJson( js::mObject const& _obj ) {
                     { "keyFile", { { js::str_type }, JsonFieldPresence::Required } },
                 } );
         }
-        requireJsonFields( groupInfo, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
-            { { "group", { { js::obj_type }, JsonFieldPresence::Required } } } );
         const js::mArray& nodes = groupInfo.at( "group" ).get_array();
         for ( const auto& obj : nodes ) {
             const js::mObject node = obj.get_obj();

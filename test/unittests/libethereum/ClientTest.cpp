@@ -431,11 +431,15 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "contractStorageLimit": 32000,
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
-        "nodes": [
-          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E" +
-                                                  std::to_string( rand_port ) +
-                                                  R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
-        ]
+        "nodes": {
+            "1": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            }
+        }
     }
   },
     "accounts": {
@@ -508,14 +512,15 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "schainName": "TestChain",
         "schainID": 1,
         "emptyBlockIntervalMs": -1,
-        "correctForkInPowPatchTimestamp": 1,
         "nodes": {
-            "1": [
-                    { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E" +
-                                                  std::to_string( rand_port ) +
-                                                  R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
-                ],
-            "-1": []
+            "1": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            },
+            "-1": {}
         }
     }
   },
@@ -1038,10 +1043,15 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
                 }
             }
         },
-        "nodes": [
-          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-    std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
-        ]
+        "nodes": {
+            "1": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            }
+        }
     }
   },
     "accounts": {
@@ -1143,12 +1153,14 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
             }
         },
         "nodes": {
-            "1":
-                [
-                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-    std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
-                ],
-            "-1" : []
+            "1": {
+                "group": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+    std::to_string( rand_port ) +
+    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                ]
+            },
+            "-1": {}
         }
     }
   },
@@ -1259,11 +1271,15 @@ static std::string const c_skaleConfigString =
             "schainID": 1,
             "snapshotIntervalSec": 5,
             "emptyBlockIntervalMs": 4000,
-            "nodes": [
-              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-    std::to_string( rand_port ) +
-    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
-            ]
+            "nodes": {
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+        std::to_string( rand_port ) +
+        R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                }
+            }
         }
     },
     "accounts": {
@@ -1320,13 +1336,14 @@ static std::string const c_skaleConfigString =
             "snapshotIntervalSec": 5,
             "emptyBlockIntervalMs": 4000,
             "nodes": {
-                "1":
-                    [
-                      { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E" +
-    std::to_string( rand_port ) +
-    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
-                    ],
-                "-1": []
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
+        std::to_string( rand_port ) +
+        R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                },
+                "-1": {}
             }
         }
     },

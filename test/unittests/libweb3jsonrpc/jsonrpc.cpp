@@ -117,11 +117,15 @@ static std::string const c_genesisConfigString =
             "schainID": 1,
             "emptyBlockIntervalMs": -1,
             "nodeGroups": {},
-            "nodes": [
-                { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
-    std::to_string( rand_port ) +
-    R"(, "schainIndex" : 1, "publicKey": "0xfa"}
-            ]
+            "nodes": {
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
+        std::to_string( rand_port ) +
+        R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                }
+            }
         }
     },
     "accounts": {
@@ -275,12 +279,14 @@ static std::string const c_genesisConfigString =
             "emptyBlockIntervalMs": -1,
             "nodeGroups": {},
             "nodes": {
-                "1": [
-                        { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )" +
-                            std::to_string( rand_port ) +
-                            R"(, "schainIndex" : 1, "publicKey": "0xfa"}
-                    ],
-                "-1": []
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
+        std::to_string( rand_port ) +
+        R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                },
+                "-1": {}
             }
         }
     },

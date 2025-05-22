@@ -304,13 +304,8 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     }
 
     try {
-#ifdef MIRAGE
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getConfigForConsensus(), _gethURL );
-#else
-        m_consensus->parseFullConfigAndCreateNode(
-            m_client.chainParams().getOriginalJson(), _gethURL );
-#endif
     } catch ( const std::exception& e ) {
         LOG( m_loggerError ) << "Could not create parse consensus config in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );

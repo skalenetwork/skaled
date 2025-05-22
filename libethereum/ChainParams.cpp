@@ -658,23 +658,26 @@ const std::string& ChainParams::getOriginalJson() const {
 
         nodes.push_back( nodeConfObj );
     };
-#ifndef MIRAGE
-    js::mArray nodes;
 
-    for ( const auto& node : sChain.nodes ) {
-        addNodeToArray( node, nodes );
-    }
-#else
     js::mObject nodes;
 
     for ( const auto& currentGroup : sChain.currentGroups ) {
+        js::mObject group;
+
         js::mArray currentNodes;
         for ( const auto& schainNode : currentGroup.nodes ) {
             addNodeToArray( schainNode, currentNodes );
         }
-        nodes[std::to_string( currentGroup.startTs )] = currentNodes;
+        group["group"] = currentNodes;
+
+        js::mObject blsKey;
+        blsKey["keyShareName"] = currentGroup.keyShareName;
+
+        group["blsKey"] = blsKey;
+
+        nodes[std::to_string( currentGroup.startTs )] = group;
     }
-#endif
+
     sChainObj["nodes"] = nodes;
 
     skaleObj["sChain"] = sChainObj;
@@ -716,18 +719,6 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     return false;
 }
 
-#ifdef MIRAGE
-void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
-    // for BOOT group timestamp is set to 0
-    // invariant here - relevant group MUST BE stored under index 1
-    if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
-         sChain.currentGroups[0].startTs != 0 ) {
-        LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
-        std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
-        sChain.nodes = sChain.currentGroups[1].nodes;
-    }
-}
-
 std::string ChainParams::getConfigForConsensus() const {
     js::mValue val;
     json_spirit::read_string_or_throw( getOriginalJson(), val );
@@ -739,15 +730,35 @@ std::string ChainParams::getConfigForConsensus() const {
 
     js::mArray newNodesObj;
     if ( sChain.nodes == sChain.currentGroups[0].nodes )
-        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[0].startTs )].get_array();
+        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[0].startTs )]
+                          .get_obj()
+                          .at( "group" )
+                          .get_array();
+#ifdef MIRAGE
     else
-        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )].get_array();
+        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )]
+                          .get_obj()
+                          .at( "group" )
+                          .get_array();
+#endif
 
     sChainObj["nodes"] = newNodesObj;
     skaleConfigObj["sChain"] = sChainObj;
     obj["skaleConfig"] = skaleConfigObj;
 
     return js::write_string( js::mValue( obj ), true );
+}
+
+#ifdef MIRAGE
+void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
+    // for BOOT group timestamp is set to 0
+    // invariant here - relevant group MUST BE stored under index 1
+    if ( _latestBlockTimestamp < sChain.currentGroups[1].startTs &&
+         sChain.currentGroups[0].startTs != 0 ) {
+        LOG( m_loggerInfo ) << "Using group with startTs " << sChain.currentGroups[0].startTs;
+        std::swap( sChain.currentGroups[0], sChain.currentGroups[1] );
+        sChain.nodes = sChain.currentGroups[1].nodes;
+    }
 }
 
 Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
