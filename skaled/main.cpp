@@ -1584,7 +1584,7 @@ int main( int argc, char** argv ) {
 
 #ifdef MIRAGE
         uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( chainParams, getDataDir() );
-        LOG( m_loggerInfo ) << "Latest block timestamp is: " << _latestBlockTs;
+        LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
         chainParams.updateCurrentGroupIfNeeded( latestBlockTs );
 #endif
 
