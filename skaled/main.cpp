@@ -1127,6 +1127,7 @@ int main( int argc, char** argv ) {
             }
         }
 
+#ifndef MIRAGE
         // for now, leave previous values in file (for case of crash)
 
         if ( vm.count( "main-net-url" ) ) {
@@ -1145,6 +1146,7 @@ int main( int argc, char** argv ) {
             LOG( loggerDebug ) << "Main Net URL is: "
                                << skutils::json_config_file_accessor::g_strImaMainNetURL;
         }
+#endif
 
         if ( !chainConfigIsSet )
             // default to skale if not already set with `--config`

@@ -80,6 +80,7 @@ Json::Value SkaleClient::skale_getSnapshotSignature( unsigned blockNumber ) {
     }
 }
 
+#ifndef MIRAGE
 Json::Value SkaleClient::skale_imaInfo() {
     Json::Value p;
     p = Json::nullValue;
@@ -94,6 +95,7 @@ Json::Value SkaleClient::skale_imaInfo() {
             jsonrpc::Errors::ERROR_CLIENT_INVALID_RESPONSE, result.toStyledString() );
     }
 }
+#endif
 
 unsigned SkaleClient::skale_getLatestSnapshotBlockNumber() {
     Json::Value p;

@@ -1075,6 +1075,7 @@ ETH_REGISTER_PRECOMPILED( addBalance )( [[maybe_unused]] bytesConstRef _in ) {
     return { false, response };  // 1st false - means bad error occur
 }
 
+#ifndef MIRAGE
 ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     try {
         if ( !g_skaleHost )
@@ -1099,5 +1100,6 @@ ETH_REGISTER_PRECOMPILED( getIMABLSPublicKey )( bytesConstRef ) {
     bytes response = toBigEndian( code );
     return { false, response };  // 1st false - means bad error occur
 }
+#endif
 
 }  // namespace

@@ -1382,6 +1382,7 @@ BOOST_AUTO_TEST_CASE( getBlockRandom ) {
     BOOST_REQUIRE( res.second == toBigEndian( static_cast< u256 >( blockRandom ) ) );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
     SkaleHostFixture fixture;
     auto& skaleHost = fixture.skaleHost;
@@ -1395,6 +1396,7 @@ BOOST_AUTO_TEST_CASE( getCurrentBLSPublicKey ) {
                                      toBigEndian( dev::u256( imaBLSPublicKey[2] ) ) +
                                      toBigEndian( dev::u256( imaBLSPublicKey[3] ) ) );
 }
+#endif
 
 #ifdef BITE
 BOOST_AUTO_TEST_CASE( biteTransactions ) {

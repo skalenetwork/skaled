@@ -387,6 +387,8 @@ Json::Value SkaleStats::skale_nodesRpcInfo() {
     }
 }
 
+
+#ifndef MIRAGE
 Json::Value SkaleStats::skale_imaInfo() {
     try {
         nlohmann::json joConfig = getConfigJSON();
@@ -477,7 +479,7 @@ Json::Value SkaleStats::skale_imaInfo() {
         throw jsonrpc::JsonRpcException( ex.what() );
     }
 }
-
+#endif
 
 void SkaleStats::initStatsCounters() {
     if ( !statsCounters.empty() > 0 ) {
