@@ -21,8 +21,6 @@
 
 #include <numeric>
 
-#include <boost/timer.hpp>
-
 #include <json/json.h>
 #include <libdevcore/CommonIO.h>
 #include <libdevcore/microprofile.h>

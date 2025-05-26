@@ -300,12 +300,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     m_bq.setChain( bc() );
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds( 30 );
-    m_tqReady = m_tq.onReady( [=]() { this->onTransactionQueueReady(); } );
-    m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
-    m_bqReady = m_bq.onReady( [=]() { this->onBlockQueueReady(); } );
-    m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
-    bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
-    bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
+    m_tqReady = m_tq.onReady( [this]() { this->onTransactionQueueReady(); } );
+    m_tqReplaced = m_tq.onReplaced( [this]( h256 const& ) { m_needStateReset = true; } );
+    m_bqReady = m_bq.onReady( [this]() { this->onBlockQueueReady(); } );
+    m_bq.setOnBad( [this]( Exception& ex ) { this->onBadBlock( ex ); } );
+    bc().setOnBad( [this]( Exception& ex ) { this->onBadBlock( ex ); } );
+    bc().setOnBlockImport( [this]( BlockHeader const& _info ) {
         if ( m_skaleHost )
             m_skaleHost->onBlockImported( _info );
         m_onBlockImport( _info );
@@ -816,7 +816,7 @@ void Client::rejigSealing() {
             }
 
             if ( wouldSeal() ) {
-                sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
+                sealEngine()->onSealGenerated( [this]( bytes const& _header ) {
                     LOG( m_loggerInfo ) << "Block sealed"
                                         << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )

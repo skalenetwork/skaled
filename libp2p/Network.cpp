@@ -130,7 +130,7 @@ std::set< bi::address > Network::getInterfaceAddresses() {
 
 bool p2p::isPublicAddress( std::string const& _addressToCheck ) {
     return _addressToCheck.empty() ? false :
-                                     isPublicAddress( bi::address::from_string( _addressToCheck ) );
+                                     isPublicAddress( bi::make_address( _addressToCheck ) );
 }
 
 bool p2p::isPublicAddress( bi::address const& _addressToCheck ) {
@@ -168,16 +168,16 @@ bool p2p::isPrivateAddress( bi::address const& _addressToCheck ) {
 bool p2p::isPrivateAddress( std::string const& _addressToCheck ) {
     return _addressToCheck.empty() ?
                false :
-               isPrivateAddress( bi::address::from_string( _addressToCheck ) );
+               isPrivateAddress( bi::make_address( _addressToCheck ) );
 }
 
 // Helper function to determine if an address is localhost
 bool p2p::isLocalHostAddress( bi::address const& _addressToCheck ) {
     // @todo: ivp6 link-local adresses (macos), ex: fe80::1%lo0
-    static const set< bi::address > c_rejectAddresses = { { bi::address_v4::from_string(
+    static const set< bi::address > c_rejectAddresses = { { bi::make_address_v4(
                                                               "127.0.0.1" ) },
-        { bi::address_v4::from_string( "0.0.0.0" ) }, { bi::address_v6::from_string( "::1" ) },
-        { bi::address_v6::from_string( "::" ) } };
+        { bi::make_address_v4( "0.0.0.0" ) }, { bi::make_address_v6( "::1" ) },
+        { bi::make_address_v6( "::" ) } };
 
     return find( c_rejectAddresses.begin(), c_rejectAddresses.end(), _addressToCheck ) !=
            c_rejectAddresses.end();
@@ -186,7 +186,7 @@ bool p2p::isLocalHostAddress( bi::address const& _addressToCheck ) {
 bool p2p::isLocalHostAddress( std::string const& _addressToCheck ) {
     return _addressToCheck.empty() ?
                false :
-               isLocalHostAddress( bi::address::from_string( _addressToCheck ) );
+               isLocalHostAddress( bi::make_address( _addressToCheck ) );
 }
 
 int Network::tcp4Listen( bi::tcp::acceptor& _acceptor, NetworkPreferences const& _netPrefs ) {
@@ -202,7 +202,7 @@ int Network::tcp4Listen( bi::tcp::acceptor& _acceptor, NetworkPreferences const&
     try {
         listenIP = _netPrefs.listenIPAddress.empty() ?
                        bi::address_v4() :
-                       bi::address::from_string( _netPrefs.listenIPAddress );
+                       bi::make_address( _netPrefs.listenIPAddress );
     } catch ( ... ) {
         cwarn << "Couldn't start accepting connections on host. Failed to accept socket on "
               << listenIP << ":" << _netPrefs.listenPort << ".\n"
@@ -269,7 +269,7 @@ bi::tcp::endpoint Network::traverseNAT( std::set< bi::address > const& _ifAddres
             }
 
         auto eIP = upnp->externalIP();
-        bi::address eIPAddr( bi::address::from_string( eIP ) );
+        bi::address eIPAddr( bi::make_address( eIP ) );
         if ( extPort && eIP != string( "0.0.0.0" ) && !isPrivateAddress( eIPAddr ) ) {
             cnetnote << "Punched through NAT and mapped local port " << _listenPort
                      << " onto external port " << extPort << ".";
@@ -284,7 +284,7 @@ bi::tcp::endpoint Network::traverseNAT( std::set< bi::address > const& _ifAddres
 }
 
 bi::tcp::endpoint Network::resolveHost( string const& _addr ) {
-    static boost::asio::io_service s_resolverIoService;
+    static boost::asio::io_context s_resolverIoService;
 
     vector< string > split;
     boost::split( split, _addr, boost::is_any_of( ":" ) );
@@ -297,7 +297,7 @@ bi::tcp::endpoint Network::resolveHost( string const& _addr ) {
     }
 
     boost::system::error_code ec;
-    bi::address address = bi::address::from_string( split[0], ec );
+    bi::address address = bi::make_address( split[0], ec );
     bi::tcp::endpoint ep( bi::address(), port );
     if ( !ec )
         ep.address( address );
@@ -305,12 +305,12 @@ bi::tcp::endpoint Network::resolveHost( string const& _addr ) {
         boost::system::error_code ec;
         // resolve returns an iterator (host can resolve to multiple addresses)
         bi::tcp::resolver r( s_resolverIoService );
-        auto it = r.resolve( { bi::tcp::v4(), split[0], toString( port ) }, ec );
+        auto results = r.resolve( bi::tcp::v4(), split[0], toString( port ), ec );
         if ( ec ) {
             cnetlog << "Error resolving host address... " << _addr << " : " << ec.message();
             return bi::tcp::endpoint();
         } else
-            ep = *it;
+            ep = results.begin()->endpoint();
     }
     return ep;
 }

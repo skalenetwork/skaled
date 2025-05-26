@@ -387,7 +387,7 @@ void test_ws_peer::onPeerUnregister() {  // peer will no longer receive onMessag
 void test_ws_peer::onMessage( const std::string& msg, skutils::ws::opcv eOpCode ) {
     if ( eOpCode != skutils::ws::opcv::text )
         throw std::runtime_error( "only ws text messages are supported" );
-    skutils::dispatch::async( strPeerQueueID_, [=]() -> void {
+    skutils::dispatch::async( strPeerQueueID_, [this, msg]() -> void {
         test_log_p(
             ">>> " + std::string( get_test_server().strSchemeUC_ ) + "-RX >>> " +
             desc() + " >>> " + msg );
@@ -618,7 +618,7 @@ test_server_proxygen::test_server_proxygen(
         )
         : test_server( "proxygen", nListenPortHTTP4 )
 {
-    skutils::http_pg::pg_on_request_handler_t fnHandler = [=]( const nlohmann::json& joIn,
+    skutils::http_pg::pg_on_request_handler_t fnHandler = [this]( const nlohmann::json& joIn,
             const std::string& strOrigin, int ipVer, const std::string& strDstAddress, int nDstPort )
             -> skutils::result_of_http_request {
         skutils::result_of_http_request rslt =

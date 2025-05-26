@@ -23,6 +23,7 @@ target_link_libraries(
         skale
         "${DEPS_INSTALL_ROOT}/lib/libunwind.a"
         "${DEPS_INSTALL_ROOT}/lib/liblzma.a"
+        "${DEPS_INSTALL_ROOT}/lib/libproxygen.a"
     )
 
 if(HISTORIC_STATE)

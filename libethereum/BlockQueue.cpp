@@ -52,7 +52,7 @@ BlockQueue::BlockQueue() {
     for ( unsigned i = 0; i < verifierThreads; ++i ) {
         if ( this->m_deleting )
             return;
-        m_verifiers.emplace_back( [=]() {
+        m_verifiers.emplace_back( [this, i]() {
             if ( this->m_deleting )
                 return;
             setThreadName( "blockVerifier" + toString( i ) );

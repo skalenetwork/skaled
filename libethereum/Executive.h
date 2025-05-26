@@ -65,7 +65,7 @@ public:
     std::string json( bool _styled = false ) const;
 
     OnOpFunc onOp() {
-        return [=]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
+        return [this]( uint64_t _steps, uint64_t _PC, Instruction _inst, bigint _newMemSize,
                    bigint _gasCost, bigint _gas, VMFace const* _vm, ExtVMFace const* _extVM ) {
             ( *this )( _steps, _PC, _inst, _newMemSize, _gasCost, _gas, _vm, _extVM );
         };
