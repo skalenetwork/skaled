@@ -1239,6 +1239,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_without_controller ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
     JsonRpcFixture fixture( c_genesisConfigString, false );
     auto senderAddress = fixture.coinbase.address();
@@ -1275,6 +1276,8 @@ BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
 }
+#endif
+
 
 BOOST_AUTO_TEST_CASE( create_opcode ) {
     JsonRpcFixture fixture( c_genesisConfigString );
