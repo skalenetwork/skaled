@@ -72,8 +72,11 @@ const std::map< std::pair< uint64_t, std::string >, uint64_t > State::txnsToSkip
 };  // the last value is for the test
 
 State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
-    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds,
+    dev::h256 const& _genesis, BaseState _bs, dev::u256 _initialFunds
+#ifndef MIRAGE
+    ,
     dev::s256 _contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
     ,
     dev::s256 _maxHistoricStateDbSize
@@ -81,8 +84,11 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
     )
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ),
+      m_initial_funds( _initialFunds )
+#ifndef MIRAGE
+      ,
       contractStorageLimit_( _contractStorageLimit )
+#endif
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize,
@@ -104,7 +110,9 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
         _bs == BaseState::PreExisting ? dev::WithExisting::Trust : dev::WithExisting::Kill ) );
 
     auto state = createStateCopyAndClearCaches();
+#ifndef MIRAGE
     totalStorageUsed_ = state.storageUsedTotal();
+#endif
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
@@ -127,7 +135,11 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
         _historicBlockToStateRootDb,
 #endif
-    skale::BaseState _bs, u256 _initialFunds, s256 _contractStorageLimit
+    skale::BaseState _bs, u256 _initialFunds
+#ifndef MIRAGE
+    ,
+    s256 _contractStorageLimit
+#endif
 #ifdef HISTORIC_STATE
     ,
     s256 _maxHistoricStateDbSize
@@ -136,8 +148,11 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
     : x_db_ptr( make_shared< boost::shared_mutex >() ),
       m_db_ptr( make_shared< OverlayDB >( _db ) ),
       m_accountStartNonce( _accountStartNonce ),
-      m_initial_funds( _initialFunds ),
+      m_initial_funds( _initialFunds )
+#ifndef MIRAGE
+      ,
       contractStorageLimit_( _contractStorageLimit )
+#endif
 #ifdef HISTORIC_STATE
       ,
       m_historicState( _accountStartNonce, _maxHistoricStateDbSize, _historicDb,
@@ -145,7 +160,9 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #endif
 {
     auto state = createStateCopyAndClearCaches();
+#ifndef MIRAGE
     totalStorageUsed_ = state.storageUsedTotal();
+#endif
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
@@ -280,8 +297,10 @@ State::State( const State& _s )
     m_initial_funds = _s.m_initial_funds;
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
+#ifndef MIRAGE
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+#endif
 }
 
 State& State::operator=( const State& _s ) {
@@ -294,8 +313,10 @@ State& State::operator=( const State& _s ) {
     m_accountStartNonce = _s.m_accountStartNonce;
     m_changeLog = _s.m_changeLog;
     m_initial_funds = _s.m_initial_funds;
+#ifndef MIRAGE
     contractStorageLimit_ = _s.contractStorageLimit_;
     totalStorageUsed_ = _s.storageUsedTotal();
+#endif
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
@@ -382,6 +403,21 @@ void State::safeSetAndCommitPartialTransactionReceipt(
     }
 }
 
+#ifdef MIRAGE
+void State::safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber ) {
+    if ( m_db_ptr ) {
+        m_db_ptr->setLastRewardedBlockNumber( _blockNumber );
+    }
+}
+
+dev::eth::BlockNumber State::getLastRewardedBlockNumber() {
+    dev::eth::BlockNumber blockNumber = 0;
+    if ( m_db_ptr ) {
+        blockNumber = m_db_ptr->getLastRewardedBlockNumber();
+    }
+    return blockNumber;
+}
+#endif
 
 void State::populateFrom( eth::AccountMap const& _map ) {
     for ( auto const& addressAccountPair : _map ) {
@@ -403,8 +439,10 @@ void State::populateFrom( eth::AccountMap const& _map ) {
                 if ( account.hasNewCode() ) {
                     setCode( address, account.code(), account.version() );
                 }
+#ifndef MIRAGE
                 totalStorageUsed_ += currentStorageUsed_;
                 updateStorageUsage();
+#endif
             }
         }
     }
@@ -503,13 +541,20 @@ eth::Account* State::account( Address const& _address ) {
     u256 nonce = state[0].toInt< u256 >();
     u256 balance = state[1].toInt< u256 >();
     h256 codeHash = state[2].toInt< u256 >();
+#ifndef MIRAGE
     s256 storageUsed = state[3].toInt< s256 >();
+#endif
     // version is 0 if absent from RLP
     auto const version = state[4] ? state[4].toInt< u256 >() : 0;
 
     auto i = m_cache.emplace( std::piecewise_construct, std::forward_as_tuple( _address ),
         std::forward_as_tuple( nonce, balance, dev::eth::StorageRoot( EmptyTrie ), codeHash,
-            version, dev::eth::Account::Changedness::Unchanged, storageUsed ) );
+            version, dev::eth::Account::Changedness::Unchanged
+#ifndef MIRAGE
+            ,
+            storageUsed
+#endif
+            ) );
     m_unchangedCacheEntries.push_back( _address );
     return &i.first->second;
 }
@@ -556,10 +601,16 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                     }
 
                 } else {
+#ifndef MIRAGE
                     RLPStream rlpStream( 4 );
 
                     rlpStream << account.nonce() << account.balance() << u256( account.codeHash() )
                               << account.storageUsed();
+#else
+                    RLPStream rlpStream( 3 );
+
+                    rlpStream << account.nonce() << account.balance() << u256( account.codeHash() );
+#endif
                     auto rawValue = rlpStream.out();
 
                     m_db_ptr->insert( address, ref( rawValue ) );
@@ -578,7 +629,9 @@ void State::commit( dev::eth::CommitBehaviour _commitBehaviour ) {
                 }
             }
         }
+#ifndef MIRAGE
         m_db_ptr->updateStorageUsage( totalStorageUsed_ );
+#endif
         m_db_ptr->commit();
     }
 
@@ -767,6 +820,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, _value );
 
+#ifndef MIRAGE
     int count = 0;
 
     if ( ( _value > 0 && _currentValue > 0 ) || ( _value == 0 && _currentValue == 0 ) ) {
@@ -781,6 +835,7 @@ void State::setStorage( Address const& _contract, u256 const& _key, u256 const& 
     if ( totalStorageUsed_ + currentStorageUsed_ > contractStorageLimit_ ) {
         BOOST_THROW_EXCEPTION( dev::StorageOverflow() << errinfo_comment( _contract.hex() ) );
     }
+#endif
 }
 
 void State::clearStorageValue(
@@ -788,6 +843,7 @@ void State::clearStorageValue(
     m_changeLog.emplace_back( _contract, _key, _currentValue );
     m_cache[_contract].setStorage( _key, 0 );
 
+#ifndef MIRAGE
     int count;
 
     if ( _currentValue == 0 ) {
@@ -798,6 +854,7 @@ void State::clearStorageValue(
 
     storageUsage[_contract] += count * 32;
     currentStorageUsed_ += count * 32;
+#endif
 }
 
 u256 State::originalStorageValue( Address const& _contract, u256 const& _key ) const {
@@ -822,11 +879,13 @@ void State::clearStorage( Address const& _contract ) {
     cdebug << "Self-destructing" << _contract;
 
     Account* acc = account( _contract );
+#ifndef MIRAGE
     dev::s256 accStorageUsed = acc->storageUsed();
 
     if ( accStorageUsed == 0 && storageUsage[_contract] == 0 ) {
         return;
     }
+#endif
 
     // clearStorage is called from functions that already hold a read
     // or write lock over the state Therefore, we can use
@@ -849,8 +908,10 @@ void State::clearStorage( Address const& _contract ) {
         m_db_ptr->insert( _contract, key, ZERO );
     }
 
+#ifndef MIRAGE
     totalStorageUsed_ -= ( accStorageUsed + storageUsage[_contract] );
     acc->updateStorageUsage( -accStorageUsed );
+#endif
 }
 
 bytes const& State::code( Address const& _addr ) const {
@@ -926,11 +987,15 @@ void State::rollback( size_t _savepoint ) {
         // change log entry.
         switch ( change.kind ) {
         case Change::Storage:
+#ifndef MIRAGE
             if ( ContractStoragePatch::isEnabledInWorkingBlock() ) {
                 rollbackStorageChange( change, account );
             } else {
                 account.setStorage( change.key, change.value );
             }
+#else
+            account.setStorage( change.key, change.value );
+#endif
             break;
         case Change::StorageRoot:
             account.setStorageRoot( change.value );
@@ -956,9 +1021,11 @@ void State::rollback( size_t _savepoint ) {
     }
     clearFileStorageCache();
 
+#ifndef MIRAGE
     if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
+#endif
 }
 
 void State::clearCaches() {
@@ -1082,14 +1149,18 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     switch ( _p ) {
     case Permanence::Reverted:
     case Permanence::CommittedWithoutState:
+#ifndef MIRAGE
         resetStorageChanges();
+#endif
         m_cache.clear();
         break;
     case Permanence::Committed: {
+#ifndef MIRAGE
         if ( account( _t.from() ) != nullptr && account( _t.from() )->code() == bytes() ) {
             totalStorageUsed_ += currentStorageUsed_;
             updateStorageUsage();
         }
+#endif
         // TODO: review logic|^
 
         h256 shaLastTx = _t.sha3();  // _t.hasSignature() ? _t.sha3() : _t.sha3(
@@ -1146,7 +1217,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         break;
     }
     case Permanence::Uncommitted:
+#ifndef MIRAGE
         resetStorageChanges();
+#endif
         break;
     }
 
@@ -1186,6 +1259,7 @@ bool State::executeTransaction(
     }
 }
 
+#ifndef MIRAGE
 void State::rollbackStorageChange( const Change& _change, eth::Account& _acc ) {
     dev::u256 _currentValue = storage( _change.address, _change.key );
     int count = 0;
@@ -1215,7 +1289,7 @@ dev::s256 State::storageUsed( const dev::Address& _addr ) const {
         return 0;
     }
 }
-
+#endif
 
 std::ostream& skale::operator<<( std::ostream& _out, State const& _s ) {
     _out << "--- Cache ---"

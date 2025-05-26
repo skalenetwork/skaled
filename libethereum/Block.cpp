@@ -1,4 +1,4 @@
-﻿/*
+/*
     Modifications Copyright (C) 2018-2019 SKALE Labs
 
     This file is part of cpp-ethereum.
@@ -567,6 +567,18 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             LOG( m_loggerError ) << "FAILED transaction after consensus! " << ex.what();
         }
     }
+#ifdef MIRAGE
+    auto lastRewardedBlockNumber = m_state.getLastRewardedBlockNumber();
+    if ( lastRewardedBlockNumber < m_currentBlock.number() ) {
+        auto blockTimestamp = m_currentBlock.timestamp();
+        auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
+        rewardBlockAuthorForNonDefaultBlock( reward );
+        m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
+        bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+        m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
+                                              dev::eth::CommitBehaviour::KeepEmptyAccounts );
+    }
+#endif
 
 #ifdef HISTORIC_STATE
     m_state.mutableHistoricState().saveRootForBlockNumber( m_currentBlock.number() );
@@ -826,8 +838,14 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     assert( _bc.sealEngine() );
     DEV_TIMED_ABOVE( "applyRewards", 500 )
+
+#ifdef MIRAGE
+    rewardBlockAuthorForNonDefaultBlock(
+        _bc.sealEngine()->blockReward( m_currentBlock.timestamp(), m_currentBlock.number() ) );
+#else
     applyRewards( rewarded,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#endif
 
     if ( m_currentBlock.gasUsed() != gasUsed() ) {
         // Do not commit changes of state
@@ -990,6 +1008,18 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     return resultReceipt.first;
 }
 
+#ifdef MIRAGE
+void Block::rewardBlockAuthorForNonDefaultBlock( u256 const& _blockReward ) {
+    if ( m_currentBlock.author() != DEFAULT_BLOCK_OWNER_ADDRESS ) {
+        m_state.addBalance( m_currentBlock.author(), _blockReward );
+    }
+}
+
+const Address Block::DEFAULT_BLOCK_OWNER_ADDRESS =
+    jsToAddress( "0x0000000000000000000000000000000000000000" );
+
+#endif
+
 void Block::applyRewards(
     vector< BlockHeader > const& _uncleBlockHeaders, u256 const& _blockReward ) {
     u256 r = _blockReward;
@@ -1100,17 +1130,14 @@ void Block::commitToSeal(
 
     // Apply rewards last of all.
     assert( _bc.sealEngine() );
+#ifndef MIRAGE
     applyRewards( uncleBlockHeaders,
         _bc.sealEngine()->blockReward( previousInfo().timestamp(), m_currentBlock.number() ) );
+#endif
 
     // Commit any and all changes to the trie that are in the cache, then update the state root
     // accordingly.
-    // bool removeEmptyAccounts =
-    //    m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
-    // We do not commit now because will do it in blockchain syncing
-    //    m_state.commit(removeEmptyAccounts ? State::CommitBehaviour::RemoveEmptyAccounts :
-    //                                         State::CommitBehaviour::KeepEmptyAccounts);
 
     LOG( m_loggerTrace ) << "Post-reward stateRoot: "
                          << "is not calculated in Skale state";

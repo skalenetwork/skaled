@@ -58,6 +58,12 @@ public:
 
     bytes executeTest( bool _isFilling );
     int exportTest();
+#ifdef MIRAGE
+    static int compareStatesMIRAGE( skale::State const& _stateExpect, State const& _statePost,
+        std::unordered_set<Address> const& owners,
+        eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
+        WhenError _throw = WhenError::Throw );
+#endif
     static int compareStates( skale::State const& _stateExpect, State const& _statePost,
         eth::AccountMaskMap const _expectedStateOptions = eth::AccountMaskMap(),
         WhenError _throw = WhenError::Throw );

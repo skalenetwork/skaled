@@ -247,8 +247,8 @@ void ConsensusExtImpl::createBlock(
 #ifdef BITE
     shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
-    uint64_t _timeStamp, uint32_t /*_timeStampMs */, uint64_t _blockID, u256 _gasPrice,
-    u256 _stateRoot, uint64_t _winningNodeIndex ) {
+    uint64_t _timeStamp, uint32_t, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
+    uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions,
 #ifdef BITE
@@ -627,10 +627,15 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         m_debugTracer.tracepoint( "import_block" );
 
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
+
 #ifdef BITE
             _decryptedTransactionFields,
 #endif
-            _gasPrice, _timeStamp );
+            _gasPrice,
+#ifdef MIRAGE
+            _winningNodeIndex,
+#endif
+            _timeStamp );
     }  // m_blockImportMutex
 
     if ( n_succeeded != out_txns.size() )

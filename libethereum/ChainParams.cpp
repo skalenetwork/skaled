@@ -305,9 +305,11 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                                    -1;
 #endif
 
+#ifndef MIRAGE
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
                                  0;
+#endif
 
     s.dbStorageLimit =
         sChainObj.count( "dbStorageLimit" ) ? sChainObj.at( "dbStorageLimit" ).get_int64() : 0;
@@ -392,6 +394,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         auto nodeConfObj = nodeConf.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+#ifdef MIRAGE
+        node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+#endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
         try {
@@ -604,7 +609,9 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
     sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
+#ifndef MIRAGE
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
+#endif
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
     js::mArray nodes;
@@ -661,3 +668,18 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     }
     return false;
 }
+
+#ifdef MIRAGE
+Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const {
+    const auto& sChainNodes = sChain.nodes;
+    auto has_schain_index = [&_sChainIndex]( const sChainNode& node ) {
+        return node.sChainIndex == _sChainIndex;
+    };
+    auto nodeIterator = find_if( sChainNodes.begin(), sChainNodes.end(), has_schain_index );
+    if ( nodeIterator == sChainNodes.end() ) {
+        std::string sChainIndexStringRep = std::to_string( _sChainIndex );
+        throw std::runtime_error( "No such sChainIndex -" + sChainIndexStringRep + " in config" );
+    }
+    return nodeIterator->owner;
+}
+#endif

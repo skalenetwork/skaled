@@ -209,7 +209,11 @@ public:
     // This is called once in the client during the client creation
     explicit State( dev::u256 const& _accountStartNonce, boost::filesystem::path const& _dbPath,
         dev::h256 const& _genesis, BaseState _bs = BaseState::PreExisting,
-        dev::u256 _initialFunds = 0, dev::s256 _contractStorageLimit = 32
+        dev::u256 _initialFunds = 0
+#ifndef MIRAGE
+        ,
+        dev::s256 _contractStorageLimit = 32
+#endif
 #ifdef HISTORIC_STATE
         ,
         dev::s256 _maxHistoricStateDbSize = -1
@@ -255,6 +259,13 @@ public:
 
     void safeSetAndCommitPartialTransactionReceipt( const dev::bytes& _receipt,
         dev::eth::BlockNumber _blockNumber, uint64_t _transactionIndex );
+
+#ifdef MIRAGE
+    /// Save last block for which rewards has been applied
+    void safeSetLastRewardedBlockNumber( dev::eth::BlockNumber _blockNumber );
+    /// Get last block for which rewards has been applied
+    dev::eth::BlockNumber getLastRewardedBlockNumber();
+#endif
 
     /// Populate the state from the given AccountMap. Just uses dev::eth::commit().
     void populateFrom( dev::eth::AccountMap const& _map );
@@ -425,6 +436,7 @@ public:
 
     dev::db::DBImpl* getOriginalDb() const { return m_orig_db.get(); }
 
+#ifndef MIRAGE
     void resetStorageChanges() {
         storageUsage.clear();
         currentStorageUsed_ = 0;
@@ -440,7 +452,7 @@ public:
     void setStorageLimit( const dev::s256& _contractStorageLimit ) {
         contractStorageLimit_ = _contractStorageLimit;
     };  // only for tests
-
+#endif
 
     void createReadOnlyStateDBSnap( uint64_t _blockNumber );
 
@@ -454,8 +466,11 @@ private:
         std::pair< dev::OverlayDB, std::shared_ptr< dev::db::RotatingHistoricState > > const&
             _historicBlockToStateRootDb,
 #endif
-        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0,
+        BaseState _bs = BaseState::PreExisting, dev::u256 _initialFunds = 0
+#ifndef MIRAGE
+        ,
         dev::s256 _contractStorageLimit = 32
+#endif
 #ifdef HISTORIC_STATE
         ,
         dev::s256 _maxHistoricStateDbSize = -1
@@ -488,9 +503,11 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
+#ifndef MRIAGE
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 
     void updateStorageUsage();
+#endif
 
     void resetOverlayFS( bool _enableCache ) {
         m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
@@ -539,10 +556,12 @@ private:
 
     dev::u256 m_initial_funds = 0;
 
+#ifndef MIRAGE
     dev::s256 contractStorageLimit_ = 0;
     std::map< dev::Address, dev::s256 > storageUsage;
     dev::s256 totalStorageUsed_ = 0;
     dev::s256 currentStorageUsed_ = 0;
+#endif
     // if the state is based on a LevelDB snap, the instance of the snap goes here
     std::shared_ptr< dev::db::LevelDBSnap > m_snap = nullptr;
     bool m_isReadOnlySnapBasedState = false;
