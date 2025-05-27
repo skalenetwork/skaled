@@ -129,8 +129,7 @@ std::set< bi::address > Network::getInterfaceAddresses() {
 }
 
 bool p2p::isPublicAddress( std::string const& _addressToCheck ) {
-    return _addressToCheck.empty() ? false :
-                                     isPublicAddress( bi::make_address( _addressToCheck ) );
+    return _addressToCheck.empty() ? false : isPublicAddress( bi::make_address( _addressToCheck ) );
 }
 
 bool p2p::isPublicAddress( bi::address const& _addressToCheck ) {
@@ -166,16 +165,14 @@ bool p2p::isPrivateAddress( bi::address const& _addressToCheck ) {
 }
 
 bool p2p::isPrivateAddress( std::string const& _addressToCheck ) {
-    return _addressToCheck.empty() ?
-               false :
-               isPrivateAddress( bi::make_address( _addressToCheck ) );
+    return _addressToCheck.empty() ? false :
+                                     isPrivateAddress( bi::make_address( _addressToCheck ) );
 }
 
 // Helper function to determine if an address is localhost
 bool p2p::isLocalHostAddress( bi::address const& _addressToCheck ) {
     // @todo: ivp6 link-local adresses (macos), ex: fe80::1%lo0
-    static const set< bi::address > c_rejectAddresses = { { bi::make_address_v4(
-                                                              "127.0.0.1" ) },
+    static const set< bi::address > c_rejectAddresses = { { bi::make_address_v4( "127.0.0.1" ) },
         { bi::make_address_v4( "0.0.0.0" ) }, { bi::make_address_v6( "::1" ) },
         { bi::make_address_v6( "::" ) } };
 
@@ -184,9 +181,8 @@ bool p2p::isLocalHostAddress( bi::address const& _addressToCheck ) {
 }
 
 bool p2p::isLocalHostAddress( std::string const& _addressToCheck ) {
-    return _addressToCheck.empty() ?
-               false :
-               isLocalHostAddress( bi::make_address( _addressToCheck ) );
+    return _addressToCheck.empty() ? false :
+                                     isLocalHostAddress( bi::make_address( _addressToCheck ) );
 }
 
 int Network::tcp4Listen( bi::tcp::acceptor& _acceptor, NetworkPreferences const& _netPrefs ) {
