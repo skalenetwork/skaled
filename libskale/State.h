@@ -503,20 +503,22 @@ private:
     bool executeTransaction(
         dev::eth::Executive& _e, dev::eth::Transaction const& _t, dev::eth::OnOpFunc const& _onOp );
 
-#ifndef MRIAGE
+#ifndef MIRAGE
     void rollbackStorageChange( const Change& _change, dev::eth::Account& _acc );
 
     void updateStorageUsage();
-#endif
 
-    void resetOverlayFS( bool _enableCache ) {
-        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
-    };
 
     void clearFileStorageCache() {
         if ( m_fs_ptr ) {
             m_fs_ptr->reset();
         }
+    };
+
+#endif
+
+    void resetOverlayFS( bool _enableCache ) {
+        m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
     };
 
     static bool ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash );

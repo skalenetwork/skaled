@@ -179,13 +179,13 @@ public:
     std::vector< NodeGroup > nodeGroups;
 #ifndef MIRAGE
     s256 contractStorageLimit = 1000000000;
+    bool freeContractDeployment = false;
 #endif
     uint64_t dbStorageLimit = 0;
     uint64_t consensusStorageLimit = 5000000000;  // default consensus storage limit
     int snapshotIntervalSec = -1;
     time_t snapshotDownloadTimeout = 3600;
     time_t snapshotDownloadInactiveTimeout = 60;
-    bool freeContractDeployment = false;
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     int64_t levelDBReopenIntervalMs = -1;

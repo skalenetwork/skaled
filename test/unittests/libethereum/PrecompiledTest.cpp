@@ -1815,7 +1815,6 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 }
-#endif
 
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
@@ -2064,5 +2063,6 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

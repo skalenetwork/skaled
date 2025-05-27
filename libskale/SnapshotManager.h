@@ -192,6 +192,7 @@ private:
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );
 
+#ifndef MIRAGE
     void computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
         secp256k1_sha256_t* ctx, bool is_checking ) const;
     void proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
@@ -199,6 +200,7 @@ private:
     void proceedRegularFile(
         const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
+#endif
     void computeAllVolumesHash(
         unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeDatabaseHash(

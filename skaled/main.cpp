@@ -1617,8 +1617,12 @@ int main( int argc, char** argv ) {
         }
 
         if ( chainParams.sChain.snapshotIntervalSec > 0 || downloadSnapshotFlag ) {
-            std::vector< std::string > coreVolumes = { BlockChain::getChainDirName( chainParams ),
-                "filestorage", "prices_" + chainParams.nodeInfo.id.str() + ".db",
+            std::vector< std::string > coreVolumes = {
+                BlockChain::getChainDirName( chainParams ),
+#ifndef MIRAGE
+                "filestorage",
+#endif
+                "prices_" + chainParams.nodeInfo.id.str() + ".db",
                 "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
             snapshotManager.reset( new SnapshotManager(
                 chainParams, getDataDir(), sharedSpace ? sharedSpace->getPath() : "" ) );

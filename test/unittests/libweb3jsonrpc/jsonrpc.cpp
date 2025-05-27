@@ -6022,7 +6022,6 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
 
     BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
 }
-#endif
 
 BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
@@ -6052,6 +6051,7 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
 
     BOOST_REQUIRE( boost::filesystem::exists( fixture.path ) );
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

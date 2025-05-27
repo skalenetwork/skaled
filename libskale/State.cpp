@@ -1019,9 +1019,9 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+#ifndef MIRAGE
     clearFileStorageCache();
 
-#ifndef MIRAGE
     if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
