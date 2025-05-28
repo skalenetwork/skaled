@@ -487,6 +487,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
+#ifndef MIRAGE
                 // Checking whether deployment is allowed via ConfigController contract
                 bytes calldata;
                 if ( FlexibleDeploymentPatch::isEnabledWhen(
@@ -504,7 +505,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 if ( !deploymentCallOutput.empty() && u256( deploymentCallOutput ) == 0 ) {
                     BOOST_THROW_EXCEPTION( InvalidContractDeployer() );
                 }
-
+#endif
                 auto out = vm->exec( m_gas, *m_ext, _onOp );
                 if ( m_res ) {
                     m_res->gasForDeposit = m_gas;

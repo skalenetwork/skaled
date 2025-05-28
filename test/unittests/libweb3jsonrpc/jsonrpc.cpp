@@ -1021,10 +1021,17 @@ BOOST_AUTO_TEST_CASE( deploy_contract_not_from_owner ) {
     dev::eth::mineTransaction( *( fixture.client ), 1 );
 
     Json::Value receipt = fixture.rpcClient->eth_getTransactionReceipt( txHash );
+#ifdef MIRAGE
+    BOOST_CHECK_EQUAL( receipt["status"], string( "0x1" ) );
+    Json::Value code =
+        fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
+    BOOST_REQUIRE( code.asString() == "0x608060405260043610603f576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063b3de648b146044575b600080fd5b3415604e57600080fd5b606a600480360381019080803590602001909291905050506080565b6040518082815260200191505060405180910390f35b60006007820290509190505600a165627a7a72305820f294e834212334e2978c6dd090355312a3f0f9476b8eb98fb480406fc2728a960029" );
+#else
     BOOST_CHECK_EQUAL( receipt["status"], string( "0x0" ) );
     Json::Value code =
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( deploy_contract_without_controller ) {
@@ -1071,6 +1078,7 @@ BOOST_AUTO_TEST_CASE( deploy_contract_without_controller ) {
     BOOST_REQUIRE( code.asString().substr( 2 ) == compiled.substr( 58 ) );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
     JsonRpcFixture fixture( c_genesisConfigString, false );
     auto senderAddress = fixture.coinbase.address();
@@ -1107,6 +1115,8 @@ BOOST_AUTO_TEST_CASE( deploy_contract_with_controller ) {
         fixture.rpcClient->eth_getCode( receipt["contractAddress"].asString(), "latest" );
     BOOST_REQUIRE( code.asString() == "0x" );
 }
+#endif
+
 
 BOOST_AUTO_TEST_CASE( create_opcode ) {
     JsonRpcFixture fixture( c_genesisConfigString );
