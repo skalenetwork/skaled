@@ -58,8 +58,7 @@ SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
     const fs::path& _dataDir, const std::string& _diffsDir )
     : chainParams( _chainParams ) {
     dataDir = _dataDir;
-    coreVolumes = {
-        dev::eth::BlockChain::getChainDirName( chainParams ),
+    coreVolumes = { dev::eth::BlockChain::getChainDirName( chainParams ),
 #ifndef MIRAGE
         "filestorage",
 #endif

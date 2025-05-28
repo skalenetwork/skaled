@@ -6053,9 +6053,9 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
 
     BOOST_REQUIRE( boost::filesystem::exists( fixture.path ) );
 }
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_FIXTURE_TEST_SUITE( GappedCacheSuite, JsonRpcFixture )
 
