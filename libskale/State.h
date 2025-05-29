@@ -42,7 +42,9 @@
 
 #include "BaseState.h"
 #include "OverlayDB.h"
+#ifndef MIRAGE
 #include "OverlayFS.h"
+#endif
 #include "Permanence.h"
 #include <libdevcore/DBImpl.h>
 
@@ -517,9 +519,11 @@ private:
 
 #endif
 
+#ifndef MIRAGE
     void resetOverlayFS( bool _enableCache ) {
         m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
     };
+#endif
 
     static bool ifShouldSkipExecution( uint64_t _chainId, const dev::h256& _hash );
 
@@ -538,7 +542,9 @@ private:
 
     std::shared_ptr< boost::shared_mutex > x_db_ptr;
     std::shared_ptr< OverlayDB > m_db_ptr;  ///< Our overlay for the state.
+#ifndef MIRAGE
     std::shared_ptr< OverlayFS > m_fs_ptr;  ///< Our overlay for the file system operations.
+#endif
     std::shared_ptr< dev::db::DBImpl > m_orig_db;
     mutable std::unordered_map< dev::Address, dev::eth::Account > m_cache;  ///< Our address cache.
                                                                             ///< This stores the
@@ -595,7 +601,9 @@ public:
             pDB = m_db_ptr->db();
         return pDB;
     }
+#ifndef MIRAGE
     std::shared_ptr< OverlayFS > fs() { return m_fs_ptr; }
+#endif
 
     void clearAllCaches();
 };

@@ -31,7 +31,9 @@
 #include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+#ifndef MIRAGE
 #include <libskale/OverlayFS.h>
+#endif
 #include <libethereum/SchainPatch.h>
 
 #include <secp256k1_sha256.h>
