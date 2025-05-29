@@ -592,16 +592,22 @@ u256 TransactionBase::gas() const {
      * this has been done in order to address the problem of switching "virtual" on/off
      */
     assert( !isInvalid() );
+#ifdef MIRAGE
+    return m_gas;
+#else
     if ( getExternalGas() != 0 ) {
         return getExternalGas();
     } else {
         return m_gas;
     }
+#endif
 }
 
+#ifndef MIRAGE
 u256 TransactionBase::nonPowGas() const {
     return m_gas;
 }
+#endif
 
 bytesConstRef dev::eth::bytesRefFromTransactionRlp( const RLP& _rlp ) {
     if ( _rlp.isList() )

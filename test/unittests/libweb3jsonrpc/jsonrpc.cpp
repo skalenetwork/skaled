@@ -472,7 +472,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     std::string adminSession;
     SkaleServerOverride* skale_server_connector;
     jsonrpc::HttpClient* httpClient;
+#ifndef MIRAGE
     time_t powPatchActivationTimestamp;
+#endif
     time_t push0PatchActivationTimestamp;
 };
 
@@ -3246,6 +3248,7 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
@@ -3285,6 +3288,7 @@ BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ),
         jsonrpc::JsonRpcException );  // block gas limit reached
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
@@ -5827,6 +5831,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthType2Transfers,
     fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
     *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
     SkaledFixture fixture( skaledConfigFileName );
@@ -5843,6 +5848,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
 
     fixture.sendTinyTransfersForAllAccounts( 1000, TransferType::NATIVE );
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
     *boost::unit_test::precondition( dev::test::manuallyRunningTest ) ) {
