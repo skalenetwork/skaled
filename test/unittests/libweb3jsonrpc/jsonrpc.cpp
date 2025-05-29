@@ -40,7 +40,11 @@
 #include <libweb3jsonrpc/JsonHelper.h>
 #include "SkaledFixture.h"
 #include <libconsensus/SkaleCommon.h>
+
+#ifndef MIRAGE
 #include <libconsensus/oracle/OracleRequestSpec.h>
+#endif
+
 #include "genesisGeneration2Config.h"
 #include <libweb3jsonrpc/Debug.h>
 #include <libweb3jsonrpc/Eth.h>
@@ -3181,6 +3185,7 @@ BOOST_AUTO_TEST_CASE( setSchainExitTime ) {
         fixture.rpcClient->setSchainExitTime( requestJson ), jsonrpc::JsonRpcException );
 }
 
+#ifndef MIRAGE
 /*
 BOOST_AUTO_TEST_CASE( oracle, *boost::unit_test::disabled() ) {
 
@@ -3209,6 +3214,7 @@ current, i); auto os = make_shared<OracleRequestSpec>(request); if ( os->verifyP
 
 
 }*/
+#endif
 
 BOOST_AUTO_TEST_CASE( doDbCompactionDebugCall ) {
     JsonRpcFixture fixture;

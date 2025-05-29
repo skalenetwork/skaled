@@ -75,8 +75,10 @@ public:
     std::string skale_getLatestBlockNumber() override;
     Json::Value skale_getDBUsage() override;
 
+#ifndef MIRAGE
     std::string oracle_submitRequest( std::string& request ) override;
     std::string oracle_checkResult( std::string& receipt ) override;
+#endif
 
 #ifdef BITE
     std::string skale_getCommonPublicKey() override;
