@@ -58,9 +58,7 @@ public:
         return m_cost( _in, _chainParams, _blockNumber );
     }
 #ifdef MIRAGE
-    std::pair< bool, bytes > execute( bytesConstRef _in ) const {
-        return m_execute( _in );
-    }
+    std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
 #else
     std::pair< bool, bytes > execute(
         bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
@@ -304,7 +302,8 @@ public:
     }
 
 #ifdef MIRAGE
-    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const& ) const {
+    std::pair< bool, bytes > executePrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& ) const {
         return precompiled.at( _a ).execute( _in );
     }
 #else

@@ -352,8 +352,8 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
-            tie( success, output ) = m_chainParams.executePrecompiled(
-                _p.codeAddress, _p.data, m_envInfo.number()
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number()
 #ifndef MIRAGE
                 , m_s.fs().get()
 #endif
