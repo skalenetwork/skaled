@@ -92,7 +92,9 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
     t.forceChainId( chainId() );
+#ifndef MIRAGE
     t.ignoreExternalGas();
+#endif
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
         _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().chainID );
     // Make a copy of the state, it will be deleted after this step

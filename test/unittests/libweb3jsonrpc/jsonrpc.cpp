@@ -6087,8 +6087,9 @@ BOOST_AUTO_TEST_CASE( test_transactions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
+#ifndef MIRAGE
     valid.ignoreExternalGas();
-
+#endif
 
     // give it some time since testing fixture is not reliable
     // to do - move to real skaled testing
@@ -6137,7 +6138,9 @@ BOOST_AUTO_TEST_CASE( test_exceptions ) {
                  "10000801ca0655757fd0650a65a373c48a4dc0f3d6ac5c3831aa0cc2cb863a5909dc6c25f72a07188"
                  "2ee8633466a243c0ea64dadb3120c1ca7a5cc7433c6c0b1c861a85322265" ),
         CheckTransaction::None );
+#ifndef MIRAGE
     valid.ignoreExternalGas();
+#endif
 
     client->importTransactionsAsBlock( Transactions{ invalid, valid },
 #ifdef BITE
