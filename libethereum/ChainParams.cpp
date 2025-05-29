@@ -309,9 +309,6 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     s.contractStorageLimit = sChainObj.count( "contractStorageLimit" ) ?
                                  sChainObj.at( "contractStorageLimit" ).get_int64() :
                                  0;
-
-    if ( sChainObj.count( "freeContractDeployment" ) )
-        s.freeContractDeployment = sChainObj.at( "freeContractDeployment" ).get_bool();
 #endif
 
     s.dbStorageLimit =
@@ -609,7 +606,6 @@ const std::string& ChainParams::getOriginalJson() const {
     sChainObj["snpshotIntervalMs"] = sChain.snapshotIntervalSec;
     sChainObj["multiTransactionMode"] = sChain.multiTransactionMode;
 #ifndef MIRAGE
-    sChainObj["freeContractDeployment"] = sChain.freeContractDeployment;
     sChainObj["contractStorageLimit"] = ( int64_t ) sChain.contractStorageLimit;
 #endif
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
