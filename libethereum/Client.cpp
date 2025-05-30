@@ -1341,7 +1341,9 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
+#ifndef MIRAGE
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
+#endif
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =
