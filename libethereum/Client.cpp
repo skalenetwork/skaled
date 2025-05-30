@@ -1463,6 +1463,8 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 }
 #endif  // HISTORIC_STATE
 
+
+#ifndef MIRAGE
 uint64_t Client::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     assert( m_skaleHost );
@@ -1483,6 +1485,7 @@ uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
         throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
 }
+#endif
 
 const dev::h256 Client::empty_str_hash =
     dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );

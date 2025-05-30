@@ -900,6 +900,7 @@ std::string SkaleHost::getHistoricNodePublicKey( unsigned _idx ) const {
     return m_client.getHistoricNodePublicKey( _idx );
 }
 
+#ifndef MIRAGE
 uint64_t SkaleHost::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     return m_consensus->submitOracleRequest( _spec, _receipt, _errorMessage );
@@ -908,6 +909,7 @@ uint64_t SkaleHost::submitOracleRequest(
 uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {
     return m_consensus->checkOracleResult( _receipt, _result );
 }
+#endif
 
 void SkaleHost::forceEmptyBlock() {
     assert( !this->emptyBlockIntervalMsForRestore.has_value() );
