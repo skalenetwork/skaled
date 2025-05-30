@@ -699,7 +699,10 @@ ETH_REGISTER_PRECOMPILED( logTextMessage )( bytesConstRef _in ) {
 }
 
 static const std::list< std::string > g_listReadableConfigParts{ "skaleConfig.sChain.nodes.",
-    "skaleConfig.nodeInfo.wallets.ima.n" };
+#ifndef MIRAGE
+    "skaleConfig.nodeInfo.wallets.ima.n"
+#endif
+};
 
 static bool stat_is_accessible_json_path( const std::string& strPath ) {
     if ( strPath.empty() )

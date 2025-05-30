@@ -256,16 +256,29 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
-            Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
-
+#ifdef MIRAGE
+            auto publicKeyFromParams = chainParams_.sChain.currentGroups.back().BLSPublicKeys;
             publicKey.X.c0 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
+                libff::alt_bn128_Fq( publicKeyFromParams[0].c_str() );
             publicKey.X.c1 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey1"].asCString() );
+                libff::alt_bn128_Fq( publicKeyFromParams[1].c_str() );
             publicKey.Y.c0 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
+                libff::alt_bn128_Fq( publicKeyFromParams[2].c_str() );
             publicKey.Y.c1 =
-                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
+                libff::alt_bn128_Fq( publicKeyFromParams[3].c_str() );
+#else
+            Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
+            publicKey.X.c0 =
+                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey0"].asCString() );
+            publicKey.X.c1 =
+                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey1"].asCString() );
+            publicKey.Y.c0 =
+                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey2"].asCString() );
+            publicKey.Y.c1 =
+                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey3"].asCString() );
+#endif
+
+
             publicKey.Z = libff::alt_bn128_Fq2::one();
         } else {
             publicKey = libff::alt_bn128_G2::one();
