@@ -535,6 +535,7 @@ Json::Value Skale::skale_getDBUsage() {
     return response;
 }
 
+#ifndef MIRAGE
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
         if ( m_client.chainParams().nodeInfo.syncNode )
@@ -580,6 +581,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
         throw jsonrpc::JsonRpcException( ORACLE_INTERNAL_SERVER_ERROR, e.what() );
     }
 }
+#endif
 
 #ifdef BITE
 std::string Skale::skale_getCommonPublicKey() {

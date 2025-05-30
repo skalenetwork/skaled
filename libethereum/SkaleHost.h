@@ -143,8 +143,10 @@ public:
     // get public key for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const;
 
+#ifndef MIRAGE
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
+#endif
 
     void pauseConsensus( bool _pause ) {
         if ( _pause && !m_consensusPaused ) {
