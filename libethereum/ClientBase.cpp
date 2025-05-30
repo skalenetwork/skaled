@@ -123,7 +123,11 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
             upperBound = c_maxGasEstimate;
         int64_t lowerBound;
 #ifdef MIRAGE
-        lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
+        lowerBound = Transaction::baseGasRequired(
+            !_dest, &_data,
+            bc().sealEngine()->chainParams().makeEvmSchedule(
+            bc().info().timestamp(), bc().number() )
+        );
 #else
         if ( CorrectForkInPowPatch::isEnabledInWorkingBlock() )
             lowerBound = Transaction::baseGasRequired( !_dest, &_data,
