@@ -253,7 +253,10 @@ void ConsensusExtImpl::terminateApplication() {
 }
 
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
-    std::shared_ptr< InstanceMonitor > _instanceMonitor, const std::string& _gethURL,
+    std::shared_ptr< InstanceMonitor > _instanceMonitor,
+#ifndef MIRAGE
+                     const std::string& _gethURL,
+#endif
     [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),
       m_tq( _client.m_tq ),
@@ -305,7 +308,7 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
 
     try {
         m_consensus->parseFullConfigAndCreateNode(
-            m_client.chainParams().getConfigForConsensus(), _gethURL );
+            m_client.chainParams().getConfigForConsensus(), "" );
     } catch ( const std::exception& e ) {
         LOG( m_loggerError ) << "Could not create parse consensus config in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );

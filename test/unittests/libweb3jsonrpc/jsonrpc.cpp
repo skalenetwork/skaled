@@ -338,15 +338,6 @@ revert();
                 "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
             }
         },
-        "0000000000000000000000000000000000000007": {
-            "precompiled": {
-                "name": "getIMABLSPublicKey",
-                "linear": {
-                    "base": 15,
-                    "word": 0
-                }
-            }
-        },
         "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
             "balance" : "1000000000000000000000000000000"
         },
@@ -4565,8 +4556,6 @@ static std::string const c_BITEConfigString =
             "bindIP": "0.0.0.0",
             "logLevel": "info",
             "logLevelConfig": "info",
-            "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
-            "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",
             "rotateAfterBlock": 10240,
             "basePort": )" +
     std::to_string( rand_port ) + R"(,

@@ -113,7 +113,10 @@ public:
 
     SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory = nullptr,
         std::shared_ptr< InstanceMonitor > _instanceMonitor = nullptr,
-        const std::string& _gethURL = "", bool _broadcastEnabled = true );
+#ifndef MIRAGE
+        const std::string& _gethURL = "",
+#endif
+              bool _broadcastEnabled = true );
     virtual ~SkaleHost();
 
     void startWorking();

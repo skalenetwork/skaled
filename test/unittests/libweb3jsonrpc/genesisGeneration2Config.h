@@ -1,6 +1,9 @@
 #ifndef GENESISGENERATION2CONFIG_H
 #define GENESISGENERATION2CONFIG_H
 
+#include <string>
+
+
 static std::string const c_genesisGeneration2ConfigString = R"(
 {
     "sealEngine": "Ethash",
@@ -873,10 +876,13 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "infoHttpRpcPort": 9574,
             "bindIP": "0.0.0.0",
             "logLevel": "info",
-            "logLevelConfig": "info",
+            "logLevelConfig": "info",)" +
+#ifndef MIRAGE
+            std::to_string( R"(
             "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
-            "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",
-            "rotateAfterBlock": 10240,
+            "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",)" ) +
+#endif
+            std::string( R"( "rotateAfterBlock": 10240,
             "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68",
             "minCacheSize": 1000000,
             "maxCacheSize": 2000000,
@@ -957,6 +963,6 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             }
     }
 }
-)";
+)" );
 
 #endif // GENESISGENERATION2CONFIG_H

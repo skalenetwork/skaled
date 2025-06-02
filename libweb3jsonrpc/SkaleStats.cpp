@@ -68,11 +68,13 @@ SkaleStats::SkaleStats(
     initStatsCounters();
     nThisNodeIndex_ = findThisNodeIndex();
     //
+#ifndef MIRAGE
     try {
         skutils::url urlMainNet = getImaMainNetURL();
     } catch ( const std::exception& ex ) {
         clog( VerbosityInfo, std::string( "IMA disabled: " ) + ex.what() );
     }  // catch
+#endif
 }
 
 int SkaleStats::findThisNodeIndex() {
