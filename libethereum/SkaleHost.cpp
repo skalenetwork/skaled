@@ -255,7 +255,7 @@ void ConsensusExtImpl::terminateApplication() {
 SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFactory,
     std::shared_ptr< InstanceMonitor > _instanceMonitor,
 #ifndef MIRAGE
-                     const std::string& _gethURL,
+    const std::string& _gethURL,
 #endif
     [[maybe_unused]] bool _broadcastEnabled )
     : m_client( _client ),

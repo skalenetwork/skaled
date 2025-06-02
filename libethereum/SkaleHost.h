@@ -116,7 +116,7 @@ public:
 #ifndef MIRAGE
         const std::string& _gethURL = "",
 #endif
-              bool _broadcastEnabled = true );
+        bool _broadcastEnabled = true );
     virtual ~SkaleHost();
 
     void startWorking();

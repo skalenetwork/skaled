@@ -258,14 +258,10 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
         if ( urlToDownloadSnapshotFrom_.empty() ) {
 #ifdef MIRAGE
             auto publicKeyFromParams = chainParams_.sChain.currentGroups.back().BLSPublicKeys;
-            publicKey.X.c0 =
-                libff::alt_bn128_Fq( publicKeyFromParams[0].c_str() );
-            publicKey.X.c1 =
-                libff::alt_bn128_Fq( publicKeyFromParams[1].c_str() );
-            publicKey.Y.c0 =
-                libff::alt_bn128_Fq( publicKeyFromParams[2].c_str() );
-            publicKey.Y.c1 =
-                libff::alt_bn128_Fq( publicKeyFromParams[3].c_str() );
+            publicKey.X.c0 = libff::alt_bn128_Fq( publicKeyFromParams[0].c_str() );
+            publicKey.X.c1 = libff::alt_bn128_Fq( publicKeyFromParams[1].c_str() );
+            publicKey.Y.c0 = libff::alt_bn128_Fq( publicKeyFromParams[2].c_str() );
+            publicKey.Y.c1 = libff::alt_bn128_Fq( publicKeyFromParams[3].c_str() );
 #else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
             publicKey.X.c0 =
