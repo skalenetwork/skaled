@@ -265,13 +265,13 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 #else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
             publicKey.X.c0 =
-                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey0"].asCString() );
+                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey0"].asCString() );
             publicKey.X.c1 =
-                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey1"].asCString() );
+                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey1"].asCString() );
             publicKey.Y.c0 =
-                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey2"].asCString() );
+                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey2"].asCString() );
             publicKey.Y.c1 =
-                libff::alt_bn128_Fq( publicKeyFromParams["BLSPublicKey3"].asCString() );
+                libff::alt_bn128_Fq( joPublicKeyResponse["BLSPublicKey3"].asCString() );
 #endif
 
 
