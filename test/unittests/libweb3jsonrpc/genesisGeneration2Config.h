@@ -878,7 +878,7 @@ static std::string const c_genesisGeneration2ConfigString = R"(
             "logLevel": "info",
             "logLevelConfig": "info",)" +
 #ifndef MIRAGE
-            std::to_string( R"(
+            std::string( R"(
             "imaMessageProxySChain": "0xd2AAa00100000000000000000000000000000000",
             "imaMessageProxyMainNet": "0x337591F78cbf2b113A57D9709511a1b6E524DdaE",)" ) +
 #endif
