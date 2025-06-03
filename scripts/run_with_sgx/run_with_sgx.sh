@@ -66,14 +66,12 @@ fi
 # only update config if we generated new set of keys
 if [ ! -f $1 ]; then
     echo "No config.json file found!"
+    exit 1
 fi
 
-if [ $CACHED_KEYS -eq 0 ] && [ ! -f "tmp/updated_config.json" ]; then
-    python3 update_config.py $1 ./tmp/keys.json ./tmp/updated_config.json
-    echo "Updated config file generated successfully."
-else
-    echo "Keys already exist. Skipping config update."
-fi
+python3 update_config.py $1 ./tmp/keys.json ./tmp/updated_config.json
+echo "Updated config file generated successfully."
+
 
 ##############################################################
 #                        Run skaled
