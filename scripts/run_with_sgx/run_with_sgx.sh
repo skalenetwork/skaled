@@ -68,7 +68,7 @@ if [ ! -f $1 ]; then
     echo "No config.json file found!"
 fi
 
-if [ $CACHED_KEYS -eq 0 && ! -f "tmp/updated_config.json" ]; then
+if [ $CACHED_KEYS -eq 0 ] && [ ! -f "tmp/updated_config.json" ]; then
     python3 update_config.py $1 ./tmp/keys.json ./tmp/updated_config.json
     echo "Updated config file generated successfully."
 else

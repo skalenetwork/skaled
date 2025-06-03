@@ -522,19 +522,17 @@ dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Addre
     txnRlp << 0;              // nonce
     txnRlp << 100000;         // gasPrice
     txnRlp << 100000;         // gasLimit
-    txnRlp << toAddress;   // to
+    txnRlp << toAddress;      // to
     txnRlp << 0;              // value
     txnRlp << txnData;        // data
 
-    txnRlp << sigStruct.v + 27;  // v
-    txnRlp << sigStruct.r;       // r
-    txnRlp << sigStruct.s;       // s
-
+    txnRlp << sigStruct.v + 27;        // v
+    txnRlp << u256(sigStruct.r);       // r
+    txnRlp << u256(sigStruct.s);       // s
     return txnRlp.out();
 }
 
 BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
-    std::string magicNumber = "f3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
     std::string epochId = "0000000000000000";
 
     libff::init_alt_bn128_params();
@@ -568,7 +566,6 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     auto baseGasRequiredForValidBITETxn = validBITETxn.baseGasRequired( IstanbulSchedule );
 
     // change non-zero byte to non-zero byte in magicNumber and make the txn non-BITE
-    std::string notMagicNumber = "e3a9c7b1e4d5f28c7b1e9a3f5d2c8b00";
     std::string validNonBITETxnData =
         "0x" + epochId + encryptedKey + encryptedData;
 
