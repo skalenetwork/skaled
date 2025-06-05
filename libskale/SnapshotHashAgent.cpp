@@ -221,7 +221,11 @@ bool SnapshotHashAgent::voteForHash() {
 }
 
 std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAgent::askNodeForHash(
-    const std::string& url, unsigned blockNumber ) {
+    const std::string& url, unsigned blockNumber
+#ifdef MIRAGE
+    , uint64_t blockTimestamp
+#endif
+    ) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
     SkaleClient skaleClient( *jsonRpcClient );
 
@@ -257,11 +261,13 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
         libff::alt_bn128_G2 publicKey;
         if ( urlToDownloadSnapshotFrom_.empty() ) {
 #ifdef MIRAGE
-            auto publicKeyFromParams = chainParams_.sChain.currentGroups.back().BLSPublicKeys;
-            publicKey.X.c0 = libff::alt_bn128_Fq( publicKeyFromParams[0].c_str() );
-            publicKey.X.c1 = libff::alt_bn128_Fq( publicKeyFromParams[1].c_str() );
-            publicKey.Y.c0 = libff::alt_bn128_Fq( publicKeyFromParams[2].c_str() );
-            publicKey.Y.c1 = libff::alt_bn128_Fq( publicKeyFromParams[3].c_str() );
+            auto _nodeID = chainParams_.nodeInfo.id;
+            const auto& nodes = chainParams_.sChain.currentGroups.back().nodes;
+            auto blsPublicKey = chainParams_.getNodeBLSPublicKeyInCurrentCommittee( _nodeID, blockTimestamp );
+            publicKey.X.c0 = libff::alt_bn128_Fq( blsPublicKey[0].c_str() );
+            publicKey.X.c1 = libff::alt_bn128_Fq( blsPublicKey[1].c_str() );
+            publicKey.Y.c0 = libff::alt_bn128_Fq( blsPublicKey[2].c_str() );
+            publicKey.Y.c1 = libff::alt_bn128_Fq( blsPublicKey[3].c_str() );
 #else
             Json::Value joPublicKeyResponse = skaleClient.skale_imaInfo();
             publicKey.X.c0 =
@@ -288,7 +294,11 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
 }
 
 std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
-    unsigned blockNumber ) {
+    unsigned blockNumber
+#ifdef MIRAGE
+    , uint64_t blockTimestamp
+#endif
+    ) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 
@@ -304,7 +314,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                                           ':' +
                                           ( this->chainParams_.sChain.nodes.at( i ).port + 3 )
                                               .convert_to< std::string >();
-                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
+                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber, 0 );
                     if ( std::get< 0 >( snapshotData ).size > 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
@@ -325,7 +335,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             thr.join();
         }
     } else {
-        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber );
+        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber, 0 );
         this->votedHash_ = { std::get< 0 >( snapshotData ), std::get< 1 >( snapshotData ) };
         return { urlToDownloadSnapshotFrom_ };
     }

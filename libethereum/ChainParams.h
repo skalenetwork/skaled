@@ -83,6 +83,8 @@ struct ChainParams : public ChainOperationParams {
     void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
 
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
+
+    std::array< std::string, 4 > getNodeBLSPublicKeyInCurrentCommittee( u256 _nodeID, uint64_t _blockTimestamp ) const;
 #endif
 
 private:

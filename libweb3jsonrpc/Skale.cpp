@@ -356,6 +356,24 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
     return response > 0 ? std::to_string( response ) : "earliest";
 }
 
+#ifdef MIRAGE
+std::string Skale::skale_getLatestSnapshotBlockNumberAndTimestamp() {
+    nlohmann::json joResponse = nlohmann::json::object();
+
+    int64_t blockNumber = this->m_client.getLatestSnapshotBlockNumer();
+    if (blockNumber > 0) {
+        joResponse["blockNumber"] = blockNumber;
+        auto blockHeader = this->m_client.blockInfo(blockNumber);
+        joResponse["timestamp"] = blockHeader.timestamp();
+    } else {
+        joResponse["blockNumber"] = "earliest";
+        joResponse["timestamp"] = 0;
+    }
+
+    return joResponse.dump();
+}
+#endif
+
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
     std::string keyShareName = chainParams.sChain.currentGroups.back().keyShareName;

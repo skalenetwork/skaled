@@ -251,6 +251,31 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
     return block_number;
 }
 
+#ifdef MIRAGE
+std::tuple<u256, uint64_t> getLatestSnapshotBlockNumberAndTimestamp( const std::string& strURLWeb3 ) {
+    skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
+    if ( !cli.open( strURLWeb3 ) ) {
+        throw std::runtime_error( "REST failed to connect to server" );
+    }
+
+    nlohmann::json request = nlohmann::json::object();
+    request["jsonrpc"] = "2.0";
+    request["method"] = "skale_getLatestSnapshotBlockNumberAndTimestamp";
+    request["params"] = nlohmann::json::object();
+    skutils::rest::data_t d = cli.call( request );
+    if ( !d.err_s_.empty() )
+        throw std::runtime_error( "cannot get blockNumber to download snapshot: " + d.err_s_ );
+    if ( d.empty() )
+        throw std::runtime_error( "cannot get blockNumber to download snapshot" );
+    nlohmann::json response = nlohmann::json::parse( d.s_ );
+
+    nlohmann::json result = response["result"];
+    unsigned block_number = dev::eth::jsToBlockNumber( result["blockNumber"].get< std::string >() );
+    uint64_t block_timestamp = result["timestamp"].get< uint64_t >();
+    return std::make_tuple( block_number, block_timestamp );
+}
+#endif
+
 void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >& snapshotManager,
     const std::string& strURLWeb3, const ChainParams& chainParams ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "downloadSnapshot" ) };
@@ -358,13 +383,17 @@ unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
 
 std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1 > >
 voteForSnapshotHash(
-    std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber ) {
+    std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber
+#ifdef MIRAGE
+    , uint64_t blockTimestamp
+#endif
+    ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "voteForSnapshotHash" ) };
 
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
     std::vector< std::string > listUrlsToDownload;
     try {
-        listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber );
+        listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber, blockTimestamp );
         LOG( loggerInfo ) << "Got urls to download snapshot from " << listUrlsToDownload.size()
                           << " nodes ";
 
@@ -479,6 +508,9 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     static Logger loggerWarning{ createLogger( VerbosityWarning, "downloadSnapshotFromUrl" ) };
 
     unsigned blockNumber = 0;
+#ifdef MIRAGE
+    uint64_t blockTimestamp = 0;
+#endif
     if ( isRegularSnapshot )
         blockNumber = getBlockToDownladSnapshot( urlToDownloadSnapshotFrom );
 
@@ -493,7 +525,11 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
     std::vector< std::string > listUrlsToDownload;
     std::tie( listUrlsToDownload, votedHash ) =
-        voteForSnapshotHash( snapshotHashAgent, blockNumber );
+        voteForSnapshotHash( snapshotHashAgent, blockNumber
+#ifdef MIRAGE
+    , blockTimestamp
+#endif
+    );
 
     if ( listUrlsToDownload.empty() ) {
         if ( !isRegularSnapshot )

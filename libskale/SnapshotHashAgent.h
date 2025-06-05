@@ -69,7 +69,11 @@ public:
         const std::array< std::string, 4 >& commonPublicKey,
         const std::string& urlToDownloadSnapshotFrom = "" );
 
-    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned blockNumber );
+    std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned blockNumber
+#ifdef MIRAGE
+      , uint64_t blockTimestamp
+#endif
+    );
 
     std::pair< dev::h256, libff::alt_bn128_G1 > getVotedHash() const;
 
@@ -92,7 +96,11 @@ private:
     bool voteForHash();
     void readPublicKeyFromConfig();
     std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > askNodeForHash(
-        const std::string& url, unsigned blockNumber );
+        const std::string& url, unsigned blockNumber
+#ifdef MIRAGE
+        , uint64_t blockTimestamp
+#endif
+    );
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;
 
     size_t verifyAllData() const;
