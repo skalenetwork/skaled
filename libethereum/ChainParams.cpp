@@ -777,12 +777,12 @@ Address ChainParams::getSChainNodeAddressByIndex( uint64_t _sChainIndex ) const 
 std::array< std::string, 4 > ChainParams::getNodeBLSPublicKeyInCurrentCommittee( u256 _nodeID, uint64_t _blockTimestamp ) const {
     uint64_t currentGroupIndex = _blockTimestamp > sChain.currentGroups[1].startTs ? 1 : 0;
     const auto& nodes = sChain.currentGroups[currentGroupIndex].nodes;
-    auto has_schain_index = [&_nodeID]( const sChainNode& node ) {
+    auto has_node_id = [&_nodeID]( const sChainNode& node ) {
         return node.id == _nodeID;
     };
-    auto nodeIterator = find_if( nodes.begin(), nodes.end(), has_schain_index );
+    auto nodeIterator = find_if( nodes.begin(), nodes.end(), has_node_id );
     if ( nodeIterator == nodes.end() ) {
-        std::string nodeIDStrRep = std::to_string( static_cast<int>(_nodeID) );
+        std::string nodeIDStrRep = std::to_string( static_cast<unsigned>( _nodeID ) );
         throw std::runtime_error( "No such nodeID -" + nodeIDStrRep + " in requested committee" );
     }
     nodeIterator->blsPublicKey;

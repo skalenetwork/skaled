@@ -71,7 +71,8 @@ public:
 
     std::vector< std::string > getNodesToDownloadSnapshotFrom( unsigned blockNumber
 #ifdef MIRAGE
-      , uint64_t blockTimestamp
+        ,
+        uint64_t blockTimestamp
 #endif
     );
 
@@ -98,7 +99,8 @@ private:
     std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > askNodeForHash(
         const std::string& url, unsigned blockNumber
 #ifdef MIRAGE
-        , uint64_t blockTimestamp
+        ,
+        uint64_t blockTimestamp
 #endif
     );
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash_;

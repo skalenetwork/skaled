@@ -252,7 +252,8 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
 }
 
 #ifdef MIRAGE
-std::tuple<u256, uint64_t> getLatestSnapshotBlockNumberAndTimestamp( const std::string& strURLWeb3 ) {
+std::tuple<u256, uint64_t> getLatestSnapshotBlockNumberAndTimestamp(
+    const std::string& strURLWeb3 ) {
     skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
     if ( !cli.open( strURLWeb3 ) ) {
         throw std::runtime_error( "REST failed to connect to server" );
@@ -382,15 +383,16 @@ unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
 }
 
 #ifdef MIRAGE
-tuple<u256, uint64_t> getBlockToDownladSnapshotWithTimestamp( const std::string& nodeUrl ) {
+tuple< u256, uint64_t > getBlockToDownladSnapshotWithTimestamp( const std::string& nodeUrl ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "getBlockToDownladSnapshot" ) };
 
     LOG( loggerInfo ) << "Asking node " << ' ' << nodeUrl << " for latest snapshot block number.";
 
     auto blockAndTimestamp = getLatestSnapshotBlockNumberAndTimestamp( nodeUrl );
-    LOG( loggerInfo ) << std::string( "Latest Snapshot Block Number is: " ) << get<0>(blockAndTimestamp)
-                      << " with timestamp: " <<  get<1>(blockAndTimestamp)
-                    << " (from " << nodeUrl << ")";
+    LOG( loggerInfo ) << std::string( "Latest Snapshot Block Number is: " )
+                      << get<0>(blockAndTimestamp)
+                      << " with timestamp: " <<  get<1>(blockAndTimestamp) << " (from "
+                      << nodeUrl << ")";
 
     return blockAndTimestamp;
 }
@@ -400,7 +402,8 @@ std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1
 voteForSnapshotHash(
     std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber
 #ifdef MIRAGE
-    , uint64_t blockTimestamp
+    ,
+    uint64_t blockTimestamp
 #endif
     ) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "voteForSnapshotHash" ) };
@@ -411,7 +414,8 @@ voteForSnapshotHash(
 
         listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber
 #ifdef MIRAGE
-        , blockTimestamp
+            ,
+            blockTimestamp
 #endif
                       );
         LOG( loggerInfo ) << "Got urls to download snapshot from " << listUrlsToDownload.size()
@@ -544,10 +548,10 @@ bool downloadSnapshotFromUrl( std::shared_ptr< SnapshotManager >& snapshotManage
     libff::init_alt_bn128_params();
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
     std::vector< std::string > listUrlsToDownload;
-    std::tie( listUrlsToDownload, votedHash ) =
-        voteForSnapshotHash( snapshotHashAgent, blockNumber
+    std::tie( listUrlsToDownload, votedHash ) = voteForSnapshotHash( snapshotHashAgent, blockNumber
 #ifdef MIRAGE
-    , blockTimestamp
+        ,
+        blockTimestamp
 #endif
     );
 

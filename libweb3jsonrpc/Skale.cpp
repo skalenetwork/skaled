@@ -361,9 +361,9 @@ std::string Skale::skale_getLatestSnapshotBlockNumberAndTimestamp() {
     nlohmann::json joResponse = nlohmann::json::object();
 
     int64_t blockNumber = this->m_client.getLatestSnapshotBlockNumer();
-    if (blockNumber > 0) {
+    if ( blockNumber > 0 ) {
         joResponse["blockNumber"] = blockNumber;
-        auto blockHeader = this->m_client.blockInfo(blockNumber);
+        auto blockHeader = this->m_client.blockInfo( blockNumber );
         joResponse["timestamp"] = blockHeader.timestamp();
     } else {
         joResponse["blockNumber"] = "earliest";

@@ -84,7 +84,8 @@ struct ChainParams : public ChainOperationParams {
 
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
 
-    std::array< std::string, 4 > getNodeBLSPublicKeyInCurrentCommittee( u256 _nodeID, uint64_t _blockTimestamp ) const;
+    std::array< std::string, 4 > getNodeBLSPublicKeyInCurrentCommittee(
+        u256 _nodeID, uint64_t _blockTimestamp ) const;
 #endif
 
 private:
