@@ -49,6 +49,10 @@ public:
     static leveldb::ReadOptions defaultSnapshotReadOptions();
     static leveldb::Options defaultSnapshotDBOptions();
 
+#ifdef MIRAGE
+    static leveldb::Options defaultStateDBOptions();
+#endif
+
     /// Options regarding levelDB database
     struct LevelDBOptions {
         leveldb::ReadOptions readOptions = defaultReadOptions();
@@ -130,6 +134,10 @@ private:
 
 
     static const size_t BATCH_CHUNK_SIZE;
+
+#ifdef MIRAGE
+    static const size_t STATE_CACHE_SIZE;
+#endif
 
     class SharedDBGuard {
         const LevelDB& m_levedlDB;

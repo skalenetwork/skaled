@@ -257,7 +257,13 @@ skale::OverlayDB State::openDB(
 
     fs::path state_path = path / fs::path( "state" );
     try {
+#ifdef MIRAGE
+        auto levelDbOpts = dev::db::LevelDB::LevelDBOptions();
+        levelDbOpts.dbOptions = dev::db::LevelDB::defaultStateDBOptions();
+        m_orig_db.reset( new db::DBImpl( state_path, levelDbOpts ) );
+#else
         m_orig_db.reset( new db::DBImpl( state_path ) );
+#endif
         std::unique_ptr< batched_io::batched_db > bdb = make_unique< batched_io::batched_db >();
         bdb->open( m_orig_db );
         assert( bdb->is_open() );

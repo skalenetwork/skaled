@@ -123,7 +123,12 @@ namespace fs = boost::filesystem;
 namespace dev {
 namespace db {
 extern unsigned c_maxOpenLeveldbFiles;
-}
+
+#ifdef MIRAGE
+extern unsigned c_maxOpenStateDbFiles;
+#endif
+
+}  // namespace db
 }  // namespace dev
 
 namespace {
@@ -1497,6 +1502,16 @@ int main( int argc, char** argv ) {
                             .get< unsigned >();
             } catch ( ... ) {
             }
+
+#ifdef MIRAGE
+            try {
+                if ( joConfig["skaleConfig"]["nodeInfo"].count( "maxOpenStateDbFiles" ) )
+                    dev::db::c_maxOpenStateDbFiles =
+                        joConfig["skaleConfig"]["nodeInfo"]["maxOpenStateDbFiles"]
+                            .get< unsigned >();
+            } catch ( ... ) {
+            }
+#endif
 
             if ( vm.count( "log-value-size-limit" ) ) {
                 int n = vm["log-value-size-limit"].as< size_t >();

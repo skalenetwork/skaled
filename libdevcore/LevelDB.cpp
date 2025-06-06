@@ -24,11 +24,18 @@
 #include "Log.h"
 #include <libdevcore/microprofile.h>
 
+#include <leveldb/cache.h>
+
 using std::string, std::runtime_error;
 
 namespace dev::db {
 
 unsigned c_maxOpenLeveldbFiles = 25;
+
+#ifdef MIRAGE
+unsigned c_maxOpenStateDbFiles = 1000;
+const size_t LevelDB::STATE_CACHE_SIZE = 100 * 1024 * 1024;
+#endif
 
 const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
 
@@ -119,10 +126,20 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
     return options;
 }
 
+#ifdef MIRAGE
+leveldb::Options LevelDB::defaultStateDBOptions() {
+    leveldb::Options options = defaultDBOptions();
+    options.max_open_files = c_maxOpenStateDbFiles;
+    options.block_cache = leveldb::NewLRUCache( LevelDB::STATE_CACHE_SIZE );
+    return options;
+}
+#endif
+
 LevelDB::LevelDBOptions LevelDB::defaultLevelDBOptions() {
     LevelDBOptions options;
     return options;
 }
+
 LevelDB::WrapperOptions LevelDB::defaultWrapperOptions() {
     WrapperOptions options;
     return options;
