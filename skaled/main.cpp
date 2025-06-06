@@ -381,6 +381,21 @@ unsigned getBlockToDownladSnapshot( const std::string& nodeUrl ) {
     return blockNumber;
 }
 
+#ifdef MIRAGE
+tuple<u256, uint64_t> getBlockToDownladSnapshotWithTimestamp( const std::string& nodeUrl ) {
+    static Logger loggerInfo{ createLogger( VerbosityInfo, "getBlockToDownladSnapshot" ) };
+
+    LOG( loggerInfo ) << "Asking node " << ' ' << nodeUrl << " for latest snapshot block number.";
+
+    auto blockAndTimestamp = getLatestSnapshotBlockNumberAndTimestamp( nodeUrl );
+    LOG( loggerInfo ) << std::string( "Latest Snapshot Block Number is: " ) << get<0>(blockAndTimestamp)
+                      << " with timestamp: " <<  get<1>(blockAndTimestamp)
+                    << " (from " << nodeUrl << ")";
+
+    return blockAndTimestamp;
+}
+#endif
+
 std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1 > >
 voteForSnapshotHash(
     std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber
@@ -393,7 +408,12 @@ voteForSnapshotHash(
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
     std::vector< std::string > listUrlsToDownload;
     try {
-        listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber, blockTimestamp );
+
+        listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber
+#ifdef MIRAGE
+        , blockTimestamp
+#endif
+                      );
         LOG( loggerInfo ) << "Got urls to download snapshot from " << listUrlsToDownload.size()
                           << " nodes ";
 

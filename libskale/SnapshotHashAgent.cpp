@@ -308,13 +308,22 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
                 continue;
             }
 
-            threads.push_back( std::thread( [this, i, blockNumber]() {
+            threads.push_back( std::thread( [this, i, blockNumber
+#ifdef MIRAGE
+                                          , blockTimestamp
+#endif
+            ]() {
                 try {
                     std::string nodeUrl = "http://" + this->chainParams_.sChain.nodes.at( i ).ip +
                                           ':' +
                                           ( this->chainParams_.sChain.nodes.at( i ).port + 3 )
                                               .convert_to< std::string >();
-                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber, 0 );
+
+                    auto snapshotData = askNodeForHash( nodeUrl, blockNumber
+#ifdef MIRAGE
+                        , blockTimestamp
+#endif
+                                                       );
                     if ( std::get< 0 >( snapshotData ).size > 0 ) {
                         const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
@@ -335,7 +344,11 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             thr.join();
         }
     } else {
-        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber, 0 );
+        auto snapshotData = askNodeForHash( urlToDownloadSnapshotFrom_, blockNumber
+#ifdef MIRAGE
+        , blockTimestamp
+#endif
+                                           );
         this->votedHash_ = { std::get< 0 >( snapshotData ), std::get< 1 >( snapshotData ) };
         return { urlToDownloadSnapshotFrom_ };
     }
