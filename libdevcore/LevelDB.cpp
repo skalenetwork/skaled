@@ -34,7 +34,7 @@ unsigned c_maxOpenLeveldbFiles = 25;
 
 #ifdef MIRAGE
 unsigned c_maxOpenStateDbFiles = 1000;
-const size_t LevelDB::STATE_CACHE_SIZE = 100 * 1024 * 1024;
+unsigned c_stateDBCacheSize = 100 * 1024 * 1024;
 #endif
 
 const size_t LevelDB::BATCH_CHUNK_SIZE = 10000;
@@ -130,7 +130,7 @@ leveldb::Options LevelDB::defaultSnapshotDBOptions() {
 leveldb::Options LevelDB::defaultStateDBOptions() {
     leveldb::Options options = defaultDBOptions();
     options.max_open_files = c_maxOpenStateDbFiles;
-    options.block_cache = leveldb::NewLRUCache( LevelDB::STATE_CACHE_SIZE );
+    options.block_cache = leveldb::NewLRUCache( c_stateDBCacheSize );
     return options;
 }
 #endif

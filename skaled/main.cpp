@@ -126,6 +126,7 @@ extern unsigned c_maxOpenLeveldbFiles;
 
 #ifdef MIRAGE
 extern unsigned c_maxOpenStateDbFiles;
+extern unsigned c_stateDBCacheSize;
 #endif
 
 }  // namespace db
@@ -1509,6 +1510,13 @@ int main( int argc, char** argv ) {
                     dev::db::c_maxOpenStateDbFiles =
                         joConfig["skaleConfig"]["nodeInfo"]["maxOpenStateDbFiles"]
                             .get< unsigned >();
+            } catch ( ... ) {
+            }
+
+            try {
+                if ( joConfig["skaleConfig"]["nodeInfo"].count( "stateDBCacheSize" ) )
+                    dev::db::c_stateDBCacheSize =
+                        joConfig["skaleConfig"]["nodeInfo"]["stateDBCacheSize"].get< unsigned >();
             } catch ( ... ) {
             }
 #endif

@@ -183,6 +183,10 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "futureTransactionQueueLimitBytes",
                 { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxOpenLeveldbFiles", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifdef MIRAGE
+            { "maxOpenStateDbFiles", { { js::int_type }, JsonFieldPresence::Optional } },
+            { "stateDBCacheSize", { { js::int_type }, JsonFieldPresence::Optional } },
+#endif
             { "logLevel", { { js::str_type }, JsonFieldPresence::Optional } },
             { "logLevelConfig", { { js::str_type }, JsonFieldPresence::Optional } },
             { "logLevelProposal", { { js::str_type }, JsonFieldPresence::Optional } },
