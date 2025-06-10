@@ -226,7 +226,7 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     ,
     uint64_t blockTimestamp
 #endif
-    ) {
+) {
     jsonrpc::HttpClient* jsonRpcClient = new jsonrpc::HttpClient( url );
     SkaleClient skaleClient( *jsonRpcClient );
 
@@ -295,13 +295,12 @@ std::tuple< dev::h256, libff::alt_bn128_G1, libff::alt_bn128_G2 > SnapshotHashAg
     }
 }
 
-std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
-    unsigned blockNumber
+std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom( unsigned blockNumber
 #ifdef MIRAGE
     ,
     uint64_t blockTimestamp
 #endif
-    ) {
+) {
     libff::init_alt_bn128_params();
     std::vector< std::thread > threads;
 

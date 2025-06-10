@@ -252,7 +252,7 @@ unsigned getLatestSnapshotBlockNumber( const std::string& strURLWeb3 ) {
 }
 
 #ifdef MIRAGE
-std::tuple<u256, uint64_t> getLatestSnapshotBlockNumberAndTimestamp(
+std::tuple< u256, uint64_t > getLatestSnapshotBlockNumberAndTimestamp(
     const std::string& strURLWeb3 ) {
     skutils::rest::client cli( skutils::rest::g_nClientConnectionTimeoutMS );
     if ( !cli.open( strURLWeb3 ) ) {
@@ -390,8 +390,8 @@ tuple< u256, uint64_t > getBlockToDownladSnapshotWithTimestamp( const std::strin
 
     auto blockAndTimestamp = getLatestSnapshotBlockNumberAndTimestamp( nodeUrl );
     LOG( loggerInfo ) << std::string( "Latest Snapshot Block Number is: " )
-                      << get<0>(blockAndTimestamp)
-                      << " with timestamp: " <<  get<1>(blockAndTimestamp) << " (from "
+                      << get< 0 >( blockAndTimestamp )
+                      << " with timestamp: " << get< 1 >( blockAndTimestamp ) << " (from "
                       << nodeUrl << ")";
 
     return blockAndTimestamp;
@@ -399,25 +399,23 @@ tuple< u256, uint64_t > getBlockToDownladSnapshotWithTimestamp( const std::strin
 #endif
 
 std::pair< std::vector< std::string >, std::pair< dev::h256, libff::alt_bn128_G1 > >
-voteForSnapshotHash(
-    std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber
+voteForSnapshotHash( std::unique_ptr< SnapshotHashAgent >& snapshotHashAgent, unsigned blockNumber
 #ifdef MIRAGE
     ,
     uint64_t blockTimestamp
 #endif
-    ) {
+) {
     static Logger loggerInfo{ createLogger( VerbosityInfo, "voteForSnapshotHash" ) };
 
     std::pair< dev::h256, libff::alt_bn128_G1 > votedHash;
     std::vector< std::string > listUrlsToDownload;
     try {
-
         listUrlsToDownload = snapshotHashAgent->getNodesToDownloadSnapshotFrom( blockNumber
 #ifdef MIRAGE
             ,
             blockTimestamp
 #endif
-                      );
+        );
         LOG( loggerInfo ) << "Got urls to download snapshot from " << listUrlsToDownload.size()
                           << " nodes ";
 
