@@ -785,7 +785,7 @@ std::array< std::string, 4 > ChainParams::getNodeBLSPublicKeyInCurrentCommittee(
         std::string nodeIDStrRep = std::to_string( static_cast<unsigned>( _nodeID ) );
         throw std::runtime_error( "No such nodeID -" + nodeIDStrRep + " in requested committee" );
     }
-    nodeIterator->blsPublicKey;
+    return nodeIterator->blsPublicKey;
 }
 
 #endif
