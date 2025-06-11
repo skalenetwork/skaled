@@ -54,8 +54,8 @@ BOOST_AUTO_TEST_CASE( output ) {
 BOOST_AUTO_TEST_CASE( opendb ) {
     TestBlock genesis = TestBlockChain::defaultGenesisBlock();
     TransientDirectory tempDirBlockchain;
-    std::shared_ptr< ChainParams > p( new ChainParams(
-        genesisInfo( eth::Network::TransitionnetTest ), genesis.bytes(), genesis.accountMap() ) );
+    ChainParams p(
+            genesisInfo( eth::Network::TransitionnetTest ), genesis.bytes(), genesis.accountMap() );
     BlockChain bc( p, tempDirBlockchain.path(), false, WithExisting::Kill );
     auto is_critical = []( std::exception const& _e ) {
         return string( _e.what() ).find( "DatabaseAlreadyOpen" ) != string::npos;

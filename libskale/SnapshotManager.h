@@ -152,7 +152,7 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const std::shared_ptr< dev::eth::ChainParams >& _chainParams,
+    SnapshotManager( const dev::eth::ChainParams& _chainParams,
         const boost::filesystem::path& _dataDir, const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
@@ -187,7 +187,7 @@ private:
     static const std::string snapshotHashFileName;
     mutable std::mutex hashFileMutex;
 
-    std::shared_ptr< dev::eth::ChainParams > chainParams;
+    const dev::eth::ChainParams& chainParams;
 
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );

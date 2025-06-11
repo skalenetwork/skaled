@@ -66,13 +66,13 @@ BOOST_AUTO_TEST_CASE( Personal ) {
 
     // 'allowFutureBlocks = true' is required to mine multiple blocks,
     // otherwise mining will hang after the first block
-    std::shared_ptr< ChainParams > chainParams( new ChainParams() );
-    chainParams->sealEngineName = NoProof::name();
-    chainParams->allowFutureBlocks = true;
-    chainParams->difficulty = chainParams->minimumDifficulty;
-    chainParams->gasLimit = chainParams->maxGasLimit;
-    chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
-    chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
+    ChainParams chainParams;
+    chainParams.sealEngineName = NoProof::name();
+    chainParams.allowFutureBlocks = true;
+    chainParams.difficulty = chainParams.minimumDifficulty;
+    chainParams.gasLimit = chainParams.maxGasLimit;
+    chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
+    chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE( Personal ) {
     auto monitor = make_shared< InstanceMonitor >("test");
 
     setenv("DATA_DIR", getDataDir().c_str(), 1);
-    Client client( chainParams, ( int ) chainParams->networkID, shared_ptr< GasPricer >(), NULL, monitor,
+    Client client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(), NULL, monitor,
         getDataDir(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} );
 
     client.injectSkaleHost();

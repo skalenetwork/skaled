@@ -136,16 +136,9 @@ public:
 
     /// Doesn't open the database - if you want it open it's up to you to subclass this and open it
     /// in the constructor there.
-    BlockChain( const std::shared_ptr< ChainParams >& _p, boost::filesystem::path const& _path,
+    BlockChain( const ChainParams& _p, boost::filesystem::path const& _path,
         bool _applyPatches = false, WithExisting _we = WithExisting::Trust );
     ~BlockChain();
-
-    /// Reopen everything.
-    void reopen( bool _applyPatches = false, WithExisting _we = WithExisting::Trust ) {
-        reopen( m_params, _applyPatches, _we );
-    }
-    void reopen( const std::shared_ptr< ChainParams >& _p, bool _applyPatches = false,
-        WithExisting _we = WithExisting::Trust );
 
     /// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
     /// To be called from main loop every 100ms or so.
@@ -263,7 +256,7 @@ public:
 
     LastBlockHashesFace const& lastBlockHashes() const { return *m_lastBlockHashes; }
 
-    uint64_t chainID() const { return m_params->chainID; }
+    uint64_t chainID() const { return m_params.chainID; }
 
     /** Get the block blooms for a number of blocks. Thread-safe.
      * @returns the object pertaining to the blocks:
@@ -452,7 +445,7 @@ public:
     /// Gives a dump of the blockchain database. For debug/test use only.
     std::string dumpDatabase() const;
 
-    ChainParams const& chainParams() const { return *m_params; }
+    ChainParams const& chainParams() const { return m_params; }
 
     SealEngineFace* sealEngine() const { return m_sealEngine.get(); }
 
@@ -479,7 +472,7 @@ private:
     }
 
     /// Initialise everything and ready for opening the database.
-    void init( const std::shared_ptr< ChainParams >& _p );
+    void init();
     /// Open the database.
 public:
     void open( boost::filesystem::path const& _path, bool _applyPatches, WithExisting _we );
@@ -642,7 +635,7 @@ private:
     unsigned m_lastBlockNumber = 0;
     boost::filesystem::path m_chainPath;
 
-    std::shared_ptr< ChainParams > m_params;
+    const ChainParams& m_params;
     std::shared_ptr< SealEngineFace > m_sealEngine;  // consider shared_ptr.
     mutable SharedMutex x_genesis;
     mutable BlockHeader m_genesis;       // mutable because they're effectively memos.

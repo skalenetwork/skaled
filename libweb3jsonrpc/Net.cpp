@@ -30,17 +30,16 @@
 using namespace dev;
 using namespace dev::rpc;
 
-Net::Net( const std::shared_ptr< dev::eth::ChainParams >& _chainParams )
-    : m_chainParams( _chainParams ) {}
+Net::Net( const dev::eth::ChainParams& _chainParams ) : m_chainParams( _chainParams ) {}
 
 // TODO Ask here real values from consensus/broadcast
 
 std::string Net::net_version() {
-    return toString( m_chainParams->chainID );
+    return toString( m_chainParams.chainID );
 }
 
 std::string Net::net_peerCount() {
-    return toJS( m_chainParams->sChain.nodes.size() - 1 );
+    return toJS( m_chainParams.sChain.nodes.size() - 1 );
 }
 
 bool Net::net_listening() {

@@ -91,8 +91,7 @@ class Client : public ClientBase, protected Worker {
     friend class ::SkaleHost;
 
 public:
-    Client( const std::shared_ptr< ChainParams >& _params, int _networkID,
-        std::shared_ptr< GasPricer > _gpForAdoption,
+    Client( const ChainParams& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),

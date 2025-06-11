@@ -119,7 +119,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
     return _out;
 }
 
-Client::Client( const std::shared_ptr< ChainParams >& _params, int _networkID,
+Client::Client( const ChainParams& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
@@ -132,7 +132,7 @@ Client::Client( const std::shared_ptr< ChainParams >& _params, int _networkID,
       m_postSeal( chainParams().accountStartNonce ),
       m_working( chainParams().accountStartNonce ),
       m_snapshotAgent( make_shared< SnapshotAgent >(
-          _params->sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
+          _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
       m_dbPath( _dbPath )
 #ifdef HISTORIC_STATE

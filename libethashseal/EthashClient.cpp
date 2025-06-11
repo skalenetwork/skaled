@@ -43,7 +43,7 @@ EthashClient* dev::eth::asEthashClient( Interface* _c ) {
 
 DEV_SIMPLE_EXCEPTION( ChainParamsNotEthash );
 
-EthashClient::EthashClient( const std::shared_ptr< ChainParams >& _params, int _networkID,
+EthashClient::EthashClient( const ChainParams& _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
