@@ -1729,7 +1729,8 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     testClient->importTransactionsAsBlock(
         dev::eth::Transactions(),
 #ifdef BITE
-        make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
+
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1000,
         4294967294 );

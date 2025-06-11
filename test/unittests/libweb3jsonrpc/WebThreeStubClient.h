@@ -172,7 +172,7 @@ public:
 
 #ifdef BITE
     std::string skale_getCommonPublicKey() noexcept( false );
-    std::string skale_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
+    Json::Value skale_getDecryptedTransactionData( const std::string& param1 ) noexcept( false );
 #endif
 };
 
