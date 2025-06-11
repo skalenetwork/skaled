@@ -466,16 +466,12 @@ void ChainParams::loadGenesis( string const& _json ) {
     }
 }
 
-SealEngineFace* ChainParams::createSealEngine() {
+SealEngineFace* ChainParams::createSealEngine() const {
     SealEngineFace* ret = SealEngineRegistrar::create( sealEngineName );
     assert( ret && "Seal engine not found" );
     if ( !ret )
         return nullptr;
     ret->setChainParams( *this );
-    if ( sealRLP.empty() ) {
-        sealFields = ret->sealFields();
-        sealRLP = ret->sealRLP();
-    }
     return ret;
 }
 

@@ -46,7 +46,7 @@ struct ChainParams : public ChainOperationParams {
         populateFromGenesis( _genesisRLP, _state );
     }
 
-    SealEngineFace* createSealEngine();
+    SealEngineFace* createSealEngine() const;
 
     int rotateAfterBlock_ = 64;
 

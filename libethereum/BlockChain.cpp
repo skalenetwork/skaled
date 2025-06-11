@@ -212,7 +212,7 @@ void BlockChain::init() {
     m_lastCollection = chrono::system_clock::now();
 
     // Initialise with the genesis as the last block on the longest chain.
-    m_sealEngine.reset( const_cast< ChainParams& >( m_params ).createSealEngine() );
+    m_sealEngine.reset( m_params.createSealEngine() );
     m_genesis.clear();
     genesis();
 }
