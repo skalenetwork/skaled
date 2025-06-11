@@ -460,14 +460,14 @@ TestBlockChain::TestBlockChain( TestBlock const& _genesisBlock ) {
 
 void TestBlockChain::reset( TestBlock const& _genesisBlock ) {
     m_tempDirBlockchain.reset( new TransientDirectory );
-    ChainParams p = ChainParams( genesisInfo( TestBlockChain::s_sealEngineNetwork ),
-        _genesisBlock.bytes(), _genesisBlock.accountMap() );
+    std::shared_ptr< ChainParams > p( new ChainParams( genesisInfo( TestBlockChain::s_sealEngineNetwork ),
+        _genesisBlock.bytes(), _genesisBlock.accountMap() ) );
 
     m_blockChain.reset(
         new BlockChain( p, m_tempDirBlockchain.get()->path(), true, WithExisting::Kill ) );
     if ( !m_blockChain->isKnown( BlockHeader::headerHashFromBlock( _genesisBlock.bytes() ) ) ) {
         cdebug << "Not known:" << BlockHeader::headerHashFromBlock( _genesisBlock.bytes() )
-               << BlockHeader( p.genesisBlock() ).hash();
+               << BlockHeader( p->genesisBlock() ).hash();
         cdebug << "Genesis block not known!";
         cdebug << "This should never happen.";
         assert( false );

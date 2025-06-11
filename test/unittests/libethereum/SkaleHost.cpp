@@ -135,29 +135,29 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
                           std::map< std::string, std::string >() ) {
         dev::p2p::NetworkPreferences nprefs;
 
-        ChainParams chainParams;
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.istanbulForkBlock = 0;
+        std::shared_ptr< ChainParams > chainParams( new ChainParams() );
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
+        chainParams->difficulty = chainParams->minimumDifficulty;
+        chainParams->gasLimit = chainParams->maxGasLimit;
+        chainParams->istanbulForkBlock = 0;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
-        chainParams.extraData = h256::random().asBytes();
-        chainParams.sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
-        chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-        chainParams.nodeInfo.testSignatures = true;
-        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+        chainParams->extraData = h256::random().asBytes();
+        chainParams->sChain.nodeGroups = { { {}, uint64_t( -1 ), { "0", "0", "1", "0" } } };
+        chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+        chainParams->nodeInfo.testSignatures = true;
+        chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
 
         // not 0-timestamp genesis - to test patch
-        chainParams.timestamp = std::time( NULL ) - 5;
+        chainParams->timestamp = std::time( NULL ) - 5;
 
         if ( params.count( "multiTransactionMode" ) && stoi( params.at( "multiTransactionMode" ) ) )
-            chainParams.sChain.multiTransactionMode = true;
+            chainParams->sChain.multiTransactionMode = true;
         if ( params.count( "skipInvalidTransactionsPatchTimestamp" ) &&
              stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) ) )
-            chainParams.sChain._patchTimestamps[static_cast< size_t >(
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::SkipInvalidTransactionsPatch )] =
                 stoi( params.at( "skipInvalidTransactionsPatchTimestamp" ) );
 
@@ -169,7 +169,7 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
 
         setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
         client = make_unique< Client >(
-            chainParams, chainParams.networkID, gasPricer, nullptr, monitor, tempDir.path() );
+            chainParams, chainParams->networkID, gasPricer, nullptr, monitor, tempDir.path() );
         this->tq = client->debugGetTransactionQueue();
         client->setAuthor( coinbase.address() );
 

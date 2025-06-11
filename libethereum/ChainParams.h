@@ -35,7 +35,8 @@ class SealEngineFace;
 
 struct ChainParams : public ChainOperationParams {
     ChainParams();
-    ChainParams( ChainParams const& /*_org*/ ) = default;
+    ChainParams( ChainParams const& ) = delete;
+    ChainParams& operator=( ChainParams const& ) = delete;
     ChainParams( std::string const& _s );
     ChainParams( bytes const& _genesisRLP, AccountMap const& _state ) {
         populateFromGenesis( _genesisRLP, _state );
@@ -68,14 +69,13 @@ struct ChainParams : public ChainOperationParams {
     bytes genesisBlock() const;
 
     /// load config
-    ChainParams loadConfig(
-        std::string const& _json, const boost::filesystem::path& _configPath = {} ) const;
+    void loadConfig( std::string const& _json, const boost::filesystem::path& _configPath = {} );
 
     const std::string& getOriginalJson() const;
     void resetJson() { originalJSON = ""; }
 
     bool checkAdminOriginAllowed( const std::string& origin ) const;
-    static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj );
+    void processSkaleConfigItems( json_spirit::mObject& _obj );
 
 #ifdef MIRAGE
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
@@ -85,7 +85,7 @@ private:
     void populateFromGenesis( bytes const& _genesisRLP, AccountMap const& _state );
 
     /// load genesis
-    ChainParams loadGenesis( std::string const& _json ) const;
+    void loadGenesis( std::string const& _json );
 
     mutable std::string originalJSON;
 

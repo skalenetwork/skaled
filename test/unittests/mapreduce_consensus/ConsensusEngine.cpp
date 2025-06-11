@@ -209,14 +209,14 @@ protected:  // remote peer
 public:
     ConsensusExtFaceFixture() {
 
-        ChainParams chainParams;
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.extraData = h256::random().asBytes();
-        chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-        chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+        std::shared_ptr< ChainParams > chainParams( new ChainParams() );
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
+        chainParams->difficulty = chainParams->minimumDifficulty;
+        chainParams->gasLimit = chainParams->maxGasLimit;
+        chainParams->extraData = h256::random().asBytes();
+        chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+        chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
 
 
 #ifdef MIRAGE
@@ -224,14 +224,14 @@ public:
 #else
         sChainNode node2{u256( 2 ), "127.0.0.12", u256( 11111 ), "::1", u256( 11111 ), u256( 1 ), "0xfa", {"0", "1", "0", "1"}};
 #endif
-        chainParams.sChain.nodes.push_back( node2 );
+        chainParams->sChain.nodes.push_back( node2 );
         //////////////////////////////////////////////
 
 
         m_consensus.reset( new ConsensusEngine(
-            *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(), 0 ,
+            *this, 0, BlockHeader( chainParams->genesisBlock() ).timestamp(), 0 ,
             std::map<std::string, std::uint64_t>()));
-        m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
+        m_consensus->parseFullConfigAndCreateNode( chainParams->getOriginalJson(), "" );
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();
@@ -239,10 +239,10 @@ public:
         } );
 
         //////////////////////////////////////////////
-        chainParams.nodeInfo.ip = "127.0.0.12";
-        chainParams.nodeInfo.id = 2;
-        chainParams.nodeInfo.name = "Node2";
-        chainParams.resetJson();
+        chainParams->nodeInfo.ip = "127.0.0.12";
+        chainParams->nodeInfo.id = 2;
+        chainParams->nodeInfo.name = "Node2";
+        chainParams->resetJson();
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", "", "", chainParams, WithExisting::Kill, {"eth"}, true ) );
@@ -251,7 +251,7 @@ public:
 
         setenv("DATA_DIR", m_tempDir.path().c_str(), 1);
         client.reset(
-            new eth::Client( chainParams, ( int ) chainParams.networkID, shared_ptr< GasPricer >(),
+            new eth::Client( chainParams, ( int ) chainParams->networkID, shared_ptr< GasPricer >(),
                 NULL, monitor, m_tempDir.path().c_str(), WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
         client->injectSkaleHost();
