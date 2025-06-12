@@ -156,6 +156,7 @@ private:
     TestBlock m_genesisBlock;
     TestBlock m_lastBlock;
     std::unique_ptr< TransientDirectory > m_tempDirBlockchain;
+    std::shared_ptr< dev::eth::ChainParams > chainParams;
 };
 
 class NetworkSelector {
