@@ -108,7 +108,6 @@ class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
 
-        ChainParams chainParams;
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
@@ -231,6 +230,7 @@ private:
     TransientDirectory m_tmpDir;
     std::unique_ptr< dev::eth::Client > m_ethereum;
     std::unique_ptr< FixedAccountHolder > accountHolder;
+    ChainParams chainParams;
 };
 
 class TestClientSnapshotsFixture : public TestOutputHelperFixture, public FixtureCommon {
