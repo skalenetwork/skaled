@@ -533,8 +533,7 @@ void Client::syncBlockQueue() {
 
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-    const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
-        _decryptedTransactionDataFields,
+    const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
     u256 _gasPrice,
 #ifdef MIRAGE
@@ -1329,7 +1328,8 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #ifdef BITE
             auto decryptedDataFromDb = decryptedTransactionData( tx.sha3() );
             if ( decryptedDataFromDb )
-                tx.setDecryptedData( std::make_shared< bytes >( decryptedDataFromDb.data() ) );
+                tx.setDecryptedFields( std::make_shared< bytes >( decryptedDataFromDb.data() ),
+                    std::make_shared< dev::Address >( decryptedDataFromDb.to() ) );
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
@@ -1455,6 +1455,8 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 }
 #endif  // HISTORIC_STATE
 
+
+#ifndef MIRAGE
 uint64_t Client::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     assert( m_skaleHost );
@@ -1475,6 +1477,7 @@ uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
         throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
 }
+#endif
 
 const dev::h256 Client::empty_str_hash =
     dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );

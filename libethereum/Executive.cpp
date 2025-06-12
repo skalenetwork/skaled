@@ -291,15 +291,17 @@ bool Executive::execute() {
     // for BITE transactions returns decrypted data
     // for regular transactions returns regular data
     bytes const& dataToPassToEvm = m_t.decryptedData();
+    Address receiverAddressToPassToEvm = m_t.decryptedTo();
 #else
     bytes const& dataToPassToEvm = m_t.data();
+    Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
     if ( m_t.isCreation() )
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
+        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 
@@ -485,6 +487,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
             // Create VM instance. Force Interpreter if tracing requested.
             auto vm = VMFactory::create();
             if ( m_isCreation ) {
+#ifndef MIRAGE
                 // Checking whether deployment is allowed via ConfigController contract
                 bytes calldata;
                 if ( FlexibleDeploymentPatch::isEnabledWhen(
@@ -502,7 +505,7 @@ bool Executive::go( OnOpFunc const& _onOp ) {
                 if ( !deploymentCallOutput.empty() && u256( deploymentCallOutput ) == 0 ) {
                     BOOST_THROW_EXCEPTION( InvalidContractDeployer() );
                 }
-
+#endif
                 auto out = vm->exec( m_gas, *m_ext, _onOp );
                 if ( m_res ) {
                     m_res->gasForDeposit = m_gas;

@@ -107,7 +107,7 @@ void ConsensusStub::doWork() {
         ++blockCounter;
         m_extFace.createBlock( out_vector,
 #ifdef BITE
-            shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >(),
+            shared_ptr< DecryptedTransactionFieldsMap >(),
 #endif
             time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
         LOG( m_loggerDebug ) << "createBlock"

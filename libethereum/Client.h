@@ -294,8 +294,7 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-        const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
-            _decryptedTransactionDataFields,
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
         u256 _gasPrice,
 #ifdef MIRAGE
@@ -369,8 +368,10 @@ public:
     uint64_t getHistoricRootsDbUsage() const;
 #endif  // HISTORIC_STATE
 
+#ifndef MIRAGE
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
+#endif
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
