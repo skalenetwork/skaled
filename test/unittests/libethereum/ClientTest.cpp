@@ -257,8 +257,6 @@ public:
 
         gainRoot();
 
-        ChainParams chainParams;
-
         Json::Value ret;
         Json::Reader().parse( _config, ret );
 #ifndef MIRAGE
@@ -336,6 +334,7 @@ public:
     }
 
 private:
+    ChainParams chainParams;
     std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
     dev::KeyPair coinbase{KeyPair::create()};

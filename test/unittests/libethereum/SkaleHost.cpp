@@ -135,7 +135,6 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
                           std::map< std::string, std::string >() ) {
         dev::p2p::NetworkPreferences nprefs;
 
-        ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
         chainParams.difficulty = chainParams.minimumDifficulty;
@@ -206,6 +205,9 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
     TransactionQueue* tq;
 
     TransientDirectory tempDir;  // ! should exist before client!
+
+    ChainParams chainParams;
+
     unique_ptr< Client > client;
 
     dev::KeyPair coinbase{ KeyPair::create() };

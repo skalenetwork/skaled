@@ -264,7 +264,6 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         gainRoot();
 
-        ChainParams chainParams;
         dev::p2p::NetworkPreferences nprefs;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
@@ -403,6 +402,9 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
     }
 
     TransientDirectory tempDir;  // ! should exist before client!
+
+    ChainParams chainParams;
+
     unique_ptr< Client > client;
 
     dev::KeyPair coinbase{ KeyPair::create() };
