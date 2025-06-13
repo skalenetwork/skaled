@@ -177,7 +177,9 @@ void InvariantChecker::checkInvariants(
     if ( !_this->invariants() ) {
         cwarn << ( _pre ? "Pre" : "Post" ) << "invariant failed in" << _fn << "at" << _file << ":"
               << _line;
-        ::boost::exception_detail::throw_exception_( FailedInvariant(), _fn, _file, _line );
+        boost::throw_exception( FailedInvariant()
+                                << boost::throw_function( _fn ) << boost::throw_file( _file )
+                                << boost::throw_line( _line ) );
     }
 }
 

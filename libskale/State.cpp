@@ -27,7 +27,6 @@
 #include <mutex>
 
 #include <boost/filesystem.hpp>
-#include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
 #include <libdevcore/DBImpl.h>

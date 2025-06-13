@@ -197,7 +197,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_chainId = rlp[0].toInt< u256 >();
+        m_chainId = rlp[0].toInt< u256 >().convert_to< uint64_t >();
         m_nonce = rlp[1].toInt< u256 >();
         m_gasPrice = rlp[2].toInt< u256 >();
         m_gas = rlp[3].toInt< u256 >();
@@ -263,7 +263,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_chainId = rlp[0].toInt< u256 >();
+        m_chainId = rlp[0].toInt< u256 >().convert_to< uint64_t >();
         m_nonce = rlp[1].toInt< u256 >();
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();

@@ -63,9 +63,9 @@ include( GNUInstallDirs )
 
 if( UNIX )
     # Build deps with PIC to allow building shared libraries.
-    set( toolchain cxx17-pic )
+    set( toolchain cxx20-pic )
 else()
-    set( toolchain cxx17 )
+    set( toolchain cxx20 )
 endif()
 cable_configure_toolchain( DEFAULT ${toolchain} )
 
@@ -86,7 +86,7 @@ else()
     set( run_upload NO )
 endif()
 
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 
 cable_set_build_type( DEFAULT RelWithDebInfo CONFIGURATION_TYPES Debug;Release;RelWithDebInfo )
 

@@ -422,7 +422,7 @@ std::unordered_map< u256, u256 > OverlayDB::storage( const dev::h160& _address )
         string prefix( ( const char* ) _address.data(), _address.size );
         m_db_face->forEachWithPrefix(
             prefix, [this, &storage, &_address]( Slice key, Slice value ) {
-                if ( key.size() == h160::size + h256::size ) {
+                if ( key.size() == size_t( h160::size ) + size_t( h256::size ) ) {
                     // key is storage address
                     string keyString( key.begin(), key.end() );
                     h160 address = h160( keyString.substr( 0, h160::size ),
@@ -450,7 +450,7 @@ void OverlayDB::copyStorageIntoAccountMap( dev::eth::AccountMap& _map ) const {
 
     if ( m_db_face ) {
         m_db_face->forEach( [this, &_map]( Slice key, Slice value ) {
-            if ( key.size() == h160::size + h256::size ) {
+            if ( key.size() == size_t( h160::size ) + size_t( h256::size ) ) {
                 // key is storage address
                 string keyString( key.begin(), key.end() );
                 [[maybe_unused]] h160 address = h160(

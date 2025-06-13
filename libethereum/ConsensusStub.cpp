@@ -38,8 +38,6 @@
 
 using namespace dev;
 
-using namespace std;
-
 ConsensusStub::ConsensusStub(
     ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot )
     : dev::Worker( "consensus_stub", 0 ),  // call doWork in a tight loop
