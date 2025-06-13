@@ -2317,7 +2317,7 @@ socket_t client::create_client_socket(
     ipVer_ = ipVer;
     return detail::create_socket(
         ipVer, host_.c_str(), port_,
-        [=]( socket_t sock, struct addrinfo& ai ) -> bool {
+        [this]( socket_t sock, struct addrinfo& ai ) -> bool {
             detail::set_nonblocking( sock, true );
             auto ret = connect( sock, ai.ai_addr, static_cast< int >( ai.ai_addrlen ) );
             if ( ret < 0 ) {

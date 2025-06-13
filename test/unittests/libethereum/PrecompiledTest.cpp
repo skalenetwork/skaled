@@ -1828,7 +1828,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         if ( !boost::filesystem::exists( pathToFile.parent_path() ) )
             boost::filesystem::create_directories( pathToFile.parent_path() );
         boost::filesystem::path pathToTestFile = dev::getDataDir() / "test";
-        boost::filesystem::ofstream of( pathToTestFile );
+        std::ofstream of( pathToTestFile );
 
         hexAddress = ownerAddress.hex();
         hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );

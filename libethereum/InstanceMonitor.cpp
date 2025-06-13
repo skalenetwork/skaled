@@ -23,6 +23,7 @@
  */
 
 #include "InstanceMonitor.h"
+#include <fstream>
 #include <iostream>
 #include <json.hpp>
 
