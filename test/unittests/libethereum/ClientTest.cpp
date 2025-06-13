@@ -150,6 +150,8 @@ public:
         //            GasPricer >(),
         //                dir, dir, WithExisting::Kill, TransactionQueue::Limits{100000, 1024} ) );
 
+        m_ethereum->setAuthor( coinbase.address() );
+
         // wait for 1st block - because it's always empty
         std::promise< void > block_promise;
         auto importHandler = m_ethereum->setOnBlockImport(
@@ -161,8 +163,6 @@ public:
         m_ethereum->startWorking();
 
         block_promise.get_future().wait();
-
-        m_ethereum->setAuthor( coinbase.address() );
 
         accountHolder.reset( new FixedAccountHolder( [&]() { return m_ethereum.get(); }, {} ) );
         accountHolder->setAccounts( {coinbase} );
