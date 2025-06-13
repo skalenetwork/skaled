@@ -10,6 +10,7 @@ target_compile_options( skale-key PRIVATE
 
 target_link_libraries(
     skale-key
+    skale
     ethcore
     devcore
     skutils

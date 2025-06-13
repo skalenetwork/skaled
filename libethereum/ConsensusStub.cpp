@@ -38,8 +38,6 @@
 
 using namespace dev;
 
-using namespace std;
-
 ConsensusStub::ConsensusStub(
     ConsensusExtFace& _extFace, uint64_t _lastCommittedBlockID, u256 _stateRoot )
     : dev::Worker( "consensus_stub", 0 ),  // call doWork in a tight loop
@@ -109,7 +107,7 @@ void ConsensusStub::doWork() {
         ++blockCounter;
         m_extFace.createBlock( out_vector,
 #ifdef BITE
-            shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >(),
+            shared_ptr< DecryptedTransactionFieldsMap >(),
 #endif
             time( NULL ), 0, blockCounter, getPriceForBlockId( blockCounter ), stateRoot, -1 );
         LOG( m_loggerDebug ) << "createBlock"

@@ -327,7 +327,7 @@ bool SkaleStatsSubscriptionManager::subscribe(
     subscriptionData.m_nIntervalMilliseconds = nIntervalMilliseconds;
     skutils::dispatch::repeat(
         subscriptionData.m_pPeer->m_strPeerQueueID,
-        [=]() -> void {
+        [this, subscriptionData, idSubscription]() -> void {
             if ( subscriptionData.m_pPeer && subscriptionData.m_pPeer->isConnected() ) {
                 nlohmann::json joParams = nlohmann::json::object();
                 joParams["subscription"] = dev::toJS(
@@ -868,7 +868,7 @@ void SkaleWsPeer::eth_subscribe_logs(
         skutils::retain_release_ptr< SkaleWsPeer > pThis( this );
         dev::eth::fnClientWatchHandlerMulti_t fnOnSunscriptionEvent;
         fnOnSunscriptionEvent += [this, pThis]( unsigned iw ) -> void {
-            skutils::dispatch::async( "logs-rethread", [=]() -> void {
+            skutils::dispatch::async( "logs-rethread", [this, pThis, iw]() -> void {
                 skutils::dispatch::async( pThis->m_strPeerQueueID, [this, pThis, iw]() -> void {
                     dev::eth::LocalisedLogEntries le = pThis->ethereum()->checkWatch( iw );
                     nlohmann::json joResult = skale::server::helper::toJsonByBlock( le );
@@ -2242,7 +2242,7 @@ bool SkaleServerOverride::StartListening() {
          StartListening( e_server_mode_t::esm_informational ) ) {
         if ( skutils::http_pg::pg_accumulate_size() > 0 ) {
             skutils::http_pg::pg_on_request_handler_t fnHandler =
-                [=]( const json& joIn, const string& strOrigin, int ipVer,
+                [this]( const json& joIn, const string& strOrigin, int ipVer,
                     const string& strDstAddress, int nDstPort ) -> skutils::result_of_http_request {
                 if ( isShutdownMode() )
                     throw std::runtime_error( "query was cancelled due to server shutdown mode" );

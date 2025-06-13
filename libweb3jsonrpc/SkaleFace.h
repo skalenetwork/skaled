@@ -80,6 +80,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getDBUsage();
     }
 
+#ifndef MIRAGE
     inline virtual void oracle_submitRequestI( const Json::Value& request, Json::Value& response ) {
         std::string strRequest = request[0u].asString();
         response = this->oracle_submitRequest( strRequest );
@@ -89,6 +90,8 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         std::string receipt = request[0u].asString();
         response = this->oracle_checkResult( receipt );
     }
+#endif
+
 #ifdef BITE
     inline virtual void skale_getCommonPublicKeyI(
         const Json::Value& request, Json::Value& response ) {
@@ -111,11 +114,14 @@ class SkaleFace : public ServerInterface< SkaleFace > {
     virtual std::string skale_getLatestSnapshotBlockNumber() = 0;
     virtual std::string skale_getLatestBlockNumber() = 0;
     virtual Json::Value skale_getDBUsage() = 0;
+#ifndef MIRAGE
     virtual std::string oracle_submitRequest( std::string& request ) = 0;
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
+#endif
+
 #ifdef BITE
     virtual std::string skale_getCommonPublicKey() = 0;
-    virtual std::string skale_getDecryptedTransactionData( const std::string& request ) = 0;
+    virtual Json::Value skale_getDecryptedTransactionData( const std::string& request ) = 0;
 #endif
 
 public:
@@ -152,12 +158,14 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getDBUsage", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getDBUsageI );
+#ifndef MIRAGE
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_submitRequest",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_submitRequestI );
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_checkResult",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_checkResultI );
+#endif
 #ifdef BITE
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getCommonPublicKey",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),

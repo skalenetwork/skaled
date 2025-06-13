@@ -41,6 +41,13 @@ using namespace dev::eth;
 
 const size_t MAX_ACCESS_LIST_COUNT = 16;
 
+
+#ifdef BITE
+// Used for comparing the 'to' address against this constant to check if transaction is BITE
+const dev::Address TransactionBase::BITE_ADDRESS =
+    dev::Address( std::string( BITE_ADDRESS_AS_STRING ) );
+#endif
+
 std::vector< bytes > validateAccessListRLP( const RLP& _data ) {
     if ( !_data.isList() )
         BOOST_THROW_EXCEPTION( InvalidTransactionFormat()
@@ -101,6 +108,10 @@ TransactionBase::TransactionBase( TransactionSkeleton const& _ts, Secret const& 
       m_receiveAddress( _ts.to ) {
     if ( _s )
         sign( _s );
+
+#ifdef BITE
+    checkIfBITETxnAndSet( _ts.to );
+#endif
 }
 
 void TransactionBase::fillFromBytesLegacy(
@@ -186,7 +197,7 @@ void TransactionBase::fillFromBytesType1( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_chainId = rlp[0].toInt< u256 >();
+        m_chainId = rlp[0].toInt< u256 >().convert_to< uint64_t >();
         m_nonce = rlp[1].toInt< u256 >();
         m_gasPrice = rlp[2].toInt< u256 >();
         m_gas = rlp[3].toInt< u256 >();
@@ -252,7 +263,7 @@ void TransactionBase::fillFromBytesType2( bytesConstRef _rlpData, CheckTransacti
             BOOST_THROW_EXCEPTION(
                 InvalidTransactionFormat() << errinfo_comment( "transaction RLP must be a list" ) );
 
-        m_chainId = rlp[0].toInt< u256 >();
+        m_chainId = rlp[0].toInt< u256 >().convert_to< uint64_t >();
         m_nonce = rlp[1].toInt< u256 >();
         m_maxPriorityFeePerGas = rlp[2].toInt< u256 >();
         m_maxFeePerGas = rlp[3].toInt< u256 >();
@@ -363,7 +374,7 @@ TransactionBase::TransactionBase( bytesConstRef _rlpData, CheckTransaction _chec
         // check if a txn is a BITE txn here
         // bad formatted txns cannot make it to the block
         // therefore no need to check it anywhere else
-        checkIfBITETxnAndSet();
+        checkIfBITETxnAndSet( m_receiveAddress );
 #endif
     } catch ( std::exception& e ) {
         m_type = Type::Invalid;
@@ -617,35 +628,29 @@ bytes const& TransactionBase::decryptedData() const {
     return *m_decryptedData;
 }
 
-void TransactionBase::checkIfBITETxnAndSet() {
-    // if a txn does not match MAGIC return false
-    if ( m_data.empty() || m_data.size() < BITE_MAGIC_SIZE ||
-         !std::equal( BITE_MAGIC_AS_BYTE_ARRAY, BITE_MAGIC_AS_BYTE_ARRAY + BITE_MAGIC_SIZE,
-             m_data.begin() ) )
-        return;
+void TransactionBase::checkIfBITETxnAndSet( const Address& _to ) {
+    m_isBITETxn = _to == BITE_ADDRESS;
+}
 
-    // transaction data starts with BITE_MAGIC_NUMBER
-    // therefore the transaction is considered as BITE txn
-    // it may still be invalid, will check it later
-    m_isBITETxn = true;
+Address TransactionBase::decryptedTo() const {
+    if ( !m_decryptedTo )
+        return to();
+    return *m_decryptedTo;
 }
 
 void TransactionBase::checkAndValidateBITETransaction() const {
-    // skip non-BITE txn
-    if ( !m_isBITETxn )
+    if ( !isBite() )
         return;
 
-    // we already checked that the txn data starts with BITE_MAGIC_NUMBER
-    // now verify that the rest of the fields are valid
-
-    // minimum size of an encrypted with AES key message is 64 bytes
-    if ( m_data.size() < BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN + 64 )
+    if ( m_data.empty() || m_data.size() < BITE_EPOCH_ID_LEN + BITE_CIPHERTEXT_MIN_LEN ) {
         BOOST_THROW_EXCEPTION( BITETransactionTooShort()
                                << errinfo_comment( "BITE transaction's data is too short." ) );
+    }
+
+    // Extract ciphered key bytes
     std::array< uint8_t, BITE_ENCRYPTED_AES_KEY_LEN > cipheredKeyBytes;
-    std::copy( m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN,
-        m_data.begin() + BITE_MAGIC_SIZE + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN,
-        cipheredKeyBytes.begin() );
+    std::copy( m_data.begin() + BITE_EPOCH_ID_LEN,
+        m_data.begin() + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN, cipheredKeyBytes.begin() );
     try {
         // validate encrypted AES key
         auto cipheredKey = libBLS::CipheredKey::fromBytes( cipheredKeyBytes );

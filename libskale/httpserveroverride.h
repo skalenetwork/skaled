@@ -42,10 +42,14 @@ typedef intptr_t ssize_t;
 
 
 #include <stdexcept>
+
+#ifndef RAPIDJSON_ASSERT
 #define RAPIDJSON_ASSERT( x )                                       \
     if ( !( x ) ) {                                                 \
         throw std::out_of_range( #x " failed with provided JSON" ); \
     }
+#endif
+
 #define RAPIDJSON_ASSERT_THROWS
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
