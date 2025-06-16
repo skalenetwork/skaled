@@ -1703,10 +1703,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
 
-    ChainParams chainParams;
-    chainParams = chainParams.loadConfig( config );
-    chainParams.sealEngineName = NoProof::name();
-    chainParams.allowFutureBlocks = true;
+    std::shared_ptr< ChainParams > chainParams;
+    chainParams->loadConfig( config );
+    chainParams->sealEngineName = NoProof::name();
+    chainParams->allowFutureBlocks = true;
 
     dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
@@ -1714,7 +1714,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     dev::TransientDirectory m_tmpDir;
     auto monitor = make_shared< InstanceMonitor >("test");
     setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
         shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
     client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );

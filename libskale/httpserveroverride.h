@@ -318,7 +318,7 @@ class SkaleServerOverride : public jsonrpc::AbstractServerConnector,
                             public SkaleStatsSubscriptionManager,
                             public dev::rpc::SkaleStatsProviderImpl {
     std::atomic_size_t nTaskNumberCall_ = 0;
-    dev::eth::ChainParams& chainParams_;
+    std::shared_ptr< const dev::eth::ChainParams > chainParams_;
     mutable dev::eth::Interface* pEth_;
 
 public:
@@ -444,7 +444,7 @@ public:
     opts_t opts_;
 
     SkaleServerOverride(
-        dev::eth::ChainParams& chainParams, dev::eth::Interface* pEth, const opts_t& opts );
+        std::shared_ptr< const dev::eth::ChainParams > chainParams, dev::eth::Interface* pEth, const opts_t& opts );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;

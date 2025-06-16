@@ -264,23 +264,23 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         gainRoot();
 
-        ChainParams chainParams;
+        std::shared_ptr< ChainParams > chainParams;
         dev::p2p::NetworkPreferences nprefs;
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
-        chainParams.byzantiumForkBlock = 0;
-        chainParams.externalGasDifficulty = 1;
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
+        chainParams->difficulty = chainParams->minimumDifficulty;
+        chainParams->gasLimit = chainParams->maxGasLimit;
+        chainParams->byzantiumForkBlock = 0;
+        chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
         chainParams.sChain.contractStorageLimit = 0x1122334455667788UL;
 #endif
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
         // TODO: better make it use ethemeral in-memory databases
-        chainParams.extraData = h256::random().asBytes();
+        chainParams->extraData = h256::random().asBytes();
 
-        chainParams.sChain.emptyBlockIntervalMs = 1000;
+        chainParams->sChain.emptyBlockIntervalMs = 1000;
 
         //        web3.reset( new WebThreeDirect(
         //            "eth tests", tempDir.path(), "", chainParams, WithExisting::Kill, {"eth"},
@@ -328,7 +328,7 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
         setenv( "DATA_DIR", BTRFS_DIR_PATH.c_str(), 1 );
-        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, boost::filesystem::path( BTRFS_DIR_PATH ),
             WithExisting::Kill ) );
 

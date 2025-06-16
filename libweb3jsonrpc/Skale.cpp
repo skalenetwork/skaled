@@ -357,9 +357,9 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
-    dev::eth::ChainParams chainParams = this->m_client.chainParams();
-    if ( !chainParams.nodeInfo.syncNode && ( chainParams.nodeInfo.keyShareName.empty() ||
-                                               chainParams.nodeInfo.sgxServerUrl.empty() ) )
+    const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
+    if ( !chainParams.isSyncNode() && ( chainParams.getKeyShareName().empty() ||
+                                               chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {
@@ -374,8 +374,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 "Requested hash of block " + to_string( blockNumber ) + " is absent" );
 
         nlohmann::json joSignature = nlohmann::json::object();
-        if ( !chainParams.nodeInfo.syncNode ) {
-            std::string sgxServerURL = chainParams.nodeInfo.sgxServerUrl;
+        if ( !chainParams.isSyncNode() ) {
+            std::string sgxServerURL = chainParams.getSgxServerUrl();
             skutils::url u( sgxServerURL );
 
             nlohmann::json joCall = nlohmann::json::object();
@@ -385,15 +385,15 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
                 joCall["type"] = "BLSSignReq";
             nlohmann::json obj = nlohmann::json::object();
 
-            obj["keyShareName"] = chainParams.nodeInfo.keyShareName;
+            obj["keyShareName"] = chainParams.getKeyShareName();
             obj["messageHash"] = snapshotHash.hex();
             obj["n"] = chainParams.sChain.nodes.size();
             obj["t"] = chainParams.sChain.t;
 
             auto it =
                 std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-                    [chainParams]( const dev::eth::sChainNode& schain_node ) {
-                        return schain_node.id == chainParams.nodeInfo.id;
+                    [&chainParams]( const dev::eth::sChainNode& schain_node ) {
+                        return schain_node.id == chainParams.getSelfNodeId();
                     } );
             assert( it != chainParams.sChain.nodes.end() );
             dev::eth::sChainNode schain_node = *it;

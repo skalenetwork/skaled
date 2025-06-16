@@ -152,6 +152,7 @@ public:
     static eth::Network s_sealEngineNetwork;
 
 private:
+    std::shared_ptr< ChainParams > m_chainParams;
     std::unique_ptr< BlockChain > m_blockChain;
     TestBlock m_genesisBlock;
     TestBlock m_lastBlock;

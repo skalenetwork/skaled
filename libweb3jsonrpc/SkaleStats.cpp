@@ -63,8 +63,8 @@ namespace dev {
 namespace rpc {
 
 SkaleStats::SkaleStats(
-    const std::string& configPath, eth::Interface& _eth, const dev::eth::ChainParams& chainParams )
-    : skutils::json_config_file_accessor( configPath ), chainParams_( chainParams ), m_eth( _eth ) {
+    const std::string& configPath, eth::Interface& _eth )
+    : skutils::json_config_file_accessor( configPath ), m_eth( _eth ) {
     initStatsCounters();
     nThisNodeIndex_ = findThisNodeIndex();
     //

@@ -41,7 +41,7 @@ ClientTest* dev::eth::asClientTest( Interface* _c ) {
     return &dynamic_cast< ClientTest& >( *_c );
 }
 
-ClientTest::ClientTest( ChainParams const& _params, int _networkID,
+ClientTest::ClientTest( std::shared_ptr< const ChainParams > _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
