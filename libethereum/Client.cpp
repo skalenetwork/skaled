@@ -128,9 +128,9 @@ Client::Client( std::shared_ptr< const ChainParams > _params, int _networkID,
       m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
-      m_preSeal( chainParams().accountStartNonce ),
-      m_postSeal( chainParams().accountStartNonce ),
-      m_working( chainParams().accountStartNonce ),
+      m_preSeal( chainParams().getAccountStartNonce() ),
+      m_postSeal( chainParams().getAccountStartNonce() ),
+      m_working( chainParams().getAccountStartNonce() ),
       m_snapshotAgent( make_shared< SnapshotAgent >(
           _params->getSnapshotIntervalSec(), _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
@@ -235,7 +235,7 @@ void Client::populateNewChainStateFromGenesis() {
     m_state.mutableHistoricState().db().commit();
 
 #else
-    m_state.populateFrom( bc().chainParams().genesisState );
+    m_state.populateFrom( bc().chainParams().getGenesisState() );
     m_state = m_state.createStateCopyAndClearCaches();
 #endif
 }
@@ -251,8 +251,8 @@ void Client::initStateFromDiskOrGenesis() {
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
-    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
-        BaseState::PreExisting, chainParams().accountInitialFunds
+    m_state = State( chainParams().getAccountStartNonce(), m_dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().getAccountInitialFunds()
 #ifndef MIRAGE
         ,
         chainParams().sChain.contractStorageLimit
@@ -319,7 +319,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( chainParams().sChain.nodeGroups.size() > 0 ) {
+    if ( chainParams().getNodeGroups().size() > 0 ) {
         initHistoricGroupIndex();
     } else {
         LOG( m_loggerInfo ) << "Empty node groups in config. "
@@ -583,7 +583,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     } else
         LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
-    if ( chainParams().sChain.nodeGroups.size() > 0 )
+    if ( chainParams().getNodeGroups().size() > 0 )
         updateHistoricGroupIndex();
 
 #ifdef MIRAGE
@@ -697,7 +697,7 @@ void Client::resyncStateFromChain() {
 
 void Client::restartMining() {
     bool preChanged = false;
-    Block newPreMine( chainParams().accountStartNonce );
+    Block newPreMine( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     newPreMine = m_preSeal;
 
@@ -729,7 +729,7 @@ void Client::restartMining() {
 }
 
 void Client::resetState() {
-    Block newPreMine( chainParams().accountStartNonce );
+    Block newPreMine( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     newPreMine = m_preSeal;
 
@@ -1145,17 +1145,17 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
+        chainParams(), 0, gasBidPrice, chainParams().isMultiTransactionModeEnabled() );
 
     // invalid BITE transactions should not be added to txn queue
 #ifdef BITE
     // only validate in production setup
-    if ( !chainParams().nodeInfo.testSignatures )
+    if ( !chainParams().isTestSignaturesEnabled() )
         _t.checkAndValidateBITETransaction();
 #endif
 
     ImportResult res;
-    if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
+    if ( chainParams().isMultiTransactionModeEnabled() && state.getNonce( _t.sender() ) < _t.nonce() &&
          m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
@@ -1237,7 +1237,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
-        t.forceChainId( chainParams().chainID );
+        t.forceChainId( chainParams().getChainId() );
         t.ignoreExternalGas();
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
@@ -1362,36 +1362,38 @@ void Client::initHistoricGroupIndex() {
         return;
     }
 
+    auto nodeGroups = chainParams().getNodeGroups();
+
     uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
     uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
 
     // always returns it != end() because current finish ts equals to uint64_t(-1)
-    auto it = std::find_if( chainParams().sChain.nodeGroups.begin(),
-        chainParams().sChain.nodeGroups.end(),
+    auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
         [&currentBlockTimestamp](
             const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
 
-    if ( it == chainParams().sChain.nodeGroups.end() ) {
+    if ( it == nodeGroups.end() ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "Assertion failed: it == chainParams().sChain.nodeGroups.end()" ) );
     }
 
-    if ( it != chainParams().sChain.nodeGroups.begin() ) {
+    if ( it != nodeGroups.begin() ) {
         auto prevIt = std::prev( it );
         if ( currentBlockTimestamp >= prevIt->finishTs &&
              previousBlockTimestamp < prevIt->finishTs )
             it = prevIt;
     }
 
-    historicGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+    historicGroupIndex = std::distance( nodeGroups.begin(), it );
 }
 
 void Client::updateHistoricGroupIndex() {
+    auto nodeGroups = chainParams().getNodeGroups();
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = chainParams().sChain.nodeGroups.at( historicGroupIndex ).finishTs;
+    uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
     if ( blockTimestamp >= currentFinishTs )
         ++historicGroupIndex;
-    if ( historicGroupIndex >= chainParams().sChain.nodeGroups.size() ) {
+    if ( historicGroupIndex >= nodeGroups.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
     }

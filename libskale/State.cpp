@@ -1119,7 +1119,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
         statusCodeTmp = false;
@@ -1170,12 +1170,12 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
         if ( _p == Permanence::Committed &&
-             ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+             ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
             receipt = TransactionReceipt( statusCode,
-                startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+                startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
                 e.logs() );
         } else {
-            receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+            receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
                           TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                           TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         }
@@ -1191,7 +1191,7 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
         m_fs_ptr->commit();
 
-        removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
+        removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -1224,12 +1224,12 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     TransactionReceipt receipt =
         TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         receipt = TransactionReceipt( statusCode,
-            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
             e.logs() );
     } else {
-        receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+        receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
                       TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                       TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     }

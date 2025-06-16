@@ -169,7 +169,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
             "snapshot info request received too early, no snapshot available yet, please try later "
             "or request earlier block number";
         joResponse["timeValid"] =
-            currentSnapshotTime + m_client.chainParams().sChain.snapshotDownloadTimeout;
+            currentSnapshotTime + m_client.chainParams().getSnapshotDownloadTimeout();
         return joResponse;
     }
 
@@ -184,7 +184,7 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
     if ( m_shared_space && !m_shared_space->try_lock() ) {
         joResponse["error"] = "snapshot serialization space is occupied, please try again later";
         joResponse["timeValid"] =
-            time( NULL ) + m_client.chainParams().sChain.snapshotDownloadTimeout;
+            time( NULL ) + m_client.chainParams().getSnapshotDownloadTimeout();
         return joResponse;
     }
 
@@ -207,12 +207,12 @@ nlohmann::json Skale::impl_skale_getSnapshot( const nlohmann::json& joRequest, C
          !snapshotDownloadFragmentMonitorThread->joinable() ) {
         snapshotDownloadFragmentMonitorThread.reset( new std::thread( [this]() {
             while ( ( time( NULL ) - lastSnapshotDownloadFragmentTime <
-                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ||
+                            m_client.chainParams().getSnapshotDownloadInactiveTimeout() ||
                         time( NULL ) - currentSnapshotTime <
-                            m_client.chainParams().sChain.snapshotDownloadInactiveTimeout ) &&
+                            m_client.chainParams().getSnapshotDownloadInactiveTimeout() ) &&
                     ( time( NULL ) - currentSnapshotTime <
-                            m_client.chainParams().sChain.snapshotDownloadTimeout ||
-                        m_client.chainParams().nodeInfo.archiveMode ) ) {
+                            m_client.chainParams().getSnapshotDownloadTimeout() ||
+                        m_client.chainParams().isArchiveModeEnabled() ) ) {
                 if ( threadExitRequested )
                     break;
                 sleep( SNAPSHOT_DOWNLOAD_MONITOR_THREAD_SLEEP_MS );
@@ -387,16 +387,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
 
             obj["keyShareName"] = chainParams.getKeyShareName();
             obj["messageHash"] = snapshotHash.hex();
-            obj["n"] = chainParams.sChain.nodes.size();
-            obj["t"] = chainParams.sChain.t;
-
-            auto it =
-                std::find_if( chainParams.sChain.nodes.begin(), chainParams.sChain.nodes.end(),
-                    [&chainParams]( const dev::eth::sChainNode& schain_node ) {
-                        return schain_node.id == chainParams.getSelfNodeId();
-                    } );
-            assert( it != chainParams.sChain.nodes.end() );
-            dev::eth::sChainNode schain_node = *it;
+            obj["n"] = chainParams.getNodesCount();
+            obj["t"] = chainParams.getThresholdCount();
 
             joCall["params"] = obj;
 

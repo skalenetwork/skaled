@@ -267,7 +267,7 @@ private:
 struct JsonRpcFixture : public TestOutputHelperFixture {
     // chain params needs to be a field of JsonRPCFixture
     // since references to it are passed to the server
-    std::shared_ptr< ChainParams > chainParams;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
 
 
     JsonRpcFixture( const std::string& _config = "", bool _owner = true,
@@ -317,8 +317,8 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         } else {
             chainParams->sealEngineName = NoProof::name();
             chainParams->allowFutureBlocks = true;
-            chainParams->difficulty = chainParams->minimumDifficulty;
-            chainParams->gasLimit = chainParams->maxGasLimit;
+            chainParams->difficulty = chainParams->getMinimumDifficulty();
+            chainParams->gasLimit = chainParams->getMaxGasLimit();
             chainParams->byzantiumForkBlock = 0;
             chainParams->EIP158ForkBlock = 0;
             chainParams->constantinopleForkBlock = 0;
@@ -357,7 +357,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->skaleDisableChainIdCheck = true;
 
             if ( params.count( "getLogsBlocksLimit" ) && stoi( params.at( "getLogsBlocksLimit" ) ) )
-                chainParams->getLogsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
+                chainParams->logsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
         }
         chainParams->sChain.multiTransactionMode = _mtmEnabled;
         chainParams->nodeInfo.syncNode = _isSyncNode;

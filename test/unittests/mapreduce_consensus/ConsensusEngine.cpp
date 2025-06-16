@@ -104,8 +104,8 @@ public:
         ChainParams chainParams;
         chainParams.sealEngineName = NoProof::name();
         chainParams.allowFutureBlocks = true;
-        chainParams.difficulty = chainParams.minimumDifficulty;
-        chainParams.gasLimit = chainParams.maxGasLimit;
+        chainParams.difficulty = chainParams.getMinimumDifficulty();
+        chainParams.gasLimit = chainParams.getMaxGasLimit();
         chainParams.extraData = h256::random().asBytes();
         chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
         chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
@@ -212,8 +212,8 @@ public:
         std::shared_ptr< ChainParams > chainParams;
         chainParams->sealEngineName = NoProof::name();
         chainParams->allowFutureBlocks = true;
-        chainParams->difficulty = chainParams->minimumDifficulty;
-        chainParams->gasLimit = chainParams->maxGasLimit;
+        chainParams->difficulty = chainParams->getMinimumDifficulty();
+        chainParams->gasLimit = chainParams->getMaxGasLimit();
         chainParams->extraData = h256::random().asBytes();
         chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
         chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;

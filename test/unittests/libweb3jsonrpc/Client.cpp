@@ -66,13 +66,8 @@ BOOST_AUTO_TEST_CASE( Personal ) {
 
     // 'allowFutureBlocks = true' is required to mine multiple blocks,
     // otherwise mining will hang after the first block
-    std::shared_ptr< ChainParams > chainParams;
-    chainParams->sealEngineName = NoProof::name();
-    chainParams->allowFutureBlocks = true;
-    chainParams->difficulty = chainParams->minimumDifficulty;
-    chainParams->gasLimit = chainParams->maxGasLimit;
-    chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
-    chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+    chainParams->fillDefaultTestsParameters( rand_port );
 
     //    dev::WebThreeDirect web3( WebThreeDirect::composeClientVersion( "eth" ), getDataDir(),
     //    string(),

@@ -46,8 +46,137 @@ struct ChainParams : public ChainOperationParams {
         populateFromGenesis( _genesisRLP, _state );
     }
 
+    friend struct ::SnapshotHashingFixture;
+    friend struct ::JsonRpcFixture;
+    friend struct ::SkaleHostFixture;
+    friend class ::ConsensusExtFaceFixture;
+    friend class ::SingleNodeConsensusFixture;
+
     SealEngineFace* createSealEngine();
 
+    /// Genesis block info.
+    bytes genesisBlock() const;
+
+    /// load config
+    void loadConfig( std::string const& _json, const boost::filesystem::path& _configPath = {} );
+
+    const std::string& getOriginalJson() const;
+    void resetJson() { originalJSON = ""; }
+
+    bool checkAdminOriginAllowed( const std::string& origin ) const;
+    void processSkaleConfigItems( json_spirit::mObject& _obj );
+
+    // ONLY FOR TESTS
+    void fillDefaultTestsParameters( size_t _port );
+
+    // SETTERS
+
+    void setSgxServerUrl( const std::string& _url ) { nodeInfo.sgxServerUrl = _url; }
+
+    // this setter is a workaround, use it carefully
+    void setSealEngineName( const std::string& _name ) { sealEngineName = _name; }
+
+    // GENERAL CHAIN GETTERS
+
+    bool isAllowFutureBlocks() const { return allowFutureBlocks; }
+
+    int getNetworkId() const { return networkID; }
+
+    dev::Address getBlockAuthor() const { return sChain.blockAuthor; }
+
+    std::string getSchainName() const { return sChain.name; }
+
+    u256 getExternalGasDifficulty() const { return externalGasDifficulty; }
+
+    u256 getGasLimit() const { return gasLimit; }
+
+    u256 getAccountStartNonce() const { return accountStartNonce; }
+
+    u256 getAccountInitialFunds() const { return accountInitialFunds; }
+
+    bool isMultiTransactionModeEnabled() const { return sChain.multiTransactionMode; }
+
+    const AccountMap& getGenesisState() const { return genesisState; }
+
+    uint64_t getDbStorageLimit() const { return sChain.dbStorageLimit; }
+
+    uint64_t getConsensusStorageLimit() const { return sChain.consensusStorageLimit; }
+
+    // GENERAL NODE GETTERS
+
+    u256 getSelfNodeId() const { return nodeInfo.id; }
+
+    std::string getSelfNodeIp() const { return nodeInfo.ip; }
+
+    std::string getSelfNodeIpV6() const { return nodeInfo.ip6; }
+
+    uint16_t getSelfNodePort() const { return nodeInfo.port; }
+
+    std::array< std::string, 4 > getSelfBlsPublicKey() const { return nodeInfo.BLSPublicKeys; }
+
+    std::array< std::string, 4 > getCommonBlsPublicKey() const { return nodeInfo.commonBLSPublicKeys; }
+
+    std::vector< sChainNode > getSchainNodes() const { return sChain.nodes; }
+
+    std::vector< NodeGroup > getNodeGroups() const { return sChain.nodeGroups; }
+
+    NodeGroup getNodeGroupByIndex( size_t _idx ) const { return sChain.nodeGroups.at( _idx ); }
+
+    sChainNode getNodeByIndex( size_t _idx ) const { return sChain.nodes.at( _idx ); }
+
+    int64_t getLevelDbReopenIntervalMs() const { return sChain.levelDBReopenIntervalMs; }
+
+    int getLogsBlocksLimit() const { return logsBlocksLimit; }
+
+    bool isSyncNode() const { return nodeInfo.syncNode; }
+
+    bool isArchiveModeEnabled() const { return nodeInfo.archiveMode; }
+
+    bool isSyncFromCatchupEnabled() const { return nodeInfo.syncFromCatchup; }
+
+#ifdef MIRAGE
+    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
+#endif
+
+    size_t getNodesCount() const { return sChain.nodes.size(); }
+
+    size_t getThresholdCount() const { return sChain.t; }
+
+    // SGX GETTERS
+
+    bool isTestSignaturesEnabled() const { return nodeInfo.testSignatures; }
+
+    std::string getSgxServerUrl() const { return nodeInfo.sgxServerUrl; }
+
+    std::string getKeyShareName() const { return nodeInfo.keyShareName; }
+
+    // HISTORIC GROUP GETTERS
+
+    std::array< std::string, 4 > getBlsPublicKeyForHistoricGroup( unsigned _historicGroupIndex ) const {
+        return sChain.nodeGroups.at( _historicGroupIndex ).blsPublicKey;
+    }
+
+    u256 getHistoricNodeId( unsigned _historicGroupIndex, unsigned _nodeId ) const {
+        return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).id;
+    }
+
+    u256 getHistoricNodeIndex( unsigned _historicGroupIndex, unsigned _nodeId ) const {
+        return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).schainIndex;
+    }
+
+    std::string getHistoricNodePublicKey( unsigned _historicGroupIndex, unsigned _nodeId ) const {
+        return sChain.nodeGroups.at( _historicGroupIndex ).nodes.at( _nodeId ).publicKey;
+    }
+
+    // SNAPSHOTS GETTERS
+
+    int getSnapshotIntervalSec() const { return sChain.snapshotIntervalSec; }
+
+    time_t getSnapshotDownloadInactiveTimeout() const { return sChain.snapshotDownloadInactiveTimeout; }
+
+    time_t getSnapshotDownloadTimeout() const { return sChain.snapshotDownloadTimeout; }
+
+private:
     int rotateAfterBlock_ = 64;
 
     /// Genesis params.
@@ -65,59 +194,6 @@ struct ChainParams : public ChainOperationParams {
     unsigned sealFields = 0;
     bytes sealRLP;
 
-    /// Genesis block info.
-    bytes genesisBlock() const;
-
-    /// load config
-    void loadConfig( std::string const& _json, const boost::filesystem::path& _configPath = {} );
-
-    const std::string& getOriginalJson() const;
-    void resetJson() { originalJSON = ""; }
-
-    bool checkAdminOriginAllowed( const std::string& origin ) const;
-    void processSkaleConfigItems( json_spirit::mObject& _obj );
-
-#ifdef MIRAGE
-    Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;
-#endif
-
-    int64_t getLevelDbReopenIntervalMs() const { return sChain.levelDBReopenIntervalMs; }
-
-    int getSnapshotIntervalSec() const { return sChain.snapshotIntervalSec; }
-
-    u256 getSelfNodeId() const { return nodeInfo.id; }
-
-    uint64_t getChainId() const { return chainID; }
-
-    uint64_t getDbStorageLimit() const { return sChain.dbStorageLimit; }
-
-    bool isAllowFutureBlocks() const { return allowFutureBlocks; }
-
-    const AccountMap& getGenesisState() const { return genesisState; }
-
-    bool isSyncNode() const { return nodeInfo.syncNode; }
-
-    time_t getSnapshotDownloadInactiveTimeout() const { return sChain.snapshotDownloadInactiveTimeout; }
-
-    bool isSyncFromCatchupEnabled() const { return nodeInfo.syncFromCatchup; }
-
-    int getNetworkId() const { return networkID; }
-
-    std::string getSealEngineName() const { return sealEngineName; }
-
-    dev::Address getBlockAuthor() const { return sChain.blockAuthor; }
-
-    std::string getSelfNodeIp() const { return nodeInfo.ip; }
-
-    std::string getSelfNodeIpV6() const { return nodeInfo.ip6; }
-
-    size_t getNodesCount() const { return sChain.nodes.size(); }
-
-    std::string getSgxServerUrl() const { return nodeInfo.sgxServerUrl; }
-
-    std::string getKeyShareName() const { return nodeInfo.keyShareName; }
-
-private:
     void populateFromGenesis( bytes const& _genesisRLP, AccountMap const& _state );
 
     /// load genesis

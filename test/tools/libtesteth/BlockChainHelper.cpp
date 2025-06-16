@@ -360,7 +360,7 @@ void TestBlock::verify( TestBlockChain const& _bc ) const {
         _bc.getInterface().sealEngine()->verify(
             CheckNothingNew, m_blockHeader, BlockHeader(), &m_bytes );
     } catch ( Exception const& _e ) {
-        u256 const& daoHardfork = _bc.getInterface().sealEngine()->chainParams().daoHardforkBlock;
+        u256 const& daoHardfork = _bc.getInterface().sealEngine()->chainParams().getDaoHardforkBlock();
         if ( ( m_blockHeader.number() >= daoHardfork &&
                  m_blockHeader.number() <= daoHardfork + 9 ) ||
              m_blockHeader.number() == 0 ) {

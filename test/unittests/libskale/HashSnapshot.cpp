@@ -141,6 +141,72 @@ public:
         this->hashAgent_->signatures_[idx] = libff::alt_bn128_G1::random_element();
     }
 
+    static std::shared_ptr< ChainParams > makeChainParamsForTest( const std::string& _testName ) {
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+        if ( _testName == "PositiveTest" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            return chainParams;
+        }
+
+        if ( _testName == "WrongHash" ) {
+            chainParams->sChain.t = 5;
+            chainParams->sChain.nodes.resize( 7 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 6;
+
+            return chainParams;
+        }
+
+        if ( _testName == "NotEnoughVotes" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            return chainParams;
+        }
+
+        if ( _testName == "WrongSignature" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            return chainParams;
+        }
+
+        if ( _testName == "noSnapshotMajority" ) {
+            chainParams->sChain.t = 3;
+            chainParams->sChain.nodes.resize( 4 );
+            for ( size_t i = 0; i < chainParams->sChain.nodes.size(); ++i ) {
+                chainParams->sChain.nodes[i].id = i;
+            }
+            chainParams->nodeInfo.id = 3;
+
+            chainParams->sChain.nodes[0].ip = "123.45.68.89";
+            chainParams->sChain.nodes[1].ip = "123.45.87.89";
+            chainParams->sChain.nodes[2].ip = "123.45.77.89";
+
+            chainParams->sChain.nodes[3].ip = "123.45.67.89";
+
+            return chainParams;
+        }
+
+        return chainParams;
+    }
+
     libff::alt_bn128_Fr secret_as_is;
 
     std::shared_ptr< SnapshotHashAgent > hashAgent_;
@@ -148,6 +214,8 @@ public:
     bool isSnapshotMajorityRequired = false;
 
     std::vector< libff::alt_bn128_Fr > blsPrivateKeys_;
+
+    enum testNames { PositiveTest, WrongHash, NotEnoughVotes, WrongSignature, noSnapshotMajority };
 };
 }  // namespace test
 }  // namespace dev
@@ -264,12 +332,12 @@ struct SnapshotHashingFixture : public TestOutputHelperFixture, public FixtureCo
 
         gainRoot();
 
-        std::shared_ptr< ChainParams > chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         dev::p2p::NetworkPreferences nprefs;
         chainParams->sealEngineName = NoProof::name();
         chainParams->allowFutureBlocks = true;
-        chainParams->difficulty = chainParams->minimumDifficulty;
-        chainParams->gasLimit = chainParams->maxGasLimit;
+        chainParams->difficulty = chainParams->getMinimumDifficulty();
+        chainParams->gasLimit = chainParams->getMaxGasLimit();
         chainParams->byzantiumForkBlock = 0;
         chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
@@ -422,16 +490,10 @@ BOOST_AUTO_TEST_SUITE( SnapshotSigningTestSuite )
 
 BOOST_AUTO_TEST_CASE( PositiveTest ) {
     libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "PositiveTest" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
     auto res = test_agent.getNodesToDownloadSnapshotFrom();
@@ -447,16 +509,10 @@ BOOST_AUTO_TEST_CASE( PositiveTest ) {
 
 BOOST_AUTO_TEST_CASE( WrongHash ) {
     libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 5;
-    chainParams.sChain.nodes.resize( 7 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 6;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "WrongHash" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();  // `correct` hash
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     snapshot_hashes[4] = dev::h256::random();  // hash is different from `correct` hash
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 6 );
@@ -467,16 +523,10 @@ BOOST_AUTO_TEST_CASE( WrongHash ) {
 
 BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
     libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "NotEnoughVotes" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
     BOOST_REQUIRE( test_agent.verifyAllData() == 3 );
@@ -485,16 +535,10 @@ BOOST_AUTO_TEST_CASE( NotEnoughVotes ) {
 
 BOOST_AUTO_TEST_CASE( WrongSignature ) {
     libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
-    SnapshotHashAgentTest test_agent( chainParams, "" );
+    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "WrongSignature" );
+    SnapshotHashAgentTest test_agent( *chainParams, "" );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     test_agent.fillData( snapshot_hashes );
     test_agent.spoilSignature( 0 );
     BOOST_REQUIRE( test_agent.verifyAllData() == 2 );
@@ -502,24 +546,12 @@ BOOST_AUTO_TEST_CASE( WrongSignature ) {
 
 BOOST_AUTO_TEST_CASE( noSnapshotMajority ) {
     libff::init_alt_bn128_params();
-    ChainParams chainParams;
-    chainParams.sChain.t = 3;
-    chainParams.sChain.nodes.resize( 4 );
-    for ( size_t i = 0; i < chainParams.sChain.nodes.size(); ++i ) {
-        chainParams.sChain.nodes[i].id = i;
-    }
-    chainParams.nodeInfo.id = 3;
+    std::shared_ptr< ChainParams > chainParams = SnapshotHashAgentTest::makeChainParamsForTest( "noSnapshotMajority" );
+    std::string url = chainParams->getNodeByIndex( 3 ).ip + std::string( ":1234" );
 
-    chainParams.sChain.nodes[0].ip = "123.45.68.89";
-    chainParams.sChain.nodes[1].ip = "123.45.87.89";
-    chainParams.sChain.nodes[2].ip = "123.45.77.89";
-
-    chainParams.sChain.nodes[3].ip = "123.45.67.89";
-    std::string url = chainParams.sChain.nodes[3].ip + std::string( ":1234" );
-
-    SnapshotHashAgentTest test_agent( chainParams, url );
+    SnapshotHashAgentTest test_agent( *chainParams, url );
     dev::h256 hash = dev::h256::random();
-    std::vector< dev::h256 > snapshot_hashes( chainParams.sChain.nodes.size(), hash );
+    std::vector< dev::h256 > snapshot_hashes( chainParams->getNodesCount(), hash );
     snapshot_hashes[2] = dev::h256::random();
     test_agent.fillData( snapshot_hashes );
 

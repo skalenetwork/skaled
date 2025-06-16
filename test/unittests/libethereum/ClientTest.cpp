@@ -108,7 +108,7 @@ class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
 
-        std::shared_ptr< ChainParams > chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );

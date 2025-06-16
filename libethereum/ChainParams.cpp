@@ -104,7 +104,7 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
                                       params[c_skaleDisableChainIdCheck].get_bool() :
                                       false;
-    getLogsBlocksLimit =
+    logsBlocksLimit =
         params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
 
     if ( obj.count( c_skaleConfig ) ) {
@@ -655,6 +655,15 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
             return true;
     }
     return false;
+}
+
+void ChainParams::fillDefaultTestsParameters( size_t _port ) {
+    sealEngineName = NoProof::name();
+    allowFutureBlocks = true;
+    difficulty = getMinimumDifficulty();
+    gasLimit = getMaxGasLimit();
+    nodeInfo.port = nodeInfo.port6 = _port;
+    sChain.nodes[0].port = sChain.nodes[0].port6 = _port;
 }
 
 #ifdef MIRAGE

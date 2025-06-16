@@ -311,7 +311,7 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
             }
 
             fs::rename( db_path,
-                db_path.parent_path() / ( prefix + chainParams.nodeInfo.id.str() + ".db" ) );
+                db_path.parent_path() / ( prefix + chainParams.getSelfNodeId().str() + ".db" ) );
         }
         //// HACK END ////
 
@@ -326,9 +326,9 @@ void downloadSnapshot( unsigned block_number, std::shared_ptr< SnapshotManager >
 std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams& chainParams ) {
     std::array< std::string, 4 > arrayCommonPublicKey;
     bool isRotationtrigger = true;
-    if ( chainParams.sChain.nodeGroups.size() > 1 ) {
+    if ( chainParams.getNodeGroups().size() > 1 ) {
         if ( ( uint64_t ) time( NULL ) >=
-             chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2].finishTs ) {
+             chainParams.getNodeGroupByIndex(chainParams.getNodeGroups().size() - 2).finishTs ) {
             isRotationtrigger = false;
         }
     } else {
@@ -336,9 +336,9 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
     }
     if ( isRotationtrigger ) {
         arrayCommonPublicKey =
-            chainParams.sChain.nodeGroups[chainParams.sChain.nodeGroups.size() - 2].blsPublicKey;
+            chainParams.getNodeGroupByIndex(chainParams.getNodeGroups().size() - 2).blsPublicKey;
     } else {
-        arrayCommonPublicKey = chainParams.sChain.nodeGroups.back().blsPublicKey;
+        arrayCommonPublicKey = chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 1 ).blsPublicKey;
     }
 
     return arrayCommonPublicKey;
@@ -527,15 +527,15 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
         successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
             arrayCommonPublicKey, urlToDownloadSnapshotFrom, isRegularSnapshot, true );
     else {
-        for ( size_t idx = 0; idx < chainParams.sChain.nodes.size() && !successfullDownload; ++idx )
+        for ( size_t idx = 0; idx < chainParams.getNodesCount() && !successfullDownload; ++idx )
             try {
-                if ( chainParams.nodeInfo.id == chainParams.sChain.nodes.at( idx ).id )
+                if ( chainParams.getSelfNodeId() == chainParams.getNodeByIndex( idx ).id )
                     continue;
 
                 std::string nodeUrl =
                     std::string( "http://" ) +
-                    std::string( chainParams.sChain.nodes.at( idx ).ip ) + std::string( ":" ) +
-                    ( chainParams.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
+                    std::string( chainParams.getNodeByIndex( idx ).ip ) + std::string( ":" ) +
+                    ( chainParams.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
 
                 successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
                     arrayCommonPublicKey, nodeUrl, isRegularSnapshot );
@@ -1574,7 +1574,7 @@ int main( int argc, char** argv ) {
             u.fragment( "" );
             u.set_query();
             strURL = u.str();
-            chainParams->nodeInfo.sgxServerUrl = strURL;
+            chainParams->setSgxServerUrl( strURL );
         }
 
         std::shared_ptr< StatusAndControl > statusAndControl =

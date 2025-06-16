@@ -214,7 +214,7 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_G1_add )( bytesConstRef _in ) {
 
 ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_add )
 ( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
-    return _blockNumber < _chainParams.istanbulForkBlock ? 500 : 150;
+    return _blockNumber < _chainParams.getIstanbulForkBlock() ? 500 : 150;
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in ) {
@@ -223,7 +223,7 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_G1_mul )( bytesConstRef _in ) {
 
 ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_G1_mul )
 ( bytesConstRef /*_in*/, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
-    return _blockNumber < _chainParams.istanbulForkBlock ? 40000 : 6000;
+    return _blockNumber < _chainParams.getIstanbulForkBlock() ? 40000 : 6000;
 }
 
 ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in ) {
@@ -233,7 +233,7 @@ ETH_REGISTER_PRECOMPILED( alt_bn128_pairing_product )( bytesConstRef _in ) {
 ETH_REGISTER_PRECOMPILED_PRICER( alt_bn128_pairing_product )
 ( bytesConstRef _in, ChainOperationParams const& _chainParams, u256 const& _blockNumber ) {
     auto const k = _in.size() / 192;
-    return _blockNumber < _chainParams.istanbulForkBlock ? 100000 + k * 80000 : 45000 + k * 34000;
+    return _blockNumber < _chainParams.getIstanbulForkBlock() ? 100000 + k * 80000 : 45000 + k * 34000;
 }
 
 static Logger& getLogger( int a_severity = VerbosityTrace ) {

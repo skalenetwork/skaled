@@ -55,7 +55,7 @@ ClientTest::~ClientTest() {
 }
 
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
-    Block block( chainParams().accountStartNonce );
+    Block block( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     block = m_preSeal;
 

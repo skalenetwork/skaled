@@ -87,7 +87,7 @@ string Debug::debug_getConfig() {
 }
 
 string Debug::debug_getSchainName() {
-    return m_eth.chainParams().sChain.name;
+    return m_eth.chainParams().getSchainName();
 }
 
 uint64_t Debug::debug_getSnapshotCalculationTime() {

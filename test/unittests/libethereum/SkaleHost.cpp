@@ -135,11 +135,11 @@ struct SkaleHostFixture : public TestOutputHelperFixture {
                           std::map< std::string, std::string >() ) {
         dev::p2p::NetworkPreferences nprefs;
 
-        std::shared_ptr< ChainParams > chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         chainParams->sealEngineName = NoProof::name();
         chainParams->allowFutureBlocks = true;
-        chainParams->difficulty = chainParams->minimumDifficulty;
-        chainParams->gasLimit = chainParams->maxGasLimit;
+        chainParams->difficulty = chainParams->getMinimumDifficulty();
+        chainParams->gasLimit = chainParams->getMaxGasLimit();
         chainParams->istanbulForkBlock = 0;
         // add random extra data to randomize genesis hash and get random DB path,
         // so that tests can be run in parallel
@@ -894,7 +894,7 @@ BOOST_DATA_TEST_CASE(
     // 2 txn
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );
     json["nonce"] = 1;
-    json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
+    json["gas"] = jsToDecimal( toJS( client->chainParams().getGasLimit() - 21000 + 1 ) );
 
     Transaction tx2 = fixture.tx_from_json( json );
 
@@ -943,7 +943,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     auto wr_state = client->state().createStateCopyAndClearCaches();
     wr_state.addBalance(
-        fixture.account2.address(), client->chainParams().gasLimit * 1000 + dev::eth::ether );
+        fixture.account2.address(), client->chainParams().getGasLimit() * 1000 + dev::eth::ether );
     wr_state.commit();
     wr_state.getOriginalDb()->createBlockSnap(2);
 
@@ -959,7 +959,7 @@ BOOST_AUTO_TEST_CASE( gasLimitInBlockProposal ) {
 
     // 2 txn
     json["from"] = toJS( account2.address() );
-    json["gas"] = jsToDecimal( toJS( client->chainParams().gasLimit - 21000 + 1 ) );
+    json["gas"] = jsToDecimal( toJS( client->chainParams().getGasLimit() - 21000 + 1 ) );
 
     Transaction tx2 = fixture.tx_from_json( json );
 
