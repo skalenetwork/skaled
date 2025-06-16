@@ -34,7 +34,6 @@
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
 #include <boost/filesystem.hpp>
-#include <boost/progress.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <libdevcore/Address.h>

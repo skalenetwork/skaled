@@ -9,7 +9,7 @@
 #include "json_spirit_error_position.h"
 #include "json_spirit_value.h"
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/version.hpp>
 
@@ -368,6 +368,8 @@ public:
     public:
         definition( const Json_grammer& self ) {
             using namespace spirit_namespace;
+
+            using namespace boost::placeholders;
 
             typedef typename Value_type::String_type::value_type Char_type;
 

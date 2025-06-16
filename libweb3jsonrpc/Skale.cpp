@@ -602,7 +602,8 @@ std::string Skale::skale_getCommonPublicKey() {
     }
 }
 
-std::string Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+// TODO - returns the data + to address (?)
+Json::Value Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_client.isKnownTransaction( h ) )
@@ -616,11 +617,16 @@ std::string Skale::skale_getDecryptedTransactionData( const std::string& _transa
 #endif
 
         auto decryptedData = m_client.decryptedTransactionData( h );
-        if ( !decryptedData )
+        if ( !decryptedData ) {
             throw std::invalid_argument(
                 "Transaction with provided hash does not have any decrypted data associated with "
                 "it." );
-        return dev::toHexPrefixed( decryptedData.data() );
+        }
+
+        Json::Value response;
+        response["data"] = dev::toHexPrefixed( decryptedData.data() );
+        response["to"] = dev::toHexPrefixed( decryptedData.to() );
+        return response;
     } catch ( Exception const& ) {
         throw jsonrpc::JsonRpcException( exceptionToErrorMessage() );
     } catch ( const std::exception& e ) {

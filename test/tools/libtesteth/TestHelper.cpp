@@ -654,8 +654,8 @@ string prepareLLLCVersionString() {
 }
 
 void copyFile( fs::path const& _source, fs::path const& _destination ) {
-    fs::ifstream src( _source, ios::binary );
-    fs::ofstream dst( _destination, ios::binary );
+    std::ifstream src( _source, ios::binary );
+    std::ofstream dst( _destination, ios::binary );
     dst << src.rdbuf();
 }
 
