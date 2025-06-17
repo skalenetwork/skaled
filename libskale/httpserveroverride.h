@@ -443,8 +443,8 @@ public:
     };
     opts_t opts_;
 
-    SkaleServerOverride(
-        std::shared_ptr< const dev::eth::ChainParams > chainParams, dev::eth::Interface* pEth, const opts_t& opts );
+    SkaleServerOverride( std::shared_ptr< const dev::eth::ChainParams > chainParams,
+        dev::eth::Interface* pEth, const opts_t& opts );
     ~SkaleServerOverride() override;
 
     dev::eth::Interface* ethereum() const;

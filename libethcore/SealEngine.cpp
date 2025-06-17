@@ -56,10 +56,11 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
                     bigint( chainParams().getMaxGasLimit() ), bigint( _bi.gasLimit() ) ) );
 
         if ( _bi.number() && _bi.extraData().size() > chainParams().getMaximumExtraDataSize() ) {
-            BOOST_THROW_EXCEPTION(
-                ExtraDataTooBig() << RequirementError( bigint( chainParams().getMaximumExtraDataSize() ),
-                                         bigint( _bi.extraData().size() ) )
-                                  << errinfo_extraData( _bi.extraData() ) );
+            BOOST_THROW_EXCEPTION( ExtraDataTooBig()
+                                   << RequirementError(
+                                          bigint( chainParams().getMaximumExtraDataSize() ),
+                                          bigint( _bi.extraData().size() ) )
+                                   << errinfo_extraData( _bi.extraData() ) );
         }
 
         u256 const& daoHardfork = chainParams().getDaoHardforkBlock();
@@ -74,8 +75,10 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
     if ( _parent ) {
         auto gasLimit = _bi.gasLimit();
         auto parentGasLimit = _parent.gasLimit();
-        if ( gasLimit < chainParams().getMinGasLimit() || gasLimit > chainParams().getMaxGasLimit() ||
-             gasLimit <= parentGasLimit - parentGasLimit / chainParams().getGasLimitBoundDivisor() ||
+        if ( gasLimit < chainParams().getMinGasLimit() ||
+             gasLimit > chainParams().getMaxGasLimit() ||
+             gasLimit <=
+                 parentGasLimit - parentGasLimit / chainParams().getGasLimitBoundDivisor() ||
              gasLimit >= parentGasLimit + parentGasLimit / chainParams().getGasLimitBoundDivisor() )
             BOOST_THROW_EXCEPTION(
                 InvalidGasLimit()
@@ -85,7 +88,8 @@ void SealEngineFace::verify( Strictness _s, BlockHeader const& _bi, BlockHeader 
                            parentGasLimit / chainParams().getGasLimitBoundDivisor() ) ) )
                 << errinfo_got( static_cast< bigint >( gasLimit ) )
                 << errinfo_max( static_cast< bigint >( static_cast< bigint >(
-                       parentGasLimit + parentGasLimit / chainParams().getGasLimitBoundDivisor() ) ) ) );
+                       parentGasLimit +
+                       parentGasLimit / chainParams().getGasLimitBoundDivisor() ) ) ) );
     }
     MICROPROFILE_LEAVE();
 }

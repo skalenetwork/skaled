@@ -573,7 +573,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
         rewardBlockAuthorForNonDefaultBlock( reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
-        bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
+        bool removeEmptyAccounts =
+            m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
         m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                               dev::eth::CommitBehaviour::KeepEmptyAccounts );
     }
@@ -944,8 +945,8 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     uncommitToSeal();
 
 
-    EnvInfo envInfo = EnvInfo(
-        info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().getChainId() );
+    EnvInfo envInfo = EnvInfo( info(), _lh, previousInfo().timestamp(), gasUsed(),
+        m_sealEngine->chainParams().getChainId() );
 
     // "bad" transaction receipt for failed transactions
     TransactionReceipt const null_receipt =

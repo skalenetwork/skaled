@@ -264,7 +264,8 @@ bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::ChainParams
         return true;
 
     std::vector< size_t > majority = majorityNodesIds();
-    bool found = majority.end() != std::find( majority.begin(), majority.end(), _cp.getSelfNodeId() );
+    bool found =
+        majority.end() != std::find( majority.begin(), majority.end(), _cp.getSelfNodeId() );
 
     // disable checking on minority
     return found;

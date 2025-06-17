@@ -106,7 +106,7 @@ const std::unordered_set< SchainPatchEnum > SchainPatch::preDisabledForMIRAGE = 
 
 void SchainPatch::init( const dev::eth::ChainOperationParams& _cp ) {
     chainParams = _cp;
-    for ( size_t i = 0; i < static_cast< size_t>( SchainPatchEnum::PatchesCount ); ++i ) {
+    for ( size_t i = 0; i < static_cast< size_t >( SchainPatchEnum::PatchesCount ); ++i ) {
         printInfo( getPatchNameForEnum( static_cast< SchainPatchEnum >( i ) ),
             _cp.getPatchTimestamp( static_cast< SchainPatchEnum >( i ) ) );
     }

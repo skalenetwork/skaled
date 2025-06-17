@@ -63,14 +63,10 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
 
 void SnapshotHashAgent::readPublicKeyFromConfig() {
     auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
-    this->commonPublicKey_.X.c0 =
-        libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
-    this->commonPublicKey_.X.c1 =
-        libff::alt_bn128_Fq( commonBlsPublicKeyArray[1].c_str() );
-    this->commonPublicKey_.Y.c0 =
-        libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
-    this->commonPublicKey_.Y.c1 =
-        libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
+    this->commonPublicKey_.X.c0 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
+    this->commonPublicKey_.X.c1 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[1].c_str() );
+    this->commonPublicKey_.Y.c0 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
+    this->commonPublicKey_.Y.c1 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
     this->commonPublicKey_.Z = libff::alt_bn128_Fq2::one();
 }
 

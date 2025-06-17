@@ -254,7 +254,7 @@ void Client::initStateFromDiskOrGenesis() {
     m_state = State( chainParams().getAccountStartNonce(), m_dbPath, bc().genesisHash(),
         BaseState::PreExisting, chainParams().getAccountInitialFunds()
 #ifndef MIRAGE
-        ,
+                                    ,
         chainParams().sChain.contractStorageLimit
 #endif
 #ifdef HISTORIC_STATE
@@ -1155,7 +1155,8 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
 #endif
 
     ImportResult res;
-    if ( chainParams().isMultiTransactionModeEnabled() && state.getNonce( _t.sender() ) < _t.nonce() &&
+    if ( chainParams().isMultiTransactionModeEnabled() &&
+         state.getNonce( _t.sender() ) < _t.nonce() &&
          m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {

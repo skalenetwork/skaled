@@ -181,7 +181,7 @@ string BlockChain::getChainDirName( const ChainParams& _cp ) {
 }
 
 BlockChain::BlockChain( std::shared_ptr< const ChainParams > _p, fs::path const& _dbPath,
-                        bool _applyPatches, WithExisting _we ) try
+    bool _applyPatches, WithExisting _we ) try
     : m_lastBlockHashes( new LastBlockHashes( *this ) ), m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
@@ -315,7 +315,8 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
         TotalStorageUsedPatch::initOnChain( *this );
 }
 
-void BlockChain::reopen( std::shared_ptr< const ChainParams > _p, bool _applyPatches, WithExisting _we ) {
+void BlockChain::reopen(
+    std::shared_ptr< const ChainParams > _p, bool _applyPatches, WithExisting _we ) {
     close();
     init( _p );
     open( m_dbPath, _applyPatches, _we );

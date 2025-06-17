@@ -358,8 +358,8 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
     const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
-    if ( !chainParams.isSyncNode() && ( chainParams.getKeyShareName().empty() ||
-                                               chainParams.getSgxServerUrl().empty() ) )
+    if ( !chainParams.isSyncNode() &&
+         ( chainParams.getKeyShareName().empty() || chainParams.getSgxServerUrl().empty() ) )
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {

@@ -145,7 +145,7 @@ public:
         reopen( m_params, _applyPatches, _we );
     }
     void reopen( std::shared_ptr< const ChainParams > _p, bool _applyPatches = false,
-                 WithExisting _we = WithExisting::Trust );
+        WithExisting _we = WithExisting::Trust );
 
     /// (Potentially) renders invalid existing bytesConstRef returned by lastBlock.
     /// To be called from main loop every 100ms or so.

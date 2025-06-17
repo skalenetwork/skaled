@@ -30,7 +30,8 @@
 using namespace dev;
 using namespace dev::rpc;
 
-Net::Net( std::shared_ptr< const dev::eth::ChainParams > _chainParams ) : m_chainParams( _chainParams ) {}
+Net::Net( std::shared_ptr< const dev::eth::ChainParams > _chainParams )
+    : m_chainParams( _chainParams ) {}
 
 // TODO Ask here real values from consensus/broadcast
 

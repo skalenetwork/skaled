@@ -1546,7 +1546,8 @@ const double SkaleServerOverride::g_lfDefaultExecutionDurationMaxForPerformanceW
     1.0;  // in seconds, default 1 second
 
 SkaleServerOverride::SkaleServerOverride(
-    std::shared_ptr< const dev::eth::ChainParams > chainParams, dev::eth::Interface* pEth, const opts_t& opts )
+    std::shared_ptr< const dev::eth::ChainParams > chainParams, dev::eth::Interface* pEth,
+    const opts_t& opts )
     : AbstractServerConnector(), chainParams_( chainParams ), pEth_( pEth ), opts_( opts ) {
     // proxygen-related init
     skutils::http_pg::init_logging( "skaled" );

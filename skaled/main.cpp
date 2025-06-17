@@ -328,7 +328,7 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
     bool isRotationtrigger = true;
     if ( chainParams.getNodeGroups().size() > 1 ) {
         if ( ( uint64_t ) time( NULL ) >=
-             chainParams.getNodeGroupByIndex(chainParams.getNodeGroups().size() - 2).finishTs ) {
+             chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 2 ).finishTs ) {
             isRotationtrigger = false;
         }
     } else {
@@ -336,9 +336,10 @@ std::array< std::string, 4 > getBLSPublicKeyToVerifySnapshot( const ChainParams&
     }
     if ( isRotationtrigger ) {
         arrayCommonPublicKey =
-            chainParams.getNodeGroupByIndex(chainParams.getNodeGroups().size() - 2).blsPublicKey;
+            chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 2 ).blsPublicKey;
     } else {
-        arrayCommonPublicKey = chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 1 ).blsPublicKey;
+        arrayCommonPublicKey =
+            chainParams.getNodeGroupByIndex( chainParams.getNodeGroups().size() - 1 ).blsPublicKey;
     }
 
     return arrayCommonPublicKey;
@@ -533,8 +534,8 @@ void downloadAndProccessSnapshot( std::shared_ptr< SnapshotManager >& snapshotMa
                     continue;
 
                 std::string nodeUrl =
-                    std::string( "http://" ) +
-                    std::string( chainParams.getNodeByIndex( idx ).ip ) + std::string( ":" ) +
+                    std::string( "http://" ) + std::string( chainParams.getNodeByIndex( idx ).ip ) +
+                    std::string( ":" ) +
                     ( chainParams.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
 
                 successfullDownload = downloadSnapshotFromUrl( snapshotManager, chainParams,
@@ -1783,8 +1784,9 @@ int main( int argc, char** argv ) {
                     TransactionQueue::Limits{ c_transactionQueueSize, c_futureTransactionQueueSize,
                         c_transactionQueueSizeBytes, c_futureTransactionQueueSizeBytes } ) );
             } else
-                BOOST_THROW_EXCEPTION( ChainParamsInvalid() << errinfo_comment(
-                                           "Unknown seal engine: " + chainParams->getSealEngineName() ) );
+                BOOST_THROW_EXCEPTION(
+                    ChainParamsInvalid() << errinfo_comment(
+                        "Unknown seal engine: " + chainParams->getSealEngineName() ) );
 
             g_client->dbRotationPeriod(
                 ( ( clock_t )( clockDbRotationPeriodInSeconds ) ) * CLOCKS_PER_SEC );
@@ -1992,8 +1994,7 @@ int main( int argc, char** argv ) {
             auto pWeb3Face = new rpc::Web3( clientVersion() );
             auto pEthFace = new rpc::Eth( configPath.string(), *g_client, *accountHolder.get() );
             auto pSkaleFace = new rpc::Skale( *g_client, sharedSpace );
-            auto pSkaleStatsFace =
-                new rpc::SkaleStats( configPath.string(), *g_client );
+            auto pSkaleStatsFace = new rpc::SkaleStats( configPath.string(), *g_client );
             pSkaleStatsFace->isExposeAllDebugInfo_ = isExposeAllDebugInfo;
             auto pPersonalFace = bEnabledAPIs_personal ?
                                      new rpc::Personal( keyManager, *accountHolder, *g_client ) :
@@ -2377,11 +2378,13 @@ int main( int argc, char** argv ) {
                 serverOpts.netOpts_.bindOptsStandard_.cntServers_ = cntServersStd;
                 serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ = nExplicitPortHTTP4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP6_ = nExplicitPortHTTP6std;
                 serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS4_ = nExplicitPortHTTPS4std;
-                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsStandard_.strAddrHTTPS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTPS6_ = nExplicitPortHTTPS6std;
                 serverOpts.netOpts_.bindOptsStandard_.strAddrWS4_ = chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWS4_ = nExplicitPortWS4std;
@@ -2393,11 +2396,14 @@ int main( int argc, char** argv ) {
                 serverOpts.netOpts_.bindOptsStandard_.nBasePortWSS6_ = nExplicitPortWSS6std;
 
                 serverOpts.netOpts_.bindOptsInformational_.cntServers_ = cntServersNfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP4_ = nExplicitPortHTTP4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTP6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTP6_ = nExplicitPortHTTP6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS4_ =
                     nExplicitPortHTTPS4nfo;
                 serverOpts.netOpts_.bindOptsInformational_.strAddrHTTPS6_ =
@@ -2405,13 +2411,17 @@ int main( int argc, char** argv ) {
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortHTTPS6_ =
                     nExplicitPortHTTPS6nfo;
 
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS4_ = nExplicitPortWS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWS6_ = nExplicitPortWS6nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ = chainParams->getSelfNodeIp();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS4_ =
+                    chainParams->getSelfNodeIp();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS4_ = nExplicitPortWSS4nfo;
-                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ = chainParams->getSelfNodeIpV6();
+                serverOpts.netOpts_.bindOptsInformational_.strAddrWSS6_ =
+                    chainParams->getSelfNodeIpV6();
                 serverOpts.netOpts_.bindOptsInformational_.nBasePortWSS6_ = nExplicitPortWSS6nfo;
 
                 serverOpts.netOpts_.strPathSslKey_ = strPathSslKey;

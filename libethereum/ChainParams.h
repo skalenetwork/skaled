@@ -114,7 +114,9 @@ struct ChainParams : public ChainOperationParams {
 
     std::array< std::string, 4 > getSelfBlsPublicKey() const { return nodeInfo.BLSPublicKeys; }
 
-    std::array< std::string, 4 > getCommonBlsPublicKey() const { return nodeInfo.commonBLSPublicKeys; }
+    std::array< std::string, 4 > getCommonBlsPublicKey() const {
+        return nodeInfo.commonBLSPublicKeys;
+    }
 
     std::vector< sChainNode > getSchainNodes() const { return sChain.nodes; }
 
@@ -152,7 +154,8 @@ struct ChainParams : public ChainOperationParams {
 
     // HISTORIC GROUP GETTERS
 
-    std::array< std::string, 4 > getBlsPublicKeyForHistoricGroup( unsigned _historicGroupIndex ) const {
+    std::array< std::string, 4 > getBlsPublicKeyForHistoricGroup(
+        unsigned _historicGroupIndex ) const {
         return sChain.nodeGroups.at( _historicGroupIndex ).blsPublicKey;
     }
 
@@ -172,7 +175,9 @@ struct ChainParams : public ChainOperationParams {
 
     int getSnapshotIntervalSec() const { return sChain.snapshotIntervalSec; }
 
-    time_t getSnapshotDownloadInactiveTimeout() const { return sChain.snapshotDownloadInactiveTimeout; }
+    time_t getSnapshotDownloadInactiveTimeout() const {
+        return sChain.snapshotDownloadInactiveTimeout;
+    }
 
     time_t getSnapshotDownloadTimeout() const { return sChain.snapshotDownloadTimeout; }
 

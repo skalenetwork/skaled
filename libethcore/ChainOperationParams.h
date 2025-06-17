@@ -42,15 +42,15 @@ class TestClientFixture;
 struct SkaleHostFixture;
 class ConsensusExtFaceFixture;
 class SingleNodeConsensusFixture;
-namespace  {
+namespace {
 struct SnapshotHashingFixture;
 struct JsonRpcFixture;
-}
+}  // namespace
 
 namespace dev {
 namespace test {
 class SnapshotHashAgentTest;
-}
+}  // namespace test
 namespace eth {
 
 class PrecompiledContract {

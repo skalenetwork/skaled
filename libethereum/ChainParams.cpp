@@ -97,13 +97,11 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
         u256( fromBigEndian< u256 >( fromHex( params[c_accountStartNonce].get_str() ) ) );
     maximumExtraDataSize =
         u256( fromBigEndian< u256 >( fromHex( params[c_maximumExtraDataSize].get_str() ) ) );
-    tieBreakingGas =
-        params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
-    setBlockReward(
-        u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
+    tieBreakingGas = params.count( c_tieBreakingGas ) ? params[c_tieBreakingGas].get_bool() : true;
+    setBlockReward( u256( fromBigEndian< u256 >( fromHex( params[c_blockReward].get_str() ) ) ) );
     skaleDisableChainIdCheck = params.count( c_skaleDisableChainIdCheck ) ?
-                                      params[c_skaleDisableChainIdCheck].get_bool() :
-                                      false;
+                                   params[c_skaleDisableChainIdCheck].get_bool() :
+                                   false;
     logsBlocksLimit =
         params.count( "getLogsBlocksLimit" ) ? params.at( "getLogsBlocksLimit" ).get_int() : -1;
 
@@ -161,8 +159,8 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
     // genesis state
     string genesisStateStr = json_spirit::write_string( obj[c_accounts], false );
 
-    genesisState = jsonToAccountMap(
-        genesisStateStr, accountStartNonce, nullptr, &precompiled, _configPath );
+    genesisState =
+        jsonToAccountMap( genesisStateStr, accountStartNonce, nullptr, &precompiled, _configPath );
 }
 void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
@@ -442,15 +440,14 @@ void ChainParams::loadGenesis( string const& _json ) {
 
     parentHash = h256( 0 );  // required by the YP
     author = genesis.count( c_coinbase ) ? h160( genesis[c_coinbase].get_str() ) :
-                                              h160( genesis[c_author].get_str() );
-    difficulty =
-        genesis.count( c_difficulty ) ?
-            u256( fromBigEndian< u256 >( fromHex( genesis[c_difficulty].get_str() ) ) ) :
-            minimumDifficulty;
+                                           h160( genesis[c_author].get_str() );
+    difficulty = genesis.count( c_difficulty ) ?
+                     u256( fromBigEndian< u256 >( fromHex( genesis[c_difficulty].get_str() ) ) ) :
+                     minimumDifficulty;
     gasLimit = u256( fromBigEndian< u256 >( fromHex( genesis[c_gasLimit].get_str() ) ) );
     gasUsed = genesis.count( c_gasUsed ) ?
-                     u256( fromBigEndian< u256 >( fromHex( genesis[c_gasUsed].get_str() ) ) ) :
-                     0;
+                  u256( fromBigEndian< u256 >( fromHex( genesis[c_gasUsed].get_str() ) ) ) :
+                  0;
     timestamp = u256( fromBigEndian< u256 >( fromHex( genesis[c_timestamp].get_str() ) ) );
     extraData = bytes( fromHex( genesis[c_extraData].get_str() ) );
 
