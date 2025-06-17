@@ -151,7 +151,7 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     if ( _ir & ImportRequirements::TransactionSignatures ) {
         if ( _header.number() >= _chainParams.getEIP158ForkBlock() ) {
             uint64_t chainID = _chainParams.getChainId();
-            _t.checkChainId( chainID, _chainParams.isChainIdCheckEnabled() );
+            _t.checkChainId( chainID, !_chainParams.isChainIdCheckEnabled() );
         }  // if
     }
 }
