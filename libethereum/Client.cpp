@@ -229,7 +229,7 @@ void Client::populateNewChainStateFromGenesis() {
     DEV_GUARDED( m_blockImportMutex )
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateCopyAndClearCaches();
-    m_state.populateFrom( bc().chainParams().genesisState );
+    m_state.populateFrom( bc().chainParams().getGenesisState() );
     m_state.mutableHistoricState().saveRootForBlockNumber( 0 );  // TODO is it safe to assume
                                                                  // it's 0?
     m_state.mutableHistoricState().db().commit();
@@ -255,11 +255,11 @@ void Client::initStateFromDiskOrGenesis() {
         BaseState::PreExisting, chainParams().getAccountInitialFunds()
 #ifndef MIRAGE
                                     ,
-        chainParams().sChain.contractStorageLimit
+        chainParams().getContractStorageLimit()
 #endif
 #ifdef HISTORIC_STATE
         ,
-        chainParams().sChain.maxHistoricStateDbSize
+        chainParams().getMaxHistoricStateDbSize()
 #endif
     );
 
@@ -1212,7 +1212,7 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
                 Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
-                t.forceChainId( chainParams().chainID );
+                t.forceChainId( chainParams().getChainId() );
                 t.ignoreExternalGas();
                 // if we are in a call, we add to the balance of the account
                 // value needed for the call to guaranteed pass
@@ -1296,7 +1296,7 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     // if call or trace call request did not specify from address, zero address is used
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
-    t.forceChainId( chainParams().chainID );
+    t.forceChainId( chainParams().getChainId() );
     // call and traceCall do not use PoW
     t.ignoreExternalGas();
     return t;

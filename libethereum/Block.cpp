@@ -896,7 +896,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
             _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
 
         EnvInfo const envInfo( info(), _lh, this->previousInfo().timestamp(), gasUsed,
-            m_sealEngine->chainParams().chainID );
+            m_sealEngine->chainParams().getChainId() );
 
         if ( _tracer ) {
             try {

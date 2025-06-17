@@ -325,7 +325,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->istanbulForkBlock = 0;
             chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
-            chainParams.sChain.contractStorageLimit = 128;
+            chainParams->sChain.contractStorageLimit = 128;
 #endif
             // 615 + 1430 is experimentally-derived block size + average extras size
             chainParams->sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
@@ -333,17 +333,17 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
 #endif
 #ifndef MIRAGE
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
-            chainParams.sChain._patchTimestamps[static_cast< size_t >(
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::StorageDestructionPatch )] = 1;
             powPatchActivationTimestamp = time( nullptr ) + 60;
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::CorrectForkInPowPatch )] =
                 powPatchActivationTimestamp;
             push0PatchActivationTimestamp = time( nullptr ) + 10;
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::PushZeroPatch )] =
                 push0PatchActivationTimestamp;
 #endif

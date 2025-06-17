@@ -68,6 +68,7 @@ struct ChainParams : public ChainOperationParams {
 
     // ONLY FOR TESTS
     void fillDefaultTestsParameters( size_t _port );
+    void setArchiveMode() { nodeInfo.archiveMode = true; }
 
     // SETTERS
 
@@ -101,6 +102,14 @@ struct ChainParams : public ChainOperationParams {
     uint64_t getDbStorageLimit() const { return sChain.dbStorageLimit; }
 
     uint64_t getConsensusStorageLimit() const { return sChain.consensusStorageLimit; }
+
+#ifdef HISTORIC_STATE
+    int64_t getMaxHistoricStateDbSize() const { return sChain.maxHistoricStateDbSize; }
+#endif
+
+#ifndef MIRAGE
+    s256 getContractStorageLimit() const { return sChain.contractStorageLimit; }
+#endif
 
     // GENERAL NODE GETTERS
 

@@ -510,7 +510,7 @@ BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams() );
-    chainParams->nodeInfo.archiveMode = true;
+    chainParams->setArchiveMode();
     SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );

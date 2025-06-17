@@ -45,6 +45,7 @@ class SingleNodeConsensusFixture;
 namespace {
 struct SnapshotHashingFixture;
 struct JsonRpcFixture;
+class InstructionTestFixture;
 }  // namespace
 
 namespace dev {
@@ -243,6 +244,7 @@ struct ChainOperationParams {
     friend struct ::SkaleHostFixture;
     friend class ::ConsensusExtFaceFixture;
     friend class ::SingleNodeConsensusFixture;
+    friend class ::InstructionTestFixture;
     friend class dev::test::SnapshotHashAgentTest;
 
     explicit operator bool() const { return accountStartNonce != Invalid256; }
@@ -276,7 +278,7 @@ public:
         return precompiled.at( _a );
     }
 
-    // SETTERS
+    // SETTERS, mostly for tests
 
     void setExperimentalForkBlock( u256 _bn ) { experimentalForkBlock = _bn; }
 

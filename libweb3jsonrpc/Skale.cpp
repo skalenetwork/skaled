@@ -530,7 +530,7 @@ Json::Value Skale::skale_getDBUsage() {
 #ifndef MIRAGE
 std::string Skale::oracle_submitRequest( std::string& request ) {
     try {
-        if ( m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().isSyncNode() )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string receipt;
         std::string errorMessage;
@@ -551,7 +551,7 @@ std::string Skale::oracle_submitRequest( std::string& request ) {
 
 std::string Skale::oracle_checkResult( std::string& receipt ) {
     try {
-        if ( m_client.chainParams().nodeInfo.syncNode )
+        if ( m_client.chainParams().isSyncNode() )
             throw std::runtime_error( "Oracle is disabled on this instance" );
         std::string result;
         // this function is guaranteed not to throw exceptions

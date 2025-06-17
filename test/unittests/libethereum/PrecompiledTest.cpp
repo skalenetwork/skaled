@@ -1705,8 +1705,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     std::shared_ptr< ChainParams > chainParams;
     chainParams->loadConfig( config );
-    chainParams->sealEngineName = NoProof::name();
-    chainParams->allowFutureBlocks = true;
+//    chainParams->sealEngineName = NoProof::name();
+//    chainParams->allowFutureBlocks = true;
+    size_t _port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
+    chainParams->fillDefaultTestsParameters( _port );
 
     dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
