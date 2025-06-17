@@ -257,7 +257,7 @@ public:
 
         gainRoot();
 
-        std::shared_ptr< ChainParams > chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
 
         Json::Value ret;
         Json::Reader().parse( _config, ret );

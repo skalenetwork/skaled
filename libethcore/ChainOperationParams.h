@@ -320,7 +320,7 @@ public:
 
     u256 getDaoHardforkBlock() const { return daoHardforkBlock; }
 
-    bool isChainIdCheckEnabled() const { return !skaleDisableChainIdCheck; }
+    bool isChainIdCheckDisabled() const { return skaleDisableChainIdCheck; }
 
     /// General chain params.
 protected:

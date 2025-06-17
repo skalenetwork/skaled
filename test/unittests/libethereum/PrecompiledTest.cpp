@@ -1703,10 +1703,8 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
 
-    std::shared_ptr< ChainParams > chainParams;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
     chainParams->loadConfig( config );
-//    chainParams->sealEngineName = NoProof::name();
-//    chainParams->allowFutureBlocks = true;
     size_t _port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
     chainParams->fillDefaultTestsParameters( _port );
 
