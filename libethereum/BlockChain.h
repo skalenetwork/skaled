@@ -256,7 +256,10 @@ public:
 
     LastBlockHashesFace const& lastBlockHashes() const { return *m_lastBlockHashes; }
 
-    uint64_t chainID() const { return m_params->getChainId(); }
+    uint64_t chainID() const {
+        CHECK_EXPRESSION( m_params );
+        return m_params->getChainId();
+    }
 
     /** Get the block blooms for a number of blocks. Thread-safe.
      * @returns the object pertaining to the blocks:
@@ -445,7 +448,10 @@ public:
     /// Gives a dump of the blockchain database. For debug/test use only.
     std::string dumpDatabase() const;
 
-    ChainParams const& chainParams() const { return *m_params; }
+    ChainParams const& chainParams() const {
+        CHECK_EXPRESSION( m_params );
+        return *m_params;
+    }
 
     SealEngineFace* sealEngine() const { return m_sealEngine.get(); }
 

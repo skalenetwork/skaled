@@ -623,7 +623,7 @@ int main( int argc, char** argv ) {
         bool bEnabledAPIs_performanceTracker = false;
 
         string strJsonAdminSessionKey;
-        std::shared_ptr< ChainParams > chainParams;
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         string privateChain;
 
         bool upnp = true;

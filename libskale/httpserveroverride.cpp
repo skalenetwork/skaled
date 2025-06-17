@@ -1587,6 +1587,7 @@ dev::eth::Interface* SkaleServerOverride::ethereum() const {
 }
 
 const dev::eth::ChainParams& SkaleServerOverride::chainParams() const {
+    CHECK_EXPRESSION( chainParams_ );
     return *chainParams_;
 }
 
