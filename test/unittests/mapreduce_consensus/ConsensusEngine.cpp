@@ -199,6 +199,7 @@ protected:
     TransientDirectory m_tempDir;
 
 protected:  // remote peer
+    std::shared_ptr< ChainParams > chainParams;
     unique_ptr< Client > client;
     unique_ptr< ModularServer<> > rpcServer;
     unique_ptr< WebThreeStubClient > rpcClient;
@@ -209,7 +210,7 @@ protected:  // remote peer
 public:
     ConsensusExtFaceFixture() {
 
-        std::shared_ptr< ChainParams > chainParams;
+        chainParams = std::make_shared< ChainParams >();
         chainParams->sealEngineName = NoProof::name();
         chainParams->allowFutureBlocks = true;
         chainParams->difficulty = chainParams->getMinimumDifficulty();

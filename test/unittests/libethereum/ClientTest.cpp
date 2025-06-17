@@ -257,7 +257,7 @@ public:
 
         gainRoot();
 
-        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+        chainParams = std::make_shared< ChainParams >();
 
         Json::Value ret;
         Json::Reader().parse( _config, ret );
@@ -336,6 +336,7 @@ public:
     }
 
 private:
+    std::shared_ptr< ChainParams > chainParams;
     std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
     dev::KeyPair coinbase{KeyPair::create()};
