@@ -315,13 +315,6 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
         TotalStorageUsedPatch::initOnChain( *this );
 }
 
-void BlockChain::reopen(
-    std::shared_ptr< const ChainParams > _p, bool _applyPatches, WithExisting _we ) {
-    close();
-    init( _p );
-    open( m_dbPath, _applyPatches, _we );
-}
-
 void BlockChain::close() {
     LOG( m_loggerTrace ) << "Closing blockchain DB";
     // Not thread safe...
