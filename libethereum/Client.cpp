@@ -258,7 +258,7 @@ void Client::initStateFromDiskOrGenesis() {
         chainParams().getContractStorageLimit()
 #endif
 #ifdef HISTORIC_STATE
-        ,
+            ,
         chainParams().getMaxHistoricStateDbSize()
 #endif
     );
