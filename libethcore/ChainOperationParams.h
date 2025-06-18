@@ -184,7 +184,6 @@ public:
     int snapshotIntervalSec = -1;
     time_t snapshotDownloadTimeout = 3600;
     time_t snapshotDownloadInactiveTimeout = 60;
-    bool freeContractDeployment = false;
     bool multiTransactionMode = false;
     int emptyBlockIntervalMs = -1;
     int64_t levelDBReopenIntervalMs = -1;

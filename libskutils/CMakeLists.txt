@@ -44,8 +44,10 @@ target_include_directories( skutils PRIVATE
     )
 target_link_libraries( skutils
     "${DEPS_INSTALL_ROOT}/lib/libjsoncpp.a"
+    "${DEPS_INSTALL_ROOT}/lib/libquicwebtransport.a"
     "${DEPS_INSTALL_ROOT}/lib/libproxygenhttpserver.a"
     "${DEPS_INSTALL_ROOT}/lib/libproxygen.a"
+    "${DEPS_INSTALL_ROOT}/lib/libmvfst_exception.a"
     "${DEPS_INSTALL_ROOT}/lib/libwangle.a"
     "${DEPS_INSTALL_ROOT}/lib/libfizz.a"
     "${DEPS_INSTALL_ROOT}/lib/libfolly.a"

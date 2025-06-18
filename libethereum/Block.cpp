@@ -37,7 +37,6 @@
 #include <libevm/VMFactory.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <boost/filesystem.hpp>
-#include <boost/timer.hpp>
 #include <ctime>
 
 #include <libdevcore/microprofile.h>

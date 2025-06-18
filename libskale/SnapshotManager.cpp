@@ -203,7 +203,7 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
     fs::path path = getDiffPath( _toBlock );
 
     try {
-        if ( fs::is_regular( path ) )
+        if ( fs::is_regular_file( path ) )
             return path;
 
         if ( !fs::exists( snapshotsDir / to_string( _toBlock ) ) ) {
@@ -357,8 +357,8 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
-        if ( fs::basename( f ) != "0" )
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        if ( fs::path( f ).filename().string() != "0" )
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
     }  // for
 
     // delete all after n first
@@ -392,8 +392,8 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
-        if ( fs::basename( f ) != "0" )
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        if ( fs::path( f ).filename().string() != "0" )
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
     }  // for
 
     if ( numbers.empty() ) {
@@ -401,13 +401,13 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     }
 
     auto it = numbers.begin();
-    int snd = std::stoi( fs::basename( ( *it++ ).second ) );
+    int snd = std::stoi( fs::path( ( *it++ ).second ).filename().string() );
 
     int fst;
     if ( numbers.size() == 1 ) {
         fst = 0;
     } else {
-        fst = std::stoi( fs::basename( ( *it ).second ) );
+        fst = std::stoi( fs::path( ( *it ).second ).filename().string() );
     }
 
     return std::make_pair( fst, snd );
@@ -418,7 +418,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffsDir ) ) {
         try {
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
         } catch ( ... ) { /*ignore non-numbers*/
         }
     }  // for
@@ -558,7 +558,7 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
 
 void SnapshotManager::proceedRegularFile(
     const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
-    if ( boost::filesystem::extension( path ) == "._hash" ) {
+    if ( path.extension() == "._hash" ) {
         return;
     }
 

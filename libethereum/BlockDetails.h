@@ -163,20 +163,20 @@ struct TransactionAddress {
 #ifdef BITE
 struct DecryptedTransactionData {
     DecryptedTransactionData() {}
-    DecryptedTransactionData( const bytes& _data ) : m_data( _data ), size( _data.size() ) {}
-    DecryptedTransactionData( RLP const& _rlp ) {
-        m_data = _rlp.toBytes();
-        size = m_data.size();
-    }
+    DecryptedTransactionData( const bytes& _data, const Address& _to )
+        : m_data( _data ), m_to( _to ), size( _data.size() + Address::size ) {}
+    DecryptedTransactionData( RLP const& _rlp );
     DecryptedTransactionData( const DecryptedTransactionData& other ) = default;
     DecryptedTransactionData& operator=( const DecryptedTransactionData& other ) = default;
-    bytes rlp() const { return dev::rlp( m_data ); }
+    bytes rlp() const;
     bytes data() const { return m_data; }
+    Address to() const { return m_to; }
     bool empty() const { return size == 0; }
 
     explicit operator bool() const { return size != size_t( -1 ); }
 
     bytes m_data;
+    Address m_to;
     size_t size = -1;
 };
 #endif

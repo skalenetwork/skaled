@@ -780,7 +780,9 @@ void BlockChain::insertTransactionsDetailsToDb(
 #ifdef BITE
             auto txIt = _block.decryptedTransactionDataFields->find( ta.index );
             if ( txIt != _block.decryptedTransactionDataFields->end() ) {
-                DecryptedTransactionData txData( *txIt->second );
+                DecryptedTransactionFields& txFields = txIt->second;
+                dev::Address to = dev::Address( txFields.to.get() );
+                DecryptedTransactionData txData( *txFields.data, to );
                 _extrasWriteBatch.insert( toSlice( sha3( txBytes ), ExtraTransactionDecryptedData ),
                     ( db::Slice ) dev::ref( txData.rlp() ) );
             }

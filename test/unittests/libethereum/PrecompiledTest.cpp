@@ -1728,7 +1728,8 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     testClient->importTransactionsAsBlock(
         dev::eth::Transactions(),
 #ifdef BITE
-        make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
+
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1000,
         4294967294 );
@@ -1826,7 +1827,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         if ( !boost::filesystem::exists( pathToFile.parent_path() ) )
             boost::filesystem::create_directories( pathToFile.parent_path() );
         boost::filesystem::path pathToTestFile = dev::getDataDir() / "test";
-        boost::filesystem::ofstream of( pathToTestFile );
+        std::ofstream of( pathToTestFile );
 
         hexAddress = ownerAddress.hex();
         hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
