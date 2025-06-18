@@ -161,6 +161,8 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getKeyShareName() const { return nodeInfo.keyShareName; }
 
+    std::string getEcdsaKeyName() const { return nodeInfo.ecdsaKeyName; }
+
     // HISTORIC GROUP GETTERS
 
     std::array< std::string, 4 > getBlsPublicKeyForHistoricGroup(

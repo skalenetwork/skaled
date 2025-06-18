@@ -132,7 +132,7 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
         sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
     }
 
-    std::string ecdsaKeyName = m_client.chainParams().getKeyShareName();
+    std::string ecdsaKeyName = m_client.chainParams().getEcdsaKeyName();
 
     std::string blsKeyName = m_client.chainParams().getKeyShareName();
 
