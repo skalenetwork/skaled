@@ -109,11 +109,11 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
 
-// #ifndef MIRAGE
+#ifndef MIRAGE
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
          _header.number() < _chainParams.EIP158ForkBlock && _t.isReplayProtected() )
         BOOST_THROW_EXCEPTION( InvalidSignature() );
-// #endif
+#endif
 
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&
          _header.number() < _chainParams.experimentalForkBlock && _t.hasZeroSignature() )
@@ -148,15 +148,15 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
                                    string( "_gasUsed + (bigint)_t.gas() > _header.gasLimit()" ) ) );
 
     if ( _ir & ImportRequirements::TransactionSignatures ) {
-// #ifdef MIRAGE
-//         uint64_t chainID = _chainParams.chainID;
-//         _t.checkChainId( chainID, false );
-// #else
+#ifdef MIRAGE
+        uint64_t chainID = _chainParams.chainID;
+        _t.checkChainId( chainID, false );
+#else
         if ( _header.number() >= _chainParams.EIP158ForkBlock ) {
             uint64_t chainID = _chainParams.chainID;
             _t.checkChainId( chainID, _chainParams.skaleDisableChainIdCheck );
         }  // if
-// #endif
+#endif
     }
 }
 

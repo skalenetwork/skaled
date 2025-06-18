@@ -153,11 +153,11 @@ void TransactionBase::fillFromBytesLegacy(
                     BOOST_THROW_EXCEPTION( InvalidSignature() );
                 m_chainId = static_cast< uint64_t >( chainId );
             }
-// #ifdef MIRAGE
-//             else // reject pre-EIP-155 txs
-// #else
+#ifdef MIRAGE
+            else // reject pre-EIP-155 txs
+#else
             else if ( v != 27 && v != 28 ) 
-// #endif
+#endif
             {
                 BOOST_THROW_EXCEPTION( InvalidSignature() ); 
             }
@@ -451,9 +451,9 @@ void TransactionBase::sign( Secret const& _priv ) {
 /// `_forEip155hash` is only used for non mirage builds
 void TransactionBase::streamLegacyTransaction(
     RLPStream& _s, IncludeSignature _sig, bool _forEip155hash ) const {
-// #ifdef MIRAGE
-//     assert( m_chainId.has_value() );
-// #endif
+#ifdef MIRAGE
+    assert( m_chainId.has_value() );
+#endif
 
     _s.appendList( ( _sig || _forEip155hash ? 3 : 0 ) + 6 );
     _s << m_nonce << m_gasPrice << m_gas;
@@ -476,11 +476,11 @@ void TransactionBase::streamLegacyTransaction(
         }
         _s << ( u256 ) m_vrs->r << ( u256 ) m_vrs->s;
     } 
-// #ifdef MIRAGE
-//     else
-// #else
+#ifdef MIRAGE
+    else
+#else
     else if ( _forEip155hash )
-// #endif
+#endif
         _s << *m_chainId << 0 << 0;
 }
 
@@ -560,9 +560,9 @@ void TransactionBase::checkLowS() const {
 }
 
 void TransactionBase::checkChainId( uint64_t chainId, bool disableChainIdCheck ) const {
-// #ifdef MIRAGE
-//     assert( !disableChainIdCheck );
-// #endif
+#ifdef MIRAGE
+    assert( !disableChainIdCheck );
+#endif
 
     if ( !disableChainIdCheck ) {
         if ( !m_chainId.has_value() ) {
@@ -607,11 +607,11 @@ h256 TransactionBase::sha3( IncludeSignature _sig ) const {
         RLPStream s;
 
         streamRLP( s, _sig, 
-// #ifdef MIRAGE
-//             true
-// #else
+#ifdef MIRAGE
+            true
+#else
             isReplayProtected() && _sig == WithoutSignature
-// #endif
+#endif
         );
 
         input = s.out();

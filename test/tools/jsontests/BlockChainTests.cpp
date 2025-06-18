@@ -425,19 +425,28 @@ void testBCTest( json_spirit::mObject const& _o ) {
 
     for ( auto const& bl : _o.at( "blocks" ).get_array() ) {
         mObject blObj = bl.get_obj();
+        for ( auto const& field : blObj ) {
+            std::cout << "Field: " << field.first << " Value: ";
+            std::cout << field.second.get_str() << std::endl;
+        }
         TestBlock blockFromRlp;
         State const preState = testChain.topBlock().state();
         h256 const preHash = testChain.topBlock().blockHeader().hash();
         try {
+            std::cout << "Before" << std::endl;
+            std::cout << "RLP: " << blObj["rlp"].get_str() << std::endl;
             TestBlock blRlp( blObj["rlp"].get_str() );
+            std::cout << "Failing here" << std::endl;
             blockFromRlp = blRlp;
             if ( blObj.count( "blockHeader" ) == 0 )
                 blockFromRlp.noteDirty();  // disable blockHeader check in TestBlock
+            std::cout << "Failing here 2" << std::endl;
             testChain.addBlock( blockFromRlp );
         }
         // if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle
         // list should be given
         catch ( Exception const& _e ) {
+            std::cout << "Here I am " << std::endl;
             cnote << testName + "state sync or block import did throw an exception: "
                   << diagnostic_information( _e );
             checkJsonSectionForInvalidBlock( blObj );

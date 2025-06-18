@@ -268,19 +268,19 @@ public:
     /// @returns true if the transaction was signed with zero signature
     bool hasZeroSignature() const { return m_vrs && isZeroSignature( m_vrs->r, m_vrs->s ); }
 
-// #ifndef MIRAGE
+#ifndef MIRAGE
     /// @returns true if the transaction uses EIP155 replay protection
     /// Only used for non-mirage builds - as mirage builds reject any pre-EIP155 transactions
     bool isReplayProtected() const {
         assert( !isInvalid() );
         return m_chainId.has_value();
     }
-// #endif
+#endif
 
     uint64_t chainId() const { 
-// #ifdef MIRAGE
-//         assert( m_chainId.has_value() );
-// #endif
+#ifdef MIRAGE
+        assert( m_chainId.has_value() );
+#endif
         return m_chainId.has_value() ? m_chainId.get() : 0; 
     }
 

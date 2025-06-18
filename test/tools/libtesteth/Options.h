@@ -31,29 +31,35 @@ namespace test {
 
 DEV_SIMPLE_EXCEPTION( InvalidOption );
 
+/**
+ * @brief Represents configuration options for test execution and debugging.
+ *
+ * This class encapsulates various settings and flags used to control the behavior
+ * of test execution, tracing, and output generation. It provides a static method
+ * to retrieve a reference to the options, which are parsed from command-line arguments.
+ */
 class Options {
 public:
-    int verbosity = -1;             ///< Verbosity level
-    bool vmtrace = false;           ///< Create EVM execution tracer
-    bool filltests = false;         ///< Create JSON test files from execution results
-    bool showhash = false;          ///< Show filler hash for debug information
-    bool fillchain = false;         ///< Fill tests as a blockchain tests if possible
-    bool stats = false;             ///< Execution time and stats for state tests
-    std::string statsOutFile;       ///< Stats output file. "out" for standard output
-    bool exectimelog = false;       ///< Print execution time for each test suite
-    std::string rCurrentTestSuite;  ///< Remember test suite before boost overwrite (for random
-                                    ///< tests)
-    bool statediff = false;         ///< Fill full post state in General tests
-    bool fulloutput = false;        ///< Replace large output to just it's length
-    bool createRandomTest = false;  ///< Generate random test
-    boost::optional< uint64_t > randomTestSeed;         ///< Define a seed for random test
-    bool jsontrace = false;                             ///< Vmtrace to stdout in json format
-    eth::StandardTrace::DebugOptions jsontraceOptions;  ///< output config for jsontrace
-    std::string testpath;                               ///< Custom test folder path
-    boost::optional< boost::filesystem::path > randomCodeOptionsPath;  ///< Options for random code
-                                                                       ///< generation in fuzz tests
-
-    bool listTests = false;  ///< List all test suites/cases and exit
+    int verbosity = -1;             // Verbosity level
+    bool vmtrace = false;           // Create EVM execution tracer
+    bool filltests = false;         // Create JSON test files from execution results
+    bool showhash = false;          // Show filler hash for debug information
+    bool fillchain = false;         // Fill tests as a blockchain tests if possible
+    bool stats = false;             // Execution time and stats for state tests
+    std::string statsOutFile;       // Stats output file. "out" for standard output
+    bool exectimelog = false;       // Print execution time for each test suite
+    std::string rCurrentTestSuite;  // Remember test suite before boost overwrite (for random
+                                    // tests)
+    bool statediff = false;         // Fill full post state in General tests
+    bool fulloutput = false;        // Replace large output to just it's length
+    bool createRandomTest = false;  // Generate random test
+    boost::optional< uint64_t > randomTestSeed;         // Define a seed for random test
+    bool jsontrace = false;                             // Vmtrace to stdout in json format
+    eth::StandardTrace::DebugOptions jsontraceOptions;  // output config for jsontrace
+    std::string testpath;                               // Custom test folder path
+    boost::optional< boost::filesystem::path > randomCodeOptionsPath;  // Options for random code
+                                                                       // generation in fuzz tests
+   bool listTests = false;  ///< List all test suites/cases and exit
 
     /// Test selection
     /// @{
