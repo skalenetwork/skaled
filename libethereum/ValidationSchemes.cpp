@@ -274,7 +274,6 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
 #ifndef MIRAGE
             { "maxFileStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
-            { "freeContractDeployment", { { js::bool_type }, JsonFieldPresence::Optional } },
 #endif
             { "maxReservedStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxSkaledLeveldbStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
