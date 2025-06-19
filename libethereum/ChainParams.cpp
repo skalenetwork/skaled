@@ -265,8 +265,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName,
 #ifndef MIRAGE
-        keyShareName, BLSPublicKeys,
-        commonBLSPublicKeys,
+        keyShareName, BLSPublicKeys, commonBLSPublicKeys,
 #endif
         syncNode, archiveMode, syncFromCatchup, testSignatures };
 
