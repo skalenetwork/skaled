@@ -364,8 +364,8 @@ Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
          ( keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() ) )
 #else
     std::string keyShareName = chainParams.nodeInfo.keyShareName;
-    if ( !chainParams.nodeInfo.syncNode && ( keyShareName.empty() ||
-                                             chainParams.nodeInfo.sgxServerUrl.empty() ) )
+    if ( !chainParams.nodeInfo.syncNode &&
+         ( keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() ) )
 #endif
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
