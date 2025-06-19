@@ -266,10 +266,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName,
 #ifndef MIRAGE
         keyShareName, BLSPublicKeys,
-        commonBLSPublicKeys
+        commonBLSPublicKeys,
 #endif
-            syncNode,
-        archiveMode, syncFromCatchup, testSignatures };
+        syncNode, archiveMode, syncFromCatchup, testSignatures };
 
     auto sChainObj = skaleObj.at( "sChain" ).get_obj();
     SChain s{};

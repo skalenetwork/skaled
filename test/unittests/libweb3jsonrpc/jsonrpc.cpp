@@ -680,7 +680,7 @@ string fromAscii( string _s ) {
 }
 }  // namespace
 
-#ifdef MIRAGE
+#ifdef BITE
 /// Helper functions
 
 std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {

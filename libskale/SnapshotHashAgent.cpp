@@ -76,7 +76,7 @@ void SnapshotHashAgent::readPublicKeyFromConfig() {
     this->commonPublicKey_.Y.c0 =
         libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
     this->commonPublicKey_.Y.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() )
+        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
 #endif
     this->commonPublicKey_.Z = libff::alt_bn128_Fq2::one();
 }
