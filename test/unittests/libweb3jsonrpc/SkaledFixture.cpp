@@ -316,7 +316,7 @@ Json::Value CurlClient::eth_getTransactionReceipt( const std::string& _hash ) {
 string SkaledFixture::readFile( const std::string& _path ) {
     CHECK( boost::filesystem::exists( _path ) );
 
-    boost::filesystem::ifstream stream( _path, std::ios::in | std::ios::binary );
+    std::ifstream stream( _path, std::ios::in | std::ios::binary );
 
     CHECK( stream.is_open() );
 

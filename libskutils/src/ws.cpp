@@ -1977,9 +1977,9 @@ static void my_event_ev_timeout_cb( evutil_socket_t sock_fd, short events, void*
 #if ( defined LWS_WITH_LIBUV )
 struct my_uv_counter_struct {
     server_api& api_;
-    volatile size_t cur_ = 0;
-    volatile size_t lim_ = 65535;
-    volatile bool stop_loop_ = false;
+    size_t cur_ = 0;
+    size_t lim_ = 65535;
+    bool stop_loop_ = false;
     my_uv_counter_struct( server_api& api ) : api_( api ) {}
 };  /// struct my_uv_counter_struct
 

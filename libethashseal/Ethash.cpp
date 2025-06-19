@@ -41,7 +41,7 @@ Ethash::Ethash() {
             return new EthashCPUMiner( ci );
         } };
     m_farm.setSealers( sealers );
-    m_farm.onSolutionFound( [=]( EthashProofOfWork::Solution const& sol ) {
+    m_farm.onSolutionFound( [this]( EthashProofOfWork::Solution const& sol ) {
         std::unique_lock< Mutex > l( m_submitLock );
         //        cdebug << m_farm.work().seedHash << m_farm.work().headerHash << sol.nonce <<
         //        EthashAux::eval(m_farm.work().seedHash, m_farm.work().headerHash,

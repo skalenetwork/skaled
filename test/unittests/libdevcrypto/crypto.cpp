@@ -436,13 +436,13 @@ BOOST_AUTO_TEST_CASE( handshakeNew,
     auto eA = KeyPair::create();
     bytes nAbytes( fromHex( "0xAAAA" ) );
     h256 nonceA( sha3( nAbytes ) );
-    bytes auth( Signature::size + h256::size + Public::size + h256::size + 1 );
+    bytes auth( size_t( Signature::size ) + size_t( h256::size ) + size_t( Public::size ) + size_t( h256::size ) + 1 );
     Secret ssA;
     {
         bytesRef sig( &auth[0], Signature::size );
         bytesRef hepubk( &auth[Signature::size], h256::size );
-        bytesRef pubk( &auth[Signature::size + h256::size], Public::size );
-        bytesRef nonce( &auth[Signature::size + h256::size + Public::size], h256::size );
+        bytesRef pubk( &auth[size_t( Signature::size ) + size_t( h256::size ) ], Public::size );
+        bytesRef nonce( &auth[size_t( Signature::size ) + size_t( h256::size ) + size_t( Public::size ) ], h256::size );
 
         BOOST_CHECK( crypto::ecdh::agree( nodeA.secret(), nodeB.pub(), ssA ) );
         sign( eA.secret(), ( ssA ^ nonceA ).makeInsecure() ).ref().copyTo( sig );
@@ -459,14 +459,14 @@ BOOST_AUTO_TEST_CASE( handshakeNew,
     auto eB = KeyPair::create();
     bytes nBbytes( fromHex( "0xBBBB" ) );
     h256 nonceB( sha3( nAbytes ) );
-    bytes ack( Public::size + h256::size + 1 );
+    bytes ack( size_t( Public::size ) + size_t( h256::size ) + 1 );
     {
         // todo: replace nodeA.pub() in encrypt()
         // decrypt public key from auth
         bytes authdecrypted;
         decrypt( nodeB.secret(), &authcipher, authdecrypted );
         Public node;
-        bytesConstRef pubk( &authdecrypted[Signature::size + h256::size], Public::size );
+        bytesConstRef pubk( &authdecrypted[size_t( Signature::size ) + size_t( h256::size ) ], Public::size );
         pubk.copyTo( node.ref() );
 
         bytesRef epubk( &ack[0], Public::size );
@@ -551,9 +551,9 @@ BOOST_AUTO_TEST_CASE( handshakeNew,
         h256 nonceAAuth;
         bytesConstRef sig( &authdecrypted[0], Signature::size );
         bytesConstRef hepubk( &authdecrypted[Signature::size], h256::size );
-        bytesConstRef pubk( &authdecrypted[Signature::size + h256::size], Public::size );
+        bytesConstRef pubk( &authdecrypted[size_t( Signature::size ) + size_t( h256::size ) ], Public::size );
         bytesConstRef nonce(
-            &authdecrypted[Signature::size + h256::size + Public::size], h256::size );
+            &authdecrypted[size_t( Signature::size ) + size_t( h256::size ) + size_t( Public::size ) ], h256::size );
 
         nonce.copyTo( nonceAAuth.ref() );
         pubk.copyTo( nodeAAuth.ref() );
