@@ -77,9 +77,9 @@ struct ChainParams : public ChainOperationParams {
     bool checkAdminOriginAllowed( const std::string& origin ) const;
     static void processSkaleConfigItems( ChainParams& _cp, json_spirit::mObject& _obj );
 
+#ifdef MIRAGE
     std::string getConfigForConsensus() const;
 
-#ifdef MIRAGE
     void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
 
     Address getSChainNodeAddressByIndex( uint64_t sChainIndex ) const;

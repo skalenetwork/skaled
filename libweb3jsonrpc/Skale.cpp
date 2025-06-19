@@ -357,10 +357,16 @@ std::string Skale::skale_getLatestSnapshotBlockNumber() {
 }
 
 Json::Value Skale::skale_getSnapshotSignature( unsigned blockNumber ) {
-    const dev::eth::ChainParams& chainParams = this->m_client.chainParams();
+    dev::eth::ChainParams chainParams = this->m_client.chainParams();
+#ifdef MIRAGE
     std::string keyShareName = chainParams.sChain.currentGroups.back().keyShareName;
     if ( !chainParams.nodeInfo.syncNode &&
          ( keyShareName.empty() || chainParams.nodeInfo.sgxServerUrl.empty() ) )
+#else
+    std::string keyShareName = chainParams.nodeInfo.keyShareName;
+    if ( !chainParams.nodeInfo.syncNode && ( keyShareName.empty() ||
+                                             chainParams.nodeInfo.sgxServerUrl.empty() ) )
+#endif
         throw jsonrpc::JsonRpcException( "Snapshot signing is not enabled" );
 
     if ( blockNumber != 0 && blockNumber != this->m_client.getLatestSnapshotBlockNumer() ) {

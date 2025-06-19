@@ -419,8 +419,7 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" + std::to_string( rand_port ) +
-                                                  R"E(,
+      "basePort": )E" + std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -431,15 +430,9 @@ static std::string const c_genesisInfoSkaleTest = std::string() +
         "contractStorageLimit": 32000,
         "emptyBlockIntervalMs": -1,
         "correctForkInPowPatchTimestamp": 1,
-        "nodes": {
-            "1": {
-                "group": [
-              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-    std::to_string( rand_port ) +
-    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
-                ]
-            }
-        }
+        "nodes": [
+          { "nodeID": 1112, "ip": "127.0.0.1", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+        ]
     }
   },
     "accounts": {
@@ -958,9 +951,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE( getHistoricNodesData )
 
 #ifndef MIRAGE
-static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
-    std::string() +
-    R"E(
+static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest = std::string() + R"E(
 {
     "sealEngine": "Ethash",
     "params": {
@@ -999,8 +990,7 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
       "nodeName": "Node1",
       "nodeID": 1112,
       "bindIP": "127.0.0.1",
-      "basePort": )E" +
-    std::to_string( rand_port ) + R"E(,
+      "basePort": )E" + std::to_string( rand_port ) + R"E(,
       "logLevel": "trace",
       "logLevelProposal": "trace",
       "testSignatures": true
@@ -1043,15 +1033,9 @@ static std::string const c_genesisInfoSkaleIMABLSPublicKeyTest =
                 }
             }
         },
-        "nodes": {
-            "1": {
-                "group": [
-              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-    std::to_string( rand_port ) +
-    R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
-                ]
-            }
-        }
+        "nodes": [
+          { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "schainIndex" : 1, "publicKey": "0xfa"}
+        ]
     }
   },
     "accounts": {
@@ -1262,8 +1246,7 @@ static std::string const c_skaleConfigString =
             "nodeName": "TestNode",
             "nodeID": 1112,
             "bindIP": "127.0.0.1",
-            "basePort": )E" +
-    std::to_string( rand_port ) + R"E(,
+            "basePort": )E" + std::to_string( rand_port ) + R"E(,
             "testSignatures": true
         },
         "sChain": {
@@ -1271,15 +1254,9 @@ static std::string const c_skaleConfigString =
             "schainID": 1,
             "snapshotIntervalSec": 5,
             "emptyBlockIntervalMs": 4000,
-            "nodes": {
-                "1": {
-                    "group": [
-                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E" +
-        std::to_string( rand_port ) +
-        R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
-                    ]
-                }
-            }
+            "nodes": [
+              { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )E"+std::to_string( rand_port ) + R"E(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+            ]
         }
     },
     "accounts": {

@@ -179,6 +179,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
     bool archiveMode = false;
     bool syncFromCatchup = false;
     string ip, ip6, keyShareName, sgxServerUrl;
+#ifndef MIRAGE
+    size_t t = 0;
+#endif
     uint64_t port = 0, port6 = 0;
     try {
         ip = infoObj.at( "bindIP" ).get_str();
@@ -232,11 +235,39 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         }
 
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
+
+#ifndef MIRAGE
+        if ( infoObj.count( "wallets" ) == 0 ) {
+            throw std::runtime_error(
+                "No wallets section in test config, and testSignatures is not set to true" );
+        }
+
+        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+
+        commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+        commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+        commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+        commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
+
+        if ( !syncNode ) {
+            keyShareName = ima.at( "keyShareName" ).get_str();
+
+            t = ima.at( "t" ).get_int();
+
+            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+        }
+#endif
     }
 
     cp.nodeInfo = { nodeName, nodeID, ip, static_cast< uint16_t >( port ), ip6,
-        static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName, syncNode, archiveMode,
-        syncFromCatchup, testSignatures };
+        static_cast< uint16_t >( port6 ), sgxServerUrl, ecdsaKeyName,
+#ifndef MIRAGE
+        keyShareName, BLSPublicKeys, commonBLSPublicKeys
+#endif
+        syncNode, archiveMode, syncFromCatchup, testSignatures };
 
     auto sChainObj = skaleObj.at( "sChain" ).get_obj();
     SChain s{};
@@ -244,6 +275,9 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
 
     s.name = sChainObj.at( "schainName" ).get_str();
     s.id = sChainObj.at( "schainID" ).get_uint64();
+#ifndef MIRAGE
+    s.t = t;
+#endif
     if ( sChainObj.count( "schainOwner" ) ) {
         s.owner = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
         s.blockAuthor = jsToAddress( sChainObj.at( "schainOwner" ).get_str() );
@@ -362,6 +396,44 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         s.nodeGroups = nodeGroups;
     }
 
+#ifndef MIRAGE
+    for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+        auto nodeConfObj = nodeConf.get_obj();
+        sChainNode node{};
+        node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+        node.ip = nodeConfObj.at( "ip" ).get_str();
+        node.port = nodeConfObj.at( "basePort" ).get_uint64();
+        try {
+            node.ip6 = nodeConfObj.at( "ip6" ).get_str();
+        } catch ( ... ) {
+            node.ip6 = "";
+        }
+        try {
+            node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
+        } catch ( ... ) {
+            node.port6 = 0;
+        }
+        node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
+        try {
+            node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
+        } catch ( ... ) {
+        }
+        if ( !keyShareName.empty() ) {
+            try {
+                node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
+                node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
+                node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
+                node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
+            } catch ( ... ) {
+                node.blsPublicKey[0] = "";
+                node.blsPublicKey[1] = "";
+                node.blsPublicKey[2] = "";
+                node.blsPublicKey[3] = "";
+            }
+        }
+        s.nodes.push_back( node );
+    }
+#else
     // read current group(s) details
     auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
     if ( nodesObjects.size() != c_currentGroupsSize )
@@ -408,9 +480,7 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
                 auto nodeConfObj = nodeConf.get_obj();
                 sChainNode node{};
                 node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-#ifdef MIRAGE
                 node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
-#endif
                 node.ip = nodeConfObj.at( "ip" ).get_str();
                 node.port = nodeConfObj.at( "basePort" ).get_uint64();
                 try {
@@ -452,12 +522,12 @@ void ChainParams::processSkaleConfigItems( ChainParams& cp, json_spirit::mObject
         s.t = t;
     }
 
-#ifdef MIRAGE
     if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )
         std::swap( s.currentGroups[0], s.currentGroups[1] );
-#endif
 
     s.nodes = s.currentGroups.back().nodes;
+#endif
+
     cp.sChain = s;
 
     cp.vecAdminOrigins.clear();
@@ -642,7 +712,13 @@ const std::string& ChainParams::getOriginalJson() const {
 #endif
     sChainObj["dbStorageLimit"] = sChain.dbStorageLimit;
 
+#ifdef MIRAGE
     auto addNodeToArray = []( const sChainNode& node, js::mArray& nodes ) {
+#else
+    js::mArray nodes;
+
+    for ( auto node : sChain.nodes ) {
+#endif
         js::mObject nodeConfObj;
         nodeConfObj["nodeID"] = ( int64_t ) node.id;
         nodeConfObj["ip"] = node.ip;
@@ -655,6 +731,7 @@ const std::string& ChainParams::getOriginalJson() const {
         nodes.push_back( nodeConfObj );
     };
 
+#ifdef MIRAGE
     js::mObject nodes;
 
     for ( const auto& currentGroup : sChain.currentGroups ) {
@@ -673,6 +750,7 @@ const std::string& ChainParams::getOriginalJson() const {
 
         nodes[std::to_string( currentGroup.startTs )] = group;
     }
+#endif
 
     sChainObj["nodes"] = nodes;
 
@@ -715,6 +793,7 @@ bool ChainParams::checkAdminOriginAllowed( const std::string& origin ) const {
     return false;
 }
 
+#ifdef MIRAGE
 std::string ChainParams::getConfigForConsensus() const {
     js::mValue val;
     json_spirit::read_string_or_throw( getOriginalJson(), val );
@@ -730,13 +809,11 @@ std::string ChainParams::getConfigForConsensus() const {
                           .get_obj()
                           .at( "group" )
                           .get_array();
-#ifdef MIRAGE
     else
         newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )]
                           .get_obj()
                           .at( "group" )
                           .get_array();
-#endif
 
     sChainObj["nodes"] = newNodesObj;
     skaleConfigObj["sChain"] = sChainObj;
@@ -745,7 +822,6 @@ std::string ChainParams::getConfigForConsensus() const {
     return js::write_string( js::mValue( obj ), true );
 }
 
-#ifdef MIRAGE
 void ChainParams::updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp ) {
     // for BOOT group timestamp is set to 0
     // invariant here - relevant group MUST BE stored under index 1

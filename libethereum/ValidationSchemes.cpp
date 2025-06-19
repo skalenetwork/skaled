@@ -163,6 +163,9 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "leveldbReopenIntervalMs", { { js::int_type }, JsonFieldPresence::Optional } },
             { "snapshotIntervalSec", { { js::int_type }, JsonFieldPresence::Optional } },
             { "rotateAfterBlock", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifndef MIRAGE
+            { "wallets", { { js::obj_type }, JsonFieldPresence::Optional } },
+#endif
             { "ecdsaKeyName", { { js::str_type }, JsonFieldPresence::Optional } },
             { "verifyImaMessagesViaLogsSearch",
                 { { js::bool_type }, JsonFieldPresence::Optional } },
@@ -228,6 +231,28 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "syncNodeReadJsonHeaderTimeoutSec",
                 { { js::int_type }, JsonFieldPresence::Optional } } } );
 
+#ifndef MIRAGE
+    std::string keyShareName = "";
+    try {
+        nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj().at( "keyShareName" ).get_str();
+    } catch ( ... ) {
+    }
+
+    if ( !keyShareName.empty() ) {
+        requireJsonFields( nodeInfo.at( "wallets" ).get_obj().at( "ima" ).get_obj(),
+            "ChainParams::loadConfig::skaleConfig::nodeInfo::wallets::ima",
+            { { "t", { { js::int_type }, JsonFieldPresence::Required } },
+                { "BLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
+                { "BLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
+                { "BLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
+                { "BLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } },
+                { "commonBLSPublicKey0", { { js::str_type }, JsonFieldPresence::Required } },
+                { "commonBLSPublicKey1", { { js::str_type }, JsonFieldPresence::Required } },
+                { "commonBLSPublicKey2", { { js::str_type }, JsonFieldPresence::Required } },
+                { "commonBLSPublicKey3", { { js::str_type }, JsonFieldPresence::Required } } } );
+    }  // keyShareName
+#endif
+
     const js::mObject& sChain = _obj.at( c_skaleConfig ).get_obj().at( "sChain" ).get_obj();
     requireJsonFields( sChain, "ChainParams::loadConfig::skaleConfig::sChain",
         { { "schainName", { { js::str_type }, JsonFieldPresence::Required } },
@@ -248,7 +273,11 @@ void validateConfigJson( js::mObject const& _obj ) {
             { "contractStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
 #endif
             { "dbStorageLimit", { { js::int_type }, JsonFieldPresence::Optional } },
+#ifdef MIRAGE
             { "nodes", { { js::obj_type }, JsonFieldPresence::Required } },
+#else
+            { "nodes", { { js::array_type }, JsonFieldPresence::Required } },
+#endif
             { "maxConsensusStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxFileStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
             { "maxReservedStorageBytes", { { js::int_type }, JsonFieldPresence::Optional } },
@@ -273,6 +302,46 @@ void validateConfigJson( js::mObject const& _obj ) {
             }
         } );
 
+#ifndef MIRAGE
+    js::mArray const& nodes = sChain.at( "nodes" ).get_array();
+    for ( auto const& obj : nodes ) {
+        const js::mObject node = obj.get_obj();
+        requireJsonFields( node, "ChainParams::loadConfig::skaleConfig::sChain::nodes",
+            { { "nodeName", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "nodeID", { { js::int_type }, JsonFieldPresence::Required } },
+                { "ip", { { js::str_type }, JsonFieldPresence::Required } },
+                { "publicIP", { { js::str_type }, JsonFieldPresence::Optional } },  // TODO not used
+                { "basePort", { { js::int_type }, JsonFieldPresence::Required } },
+                { "ip6", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "basePort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "httpRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "httpRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "httpsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "httpsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "wsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "wsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "wssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "wssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoHttpRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoHttpRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoHttpsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoHttpsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoWsRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoWsRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoWssRpcPort", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "infoWssRpcPort6", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "info-acceptors", { { js::int_type }, JsonFieldPresence::Optional } },
+                { "schainIndex", { { js::int_type }, JsonFieldPresence::Required } },
+                { "publicKey", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "blsPublicKey0", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "blsPublicKey1", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "blsPublicKey2", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "blsPublicKey3", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "owner", { { js::str_type }, JsonFieldPresence::Optional } },
+                { "blockAuthor", { { js::str_type }, JsonFieldPresence::Optional } } } );
+    }
+#else
     js::mObject const& nodeGroups = sChain.at( "nodes" ).get_obj();
     for ( const auto& nodeGroup : nodeGroups ) {
         int64_t ts = std::stoll( nodeGroup.first );
@@ -349,6 +418,7 @@ void validateConfigJson( js::mObject const& _obj ) {
             }
         }
     }
+#endif
 }
 
 void validateAccountMaskObj( js::mObject const& _obj ) {
