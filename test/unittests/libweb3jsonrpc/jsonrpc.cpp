@@ -516,6 +516,42 @@ string fromAscii( string _s ) {
 }
 }  // namespace
 
+#ifdef MIRAGE
+/// Helper functions
+
+std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {
+    libBLS::TEBase::initializeIfNecessary();
+    auto finalMessageToEncrypt = message + toAddress;
+    auto messageToEncrypt =
+        libBLS::ThresholdUtils::hexCStringToBytes( finalMessageToEncrypt.c_str() );
+    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
+    std::string epochId = "0000000000000000";
+
+    return std::string( "0x" ) + epochId +
+           libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
+}
+
+std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string& senderAddress,
+    const std::string& data, size_t& nonce,
+    const std::string& toAddress = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" ) {
+    Json::Value txEncryptedData;
+    txEncryptedData["to"] = toAddress;
+    txEncryptedData["from"] = senderAddress;
+    txEncryptedData["gas"] = "100000";
+    txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
+    txEncryptedData["data"] = data;
+    txEncryptedData["nonce"] = nonce++;
+
+    TransactionSkeleton ts = toTransactionSkeleton( txEncryptedData );
+    ts = fixture.client->populateTransactionWithDefaults( ts );
+    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
+    Transaction tx( ts, ar.second );
+
+    return dev::toHexPrefixed( tx.toBytes() );
+}
+
+#endif
+
 BOOST_AUTO_TEST_SUITE( JsonRpcSuite )
 
 
@@ -2225,10 +2261,7 @@ BOOST_AUTO_TEST_CASE( logs ) {
                 i++;
             }// j overflow
         }
-    }
-
-}
-*/
+    }*/
 
     string bytecode =
         "6080604052348015600f57600080fd5b50609b8061001e6000396000f3fe608060405260015460001b60005460"
@@ -2254,7 +2287,23 @@ BOOST_AUTO_TEST_CASE( logs ) {
         t["to"] = contractAddress;
         t["gas"] = "99000";
 
+#ifdef MIRAGE
+        std::string txHash;
+        if (i%2) {
+            txHash = fixture.rpcClient->eth_sendTransaction( t );
+        }
+        else {
+            std::string addrWithout0x = contractAddress.substr( 2 );
+            std::string encryptedData = formEncryptedMessageMockup("", addrWithout0x);
+            // account for the nonce 0 used for contract deployment
+            size_t nonce = static_cast<size_t>(i + 1);
+            std::string rlp = formTransactionRlp( fixture, t["from"].asString(),
+                encryptedData, nonce, addrWithout0x);
+            txHash = fixture.rpcClient->eth_sendRawTransaction( rlp );
+        }
+#else
         std::string txHash = fixture.rpcClient->eth_sendTransaction( t );
+#endif
         BOOST_REQUIRE( !txHash.empty() );
 
         dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -4579,37 +4628,6 @@ BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
-}
-
-std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {
-    libBLS::TEBase::initializeIfNecessary();
-    auto finalMessageToEncrypt = message + toAddress;
-    auto messageToEncrypt =
-        libBLS::ThresholdUtils::hexCStringToBytes( finalMessageToEncrypt.c_str() );
-    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
-    std::string epochId = "0000000000000000";
-
-    return std::string( "0x" ) + epochId +
-           libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
-}
-
-std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string& senderAddress,
-    const std::string& data, size_t& nonce,
-    const std::string& toAddress = "0x5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" ) {
-    Json::Value txEncryptedData;
-    txEncryptedData["to"] = toAddress;
-    txEncryptedData["from"] = senderAddress;
-    txEncryptedData["gas"] = "100000";
-    txEncryptedData["gasPrice"] = fixture.rpcClient->eth_gasPrice();
-    txEncryptedData["data"] = data;
-    txEncryptedData["nonce"] = nonce++;
-
-    TransactionSkeleton ts = toTransactionSkeleton( txEncryptedData );
-    ts = fixture.client->populateTransactionWithDefaults( ts );
-    pair< bool, Secret > ar = fixture.accountHolder->authenticate( ts );
-    Transaction tx( ts, ar.second );
-
-    return dev::toHexPrefixed( tx.toBytes() );
 }
 
 BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
