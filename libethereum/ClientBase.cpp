@@ -122,18 +122,12 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
         if ( upperBound == Invalid256 || upperBound > c_maxGasEstimate )
             upperBound = c_maxGasEstimate;
         int64_t lowerBound;
-#ifdef MIRAGE
-        lowerBound = Transaction::baseGasRequired( !_dest, &_data,
-            bc().sealEngine()->chainParams().makeEvmSchedule(
-                bc().info().timestamp(), bc().number() ) );
-#else
         if ( CorrectForkInPowPatch::isEnabledInWorkingBlock() )
             lowerBound = Transaction::baseGasRequired( !_dest, &_data,
                 bc().sealEngine()->chainParams().makeEvmSchedule(
                     bc().info().timestamp(), bc().number() ) );
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
-#endif
         Block latest = latestBlock();
         Block pending = preSeal();
 
