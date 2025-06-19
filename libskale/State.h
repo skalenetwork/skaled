@@ -517,9 +517,6 @@ private:
         }
     };
 
-#endif
-
-#ifndef MIRAGE
     void resetOverlayFS( bool _enableCache ) {
         m_fs_ptr = std::make_shared< OverlayFS >( _enableCache );
     };
