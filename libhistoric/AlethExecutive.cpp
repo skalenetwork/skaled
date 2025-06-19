@@ -130,8 +130,10 @@ bool AlethExecutive::execute() {
 
 #ifdef BITE
     bytes const& dataToPassToEvm = m_t.decryptedData();
+    Address receiverAddressToPassToEvm = m_t.decryptedTo();
 #else
     bytes const& dataToPassToEvm = m_t.data();
+    Address receiverAddressToPassToEvm = m_t.receiveAddress();
 #endif
 
     assert( m_t.gas() >= ( u256 ) m_baseGasRequired );
@@ -139,7 +141,7 @@ bool AlethExecutive::execute() {
         return create( m_t.sender(), m_t.value(), m_t.gasPrice(),
             m_t.gas() - ( u256 ) m_baseGasRequired, &dataToPassToEvm, m_t.sender() );
     else
-        return call( m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(),
+        return call( receiverAddressToPassToEvm, m_t.sender(), m_t.value(), m_t.gasPrice(),
             bytesConstRef( &dataToPassToEvm ), m_t.gas() - ( u256 ) m_baseGasRequired );
 }
 

@@ -223,8 +223,7 @@ public:
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >
-            _decryptedTransactionDataFields,
+        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 _stateRoot, uint64_t _winningNodeIndex ) override;
@@ -246,14 +245,14 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
+    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
     uint64_t _timeStamp, uint32_t, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions,
 #ifdef BITE
-        _decryptedTransactionDataFields,
+        _decryptedTransactionFields,
 #endif
         _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
@@ -521,7 +520,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
+    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
@@ -577,9 +576,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
-    auto validDecryptedTransactionDataFields =
-        std::make_shared< std::map< uint64_t, std::shared_ptr< std::vector< uint8_t > > > >();
-
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -592,12 +588,14 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
-            auto it = _decryptedTransactionDataFields->find( i );
-            if ( it != _decryptedTransactionDataFields->end() ) {
-                t.setDecryptedData( it->second );
-                if ( it->second )
-                    validDecryptedTransactionDataFields->insert( *it );
+            auto it = _decryptedTransactionFields->find( i );
+            if ( it != _decryptedTransactionFields->end() ) {
+                DecryptedTransactionFields& txFields = it->second;
+
+                dev::Address to = dev::Address( txFields.to.get() );
+                t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to ) );
             }
+
 #endif
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
@@ -631,7 +629,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
 
 #ifdef BITE
-            validDecryptedTransactionDataFields,
+            _decryptedTransactionFields,
 #endif
             _gasPrice,
 #ifdef MIRAGE
