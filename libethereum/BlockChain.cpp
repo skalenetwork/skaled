@@ -200,7 +200,8 @@ uint64_t BlockChain::getLatestBlockTimestamp(
 }
 #endif
 
-BlockChain::BlockChain( std::shared_ptr< const ChainParams > _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
+BlockChain::BlockChain( std::shared_ptr< const ChainParams > _p, fs::path const& _dbPath,
+    bool _applyPatches, WithExisting _we ) try
     : m_lastBlockHashes( new LastBlockHashes( *this ) ), m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
