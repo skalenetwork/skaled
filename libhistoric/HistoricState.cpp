@@ -644,7 +644,7 @@ std::pair< ExecutionResult, TransactionReceipt > HistoricState::execute( EnvInfo
     }
 
     TransactionReceipt const receipt =
-        _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+        _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
             TransactionReceipt( globalRoot(), startGasUsed + e.gasUsed(), e.logs() );
 

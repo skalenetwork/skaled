@@ -37,7 +37,7 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
     const std::array< std::string, 4 >& common_public_key,
     const std::string& urlToDownloadSnapshotFrom )
     : chainParams_( chainParams ),
-      n_( chainParams.sChain.nodes.size() ),
+      n_( chainParams.getNodesCount() ),
       urlToDownloadSnapshotFrom_( urlToDownloadSnapshotFrom ) {
     this->hashes_.resize( n_ );
     this->signatures_.resize( n_ );
@@ -62,29 +62,18 @@ SnapshotHashAgent::SnapshotHashAgent( const dev::eth::ChainParams& chainParams,
 }
 
 void SnapshotHashAgent::readPublicKeyFromConfig() {
-#ifdef MIRAGE
-    auto commonPublicKeyArray = chainParams_.sChain.currentGroups.back().commonBLSPublicKeys;
-    this->commonPublicKey_.X.c0 = libff::alt_bn128_Fq( commonPublicKeyArray[0].c_str() );
-    this->commonPublicKey_.X.c1 = libff::alt_bn128_Fq( commonPublicKeyArray[1].c_str() );
-    this->commonPublicKey_.Y.c0 = libff::alt_bn128_Fq( commonPublicKeyArray[2].c_str() );
-    this->commonPublicKey_.Y.c1 = libff::alt_bn128_Fq( commonPublicKeyArray[3].c_str() );
-#else
-    this->commonPublicKey_.X.c0 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
-    this->commonPublicKey_.X.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
-    this->commonPublicKey_.Y.c0 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
-    this->commonPublicKey_.Y.c1 =
-        libff::alt_bn128_Fq( chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
-#endif
+    auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
+    this->commonPublicKey_.X.c0 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
+    this->commonPublicKey_.X.c1 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[1].c_str() );
+    this->commonPublicKey_.Y.c0 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
+    this->commonPublicKey_.Y.c1 = libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
     this->commonPublicKey_.Z = libff::alt_bn128_Fq2::one();
 }
 
 size_t SnapshotHashAgent::verifyAllData() const {
     size_t verified = 0;
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+        if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
             continue;
         }
 
@@ -123,7 +112,7 @@ bool SnapshotHashAgent::voteForHash() {
     const std::lock_guard< std::mutex > lock( this->hashesMutex );
 
     for ( size_t i = 0; i < this->n_; ++i ) {
-        if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+        if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
             continue;
         }
 
@@ -142,7 +131,7 @@ bool SnapshotHashAgent::voteForHash() {
         std::vector< size_t > idx;
         std::vector< libff::alt_bn128_G1 > signatures;
         for ( size_t i = 0; i < this->n_; ++i ) {
-            if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+            if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
                 continue;
             }
 
@@ -185,28 +174,27 @@ bool SnapshotHashAgent::voteForHash() {
                    "common public key specified in command line. Trying again with "
                    "common public key from config";
 
+            auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
             libff::alt_bn128_G2 commonPublicKey_from_config;
 
 #ifdef MIRAGE
-            auto commonPublicKeyArray =
-                chainParams_.sChain.currentGroups.back().commonBLSPublicKeys;
             commonPublicKey_from_config.X.c0 =
-                libff::alt_bn128_Fq( commonPublicKeyArray[0].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
             commonPublicKey_from_config.X.c1 =
-                libff::alt_bn128_Fq( commonPublicKeyArray[1].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[1].c_str() );
             commonPublicKey_from_config.Y.c0 =
-                libff::alt_bn128_Fq( commonPublicKeyArray[2].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
             commonPublicKey_from_config.Y.c1 =
-                libff::alt_bn128_Fq( commonPublicKeyArray[3].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
 #else
             commonPublicKey_from_config.X.c0 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[0].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
             commonPublicKey_from_config.X.c1 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[1].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[1].c_str() );
             commonPublicKey_from_config.Y.c0 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[2].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
             commonPublicKey_from_config.Y.c1 =
-                libff::alt_bn128_Fq( this->chainParams_.nodeInfo.commonBLSPublicKeys[3].c_str() );
+                libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
 #endif
             commonPublicKey_from_config.Z = libff::alt_bn128_Fq2::one();
             LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
@@ -307,15 +295,15 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
 
     if ( urlToDownloadSnapshotFrom_.empty() ) {
         for ( size_t i = 0; i < this->n_; ++i ) {
-            if ( this->chainParams_.nodeInfo.id == this->chainParams_.sChain.nodes.at( i ).id ) {
+            if ( this->chainParams_.getSelfNodeId() == this->chainParams_.getNodeByIndex( i ).id ) {
                 continue;
             }
 
             threads.push_back( std::thread( [this, i, blockNumber]() {
                 try {
-                    std::string nodeUrl = "http://" + this->chainParams_.sChain.nodes.at( i ).ip +
+                    std::string nodeUrl = "http://" + this->chainParams_.getNodeByIndex( i ).ip +
                                           ':' +
-                                          ( this->chainParams_.sChain.nodes.at( i ).port + 3 )
+                                          ( this->chainParams_.getNodeByIndex( i ).port + 3 )
                                               .convert_to< std::string >();
                     auto snapshotData = askNodeForHash( nodeUrl, blockNumber );
                     if ( std::get< 0 >( snapshotData ).size > 0 ) {
@@ -353,7 +341,7 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
             if ( !this->isReceived_.at( pos ) )
                 continue;
 
-            u256 id = this->chainParams_.sChain.nodes.at( pos ).id;
+            u256 id = this->chainParams_.getNodeByIndex( pos ).id;
             bool good = majorityNodesIds.end() !=
                         std::find( majorityNodesIds.begin(), majorityNodesIds.end(), id );
             if ( !good )
@@ -391,9 +379,9 @@ std::vector< std::string > SnapshotHashAgent::getNodesToDownloadSnapshotFrom(
     std::vector< std::string > ret;
     for ( const size_t idx : this->nodesToDownloadSnapshotFrom_ ) {
         std::string ret_value =
-            std::string( "http://" ) + std::string( this->chainParams_.sChain.nodes.at( idx ).ip ) +
+            std::string( "http://" ) + std::string( this->chainParams_.getNodeByIndex( idx ).ip ) +
             std::string( ":" ) +
-            ( this->chainParams_.sChain.nodes.at( idx ).port + 3 ).convert_to< std::string >();
+            ( this->chainParams_.getNodeByIndex( idx ).port + 3 ).convert_to< std::string >();
         ret.push_back( ret_value );
     }
 

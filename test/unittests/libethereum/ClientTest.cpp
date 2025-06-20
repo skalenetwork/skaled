@@ -107,7 +107,8 @@ struct FixtureCommon {
 class TestClientFixture : public TestOutputHelperFixture {
 public:
     TestClientFixture( const std::string& _config = "" ) try {
-        ChainParams chainParams;
+
+        std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
         if ( _config != "" ) {
             Json::Value ret;
             Json::Reader().parse( _config, ret );
@@ -116,14 +117,15 @@ public:
 #endif
             Json::FastWriter fastWriter;
             std::string config = fastWriter.write( ret );
-            chainParams = chainParams.loadConfig( config );
-        } else {
-            chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
+            chainParams->loadConfig( config );
+        }
+        else {
+            chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+            chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
         }
 
-        chainParams.sealEngineName = NoProof::name();
-        chainParams.allowFutureBlocks = true;
+        chainParams->sealEngineName = NoProof::name();
+        chainParams->allowFutureBlocks = true;
 
         string listenIP = "127.0.0.1";
         unsigned short listenPort = 30303;
@@ -140,8 +142,8 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
-        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
@@ -255,7 +257,7 @@ public:
 
         gainRoot();
 
-        ChainParams chainParams;
+        chainParams = std::make_shared< ChainParams >();
 
         Json::Value ret;
         Json::Reader().parse( _config, ret );
@@ -264,7 +266,7 @@ public:
 #endif
         Json::FastWriter fastWriter;
         std::string config = fastWriter.write( ret );
-        chainParams = chainParams.loadConfig( config );
+        chainParams->loadConfig( config );
 
         auto nodesState = contents( m_tmpDir.path() / fs::path( "network.rlp" ) );
 
@@ -286,8 +288,8 @@ public:
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
-        setenv( "DATA_DIR", m_tmpDir.path().c_str(), 1 );
-        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
+        m_ethereum.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), mgr, monitor, m_tmpDir.path(), WithExisting::Kill ) );
 
         //        m_ethereum.reset(
@@ -333,6 +335,7 @@ public:
     }
 
 private:
+    std::shared_ptr< ChainParams > chainParams;
     std::unique_ptr< dev::eth::Client > m_ethereum;
     TransientDirectory m_tmpDir;
     dev::KeyPair coinbase{ KeyPair::create() };

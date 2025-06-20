@@ -188,7 +188,7 @@ uint64_t BlockChain::getLatestBlockTimestamp(
 
     fs::create_directories( dbDir / fs::path( "blocks_and_extras" ) );
     auto rotator = std::make_shared< batched_io::rotating_db_io >(
-        dbDir / fs::path( "blocks_and_extras" ), 5, _params.nodeInfo.archiveMode );
+        dbDir / fs::path( "blocks_and_extras" ), 5, _params.isArchiveModeEnabled() );
     auto rotatingDb = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
 
     std::string latestBlockTimestampStr =
@@ -200,8 +200,7 @@ uint64_t BlockChain::getLatestBlockTimestamp(
 }
 #endif
 
-BlockChain::BlockChain(
-    ChainParams const& _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
+BlockChain::BlockChain( std::shared_ptr< const ChainParams > _p, fs::path const& _dbPath, bool _applyPatches, WithExisting _we ) try
     : m_lastBlockHashes( new LastBlockHashes( *this ) ), m_dbPath( _dbPath ) {
     init( _p );
     open( _dbPath, _applyPatches, _we );
@@ -216,7 +215,7 @@ BlockChain::~BlockChain() {
 BlockHeader const& BlockChain::genesis() const {
     UpgradableGuard l( x_genesis );
     if ( !m_genesis ) {
-        auto gb = m_params.genesisBlock();
+        auto gb = m_params->genesisBlock();
         UpgradeGuard ul( l );
         m_genesis = BlockHeader( gb );
         m_genesisHeaderBytes = BlockHeader::extractHeader( &gb ).data().toBytes();
@@ -225,7 +224,7 @@ BlockHeader const& BlockChain::genesis() const {
     return m_genesis;
 }
 
-void BlockChain::init( ChainParams const& _p ) {
+void BlockChain::init( std::shared_ptr< const ChainParams > _p ) {
     clockLastDbRotation_ = clock();
     // initialise deathrow.
     m_cacheUsage.resize( c_collectionQueueSize );
@@ -233,14 +232,14 @@ void BlockChain::init( ChainParams const& _p ) {
 
     // Initialise with the genesis as the last block on the longest chain.
     m_params = _p;
-    m_sealEngine.reset( m_params.createSealEngine() );
+    m_sealEngine.reset( const_cast< ChainParams* >( m_params.get() )->createSealEngine() );
     m_genesis.clear();
     genesis();
 }
 
 void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _we ) {
     fs::path path = _path.empty() ? Defaults::get()->m_dbPath : _path;
-    fs::path chainPath = path / getChainDirName( m_params );
+    fs::path chainPath = path / getChainDirName( *m_params );
     fs::path extrasPath = chainPath / fs::path( toString( c_databaseVersion ) );
 
     fs::create_directories( extrasPath );
@@ -254,7 +253,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     try {
         fs::create_directories( chainPath / fs::path( "blocks_and_extras" ) );
         m_rotator = std::make_shared< batched_io::rotating_db_io >(
-            chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().nodeInfo.archiveMode );
+            chainPath / fs::path( "blocks_and_extras" ), 5, chainParams().isArchiveModeEnabled() );
         m_rotating_db = std::make_shared< db::ManuallyRotatingLevelDB >( m_rotator );
         auto db = std::make_shared< batched_io::batched_db >();
         db->open( m_rotating_db );
@@ -289,9 +288,9 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
         AmsterdamFixPatch::initOnChain( *m_blocksDB, *m_extrasDB, *m_db, chainParams() );
 
     if ( _we != WithExisting::Verify && !details( m_genesisHash ) ) {
-        BlockHeader gb( m_params.genesisBlock() );
+        BlockHeader gb( m_params->genesisBlock() );
         // Insert details of genesis block.
-        bytes const& genesisBlockBytes = m_params.genesisBlock();
+        bytes const& genesisBlockBytes = m_params->genesisBlock();
         BlockDetails details( 0, gb.difficulty(), h256(), {}, genesisBlockBytes.size() );
         auto r = details.rlp();
         details.size = r.size();
@@ -308,7 +307,7 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
     // HACK Unfortunate crash can leave us with rotated DB but not added pieceUsageBytes, best and
     // genesis! So, finish possibly unfinished rotation ( though better to do it in batched_*
     // classes :( )
-    if ( m_params.sChain.dbStorageLimit > 0 &&
+    if ( m_params->getDbStorageLimit() > 0 &&
          !m_rotating_db->currentPiece()->exists( ( db::Slice ) "pieceUsageBytes" ) ) {
         // re-insert genesis
         BlockDetails details = this->details( m_genesisHash );
@@ -333,12 +332,6 @@ void BlockChain::open( fs::path const& _path, bool _applyPatches, WithExisting _
 
     if ( _applyPatches && TotalStorageUsedPatch::isInitOnChainNeeded( *m_db ) )
         TotalStorageUsedPatch::initOnChain( *this );
-}
-
-void BlockChain::reopen( ChainParams const& _p, bool _applyPatches, WithExisting _we ) {
-    close();
-    init( _p );
-    open( m_dbPath, _applyPatches, _we );
 }
 
 void BlockChain::close() {
@@ -660,7 +653,7 @@ void BlockChain::checkBlockIsNew( VerifiedBlockRef const& _block ) const {
 
 void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
     // Check it's not crazy
-    if ( _header.timestamp() > utcTime() && !m_params.allowFutureBlocks ) {
+    if ( _header.timestamp() > utcTime() && !m_params->isAllowFutureBlocks() ) {
         LOG( m_loggerTrace ) << _header.hash() << " : Future time " << _header.timestamp()
                              << " (now at " << utcTime() << ")";
         // Block has a timestamp in the future. This is no good.
@@ -670,10 +663,10 @@ void BlockChain::checkBlockTimestamp( BlockHeader const& _header ) const {
 
 bool BlockChain::rotateDBIfNeeded( uint64_t pieceUsageBytes ) {
     bool isRotate = false;
-    if ( m_params.sChain.dbStorageLimit > 0 ) {
+    if ( m_params->getDbStorageLimit() > 0 ) {
         // account for size of 1 piece
         isRotate =
-            ( pieceUsageBytes > m_params.sChain.dbStorageLimit / m_rotating_db->piecesCount() ) ?
+            ( pieceUsageBytes > m_params->getDbStorageLimit() / m_rotating_db->piecesCount() ) ?
                 true :
                 false;
         if ( isRotate ) {
@@ -1650,7 +1643,7 @@ bool BlockChain::isKnown( h256 const& _hash, bool _isCurrent ) const {
 
 bytes BlockChain::block( h256 const& _hash ) const {
     if ( _hash == m_genesisHash )
-        return m_params.genesisBlock();
+        return m_params->genesisBlock();
 
     {
         ReadGuard l( x_blocks );
@@ -1706,17 +1699,17 @@ Block BlockChain::genesisBlock(
 
     ret.noteChain( *this );
 
-    ret.mutableState().populateFrom( m_params.genesisState );
+    ret.mutableState().populateFrom( m_params->getGenesisState() );
     ret.mutableState().commit();
 
-    ret.m_previousBlock = BlockHeader( m_params.genesisBlock() );
+    ret.m_previousBlock = BlockHeader( m_params->genesisBlock() );
     ret.resetCurrent();
     return ret;
 }
 
 Block BlockChain::genesisBlock( const State& _state ) const {
     Block ret( *this, m_genesisHash, _state, skale::BaseState::PreExisting );
-    ret.m_previousBlock = BlockHeader( m_params.genesisBlock() );
+    ret.m_previousBlock = BlockHeader( m_params->genesisBlock() );
     ret.resetCurrent();
     return ret;
 }
