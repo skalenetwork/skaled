@@ -84,7 +84,9 @@ extern std::string const c_allowFutureBlocks;
 extern std::string const c_skaleConfig;
 extern std::string const c_stateRoot;
 extern std::string const c_accountInitialFunds;
+#ifndef MIRAGE
 extern std::string const c_externalGasDifficulty;
+#endif
 
 // Validate config.json that contains chain params and genesis state
 void validateConfigJson( json_spirit::mObject const& _obj );

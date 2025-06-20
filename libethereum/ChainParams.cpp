@@ -154,9 +154,11 @@ ChainParams ChainParams::loadConfig(
         cp.networkID =
             int( u256( fromBigEndian< u256 >( fromHex( params.at( c_networkID ).get_str() ) ) ) );
     cp.allowFutureBlocks = params.count( c_allowFutureBlocks );
+#ifndef MIRAGE
     if ( cp.externalGasDifficulty == 0 ) {
         cp.externalGasDifficulty = -1;
     }
+#endif
 
     // genesis
     string genesisStr = json_spirit::write_string( obj[c_genesis], false );
