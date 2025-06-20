@@ -37,13 +37,12 @@
 Broadcaster::~Broadcaster() {}
 
 HttpBroadcaster::HttpBroadcaster( dev::eth::Client& _client ) : m_client( _client ) {
-    const dev::eth::ChainParams& ch = _client.chainParams();
-    initClients( ch.sChain, ch.nodeInfo );
+    initClients( m_client.chainParams() );
 }
 
-void HttpBroadcaster::initClients( dev::eth::SChain sChain, dev::eth::NodeInfo nodeInfo ) {
-    for ( const auto& node : sChain.nodes ) {
-        if ( nodeInfo.id == node.id ) {
+void HttpBroadcaster::initClients( const dev::eth::ChainParams& _chainParams ) {
+    for ( const auto& node : _chainParams.getSchainNodes() ) {
+        if ( _chainParams.getSelfNodeId() == node.id ) {
             continue;
         }
         auto c = new jsonrpc::HttpClient( getHttpUrl( node ) );
@@ -104,8 +103,8 @@ void* ZmqBroadcaster::server_socket() const {
         const dev::eth::ChainParams& ch = m_client.chainParams();
 
         // connect server to clients
-        for ( const auto& node : ch.sChain.nodes ) {
-            if ( node.id == ch.nodeInfo.id )
+        for ( const auto& node : ch.getSchainNodes() ) {
+            if ( node.id == ch.getSelfNodeId() )
                 continue;
             int res = zmq_connect( m_zmq_server_socket, getZmqUrl( node ).c_str() );
             if ( res != 0 ) {
@@ -138,7 +137,7 @@ void* ZmqBroadcaster::client_socket() const {
 
         // start listen as client
         std::string listen_addr =
-            "tcp://" + ch.nodeInfo.ip + ":" + std::to_string( ch.nodeInfo.port + 5 );
+            "tcp://" + ch.getSelfNodeIp() + ":" + std::to_string( ch.getSelfNodePort() + 5 );
         int res = zmq_bind( m_zmq_client_socket, listen_addr.c_str() );
         if ( res ) {
             throw StartupException(

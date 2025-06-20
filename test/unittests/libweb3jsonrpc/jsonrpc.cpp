@@ -267,7 +267,7 @@ private:
 struct JsonRpcFixture : public TestOutputHelperFixture {
     // chain params needs to be a field of JsonRPCFixture
     // since references to it are passed to the server
-    ChainParams chainParams;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
 
 
     JsonRpcFixture( const std::string& _config = "", bool _owner = true,
@@ -295,7 +295,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
-                chainParams = chainParams.loadConfig( output );
+                chainParams->loadConfig( output );
             } else {
                 Json::Value ret;
                 Json::Reader().parse( _config, ret );
@@ -305,7 +305,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
 #endif
                 Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
-                chainParams = chainParams.loadConfig( output );
+                chainParams->loadConfig( output );
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -315,64 +315,64 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                     "0x23ABDBD3C61B5330AF61EBE8BEF582F4E5CC08E554053A718BDCE7813B9DC1FC" ) );
             }
         } else {
-            chainParams.sealEngineName = NoProof::name();
-            chainParams.allowFutureBlocks = true;
-            chainParams.difficulty = chainParams.minimumDifficulty;
-            chainParams.gasLimit = chainParams.maxGasLimit;
-            chainParams.byzantiumForkBlock = 0;
-            chainParams.EIP158ForkBlock = 0;
-            chainParams.constantinopleForkBlock = 0;
-            chainParams.istanbulForkBlock = 0;
-            chainParams.externalGasDifficulty = 1;
+            chainParams->sealEngineName = NoProof::name();
+            chainParams->allowFutureBlocks = true;
+            chainParams->difficulty = chainParams->getMinimumDifficulty();
+            chainParams->gasLimit = chainParams->getMaxGasLimit();
+            chainParams->byzantiumForkBlock = 0;
+            chainParams->EIP158ForkBlock = 0;
+            chainParams->constantinopleForkBlock = 0;
+            chainParams->istanbulForkBlock = 0;
+            chainParams->externalGasDifficulty = 1;
 #ifndef MIRAGE
-            chainParams.sChain.contractStorageLimit = 128;
+            chainParams->sChain.contractStorageLimit = 128;
 #endif
             // 615 + 1430 is experimentally-derived block size + average extras size
-            chainParams.sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
+            chainParams->sChain.dbStorageLimit = 320.5 * ( 615 + 1430 );
 #ifdef MIRAGE
-            chainParams.sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
+            chainParams->sChain.nodes[0].owner = jsToAddress( "0x0E7d7F1D34a502bD609542576941C3FCc087c588" );
 #endif
 #ifndef MIRAGE
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::ContractStoragePatch )] =
                 1;
-            chainParams.sChain._patchTimestamps[static_cast< size_t >(
+            chainParams->sChain._patchTimestamps[static_cast< size_t >(
                 SchainPatchEnum::StorageDestructionPatch )] = 1;
             powPatchActivationTimestamp = time( nullptr ) + 60;
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::CorrectForkInPowPatch )] =
                 powPatchActivationTimestamp;
             push0PatchActivationTimestamp = time( nullptr ) + 10;
-            chainParams.sChain
+            chainParams->sChain
                 ._patchTimestamps[static_cast< size_t >( SchainPatchEnum::PushZeroPatch )] =
                 push0PatchActivationTimestamp;
 #endif
-            chainParams.sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
+            chainParams->sChain.emptyBlockIntervalMs = _emptyBlockIntervalMs;
             // add random extra data to randomize genesis hash and get random DB path,
             // so that tests can be run in parallel
             // TODO: better make it use ethemeral in-memory databases
-            chainParams.extraData = h256::random().asBytes();
-            chainParams.nodeInfo.port = chainParams.nodeInfo.port6 = rand_port;
-            chainParams.sChain.nodes[0].port = chainParams.sChain.nodes[0].port6 = rand_port;
-            chainParams.skaleDisableChainIdCheck = true;
+            chainParams->extraData = h256::random().asBytes();
+            chainParams->nodeInfo.port = chainParams->nodeInfo.port6 = rand_port;
+            chainParams->sChain.nodes[0].port = chainParams->sChain.nodes[0].port6 = rand_port;
+            chainParams->skaleDisableChainIdCheck = true;
 
             if ( params.count( "getLogsBlocksLimit" ) && stoi( params.at( "getLogsBlocksLimit" ) ) )
-                chainParams.getLogsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
+                chainParams->logsBlocksLimit = stoi( params.at( "getLogsBlocksLimit" ) );
         }
-        chainParams.sChain.multiTransactionMode = _mtmEnabled;
-        chainParams.nodeInfo.syncNode = _isSyncNode;
+        chainParams->sChain.multiTransactionMode = _mtmEnabled;
+        chainParams->nodeInfo.syncNode = _isSyncNode;
 
         auto monitor = make_shared< InstanceMonitor >( "test" );
 
 
         setenv( "DATA_DIR", tempDir.path().c_str(), 1 );
-        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+        client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
             shared_ptr< GasPricer >(), NULL, monitor, tempDir.path(), WithExisting::Kill ) );
 
         if ( !_generation2 )
             client->setAuthor( coinbase.address() );
         else
-            client->setAuthor( chainParams.sChain.blockAuthor );
+            client->setAuthor( chainParams->getBlockAuthor() );
 
         // wait for 1st block - because it's always empty
         std::promise< void > blockPromise;
@@ -417,7 +417,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         inject_rapidjson_handlers( serverOpts, ethFace );
 
         serverOpts.netOpts_.bindOptsStandard_.cntServers_ = 1;
-        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams.nodeInfo.ip;
+        serverOpts.netOpts_.bindOptsStandard_.strAddrHTTP4_ = chainParams->getSelfNodeIp();
         // random port
         // +3 because rand() seems to be called effectively simultaneously here and in "static"
         // section - thus giving same port for consensus
@@ -430,7 +430,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
         sleep( 1 );
 
         httpClient = new jsonrpc::HttpClient(
-            "http://" + chainParams.nodeInfo.ip + ":" +
+            "http://" + chainParams->getSelfNodeIp() + ":" +
             std::to_string( serverOpts.netOpts_.bindOptsStandard_.nBasePortHTTP4_ ) );
         httpClient->SetTimeout( 1000000000 );
 

@@ -34,7 +34,7 @@ size_t AmsterdamFixPatch::lastGoodBlock( const ChainParams& _chainParams ) {
     if ( lgb_str )
         return strtoul( lgb_str, nullptr, 10 );
 
-    switch ( _chainParams.chainID ) {
+    switch ( _chainParams.getChainId() ) {
     case 0xd2ba743e9fef4:
         return 1981742;  // checked on http://18.130.254.6:10003 and http://88.99.209.96:10003
     case 0x292a2c91ca6a3:
@@ -75,7 +75,7 @@ bool AmsterdamFixPatch::isInitOnChainNeeded(
 bool AmsterdamFixPatch::isEnabled( const Client& _client ) {
     //_client.call();
     // return _client.number() < lastBlockToModify;
-    auto chainID = _client.chainParams().chainID;
+    auto chainID = _client.chainParams().getChainId();
     bool res = ( chainID == 0xd2ba743e9fef4 || chainID == 0x292a2c91ca6a3 ||
                    chainID == 0x1c6fa7f59eeac || chainID == 0x4b127e9c2f7de ) &&
                _client.countAt( magicAddress ) == 0;
@@ -234,7 +234,7 @@ void AmsterdamFixPatch::initOnChain( batched_io::db_operations_face& _blocksDB,
     }  // for
 }
 bool AmsterdamFixPatch::stateRootCheckingEnabled( const Client& _client ) {
-    uint64_t chainID = _client.chainParams().chainID;
+    uint64_t chainID = _client.chainParams().getChainId();
     if ( !isEnabled( _client ) )
         return true;
 
@@ -259,12 +259,13 @@ h256 AmsterdamFixPatch::overrideStateRoot( const Client& _client ) {
 }
 
 bool AmsterdamFixPatch::snapshotHashCheckingEnabled( const dev::eth::ChainParams& _cp ) {
-    if ( _cp.chainID != 0xd2ba743e9fef4 && _cp.chainID != 0x292a2c91ca6a3 &&
-         _cp.chainID != 0x1c6fa7f59eeac && _cp.chainID != 0x4b127e9c2f7de )
+    if ( _cp.getChainId() != 0xd2ba743e9fef4 && _cp.getChainId() != 0x292a2c91ca6a3 &&
+         _cp.getChainId() != 0x1c6fa7f59eeac && _cp.getChainId() != 0x4b127e9c2f7de )
         return true;
 
     std::vector< size_t > majority = majorityNodesIds();
-    bool found = majority.end() != std::find( majority.begin(), majority.end(), _cp.nodeInfo.id );
+    bool found =
+        majority.end() != std::find( majority.begin(), majority.end(), _cp.getSelfNodeId() );
 
     // disable checking on minority
     return found;
