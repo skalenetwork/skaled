@@ -186,9 +186,13 @@ uint64_t BlockChain::getLatestBlockTimestamp(
     const ChainParams& _params, const boost::filesystem::path& _dataDir ) {
     boost::filesystem::path dbDir = _dataDir / getChainDirName( _params );
 
-    fs::create_directories( dbDir / fs::path( "blocks_and_extras" ) );
+    fs::path blocksAndExtrasDbPath = dbDir / fs::path( "blocks_and_extras" );
+    // if the db doesn't exist it means that the node has empty data dir
+    if ( !fs::exists( blocksAndExtrasDbPath ) )
+        return 0;
+
     auto rotator = std::make_shared< batched_io::rotating_db_io >(
-        dbDir / fs::path( "blocks_and_extras" ), 5, _params.isArchiveModeEnabled() );
+        blocksAndExtrasDbPath, 5, _params.isArchiveModeEnabled() );
     auto rotatingDb = std::make_shared< db::ManuallyRotatingLevelDB >( rotator );
 
     std::string latestBlockTimestampStr =
