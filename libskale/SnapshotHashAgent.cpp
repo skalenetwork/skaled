@@ -177,7 +177,6 @@ bool SnapshotHashAgent::voteForHash() {
             auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
             libff::alt_bn128_G2 commonPublicKey_from_config;
 
-#ifdef MIRAGE
             commonPublicKey_from_config.X.c0 =
                 libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
             commonPublicKey_from_config.X.c1 =
@@ -186,16 +185,6 @@ bool SnapshotHashAgent::voteForHash() {
                 libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
             commonPublicKey_from_config.Y.c1 =
                 libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
-#else
-            commonPublicKey_from_config.X.c0 =
-                libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
-            commonPublicKey_from_config.X.c1 =
-                libff::alt_bn128_Fq( commonBlsPublicKeyArray[1].c_str() );
-            commonPublicKey_from_config.Y.c0 =
-                libff::alt_bn128_Fq( commonBlsPublicKeyArray[2].c_str() );
-            commonPublicKey_from_config.Y.c1 =
-                libff::alt_bn128_Fq( commonBlsPublicKeyArray[3].c_str() );
-#endif
             commonPublicKey_from_config.Z = libff::alt_bn128_Fq2::one();
             LOG( m_loggerDebug ) << "NEW BLS COMMON PUBLIC KEY:";
             commonPublicKey_from_config.print_coordinates();
