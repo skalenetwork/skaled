@@ -169,11 +169,6 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     // keep original SKL-style config for compatibility (only for tests)
     bool isLegacy =
         skaleObj.at( "sChain" ).get_obj().at( "nodes" ).type() == json_spirit::array_type;
-//    try {
-//        ;
-//    } catch ( ... ) {
-//        isLegacy = true;
-//    }
 #endif
 
     auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
@@ -479,9 +474,9 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
             std::vector< sChainNode > nodes;
 
-            std::string keyShareName;
-            std::array< std::string, 4 > BLSPublicKey;
-            std::array< std::string, 4 > commonBLSPublicKey;
+            //            std::string keyShareName;
+            //            std::array< std::string, 4 > BLSPublicKey;
+            //            std::array< std::string, 4 > commonBLSPublicKey;
 
             if ( startTs > 0 ) {
                 // read bls related info
@@ -513,7 +508,7 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 startTs = 0;
             }
             s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
-                ( uint64_t ) startTs, keyShareName, BLSPublicKey, commonBLSPublicKey };
+                ( uint64_t ) startTs, keyShareName, BLSPublicKeys, commonBLSPublicKeys };
             s.t = t;
         }
     }

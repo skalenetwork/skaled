@@ -140,6 +140,9 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
         sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName, blsKeyName );
 
 
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested(
+        std::runtime_error( std::string( "Error filling SGX info (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
@@ -191,6 +194,9 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 
     consensus.setPublicKeyInfo(
         ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().isSyncNode() );
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested( std::runtime_error(
+        std::string( "Error filling public keys info (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
@@ -218,6 +224,9 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
         std::make_shared< std::map< uint64_t, std::vector< std::string > > >( previousBLSKeys ),
         std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ),
         std::make_shared< std::map< uint64_t, std::vector< uint64_t > > >( historicNodeGroups ) );
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested( std::runtime_error(
+        std::string( "Error reading rotation history (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }

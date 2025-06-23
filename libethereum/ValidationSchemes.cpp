@@ -341,7 +341,7 @@ void validateConfigJson( js::mObject const& _obj ) {
 #ifndef MIRAGE
     js::mArray const& nodes = sChain.at( "nodes" ).get_array();
     for ( auto const& obj : nodes ) {
-        const js::mObject node = obj.get_obj();
+        const js::mObject& node = obj.get_obj();
         requireNodeJsonFields( node );
     }
 #else
@@ -349,7 +349,7 @@ void validateConfigJson( js::mObject const& _obj ) {
         // legacy config, keep it for compatibility
         js::mArray const& nodes = sChain.at( "nodes" ).get_array();
         for ( auto const& obj : nodes ) {
-            const js::mObject node = obj.get_obj();
+            const js::mObject& node = obj.get_obj();
             requireNodeJsonFields( node );
         }
     } else {
