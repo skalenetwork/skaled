@@ -160,7 +160,8 @@ BOOST_AUTO_TEST_SUITE( BtrfsTestSuite,
 BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
 
@@ -251,14 +252,16 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( NoBtrfsTest, NoBtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    BOOST_REQUIRE_THROW( SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) ),
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    BOOST_REQUIRE_THROW( SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) ),
         SnapshotManager::CannotPerformBtrfsOperation );
 }
 
 BOOST_FIXTURE_TEST_CASE( BadPathTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams() );
     BOOST_REQUIRE_EXCEPTION(
-        SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_invalid" ),
+        SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) / "_invalid" ),
         SnapshotManager::InvalidPath, [this]( const SnapshotManager::InvalidPath& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_invalid";
         } );
@@ -289,17 +292,18 @@ BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
 
     dropRoot();
 
-    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_w" ),
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams() );
+    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) / "_no_w" ),
         SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_w" / "snapshots";
         } );
 
-    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_x" ),
+    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) / "_no_x" ),
         SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_x" / "snapshots";
         } );
 
-    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( dev::eth::ChainParams(), fs::path( BTRFS_DIR_PATH ) / "_no_r" ),
+    BOOST_REQUIRE_EXCEPTION( SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) / "_no_r" ),
         SnapshotManager::CannotCreate, [this]( const SnapshotManager::CannotCreate& ex ) -> bool {
             return ex.path == fs::path( BTRFS_DIR_PATH ) / "_no_x" / "snapshots";
         } );
@@ -307,7 +311,8 @@ BOOST_FIXTURE_TEST_CASE( InaccessiblePathTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 2 ) );
     BOOST_REQUIRE_THROW( mgr.doSnapshot( 2 ), SnapshotManager::SnapshotPresent );
@@ -336,7 +341,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::SnapshotAbsent );
 
@@ -355,7 +361,8 @@ BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
 #ifndef MIRAGE
 BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
     mgr.doSnapshot( 2 );
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "dir" );
     mgr.doSnapshot( 4 );
@@ -389,7 +396,8 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
 
 BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_THROW( mgr.importDiff( 8 ), SnapshotManager::InvalidPath );
 
@@ -434,7 +442,8 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     BOOST_REQUIRE_NO_THROW( mgr.doSnapshot( 1 ) );
     sleep( 1 );
@@ -455,7 +464,8 @@ BOOST_FIXTURE_TEST_CASE( SnapshotRotationTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     fs::path diff12 = mgr.getDiffPath( 2 );
     {
@@ -485,7 +495,8 @@ BOOST_FIXTURE_TEST_CASE( DiffRotationTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
     
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     mgr.doSnapshot( 1 );
     mgr.doSnapshot( 2 );
@@ -503,7 +514,8 @@ BOOST_FIXTURE_TEST_CASE( RemoveSnapshotTest, BtrfsFixture,
 BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
 
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    SnapshotManager mgr( dev::eth::ChainParams{}, fs::path( BTRFS_DIR_PATH ) );
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
+    SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     mgr.doSnapshot( 1 );
     mgr.doSnapshot( 2 );
@@ -527,8 +539,8 @@ BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
 #ifdef HISTORIC_STATE
 BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
                          *boost::unit_test::precondition( dev::test::run_not_express ) ) {
-    auto chainParams = dev::eth::ChainParams();
-    chainParams.nodeInfo.archiveMode = true;
+    std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams() );
+    chainParams->setArchiveMode();
     SnapshotManager mgr( chainParams, fs::path( BTRFS_DIR_PATH ) );
 
     std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );

@@ -72,7 +72,7 @@ private:
     dev::eth::Client& m_client;
     std::vector< std::shared_ptr< SkaleClient > > m_nodeClients;
 
-    void initClients( dev::eth::SChain, dev::eth::NodeInfo );
+    void initClients( const dev::eth::ChainParams& _chainParams );
     std::string getHttpUrl( const dev::eth::sChainNode& );
 
     dev::Logger m_loggerInfo{ dev::createLogger( dev::VerbosityInfo, "HttpBroadcaster" ) };

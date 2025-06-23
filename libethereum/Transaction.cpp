@@ -199,7 +199,7 @@ u256 Transaction::gasPrice() const {
 
 void Transaction::checkOutExternalGas(
     const ChainParams& _cp, time_t _committedBlockTimestamp, uint64_t _committedBlockNumber ) {
-    u256 const& difficulty = _cp.externalGasDifficulty;
+    u256 const& difficulty = _cp.getExternalGasDifficulty();
     assert( difficulty > 0 );
     if ( !isInvalid() ) {
         h256 hash;

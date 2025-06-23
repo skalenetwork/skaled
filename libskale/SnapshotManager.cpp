@@ -54,16 +54,17 @@ const std::string SnapshotManager::snapshotHashFileName = "snapshot_hash.txt";
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
+SnapshotManager::SnapshotManager( std::shared_ptr< const dev::eth::ChainParams > _chainParams,
     const fs::path& _dataDir, const std::string& _diffsDir )
     : chainParams( _chainParams ) {
     dataDir = _dataDir;
-    coreVolumes = { dev::eth::BlockChain::getChainDirName( chainParams ),
+
+    coreVolumes = { dev::eth::BlockChain::getChainDirName( *chainParams ),
 #ifndef MIRAGE
         "filestorage",
 #endif
-        "prices_" + chainParams.nodeInfo.id.str() + ".db",
-        "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+        "prices_" + chainParams->getSelfNodeId().str() + ".db",
+        "blocks_" + chainParams->getSelfNodeId().str() + ".db" };
 
 #ifdef HISTORIC_STATE
     archiveVolumes = { "historic_roots", "historic_state" };
