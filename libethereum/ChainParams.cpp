@@ -165,6 +165,17 @@ void ChainParams::loadConfig( string const& _json, const boost::filesystem::path
 void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     auto skaleObj = obj[c_skaleConfig].get_obj();
 
+#ifdef MIRAGE
+    // keep original SKL-style config for compatibility (only for tests)
+    bool isLegacy =
+        skaleObj.at( "sChain" ).get_obj().at( "nodes" ).type() == json_spirit::array_type;
+//    try {
+//        ;
+//    } catch ( ... ) {
+//        isLegacy = true;
+//    }
+#endif
+
     auto infoObj = skaleObj.at( "nodeInfo" ).get_obj();
 
     auto nodeName = infoObj.at( "nodeName" ).get_str();
@@ -173,9 +184,9 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
     bool archiveMode = false;
     bool syncFromCatchup = false;
     string ip, ip6, keyShareName, sgxServerUrl;
-#ifndef MIRAGE
+
     size_t t = 0;
-#endif
+
     uint64_t port = 0, port6 = 0;
     try {
         ip = infoObj.at( "bindIP" ).get_str();
@@ -230,28 +241,32 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
         ecdsaKeyName = infoObj.at( "ecdsaKeyName" ).get_str();
 
-#ifndef MIRAGE
-        if ( infoObj.count( "wallets" ) == 0 ) {
-            throw std::runtime_error(
-                "No wallets section in test config, and testSignatures is not set to true" );
-        }
+#ifdef MIRAGE
+        if ( isLegacy ) {
+#endif
+            if ( infoObj.count( "wallets" ) == 0 ) {
+                throw std::runtime_error(
+                    "No wallets section in test config, and testSignatures is not set to true" );
+            }
 
-        js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
+            js::mObject ima = infoObj.at( "wallets" ).get_obj().at( "ima" ).get_obj();
 
-        commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
-        commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
-        commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
-        commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
+            commonBLSPublicKeys[0] = ima["commonBLSPublicKey0"].get_str();
+            commonBLSPublicKeys[1] = ima["commonBLSPublicKey1"].get_str();
+            commonBLSPublicKeys[2] = ima["commonBLSPublicKey2"].get_str();
+            commonBLSPublicKeys[3] = ima["commonBLSPublicKey3"].get_str();
 
-        if ( !syncNode ) {
-            keyShareName = ima.at( "keyShareName" ).get_str();
+            if ( !syncNode ) {
+                keyShareName = ima.at( "keyShareName" ).get_str();
 
-            t = ima.at( "t" ).get_int();
+                t = ima.at( "t" ).get_int();
 
-            BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
-            BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
-            BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
-            BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+                BLSPublicKeys[0] = ima["BLSPublicKey0"].get_str();
+                BLSPublicKeys[1] = ima["BLSPublicKey1"].get_str();
+                BLSPublicKeys[2] = ima["BLSPublicKey2"].get_str();
+                BLSPublicKeys[3] = ima["BLSPublicKey3"].get_str();
+            }
+#ifdef MIRAGE
         }
 #endif
     }
@@ -390,11 +405,13 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         s.nodeGroups = nodeGroups;
     }
 
-#ifndef MIRAGE
-    for ( auto nodeConf : sChainObj.at( "nodes" ).get_array() ) {
-        auto nodeConfObj = nodeConf.get_obj();
+    auto parseNodeDetails = [&keyShareName]( const auto& jsonNodeObj ) -> sChainNode {
+        auto nodeConfObj = jsonNodeObj.get_obj();
         sChainNode node{};
         node.id = nodeConfObj.at( "nodeID" ).get_uint64();
+#ifdef MIRAGE
+        node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
+#endif
         node.ip = nodeConfObj.at( "ip" ).get_str();
         node.port = nodeConfObj.at( "basePort" ).get_uint64();
         try {
@@ -425,95 +442,80 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
                 node.blsPublicKey[3] = "";
             }
         }
+        return node;
+    };
+
+    // read current group(s) details
+#ifndef MIRAGE
+    for ( const auto& nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+        auto node = parseNodeDetails( nodeConf );
         s.nodes.push_back( node );
     }
 #else
-    // read current group(s) details
-    auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
-    if ( nodesObjects.size() != c_currentGroupsSize )
-        BOOST_THROW_EXCEPTION( runtime_error( std::string( "Nodes must have exactly " ) +
-                                              std::to_string( c_currentGroupsSize ) +
-                                              std::string( " groups provided." ) ) );
-    for ( auto it = nodesObjects.begin(); it != nodesObjects.end(); ++it ) {
-        int64_t startTs;
-        try {
-            startTs = std::stoll( it->first );
-        } catch ( const std::exception& ) {
-            BOOST_THROW_EXCEPTION( runtime_error( "Invalid startTs in nodes section." ) );
+    if ( isLegacy ) {
+        // read only nodes details here
+        // we got BLS related info earlier
+        for ( const auto& nodeConf : sChainObj.at( "nodes" ).get_array() ) {
+            auto node = parseNodeDetails( nodeConf );
+            s.nodes.push_back( node );
         }
-
-        std::vector< sChainNode > nodes;
-
-        std::string keyShareName;
-        std::array< std::string, 4 > BLSPublicKey;
-        std::array< std::string, 4 > commonBLSPublicKey;
-        size_t t = 0;
-
-        if ( startTs > 0 ) {
-            // read bls related info
-            if ( !testSignatures ) {
-                const js::mObject& blsKeyInfo = it->second.get_obj().at( "blsKey" ).get_obj();
-                commonBLSPublicKeys[0] = blsKeyInfo.at( "commonBLSPublicKey0" ).get_str();
-                commonBLSPublicKeys[1] = blsKeyInfo.at( "commonBLSPublicKey1" ).get_str();
-                commonBLSPublicKeys[2] = blsKeyInfo.at( "commonBLSPublicKey2" ).get_str();
-                commonBLSPublicKeys[3] = blsKeyInfo.at( "commonBLSPublicKey3" ).get_str();
-
-                if ( !syncNode ) {
-                    keyShareName = blsKeyInfo.at( "keyShareName" ).get_str();
-
-                    t = blsKeyInfo.at( "t" ).get_int();
-
-                    BLSPublicKeys[0] = blsKeyInfo.at( "BLSPublicKey0" ).get_str();
-                    BLSPublicKeys[1] = blsKeyInfo.at( "BLSPublicKey1" ).get_str();
-                    BLSPublicKeys[2] = blsKeyInfo.at( "BLSPublicKey2" ).get_str();
-                    BLSPublicKeys[3] = blsKeyInfo.at( "BLSPublicKey3" ).get_str();
-                }
+        s.t = t;
+        s.currentGroups[1] = { s.nodes, 1, keyShareName, BLSPublicKeys, commonBLSPublicKeys };
+        // make it default
+        s.currentGroups[0] = { {}, 0, "", {}, {} };
+    } else {
+        auto nodesObjects = sChainObj.at( "nodes" ).get_obj();
+        if ( nodesObjects.size() != c_currentGroupsSize )
+            BOOST_THROW_EXCEPTION( runtime_error( std::string( "Nodes must have exactly " ) +
+                                                  std::to_string( c_currentGroupsSize ) +
+                                                  std::string( " groups provided." ) ) );
+        for ( auto it = nodesObjects.begin(); it != nodesObjects.end(); ++it ) {
+            int64_t startTs;
+            try {
+                startTs = std::stoll( it->first );
+            } catch ( const std::exception& ) {
+                BOOST_THROW_EXCEPTION( runtime_error( "Invalid startTs in nodes section." ) );
             }
-            // now parse nodes details
-            for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
-                auto nodeConfObj = nodeConf.get_obj();
-                sChainNode node{};
-                node.id = nodeConfObj.at( "nodeID" ).get_uint64();
-                node.owner = jsToAddress( nodeConfObj.at( "owner" ).get_str() );
-                node.ip = nodeConfObj.at( "ip" ).get_str();
-                node.port = nodeConfObj.at( "basePort" ).get_uint64();
-                try {
-                    node.ip6 = nodeConfObj.at( "ip6" ).get_str();
-                } catch ( ... ) {
-                    node.ip6 = "";
-                }
-                try {
-                    node.port6 = nodeConfObj.at( "basePort6" ).get_uint64();
-                } catch ( ... ) {
-                    node.port6 = 0;
-                }
-                node.sChainIndex = nodeConfObj.at( "schainIndex" ).get_uint64();
-                try {
-                    node.publicKey = nodeConfObj.at( "publicKey" ).get_str();
-                } catch ( ... ) {
-                }
-                if ( !keyShareName.empty() ) {
-                    try {
-                        node.blsPublicKey[0] = nodeConfObj.at( "blsPublicKey0" ).get_str();
-                        node.blsPublicKey[1] = nodeConfObj.at( "blsPublicKey1" ).get_str();
-                        node.blsPublicKey[2] = nodeConfObj.at( "blsPublicKey2" ).get_str();
-                        node.blsPublicKey[3] = nodeConfObj.at( "blsPublicKey3" ).get_str();
-                    } catch ( ... ) {
-                        node.blsPublicKey[0] = "";
-                        node.blsPublicKey[1] = "";
-                        node.blsPublicKey[2] = "";
-                        node.blsPublicKey[3] = "";
+
+            std::vector< sChainNode > nodes;
+
+            std::string keyShareName;
+            std::array< std::string, 4 > BLSPublicKey;
+            std::array< std::string, 4 > commonBLSPublicKey;
+
+            if ( startTs > 0 ) {
+                // read bls related info
+                if ( !testSignatures ) {
+                    const js::mObject& blsKeyInfo = it->second.get_obj().at( "blsKey" ).get_obj();
+                    commonBLSPublicKeys[0] = blsKeyInfo.at( "commonBLSPublicKey0" ).get_str();
+                    commonBLSPublicKeys[1] = blsKeyInfo.at( "commonBLSPublicKey1" ).get_str();
+                    commonBLSPublicKeys[2] = blsKeyInfo.at( "commonBLSPublicKey2" ).get_str();
+                    commonBLSPublicKeys[3] = blsKeyInfo.at( "commonBLSPublicKey3" ).get_str();
+
+                    if ( !syncNode ) {
+                        keyShareName = blsKeyInfo.at( "keyShareName" ).get_str();
+
+                        t = blsKeyInfo.at( "t" ).get_int();
+
+                        BLSPublicKeys[0] = blsKeyInfo.at( "BLSPublicKey0" ).get_str();
+                        BLSPublicKeys[1] = blsKeyInfo.at( "BLSPublicKey1" ).get_str();
+                        BLSPublicKeys[2] = blsKeyInfo.at( "BLSPublicKey2" ).get_str();
+                        BLSPublicKeys[3] = blsKeyInfo.at( "BLSPublicKey3" ).get_str();
                     }
                 }
-                nodes.push_back( node );
+                // now read nodes details
+                for ( const auto& nodeConf : it->second.get_obj().at( "group" ).get_array() ) {
+                    auto node = parseNodeDetails( nodeConf );
+                    nodes.push_back( node );
+                }
+            } else {
+                // timestamp is set to 0 for BOOT group
+                startTs = 0;
             }
-        } else {
-            // timestamp is set to 0 for BOOT group
-            startTs = 0;
+            s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes,
+                ( uint64_t ) startTs, keyShareName, BLSPublicKey, commonBLSPublicKey };
+            s.t = t;
         }
-        s.currentGroups[std::distance( nodesObjects.begin(), it )] = { nodes, ( uint64_t ) startTs,
-            keyShareName, BLSPublicKey, commonBLSPublicKey };
-        s.t = t;
     }
 
     if ( s.currentGroups[0].startTs > s.currentGroups[1].startTs )
@@ -823,19 +825,24 @@ std::string ChainParams::getConfigForConsensus() const {
 
     js::mObject skaleConfigObj = obj["skaleConfig"].get_obj();
     js::mObject sChainObj = skaleConfigObj["sChain"].get_obj();
-    js::mObject nodesObj = sChainObj["nodes"].get_obj();
 
     js::mArray newNodesObj;
-    if ( sChain.nodes == sChain.currentGroups[0].nodes )
-        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[0].startTs )]
-                          .get_obj()
-                          .at( "group" )
-                          .get_array();
-    else
-        newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )]
-                          .get_obj()
-                          .at( "group" )
-                          .get_array();
+    if ( sChainObj["nodes"].type() == json_spirit::obj_type ) {
+        js::mObject nodesObj = sChainObj["nodes"].get_obj();
+
+        if ( sChain.nodes == sChain.currentGroups[0].nodes )
+            newNodesObj = nodesObj[std::to_string( sChain.currentGroups[0].startTs )]
+                              .get_obj()
+                              .at( "group" )
+                              .get_array();
+        else
+            newNodesObj = nodesObj[std::to_string( sChain.currentGroups[1].startTs )]
+                              .get_obj()
+                              .at( "group" )
+                              .get_array();
+    } else {
+        newNodesObj = sChainObj["nodes"].get_array();
+    }
 
     sChainObj["nodes"] = newNodesObj;
     skaleConfigObj["sChain"] = sChainObj;
