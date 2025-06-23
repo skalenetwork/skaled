@@ -206,7 +206,7 @@ json_spirit::mValue TransactionTestSuite::doTests(
         string const& testname = i.first;
         json_spirit::mObject const& o = i.second.get_obj();
 
-        if ( !TestOutputHelper::get().checkTest( testname ) )
+        if ( !TestOutputHelper::get().shouldRunTest( testname ) )
             continue;
 
         if ( _fillin )

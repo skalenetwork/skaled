@@ -55,7 +55,7 @@ json_spirit::mValue BlockchainTestSuite::doTests(
         json_spirit::mObject const& inputTest = i.second.get_obj();
 
         // Select test by name if --singletest is set and not filling state tests as blockchain
-        if ( !Options::get().fillchain && !TestOutputHelper::get().checkTest( testname ) )
+        if ( !Options::get().fillchain && !TestOutputHelper::get().shouldRunTest( testname ) )
             continue;
 
         BOOST_REQUIRE_MESSAGE( inputTest.count( "genesisBlockHeader" ),
@@ -163,7 +163,7 @@ json_spirit::mValue TransitionTestsSuite::doTests(
         if ( test::isDisabledNetwork( dev::test::TestBlockChain::s_sealEngineNetwork ) )
             continue;
 
-        if ( !TestOutputHelper::get().checkTest( testname ) ) {
+        if ( !TestOutputHelper::get().shouldRunTest(testname ) ) {
             o.clear();  // don't add irrelevant tests to the final file when filling
             continue;
         }
@@ -220,6 +220,8 @@ void ChainBranch::resetBlockchain() {
 }
 
 json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
+    std::cout << "FILL BC TEST\n\n" << std::endl;
+
     json_spirit::mObject output;
     string const& testName = TestOutputHelper::get().testName();
     TestBlock genesisBlock(
@@ -243,6 +245,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         output["network"] = _input.at( "network" );
 
     for ( auto const& bl : _input.at( "blocks" ).get_array() ) {
+        std::cout << "Parsing block " << std::endl; 
         mObject const& blObjInput = bl.get_obj();
         mObject blObj;
         if ( blObjInput.count( "blocknumber" ) > 0 ) {
@@ -288,6 +291,7 @@ json_spirit::mObject fillBCTest( json_spirit::mObject const& _input ) {
         // Import Transactions
         BOOST_REQUIRE( blObjInput.count( "transactions" ) );
         for ( auto const& txObj : blObjInput.at( "transactions" ).get_array() ) {
+            std::cout << "Importing transaction at test " << testName << "\n";
             TestTransaction transaction( txObj.get_obj() );
             block.addTransaction( transaction );
         }
@@ -425,10 +429,10 @@ void testBCTest( json_spirit::mObject const& _o ) {
 
     for ( auto const& bl : _o.at( "blocks" ).get_array() ) {
         mObject blObj = bl.get_obj();
-        for ( auto const& field : blObj ) {
-            std::cout << "Field: " << field.first << " Value: ";
-            std::cout << field.second.get_str() << std::endl;
-        }
+        // for ( auto const& field : blObj ) {
+        //     std::cout << "Field: " << field.first << " Value: ";
+        //     std::cout << field.second.get_str() << std::endl;
+        // }
         TestBlock blockFromRlp;
         State const preState = testChain.topBlock().state();
         h256 const preHash = testChain.topBlock().blockHeader().hash();
@@ -440,7 +444,6 @@ void testBCTest( json_spirit::mObject const& _o ) {
             blockFromRlp = blRlp;
             if ( blObj.count( "blockHeader" ) == 0 )
                 blockFromRlp.noteDirty();  // disable blockHeader check in TestBlock
-            std::cout << "Failing here 2" << std::endl;
             testChain.addBlock( blockFromRlp );
         }
         // if exception is thrown, RLP is invalid and no blockHeader, Transaction list, or Uncle

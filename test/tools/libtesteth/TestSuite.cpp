@@ -126,6 +126,7 @@ void checkFillerHash( fs::path const& _compiledTest, fs::path const& _sourceTest
 namespace dev {
 namespace test {
 
+// Postifx names for the test files (appended to the end of test file names)
 string const c_fillerPostf = "Filler";
 string const c_copierPostf = "Copier";
 
@@ -144,34 +145,37 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
                               test::Options::get().singleTestName;
     vector< fs::path > const compiledFiles =
         test::getFiles( getFullPath( _testFolder ), {".json", ".yml"}, filter );
-    for ( auto const& file : compiledFiles ) {
-        fs::path const expectedFillerName =
-            getFullPathFiller( _testFolder ) /
-            fs::path( file.stem().string() + c_fillerPostf + ".json" );
-        fs::path const expectedFillerName2 =
-            getFullPathFiller( _testFolder ) /
-            fs::path( file.stem().string() + c_fillerPostf + ".yml" );
-        fs::path const expectedCopierName =
-            getFullPathFiller( _testFolder ) /
-            fs::path( file.stem().string() + c_copierPostf + ".json" );
-        BOOST_REQUIRE_MESSAGE( fs::exists( expectedFillerName ) ||
-                                   fs::exists( expectedFillerName2 ) ||
-                                   fs::exists( expectedCopierName ),
-            "Compiled test folder contains test without Filler: " + file.filename().string() );
-        BOOST_REQUIRE_MESSAGE(
-            !( fs::exists( expectedFillerName ) && fs::exists( expectedFillerName2 ) &&
-                fs::exists( expectedCopierName ) ),
-            "Src test could either be Filler.json, Filler.yml or Copier.json: " +
-                file.filename().string() );
 
-        // Check that filled tests created from actual fillers
-        if ( Options::get().filltests == false ) {
-            if ( fs::exists( expectedFillerName ) )
-                checkFillerHash( file, expectedFillerName );
-            if ( fs::exists( expectedFillerName2 ) )
-                checkFillerHash( file, expectedFillerName2 );
-            if ( fs::exists( expectedCopierName ) )
-                checkFillerHash( file, expectedCopierName );
+    std::vector<std::string> expectedFilePrefixes = {
+        c_fillerPostf + ".json",
+        c_fillerPostf + ".yml",
+        c_copierPostf + ".json"
+    };
+
+    for (auto const& file : compiledFiles) {
+        std::vector<fs::path> existingFiles;
+        for (const auto& prefix : expectedFilePrefixes) {
+            fs::path expectedFile = stripExtensionAndAppendPrefix(_testFolder, file, prefix);
+            if (fs::exists(expectedFile)) {
+                existingFiles.push_back(expectedFile);
+            }
+        }
+
+        // Ensure at least one expected file exists
+        BOOST_REQUIRE_MESSAGE(existingFiles.size() > 0,
+            "The compiled test folder contains a test file (" + file.filename().string() +
+            ") that does not have a corresponding Filler.json, Filler.yml, or Copier.json file in the source folder.");
+
+        // Ensure not all three files exist simultaneously
+        BOOST_REQUIRE_MESSAGE(existingFiles.size() != expectedFilePrefixes.size(),
+            "Source test file must be one of Filler.json, Filler.yml, or Copier.json, but not all three: " +
+            file.filename().string());
+
+        // Check filled tests created from actual fillers
+        if (!Options::get().filltests) {
+            for (auto const& expectedFile : existingFiles) {
+                checkFillerHash(file, expectedFile);
+            }
         }
     }
 
@@ -249,6 +253,11 @@ fs::path TestSuite::getFullPath( string const& _testFolder ) const {
     return test::getTestPath() / suiteFolder() / _testFolder;
 }
 
+fs::path TestSuite::stripExtensionAndAppendPrefix( const std::string& _folder, fs::path const& _file, std::string const& _prefix) const {
+    return getFullPathFiller( _folder ) / fs::path(_file.stem().string() + _prefix);
+}
+
+
 void TestSuite::executeTest( string const& _testFolder, fs::path const& _testFileName ) const {
     fs::path const boostRelativeTestPath = fs::relative( _testFileName, getTestPath() );
     string testname = _testFileName.stem().string();
@@ -289,6 +298,7 @@ void TestSuite::executeTest( string const& _testFolder, fs::path const& _testFil
             if ( !Options::get().singleTest )
                 cnote << "Populating tests...";
 
+            std::cout << "test name: " << testname << std::endl;
             TestFileData fillerData = readTestFile( _testFileName );
             removeComments( fillerData.data );
             json_spirit::mValue output = doTests( fillerData.data, true );

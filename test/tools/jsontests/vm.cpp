@@ -298,7 +298,7 @@ json_spirit::mValue VmTestSuite::doTests( json_spirit::mValue const& _input, boo
     for ( auto& i : _input.get_obj() ) {
         string const& testname = i.first;
         json_spirit::mObject const& testInput = i.second.get_obj();
-        if ( !TestOutputHelper::get().checkTest( testname ) )
+        if ( !TestOutputHelper::get().shouldRunTest( testname ) )
             continue;
 
         output[testname] = json_spirit::mObject();

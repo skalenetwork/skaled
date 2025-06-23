@@ -72,7 +72,14 @@ public:
     void executeTests( const std::string& _name, boost::filesystem::path const& _testPathAppendix,
         boost::filesystem::path const& _fillerPathAppendix,
         std::function< json_spirit::mValue( json_spirit::mValue const&, bool ) > doTests ) const;
+
+    /**
+     * @brief Builds absolute path for the test folder, strips the file extension,
+     *        and appends a prefix to the file name.
+     */
+    boost::filesystem::path stripExtensionAndAppendPrefix(const std::string& _folder, boost::filesystem::path const& _file, std::string const& _prefix) const;
 };
+
 
 }  // namespace test
 }  // namespace dev

@@ -59,25 +59,27 @@ public:
     std::string testpath;                               // Custom test folder path
     boost::optional< boost::filesystem::path > randomCodeOptionsPath;  // Options for random code
                                                                        // generation in fuzz tests
-   bool listTests = false;  ///< List all test suites/cases and exit
+   bool listTests = false;  // List all test suites/cases and exit
 
     /// Test selection
-    /// @{
     bool singleTest = false;
     boost::optional< std::string > singleTestFile;
     std::string singleTestName;
     std::string singleTestNet;
-    int trDataIndex;       ///< GeneralState data
-    int trGasIndex;        ///< GeneralState gas
-    int trValueIndex;      ///< GeneralState value
-    bool manual = false;   ///< Running tests that require external infrastructure.
-    bool all = false;      ///< Running every test, including time consuming ones,
-                           ///< but without "manuallyRunningTests".
-    bool express = false;  ///< run only carefullty selected "express" test
-    /// @}
+    int trDataIndex;       // GeneralState data
+    int trGasIndex;        // GeneralState gas
+    int trValueIndex;      // GeneralState value
+    bool manual = false;   // Running tests that require external infrastructure.
+    bool all = false;      // Running every test, including time consuming ones,
+                           // but without "manuallyRunningTests".
+    bool express = false;  // run only carefullty selected "express" test
 
-    /// Get reference to options
-    /// The first time used, options are parsed with argc, argv
+    /**
+     * @brief Get the singleton instance of Options.
+     * @param argc The number of command-line arguments. Default is 0.
+     * @param argv The array of command-line arguments. Default is nullptr.
+     * @note The first time used, options are parsed with argc, argv
+     */
     static Options const& get( int argc = 0, const char** argv = 0 );
 
 private:
