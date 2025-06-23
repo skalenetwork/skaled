@@ -474,10 +474,6 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
 
             std::vector< sChainNode > nodes;
 
-            //            std::string keyShareName;
-            //            std::array< std::string, 4 > BLSPublicKey;
-            //            std::array< std::string, 4 > commonBLSPublicKey;
-
             if ( startTs > 0 ) {
                 // read bls related info
                 if ( !testSignatures ) {
