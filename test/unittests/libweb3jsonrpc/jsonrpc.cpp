@@ -4282,11 +4282,10 @@ static std::string const c_BITEConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true, )" +
-         string( R"( "externalGasDifficulty": "0x1"  )" +
-
-}
-, "genesis" : {
+         "skaleDisableChainIdCheck": true,
+         "externalGasDifficulty": "0x1"
+    },
+    "genesis" : {
     "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
     "difficulty" : "0x20000",
     "gasLimit" : "0x0f4240",
