@@ -50,7 +50,7 @@ vector< h256 > lastHashes( u256 _currentBlockNumber ) {
 
 int mainnetChainID() {
     static auto const c_mainnetChainID =
-        ChainParams( genesisInfo( eth::Network::MainNetworkTest ) ).chainID;
+        ChainParams( genesisInfo( eth::Network::MainNetworkTest ) ).getChainId();
     return c_mainnetChainID;
 }
 }  // namespace
@@ -260,7 +260,7 @@ std::tuple< State, ImportTest::ExecOutput, skale::ChangeLog > ImportTest::execut
     try {
         unique_ptr< SealEngineFace > se(
             ChainParams( genesisInfo( _sealEngineNetwork ) ).createSealEngine() );
-        removeEmptyAccounts = m_envInfo->number() >= se->chainParams().EIP158ForkBlock;
+        removeEmptyAccounts = m_envInfo->number() >= se->chainParams().getEIP158ForkBlock();
         if ( Options::get().jsontrace ) {
             StandardTrace st;
             st.setShowMnemonics();
