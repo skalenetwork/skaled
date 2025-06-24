@@ -285,7 +285,7 @@ public:
     }
 #else
     std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
-                                              skale::OverlayFS* _overlayFS = nullptr ) const {
+        skale::OverlayFS* _overlayFS = nullptr ) const {
         return precompiled.at( _a ).execute( _in, _overlayFS );
     }
 #endif
