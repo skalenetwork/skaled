@@ -138,6 +138,10 @@ void TestSuite::runTestWithoutFiller( boost::filesystem::path const& _file ) con
     testOutput.finishTest();
 }
 
+bool TestSuite::isFileSuffixedBy(const std::string& _file, const std::string& _suffix) const {
+    return _file.size() > _suffix.size() && _file.substr(0, _suffix.size()) == _suffix;
+}
+
 void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
     // check that destination folder test files has according Filler file in src folder
     string const filter = test::Options::get().singleTestName.empty() ?
@@ -185,54 +189,50 @@ void TestSuite::runAllTestsInFolder( string const& _testFolder ) const {
 
     // Filter out test files based on MIRAGE flag for files with the same prefix
     if ( filter.empty() ) {
-        std::unordered_map<std::string, std::vector<fs::path>> filesByPrefix;
+        
+        const std::string DEFAULT = "D";
+        const std::string MIRAGE_PREFIX = "MIRAGE_";
+        
+        // Group files by their name excluding any suffixes
+        // file name -> suffix -> file path
+        std::unordered_map<std::string, std::unordered_map<std::string, fs::path>> filesByPrefix;
         for (auto const& file : files) {
             std::string fileName = file.stem().string();
+            std::string fileNameWithoutPrefix;
             std::string prefix;
-
-            if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
-                prefix = fileName.substr(7);
-            } else {
-                prefix = fileName;
+            
+            if (isFileSuffixedBy(fileName, MIRAGE_PREFIX)) {
+                prefix = MIRAGE_PREFIX;
+                fileNameWithoutPrefix = fileName.substr(MIRAGE_PREFIX.size());
             }
-
-            filesByPrefix[prefix].push_back(file);
+            else { 
+                prefix = DEFAULT;
+                fileNameWithoutPrefix = fileName;
+            }
+            filesByPrefix[fileNameWithoutPrefix][prefix] = file;
         }
 
         std::vector<fs::path> filteredFiles;
         for (auto const& entry : filesByPrefix) {
-            if (entry.second.size() == 1) {
-                filteredFiles.push_back(entry.second[0]);
-            } else {
-                // We have multiple files with the same prefix
-                bool hasMirage = false;
-                fs::path mirageFile;
-                fs::path nonMirageFile;
-                for (auto const& file : entry.second) {
-                    std::string fileName = file.stem().string();
-                    if (fileName.size() > 7 && fileName.substr(0, 7) == "MIRAGE_") {
-                        hasMirage = true;
-                        mirageFile = file;
-                    } else {
-                        nonMirageFile = file;
-                    }
-                }
+            const auto& prefixMap = entry.second;
+            const bool hasFiles = prefixMap.size();
+            if (hasFiles) {
 
+#ifdef MIRAGE
+                const bool hasMirage = prefixMap.find(MIRAGE_PREFIX) != prefixMap.end();
                 if (hasMirage) {
-    #ifdef MIRAGE
-                    filteredFiles.push_back(mirageFile);
-    #else
-                    filteredFiles.push_back(nonMirageFile);
-    #endif
+                    filteredFiles.push_back(prefixMap.at(MIRAGE_PREFIX));
                 } else {
-                    // If no mirage/non-mirage distinction, add all files
-                    for (auto const& file : entry.second) {
-                        filteredFiles.push_back(file);
-                    }
+                    filteredFiles.push_back(prefixMap.at(DEFAULT));
                 }
+#else
+                filteredFiles.push_back(prefixMap.at(DEFAULT));
+#endif
+
             }
         }
         files = filteredFiles;
+        std::cout << "Filtered test files: " << files << std::endl;
     }
 
     auto& testOutput = test::TestOutputHelper::get();
@@ -272,7 +272,22 @@ void TestSuite::executeTest( string const& _testFolder, fs::path const& _testFil
             false, "Incorrect file suffix in the filler folder! " + _testFileName.string() );
 
     // Filename of the test that would be generated
-    fs::path const boostTestPath = getFullPath( _testFolder ) / fs::path( testname + ".json" );
+    std::cout << "test target name: " << testname << std::endl;
+    std::cout << "test source name: " << _testFileName.string() << std::endl;
+
+    fs::path boostTestPath = getFullPath( _testFolder ) / fs::path( testname + ".json" );
+
+#ifdef MIRAGE // append MIRAGE_ suffix to all filled tests
+    // If the original testname does not start with "MIRAGE_", generate as "MIRAGE_testname.json"
+    const std::string MIRAGE_PREFIX = "MIRAGE_";
+    const bool hasMiragePrefix = testname.size() > MIRAGE_PREFIX.size() &&
+        testname.substr(0, MIRAGE_PREFIX.size()) == MIRAGE_PREFIX;
+    if (!hasMiragePrefix) {
+        boostTestPath = getFullPath( _testFolder ) / fs::path( MIRAGE_PREFIX + testname + ".json" );
+    }
+#endif
+
+    std::cout << "test output name: " << boostTestPath.string() << std::endl;
 
     // TODO: An old unmaintained way to gather execution stats needs review.
     if ( Options::get().stats )

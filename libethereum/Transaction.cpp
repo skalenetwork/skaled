@@ -148,6 +148,18 @@ Transaction::Transaction() {}
 Transaction::Transaction( const TransactionSkeleton& _ts, const Secret& _s )
     : TransactionBase( _ts, _s ) {}
 
+#ifdef MIRAGE
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const Address& _dest, const bytes& _data, const u256& _nonce, const u256& _chainId, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _chainId, _secret ) {}
+
+Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
+    const bytes& _data, const u256& _nonce, const u256& _chainId, const Secret& _secret )
+    : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _chainId,  _secret ) {}
+
+#endif
+
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const Address& _dest, const bytes& _data, const u256& _nonce, const Secret& _secret )
     : TransactionBase( _value, _gasPrice, _gas, _dest, _data, _nonce, _secret ) {}
@@ -155,6 +167,8 @@ Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256&
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const bytes& _data, const u256& _nonce, const Secret& _secret )
     : TransactionBase( _value, _gasPrice, _gas, _data, _nonce, _secret ) {}
+
+
 
 Transaction::Transaction( const u256& _value, const u256& _gasPrice, const u256& _gas,
     const Address& _dest, const bytes& _data, const u256& _nonce )

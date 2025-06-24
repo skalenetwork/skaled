@@ -64,6 +64,8 @@ private:
     static eth::Network s_tempBlockchainNetwork;
 };
 
+
+
 // Functions that working with test json
 void compareBlocks( TestBlock const& _a, TestBlock const& _b );
 mArray writeTransactionsToJson( TransactionQueue const& _txsQueue );
@@ -79,7 +81,16 @@ void checkBlocks(
     TestBlock const& _blockFromFields, TestBlock const& _blockFromRlp, string const& _testname );
 bigint calculateMiningReward( time_t _committedBlockTimestamp, u256 const& _blNumber, u256 const& _unNumber1, u256 const& _unNumber2,
     ChainOperationParams const& _cp );
+
+/**
+ * @brief Processes blockchain test data and generates the output JSON object.
+ *
+ * This function takes input JSON data representing a blockchain test, processes it, and generates
+ * the corresponding output JSON object. It handles the genesis block, chain branches, blocks,
+ * transactions, uncles, and expected states, ensuring proper validation and exception handling.
+ */
 json_spirit::mObject fillBCTest( json_spirit::mObject const& _input );
+
 void testBCTest( json_spirit::mObject const& _o );
 
 }  // namespace test

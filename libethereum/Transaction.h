@@ -94,6 +94,19 @@ public:
     /// Constructs from a transaction skeleton & optional secret.
     Transaction( TransactionSkeleton const& _ts, Secret const& _s = Secret() );
 
+
+#ifdef MIRAGE // include chainId
+
+    /// Constructs a signed message-call transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
+        bytes const& _data, u256 const& _nonce, const u256& _chainId, Secret const& _secret );
+
+    /// Constructs a signed contract-creation transaction.
+    Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, bytes const& _data,
+        u256 const& _nonce, const u256& _chainId, Secret const& _secret );
+
+#endif // does not include chainId
+
     /// Constructs a signed message-call transaction.
     Transaction( u256 const& _value, u256 const& _gasPrice, u256 const& _gas, Address const& _dest,
         bytes const& _data, u256 const& _nonce, Secret const& _secret );

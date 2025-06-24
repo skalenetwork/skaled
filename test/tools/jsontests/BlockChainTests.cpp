@@ -43,6 +43,7 @@ eth::Network ChainBranch::s_tempBlockchainNetwork = eth::Network::MainNetwork;
 eth::Network TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
 json_spirit::mValue BlockchainTestSuite::doTests(
     json_spirit::mValue const& _input, bool _fillin ) const {
+    
     //
     // l_sergiy: IMPORTANT NOTICE: classically TransactionReceipt is 4 RLP chunks... but...
     // we need 5thh dynamic chunk to store "revert reason" string
@@ -429,10 +430,6 @@ void testBCTest( json_spirit::mObject const& _o ) {
 
     for ( auto const& bl : _o.at( "blocks" ).get_array() ) {
         mObject blObj = bl.get_obj();
-        // for ( auto const& field : blObj ) {
-        //     std::cout << "Field: " << field.first << " Value: ";
-        //     std::cout << field.second.get_str() << std::endl;
-        // }
         TestBlock blockFromRlp;
         State const preState = testChain.topBlock().state();
         h256 const preHash = testChain.topBlock().blockHeader().hash();

@@ -78,6 +78,9 @@ public:
      *        and appends a prefix to the file name.
      */
     boost::filesystem::path stripExtensionAndAppendPrefix(const std::string& _folder, boost::filesystem::path const& _file, std::string const& _prefix) const;
+    
+    bool isFileSuffixedBy(const std::string& _file, const std::string& _suffix) const;
+
 };
 
 
