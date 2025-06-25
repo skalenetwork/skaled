@@ -840,9 +840,11 @@ void SkaleHost::stopWorking() {
     if ( m_broadcastThread.joinable() )
         m_broadcastThread.join();
 
+#ifdef MIRAGE
     if ( m_committeeRotationMonitorThread != nullptr &&
          m_committeeRotationMonitorThread->joinable() )
         m_committeeRotationMonitorThread->join();
+#endif
 
     working = false;
 
