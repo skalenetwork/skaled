@@ -1578,6 +1578,12 @@ int main( int argc, char** argv ) {
             chainParams->setSgxServerUrl( strURL );
         }
 
+#ifdef MIRAGE
+        uint64_t latestBlockTs = BlockChain::getLatestBlockTimestamp( *chainParams, getDataDir() );
+        LOG( loggerInfo ) << "Latest block timestamp is: " << latestBlockTs;
+        chainParams->updateCurrentGroupIfNeeded( latestBlockTs );
+#endif
+
         std::shared_ptr< StatusAndControl > statusAndControl =
             std::make_shared< StatusAndControlFile >(
                 boost::filesystem::path( configPath ).remove_filename() );

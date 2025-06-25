@@ -378,7 +378,11 @@ pair< TransactionReceipts, bool > Block::sync(
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
                         execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
+#ifdef MIRAGE
+                        ret.first = m_receipts;
+#else
                         ret.first.push_back( m_receipts.back() );
+#endif
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
                     } else if ( t.gasPrice() < _gp.ask( *this ) * 9 / 10 ) {
