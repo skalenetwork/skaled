@@ -167,13 +167,13 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
             node.blsPublicKey.begin(), node.blsPublicKey.end() );
 #else
         std::vector< std::string > public_key_share( 4 );
-        if ( node.id != _chainParams.getSelfNodeId() ) {
+        if ( node.id != m_client.chainParams().getSelfNodeId() ) {
             public_key_share[0] = node.blsPublicKey.at( 0 );
             public_key_share[1] = node.blsPublicKey.at( 1 );
             public_key_share[2] = node.blsPublicKey.at( 2 );
             public_key_share[3] = node.blsPublicKey.at( 3 );
         } else {
-            auto blsPublicKey = _chainParams.getSelfBlsPublicKey();
+            auto blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
             public_key_share[0] = blsPublicKey.at( 0 );
             public_key_share[1] = blsPublicKey.at( 1 );
             public_key_share[2] = blsPublicKey.at( 2 );
