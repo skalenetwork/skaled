@@ -82,6 +82,7 @@ using namespace dev::test;
 
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
+#ifndef MIRAGE
 static std::string const c_genesisConfigString =
     R"(
 {
@@ -238,6 +239,169 @@ revert();
     }
 }
 )";
+#else
+static std::string const c_genesisConfigString =
+    R"(
+{
+    "sealEngine": "NoProof",
+    "params": {
+         "accountStartNonce": "0x00",
+         "maximumExtraDataSize": "0x1000000",
+         "blockReward": "0x4563918244F40000",
+         "allowFutureBlocks": true,
+         "homesteadForkBlock": "0x00",
+         "EIP150ForkBlock": "0x00",
+         "EIP158ForkBlock": "0x00",
+         "byzantiumForkBlock": "0x00",
+         "constantinopleForkBlock": "0x00",
+         "istanbulForkBlock": "0x00",
+         "skaleDisableChainIdCheck": true,
+         "externalGasDifficulty": "0x1"
+    },
+    "genesis": {
+        "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
+        "difficulty" : "0x20000",
+        "gasLimit" : "0x0f4240",
+        "nonce" : "0x00",
+        "extraData" : "0x00",
+        "timestamp" : "0x00",
+        "mixHash" : "0x00",
+        "stateRoot": "0x01"
+    },
+    "skaleConfig": {
+        "nodeInfo": {
+            "nodeName": "Node1",
+            "nodeID": 1112,
+            "bindIP": "127.0.0.1",
+            "basePort": )" +
+    std::to_string( rand_port ) + R"(,
+            "logLevel": "trace",
+            "logLevelProposal": "trace",
+            "testSignatures": true
+        },
+        "sChain": {
+            "schainName": "TestChain",
+            "schainID": 1,
+            "emptyBlockIntervalMs": -1,
+            "nodeGroups": {},
+            "nodes": {
+                "1": {
+                    "group": [
+                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
+        std::to_string( rand_port ) +
+        R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
+                    ]
+                },
+                "-1": {}
+            }
+        }
+    },
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
+        "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
+        "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
+        "0000000000000000000000000000000000000005": {
+            "precompiled": {
+                "name": "createFile",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
+            }
+        },)"
+    /*
+pragma solidity ^0.4.25;
+contract Caller {
+function call() public {
+bool status;
+string memory fileName = "test";
+address sender = 0x000000000000000000000000000000AA;
+assembly{
+let ptr := mload(0x40)
+mstore(ptr, sender)
+mstore(add(ptr, 0x20), 4)
+mstore(add(ptr, 0x40), mload(add(fileName, 0x20)))
+mstore(add(ptr, 0x60), 1)
+status := call(not(0), 0x05, 0, ptr, 0x80, ptr, 32)
+}
+}
+
+function revertCall() public {
+call();
+revert();
+}
+}
+*/
+    R"("0000000000000000000000000000000000000006": {
+            "precompiled": {
+                "name": "addBalance",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                },
+                "restrictAccess": ["5c4e11842e8be09264dc1976943571d7af6d00f9"]
+            }
+        },
+        "0000000000000000000000000000000000000007": {
+            "precompiled": {
+                "name": "getIMABLSPublicKey",
+                "linear": {
+                    "base": 15,
+                    "word": 0
+                }
+            }
+        },
+        "0x5c4e11842e8be09264dc1976943571d7af6d00f9" : {
+            "balance" : "1000000000000000000000000000000"
+        },
+        "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a" : {
+            "balance" : "0x00",
+            "code" : "0x6080604052600436106049576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806328b5e32b14604e578063f38fb65b146062575b600080fd5b348015605957600080fd5b5060606076565b005b348015606d57600080fd5b50607460ec565b005b6000606060006040805190810160405280600481526020017f7465737400000000000000000000000000000000000000000000000000000000815250915060aa905060405181815260046020820152602083015160408201526001606082015260208160808360006005600019f1935050505050565b60f26076565b600080fd00a165627a7a72305820262a5822c4fe6c154b2ef3198c7827d35fc6da59da2cea2c4f2fad9d4a5ccd5e0029",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0x095e7baea6a6c7c4c2dfeb977efac326af552d87" : {
+            "balance" : "0x0de0b6b3a7640000",
+            "code" : "0x6001600101600055",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0xC2002000000000000000000000000000000000C2": {
+            "balance": "0",
+            "code": "0x6080604052348015600f57600080fd5b506004361060325760003560e01c80639b063104146037578063cd16ecbf146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050608d565b005b608b60048036036020811015607657600080fd5b81019080803590602001909291905050506097565b005b8060018190555050565b806000819055505056fea265627a7a7231582029df540a7555533ef4b3f66bc4f9abe138b00117d1496efbfd9d035a48cd595e64736f6c634300050d0032",
+            "storage": {
+                "0x0": "0x01"
+            },
+            "nonce": "0"
+        },
+        "0xD2002000000000000000000000000000000000D2": {
+            "balance": "0",
+            "code": "0x608060405234801561001057600080fd5b50600436106100455760003560e01c806313f44d101461005557806338eada1c146100af5780634ba79dfe146100f357610046565b5b6002801461005357600080fd5b005b6100976004803603602081101561006b57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610137565b60405180821515815260200191505060405180910390f35b6100f1600480360360208110156100c557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101f4565b005b6101356004803603602081101561010957600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061030f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff16148061019957506101988261042b565b5b806101ed5750600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060009054906101000a900460ff165b9050919050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102b5576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b60018060008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60008054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146103d0576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260178152602001807f43616c6c6572206973206e6f7420746865206f776e657200000000000000000081525060200191505060405180910390fd5b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b600080823b90506000811191505091905056fea26469706673582212202aca1f7abb7d02061b58de9b559eabe1607c880fda3932bbdb2b74fa553e537c64736f6c634300060c0033",
+            "storage": {
+            },
+            "nonce": "0"
+        },
+        "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b" : {
+            "balance" : "0x0de0b6b3a7640000",
+            "code" : "0x",
+            "nonce" : "0x00",
+            "storage" : {
+            }
+        },
+        "0xD2001300000000000000000000000000000000D4": {
+            "balance": "0",
+            "nonce": "0",
+            "storage": {},
+            "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80632098776714610051578063b8bd717f1461007f578063d37165fa146100ad578063fdde8d66146100db575b600080fd5b61007d6004803603602081101561006757600080fd5b8101908080359060200190929190505050610109565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610136565b005b6100d9600480360360208110156100c357600080fd5b8101908080359060200190929190505050610170565b005b610107600480360360208110156100f157600080fd5b8101908080359060200190929190505050610191565b005b60005a90505b815a8203101561011e5761010f565b600080fd5b815a8203101561013257610123565b5050565b60005a90505b815a8203101561014b5761013c565b600060011461015957600080fd5b5a90505b815a8203101561016c5761015d565b5050565b60005a9050600081830390505b805a8303101561018c5761017d565b505050565b60005a90505b815a820310156101a657610197565b60016101b157600080fd5b5a90505b815a820310156101c4576101b5565b505056fea264697066735822122089b72532621e7d1849e444ee6efaad4fb8771258e6f79755083dce434e5ac94c64736f6c63430006000033"
+        }
+    }
+}
+)";
+#endif
 
 namespace {
 class TestIpcServer : public jsonrpc::AbstractServerConnector {
@@ -516,7 +680,7 @@ string fromAscii( string _s ) {
 }
 }  // namespace
 
-#ifdef MIRAGE
+#ifdef BITE
 /// Helper functions
 
 std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {
@@ -4478,24 +4642,7 @@ static std::string const c_BITEConfigString =
     std::to_string( rand_port ) + R"(,
             "logLevel": "trace",
             "logLevelProposal": "trace",
-            "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68",
-            "wallets": {
-                "ima": {
-                    "keyShareName": "BLS_KEY:SCHAIN_ID:1:NODE_ID:0:DKG_ID:0",
-                    "t": 1,
-                    "n": 1,
-                    "certFile": "/skale-data/node_data/sgx_certs/sgx.crt",
-                    "keyFile": "/skale-data/node_data/sgx_certs/sgx.key",
-                    "commonBLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-                    "commonBLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-                    "commonBLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-                    "commonBLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
-                    "BLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-                    "BLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-                    "BLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-                    "BLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
-                }
-            }
+            "ecdsaKeyName": "NEK:d391a1af1cd9663335e0f970e59402bf16fcfe0cc421c535bf60ba618a456d68"
         },
         "sChain": {
             "schainName": "TestChain",
@@ -4519,26 +4666,46 @@ static std::string const c_BITEConfigString =
                     }
                 }
             },
-            "nodes": [
-                {
-                    "nodeID": 8,
-                    "nodeName": "test_node",
-                    "basePort": )" + std::to_string( rand_port ) + R"(,
-                    "httpRpcPort": 9568,
-                    "httpsRpcPort": 9573,
-                    "wsRpcPort": 9567,
-                    "wssRpcPort": 9572,
-                    "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
-                    "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
-                    "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
-                    "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
-                    "publicKey": "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
-                    "owner": "0x5112ce768917e907191557d7e9521c2590cdd3a0",
-                    "schainIndex": 1,
-                    "ip": "186.14.217.13",
-                    "publicIP": "4.127.224.50"
-                }
-            ]
+            "nodes": {
+                "1": {
+                    "blsKey": {
+                        "keyShareName": "BLS_KEY:SCHAIN_ID:1:NODE_ID:0:DKG_ID:0",
+                        "t": 1,
+                        "n": 1,
+                        "certFile": "/skale-data/node_data/sgx_certs/sgx.crt",
+                        "keyFile": "/skale-data/node_data/sgx_certs/sgx.key",
+                        "commonBLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                        "commonBLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                        "commonBLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                        "commonBLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
+                        "BLSPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                        "BLSPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                        "BLSPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                        "BLSPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693"
+                    },
+                    "group": [
+                        {
+                            "nodeID": 8,
+                            "nodeName": "test_node",
+                            "basePort": )" + std::to_string( rand_port ) + R"(,
+                            "httpRpcPort": 9568,
+                            "httpsRpcPort": 9573,
+                            "wsRpcPort": 9567,
+                            "wssRpcPort": 9572,
+                            "blsPublicKey0": "15959969554621958245201075983340071881770733084910870228938077786643587385029",
+                            "blsPublicKey1": "7970122607051572307517094692346020360016825923464107614135327251488152616550",
+                            "blsPublicKey2": "3371162264373897025322009434717052197952692496405149486989861571246537813591",
+                            "blsPublicKey3": "13678625751515504401110635369790787716744686498431213713911601759809559919693",
+                            "publicKey": "0xf925c203a30ec6cad5a263db3efab7ed4c1fd74c8688167e10a5a22e15ab5018d8553df0ac54ea105a3d21845e5660bc3d4e7c82e7af1daa3baad393b1521467",
+                            "owner": "0x5112ce768917e907191557d7e9521c2590cdd3a0",
+                            "schainIndex": 1,
+                            "ip": "186.14.217.13",
+                            "publicIP": "4.127.224.50"
+                        }
+                    ]
+                },
+                "-1": {}
+            }
         }
     },
     "accounts": {
@@ -4620,7 +4787,8 @@ revert();
     }
 }
 )";
-#endif
+#endif // #ifndef MIRAGE
+
 
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
@@ -5062,7 +5230,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     BOOST_REQUIRE( receipt["status"] == std::string( "0x0" ) );
 }
 
-#endif
+#endif // #ifdef BITE
 
 #ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
