@@ -83,7 +83,7 @@ using namespace dev::test;
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
 static std::string const c_genesisConfigString =
-    R"(
+    string(R"(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -97,9 +97,11 @@ static std::string const c_genesisConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
-    },
+         "skaleDisableChainIdCheck": true )") +
+#ifndef MIRAGE
+         R"( ", externalGasDifficulty": "0x1" )" +
+#endif
+    R"(},
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
         "difficulty" : "0x20000",
@@ -298,14 +300,16 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
                 chainParams->loadConfig( output );
             } else {
                 Json::Value ret;
+                Json::FastWriter fastWriter;
                 Json::Reader().parse( _config, ret );
 #ifndef MIRAGE
                 ret["skaleConfig"]["sChain"]["contractStorageLimit"] = 106874910;
                 ret["skaleConfig"]["sChain"]["contractStoragePatchTimestamp"] = 1000;
 #endif
-                Json::FastWriter fastWriter;
                 std::string output = fastWriter.write( ret );
                 chainParams->loadConfig( output );
+
+
                 // insecure schain owner(originator) private key
                 // address is 0x5C4e11842E8be09264dc1976943571d7Af6d00F9
                 coinbase = dev::KeyPair( dev::Secret(
@@ -322,9 +326,9 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->byzantiumForkBlock = 0;
             chainParams->EIP158ForkBlock = 0;
             chainParams->constantinopleForkBlock = 0;
-            chainParams->istanbulForkBlock = 0;
-            chainParams->externalGasDifficulty = 1;
+            chainParams->istanbulForkBlock = 0;    
 #ifndef MIRAGE
+            chainParams->externalGasDifficulty = 1;
             chainParams->sChain.contractStorageLimit = 128;
 #endif
             // 615 + 1430 is experimentally-derived block size + average extras size
@@ -4452,7 +4456,6 @@ static std::string const c_BITEConfigString =
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
          "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -5956,7 +5959,9 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelEthPowTransfers,
 
     fixture.verifyTransactions = false;
     fixture.threadsCountForTestTransactions = 8;
+#ifndef MIRAGE
     fixture.usePow = true;
+#endif
 
     fixture.setupFirstKey();
     fixture.deployERC20();

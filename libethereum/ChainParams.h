@@ -87,7 +87,9 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSchainName() const { return sChain.name; }
 
+#ifndef MIRAGE
     u256 getExternalGasDifficulty() const { return externalGasDifficulty; }
+#endif
 
     u256 getGasLimit() const { return gasLimit; }
 
