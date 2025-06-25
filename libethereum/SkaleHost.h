@@ -198,6 +198,9 @@ private:
     void penalizePeer(){};  // fake function for now
 
     std::thread m_consensusThread;
+#ifdef MIRAGE
+    std::unique_ptr< std::thread > m_committeeRotationMonitorThread;
+#endif
 
     std::atomic_bool m_exitNeeded = false;
 
@@ -212,7 +215,9 @@ private:
     std::atomic_bool m_ignoreNewBlocks = false;  // used when we need to exit at specific block
 
     bool m_broadcastEnabled;
-
+#ifdef MIRAGE
+    bool m_broadcastRestartNeeded = false;
+#endif
 
     dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "skale-host" ) };
     dev::Logger m_loggerWarning{ dev::createLogger( dev::VerbosityWarning, "skale-host" ) };

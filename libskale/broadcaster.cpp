@@ -86,7 +86,7 @@ std::string ZmqBroadcaster::getZmqUrl( const dev::eth::sChainNode& node ) const 
 }
 
 void* ZmqBroadcaster::server_socket() const {
-    if ( !m_zmq_server_socket ) {
+    if ( !m_zmq_server_socket ) [[unlikely]] {
         m_zmq_server_socket = zmq_socket( m_zmq_context, ZMQ_PUB );
 
         int val = 15000;
@@ -117,7 +117,7 @@ void* ZmqBroadcaster::server_socket() const {
 }
 
 void* ZmqBroadcaster::client_socket() const {
-    if ( !m_zmq_client_socket ) {
+    if ( !m_zmq_client_socket ) [[unlikely]] {
         m_zmq_client_socket = zmq_socket( m_zmq_context, ZMQ_SUB );
 
         int value = 1;
@@ -239,11 +239,19 @@ void ZmqBroadcaster::stopService() {
     m_thread.join();
 }
 
-
 void ZmqBroadcaster::initSocket() {
     server_socket();
 }
 
+#ifdef MIRAGE
+void ZmqBroadcaster::resetServerSocket() {
+    if ( m_zmq_server_socket ) {
+        int linger = 1;
+        zmq_setsockopt( m_zmq_server_socket, ZMQ_LINGER, &linger, sizeof( linger ) );
+        zmq_close( m_zmq_server_socket );
+    }
+}
+#endif
 
 void ZmqBroadcaster::broadcast( const std::string& _rlp ) {
     int res = zmq_send( server_socket(), const_cast< char* >( _rlp.c_str() ), _rlp.size(), 0 );

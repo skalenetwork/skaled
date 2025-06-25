@@ -70,9 +70,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     ConsensusExtFace& _extFace ) const {
 #if CONSENSUS
     const auto& nfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
-    //
+
     LOG( m_loggerInfo ) << "NOTE: Block number at startup is " << nfo.number();
-    //
+
     auto ts = nfo.timestamp();
 
     std::map< std::string, std::uint64_t > patchTimeStamps;
@@ -84,7 +84,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::FastConsensusPatch );
     patchTimeStamps["verifyBlsSyncPatchTimestamp"] =
         m_client.chainParams().getPatchTimestamp( SchainPatchEnum::VerifyBlsSyncPatch );
-#endif
+#endif  // MIRAGE
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
@@ -103,7 +103,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     dev::h256 state_root =
         m_client.blockInfo( m_client.hashFromNumber( block_number ) ).stateRoot();
     return make_unique< ConsensusStub >( _extFace, block_number, state_root );
-#endif
+#endif  // CONSENSUS
 }
 
 #if CONSENSUS
@@ -167,19 +167,19 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
             node.blsPublicKey.begin(), node.blsPublicKey.end() );
 #else
         std::vector< std::string > public_key_share( 4 );
-        if ( node.id != this->m_client.chainParams().getSelfNodeId() ) {
+        if ( node.id != _chainParams.getSelfNodeId() ) {
             public_key_share[0] = node.blsPublicKey.at( 0 );
             public_key_share[1] = node.blsPublicKey.at( 1 );
             public_key_share[2] = node.blsPublicKey.at( 2 );
             public_key_share[3] = node.blsPublicKey.at( 3 );
         } else {
-            auto blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
+            auto blsPublicKey = _chainParams.getSelfBlsPublicKey();
             public_key_share[0] = blsPublicKey.at( 0 );
             public_key_share[1] = blsPublicKey.at( 1 );
             public_key_share[2] = blsPublicKey.at( 2 );
             public_key_share[3] = blsPublicKey.at( 3 );
         }
-#endif
+#endif  // MIRAGE
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );
@@ -230,7 +230,8 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
-#endif
+
+#endif  // CONSENSUS
 
 class ConsensusExtImpl : public ConsensusExtFace {
 public:
@@ -690,6 +691,34 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerDebug ) << "Successfully imported " << n_succeeded << " of " << out_txns.size()
                          << " transactions";
 
+#ifdef MIRAGE
+    if ( m_client.updateGroupIfNeeded() ) {
+        if ( m_committeeRotationMonitorThread != nullptr &&
+             m_committeeRotationMonitorThread->joinable() )
+            m_committeeRotationMonitorThread->join();
+        LOG( m_loggerInfo ) << "Committee rotation is in progress.";
+        m_ignoreNewBlocks = true;
+        m_broadcastRestartNeeded = true;
+        // stop all services first
+        m_consensus->exitGracefully();
+        m_committeeRotationMonitorThread.reset( new std::thread( [this]() {
+            while ( m_consensus->getStatus() != consensus_engine_status::CONSENSUS_EXITED ) {
+                usleep( 100 * 1000 );  // sleep 100ms
+            }
+            LOG( m_loggerDebug ) << "Committee rotation is completed. Creating consensus agents.";
+            // reset ConsensusInterface to use relevant block numbers
+            m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
+            m_consensus->parseFullConfigAndCreateNode(
+                m_client.chainParams().getConfigForConsensus(), "" );
+            // restart all services to fetch latest nodes info
+            m_consensus->startAll();
+            m_consensus->bootStrapAll();
+            m_ignoreNewBlocks = false;
+            LOG( m_loggerInfo ) << "Committee rotation is completed.";
+        } ) );
+    }
+#endif
+
     if ( m_instanceMonitor != nullptr ) {
         if ( m_instanceMonitor->isTimeToRotate( _timeStamp ) ) {
             m_instanceMonitor->prepareRotation();
@@ -811,6 +840,10 @@ void SkaleHost::stopWorking() {
     if ( m_broadcastThread.joinable() )
         m_broadcastThread.join();
 
+    if ( m_committeeRotationMonitorThread != nullptr &&
+         m_committeeRotationMonitorThread->joinable() )
+        m_committeeRotationMonitorThread->join();
+
     working = false;
 
     LOG( m_loggerInfo ) << "Consensus and broadcat threads finished.";
@@ -820,7 +853,13 @@ void SkaleHost::broadcastFunc() {
     dev::setThreadName( "broadcastFunc" );
     while ( !m_exitNeeded ) {
         try {
-            m_broadcaster->initSocket();
+#ifdef MIRAGE
+            if ( m_broadcastRestartNeeded ) [[unlikely]] {
+                m_broadcaster->resetServerSocket();
+                m_broadcastRestartNeeded = false;
+            } else
+#endif
+                m_broadcaster->initSocket();
 
             MICROPROFILE_SCOPEI( "SkaleHost", "broadcastFunc", MP_BISQUE );
 
