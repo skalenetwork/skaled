@@ -140,6 +140,9 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
         sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName, blsKeyName );
 
 
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested(
+        std::runtime_error( std::string( "Error filling SGX info (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
@@ -159,6 +162,10 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 
     std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
     for ( const auto& node : m_client.chainParams().getSchainNodes() ) {
+#ifdef MIRAGE
+        std::vector< std::string > public_key_share(
+            node.blsPublicKey.begin(), node.blsPublicKey.end() );
+#else
         std::vector< std::string > public_key_share( 4 );
         if ( node.id != this->m_client.chainParams().getSelfNodeId() ) {
             public_key_share[0] = node.blsPublicKey.at( 0 );
@@ -172,6 +179,7 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
             public_key_share[2] = blsPublicKey.at( 2 );
             public_key_share[3] = blsPublicKey.at( 3 );
         }
+#endif
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );
@@ -186,6 +194,9 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
 
     consensus.setPublicKeyInfo(
         ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().isSyncNode() );
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested( std::runtime_error(
+        std::string( "Error filling public keys info (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
@@ -213,6 +224,9 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
         std::make_shared< std::map< uint64_t, std::vector< std::string > > >( previousBLSKeys ),
         std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ),
         std::make_shared< std::map< uint64_t, std::vector< uint64_t > > >( historicNodeGroups ) );
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested( std::runtime_error(
+        std::string( "Error reading rotation history (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
@@ -314,8 +328,13 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     }
 
     try {
+#ifdef MIRAGE
+        m_consensus->parseFullConfigAndCreateNode(
+            m_client.chainParams().getConfigForConsensus(), _gethURL );
+#else
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getOriginalJson(), _gethURL );
+#endif
     } catch ( const std::exception& e ) {
         LOG( m_loggerError ) << "Could not create parse consensus config in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );

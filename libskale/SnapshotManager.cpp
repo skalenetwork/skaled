@@ -860,7 +860,7 @@ uint64_t SnapshotManager::getBlockTimestamp( unsigned _blockNumber ) const {
 
 
 /*
-      Find the most recent database out of the four rotated block atabases in consensus
+      Find the most recent database out of the four rotated block databases in consensus
       This will find the directory in the form "${_dirname}/.db.X" with the largest X
 */
 boost::filesystem::path SnapshotManager::findMostRecentBlocksDBPath(

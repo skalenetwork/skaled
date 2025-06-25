@@ -1510,8 +1510,13 @@ BOOST_FIXTURE_TEST_CASE(
 #endif
                                 utcTime(), 1U ) );
 
+#ifndef MIRAGE
     REQUIRE_BLOCK_SIZE( 1, 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
+#else
+    ( void ) tx1Hash;
+    REQUIRE_BLOCK_SIZE( 1, 0 );
+#endif
 
     // 2 tx nonce = 0
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );

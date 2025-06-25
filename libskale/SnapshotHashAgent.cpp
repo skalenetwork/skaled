@@ -176,6 +176,7 @@ bool SnapshotHashAgent::voteForHash() {
 
             auto commonBlsPublicKeyArray = chainParams_.getCommonBlsPublicKey();
             libff::alt_bn128_G2 commonPublicKey_from_config;
+
             commonPublicKey_from_config.X.c0 =
                 libff::alt_bn128_Fq( commonBlsPublicKeyArray[0].c_str() );
             commonPublicKey_from_config.X.c1 =
