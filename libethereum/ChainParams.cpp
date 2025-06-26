@@ -509,7 +509,10 @@ void ChainParams::processSkaleConfigItems( json_spirit::mObject& obj ) {
         }
     }
 
-    if ( s.currentGroups[0].startTs < s.currentGroups[1].startTs )
+    // for BOOT group timestamp is set to 0
+    // invariant here - relevant group MUST BE stored under index 1
+    if ( s.currentGroups[0].startTs < s.currentGroups[1].startTs &&
+         s.currentGroups[0].startTs != 0 )
         std::swap( s.currentGroups[0], s.currentGroups[1] );
 
     s.nodes = s.currentGroups.back().nodes;
