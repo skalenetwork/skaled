@@ -304,16 +304,7 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": {
-            "precompiled": {
-                "name": "createFile",
-                "linear": {
-                    "base": 15,
-                    "word": 0
-                },
-                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
-            }
-        },)"
+        )"
     /*
 pragma solidity ^0.4.25;
 contract Caller {
