@@ -83,8 +83,7 @@ using namespace dev::test;
 static size_t rand_port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
 
 #ifndef MIRAGE
-static std::string const c_genesisConfigString =
-    string(R"(
+static std::string const c_genesisConfigString = R"(
 {
     "sealEngine": "NoProof",
     "params": {
@@ -98,11 +97,9 @@ static std::string const c_genesisConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true )") +
-#ifndef MIRAGE
-         R"( ", externalGasDifficulty": "0x1" )" +
-#endif
-    R"(},
+         "skaleDisableChainIdCheck": true,
+         "externalGasDifficulty": "0x1"
+    },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
         "difficulty" : "0x20000",
@@ -258,7 +255,6 @@ static std::string const c_genesisConfigString =
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
          "skaleDisableChainIdCheck": true,
-         "externalGasDifficulty": "0x1"
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
