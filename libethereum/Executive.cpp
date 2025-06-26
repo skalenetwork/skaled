@@ -352,8 +352,15 @@ bool Executive::call( CallParameters const& _p, u256 const& _gasPrice, Address c
             m_gas = ( u256 )( _p.gas - g );
             bytes output;
             bool success;
+#ifdef MIRAGE
+            tie( success, output ) =
+                m_chainParams.executePrecompiled( _p.codeAddress, _p.data, m_envInfo.number() );
+
+#else
             tie( success, output ) = m_chainParams.executePrecompiled(
                 _p.codeAddress, _p.data, m_envInfo.number(), m_s.fs().get() );
+#endif
+
             size_t outputSize = output.size();
             m_output = owning_bytes_ref{ std::move( output ), 0, outputSize };
             if ( !success ) {

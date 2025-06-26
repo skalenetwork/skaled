@@ -138,8 +138,9 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
-        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": {
+        "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },)" +
+#ifndef MIRAGE
+        R"( "0000000000000000000000000000000000000005": {
             "precompiled": {
                 "name": "createFile",
                 "linear": {
@@ -148,7 +149,9 @@ static std::string const c_genesisConfigString =
                 },
                 "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
             }
-        },)"
+        },)" +
+#endif
+
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -301,16 +304,7 @@ static std::string const c_genesisConfigString =
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
         "0000000000000000000000000000000000000003": { "precompiled": { "name": "ripemd160", "linear": { "base": 600, "word": 120 } } },
         "0000000000000000000000000000000000000004": { "precompiled": { "name": "identity", "linear": { "base": 15, "word": 3 } } },
-        "0000000000000000000000000000000000000005": {
-            "precompiled": {
-                "name": "createFile",
-                "linear": {
-                    "base": 15,
-                    "word": 0
-                },
-                "restrictAccess": ["00000000000000000000000000000000000000AA", "692a70d2e424a56d2c6c27aa97d1a86395877b3a"]
-            }
-        },)"
+        )"
     /*
 pragma solidity ^0.4.25;
 contract Caller {
@@ -651,6 +645,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     time_t push0PatchActivationTimestamp;
 };
 
+#ifndef MIRAGE
 struct RestrictedAddressFixture : public JsonRpcFixture {
     RestrictedAddressFixture( const std::string& _config = c_genesisConfigString )
         : JsonRpcFixture( _config ) {
@@ -673,6 +668,7 @@ struct RestrictedAddressFixture : public JsonRpcFixture {
     std::string data;
     boost::filesystem::path path;
 };
+#endif
 
 string fromAscii( string _s ) {
     bytes b = asBytes( _s );
@@ -6153,6 +6149,7 @@ BOOST_AUTO_TEST_CASE( perf_sendManyParalelERC20Transfers,
 }
 
 
+#ifndef MIRAGE
 BOOST_FIXTURE_TEST_SUITE( RestrictedAddressSuite, RestrictedAddressFixture )
 
 BOOST_AUTO_TEST_CASE( direct_call ) {
@@ -6283,7 +6280,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE( FilestorageCacheSuite )
 
-#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( cached_filestorage ) {
     auto _config = c_genesisConfigString;
     Json::Value ret;
@@ -6312,7 +6308,6 @@ BOOST_AUTO_TEST_CASE( cached_filestorage ) {
 
     BOOST_REQUIRE( !boost::filesystem::exists( fixture.path ) );
 }
-#endif
 
 BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
     auto _config = c_genesisConfigString;
@@ -6344,6 +6339,7 @@ BOOST_AUTO_TEST_CASE( uncached_filestorage ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_FIXTURE_TEST_SUITE( GappedCacheSuite, JsonRpcFixture )
 
