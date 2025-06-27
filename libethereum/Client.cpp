@@ -1303,12 +1303,8 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     // if call or trace call request did not specify from address, zero address is used
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
-<<<<<<< HEAD
-    t.forceChainId( chainParams().chainID );
-#ifndef MIRAGE
-=======
     t.forceChainId( chainParams().getChainId() );
->>>>>>> v4.1.0
+#ifndef MIRAGE
     // call and traceCall do not use PoW
     t.ignoreExternalGas();
 #endif
