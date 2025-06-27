@@ -167,9 +167,11 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
 
     // add files 1
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" );
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+#ifndef MIRAGE
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+#endif
 
     auto latest0 = mgr.getLatestSnapshots();
     std::pair< int, int > expected0 { 0, 0 };
@@ -178,13 +180,18 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     // create snapshot 1 and check its presense
     mgr.doSnapshot( 1 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
+#endif
 
     // add and remove something
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" );
-    fs::remove( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" ) );
+
+#ifndef MIRAGE
+    fs::remove( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+#endif
 
     auto latest1 = mgr.getLatestSnapshots();
     std::pair< int, int > expected1 { 0, 1 };
@@ -194,29 +201,40 @@ BOOST_FIXTURE_TEST_CASE( SimplePositiveTest, BtrfsFixture,
     mgr.doSnapshot( 2 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d12" ) );
+
+#ifndef MIRAGE
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" / "d21" ) );
+#endif
 
     // check that files appear/disappear on restore
     mgr.restoreSnapshot( 1 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+#endif
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" ) );
 
     fs::path diff12 = mgr.makeOrGetDiff( 2 );
     btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/" + chainDirName ).c_str() );
+#ifndef MIRAGE
     btrfs.subvolume._delete( ( BTRFS_DIR_PATH + "/snapshots/2/filestorage" ).c_str() );
+#endif
     fs::remove_all( BTRFS_DIR_PATH + "/snapshots/2" );
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" ) );
 
     mgr.importDiff( 2 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / chainDirName / "d12" ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" / "d21" ) );
+#endif
 
     mgr.restoreSnapshot( 2 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d12" ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+#endif
 
     auto latest2 = mgr.getLatestSnapshots();
     std::pair< int, int > expected2 { 1, 2 };
@@ -332,12 +350,15 @@ BOOST_FIXTURE_TEST_CASE( RestoreTest, BtrfsFixture,
 
     BOOST_REQUIRE_NO_THROW( mgr.restoreSnapshot( 2 ) );
 
+#ifndef MIRAGE
     BOOST_REQUIRE_EQUAL(
         0, btrfs.subvolume._delete(
                ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" ).c_str() ) );
+#endif
     BOOST_REQUIRE_THROW( mgr.restoreSnapshot( 2 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
 
+#ifndef MIRAGE
 BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     *boost::unit_test::precondition( dev::test::run_not_express ) ) {
     std::shared_ptr< dev::eth::ChainParams > chainParams( new dev::eth::ChainParams{} );
@@ -369,6 +390,7 @@ BOOST_FIXTURE_TEST_CASE( DiffTest, BtrfsFixture,
     BOOST_REQUIRE_THROW(
         tmp = mgr.makeOrGetDiff( 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
+#endif
 
 // TODO Tests to check no files left in /tmp?!
 
@@ -391,14 +413,18 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 
     // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / chainDirName ).c_str() );
+#ifndef MIRAGE
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "filestorage" ).c_str() );
+#endif
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
     BOOST_REQUIRE_NO_THROW( mgr.importDiff( 4 ) );
 
     // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / chainDirName ).c_str() );
+#ifndef MIRAGE
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" / "filestorage" ).c_str() );
+#endif
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "4" );
 
     // no source
@@ -406,7 +432,9 @@ BOOST_FIXTURE_TEST_CASE( ImportTest, BtrfsFixture,
 
     // BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 
+#ifndef MIRAGE
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" / "filestorage" ).c_str() );
+#endif
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "2" );
     // BOOST_REQUIRE_THROW( mgr.importDiff( 2, 4 ), SnapshotManager::CannotPerformBtrfsOperation );
 }
@@ -503,7 +531,9 @@ BOOST_FIXTURE_TEST_CASE( CleanupTest, BtrfsFixture,
     std::string chainDirName = dev::eth::BlockChain::getChainDirName( dev::eth::ChainParams() );
 
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( !fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" ) );
+#endif
 }
 
 #ifdef HISTORIC_STATE
@@ -517,9 +547,12 @@ BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
 
     // add files to core volumes
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" );
-    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / chainDirName / "d11" ) );
+
+#ifndef MIRAGE
+    fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "filestorage" / "d21" ) );
+#endif
     // archive part
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "historic_roots" / "d31" );
     fs::create_directory( fs::path( BTRFS_DIR_PATH ) / "historic_state" / "d41" );
@@ -529,7 +562,9 @@ BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
     // create snapshot 1 and check its presense
     mgr.doSnapshot( 1 );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
+#endif
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_roots" / "d31" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" / "d41" ) );
 
@@ -538,7 +573,9 @@ BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
 
     // delete dest
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName ).c_str() );
+#ifndef MIRAGE
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" ).c_str() );
+#endif
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_roots" ).c_str() );
     btrfs.subvolume._delete( ( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" ).c_str() );
     fs::remove_all( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" );
@@ -546,7 +583,9 @@ BOOST_FIXTURE_TEST_CASE( ArchiveNodeTest, BtrfsFixture,
     BOOST_REQUIRE_NO_THROW( mgr.importDiff( 1 ) );
 
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / chainDirName / "d11" ) );
+#ifndef MIRAGE
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "filestorage" / "d21" ) );
+#endif
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_roots" / "d31" ) );
     BOOST_REQUIRE( fs::exists( fs::path( BTRFS_DIR_PATH ) / "snapshots" / "1" / "historic_state" / "d41" ) );
 }
