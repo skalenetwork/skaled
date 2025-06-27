@@ -4786,20 +4786,6 @@ revert();
 
 
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
-    std::ofstream outFile("example.json");
-
-      // Check if the file is open
-      if (outFile.is_open()) {
-          // Write the string to the file
-          outFile << c_BITEConfigString;
-
-          // Close the file
-          outFile.close();
-
-          std::cout << "String has been written to the file successfully." << std::endl;
-      } else {
-          std::cerr << "Unable to open file for writing." << std::endl;
-      }
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
     auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
