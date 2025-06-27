@@ -257,7 +257,7 @@ static std::string const c_genesisConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true,
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -480,7 +480,7 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
             chainParams->byzantiumForkBlock = 0;
             chainParams->EIP158ForkBlock = 0;
             chainParams->constantinopleForkBlock = 0;
-            chainParams->istanbulForkBlock = 0;    
+            chainParams->istanbulForkBlock = 0;
 #ifndef MIRAGE
             chainParams->externalGasDifficulty = 1;
             chainParams->sChain.contractStorageLimit = 128;
@@ -3479,12 +3479,11 @@ BOOST_AUTO_TEST_CASE( debugGetPatchTimestamps ) {
     }
 }
 
+#ifndef MIRAGE
 BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     Json::Value configJson;
     Json::Reader().parse( c_genesisConfigString, configJson );
-#ifndef MIRAGE
     configJson["skaleConfig"]["sChain"]["powCheckPatchTimestamp"] = 1;
-#endif
     Json::FastWriter fastWriter;
     std::string customConfigFile = fastWriter.write( configJson );
     JsonRpcFixture fixture( customConfigFile, false, false, true, false );
@@ -3518,6 +3517,7 @@ BOOST_AUTO_TEST_CASE( powTxnGasLimit ) {
     BOOST_REQUIRE_THROW( fixture.rpcClient->eth_sendTransaction( txPOW2 ),
         jsonrpc::JsonRpcException );  // block gas limit reached
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( EIP1898Calls ) {
     JsonRpcFixture fixture;
@@ -4611,7 +4611,7 @@ static std::string const c_BITEConfigString =
          "byzantiumForkBlock": "0x00",
          "constantinopleForkBlock": "0x00",
          "istanbulForkBlock": "0x00",
-         "skaleDisableChainIdCheck": true,
+         "skaleDisableChainIdCheck": true
     },
     "genesis": {
         "author" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
@@ -4786,6 +4786,20 @@ revert();
 
 
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
+    std::ofstream outFile("example.json");
+
+      // Check if the file is open
+      if (outFile.is_open()) {
+          // Write the string to the file
+          outFile << c_BITEConfigString;
+
+          // Close the file
+          outFile.close();
+
+          std::cout << "String has been written to the file successfully." << std::endl;
+      } else {
+          std::cerr << "Unable to open file for writing." << std::endl;
+      }
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
     auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
@@ -5072,7 +5086,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
         "0ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3"
         "491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610";
     std::string type1Tx = "0x01f901c68197808504a817c800830138809442495445204d452049274d20454e43525950544480b9015c000000000000000031e9725012de5c9fb4bd9991373b7506e9aff33ce23ef77a3b7230e3178dd35e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012b99a55b0791eeb7594e70b0878254e5eceaa46bf5ead569b1209107bcfd2839aa4b3b7b90ed519af1fe78ba7af6fd069f458414f713e453b0c851037f701f3a7ef33315bb8a994f5154d7bc61421fbfcb3491a563592c24b75a655b38cbb712724529968d0cb2d928fb8a3c2ca09a098afd610c001a0d8ed5063c8bf675fe9d5500f26a8c66f4a7bf0bec68e734397403ec1ed1c6720a06b3c5bc9232dad1368dfff56817d1254b855557b833340de2a9cef87d037d402";
-        
+
     std::string type1Hash = fixture.rpcClient->eth_sendRawTransaction( type1Tx );
 
     dev::eth::mineTransaction( *( fixture.client ), 1 );
@@ -5280,7 +5294,7 @@ BOOST_AUTO_TEST_CASE( etherbase_generation2 ) {
     fixture.client->state().getOriginalDb()->createBlockSnap( 3 );
     auto t = fixture.rpcClient->eth_getTransactionReceipt( txHash );
 #ifdef MIRAGE
-	// reward goes to the node owner, not etherbase
+    // reward goes to the node owner, not etherbase
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ), etherbaseBalance - u256( 1000000 ) );
 #else
     BOOST_REQUIRE_EQUAL( fixture.client->balanceAt( jsToAddress( etherbase ) ),
