@@ -38,7 +38,20 @@
 #include "libethcore/Common.h"
 #include "libethcore/EVMSchedule.h"
 
+class TestClientFixture;
+struct SkaleHostFixture;
+class ConsensusExtFaceFixture;
+class SingleNodeConsensusFixture;
+namespace {
+struct SnapshotHashingFixture;
+struct JsonRpcFixture;
+class InstructionTestFixture;
+}  // namespace
+
 namespace dev {
+namespace test {
+class SnapshotHashAgentTest;
+}  // namespace test
 namespace eth {
 
 class PrecompiledContract {
@@ -57,10 +70,14 @@ public:
         u256 const& _blockNumber ) const {
         return m_cost( _in, _chainParams, _blockNumber );
     }
+#ifdef MIRAGE
+    std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
+#else
     std::pair< bool, bytes > execute(
         bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
         return m_execute( _in, _overlayFS );
     }
+#endif
 
     u256 const& startingBlock() const { return m_startingBlock; }
 
@@ -76,6 +93,10 @@ private:
     h160Set m_allowed_addresses;
 };
 
+#ifdef MIRAGE
+static constexpr uint8_t c_currentGroupsSize = 2;
+#endif
+
 static constexpr int64_t c_infiniteBlockNumber = std::numeric_limits< int64_t >::max();
 // default value for leveldbReopenIntervalMs is 1 day
 // negative value means reopenings are disabled
@@ -87,14 +108,17 @@ public:
     std::string name;
     u256 id;
     std::string ip;
+
     uint16_t port;
     std::string ip6;
     uint16_t port6;
     std::string sgxServerUrl;
+#ifndef MIRAGE
     std::string keyShareName;
-    std::string ecdsaKeyName;
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
+#endif
+    std::string ecdsaKeyName;
     bool syncNode;
     bool archiveMode;
     bool syncFromCatchup;
@@ -103,6 +127,7 @@ public:
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
         std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
+#ifndef MIRAGE
         std::string _keyShareName = "",
         const std::array< std::string, 4 >&
             _BLSPublicKeys = { "1085704699902305713594457076223282948137075635957851808699051999328"
@@ -116,6 +141,7 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+#endif
         bool _syncNode = false, bool _archiveMode = false, bool _syncFromCatchup = false,
         bool _testSignatures = true ) {
         name = _name;
@@ -126,9 +152,11 @@ public:
         port6 = _port6;
         sgxServerUrl = _sgxServerUrl;
         ecdsaKeyName = _ecdsaKeyName;
+#ifndef MIRAGE
         keyShareName = _keyShareName;
         BLSPublicKeys = _BLSPublicKeys;
         commonBLSPublicKeys = _commonBLSPublicKeys;
+#endif
         syncNode = _syncNode;
         archiveMode = _archiveMode;
         syncFromCatchup = _syncFromCatchup;
@@ -168,6 +196,20 @@ struct NodeGroup {
     std::array< std::string, 4 > blsPublicKey;
 };
 
+#ifdef MIRAGE
+/// skale
+/// current group detailed information
+struct CurrentGroup {
+    std::vector< sChainNode > nodes;
+    uint64_t startTs;
+    std::string keyShareName;
+    std::array< std::string, 4 > BLSPublicKeys;
+    std::array< std::string, 4 > commonBLSPublicKeys;
+};
+
+using CurrentGroups = std::array< CurrentGroup, c_currentGroupsSize >;
+#endif
+
 /// skale
 struct SChain {
 public:
@@ -176,6 +218,9 @@ public:
     Address owner;
     Address blockAuthor;
     std::vector< sChainNode > nodes;
+#ifdef MIRAGE
+    CurrentGroups currentGroups;
+#endif
     std::vector< NodeGroup > nodeGroups;
 #ifndef MIRAGE
     s256 contractStorageLimit = 1000000000;
@@ -218,21 +263,54 @@ public:
             "0xfa", { "0", "1", "0", "1" } };
 #endif
         nodes.push_back( me );
+#ifdef MIRAGE
+        currentGroups[0] = {
+            nodes,
+            1,
+            "",
+            { "1085704699902305713594457076223282948137075635957851808699051999328"
+              "5655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+            { "1085704699902305713594457076223282948137075635957851808699051"
+              "9993285655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+        };
+        currentGroups[1] = {
+            nodes,
+            2,
+            "",
+            { "1085704699902305713594457076223282948137075635957851808699051999328"
+              "5655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+            { "1085704699902305713594457076223282948137075635957851808699051"
+              "9993285655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+        };
+#endif
     }
 };
-
 
 struct ChainOperationParams {
     ChainOperationParams();
 
+    friend class ::TestClientFixture;
+    friend struct ::SnapshotHashingFixture;
+    friend struct ::JsonRpcFixture;
+    friend struct ::SkaleHostFixture;
+    friend class ::ConsensusExtFaceFixture;
+    friend class ::SingleNodeConsensusFixture;
+    friend class ::InstructionTestFixture;
+    friend class dev::test::SnapshotHashAgentTest;
+
     explicit operator bool() const { return accountStartNonce != Invalid256; }
-
-    /// The chain sealer name: e.g. Ethash, NoProof, BasicAuthority
-    std::string sealEngineName = "NoProof";
-
-    /// General chain params.
-private:
-    u256 m_blockReward;
 
 public:
     EVMSchedule const makeEvmSchedule(
@@ -240,6 +318,88 @@ public:
     u256 blockReward( EVMSchedule const& _schedule ) const;
     u256 blockReward( time_t _committedBlockTimestamp, u256 const& _workingBlockNumber ) const;
     void setBlockReward( u256 const& _newBlockReward );
+
+    time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
+
+    bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
+        return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();
+    }
+    bigint costOfPrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
+        return precompiled.at( _a ).cost( _in, *this, _blockNumber );
+    }
+    bool precompiledExecutionAllowedFrom(
+        Address const& _a, Address const& _from, bool _readOnly ) const {
+        return precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
+    }
+
+    const PrecompiledContract& getPrecompiledContract( const dev::Address& _a ) const {
+        return precompiled.at( _a );
+    }
+
+#ifdef MIRAGE
+    std::pair< bool, bytes > executePrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& ) const {
+        return precompiled.at( _a ).execute( _in );
+    }
+#else
+    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
+        skale::OverlayFS* _overlayFS = nullptr ) const {
+        return precompiled.at( _a ).execute( _in, _overlayFS );
+    }
+#endif
+
+    // SETTERS, mostly for tests
+
+    void setExperimentalForkBlock( u256 _bn ) { experimentalForkBlock = _bn; }
+
+    void setHomesteadForkBlock( u256 _bn ) { homesteadForkBlock = _bn; }
+
+    void setByzantiumForkBlock( u256 _bn ) { byzantiumForkBlock = _bn; }
+
+    // GENERAL CHAIN GETTERS
+
+    uint64_t getChainId() const { return chainID; }
+
+    std::string getSealEngineName() const { return sealEngineName; }
+
+    u256 getGasLimitBoundDivisor() const { return gasLimitBoundDivisor; }
+
+    u256 getMinimumDifficulty() const { return minimumDifficulty; }
+
+    u256 getDifficultyBoundDivisor() const { return difficultyBoundDivisor; }
+
+    u256 getDurationLimit() const { return durationLimit; }
+
+    u256 getMinGasLimit() const { return minGasLimit; }
+
+    u256 getMaxGasLimit() const { return maxGasLimit; }
+
+    u256 getMaximumExtraDataSize() const { return maximumExtraDataSize; }
+
+    u256 getHomesteadForkBlock() const { return homesteadForkBlock; }
+
+    u256 getByzantiumForkBlock() const { return byzantiumForkBlock; }
+
+    u256 getConstantinopleForkBlock() const { return constantinopleForkBlock; }
+
+    u256 getExperimentalForkBlock() const { return experimentalForkBlock; }
+
+    u256 getIstanbulForkBlock() const { return istanbulForkBlock; }
+
+    u256 getEIP158ForkBlock() const { return EIP158ForkBlock; }
+
+    u256 getDaoHardforkBlock() const { return daoHardforkBlock; }
+
+    bool isChainIdCheckDisabled() const { return skaleDisableChainIdCheck; }
+
+    /// General chain params.
+protected:
+    /// The chain sealer name: e.g. Ethash, NoProof, BasicAuthority
+    std::string sealEngineName = "NoProof";
+
+    u256 m_blockReward;
+
     u256 maximumExtraDataSize = 1024;
     u256 accountStartNonce = 0;
     bool tieBreakingGas = true;
@@ -284,26 +444,16 @@ public:
     u256 externalGasDifficulty = ~u256( 0 );
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
-    int getLogsBlocksLimit = -1;
-
-    time_t getPatchTimestamp( SchainPatchEnum _patchEnum ) const;
-
-    bool isPrecompiled( Address const& _a, u256 const& _blockNumber ) const {
-        return precompiled.count( _a ) != 0 && _blockNumber >= precompiled.at( _a ).startingBlock();
-    }
-    bigint costOfPrecompiled(
-        Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
-        return precompiled.at( _a ).cost( _in, *this, _blockNumber );
-    }
-    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
-        skale::OverlayFS* _overlayFS = nullptr ) const {
-        return precompiled.at( _a ).execute( _in, _overlayFS );
-    }
-    bool precompiledExecutionAllowedFrom(
-        Address const& _a, Address const& _from, bool _readOnly ) const {
-        return precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
-    }
+    int logsBlocksLimit = -1;
 };
+
+#ifdef MIRAGE
+inline bool operator==( const sChainNode& lhs, const sChainNode& rhs ) {
+    // if BLS public keys are different there is no point to check anything else
+    // on the other hand, if the keys are equal they belong to the same node
+    return lhs.blsPublicKey == rhs.blsPublicKey;
+}
+#endif
 
 }  // namespace eth
 }  // namespace dev

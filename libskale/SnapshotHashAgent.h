@@ -76,7 +76,7 @@ public:
     friend class dev::test::SnapshotHashAgentTest;
 
 private:
-    dev::eth::ChainParams chainParams_;
+    const dev::eth::ChainParams& chainParams_;
     unsigned n_;
     std::string urlToDownloadSnapshotFrom_;
     std::shared_ptr< libBLS::Bls > bls_;

@@ -7,9 +7,7 @@ import json
 def main():
     sgx_url = "http://127.0.0.1:1029"
 
-    cert_path = "/skale_node_data/sgx_certs"
-
-    sgx = SgxClient(sgx_url, path_to_cert=cert_path)
+    sgx = SgxClient(sgx_url)
 
     random_dkg_id = random.randint(0, 10**50)
 

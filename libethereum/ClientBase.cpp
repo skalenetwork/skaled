@@ -94,7 +94,7 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
     t.forceChainId( chainId() );
     t.ignoreExternalGas();
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
-        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().chainID );
+        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().getChainId() );
     // Make a copy of the state, it will be deleted after this step
     State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
@@ -198,7 +198,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     unsigned begin = min( bc().number() + 1, ( unsigned ) _f.latest() );
     unsigned end = min( bc().number(), min( begin, ( unsigned ) _f.earliest() ) );
 
-    if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit )
+    if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit() )
         BOOST_THROW_EXCEPTION( TooBigResponse() );
 
     // Handle pending transactions differently as they're not on the block chain.
@@ -605,7 +605,7 @@ Block ClientBase::latestBlock() const {
 }
 
 uint64_t ClientBase::chainId() const {
-    return bc().chainParams().chainID;
+    return bc().chainParams().getChainId();
 }
 
 

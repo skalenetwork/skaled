@@ -160,7 +160,7 @@ bool AlethExecutive::call(
         //        for the transaction.
         // Increment associated nonce for sender.
         if ( _p.senderAddress != MaxAddress ||
-             m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
+             m_envInfo.number() < m_chainParams.getExperimentalForkBlock() )  // EIP86
             m_s.incNonce( _p.senderAddress );
     }
 
@@ -256,7 +256,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     u256 const& _gasPrice, u256 const& _gas, bytesConstRef _init, Address const& _origin,
     u256 const& _version ) {
     if ( _sender != MaxAddress ||
-         m_envInfo.number() < m_chainParams.experimentalForkBlock )  // EIP86
+         m_envInfo.number() < m_chainParams.getExperimentalForkBlock() )  // EIP86
         m_s.incNonce( _sender );
 
     m_savepoint = m_s.savepoint();
@@ -283,7 +283,7 @@ bool AlethExecutive::executeCreate( Address const& _sender, u256 const& _endowme
     m_s.transferBalance( _sender, m_newAddress, _endowment );
 
     u256 newNonce = m_s.requireAccountStartNonce();
-    if ( m_envInfo.number() >= m_chainParams.EIP158ForkBlock )
+    if ( m_envInfo.number() >= m_chainParams.getEIP158ForkBlock() )
         newNonce += 1;
     m_s.setNonce( m_newAddress, newNonce );
 
