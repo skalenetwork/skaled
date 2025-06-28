@@ -700,6 +700,8 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         m_ignoreNewBlocks = true;
         m_broadcastRestartNeeded = true;
         // stop all services first
+        // exitGracefully() interferes with exit procedure
+        // TODO: make it more ellegant to avoid collisions
         m_consensus->exitGracefully();
         m_committeeRotationMonitorThread.reset( new std::thread( [this]() {
             while ( m_consensus->getStatus() != consensus_engine_status::CONSENSUS_EXITED ) {

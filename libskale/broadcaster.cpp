@@ -249,7 +249,9 @@ void ZmqBroadcaster::resetServerSocket() {
         int linger = 1;
         zmq_setsockopt( m_zmq_server_socket, ZMQ_LINGER, &linger, sizeof( linger ) );
         zmq_close( m_zmq_server_socket );
+        m_zmq_server_socket = nullptr;
     }
+    initSocket();
 }
 #endif
 
