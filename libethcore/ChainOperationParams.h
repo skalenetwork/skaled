@@ -70,10 +70,14 @@ public:
         u256 const& _blockNumber ) const {
         return m_cost( _in, _chainParams, _blockNumber );
     }
+#ifdef MIRAGE
+    std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
+#else
     std::pair< bool, bytes > execute(
         bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
         return m_execute( _in, _overlayFS );
     }
+#endif
 
     u256 const& startingBlock() const { return m_startingBlock; }
 
@@ -324,10 +328,6 @@ public:
         Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
         return precompiled.at( _a ).cost( _in, *this, _blockNumber );
     }
-    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
-        skale::OverlayFS* _overlayFS = nullptr ) const {
-        return precompiled.at( _a ).execute( _in, _overlayFS );
-    }
     bool precompiledExecutionAllowedFrom(
         Address const& _a, Address const& _from, bool _readOnly ) const {
         return precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
@@ -336,6 +336,18 @@ public:
     const PrecompiledContract& getPrecompiledContract( const dev::Address& _a ) const {
         return precompiled.at( _a );
     }
+
+#ifdef MIRAGE
+    std::pair< bool, bytes > executePrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& ) const {
+        return precompiled.at( _a ).execute( _in );
+    }
+#else
+    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
+        skale::OverlayFS* _overlayFS = nullptr ) const {
+        return precompiled.at( _a ).execute( _in, _overlayFS );
+    }
+#endif
 
     // SETTERS, mostly for tests
 

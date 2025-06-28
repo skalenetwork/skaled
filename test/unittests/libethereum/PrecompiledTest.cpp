@@ -31,7 +31,9 @@
 #include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+#ifndef MIRAGE
 #include <libskale/OverlayFS.h>
+#endif
 #include <libethereum/SchainPatch.h>
 
 #include <secp256k1_sha256.h>
@@ -1816,7 +1818,6 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 }
-#endif
 
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
@@ -2065,5 +2066,6 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
