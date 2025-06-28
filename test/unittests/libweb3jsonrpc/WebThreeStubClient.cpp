@@ -1422,17 +1422,17 @@ Json::Value WebThreeStubClient::debug_getPatchTimestamps() {
 }
 
 #ifdef BITE
-std::string WebThreeStubClient::skale_getCommonPublicKey() {
+std::string WebThreeStubClient::bite_getCommonPublicKey() {
     Json::Value p;
     p = Json::nullValue;
-    Json::Value result = this->CallMethod( "skale_getCommonPublicKey", p );
+    Json::Value result = this->CallMethod( "bite_getCommonPublicKey", p );
     return result.asString();
 }
 
-Json::Value WebThreeStubClient::skale_getDecryptedTransactionData( const std::string& param1 ) {
+Json::Value WebThreeStubClient::bite_getDecryptedTransactionData( const std::string& param1 ) {
     Json::Value p;
     p.append( param1 );
-    Json::Value result = this->CallMethod( "skale_getDecryptedTransactionData", p );
+    Json::Value result = this->CallMethod( "bite_getDecryptedTransactionData", p );
     if ( result.isObject() )
         return result;
     else
