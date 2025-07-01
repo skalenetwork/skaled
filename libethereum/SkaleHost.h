@@ -166,6 +166,12 @@ public:
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 
+#ifdef MIRAGE
+    bool isConsesusUpdateHappened() const { return m_consensusUpdateHappened; }
+
+    void handleConsensusUpdate() const;
+#endif
+
 private:
     std::atomic_bool working = false;
 
@@ -216,7 +222,8 @@ private:
 
     bool m_broadcastEnabled;
 #ifdef MIRAGE
-    bool m_broadcastRestartNeeded = false;
+    std::atomic_bool m_broadcastRestartNeeded = false;
+    mutable std::atomic_bool m_consensusUpdateHappened = false;
 #endif
 
     dev::Logger m_loggerError{ dev::createLogger( dev::VerbosityError, "skale-host" ) };

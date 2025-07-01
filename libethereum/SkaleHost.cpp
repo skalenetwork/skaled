@@ -712,6 +712,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
             m_consensus = DefaultConsensusFactory( m_client ).create( *m_extFace );
             m_consensus->parseFullConfigAndCreateNode(
                 m_client.chainParams().getConfigForConsensus(), "" );
+            m_consensusUpdateHappened = true;
             // restart all services to fetch latest nodes info
             m_consensus->startAll();
             m_consensus->bootStrapAll();
@@ -739,6 +740,13 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     LOG( m_loggerError ) << "CRITICAL unknown exception (in createBlock)";
     LOG( m_loggerError ) << "\n" << skutils::signal::generate_stack_trace();
 }
+
+#ifdef MIRAGE
+void SkaleHost::handleConsensusUpdate() const {
+    m_consensus->updateLogger();
+    m_consensusUpdateHappened = false;
+}
+#endif
 
 void SkaleHost::startWorking() {
     if ( working )

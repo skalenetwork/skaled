@@ -604,6 +604,11 @@ struct JsonRpcFixture : public TestOutputHelperFixture {
     }
 
     ~JsonRpcFixture() {
+#ifdef MIRAGE
+        if ( client->skaleHost()->isConsesusUpdateHappened() )
+            client->skaleHost()->handleConsensusUpdate();
+#endif
+
         if ( skale_server_connector )
             skale_server_connector->StopListening();
 

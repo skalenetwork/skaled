@@ -117,6 +117,11 @@ public:
     virtual ConsensusInterface::SyncInfo getSyncInfo() override {
         return ConsensusInterface::SyncInfo{};
     };
+
+#ifdef MIRAGE
+    void restartWithNewConfig( const std::string& ) override {}
+    void updateLogger() const override {}
+#endif
 };
 
 class ConsensusTestStubFactory : public ConsensusFactory {

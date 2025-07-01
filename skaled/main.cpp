@@ -211,6 +211,11 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
     } catch ( InvalidSealEngine& ) {
     }
 
+#ifdef MIRAGE
+    if ( _c->skaleHost()->isConsesusUpdateHappened() )
+        _c->skaleHost()->handleConsensusUpdate();
+#endif
+
     this_thread::sleep_for( chrono::milliseconds( 100 ) );
 }
 
