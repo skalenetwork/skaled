@@ -119,7 +119,6 @@ public:
     };
 
 #ifdef MIRAGE
-    void restartWithNewConfig( const std::string& ) override {}
     void updateLogger() const override {}
 #endif
 };

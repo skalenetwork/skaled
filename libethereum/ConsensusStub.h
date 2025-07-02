@@ -49,7 +49,6 @@ public:
     consensus_engine_status getStatus() const override { return CONSENSUS_ACTIVE; }  // moch
 
 #ifdef MIRAGE
-    void restartWithNewConfig( const std::string& ) override {}
     void updateLogger() const override {}
 #endif
 
