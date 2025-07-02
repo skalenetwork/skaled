@@ -4789,7 +4789,7 @@ revert();
 BOOST_AUTO_TEST_CASE( getCommonPublicKey ) {
     JsonRpcFixture fixture( c_BITEConfigString, false, false, true );
 
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     BOOST_REQUIRE( blsPublicKey.size() == 256 );
 }
@@ -4807,7 +4807,7 @@ BOOST_AUTO_TEST_CASE( importInvalidBITETransaction ) {
     std::string message =
         h256::random().hex() + std::string( "5EdF1e852fdD1B0Bc47C0307EF755C76f4B9c251" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( message.c_str() );
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     auto encryptedMessage =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -4927,7 +4927,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     std::string dataPlusDestAddress =
         h256::random().hex() + std::string( "7aa5e36aa15e93d10f4f26357c30f052dacdde5f" );
     auto messageBytes = libBLS::ThresholdUtils::hexCStringToBytes( dataPlusDestAddress.c_str() );
-    auto blsPublicKey = fixture.rpcClient->skale_getCommonPublicKey();
+    auto blsPublicKey = fixture.rpcClient->bite_getCommonPublicKey();
 
     auto ciphertext =
         libBLS::ThresholdEncryption::encrypt( messageBytes, libBLS::TEPublicKey( blsPublicKey ) );
@@ -4962,7 +4962,7 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
                    dev::toJS( balanceBeforeU256 - minGasRequired * dev::jsToU256( gasPrice ) ) );
 
     try {
-        fixture.rpcClient->skale_getDecryptedTransactionData( invalidTxnHash );
+        fixture.rpcClient->bite_getDecryptedTransactionData( invalidTxnHash );
     } catch ( const jsonrpc::JsonRpcException& ex ) {
         std::string errorMessage =
             "Transaction with provided hash does not have any decrypted data associated with it.";
@@ -5046,7 +5046,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
         legacyEncryptedResponse["input"].asString() == encryptedDataPlusToAddressLegacy );
 
     auto legacyDecryptedResponse =
-        fixture.rpcClient->skale_getDecryptedTransactionData( legacyHash );
+        fixture.rpcClient->bite_getDecryptedTransactionData( legacyHash );
     BOOST_REQUIRE( legacyDecryptedResponse["data"] == "0x" + plaintext );
     BOOST_REQUIRE( legacyDecryptedResponse["to"] == "0x" + originalToAddress );
 
@@ -5087,7 +5087,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto type1EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type1Hash );
     BOOST_REQUIRE( type1EncryptedResponse["input"].asString() == encryptedDataPlusToAddressType1 );
 
-    auto type1DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type1Hash );
+    auto type1DecryptedResponse = fixture.rpcClient->bite_getDecryptedTransactionData( type1Hash );
     BOOST_REQUIRE( type1DecryptedResponse["data"] == "0x" + plaintext );
     BOOST_REQUIRE( type1DecryptedResponse["to"] == "0x" + originalToAddressType1 );
 
@@ -5121,7 +5121,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     auto type2EncryptedResponse = fixture.rpcClient->eth_getTransactionByHash( type2Hash );
     BOOST_REQUIRE( type2EncryptedResponse["input"].asString() == encryptedDataPlusToAddressType2 );
 
-    auto type2DecryptedResponse = fixture.rpcClient->skale_getDecryptedTransactionData( type2Hash );
+    auto type2DecryptedResponse = fixture.rpcClient->bite_getDecryptedTransactionData( type2Hash );
     BOOST_REQUIRE( type2DecryptedResponse["data"] == "0x" + plaintext );
     BOOST_REQUIRE( type2DecryptedResponse["to"] == "0x" + originalToAddressType2 );
 
