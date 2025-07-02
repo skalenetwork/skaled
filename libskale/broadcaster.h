@@ -110,11 +110,8 @@ private:
     mutable void* m_zmq_client_socket;
 
     std::string getZmqUrl( const dev::eth::sChainNode& ) const;
-#ifdef MIRAGE
+
     void* server_socket() const;
-#else
-    void* server_socket() const;
-#endif
     void* client_socket() const;
 
     // threading
