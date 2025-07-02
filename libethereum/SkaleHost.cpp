@@ -761,12 +761,13 @@ void SkaleHost::runCommitteeRotationForConsensus() {
             std::string s = ex.what();
             if ( s.empty() )
                 s = "no description";
-            LOG( m_loggerError )
-                << "Consensus thread in skale host after committee rotation will exit with exception: " << s;
+            LOG( m_loggerError ) << "Consensus thread in skale host after committee rotation will "
+                                    "exit with exception: "
+                                 << s;
         } catch ( ... ) {
-            LOG( m_loggerError )
-                << "Consensus thread in skale host after committee rotation will exit with unknown exception\n"
-                << skutils::signal::generate_stack_trace();
+            LOG( m_loggerError ) << "Consensus thread in skale host after committee rotation will "
+                                    "exit with unknown exception\n"
+                                 << skutils::signal::generate_stack_trace();
         }
         m_ignoreNewBlocks = false;
         LOG( m_loggerInfo ) << "Committee rotation is completed.";
