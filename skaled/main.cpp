@@ -212,6 +212,9 @@ void stopSealingAfterXBlocks( eth::Client* _c, unsigned _start, unsigned& io_min
     }
 
 #ifdef MIRAGE
+    // HACK: this should be called from every active thread
+    // that has ever entered consensus
+    // in reality this is the only place this function is executed
     if ( _c->skaleHost()->isConsesusUpdateHappened() )
         _c->skaleHost()->handleConsensusUpdate();
 #endif

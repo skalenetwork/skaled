@@ -187,6 +187,12 @@ private:
         uint64_t _timeStamp, uint64_t _blockID, dev::u256 _gasPrice, u256 _stateRoot,
         uint64_t _winningNodeIndex );
 
+#ifdef MIRAGE
+    void runCommitteeRotationForConsensus();
+#endif
+
+    void checkStateRoot( uint64_t _blockId, uint64_t _winningNodeIndex, u256 _stateRoot );
+
     std::thread m_broadcastThread;
     void broadcastFunc();
 
