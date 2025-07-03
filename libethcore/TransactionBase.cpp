@@ -642,20 +642,64 @@ void TransactionBase::checkAndValidateBITETransaction() const {
     if ( !isBite() )
         return;
 
-    if ( m_data.empty() || m_data.size() < BITE_EPOCH_ID_LEN + BITE_CIPHERTEXT_MIN_LEN ) {
-        BOOST_THROW_EXCEPTION( BITETransactionTooShort()
-                               << errinfo_comment( "BITE transaction's data is too short." ) );
+    RLP rlpEncodedBITETxn;
+    try {
+        rlpEncodedBITETxn = RLP( m_data );
+    } catch ( ... ) {
+        BOOST_THROW_EXCEPTION(
+            InvalidBITETransaction() << errinfo_comment( std::string(
+                "BITE transaction's data is invalid: data must be passed in RLP format" ) ) );
     }
 
+    if ( !rlpEncodedBITETxn.isList() )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                   "BITE transaction's data is invalid: RLP must be a list" ) ) );
+
+    if ( rlpEncodedBITETxn.itemCount() == 0 || !rlpEncodedBITETxn.toList()[0].isList() )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                   "BITE transaction's data is invalid: wrong RLP format" ) ) );
+
+    RLPs biteTxnRlpList = rlpEncodedBITETxn.toList()[0].toList();
+    if ( biteTxnRlpList.size() != 3 )
+        BOOST_THROW_EXCEPTION( BITETransactionTooShort() << errinfo_comment(
+                                   std::string( "BITE transaction's data is too short: expected 3 "
+                                                "elements to be in BITE payload, got" ) +
+                                   std::to_string( biteTxnRlpList.size() ) ) );
+
+    // extract epochId
+    if ( !biteTxnRlpList[0].isInt() )
+        BOOST_THROW_EXCEPTION(
+            InvalidBITETransaction() << errinfo_comment(
+                std::string( "BITE transaction's data is invalid: epochId must be an int" ) ) );
+    u256 epochId = biteTxnRlpList[0].toInt< u256 >();
+    if ( epochId != 0 )
+        BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                   "BITE transaction's data is invalid: wrong epochId" ) ) );
+
     // Extract ciphered key bytes
+    dev::bytes encryptedAESKey = biteTxnRlpList[1].toBytes();
+    if ( encryptedAESKey.size() != BITE_ENCRYPTED_AES_KEY_LEN )
+        BOOST_THROW_EXCEPTION(
+            InvalidBITETransaction() << errinfo_comment( std::string(
+                "BITE transaction's data is invalid: wrong encrypted AES key size" ) ) );
+
+    // Extract encrypted data bytes
+    dev::bytes encryptedDataBytes = biteTxnRlpList[2].toBytes();
+    if ( encryptedDataBytes.size() < BITE_CIPHERTEXT_MIN_LEN - BITE_ENCRYPTED_AES_KEY_LEN )
+        BOOST_THROW_EXCEPTION(
+            BITETransactionTooShort() << errinfo_comment(
+                std::string(
+                    "BITE transaction's encrypted data is too short: expected at least " ) +
+                std::to_string( BITE_CIPHERTEXT_MIN_LEN - BITE_AES_KEY_LEN ) +
+                std::string( ", but got " ) + std::to_string( encryptedDataBytes.size() ) ) );
+
     std::array< uint8_t, BITE_ENCRYPTED_AES_KEY_LEN > cipheredKeyBytes;
-    std::copy( m_data.begin() + BITE_EPOCH_ID_LEN,
-        m_data.begin() + BITE_EPOCH_ID_LEN + BITE_ENCRYPTED_AES_KEY_LEN, cipheredKeyBytes.begin() );
+    std::copy( encryptedAESKey.begin(), encryptedAESKey.begin() + BITE_ENCRYPTED_AES_KEY_LEN,
+        cipheredKeyBytes.begin() );
     try {
         // validate encrypted AES key
         auto cipheredKey = libBLS::CipheredKey::fromBytes( cipheredKeyBytes );
         libBLS::ThresholdEncryption::validateEncryption( cipheredKey );
-        return;
     } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
         BOOST_THROW_EXCEPTION(
             InvalidBITETransaction()

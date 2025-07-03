@@ -679,16 +679,33 @@ string fromAscii( string _s ) {
 #ifdef BITE
 /// Helper functions
 
-std::string formEncryptedMessageMockup( const std::string& message, const std::string& toAddress ) {
+dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Address& toAddress ) {
     libBLS::TEBase::initializeIfNecessary();
-    auto finalMessageToEncrypt = message + toAddress;
-    auto messageToEncrypt =
-        libBLS::ThresholdUtils::hexCStringToBytes( finalMessageToEncrypt.c_str() );
-    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
-    std::string epochId = "0000000000000000";
 
-    return std::string( "0x" ) + epochId +
-           libBLS::ThresholdUtils::bytesToHexString( encryptedMessage );
+    RLPStream biteDataRlp( 2 );
+
+    biteDataRlp << ( dev::Address::Arith ) toAddress;
+    biteDataRlp << message;
+
+    auto messageToEncrypt = biteDataRlp.out();
+    auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
+
+    u256 epochId = 0;
+    dev::bytes encryptedKeyBytes( encryptedMessage.begin(), encryptedMessage.begin() + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
+    dev::bytes encryptedDataBytes( encryptedMessage.begin() + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES, encryptedMessage.end() );
+
+    RLPStream bitePayloadRlpList;
+
+    RLPStream bitePayloadRlp( 3 );
+
+    bitePayloadRlp << epochId;
+    bitePayloadRlp << encryptedKeyBytes;
+    bitePayloadRlp << encryptedDataBytes;
+
+    bitePayloadRlpList.appendList( bitePayloadRlp.out() );
+
+    auto rlpBytes = bitePayloadRlpList.out();
+    return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
 std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string& senderAddress,
@@ -710,7 +727,7 @@ std::string formTransactionRlp( const JsonRpcFixture& fixture, const std::string
     return dev::toHexPrefixed( tx.toBytes() );
 }
 
-#endif
+#endif // BITE
 
 BOOST_AUTO_TEST_SUITE( JsonRpcSuite )
 
@@ -2454,11 +2471,11 @@ BOOST_AUTO_TEST_CASE( logs ) {
         }
         else {
             std::string addrWithout0x = contractAddress.substr( 2 );
-            std::string encryptedData = formEncryptedMessageMockup("", addrWithout0x);
+            dev::bytes encryptedData = formEncryptedMessageMockup( dev::bytes(), dev::Address( addrWithout0x ) );
             // account for the nonce 0 used for contract deployment
             size_t nonce = static_cast<size_t>(i + 1);
             std::string rlp = formTransactionRlp( fixture, t["from"].asString(),
-                encryptedData, nonce, addrWithout0x);
+                dev::toHex( encryptedData ), nonce, addrWithout0x);
             txHash = fixture.rpcClient->eth_sendRawTransaction( rlp );
         }
 #else
@@ -5196,7 +5213,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send txn to change state
     Json::Value store1;
     store1["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    store1["data"] = formEncryptedMessageMockup( dataStore1, contractAddressWithout0x );
+    store1["data"] = dev::toHex( formEncryptedMessageMockup( dev::fromHex( dataStore1 ), dev::Address( contractAddressWithout0x ) ) );
     store1["from"] = toJS( senderAddress );
     store1["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     store1["gas"] = "111000";
@@ -5215,8 +5232,7 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
     // send invalid call to the contract - txn should fail
     Json::Value txInvalidContractCall;
     txInvalidContractCall["to"] = toJS( "0x" + std::string( BITE_ADDRESS_AS_STRING ) );
-    txInvalidContractCall["data"] =
-        formEncryptedMessageMockup( dataStoreInvalid, contractAddressWithout0x );
+    txInvalidContractCall["data"] = dev::toHex( formEncryptedMessageMockup( dev::fromHex( dataStoreInvalid ), dev::Address( contractAddressWithout0x ) ) );
     txInvalidContractCall["from"] = toJS( senderAddress );
     txInvalidContractCall["gasPrice"] = fixture.rpcClient->eth_gasPrice();
     txHash = fixture.rpcClient->eth_sendTransaction( txInvalidContractCall );
