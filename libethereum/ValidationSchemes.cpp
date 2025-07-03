@@ -99,7 +99,6 @@ string const c_accountInitialFunds = "accountInitialFunds";
 
 string const c_externalGasDifficulty = "externalGasDifficulty";
 
-
 void validateConfigJson( js::mObject const& _obj ) {
     requireJsonFields( _obj, "ChainParams::loadConfig",
         { { c_sealEngine, { { js::str_type }, JsonFieldPresence::Required } },
