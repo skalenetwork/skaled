@@ -703,7 +703,7 @@ void TransactionBase::checkAndValidateBITETransaction() const {
     } catch ( libBLS::ThresholdUtils::IncorrectInput& ex ) {
         BOOST_THROW_EXCEPTION(
             InvalidBITETransaction()
-            << errinfo_comment( std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
+            << errinfo_comment( std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
     } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
         BOOST_THROW_EXCEPTION(
             InvalidBITETransaction()
