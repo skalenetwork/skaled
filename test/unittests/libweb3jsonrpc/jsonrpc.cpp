@@ -691,16 +691,13 @@ dev::bytes formEncryptedMessageMockup( const dev::bytes& message, const dev::Add
     auto encryptedMessage = libBLS::ThresholdEncryption::mockupEncrypt( messageToEncrypt );
 
     u256 epochId = 0;
-    dev::bytes encryptedKeyBytes( encryptedMessage.begin(), encryptedMessage.begin() + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
-    dev::bytes encryptedDataBytes( encryptedMessage.begin() + libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES, encryptedMessage.end() );
 
     RLPStream bitePayloadRlpList;
 
-    RLPStream bitePayloadRlp( 3 );
+    RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << epochId;
-    bitePayloadRlp << encryptedKeyBytes;
-    bitePayloadRlp << encryptedDataBytes;
+    bitePayloadRlp << encryptedMessage;
 
     bitePayloadRlpList.appendList( bitePayloadRlp.out() );
 
