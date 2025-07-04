@@ -541,14 +541,13 @@ dev::bytes prepareBITEDataRlp( const dev::Address& _to, const dev::bytes& _biteT
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
 }
 
-dev::bytes prepareBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedKey, const dev::bytes& _encryptedData ) {
+dev::bytes prepareBITEPayloadRlp( u256 _epochId, const dev::bytes& _encryptedBITEData ) {
     RLPStream bitePayloadRlpList;
 
-    RLPStream bitePayloadRlp( 3 );
+    RLPStream bitePayloadRlp( 2 );
 
     bitePayloadRlp << _epochId;
-    bitePayloadRlp << _encryptedKey;
-    bitePayloadRlp << _encryptedData;
+    bitePayloadRlp << _encryptedBITEData;
 
     bitePayloadRlpList.appendList( bitePayloadRlp.out() );
 
@@ -569,14 +568,10 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     // Building valid BITE transaction
     auto encryptedMessage = libBLS::ThresholdEncryption::encrypt( messageBytes, publicKey );
-    auto encryptedDataBytes = encryptedMessage.getData();
-    auto encryptedKeyByteArray = encryptedMessage.key.toBytes();
-    std::vector< uint8_t > encryptedKeyBytes( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
-    std::copy(
-        encryptedKeyByteArray.begin(), encryptedKeyByteArray.end(), encryptedKeyBytes.begin() );
+    auto encryptedBITEDataBytes = encryptedMessage.toBytes();
 
     // append random address to the end of the BITE transaction
-    dev::bytes validBITETxnData = prepareBITEPayloadRlp( epochId, encryptedKeyBytes, encryptedDataBytes );
+    dev::bytes validBITETxnData = prepareBITEPayloadRlp( epochId, encryptedBITEDataBytes );
     
     dev::Address biteAddress = dev::Address(std::string(BITE_ADDRESS_AS_STRING)); // BITE ADDRESS
     dev::bytes validBITETxnRlp = createTestTransactionRlp( validBITETxnData, biteAddress );
@@ -588,8 +583,7 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     auto baseGasRequiredForValidBITETxn = validBITETxn.baseGasRequired( IstanbulSchedule );
 
     // change non-zero byte to non-zero byte in magicNumber and make the txn non-BITE
-    dev::bytes validNonBITETxnData =
-            prepareBITEPayloadRlp( epochId, encryptedKeyBytes, encryptedDataBytes );
+    dev::bytes validNonBITETxnData = prepareBITEPayloadRlp( epochId, encryptedBITEDataBytes );
 
     dev::Address toAddressNonBITE = dev::Address::random(); // non-BITE ADDRESS
     dev::bytes validNonBITETxnRlp = createTestTransactionRlp( validNonBITETxnData, toAddressNonBITE );
@@ -602,6 +596,15 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     BOOST_REQUIRE_GT( baseGasRequiredForValidBITETxn, baseGasRequiredForValidNonBITETxn );
     BOOST_REQUIRE( baseGasRequiredForValidBITETxn - baseGasRequiredForValidNonBITETxn ==
                    IstanbulSchedule.BITETxnCost );
+
+    // Invalid ciphered key
+    encryptedMessage.key = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(), encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
+    dev::bytes invalidBITETxnData = prepareBITEPayloadRlp( epochId, encryptedMessage.toBytes() );
+    dev::bytes invalidBITETxnRlp = createTestTransactionRlp( invalidBITETxnData, biteAddress );
+    Transaction invalidBITETxn(
+        invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
+    BOOST_REQUIRE_THROW(
+        invalidBITETxn.checkAndValidateBITETransaction(), dev::eth::InvalidBITETransaction );
 
     RLPStream tooShortRlp;
 
@@ -619,10 +622,11 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
     tooShortRlp.clear();
     
     // Missing data & To address
+    encryptedMessage.data = std::make_shared< dev::bytes >();
     RLPStream epochAndKeyRlp;
     epochAndKeyRlp.appendList( 2 );
     epochAndKeyRlp << epochId;
-    epochAndKeyRlp << encryptedKeyBytes;
+    epochAndKeyRlp << encryptedMessage.toBytes();
     invalidTooShortBITETxnData = tooShortRlp.appendList( epochAndKeyRlp.out() ).out();
     invalidTooShortBITETxnRlp =
             createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
@@ -634,32 +638,17 @@ BOOST_AUTO_TEST_CASE( constructBITETxnFromRlp ) {
 
     dev::Address randomToAddress = dev::Address::random();
     // Missing the Random Secret (data is too short)
+    encryptedMessage.data = std::make_shared< dev::bytes >( randomToAddress.asBytes() );
     RLPStream epochKeyAndAddressRlp;
-    epochKeyAndAddressRlp.appendList( 3 );
+    epochKeyAndAddressRlp.appendList( 2 );
     epochKeyAndAddressRlp << epochId;
-    epochKeyAndAddressRlp << encryptedKeyBytes;
-    epochKeyAndAddressRlp << randomToAddress;
+    epochKeyAndAddressRlp << encryptedMessage.toBytes();
     invalidTooShortBITETxnData = tooShortRlp.appendList( epochKeyAndAddressRlp.out() ).out();
     invalidTooShortBITETxnRlp = createTestTransactionRlp( invalidTooShortBITETxnData, biteAddress );
     invalidTooShortBITETxn = Transaction(
         invalidTooShortBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
     BOOST_REQUIRE_THROW( invalidTooShortBITETxn.checkAndValidateBITETransaction(),
         dev::eth::BITETransactionTooShort );
-
-    // Invalid ciphered key
-    auto randomEncryptedKeyObj = libBLS::CipheredKey( libff::alt_bn128_G2::random_element(),
-        encryptedMessage.key.V, libff::alt_bn128_G1::random_element() );
-    auto randomEncryptedKeyByteArray = randomEncryptedKeyObj.toBytes();
-    std::vector< uint8_t > randomEncryptedKeyBytes( libBLS::CipheredKey::CIPHERED_KEY_SIZE_BYTES );
-    std::copy( randomEncryptedKeyByteArray.begin(), randomEncryptedKeyByteArray.end(),
-        randomEncryptedKeyBytes.begin() );
-
-    dev::bytes invalidBITETxnData = prepareBITEPayloadRlp( epochId, randomEncryptedKeyBytes, encryptedDataBytes );
-    dev::bytes invalidBITETxnRlp = createTestTransactionRlp( invalidBITETxnData, biteAddress );
-    Transaction invalidBITETxn(
-        invalidBITETxnRlp, dev::eth::CheckTransaction::Everything, false, true, true );
-    BOOST_REQUIRE_THROW(
-        invalidBITETxn.checkAndValidateBITETransaction(), dev::eth::InvalidBITETransaction );
 }
 #endif
 
