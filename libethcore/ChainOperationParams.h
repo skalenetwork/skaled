@@ -441,7 +441,9 @@ protected:
     NodeInfo nodeInfo;
     SChain sChain;
     u256 accountInitialFunds = 0;
+#ifndef MIRAGE
     u256 externalGasDifficulty = ~u256( 0 );
+#endif
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
     int logsBlocksLimit = -1;

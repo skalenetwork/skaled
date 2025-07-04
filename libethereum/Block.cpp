@@ -360,9 +360,11 @@ pair< TransactionReceipts, bool > Block::sync(
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
 
+#ifndef MIRAGE
     for ( Transaction& transaction : transactions ) {
         transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
+#endif
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
@@ -518,7 +520,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             doPartialCatchupTestIfRequested( i );
 
 
-            if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
+            if ( !tr.isInvalid() &&
+#ifndef MIRAGE
+                 !tr.hasExternalGas() &&
+#endif
+                 tr.gasPrice() < _gasPrice ) {
                 LOG( m_loggerDebug )
                     << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                     << tr.gasPrice() << " < " << _gasPrice;
@@ -714,8 +720,10 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     unsigned i = 0;
     DEV_TIMED_ABOVE( "txExec", 500 ) for ( Transaction const& tr : _block.transactions ) {
         try {
+#ifndef MIRAGE
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
+#endif
             execute( _bc.lastBlockHashes(), tr, skale::Permanence::Committed, OnOpFunc(), i );
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
