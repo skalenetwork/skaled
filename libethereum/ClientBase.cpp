@@ -92,7 +92,9 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
     t.forceChainId( chainId() );
+#ifndef MIRAGE
     t.ignoreExternalGas();
+#endif
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
         _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().getChainId() );
     // Make a copy of the state, it will be deleted after this step
@@ -126,7 +128,6 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                     bc().info().timestamp(), bc().number() ) );
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
-
         Block latest = latestBlock();
         Block pending = preSeal();
 

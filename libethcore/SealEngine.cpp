@@ -103,13 +103,19 @@ void SealEngineFace::verifyTransaction( ChainOperationParams const& _chainParams
     BlockHeader const& _header, u256 const& _gasUsed ) {
     // verifyTransaction is the only place where TransactionBase is used instead of Transaction.
     u256 gas;
+#ifdef MIRAGE
+    gas = _t.gas();
+#else
     if ( PowCheckPatch::isEnabledWhen( _committedBlockTimestamp ) ) {
         // new behavior is to use pow-enabled gas
         gas = _t.gas();
-    } else {
+    }
+
+    else {
         // old behavior is to use non-POW gas
         gas = _t.nonPowGas();
     }
+#endif
 
     MICROPROFILE_SCOPEI( "SealEngineFace", "verifyTransaction", MP_ORCHID );
     if ( ( _ir & ImportRequirements::TransactionSignatures ) &&

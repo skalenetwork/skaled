@@ -70,10 +70,14 @@ public:
         u256 const& _blockNumber ) const {
         return m_cost( _in, _chainParams, _blockNumber );
     }
+#ifdef MIRAGE
+    std::pair< bool, bytes > execute( bytesConstRef _in ) const { return m_execute( _in ); }
+#else
     std::pair< bool, bytes > execute(
         bytesConstRef _in, skale::OverlayFS* _overlayFS = nullptr ) const {
         return m_execute( _in, _overlayFS );
     }
+#endif
 
     u256 const& startingBlock() const { return m_startingBlock; }
 
@@ -88,6 +92,10 @@ private:
     u256 m_startingBlock = 0;
     h160Set m_allowed_addresses;
 };
+
+#ifdef MIRAGE
+static constexpr uint8_t c_currentGroupsSize = 2;
+#endif
 
 static constexpr int64_t c_infiniteBlockNumber = std::numeric_limits< int64_t >::max();
 // default value for leveldbReopenIntervalMs is 1 day
@@ -105,10 +113,12 @@ public:
     std::string ip6;
     uint16_t port6;
     std::string sgxServerUrl;
+#ifndef MIRAGE
     std::string keyShareName;
-    std::string ecdsaKeyName;
     std::array< std::string, 4 > BLSPublicKeys;
     std::array< std::string, 4 > commonBLSPublicKeys;
+#endif
+    std::string ecdsaKeyName;
     bool syncNode;
     bool archiveMode;
     bool syncFromCatchup;
@@ -117,6 +127,7 @@ public:
     NodeInfo( std::string _name = "TestNode", u256 _id = 1, std::string _ip = "127.0.0.11",
         uint16_t _port = 11111, std::string _ip6 = "::1", uint16_t _port6 = 11111,
         std::string _sgxServerUrl = "", std::string _ecdsaKeyName = "",
+#ifndef MIRAGE
         std::string _keyShareName = "",
         const std::array< std::string, 4 >&
             _BLSPublicKeys = { "1085704699902305713594457076223282948137075635957851808699051999328"
@@ -130,6 +141,7 @@ public:
                 "11559732032986387107991004021392285783925812861821192530917403151452391805634",
                 "8495653923123431417604973247489272438418190587263600148770280649306958101930",
                 "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+#endif
         bool _syncNode = false, bool _archiveMode = false, bool _syncFromCatchup = false,
         bool _testSignatures = true ) {
         name = _name;
@@ -140,9 +152,11 @@ public:
         port6 = _port6;
         sgxServerUrl = _sgxServerUrl;
         ecdsaKeyName = _ecdsaKeyName;
+#ifndef MIRAGE
         keyShareName = _keyShareName;
         BLSPublicKeys = _BLSPublicKeys;
         commonBLSPublicKeys = _commonBLSPublicKeys;
+#endif
         syncNode = _syncNode;
         archiveMode = _archiveMode;
         syncFromCatchup = _syncFromCatchup;
@@ -182,6 +196,20 @@ struct NodeGroup {
     std::array< std::string, 4 > blsPublicKey;
 };
 
+#ifdef MIRAGE
+/// skale
+/// current group detailed information
+struct CurrentGroup {
+    std::vector< sChainNode > nodes;
+    uint64_t startTs;
+    std::string keyShareName;
+    std::array< std::string, 4 > BLSPublicKeys;
+    std::array< std::string, 4 > commonBLSPublicKeys;
+};
+
+using CurrentGroups = std::array< CurrentGroup, c_currentGroupsSize >;
+#endif
+
 /// skale
 struct SChain {
 public:
@@ -190,6 +218,9 @@ public:
     Address owner;
     Address blockAuthor;
     std::vector< sChainNode > nodes;
+#ifdef MIRAGE
+    CurrentGroups currentGroups;
+#endif
     std::vector< NodeGroup > nodeGroups;
 #ifndef MIRAGE
     s256 contractStorageLimit = 1000000000;
@@ -232,6 +263,38 @@ public:
             "0xfa", { "0", "1", "0", "1" } };
 #endif
         nodes.push_back( me );
+#ifdef MIRAGE
+        currentGroups[0] = {
+            nodes,
+            1,
+            "",
+            { "1085704699902305713594457076223282948137075635957851808699051999328"
+              "5655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+            { "1085704699902305713594457076223282948137075635957851808699051"
+              "9993285655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+        };
+        currentGroups[1] = {
+            nodes,
+            2,
+            "",
+            { "1085704699902305713594457076223282948137075635957851808699051999328"
+              "5655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+            { "1085704699902305713594457076223282948137075635957851808699051"
+              "9993285655852781",
+                "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                "4082367875863433681332203403145435568316851327593401208105741076214120093531" },
+        };
+#endif
     }
 };
 
@@ -265,10 +328,6 @@ public:
         Address const& _a, bytesConstRef _in, u256 const& _blockNumber ) const {
         return precompiled.at( _a ).cost( _in, *this, _blockNumber );
     }
-    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
-        skale::OverlayFS* _overlayFS = nullptr ) const {
-        return precompiled.at( _a ).execute( _in, _overlayFS );
-    }
     bool precompiledExecutionAllowedFrom(
         Address const& _a, Address const& _from, bool _readOnly ) const {
         return precompiled.at( _a ).executionAllowedFrom( _from, _readOnly );
@@ -277,6 +336,18 @@ public:
     const PrecompiledContract& getPrecompiledContract( const dev::Address& _a ) const {
         return precompiled.at( _a );
     }
+
+#ifdef MIRAGE
+    std::pair< bool, bytes > executePrecompiled(
+        Address const& _a, bytesConstRef _in, u256 const& ) const {
+        return precompiled.at( _a ).execute( _in );
+    }
+#else
+    std::pair< bool, bytes > executePrecompiled( Address const& _a, bytesConstRef _in, u256 const&,
+        skale::OverlayFS* _overlayFS = nullptr ) const {
+        return precompiled.at( _a ).execute( _in, _overlayFS );
+    }
+#endif
 
     // SETTERS, mostly for tests
 
@@ -370,11 +441,21 @@ protected:
     NodeInfo nodeInfo;
     SChain sChain;
     u256 accountInitialFunds = 0;
+#ifndef MIRAGE
     u256 externalGasDifficulty = ~u256( 0 );
+#endif
     typedef std::vector< std::string > vecAdminOrigins_t;
     vecAdminOrigins_t vecAdminOrigins;  // wildcard based folters for IP addresses
     int logsBlocksLimit = -1;
 };
+
+#ifdef MIRAGE
+inline bool operator==( const sChainNode& lhs, const sChainNode& rhs ) {
+    // if BLS public keys are different there is no point to check anything else
+    // on the other hand, if the keys are equal they belong to the same node
+    return lhs.blsPublicKey == rhs.blsPublicKey;
+}
+#endif
 
 }  // namespace eth
 }  // namespace dev

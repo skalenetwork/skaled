@@ -576,7 +576,7 @@ std::string Skale::oracle_checkResult( std::string& receipt ) {
 #endif
 
 #ifdef BITE
-std::string Skale::skale_getCommonPublicKey() {
+std::string Skale::bite_getCommonPublicKey() {
     try {
         auto publicKeyArray = m_client.getCurrentBLSPublicKey();
         libff::alt_bn128_G2 publicKeyG2;
@@ -595,7 +595,7 @@ std::string Skale::skale_getCommonPublicKey() {
 }
 
 // TODO - returns the data + to address (?)
-Json::Value Skale::skale_getDecryptedTransactionData( const std::string& _transactionHash ) {
+Json::Value Skale::bite_getDecryptedTransactionData( const std::string& _transactionHash ) {
     try {
         h256 h = jsToFixed< 32 >( _transactionHash );
         if ( !m_client.isKnownTransaction( h ) )

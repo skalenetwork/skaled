@@ -999,8 +999,10 @@ BOOST_AUTO_TEST_CASE( transactionDropReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1067,8 +1069,11 @@ BOOST_AUTO_TEST_CASE(
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1132,8 +1137,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPrice
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // submit it!
     tq->import( tx1 );
@@ -1205,8 +1213,11 @@ BOOST_AUTO_TEST_CASE( transactionDropByGasPriceReceive
 
     // 1st tx
     Transaction tx1 = fixture.tx_from_json( json );
+
+#ifndef MIRAGE
     tx1.checkOutExternalGas(
         client->chainParams(), client->latestBlock().info().timestamp(), client->number() );
+#endif
 
     // receive it!
     skaleHost->receiveTransaction( toJS( tx1.toBytes() ) );
@@ -1510,8 +1521,13 @@ BOOST_FIXTURE_TEST_CASE(
 #endif
                                 utcTime(), 1U ) );
 
+#ifndef MIRAGE
     REQUIRE_BLOCK_SIZE( 1, 1 );
     REQUIRE_BLOCK_TRANSACTION( 1, 0, tx1Hash );
+#else
+    ( void ) tx1Hash;
+    REQUIRE_BLOCK_SIZE( 1, 0 );
+#endif
 
     // 2 tx nonce = 0
     json["value"] = jsToDecimal( toJS( 9000 * dev::eth::szabo ) );

@@ -115,7 +115,10 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+
+#ifndef MIRAGE
     m_fs_ptr = state.fs();
+#endif
     if ( _bs == BaseState::PreExisting ) {
         LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
@@ -165,7 +168,10 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+
+#ifndef MIRAGE
     m_fs_ptr = state.fs();
+#endif
     if ( _bs == BaseState::PreExisting ) {
         LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
@@ -319,7 +325,9 @@ State& State::operator=( const State& _s ) {
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
+#ifndef MIRAGE
     m_fs_ptr = _s.m_fs_ptr;
+#endif
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
 
@@ -1018,9 +1026,9 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+#ifndef MIRAGE
     clearFileStorageCache();
 
-#ifndef MIRAGE
     if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
@@ -1110,7 +1118,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     e.setResultRecipient( res );
 
     bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
+#ifndef MIRAGE
     resetOverlayFS( isCacheEnabled );
+#endif
 
     auto onOp = _onOp;
 #if ETH_VMTRACE
@@ -1191,7 +1201,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->setPartialTransactionReceipt( stream.out(),
             ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
+#ifndef MIRAGE
         m_fs_ptr->commit();
+#endif
 
         removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :

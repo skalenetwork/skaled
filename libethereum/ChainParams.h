@@ -66,6 +66,10 @@ struct ChainParams : public ChainOperationParams {
     bool checkAdminOriginAllowed( const std::string& origin ) const;
     void processSkaleConfigItems( json_spirit::mObject& _obj );
 
+    std::string getConfigForConsensus() const;
+
+    void updateCurrentGroupIfNeeded( uint64_t _latestBlockTimestamp );
+
     // ONLY FOR TESTS
     void fillDefaultTestsParameters( size_t _port );
     void setArchiveMode() { nodeInfo.archiveMode = true; }
@@ -87,7 +91,9 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSchainName() const { return sChain.name; }
 
+#ifndef MIRAGE
     u256 getExternalGasDifficulty() const { return externalGasDifficulty; }
+#endif
 
     u256 getGasLimit() const { return gasLimit; }
 
@@ -121,11 +127,9 @@ struct ChainParams : public ChainOperationParams {
 
     uint16_t getSelfNodePort() const { return nodeInfo.port; }
 
-    std::array< std::string, 4 > getSelfBlsPublicKey() const { return nodeInfo.BLSPublicKeys; }
+    std::array< std::string, 4 > getSelfBlsPublicKey() const;
 
-    std::array< std::string, 4 > getCommonBlsPublicKey() const {
-        return nodeInfo.commonBLSPublicKeys;
-    }
+    std::array< std::string, 4 > getCommonBlsPublicKey() const;
 
     std::vector< sChainNode > getSchainNodes() const { return sChain.nodes; }
 
@@ -159,7 +163,7 @@ struct ChainParams : public ChainOperationParams {
 
     std::string getSgxServerUrl() const { return nodeInfo.sgxServerUrl; }
 
-    std::string getKeyShareName() const { return nodeInfo.keyShareName; }
+    std::string getKeyShareName() const;
 
     std::string getEcdsaKeyName() const { return nodeInfo.ecdsaKeyName; }
 
@@ -218,6 +222,9 @@ private:
     mutable std::string originalJSON;
 
     Logger m_loggerDebug{ createLogger( VerbosityDebug, "ChainParams" ) };
+#ifdef MIRAGE
+    Logger m_loggerInfo{ createLogger( VerbosityInfo, "ChainParams" ) };
+#endif
 };
 
 }  // namespace dev::eth

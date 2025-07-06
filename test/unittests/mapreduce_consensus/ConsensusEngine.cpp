@@ -117,8 +117,11 @@ public:
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams.genesisBlock() ).timestamp(),
             0,  std::map<std::string, std::uint64_t>() ) );
+#ifdef MIRAGE
+        m_consensus->parseFullConfigAndCreateNode( chainParams.getConfigForConsensus(), "" );
+#else
         m_consensus->parseFullConfigAndCreateNode( chainParams.getOriginalJson(), "" );
-
+#endif
         m_consensusThread = std::thread( [this]() {
             sleep(1);
             m_consensus->startAll();
@@ -232,7 +235,11 @@ public:
         m_consensus.reset( new ConsensusEngine(
             *this, 0, BlockHeader( chainParams->genesisBlock() ).timestamp(), 0 ,
             std::map<std::string, std::uint64_t>()));
+#ifdef MIRAGE
+        m_consensus->parseFullConfigAndCreateNode( chainParams->getConfigForConsensus(), "" );
+#else
         m_consensus->parseFullConfigAndCreateNode( chainParams->getOriginalJson(), "" );
+#endif
 
         m_consensusThread = std::thread( [this]() {
             m_consensus->startAll();
