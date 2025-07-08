@@ -534,8 +534,8 @@ dev::bytes createTestTransactionRlp( const dev::bytes& txnData, const dev::Addre
 dev::bytes prepareBITEDataRlp( const dev::Address& _to, const dev::bytes& _biteTxnData ) {
     RLPStream biteDataRlp( 2 );
 
-    biteDataRlp << ( dev::Address::Arith ) _to;
     biteDataRlp << _biteTxnData;
+    biteDataRlp << ( dev::Address::Arith ) _to;
 
     auto rlpBytes = biteDataRlp.out();
     return dev::bytes( rlpBytes.begin(), rlpBytes.end() );
