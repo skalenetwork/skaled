@@ -89,7 +89,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
         patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
 
-    if ( m_client.chainParams().getSgxServerUrl() != "" ) {
+    if ( !m_client.chainParams().isSyncNode() ) {
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
