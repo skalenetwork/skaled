@@ -5031,7 +5031,6 @@ BOOST_AUTO_TEST_CASE( BITETransactionCouldNotBeDecrypted ) {
     }
 
     auto receipt = fixture.rpcClient->eth_getTransactionReceipt( invalidTxnHash );
-    std::cout << "Revert reason: " << receipt["revertReason"].asString() << std::endl;
     BOOST_REQUIRE(
         receipt["revertReason"] == std::string( "Could not decrypt BITE transaction." ) );
 }
@@ -5113,7 +5112,6 @@ BOOST_AUTO_TEST_CASE( getDecryptedTransactionData ) {
         transaction1['data'] = call to SC
     */
     std::string originalToAddressType1 = "c868af52a6549c773082a334e5ae232e0ea3b513";
-    std::cout << "ENCRYPTED: " << dev::toHexPrefixed( formEncryptedMessageMockup( dev::fromHex( plaintext ), dev::Address( originalToAddressType1 ) ) );
     // data ciphered from a single run of formEncryptedMessageMockup( plaintext, originalToAddress )
     // since it differs each run, and the RLP-encoded tx was built outside this test case (via an
     // external script), we need to set this manually Note that the encryptedData includes the 'To'
