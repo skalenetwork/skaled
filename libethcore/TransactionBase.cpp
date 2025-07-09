@@ -647,9 +647,8 @@ void TransactionBase::checkAndValidateBITETransaction() const {
         try {
             rlpEncodedBITETxn = RLP( m_data );
         } catch ( ... ) {
-            BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction() << errinfo_comment(
-                    std::string( "BITE transaction's data must be RLP encoded" ) ) );
+            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
+                                       "BITE transaction's data must be RLP encoded" ) ) );
         }
 
         if ( !rlpEncodedBITETxn.isList() )
