@@ -88,6 +88,7 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         response = this->skale_getDBUsage();
     }
 
+#ifndef MIRAGE
     inline virtual void oracle_submitRequestI( const Json::Value& request, Json::Value& response ) {
         std::string strRequest = request[0u].asString();
         response = this->oracle_submitRequest( strRequest );
@@ -97,16 +98,18 @@ class SkaleFace : public ServerInterface< SkaleFace > {
         std::string receipt = request[0u].asString();
         response = this->oracle_checkResult( receipt );
     }
+#endif
+
 #ifdef BITE
-    inline virtual void skale_getCommonPublicKeyI(
+    inline virtual void bite_getCommonPublicKeyI(
         const Json::Value& request, Json::Value& response ) {
         ( void ) request;
-        response = this->skale_getCommonPublicKey();
+        response = this->bite_getCommonPublicKey();
     }
 
-    inline virtual void skale_getDecryptedTransactionDataI(
+    inline virtual void bite_getDecryptedTransactionDataI(
         const Json::Value& request, Json::Value& response ) {
-        response = this->skale_getDecryptedTransactionData( request[0u].asString() );
+        response = this->bite_getDecryptedTransactionData( request[0u].asString() );
     }
 #endif
 
@@ -122,11 +125,14 @@ class SkaleFace : public ServerInterface< SkaleFace > {
 #endif
     virtual std::string skale_getLatestBlockNumber() = 0;
     virtual Json::Value skale_getDBUsage() = 0;
+#ifndef MIRAGE
     virtual std::string oracle_submitRequest( std::string& request ) = 0;
     virtual std::string oracle_checkResult( std::string& receipt ) = 0;
+#endif
+
 #ifdef BITE
-    virtual std::string skale_getCommonPublicKey() = 0;
-    virtual std::string skale_getDecryptedTransactionData( const std::string& request ) = 0;
+    virtual std::string bite_getCommonPublicKey() = 0;
+    virtual Json::Value bite_getDecryptedTransactionData( const std::string& request ) = 0;
 #endif
 
 public:
@@ -163,20 +169,22 @@ public:
         this->bindAndAddMethod( jsonrpc::Procedure( "skale_getDBUsage", jsonrpc::PARAMS_BY_POSITION,
                                     jsonrpc::JSON_INTEGER, NULL ),
             &dev::rpc::SkaleFace::skale_getDBUsageI );
+#ifndef MIRAGE
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_submitRequest",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_submitRequestI );
         this->bindAndAddMethod( jsonrpc::Procedure( "oracle_checkResult",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
             &dev::rpc::SkaleFace::oracle_checkResultI );
+#endif
 #ifdef BITE
-        this->bindAndAddMethod( jsonrpc::Procedure( "skale_getCommonPublicKey",
+        this->bindAndAddMethod( jsonrpc::Procedure( "bite_getCommonPublicKey",
                                     jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleFace::skale_getCommonPublicKeyI );
+            &dev::rpc::SkaleFace::bite_getCommonPublicKeyI );
         this->bindAndAddMethod(
-            jsonrpc::Procedure( "skale_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,
+            jsonrpc::Procedure( "bite_getDecryptedTransactionData", jsonrpc::PARAMS_BY_POSITION,
                 jsonrpc::JSON_STRING, "param1", jsonrpc::JSON_STRING, NULL ),
-            &dev::rpc::SkaleFace::skale_getDecryptedTransactionDataI );
+            &dev::rpc::SkaleFace::bite_getDecryptedTransactionDataI );
 #endif
     }
 };

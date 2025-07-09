@@ -27,7 +27,6 @@
 #include <mutex>
 
 #include <boost/filesystem.hpp>
-#include <boost/timer.hpp>
 #include <boost/utility/in_place_factory.hpp>
 
 #include <libdevcore/DBImpl.h>
@@ -116,7 +115,10 @@ State::State( dev::u256 const& _accountStartNonce, boost::filesystem::path const
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+
+#ifndef MIRAGE
     m_fs_ptr = state.fs();
+#endif
     if ( _bs == BaseState::PreExisting ) {
         LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
@@ -166,7 +168,10 @@ State::State( u256 const& _accountStartNonce, OverlayDB const& _db,
 #ifdef HISTORIC_STATE
     m_historicState.setRootFromDB();
 #endif
+
+#ifndef MIRAGE
     m_fs_ptr = state.fs();
+#endif
     if ( _bs == BaseState::PreExisting ) {
         LOG( m_loggerDebug ) << "Using existing database";
     } else if ( _bs == BaseState::Empty ) {
@@ -320,7 +325,9 @@ State& State::operator=( const State& _s ) {
 #ifdef HISTORIC_STATE
     m_historicState = _s.m_historicState;
 #endif
+#ifndef MIRAGE
     m_fs_ptr = _s.m_fs_ptr;
+#endif
     m_snap = _s.m_snap;
     m_isReadOnlySnapBasedState = _s.m_isReadOnlySnapBasedState;
 
@@ -1019,9 +1026,9 @@ void State::rollback( size_t _savepoint ) {
         }
         m_changeLog.pop_back();
     }
+#ifndef MIRAGE
     clearFileStorageCache();
 
-#ifndef MIRAGE
     if ( !ContractStoragePatch::isEnabledInWorkingBlock() ) {
         resetStorageChanges();
     }
@@ -1111,7 +1118,9 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
     e.setResultRecipient( res );
 
     bool isCacheEnabled = RevertableFSPatch::isEnabledWhen( _envInfo.committedBlockTimestamp() );
+#ifndef MIRAGE
     resetOverlayFS( isCacheEnabled );
+#endif
 
     auto onOp = _onOp;
 #if ETH_VMTRACE
@@ -1120,7 +1129,8 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 #endif
     u256 const startGasUsed = _envInfo.gasUsed();
     bool statusCodeTmp = false;
-    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         e.initialize( _t );
         e.execute();
         statusCodeTmp = false;
@@ -1171,12 +1181,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         TransactionReceipt receipt =
             TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
         if ( _p == Permanence::Committed &&
-             ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+             ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
             receipt = TransactionReceipt( statusCode,
-                startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+                startGasUsed +
+                    getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
                 e.logs() );
         } else {
-            receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+            receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
                           TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                           TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
         }
@@ -1190,9 +1201,11 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
         m_db_ptr->setPartialTransactionReceipt( stream.out(),
             ( dev::eth::BlockNumber ) _envInfo.number(), ( uint64_t ) _transactionIndex );
 
+#ifndef MIRAGE
         m_fs_ptr->commit();
+#endif
 
-        removeEmptyAccounts = _envInfo.number() >= _chainParams.EIP158ForkBlock;
+        removeEmptyAccounts = _envInfo.number() >= _chainParams.getEIP158ForkBlock();
         commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                       dev::eth::CommitBehaviour::KeepEmptyAccounts );
 
@@ -1225,12 +1238,13 @@ std::pair< ExecutionResult, TransactionReceipt > State::execute( EnvInfo const& 
 
     TransactionReceipt receipt =
         TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() );
-    if ( _p == Permanence::Committed && ifShouldSkipExecution( _chainParams.chainID, _t.sha3() ) ) {
+    if ( _p == Permanence::Committed &&
+         ifShouldSkipExecution( _chainParams.getChainId(), _t.sha3() ) ) {
         receipt = TransactionReceipt( statusCode,
-            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.chainID, _t.sha3() ),
+            startGasUsed + getGasUsedForSkippedTransaction( _chainParams.getChainId(), _t.sha3() ),
             e.logs() );
     } else {
-        receipt = _envInfo.number() >= _chainParams.byzantiumForkBlock ?
+        receipt = _envInfo.number() >= _chainParams.getByzantiumForkBlock() ?
                       TransactionReceipt( statusCode, startGasUsed + e.gasUsed(), e.logs() ) :
                       TransactionReceipt( EmptyTrie, startGasUsed + e.gasUsed(), e.logs() );
     }

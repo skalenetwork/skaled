@@ -91,7 +91,8 @@ class Client : public ClientBase, protected Worker {
     friend class ::SkaleHost;
 
 public:
-    Client( ChainParams const& _params, int _networkID, std::shared_ptr< GasPricer > _gpForAdoption,
+    Client( std::shared_ptr< const ChainParams > _params, int _networkID,
+        std::shared_ptr< GasPricer > _gpForAdoption,
         std::shared_ptr< SnapshotManager > _snapshotManager,
         std::shared_ptr< InstanceMonitor > _instanceMonitor,
         boost::filesystem::path const& _dbPath = boost::filesystem::path(),
@@ -294,8 +295,7 @@ public:
     // main entry point after consensus
     size_t importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-        const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
-            _decryptedTransactionDataFields,
+        const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
         u256 _gasPrice,
 #ifdef MIRAGE
@@ -331,25 +331,22 @@ public:
     }
 
     std::array< std::string, 4 > getCurrentBLSPublicKey() const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).blsPublicKey;
+        return chainParams().getBlsPublicKeyForHistoricGroup( historicGroupIndex );
     }
 
     // get node id for historic node in chain
     std::string getHistoricNodeId( unsigned _id ) const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _id ).id.str();
+        return chainParams().getHistoricNodeId( historicGroupIndex, _id ).str();
     }
 
     // get schain index for historic node in chain
     std::string getHistoricNodeIndex( unsigned _idx ) const {
-        return chainParams()
-            .sChain.nodeGroups.at( historicGroupIndex )
-            .nodes.at( _idx )
-            .schainIndex.str();
+        return chainParams().getHistoricNodeIndex( historicGroupIndex, _idx ).str();
     }
 
     // get node owner for historic node in chain
     std::string getHistoricNodePublicKey( unsigned _idx ) const {
-        return chainParams().sChain.nodeGroups.at( historicGroupIndex ).nodes.at( _idx ).publicKey;
+        return chainParams().getHistoricNodePublicKey( historicGroupIndex, _idx );
     }
 
     void doStateDbCompaction() const { m_state.getOriginalDb()->doCompaction(); }
@@ -369,8 +366,10 @@ public:
     uint64_t getHistoricRootsDbUsage() const;
 #endif  // HISTORIC_STATE
 
+#ifndef MIRAGE
     uint64_t submitOracleRequest( const string& _spec, string& _receipt, string& _errorMessage );
     uint64_t checkOracleResult( const string& _receipt, string& _result );
+#endif
 
     SkaleDebugInterface::handler getDebugHandler() const { return m_debugHandler; }
 

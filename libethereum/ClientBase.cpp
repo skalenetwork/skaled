@@ -92,9 +92,11 @@ std::pair< bool, ExecutionResult > ClientBase::estimateGasStep( int64_t _gas, Bl
         t = Transaction( _value, _gasPrice, _gas, _data, nonce );
     t.forceSender( _from );
     t.forceChainId( chainId() );
+#ifndef MIRAGE
     t.ignoreExternalGas();
+#endif
     EnvInfo const env( _pendingBlock.info(), bc().lastBlockHashes(),
-        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().chainID );
+        _pendingBlock.previousInfo().timestamp(), 0, _gas, bc().chainParams().getChainId() );
     // Make a copy of the state, it will be deleted after this step
     State tempState = _latestBlock.mutableState();
     tempState.addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
@@ -126,7 +128,6 @@ std::pair< u256, ExecutionResult > ClientBase::estimateGas( Address const& _from
                     bc().info().timestamp(), bc().number() ) );
         else
             lowerBound = Transaction::baseGasRequired( !_dest, &_data, EVMSchedule() );
-
         Block latest = latestBlock();
         Block pending = preSeal();
 
@@ -198,7 +199,7 @@ LocalisedLogEntries ClientBase::logs( LogFilter const& _f ) const {
     unsigned begin = min( bc().number() + 1, ( unsigned ) _f.latest() );
     unsigned end = min( bc().number(), min( begin, ( unsigned ) _f.earliest() ) );
 
-    if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit )
+    if ( begin >= end && begin - end > ( uint64_t ) bc().chainParams().getLogsBlocksLimit() )
         BOOST_THROW_EXCEPTION( TooBigResponse() );
 
     // Handle pending transactions differently as they're not on the block chain.
@@ -399,32 +400,59 @@ TransactionReceipt ClientBase::transactionReceipt( h256 const& _transactionHash 
 
 LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(
     h256 const& _transactionHash ) const {
-    std::pair< h256, unsigned > tl = bc().transactionLocation( _transactionHash );
-    auto blockTimestamp = blockInfo( numberFromHash( tl.first ) - 1 ).timestamp();
-    // allow invalid
-    Transaction t = Transaction( bc().transaction( tl.first, tl.second ), CheckTransaction::Cheap,
-        true, EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
+    auto [blockHash, transactionIdx] = bc().transactionLocation( _transactionHash );
+    dev::eth::BlockNumber blockNumber{ numberFromHash( blockHash ) };
+
+    auto blockTimestamp = blockInfo( blockNumber - 1 ).timestamp();
+
+    Transaction t = Transaction( bc().transaction( blockHash, transactionIdx ),  // rlp
+        CheckTransaction::Cheap,                                                 // Check sig
+        true,                                                                    // allow invalid
+        EIP1559TransactionsPatch::isEnabledWhen( blockTimestamp ),
         InvalidTransactionFormatPatch::isEnabledWhen( blockTimestamp ) );
-    TransactionReceipt tr = bc().transactionReceipt( tl.first, tl.second );
-    u256 gasUsed = tr.cumulativeGasUsed();
-    if ( tl.second > 0 )
-        gasUsed -= bc().transactionReceipt( tl.first, tl.second - 1 ).cumulativeGasUsed();
-    //
+
+    TransactionReceipt receipt = bc().transactionReceipt( blockHash, transactionIdx );
+
+    u256 gasUsed = receipt.cumulativeGasUsed();
+    if ( transactionIdx > 0 ) {
+        gasUsed -= bc().transactionReceipt( blockHash, transactionIdx - 1 ).cumulativeGasUsed();
+    }
+
     // The "contractAddress" field must be null for all types of transactions but contract
     // deployment ones. The contract deployment transaction is special because it's the only type of
     // transaction with "to" filed set to null.
-    //
     dev::Address contractAddress;
     if ( !t.isInvalid() && t.to() == dev::Address( 0 ) ) {
         // if this transaction is contract deployment
         contractAddress = toAddress( t.from(), t.nonce() );
     }
-    //
-    //
-    return LocalisedTransactionReceipt( tr, t.sha3(), tl.first, numberFromHash( tl.first ),
-        tl.second, t.isInvalid() ? dev::Address( 0 ) : t.from(),
-        t.isInvalid() ? dev::Address( 0 ) : t.to(), gasUsed, contractAddress, int( t.txType() ),
-        t.isInvalid() ? 0 : t.gasPrice() );
+
+    // Set transaction's 'to' address
+    // If BITE -> get decrypted 'to'
+    // Else    -> get 'to'
+    dev::Address to;
+    if ( !t.isInvalid() ) {
+#ifdef BITE
+        if ( t.isBite() ) {
+            DecryptedTransactionData decryptedData = decryptedTransactionData( _transactionHash );
+            to = decryptedData.to();
+        } else
+#endif
+
+            to = t.to();
+
+    } else {
+        to = dev::Address( 0 );
+    }
+
+    // Build all other needed fields
+    dev::h256 txHash{ t.sha3() };
+    dev::Address from{ t.isInvalid() ? dev::Address( 0 ) : t.from() };
+    int txType{ t.txType() };
+    dev::u256 effectiveGasPrice{ t.isInvalid() ? 0 : t.gasPrice() };
+
+    return LocalisedTransactionReceipt( receipt, txHash, blockHash, blockNumber, transactionIdx,
+        from, to, gasUsed, contractAddress, txType, effectiveGasPrice );
 }
 
 pair< h256, unsigned > ClientBase::transactionLocation( h256 const& _transactionHash ) const {
@@ -578,7 +606,7 @@ Block ClientBase::latestBlock() const {
 }
 
 uint64_t ClientBase::chainId() const {
-    return bc().chainParams().chainID;
+    return bc().chainParams().getChainId();
 }
 
 

@@ -102,13 +102,10 @@ class SkaleStats : public dev::rpc::SkaleStatsFace,
     int nThisNodeIndex_ = -1;  // 1-based "schainIndex"
     int findThisNodeIndex();
 
-    const dev::eth::ChainParams& chainParams_;
-
 public:
     bool isExposeAllDebugInfo_ = false;
 
-    SkaleStats( const std::string& configPath, eth::Interface& _eth,
-        const dev::eth::ChainParams& chainParams );
+    SkaleStats( const std::string& configPath, eth::Interface& _eth );
 
     virtual RPCModules implementedModules() const override {
         return RPCModules{ RPCModule{ "skaleStats", "1.0" } };

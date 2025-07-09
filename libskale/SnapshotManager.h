@@ -152,7 +152,7 @@ public:
     /////////////// MORE INTERESTING STUFF ////////////////
 
 public:
-    SnapshotManager( const dev::eth::ChainParams& _chainParams,
+    SnapshotManager( std::shared_ptr< const dev::eth::ChainParams > _chainParams,
         const boost::filesystem::path& _dataDir, const std::string& diffs_dir = std::string() );
     void doSnapshot( unsigned _blockNumber );
     void restoreSnapshot( unsigned _blockNumber );
@@ -187,11 +187,12 @@ private:
     static const std::string snapshotHashFileName;
     mutable std::mutex hashFileMutex;
 
-    dev::eth::ChainParams chainParams;
+    std::shared_ptr< const dev::eth::ChainParams > chainParams;
 
     void cleanupDirectory(
         const boost::filesystem::path& p, const boost::filesystem::path& _keepDirectory = "" );
 
+#ifndef MIRAGE
     void computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
         secp256k1_sha256_t* ctx, bool is_checking ) const;
     void proceedFileStorageDirectory( const boost::filesystem::path& _fileSystemDir,
@@ -199,6 +200,7 @@ private:
     void proceedRegularFile(
         const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void proceedDirectory( const boost::filesystem::path& path, secp256k1_sha256_t* ctx ) const;
+#endif
     void computeAllVolumesHash(
         unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const;
     void computeDatabaseHash(

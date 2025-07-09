@@ -37,7 +37,6 @@
 #include <libevm/VMFactory.h>
 #include <libskale/SkipInvalidTransactionsPatch.h>
 #include <boost/filesystem.hpp>
-#include <boost/timer.hpp>
 #include <ctime>
 
 #include <libdevcore/microprofile.h>
@@ -193,8 +192,8 @@ SealEngineFace* Block::sealEngine() const {
 
 void Block::noteChain( BlockChain const& _bc ) {
     if ( !m_sealEngine ) {
-        m_state.noteAccountStartNonce( _bc.chainParams().accountStartNonce );
-        m_precommit.noteAccountStartNonce( _bc.chainParams().accountStartNonce );
+        m_state.noteAccountStartNonce( _bc.chainParams().getAccountStartNonce() );
+        m_precommit.noteAccountStartNonce( _bc.chainParams().getAccountStartNonce() );
         m_sealEngine = _bc.sealEngine();
     }
 }
@@ -361,9 +360,11 @@ pair< TransactionReceipts, bool > Block::sync(
     ret.second = ( transactions.size() == c_maxSyncTransactions );  // say there's more to the
                                                                     // caller if we hit the limit
 
+#ifndef MIRAGE
     for ( Transaction& transaction : transactions ) {
         transaction.checkOutExternalGas( _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
     }
+#endif
 
     assert( _bc.currentHash() == m_currentBlock.parentHash() );
     auto deadline = chrono::steady_clock::now() + chrono::milliseconds( msTimeout );
@@ -377,7 +378,11 @@ pair< TransactionReceipts, bool > Block::sync(
                     if ( t.gasPrice() >= _gp.ask( *this ) ) {
                         //						Timer t;
                         execute( _bc.lastBlockHashes(), t, Permanence::Uncommitted );
+#ifdef MIRAGE
                         ret.first = m_receipts;
+#else
+                        ret.first.push_back( m_receipts.back() );
+#endif
                         ++goodTxs;
                         //						cnote << "TX took:" << t.elapsed() * 1000;
                     } else if ( t.gasPrice() < _gp.ask( *this ) * 9 / 10 ) {
@@ -515,7 +520,11 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
             doPartialCatchupTestIfRequested( i );
 
 
-            if ( !tr.isInvalid() && !tr.hasExternalGas() && tr.gasPrice() < _gasPrice ) {
+            if ( !tr.isInvalid() &&
+#ifndef MIRAGE
+                 !tr.hasExternalGas() &&
+#endif
+                 tr.gasPrice() < _gasPrice ) {
                 LOG( m_loggerDebug )
                     << "Transaction " << tr.sha3() << " WouldNotBeInBlock: gasPrice "
                     << tr.gasPrice() << " < " << _gasPrice;
@@ -528,7 +537,7 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
                     // TODO deduplicate
                     // "bad" transaction receipt for failed transactions
                     TransactionReceipt const null_receipt =
-                        info().number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+                        info().number() >= sealEngine()->chainParams().getByzantiumForkBlock() ?
                             TransactionReceipt( 0, info().gasUsed(), LogEntries() ) :
                             TransactionReceipt( EmptyTrie, info().gasUsed(), LogEntries() );
 
@@ -574,7 +583,8 @@ tuple< TransactionReceipts, unsigned > Block::syncEveryone( BlockChain const& _b
         auto reward = _bc.sealEngine()->blockReward( blockTimestamp, m_currentBlock.number() );
         rewardBlockAuthorForNonDefaultBlock( reward );
         m_state.safeSetLastRewardedBlockNumber( m_currentBlock.number() );
-        bool removeEmptyAccounts = m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;
+        bool removeEmptyAccounts =
+            m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();
         m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                               dev::eth::CommitBehaviour::KeepEmptyAccounts );
     }
@@ -710,8 +720,10 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
     unsigned i = 0;
     DEV_TIMED_ABOVE( "txExec", 500 ) for ( Transaction const& tr : _block.transactions ) {
         try {
+#ifndef MIRAGE
             const_cast< Transaction& >( tr ).checkOutExternalGas(
                 _bc.chainParams(), _bc.info().timestamp(), _bc.number() );
+#endif
             execute( _bc.lastBlockHashes(), tr, skale::Permanence::Committed, OnOpFunc(), i );
         } catch ( Exception& ex ) {
             ex << errinfo_transactionIndex( i );
@@ -855,7 +867,7 @@ u256 Block::enact( VerifiedBlockRef const& _block, BlockChain const& _bc ) {
 
     // Commit all cached state changes to the state trie.
     bool removeEmptyAccounts =
-        m_currentBlock.number() >= _bc.chainParams().EIP158ForkBlock;  // TODO: use EVMSchedule
+        m_currentBlock.number() >= _bc.chainParams().getEIP158ForkBlock();  // TODO: use EVMSchedule
     DEV_TIMED_ABOVE( "commit", 500 )
     m_state.commit( removeEmptyAccounts ? dev::eth::CommitBehaviour::RemoveEmptyAccounts :
                                           dev::eth::CommitBehaviour::KeepEmptyAccounts );
@@ -896,7 +908,7 @@ ExecutionResult Block::executeHistoricCall( LastBlockHashesFace const& _lh, Tran
             _transactionIndex ? receipt( _transactionIndex - 1 ).cumulativeGasUsed() : 0;
 
         EnvInfo const envInfo( info(), _lh, this->previousInfo().timestamp(), gasUsed,
-            m_sealEngine->chainParams().chainID );
+            m_sealEngine->chainParams().getChainId() );
 
         if ( _tracer ) {
             try {
@@ -945,12 +957,12 @@ ExecutionResult Block::execute( LastBlockHashesFace const& _lh, Transaction cons
     uncommitToSeal();
 
 
-    EnvInfo envInfo = EnvInfo(
-        info(), _lh, previousInfo().timestamp(), gasUsed(), m_sealEngine->chainParams().chainID );
+    EnvInfo envInfo = EnvInfo( info(), _lh, previousInfo().timestamp(), gasUsed(),
+        m_sealEngine->chainParams().getChainId() );
 
     // "bad" transaction receipt for failed transactions
     TransactionReceipt const null_receipt =
-        envInfo.number() >= sealEngine()->chainParams().byzantiumForkBlock ?
+        envInfo.number() >= sealEngine()->chainParams().getByzantiumForkBlock() ?
             TransactionReceipt( 0, envInfo.gasUsed(), LogEntries() ) :
             TransactionReceipt( EmptyTrie, envInfo.gasUsed(), LogEntries() );
 
@@ -1032,7 +1044,7 @@ void Block::applyRewards(
 }
 
 void Block::performIrregularModifications() {
-    u256 const& daoHardfork = m_sealEngine->chainParams().daoHardforkBlock;
+    u256 const& daoHardfork = m_sealEngine->chainParams().getDaoHardforkBlock();
     if ( daoHardfork != 0 && info().number() == daoHardfork ) {
         Address recipient( "0xbf4ed7b27f1d666546e30d74d50d173d20bca754" );
         Addresses allDAOs = childDaos();
@@ -1045,7 +1057,7 @@ void Block::performIrregularModifications() {
 void Block::updateBlockhashContract() {
     u256 const& blockNumber = info().number();
 
-    u256 const& forkBlock = m_sealEngine->chainParams().experimentalForkBlock;
+    u256 const& forkBlock = m_sealEngine->chainParams().getExperimentalForkBlock();
     if ( blockNumber == forkBlock ) {
         if ( m_state.addressInUse( c_blockhashContractAddress ) ) {
             if ( m_state.code( c_blockhashContractAddress ) != c_blockhashContractCode ) {

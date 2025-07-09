@@ -54,13 +54,17 @@ const std::string SnapshotManager::snapshotHashFileName = "snapshot_hash.txt";
 // - bad data dir
 // - not btrfs
 // - volumes don't exist
-SnapshotManager::SnapshotManager( const dev::eth::ChainParams& _chainParams,
+SnapshotManager::SnapshotManager( std::shared_ptr< const dev::eth::ChainParams > _chainParams,
     const fs::path& _dataDir, const std::string& _diffsDir )
     : chainParams( _chainParams ) {
     dataDir = _dataDir;
-    coreVolumes = { dev::eth::BlockChain::getChainDirName( chainParams ), "filestorage",
-        "prices_" + chainParams.nodeInfo.id.str() + ".db",
-        "blocks_" + chainParams.nodeInfo.id.str() + ".db" };
+
+    coreVolumes = { dev::eth::BlockChain::getChainDirName( *chainParams ),
+#ifndef MIRAGE
+        "filestorage",
+#endif
+        "prices_" + chainParams->getSelfNodeId().str() + ".db",
+        "blocks_" + chainParams->getSelfNodeId().str() + ".db" };
 
 #ifdef HISTORIC_STATE
     archiveVolumes = { "historic_roots", "historic_state" };
@@ -203,7 +207,7 @@ boost::filesystem::path SnapshotManager::makeOrGetDiff( unsigned _toBlock ) {
     fs::path path = getDiffPath( _toBlock );
 
     try {
-        if ( fs::is_regular( path ) )
+        if ( fs::is_regular_file( path ) )
             return path;
 
         if ( !fs::exists( snapshotsDir / to_string( _toBlock ) ) ) {
@@ -357,8 +361,8 @@ void SnapshotManager::leaveNLastSnapshots( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
-        if ( fs::basename( f ) != "0" )
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        if ( fs::path( f ).filename().string() != "0" )
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
     }  // for
 
     // delete all after n first
@@ -392,8 +396,8 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( snapshotsDir ) ) {
         // HACK We exclude 0 snapshot forcefully
-        if ( fs::basename( f ) != "0" )
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+        if ( fs::path( f ).filename().string() != "0" )
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
     }  // for
 
     if ( numbers.empty() ) {
@@ -401,13 +405,13 @@ std::pair< int, int > SnapshotManager::getLatestSnapshots() const {
     }
 
     auto it = numbers.begin();
-    int snd = std::stoi( fs::basename( ( *it++ ).second ) );
+    int snd = std::stoi( fs::path( ( *it++ ).second ).filename().string() );
 
     int fst;
     if ( numbers.size() == 1 ) {
         fst = 0;
     } else {
-        fst = std::stoi( fs::basename( ( *it ).second ) );
+        fst = std::stoi( fs::path( ( *it ).second ).filename().string() );
     }
 
     return std::make_pair( fst, snd );
@@ -418,7 +422,7 @@ void SnapshotManager::leaveNLastDiffs( unsigned n ) {
     map< int, fs::path, std::greater< int > > numbers;
     for ( auto& f : fs::directory_iterator( diffsDir ) ) {
         try {
-            numbers.insert( make_pair( std::stoi( fs::basename( f ) ), f ) );
+            numbers.insert( make_pair( std::stoi( fs::path( f ).filename().string() ), f ) );
         } catch ( ... ) { /*ignore non-numbers*/
         }
     }  // for
@@ -556,9 +560,11 @@ void SnapshotManager::addLastPriceToHash( unsigned _blockNumber, secp256k1_sha25
     secp256k1_sha256_write( ctx, last_price_hash.data(), last_price_hash.size );
 }
 
+
+#ifndef MIRAGE
 void SnapshotManager::proceedRegularFile(
     const boost::filesystem::path& path, secp256k1_sha256_t* ctx, bool is_checking ) const {
-    if ( boost::filesystem::extension( path ) == "._hash" ) {
+    if ( path.extension() == "._hash" ) {
         return;
     }
 
@@ -656,6 +662,7 @@ void SnapshotManager::proceedFileStorageDirectory( const boost::filesystem::path
     }
 }
 
+
 void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fileSystemDir,
     secp256k1_sha256_t* ctx, bool is_checking ) const {
     if ( !boost::filesystem::exists( _fileSystemDir ) ) {
@@ -665,6 +672,7 @@ void SnapshotManager::computeFileStorageHash( const boost::filesystem::path& _fi
 
     this->proceedFileStorageDirectory( _fileSystemDir, ctx, is_checking );
 }
+#endif
 
 void SnapshotManager::computeAllVolumesHash(
     unsigned _blockNumber, secp256k1_sha256_t* ctx, bool is_checking ) const {
@@ -701,10 +709,11 @@ void SnapshotManager::computeAllVolumesHash(
         this->computeDatabaseHash( content, ctx );
     }
 
+#ifndef MIRAGE
     // filestorage
     this->computeFileStorageHash(
         this->snapshotsDir / std::to_string( _blockNumber ) / "filestorage", ctx, is_checking );
-
+#endif
     // if have prices and blocks
     if ( _blockNumber && allVolumes.size() > 3 ) {
         this->addLastPriceToHash( _blockNumber, ctx );

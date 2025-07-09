@@ -87,9 +87,9 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 #endif
 
     auto consensus_engine_ptr = make_unique< ConsensusEngine >( _extFace, m_client.number(), ts, 0,
-        patchTimeStamps, m_client.chainParams().sChain.consensusStorageLimit );
+        patchTimeStamps, m_client.chainParams().getConsensusStorageLimit() );
 
-    if ( m_client.chainParams().nodeInfo.sgxServerUrl != "" ) {
+    if ( m_client.chainParams().getSgxServerUrl() != "" ) {
         this->fillSgxInfo( *consensus_engine_ptr );
     }
 
@@ -108,7 +108,7 @@ std::unique_ptr< ConsensusInterface > DefaultConsensusFactory::create(
 
 #if CONSENSUS
 void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const try {
-    const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
+    const std::string sgxServerUrl = m_client.chainParams().getSgxServerUrl();
 
     std::string sgx_cert_path = getenv( "SGX_CERT_FOLDER" ) ? getenv( "SGX_CERT_FOLDER" ) : "";
     if ( sgx_cert_path.empty() )
@@ -132,35 +132,54 @@ void DefaultConsensusFactory::fillSgxInfo( ConsensusEngine& consensus ) const tr
         sgxSSLCertFilePath = sgx_cert_path + sgx_cert_filename;
     }
 
-    std::string ecdsaKeyName = m_client.chainParams().nodeInfo.ecdsaKeyName;
+    std::string ecdsaKeyName = m_client.chainParams().getEcdsaKeyName();
 
-    std::string blsKeyName = m_client.chainParams().sChain.currentGroups.back().keyShareName;
+    std::string blsKeyName = m_client.chainParams().getKeyShareName();
 
     consensus.setSGXKeyInfo(
         sgxServerUrl, sgxSSLKeyFilePath, sgxSSLCertFilePath, ecdsaKeyName, blsKeyName );
 
 
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested(
+        std::runtime_error( std::string( "Error filling SGX info (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling SGX info (nodeGroups)" ) );
 }
 
 void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) const try {
-    if ( m_client.chainParams().nodeInfo.testSignatures )
+    if ( m_client.chainParams().isTestSignaturesEnabled() )
         // no keys in tests
         return;
 
-    const std::string sgxServerUrl = m_client.chainParams().nodeInfo.sgxServerUrl;
+    const std::string sgxServerUrl = m_client.chainParams().getSgxServerUrl();
 
     std::shared_ptr< std::vector< std::string > > ecdsaPublicKeys =
         std::make_shared< std::vector< std::string > >();
-    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+    for ( const auto& node : m_client.chainParams().getSchainNodes() ) {
         ecdsaPublicKeys->push_back( node.publicKey.substr( 2 ) );
     }
 
     std::vector< std::shared_ptr< std::vector< std::string > > > blsPublicKeys;
-    for ( const auto& node : m_client.chainParams().sChain.nodes ) {
+    for ( const auto& node : m_client.chainParams().getSchainNodes() ) {
+#ifdef MIRAGE
         std::vector< std::string > public_key_share(
             node.blsPublicKey.begin(), node.blsPublicKey.end() );
+#else
+        std::vector< std::string > public_key_share( 4 );
+        if ( node.id != this->m_client.chainParams().getSelfNodeId() ) {
+            public_key_share[0] = node.blsPublicKey.at( 0 );
+            public_key_share[1] = node.blsPublicKey.at( 1 );
+            public_key_share[2] = node.blsPublicKey.at( 2 );
+            public_key_share[3] = node.blsPublicKey.at( 3 );
+        } else {
+            auto blsPublicKey = m_client.chainParams().getSelfBlsPublicKey();
+            public_key_share[0] = blsPublicKey.at( 0 );
+            public_key_share[1] = blsPublicKey.at( 1 );
+            public_key_share[2] = blsPublicKey.at( 2 );
+            public_key_share[3] = blsPublicKey.at( 3 );
+        }
+#endif
 
         blsPublicKeys.push_back(
             std::make_shared< std::vector< std::string > >( public_key_share ) );
@@ -170,11 +189,14 @@ void DefaultConsensusFactory::fillPublicKeyInfo( ConsensusEngine& consensus ) co
         std::make_shared< std::vector< std::shared_ptr< std::vector< std::string > > > >(
             blsPublicKeys );
 
-    size_t n = m_client.chainParams().sChain.nodes.size();
+    size_t n = m_client.chainParams().getNodesCount();
     size_t t = ( 2 * n + 1 ) / 3;
 
     consensus.setPublicKeyInfo(
-        ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().nodeInfo.syncNode );
+        ecdsaPublicKeys, blsPublicKeysPtr, t, n, m_client.chainParams().isSyncNode() );
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested( std::runtime_error(
+        std::string( "Error filling public keys info (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error filling public keys info (nodeGroups)" ) );
 }
@@ -185,7 +207,7 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
     std::map< uint64_t, std::string > historicECDSAKeys;
     std::map< uint64_t, std::vector< uint64_t > > historicNodeGroups;
     auto u256toUint64 = []( const dev::u256& u ) { return std::stoull( u.str() ); };
-    for ( const auto& nodeGroup : m_client.chainParams().sChain.nodeGroups ) {
+    for ( const auto& nodeGroup : m_client.chainParams().getNodeGroups() ) {
         std::vector< string > commonBLSPublicKey = { nodeGroup.blsPublicKey.at( 0 ),
             nodeGroup.blsPublicKey.at( 1 ), nodeGroup.blsPublicKey.at( 2 ),
             nodeGroup.blsPublicKey.at( 3 ) };
@@ -202,6 +224,9 @@ void DefaultConsensusFactory::fillRotationHistory( ConsensusEngine& consensus ) 
         std::make_shared< std::map< uint64_t, std::vector< std::string > > >( previousBLSKeys ),
         std::make_shared< std::map< uint64_t, std::string > >( historicECDSAKeys ),
         std::make_shared< std::map< uint64_t, std::vector< uint64_t > > >( historicNodeGroups ) );
+} catch ( const std::exception& ex ) {
+    std::throw_with_nested( std::runtime_error(
+        std::string( "Error reading rotation history (nodeGroups): " ) + ex.what() ) );
 } catch ( ... ) {
     std::throw_with_nested( std::runtime_error( "Error reading rotation history (nodeGroups)" ) );
 }
@@ -213,8 +238,7 @@ public:
     virtual transactions_vector pendingTransactions( size_t _limit, u256& _stateRoot ) override;
     virtual void createBlock( const transactions_vector& _approvedTransactions,
 #ifdef BITE
-        shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > >
-            _decryptedTransactionDataFields,
+        shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
         uint64_t _timeStamp, uint32_t _timeStampMs, uint64_t _blockID, u256 _gasPrice,
         u256 _stateRoot, uint64_t _winningNodeIndex ) override;
@@ -236,14 +260,14 @@ ConsensusExtFace::transactions_vector ConsensusExtImpl::pendingTransactions(
 void ConsensusExtImpl::createBlock(
     const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
+    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
     uint64_t _timeStamp, uint32_t, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) {
     MICROPROFILE_SCOPEI( "ConsensusExtFace", "createBlock", MP_INDIANRED );
     m_host.createBlock( _approvedTransactions,
 #ifdef BITE
-        _decryptedTransactionDataFields,
+        _decryptedTransactionFields,
 #endif
         _timeStamp, _blockID, _gasPrice, _stateRoot, _winningNodeIndex );
 }
@@ -307,8 +331,13 @@ SkaleHost::SkaleHost( dev::eth::Client& _client, const ConsensusFactory* _consFa
     }
 
     try {
+#ifdef MIRAGE
         m_consensus->parseFullConfigAndCreateNode(
             m_client.chainParams().getConfigForConsensus(), "" );
+#else
+        m_consensus->parseFullConfigAndCreateNode(
+            m_client.chainParams().getOriginalJson(), _gethURL );
+#endif
     } catch ( const std::exception& e ) {
         LOG( m_loggerError ) << "Could not create parse consensus config in SkaleHost" << e.what();
         std::throw_with_nested( CreationException() );
@@ -435,7 +464,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
                 m_pending_createMutex.lock();
 
             try {
-                bool isMtmEnabled = m_client.chainParams().sChain.multiTransactionMode;
+                bool isMtmEnabled = m_client.chainParams().isMultiTransactionModeEnabled();
                 Executive::verifyTransaction( tx, latestInfo.timestamp(), latestInfo,
                     m_client.state().createReadOnlySnapBasedCopy(), m_client.chainParams(), 0,
                     getGasPrice(), isMtmEnabled );
@@ -458,7 +487,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
     std::lock_guard< std::recursive_mutex > lock( m_pending_createMutex, std::adopt_lock );
 
     // drop by block gas limit
-    u256 blockGasLimit = this->m_client.chainParams().gasLimit;
+    u256 blockGasLimit = this->m_client.chainParams().getGasLimit();
     u256 gasAcc = 0;
     auto first_to_drop_it = txns.begin();
     for ( ; first_to_drop_it != txns.end(); ++first_to_drop_it ) {
@@ -514,7 +543,7 @@ ConsensusExtFace::transactions_vector SkaleHost::pendingTransactions(
 
 void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _approvedTransactions,
 #ifdef BITE
-    shared_ptr< map< uint64_t, shared_ptr< vector< uint8_t > > > > _decryptedTransactionDataFields,
+    shared_ptr< DecryptedTransactionFieldsMap > _decryptedTransactionFields,
 #endif
     uint64_t _timeStamp, uint64_t _blockID, u256 _gasPrice, u256 _stateRoot,
     uint64_t _winningNodeIndex ) try {
@@ -535,7 +564,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
     // convert bytes back to transactions (using caching), delete them from q and push results into
     // blockchain
 
-    if ( this->m_client.chainParams().sChain.snapshotIntervalSec > 0 ) {
+    if ( this->m_client.chainParams().getSnapshotIntervalSec() > 0 ) {
         dev::h256 stCurrent =
             this->m_client.blockInfo( this->m_client.hashFromNumber( _blockID - 1 ) ).stateRoot();
 
@@ -570,9 +599,6 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
 
     BlockHeader latestInfo = static_cast< const Interface& >( m_client ).blockInfo( LatestBlock );
 
-    auto validDecryptedTransactionDataFields =
-        std::make_shared< std::map< uint64_t, std::shared_ptr< std::vector< uint8_t > > > >();
-
     DEV_GUARDED( m_client.m_blockImportMutex ) {
         m_debugTracer.tracepoint( "drop_good_transactions" );
 
@@ -585,13 +611,17 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                 EIP1559TransactionsPatch::isEnabledInWorkingBlock(),
                 InvalidTransactionFormatPatch::isEnabledInWorkingBlock() );
 #ifdef BITE
-            auto it = _decryptedTransactionDataFields->find( i );
-            if ( it != _decryptedTransactionDataFields->end() ) {
-                t.setDecryptedData( it->second );
-                if ( it->second )
-                    validDecryptedTransactionDataFields->insert( *it );
+            auto it = _decryptedTransactionFields->find( i );
+            if ( it != _decryptedTransactionFields->end() ) {
+                DecryptedTransactionFields& txFields = it->second;
+
+                dev::Address to = dev::Address( txFields.to.get() );
+                t.setDecryptedFields( txFields.data, std::make_shared< dev::Address >( to ) );
             }
+
 #endif
+
+#ifndef MIRAGE
             t.checkOutExternalGas(
                 m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
 
@@ -605,7 +635,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
                         m_client.chainParams(), latestInfo.timestamp(), m_client.number() );
                 }
             }
-
+#endif
             out_txns.push_back( t );
             m_debugTracer.tracepoint( "drop_good" );
             m_tq.dropGood( t );
@@ -624,7 +654,7 @@ void SkaleHost::createBlock( const ConsensusExtFace::transactions_vector& _appro
         n_succeeded = m_client.importTransactionsAsBlock( out_txns,
 
 #ifdef BITE
-            validDecryptedTransactionDataFields,
+            _decryptedTransactionFields,
 #endif
             _gasPrice,
 #ifdef MIRAGE
@@ -891,6 +921,7 @@ std::string SkaleHost::getHistoricNodePublicKey( unsigned _idx ) const {
     return m_client.getHistoricNodePublicKey( _idx );
 }
 
+#ifndef MIRAGE
 uint64_t SkaleHost::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     return m_consensus->submitOracleRequest( _spec, _receipt, _errorMessage );
@@ -899,6 +930,7 @@ uint64_t SkaleHost::submitOracleRequest(
 uint64_t SkaleHost::checkOracleResult( const string& _receipt, string& _result ) {
     return m_consensus->checkOracleResult( _receipt, _result );
 }
+#endif
 
 void SkaleHost::forceEmptyBlock() {
     assert( !this->emptyBlockIntervalMsForRestore.has_value() );

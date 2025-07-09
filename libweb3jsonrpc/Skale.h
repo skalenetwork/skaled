@@ -78,12 +78,14 @@ public:
     std::string skale_getLatestBlockNumber() override;
     Json::Value skale_getDBUsage() override;
 
+#ifndef MIRAGE
     std::string oracle_submitRequest( std::string& request ) override;
     std::string oracle_checkResult( std::string& receipt ) override;
+#endif
 
 #ifdef BITE
-    std::string skale_getCommonPublicKey() override;
-    std::string skale_getDecryptedTransactionData( const std::string& request ) override;
+    std::string bite_getCommonPublicKey() override;
+    Json::Value bite_getDecryptedTransactionData( const std::string& request ) override;
 #endif
 
     static bool isWeb3ShutdownEnabled();

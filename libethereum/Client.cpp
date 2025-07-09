@@ -119,7 +119,7 @@ std::ostream& dev::eth::operator<<( std::ostream& _out, ActivityReport const& _r
     return _out;
 }
 
-Client::Client( ChainParams const& _params, int _networkID,
+Client::Client( std::shared_ptr< const ChainParams > _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
@@ -128,11 +128,11 @@ Client::Client( ChainParams const& _params, int _networkID,
       m_bc( _params, _dbPath, true, _forceAction ),
       m_tq( _l ),
       m_gp( _gpForAdoption ? _gpForAdoption : make_shared< TrivialGasPricer >() ),
-      m_preSeal( chainParams().accountStartNonce ),
-      m_postSeal( chainParams().accountStartNonce ),
-      m_working( chainParams().accountStartNonce ),
+      m_preSeal( chainParams().getAccountStartNonce() ),
+      m_postSeal( chainParams().getAccountStartNonce() ),
+      m_working( chainParams().getAccountStartNonce() ),
       m_snapshotAgent( make_shared< SnapshotAgent >(
-          _params.sChain.snapshotIntervalSec, _snapshotManager, m_debugTracer ) ),
+          _params->getSnapshotIntervalSec(), _snapshotManager, m_debugTracer ) ),
       m_instanceMonitor( _instanceMonitor ),
       m_dbPath( _dbPath )
 #ifdef HISTORIC_STATE
@@ -229,13 +229,13 @@ void Client::populateNewChainStateFromGenesis() {
     DEV_GUARDED( m_blockImportMutex )
 #ifdef HISTORIC_STATE
     m_state = m_state.createStateCopyAndClearCaches();
-    m_state.populateFrom( bc().chainParams().genesisState );
+    m_state.populateFrom( bc().chainParams().getGenesisState() );
     m_state.mutableHistoricState().saveRootForBlockNumber( 0 );  // TODO is it safe to assume
                                                                  // it's 0?
     m_state.mutableHistoricState().db().commit();
 
 #else
-    m_state.populateFrom( bc().chainParams().genesisState );
+    m_state.populateFrom( bc().chainParams().getGenesisState() );
     m_state = m_state.createStateCopyAndClearCaches();
 #endif
 }
@@ -251,15 +251,15 @@ void Client::initStateFromDiskOrGenesis() {
         fs::path( std::string( m_dbPath.string() ).append( "/" ).append( HISTORIC_STATE_DIR ) ) );
 #endif
 
-    m_state = State( chainParams().accountStartNonce, m_dbPath, bc().genesisHash(),
-        BaseState::PreExisting, chainParams().accountInitialFunds
+    m_state = State( chainParams().getAccountStartNonce(), m_dbPath, bc().genesisHash(),
+        BaseState::PreExisting, chainParams().getAccountInitialFunds()
 #ifndef MIRAGE
-        ,
-        chainParams().sChain.contractStorageLimit
+                                    ,
+        chainParams().getContractStorageLimit()
 #endif
 #ifdef HISTORIC_STATE
-        ,
-        chainParams().sChain.maxHistoricStateDbSize
+            ,
+        chainParams().getMaxHistoricStateDbSize()
 #endif
     );
 
@@ -300,12 +300,12 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     m_bq.setChain( bc() );
 
     m_lastGetWork = std::chrono::system_clock::now() - chrono::seconds( 30 );
-    m_tqReady = m_tq.onReady( [=]() { this->onTransactionQueueReady(); } );
-    m_tqReplaced = m_tq.onReplaced( [=]( h256 const& ) { m_needStateReset = true; } );
-    m_bqReady = m_bq.onReady( [=]() { this->onBlockQueueReady(); } );
-    m_bq.setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
-    bc().setOnBad( [=]( Exception& ex ) { this->onBadBlock( ex ); } );
-    bc().setOnBlockImport( [=]( BlockHeader const& _info ) {
+    m_tqReady = m_tq.onReady( [this]() { this->onTransactionQueueReady(); } );
+    m_tqReplaced = m_tq.onReplaced( [this]( h256 const& ) { m_needStateReset = true; } );
+    m_bqReady = m_bq.onReady( [this]() { this->onBlockQueueReady(); } );
+    m_bq.setOnBad( [this]( Exception& ex ) { this->onBadBlock( ex ); } );
+    bc().setOnBad( [this]( Exception& ex ) { this->onBadBlock( ex ); } );
+    bc().setOnBlockImport( [this]( BlockHeader const& _info ) {
         if ( m_skaleHost )
             m_skaleHost->onBlockImported( _info );
         m_onBlockImport( _info );
@@ -319,7 +319,7 @@ void Client::init( WithExisting _forceAction, u256 _networkId ) {
     if ( m_dbPath.size() )
         Defaults::setDBPath( m_dbPath );
 
-    if ( chainParams().sChain.nodeGroups.size() > 0 ) {
+    if ( chainParams().getNodeGroups().size() > 0 ) {
         initHistoricGroupIndex();
     } else {
         LOG( m_loggerInfo ) << "Empty node groups in config. "
@@ -533,8 +533,7 @@ void Client::syncBlockQueue() {
 
 size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
 #ifdef BITE
-    const std::shared_ptr< std::map< uint64_t, std::shared_ptr< bytes > > >&
-        _decryptedTransactionDataFields,
+    const std::shared_ptr< DecryptedTransactionFieldsMap >& _decryptedTransactionDataFields,
 #endif
     u256 _gasPrice,
 #ifdef MIRAGE
@@ -584,7 +583,7 @@ size_t Client::importTransactionsAsBlock( const Transactions& _transactions,
     } else
         LOG( m_loggerWarning ) << "Warning: UnsafeRegion still active!";
 
-    if ( chainParams().sChain.nodeGroups.size() > 0 )
+    if ( chainParams().getNodeGroups().size() > 0 )
         updateHistoricGroupIndex();
 
 #ifdef MIRAGE
@@ -698,7 +697,7 @@ void Client::resyncStateFromChain() {
 
 void Client::restartMining() {
     bool preChanged = false;
-    Block newPreMine( chainParams().accountStartNonce );
+    Block newPreMine( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     newPreMine = m_preSeal;
 
@@ -730,7 +729,7 @@ void Client::restartMining() {
 }
 
 void Client::resetState() {
-    Block newPreMine( chainParams().accountStartNonce );
+    Block newPreMine( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     newPreMine = m_preSeal;
 
@@ -816,7 +815,7 @@ void Client::rejigSealing() {
             }
 
             if ( wouldSeal() ) {
-                sealEngine()->onSealGenerated( [=]( bytes const& _header ) {
+                sealEngine()->onSealGenerated( [this]( bytes const& _header ) {
                     LOG( m_loggerInfo ) << "Block sealed"
                                         << " #" << BlockHeader( _header, HeaderData ).number();
                     if ( this->submitSealed( _header ) )
@@ -1139,24 +1138,27 @@ h256 Client::importTransaction( Transaction const& _t, TransactionBroadcast _txO
     gasBidPrice = this->gasBidPrice();
 
 
+#ifndef MIRAGE
     // We need to check external gas under mutex to be sure about current block number
     // correctness
     const_cast< Transaction& >( _t ).checkOutExternalGas(
         chainParams(), bc().info().timestamp(), number() );
+#endif
 
     Executive::verifyTransaction( _t, bc().info().timestamp(),
         bc().number() ? this->blockInfo( bc().currentHash() ) : bc().genesis(), state,
-        chainParams(), 0, gasBidPrice, chainParams().sChain.multiTransactionMode );
+        chainParams(), 0, gasBidPrice, chainParams().isMultiTransactionModeEnabled() );
 
     // invalid BITE transactions should not be added to txn queue
 #ifdef BITE
     // only validate in production setup
-    if ( !chainParams().nodeInfo.testSignatures )
+    if ( !chainParams().isTestSignaturesEnabled() )
         _t.checkAndValidateBITETransaction();
 #endif
 
     ImportResult res;
-    if ( chainParams().sChain.multiTransactionMode && state.getNonce( _t.sender() ) < _t.nonce() &&
+    if ( chainParams().isMultiTransactionModeEnabled() &&
+         state.getNonce( _t.sender() ) < _t.nonce() &&
          m_tq.maxCurrentNonce( _t.sender() ) != _t.nonce() ) {
         res = m_tq.import( _t, IfDropped::Ignore, true );
     } else {
@@ -1212,8 +1214,11 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
                 u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
                 Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
                 t.forceSender( _from );
-                t.forceChainId( chainParams().chainID );
+
+                t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
                 t.ignoreExternalGas();
+#endif
                 // if we are in a call, we add to the balance of the account
                 // value needed for the call to guaranteed pass
                 // geth does a similar thing, we need to check whether it is fully compatible with
@@ -1238,8 +1243,10 @@ ExecutionResult Client::call( Address const& _from, u256 _value, Address _dest, 
         u256 gasPrice = _gasPrice == Invalid256 ? gasBidPrice() : _gasPrice;
         Transaction t( _value, gasPrice, gasLimit, _dest, _data, nonce );
         t.forceSender( _from );
-        t.forceChainId( chainParams().chainID );
+        t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
         t.ignoreExternalGas();
+#endif
         if ( _ff == FudgeFactor::Lenient )
             temp.mutableState().addBalance( _from, ( u256 )( t.gas() * t.gasPrice() + t.value() ) );
         ret = temp.execute( bc().lastBlockHashes(), t, skale::Permanence::Reverted );
@@ -1296,9 +1303,11 @@ Transaction Client::createTransactionForCallOrTraceCall( const Address& _from, c
     // if call or trace call request did not specify from address, zero address is used
     auto from = _from ? _from : ZeroAddress;
     t.forceSender( from );
-    t.forceChainId( chainParams().chainID );
+    t.forceChainId( chainParams().getChainId() );
+#ifndef MIRAGE
     // call and traceCall do not use PoW
     t.ignoreExternalGas();
+#endif
     return t;
 }
 
@@ -1329,11 +1338,14 @@ Json::Value Client::traceBlock( BlockNumber _blockNumber, Json::Value const& _js
 #ifdef BITE
             auto decryptedDataFromDb = decryptedTransactionData( tx.sha3() );
             if ( decryptedDataFromDb )
-                tx.setDecryptedData( std::make_shared< bytes >( decryptedDataFromDb.data() ) );
+                tx.setDecryptedFields( std::make_shared< bytes >( decryptedDataFromDb.data() ),
+                    std::make_shared< dev::Address >( decryptedDataFromDb.to() ) );
 #endif
             auto hashString = toHexPrefixed( tx.sha3() );
             transactionLog["txHash"] = hashString;
+#ifndef MIRAGE
             tx.checkOutExternalGas( chainParams(), bc().info().timestamp(), number() );
+#endif
             auto tracer =
                 std::make_shared< AlethStandardTrace >( tx, historicBlock.author(), traceOptions );
             auto executionResult =
@@ -1362,36 +1374,38 @@ void Client::initHistoricGroupIndex() {
         return;
     }
 
+    auto nodeGroups = chainParams().getNodeGroups();
+
     uint64_t currentBlockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
     uint64_t previousBlockTimestamp = blockInfo( hashFromNumber( number() - 1 ) ).timestamp();
 
     // always returns it != end() because current finish ts equals to uint64_t(-1)
-    auto it = std::find_if( chainParams().sChain.nodeGroups.begin(),
-        chainParams().sChain.nodeGroups.end(),
+    auto it = std::find_if( nodeGroups.begin(), nodeGroups.end(),
         [&currentBlockTimestamp](
             const dev::eth::NodeGroup& ng ) { return currentBlockTimestamp <= ng.finishTs; } );
 
-    if ( it == chainParams().sChain.nodeGroups.end() ) {
+    if ( it == nodeGroups.end() ) {
         BOOST_THROW_EXCEPTION(
             std::runtime_error( "Assertion failed: it == chainParams().sChain.nodeGroups.end()" ) );
     }
 
-    if ( it != chainParams().sChain.nodeGroups.begin() ) {
+    if ( it != nodeGroups.begin() ) {
         auto prevIt = std::prev( it );
         if ( currentBlockTimestamp >= prevIt->finishTs &&
              previousBlockTimestamp < prevIt->finishTs )
             it = prevIt;
     }
 
-    historicGroupIndex = std::distance( chainParams().sChain.nodeGroups.begin(), it );
+    historicGroupIndex = std::distance( nodeGroups.begin(), it );
 }
 
 void Client::updateHistoricGroupIndex() {
+    auto nodeGroups = chainParams().getNodeGroups();
     uint64_t blockTimestamp = blockInfo( hashFromNumber( number() ) ).timestamp();
-    uint64_t currentFinishTs = chainParams().sChain.nodeGroups.at( historicGroupIndex ).finishTs;
+    uint64_t currentFinishTs = nodeGroups.at( historicGroupIndex ).finishTs;
     if ( blockTimestamp >= currentFinishTs )
         ++historicGroupIndex;
-    if ( historicGroupIndex >= chainParams().sChain.nodeGroups.size() ) {
+    if ( historicGroupIndex >= nodeGroups.size() ) {
         BOOST_THROW_EXCEPTION( std::runtime_error(
             "Assertion failed: historicGroupIndex >= chainParams().sChain.nodeGroups.size())" ) );
     }
@@ -1455,6 +1469,8 @@ uint64_t Client::getHistoricRootsDbUsage() const {
 }
 #endif  // HISTORIC_STATE
 
+
+#ifndef MIRAGE
 uint64_t Client::submitOracleRequest(
     const string& _spec, string& _receipt, string& _errorMessage ) {
     assert( m_skaleHost );
@@ -1475,6 +1491,7 @@ uint64_t Client::checkOracleResult( const string& _receipt, string& _result ) {
         throw runtime_error( "Instance of SkaleHost was not properly created." );
     return status;
 }
+#endif
 
 const dev::h256 Client::empty_str_hash =
     dev::h256( "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925" );

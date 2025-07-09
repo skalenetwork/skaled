@@ -31,7 +31,9 @@
 #include <libethereum/TransactionQueue.h>
 #include <test/tools/libtesteth/TestHelper.h>
 #include <boost/test/unit_test.hpp>
+#ifndef MIRAGE
 #include <libskale/OverlayFS.h>
+#endif
 #include <libethereum/SchainPatch.h>
 
 #include <secp256k1_sha256.h>
@@ -1612,6 +1614,68 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         "extraData": "0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa",
         "gasLimit": "0x47E7C4"
     },
+   "skaleConfig": {
+    "nodeInfo": {
+      "nodeName": "Node1",
+      "nodeID": 1112,
+      "bindIP": "127.0.0.1",
+      "basePort": )" +
+    std::to_string( rand_port ) + R"(,
+      "logLevel": "trace",
+      "logLevelProposal": "trace",
+      "testSignatures": true,
+      "wallets": {
+        "ima": {
+            "n": 1
+        }
+      }
+    },
+    "sChain": {
+        "schainName": "TestChain",
+        "schainID": 1,
+        "precompiledConfigPatchTimestamp": 1,
+        "emptyBlockIntervalMs": -1,
+        "nodeGroups": {
+            "1": {
+                "nodes": {
+                    "30": [
+                        13,
+                        30,
+                        "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b"
+                    ]
+                },
+                "finish_ts": null,
+                "bls_public_key": {
+                    "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
+                    "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
+                    "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
+                    "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
+                }
+            },
+            "0": {
+                "nodes": {
+                    "26": [
+                        3,
+                        26,
+                        "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
+                    ]
+                },
+                "finish_ts": 4294967290,
+                "bls_public_key": {
+                    "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
+                    "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
+                    "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
+                    "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
+                }
+            }
+        },
+        "nodes": [
+          { "nodeID": 1112, "ip": "127.0.0.1", "basePort": )" +
+        std::to_string( rand_port ) +
+        R"(, "schainIndex" : 1, "publicKey": "0xfa", "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588"}
+        ]
+    }
+  },
     "accounts": {
         "0000000000000000000000000000000000000001": { "precompiled": { "name": "ecrecover", "linear": { "base": 3000, "word": 0 } } },
         "0000000000000000000000000000000000000002": { "precompiled": { "name": "sha256", "linear": { "base": 60, "word": 12 } } },
@@ -1627,67 +1691,6 @@ static std::string const genesisInfoSkaleConfigTest = R"(
         "0xd40B3c51D0ECED279b1697DbdF45d4D19b872164": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x6080604052348015600f57600080fd5b506004361060325760003560e01c80636057361d146037578063b05784b8146062575b600080fd5b606060048036036020811015604b57600080fd5b8101908080359060200190929190505050607e565b005b60686088565b6040518082815260200191505060405180910390f35b8060008190555050565b6000805490509056fea2646970667358221220e5ff9593bfa9540a34cad5ecbe137dcafcfe1f93e3c4832610438d6f0ece37db64736f6c63430006060033"},
         "0xD2001300000000000000000000000000000000D3": { "balance": "0", "nonce": "0", "storage": {}, "code":"0x608060405234801561001057600080fd5b50600436106100365760003560e01c8063ee919d501461003b578063f0fdf83414610069575b600080fd5b6100676004803603602081101561005157600080fd5b81019080803590602001909291905050506100af565b005b6100956004803603602081101561007f57600080fd5b8101908080359060200190929190505050610108565b604051808215151515815260200191505060405180910390f35b600160008083815260200190815260200160002060006101000a81548160ff021916908315150217905550600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea2646970667358221220cf479cb746c4b897c88be4ad8e2612a14e27478f91928c49619c98da374a3bf864736f6c63430006000033"},
         "0xD40b89C063a23eb85d739f6fA9B14341838eeB2b": { "balance": "0", "nonce": "0", "storage": {"0x101e368776582e57ab3d116ffe2517c0a585cd5b23174b01e275c2d8329c3d83": "0x0000000000000000000000000000000000000000000000000000000000000001"}, "code":"0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80634df7e3d014610051578063d82cf7901461006f578063ee919d501461009d578063f0fdf834146100cb575b600080fd5b610059610111565b6040518082815260200191505060405180910390f35b61009b6004803603602081101561008557600080fd5b8101908080359060200190929190505050610117565b005b6100c9600480360360208110156100b357600080fd5b810190808035906020019092919050505061017d565b005b6100f7600480360360208110156100e157600080fd5b81019080803590602001909291905050506101ab565b604051808215151515815260200191505060405180910390f35b60015481565b60008082815260200190815260200160002060009054906101000a900460ff16151560011515141561017a57600080600083815260200190815260200160002060006101000a81548160ff02191690831515021790555060018054016001819055505b50565b600160008083815260200190815260200160002060006101000a81548160ff02191690831515021790555050565b60006020528060005260406000206000915054906101000a900460ff168156fea264697066735822122000af6f9a0d5c9b8b642648557291c9eb0f9732d60094cf75e14bb192abd97bcc64736f6c63430006000033"}
-    },
-    "skaleConfig": {
-        "nodeInfo": {
-            "nodeName": "Node1",
-            "nodeID": 1112,
-            "bindIP": "127.0.0.1",
-            "basePort": )" +
-            std::to_string( rand_port ) + R"(,
-            "logLevel": "trace",
-            "logLevelProposal": "trace",
-            "testSignatures": true
-        },
-        "sChain": {
-            "schainName": "TestChain",
-            "schainID": 1,
-            "precompiledConfigPatchTimestamp": 1,
-            "emptyBlockIntervalMs": -1,
-            "nodeGroups": {
-                "1": {
-                    "nodes": {
-                        "30": [
-                            13,
-                            30,
-                            "0x6180cde2cbbcc6b6a17efec4503a7d4316f8612f411ee171587089f770335f484003ad236c534b9afa82befc1f69533723abdb6ec2601e582b72dcfd7919338b"
-                        ]
-                    },
-                    "finish_ts": null,
-                    "bls_public_key": {
-                        "blsPublicKey0": "10860211539819517237363395256510340030868592687836950245163587507107792195621",
-                        "blsPublicKey1": "2419969454136313127863904023626922181546178935031521540751337209075607503568",
-                        "blsPublicKey2": "3399776985251727272800732947224655319335094876742988846345707000254666193993",
-                        "blsPublicKey3": "16982202412630419037827505223148517434545454619191931299977913428346639096984"
-                    }
-                },
-                "0": {
-                    "nodes": {
-                        "26": [
-                            3,
-                            26,
-                            "0x3a581d62b12232dade30c3710215a271984841657449d1f474295a13737b778266f57e298f123ae80cbab7cc35ead1b62a387556f94b326d5c65d4a7aa2abcba"
-                        ]
-                    },
-                    "finish_ts": 4294967290,
-                    "bls_public_key": {
-                        "blsPublicKey0": "12457351342169393659284905310882617316356538373005664536506840512800919345414",
-                        "blsPublicKey1": "11573096151310346982175966190385407867176668720531590318594794283907348596326",
-                        "blsPublicKey2": "13929944172721019694880576097738949215943314024940461401664534665129747139387",
-                        "blsPublicKey3": "7375214420811287025501422512322868338311819657776589198925786170409964211914"
-                    }
-                }
-            },
-            "nodes": {
-                "1": {
-                    "group": [
-                  { "nodeID": 1112, "owner": "0x0E7d7F1D34a502bD609542576941C3FCc087c588", "ip": "127.0.0.1", "basePort": )" +
-        std::to_string( rand_port ) +
-        R"(, "ip6": "::1", "basePort6": 1231, "schainIndex" : 1, "publicKey" : "0xfa"}
-                    ]
-                }
-            }
-        }
     }
 }
 )";
@@ -1702,10 +1705,10 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     Json::FastWriter fastWriter;
     std::string config = fastWriter.write( ret );
 
-    ChainParams chainParams;
-    chainParams = chainParams.loadConfig( config );
-    chainParams.sealEngineName = NoProof::name();
-    chainParams.allowFutureBlocks = true;
+    std::shared_ptr< ChainParams > chainParams = std::make_shared< ChainParams >();
+    chainParams->loadConfig( config );
+    size_t _port = ( srand( time( nullptr ) ), 1024 + rand() % 64000 );
+    chainParams->fillDefaultTestsParameters( _port );
 
     dev::eth::g_configAccesssor.reset( new skutils::json_config_file_accessor( "../../test/unittests/libethereum/PrecompiledConfig.json" ) );
 
@@ -1713,7 +1716,7 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     dev::TransientDirectory m_tmpDir;
     auto monitor = make_shared< InstanceMonitor >("test");
     setenv("DATA_DIR", m_tmpDir.path().c_str(), 1);
-    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams.networkID,
+    client.reset( new eth::ClientTest( chainParams, ( int ) chainParams->getNetworkId(),
         shared_ptr< GasPricer >(), nullptr, monitor, m_tmpDir.path(), dev::WithExisting::Kill ) );
 
     client->setAuthor( Address("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") );
@@ -1728,7 +1731,8 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
     testClient->importTransactionsAsBlock(
         dev::eth::Transactions(),
 #ifdef BITE
-        make_shared< map< uint64_t, std::shared_ptr< bytes > > >(),
+
+        make_shared< DecryptedTransactionFieldsMap >(),
 #endif
         1000,
         4294967294 );
@@ -1814,7 +1818,6 @@ BOOST_AUTO_TEST_CASE( getConfigVariable ) {
 
     BOOST_REQUIRE( !res.first );
 }
-#endif
 
 struct FilestorageFixture : public TestOutputHelperFixture {
     FilestorageFixture() {
@@ -1826,7 +1829,7 @@ struct FilestorageFixture : public TestOutputHelperFixture {
         if ( !boost::filesystem::exists( pathToFile.parent_path() ) )
             boost::filesystem::create_directories( pathToFile.parent_path() );
         boost::filesystem::path pathToTestFile = dev::getDataDir() / "test";
-        boost::filesystem::ofstream of( pathToTestFile );
+        std::ofstream of( pathToTestFile );
 
         hexAddress = ownerAddress.hex();
         hexAddress.insert( hexAddress.begin(), 64 - hexAddress.length(), '0' );
@@ -2063,5 +2066,6 @@ BOOST_AUTO_TEST_CASE( calculateFileHash ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

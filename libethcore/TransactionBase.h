@@ -149,21 +149,27 @@ public:
     void forceGasPrice( const u256& _gasPrice ) { m_gasPrice = _gasPrice; }
 
 #ifdef BITE
-    // Pass the decrypted data for BITE transaction
-    void setDecryptedData( const std::shared_ptr< bytes >& _decryptedData ) {
-        if ( _decryptedData )
+
+    void setDecryptedFields( const std::shared_ptr< bytes >& _decryptedData,
+        const std::shared_ptr< Address >& _decryptedTo ) {
+        if ( _decryptedData && _decryptedTo ) {
             m_decryptedData = _decryptedData;
-        m_isBITETxn = true;
+            m_decryptedTo = _decryptedTo;
+        }
     }
-
-    // if a txn is marked as BITE but doesn't contain valid decrypted data
-    bool isInvalidBiteTransaction() const { return m_isBITETxn && !m_decryptedData; }
-
-    // for tests
-    bool isBITETxn() const { return m_isBITETxn; }
 
     /// @returns the decrypted data associated with this (BITE) transaction.
     bytes const& decryptedData() const;
+
+    /// @return the decrypted address
+    Address decryptedTo() const;
+
+    // Tx is only valid BITE if is marked as BITE and has the decrypted fields set
+    bool isInvalidBiteTransaction() const {
+        return m_isBITETxn && !m_decryptedData && !m_decryptedTo;
+    }
+
+    bool isBite() const { return m_isBITETxn; }
 
     void checkAndValidateBITETransaction() const;
 #endif
@@ -206,8 +212,10 @@ public:
     /// @returns the base fee and thus the implied exchange rate of ETH to GAS.
     u256 gasPrice() const;
 
+#ifndef MIRAGE
     /// @returns the non-PoW gas
     u256 nonPowGas() const;
+#endif
 
     /// @returns the total gas to convert, paid for from sender's account. Any unused gas gets
     /// refunded once the contract is ended.
@@ -317,6 +325,7 @@ protected:
 
     static bool isZeroSignature( u256 const& _r, u256 const& _s ) { return !_r && !_s; }
 
+#ifndef MIRAGE
     /*
      * this function is provided in order for aleth tests and utilities to compile.
      * In will never be called in skaled since in skaled TransactionBase objects are never
@@ -324,7 +333,9 @@ protected:
      *
      * The function always returns zero, which means no PoW.
      */
+
     virtual u256 getExternalGas() const { return 0; }
+#endif
 
     /// Clears the signature.
     void clearSignature() { m_vrs = SignatureStruct(); }
@@ -347,9 +358,14 @@ protected:
     u256 m_maxFeePerGas;          ///< The maximum fee per gas. Only valid for type2 txns
 
 #ifdef BITE
-    bool m_isBITETxn = false;
     std::shared_ptr< bytes > m_decryptedData = nullptr;  ///< Transaction data that was decrypted in
                                                          ///< BITE protocol
+    std::shared_ptr< Address > m_decryptedTo = nullptr;  ///< Transaction to address that was
+                                                         ///< decrypted in BITE protocol
+
+    bool m_isBITETxn = false;  ///< Is this a BITE transaction
+
+    static const Address BITE_ADDRESS;
 #endif
 
     TransactionType m_txType = TransactionType::Legacy;
@@ -381,9 +397,9 @@ private:
 
 #ifdef BITE
     // called in TransactionBase constructor
-    // sets m_isBITETxn to true if a txn data field
-    // starts with BITE_MAGIC_NUMBER
-    void checkIfBITETxnAndSet();
+    // sets m_isBITETxn to true if a txn 'to' field
+    // maches BITE address
+    void checkIfBITETxnAndSet( const Address& _to );
 #endif
 
 public:

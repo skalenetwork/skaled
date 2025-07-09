@@ -175,7 +175,7 @@ public:
     State state = State(0).createStateCopyAndClearCaches();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -336,7 +336,7 @@ public:
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -446,7 +446,7 @@ public:
     State state = State( 0, dev::TransientDirectory().path(), dev::h256() ).createStateCopyAndClearCaches();
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::ConstantinopleTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -517,7 +517,7 @@ public:
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -624,7 +624,7 @@ public:
     State state{0};
     std::unique_ptr< SealEngineFace > se{
         ChainParams( genesisInfo( Network::IstanbulTest ) ).createSealEngine()};
-    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().chainID};
+    EnvInfo envInfo{blockHeader, lastBlockHashes, 1, 0, se->chainParams().getChainId()};
 
     u256 value = 0;
     u256 gasPrice = 1;
@@ -658,7 +658,7 @@ public:
         SchainPatch::init(cp);
 
         se.reset(cp.createSealEngine());
-        envInfo = std::make_unique<EnvInfo> ( blockHeader, lastBlockHashes, 1, 0, cp.chainID );
+        envInfo = std::make_unique<EnvInfo> ( blockHeader, lastBlockHashes, 1, 0, cp.getChainId() );
 
         state.addBalance( address, 1 * ether );
     }

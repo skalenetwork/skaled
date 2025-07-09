@@ -41,7 +41,7 @@ ClientTest* dev::eth::asClientTest( Interface* _c ) {
     return &dynamic_cast< ClientTest& >( *_c );
 }
 
-ClientTest::ClientTest( ChainParams const& _params, int _networkID,
+ClientTest::ClientTest( std::shared_ptr< const ChainParams > _params, int _networkID,
     std::shared_ptr< GasPricer > _gpForAdoption,
     std::shared_ptr< SnapshotManager > _snapshotManager,
     std::shared_ptr< InstanceMonitor > _instanceMonitor, fs::path const& _dbPath,
@@ -55,7 +55,7 @@ ClientTest::~ClientTest() {
 }
 
 void ClientTest::modifyTimestamp( int64_t _timestamp ) {
-    Block block( chainParams().accountStartNonce );
+    Block block( chainParams().getAccountStartNonce() );
     DEV_READ_GUARDED( x_preSeal )
     block = m_preSeal;
 
