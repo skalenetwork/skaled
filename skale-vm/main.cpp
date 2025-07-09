@@ -310,7 +310,9 @@ int main( int argc, char** argv ) {
         // data.
         t = Transaction( value, gasPrice, gas, data, 0 );
 
+#ifndef MIRAGE
     t.ignoreExternalGas();  // for tests
+#endif
 
     state.addBalance( sender, value );
 
