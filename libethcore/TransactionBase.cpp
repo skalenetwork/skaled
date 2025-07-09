@@ -647,8 +647,9 @@ void TransactionBase::checkAndValidateBITETransaction() const {
         rlpEncodedBITETxn = RLP( m_data );
 
         if ( !rlpEncodedBITETxn.isList() )
-            BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
-                                       "BITE transaction's data is invalid: RLP must be a list" ) ) );
+            BOOST_THROW_EXCEPTION(
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: RLP must be a list" ) ) );
 
         if ( rlpEncodedBITETxn.itemCount() == 0 || !rlpEncodedBITETxn.toList()[0].isList() )
             BOOST_THROW_EXCEPTION( InvalidBITETransaction() << errinfo_comment( std::string(
@@ -656,10 +657,11 @@ void TransactionBase::checkAndValidateBITETransaction() const {
 
         RLPs biteTxnRlpList = rlpEncodedBITETxn.toList()[0].toList();
         if ( biteTxnRlpList.size() != 2 )
-            BOOST_THROW_EXCEPTION( BITETransactionTooShort() << errinfo_comment(
-                                       std::string( "BITE transaction's data is too short: expected 2 "
-                                                    "elements to be in BITE payload, got" ) +
-                                       std::to_string( biteTxnRlpList.size() ) ) );
+            BOOST_THROW_EXCEPTION(
+                BITETransactionTooShort()
+                << errinfo_comment( std::string( "BITE transaction's data is too short: expected 2 "
+                                                 "elements to be in BITE payload, got" ) +
+                                    std::to_string( biteTxnRlpList.size() ) ) );
 
         // extract epochId
         if ( !biteTxnRlpList[0].isInt() )
@@ -676,11 +678,11 @@ void TransactionBase::checkAndValidateBITETransaction() const {
         dev::bytes encryptedBITEData = biteTxnRlpList[1].toBytes();
         if ( encryptedBITEData.size() < BITE_CIPHERTEXT_MIN_LEN )
             BOOST_THROW_EXCEPTION(
-                BITETransactionTooShort()
-                << errinfo_comment( std::string( "BITE transaction's data is invalid: wrong encrypted "
-                                                 "data size: expected at least " ) +
-                                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got" ) +
-                                    std::to_string( encryptedBITEData.size() ) ) );
+                BITETransactionTooShort() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid: wrong encrypted "
+                                 "data size: expected at least " ) +
+                    std::to_string( BITE_CIPHERTEXT_MIN_LEN ) + std::string( ", got" ) +
+                    std::to_string( encryptedBITEData.size() ) ) );
 
         try {
             // check that ciphertext is valid
@@ -696,11 +698,12 @@ void TransactionBase::checkAndValidateBITETransaction() const {
                     std::string( "BITE transaction's data is invalid: " ) + ex.what() ) );
         } catch ( libBLS::ThresholdUtils::IsNotWellFormed& ex ) {
             BOOST_THROW_EXCEPTION(
-                InvalidBITETransaction()
-                << errinfo_comment( std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
+                InvalidBITETransaction() << errinfo_comment(
+                    std::string( "BITE transaction's data is invalid" ) + ex.what() ) );
         }
     } catch ( Exception& _e ) {
-        LOG( m_loggerError ) << std::string( "invalid BITE data format: " ) << std::string( _e.what() );
+        LOG( m_loggerError ) << std::string( "invalid BITE data format: " )
+                             << std::string( _e.what() );
         throw;
     }
 }

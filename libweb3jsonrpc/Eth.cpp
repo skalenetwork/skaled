@@ -1103,10 +1103,10 @@ string dev::rpc::exceptionToErrorMessage() {
 #ifdef BITE
     // BITE exceptions
     catch ( InvalidBITETransaction const& _e ) {
-       ret = "Invalid BITE transaction format.";
-   } catch ( BITETransactionTooShort const& _e ) {
-       ret = "BITE transaction too short.";
-   }
+        ret = "Invalid BITE transaction format.";
+    } catch ( BITETransactionTooShort const& _e ) {
+        ret = "BITE transaction too short.";
+    }
 #endif
     catch ( ... ) {
         ret = "Invalid RPC parameters.";
